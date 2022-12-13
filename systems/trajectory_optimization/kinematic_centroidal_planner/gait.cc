@@ -1,4 +1,4 @@
-#include "gait.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/gait.h"
 
 #include <iostream>
 
@@ -39,6 +39,7 @@ drake::trajectories::PiecewisePolynomial<double> Gait::ToTrajectory(
     current_phase = gait_pattern[current_mode].start_phase;
   }
   break_points.push_back(end_time);
+  // Contact doesn't change so just repeat it for the last break_point
   samples.push_back(samples[samples.size() - 1]);
   return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(
       break_points, samples);

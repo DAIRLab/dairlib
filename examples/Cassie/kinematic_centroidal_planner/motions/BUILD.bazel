@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "motions",
+    data = ["motion_test.yaml",
+            "motion_left_step.yaml",
+            "motion_right_step.yaml",
+           "motion_jump.yaml",
+           "motion_walk.yaml"],
+    visibility = ["//visibility:public"],
+)
+

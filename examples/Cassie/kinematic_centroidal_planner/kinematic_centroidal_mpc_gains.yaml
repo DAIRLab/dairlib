@@ -31,6 +31,6 @@ contact_pos: [0.1, 16, 0.001]
 contact_vel: [0.02, 0.02, 0.02]
 contact_force: [0.0001, 0.0001, 0.0001]
 lin_momentum: [0.00001, 0.00001, 0.00001]
-ang_momentum: [0.0000000, 0.0000000, 0.0000000]
+ang_momentum: [0.0000001, 0.0000001, 0.0000001]
 
-swing_foot_minimum_height: 0.015
+tol: 1e-2

@@ -1,9 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["stand.yaml"])
 
-exports_files(["walk.yaml"])
-
-exports_files(["step.yaml"])
-
-exports_files(["run.yaml"])
+filegroup(
+    name = "gaits",
+    data = ["stand.yaml",
+           "walk.yaml",
+           "jump.yaml",
+           "left_step.yaml",
+           "right_step.yaml"],
+    visibility = ["//visibility:public"],
+)

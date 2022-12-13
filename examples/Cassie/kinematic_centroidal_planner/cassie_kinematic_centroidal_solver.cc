@@ -1,47 +1,10 @@
-#include "cassie_kinematic_centroidal_mpc.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/parsing/parser.h"
+#include "cassie_kinematic_centroidal_solver.h"
+#include "drake/multibody/parsing/parser.h"
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_constraints.h"
 
-std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCentroidalMPC::CreateContactPoints(const drake::multibody::MultibodyPlant<
-    double> &plant,
-                                                                                                               double mu) {
-  auto left_toe_pair = dairlib::LeftToeFront(plant);
-  auto left_heel_pair = dairlib::LeftToeRear(plant);
-  auto right_toe_pair = dairlib::RightToeFront(plant);
-  auto right_heel_pair = dairlib::RightToeRear(plant);
-
-  std::vector<int> active_inds{0, 1, 2};
-
-  auto left_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, left_toe_pair.first, left_toe_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  left_toe_eval.set_frictional();
-  left_toe_eval.set_mu(mu);
-
-  auto left_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, left_heel_pair.first, left_heel_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  left_heel_eval.set_frictional();
-  left_heel_eval.set_mu(mu);
-
-  auto right_toe_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, right_toe_pair.first, right_toe_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  right_toe_eval.set_frictional();
-  right_toe_eval.set_mu(mu);
-
-  auto right_heel_eval = dairlib::multibody::WorldPointEvaluator<double>(
-      plant, right_heel_pair.first, right_heel_pair.second,
-      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  right_heel_eval.set_frictional();
-  right_heel_eval.set_mu(mu);
-
-  return {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval};
-}
-
-std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCentroidalMPC::CreateSlipContactPoints(const drake::multibody::MultibodyPlant<
+std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCentroidalSolver::CreateSlipContactPoints(const drake::multibody::MultibodyPlant<
     double> &plant, double mu) {
   auto left_toe_pair = dairlib::LeftToeFront(plant);
   auto right_toe_pair = dairlib::RightToeFront(plant);
@@ -62,7 +25,7 @@ std::vector<dairlib::multibody::WorldPointEvaluator<double>> CassieKinematicCent
   return {left_toe_eval, right_toe_eval};
 }
 
-void CassieKinematicCentroidalMPC::AddLoopClosure() {
+void CassieKinematicCentroidalSolver::AddLoopClosure() {
   loop_closure_evaluators.add_evaluator(&l_loop_evaluator_);
   loop_closure_evaluators.add_evaluator(&r_loop_evaluator_);
   auto loop_closure =
@@ -77,7 +40,7 @@ void CassieKinematicCentroidalMPC::AddLoopClosure() {
 
 }
 
-void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
+void CassieKinematicCentroidalSolver::AddPlanarSlipConstraints(int knot_point) {
   for(int contact_index = 0; contact_index < slip_contact_points_.size(); contact_index ++){
 
     prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) - slip_com_vars_[knot_point]).squaredNorm() <= 1.5);
@@ -109,7 +72,7 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
   }
 }
 
-void CassieKinematicCentroidalMPC::AddPlanarSlipCost(int knot_point, double terminal_gain) {
+void CassieKinematicCentroidalSolver::AddPlanarSlipCost(int knot_point, double terminal_gain) {
   const double t = dt_ * knot_point;
   if (com_ref_traj_) {
     prog_->AddQuadraticErrorCost(terminal_gain * Q_com_,
@@ -161,21 +124,21 @@ void CassieKinematicCentroidalMPC::AddPlanarSlipCost(int knot_point, double term
   }
 }
 
-void CassieKinematicCentroidalMPC::SetModeSequence(const std::vector<std::vector<bool>> &contact_sequence) {
-  KinematicCentroidalMPC::SetModeSequence(contact_sequence);
+void CassieKinematicCentroidalSolver::SetModeSequence(const std::vector<std::vector<bool>> &contact_sequence) {
+  KinematicCentroidalSolver::SetModeSequence(contact_sequence);
   MapModeSequence();
 }
-void CassieKinematicCentroidalMPC::SetModeSequence(const drake::trajectories::PiecewisePolynomial<double> &contact_sequence) {
-  KinematicCentroidalMPC::SetModeSequence(contact_sequence);
+void CassieKinematicCentroidalSolver::SetModeSequence(const drake::trajectories::PiecewisePolynomial<double> &contact_sequence) {
+  KinematicCentroidalSolver::SetModeSequence(contact_sequence);
   MapModeSequence();
 }
 
-void CassieKinematicCentroidalMPC::MapModeSequence() {
+void CassieKinematicCentroidalSolver::MapModeSequence() {
   for (int knot_point = 0; knot_point < num_knot_points(); knot_point++) {
     slip_contact_sequence_[knot_point] = complex_mode_to_slip_mode_.at(contact_sequence_[knot_point]);
   }
 }
-void CassieKinematicCentroidalMPC::AddSlipReductionConstraint(int knot_point) {
+void CassieKinematicCentroidalSolver::AddSlipReductionConstraint(int knot_point) {
   prog_->AddConstraint(slip_com_vars_[knot_point] == com_pos_vars(knot_point));
   prog_->AddConstraint(slip_vel_vars_[knot_point] * m_ == momentum_vars(knot_point).tail(3));
   prog_->AddConstraint(slip_contact_pos_vars(knot_point,0) == contact_pos_vars(knot_point,0));
@@ -189,7 +152,7 @@ void CassieKinematicCentroidalMPC::AddSlipReductionConstraint(int knot_point) {
                        {com_pos_vars(knot_point), slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], contact_force_[knot_point], slip_force_vars_[knot_point]});
 }
 
-void CassieKinematicCentroidalMPC::AddSlipLiftingConstraint(int knot_point) {
+void CassieKinematicCentroidalSolver::AddSlipLiftingConstraint(int knot_point) {
   auto lifting_constraint =
       std::make_shared<PlanarSlipLiftingConstraint>(
           plant_, lifters_[knot_point], 2, n_contact_points_,knot_point);
@@ -199,7 +162,7 @@ void CassieKinematicCentroidalMPC::AddSlipLiftingConstraint(int knot_point) {
                         state_vars(knot_point)});
 }
 
-void CassieKinematicCentroidalMPC::AddSlipDynamics(int knot_point) {
+void CassieKinematicCentroidalSolver::AddSlipDynamics(int knot_point) {
   if(!is_last_knot(knot_point)) {
     auto slip_com_dynamics =
         std::make_shared<PlanarSlipDynamicsConstraint<double>>(
@@ -218,25 +181,25 @@ void CassieKinematicCentroidalMPC::AddSlipDynamics(int knot_point) {
   }
 }
 
-drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalMPC::slip_contact_pos_vars(int knot_point_index,
-                                                                                            int slip_foot_index) {
+drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalSolver::slip_contact_pos_vars(int knot_point_index,
+                                                                                               int slip_foot_index) {
   return slip_contact_pos_vars_[knot_point_index].segment(3 * slip_foot_index, 3);
 }
-drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalMPC::slip_contact_vel_vars(int knot_point_index,
-                                                                                            int slip_foot_index) {
+drake::solvers::VectorXDecisionVariable CassieKinematicCentroidalSolver::slip_contact_vel_vars(int knot_point_index,
+                                                                                               int slip_foot_index) {
   return slip_contact_vel_vars_[knot_point_index].segment(3 * slip_foot_index, 3);
 }
 
-void CassieKinematicCentroidalMPC::SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double> &com_trajectory) {
+void CassieKinematicCentroidalSolver::SetComPositionGuess(const drake::trajectories::PiecewisePolynomial<double> &com_trajectory) {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     prog_->SetInitialGuess(slip_com_vars_[knot_point],
                            com_trajectory.value(dt_ * knot_point));
   }
-  KinematicCentroidalMPC::SetComPositionGuess(com_trajectory);
+  KinematicCentroidalSolver::SetComPositionGuess(com_trajectory);
 }
 
-void CassieKinematicCentroidalMPC::SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double> &q_traj,
-                                                      const drake::trajectories::PiecewisePolynomial<double> &v_traj) {
+void CassieKinematicCentroidalSolver::SetRobotStateGuess(const drake::trajectories::PiecewisePolynomial<double> &q_traj,
+                                                         const drake::trajectories::PiecewisePolynomial<double> &v_traj) {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     dairlib::multibody::SetPositionsIfNew<double>(plant_, q_traj.value(dt_*knot_point),contexts_[knot_point].get());
     dairlib::multibody::SetVelocitiesIfNew<double>(plant_, v_traj.value(dt_*knot_point),contexts_[knot_point].get());
@@ -247,18 +210,18 @@ void CassieKinematicCentroidalMPC::SetRobotStateGuess(const drake::trajectories:
                              slip_contact_points_[contact].EvalFullTimeDerivative(*contexts_[knot_point]));
     }
   }
-  KinematicCentroidalMPC::SetRobotStateGuess(q_traj, v_traj);
+  KinematicCentroidalSolver::SetRobotStateGuess(q_traj, v_traj);
 }
 
-void CassieKinematicCentroidalMPC::SetMomentumGuess(const drake::trajectories::PiecewisePolynomial<double> &momentum_trajectory) {
+void CassieKinematicCentroidalSolver::SetMomentumGuess(const drake::trajectories::PiecewisePolynomial<double> &momentum_trajectory) {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     prog_->SetInitialGuess(slip_vel_vars_[knot_point],
                            drake::VectorX<double>(momentum_trajectory.value(dt_ * knot_point)).tail(3)/m_);
   }
-  KinematicCentroidalMPC::SetMomentumGuess(momentum_trajectory);
+  KinematicCentroidalSolver::SetMomentumGuess(momentum_trajectory);
 }
 
-drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_point) {
+drake::VectorX<double> CassieKinematicCentroidalSolver::LiftSlipSolution(int knot_point) {
   drake::VectorX<double> slip_state(3 + 3 + 6 * slip_contact_points_.size() + slip_contact_points_.size());
   slip_state<<result_->GetSolution(slip_com_vars_[knot_point]),
       result_->GetSolution(slip_vel_vars_[knot_point]),
@@ -283,14 +246,14 @@ drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_p
   return lifters_[knot_point]->Lift(slip_state).tail(n_q_+n_v_);
 }
 
-void CassieKinematicCentroidalMPC::SetForceGuess(const drake::trajectories::PiecewisePolynomial<double> &force_trajectory) {
+void CassieKinematicCentroidalSolver::SetForceGuess(const drake::trajectories::PiecewisePolynomial<double> &force_trajectory) {
   for(const auto& force_vars : slip_force_vars_){
     //TODO find better initial guess
     prog_->SetInitialGuess(force_vars, 0 * drake::VectorX<double>::Ones(force_vars.size()));
   }
-  KinematicCentroidalMPC::SetForceGuess(force_trajectory);
+  KinematicCentroidalSolver::SetForceGuess(force_trajectory);
 }
-void CassieKinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &solver_options) {
+void CassieKinematicCentroidalSolver::Build(const drake::solvers::SolverOptions &solver_options) {
   for (int knot = 0; knot < n_knot_points_; knot++) {
     lifters_.emplace_back(new PlanarSlipLifter(plant_,
                                                contexts_[knot].get(),
@@ -309,5 +272,5 @@ void CassieKinematicCentroidalMPC::Build(const drake::solvers::SolverOptions &so
                                                 k_,
                                                 b_, r0_, slip_contact_sequence_[knot]));
   }
-  KinematicCentroidalMPC::Build(solver_options);
+  KinematicCentroidalSolver::Build(solver_options);
 }

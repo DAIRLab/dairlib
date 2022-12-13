@@ -1,10 +1,15 @@
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["kinematic_centroidal_mpc_gains.yaml"])
-exports_files(["trajectory_parameters.yaml"])
+filegroup(
+    name = "gains",
+    data = ["kinematic_centroidal_mpc_gains.yaml",
+           "osc_centroidal_gains.yaml",
+           "osc_tracking_qp_settings.yaml"],
+    visibility = ["//visibility:public"],
+)
 
 cc_library(
-    name = "centroidal_mpc",
+    name = "centroidal_tracking_controller",
     srcs = [],
     deps = [
         ":contact_scheduler",
@@ -24,14 +29,11 @@ cc_library(
 cc_binary(
     name = "cassie_kcmpc_trajopt",
     srcs = ["cassie_kcmpc_trajopt.cc"],
-    data = ["//examples/Cassie/kinematic_centroidal_planner:kinematic_centroidal_mpc_gains.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner/gaits:stand.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner/gaits:walk.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner/gaits:step.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner/gaits:run.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner:trajectory_parameters.yaml"],
+    data = [":kinematic_centroidal_mpc_gains.yaml",
+            "//examples/Cassie/kinematic_centroidal_planner/gaits:gaits",
+            "//examples/Cassie/kinematic_centroidal_planner/motions:motions"],
     deps = [
-        ":centroidal_mpc",
+        ":centroidal_tracking_controller",
         "//examples/Cassie:cassie_utils",
         "//common",
         "//multibody:visualization_utils",
@@ -39,7 +41,7 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_kinematic_centroidal_mpc",
-        "//examples/Cassie/kinematic_centroidal_planner:kinematic_centroidal_reference_generator",
+        "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -74,13 +76,13 @@ cc_library(
 )
 
 cc_library(
-    name = "kinematic_centroidal_reference_generator",
+    name = "cassie_reference_utils",
     srcs = ["cassie_reference_utils.cc"],
     hdrs = ["cassie_reference_utils.h"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//common",
-        "//systems/controllers/kinematic_centroidal_mpc:kinematic_centroidal_reference_generator",
+        "//systems/trajectory_optimization/kinematic_centroidal_planner:kinematic_centroidal_planner",
         "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
     ],
@@ -88,12 +90,12 @@ cc_library(
 
 cc_library(
     name = "cassie_kinematic_centroidal_mpc",
-    srcs = ["cassie_kinematic_centroidal_mpc.cc"],
-    hdrs = ["cassie_kinematic_centroidal_mpc.h"],
+    srcs = ["cassie_kinematic_centroidal_solver.cc"],
+    hdrs = ["cassie_kinematic_centroidal_solver.h"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//common",
-        "//systems/controllers/kinematic_centroidal_mpc",
+        "//systems/trajectory_optimization/kinematic_centroidal_planner",
         "//multibody:visualization_utils",
         "//examples/Cassie/kinematic_centroidal_planner/simple_models:planar_slip",
         "@drake//:drake_shared_library",

@@ -1,26 +1,27 @@
 #pragma once
 #include <iostream>
-#include "systems/controllers/kinematic_centroidal_mpc/kinematic_centroidal_mpc.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_solver.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
 #include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/reference_generation_utils.h"
 
 /*!
  * @brief Cassie specific child class for kinematic centroidal mpc. Adds loop closure, joint limits, and cassie contact points
  */
-class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
+class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
  public:
-  CassieKinematicCentroidalMPC(const drake::multibody::MultibodyPlant<double>& plant,
-                               int n_knot_points,
-                               double dt,
-                               double mu,
-                               const drake::VectorX<double>& nominal_stand,
-                               double k = 1000,
-                               double b = 20,
-                               double r0 = 0.5,
-                               double stance_width = 0.2) :
-      KinematicCentroidalMPC(plant, n_knot_points, dt, CreateContactPoints(plant, mu)),
+  CassieKinematicCentroidalSolver(const drake::multibody::MultibodyPlant<double>& plant,
+                                  int n_knot_points,
+                                  double dt,
+                                  double mu,
+                                  const drake::VectorX<double>& nominal_stand,
+                                  double k = 1000,
+                                  double b = 20,
+                                  double r0 = 0.5,
+                                  double stance_width = 0.2) :
+      KinematicCentroidalSolver(plant, n_knot_points, dt, CreateContactPoints(plant, mu)),
       l_loop_evaluator_(dairlib::LeftLoopClosureEvaluator(Plant())),
       r_loop_evaluator_(dairlib::RightLoopClosureEvaluator(Plant())),
       loop_closure_evaluators(Plant()),
@@ -51,14 +52,6 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
 
     m_=plant_.CalcTotalMass(*contexts_[0]);
   }
-
-  /*!
-   * @brief creates vector of world point evaluators for cassie
-   * @param plant cassie plant
-   * @param mu coefficient of friction
-   * @return
-   */
-  std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant, double mu);
 
   std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateSlipContactPoints(const drake::multibody::MultibodyPlant<double>& plant, double mu);
 

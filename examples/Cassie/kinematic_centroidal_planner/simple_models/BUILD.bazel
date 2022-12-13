@@ -28,7 +28,7 @@ cc_binary(
         "//multibody:visualization_utils",
         "//multibody/kinematic",
         "//systems/primitives",
-        "//examples/Cassie/kinematic_centroidal_planner:kinematic_centroidal_reference_generator",
+        "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

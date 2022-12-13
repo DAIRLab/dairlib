@@ -14,6 +14,7 @@ cc_library(
 cc_library(
     name = "osqp_solver_options",
     hdrs = ["osqp_solver_options.h"],
+    data = ["osqp_options_default.yaml"],
     deps = [
         "@drake//:drake_shared_library",
     ],

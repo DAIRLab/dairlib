@@ -143,5 +143,7 @@ class CassieKinematicCentroidalMPC : public KinematicCentroidalMPC {
                                                                             {{true, true, false, false},{true, false}},
                                                                             {{false, false, true, true},{false, true}},
                                                                             {{false, false, false, false},{false, false}}};
+  std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
+      slip_dynamics_binding_;
 };
 

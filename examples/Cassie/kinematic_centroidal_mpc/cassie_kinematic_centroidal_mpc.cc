@@ -80,7 +80,7 @@ void CassieKinematicCentroidalMPC::AddLoopClosure() {
 void CassieKinematicCentroidalMPC::AddPlanarSlipConstraints(int knot_point) {
   for(int contact_index = 0; contact_index < slip_contact_points_.size(); contact_index ++){
 
-    prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) - slip_com_vars_[knot_point]).squaredNorm() <= 2);
+    prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) - slip_com_vars_[knot_point]).squaredNorm() <= 1.5);
 
     if(slip_contact_sequence_[knot_point][contact_index]){
       // Foot isn't moving
@@ -205,9 +205,9 @@ void CassieKinematicCentroidalMPC::AddSlipDynamics(int knot_point) {
         std::make_shared<PlanarSlipDynamicsConstraint<double>>(
             r0_, k_, b_,m_, 2, slip_contact_sequence_[knot_point], dt_, knot_point);
 
-    prog_->AddConstraint(slip_com_dynamics,
+    slip_dynamics_binding_.push_back(prog_->AddConstraint(slip_com_dynamics,
                          {slip_com_vars_[knot_point], slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], slip_force_vars_[knot_point],
-                          slip_com_vars_[knot_point+1], slip_vel_vars_[knot_point+1], slip_contact_pos_vars_[knot_point+1],slip_force_vars_[knot_point+1]});
+                          slip_com_vars_[knot_point+1], slip_vel_vars_[knot_point+1], slip_contact_pos_vars_[knot_point+1],slip_force_vars_[knot_point+1]}));
     prog_->AddConstraint(
         slip_contact_pos_vars_[knot_point + 1] ==
             slip_contact_pos_vars_[knot_point] +
@@ -265,7 +265,7 @@ drake::VectorX<double> CassieKinematicCentroidalMPC::LiftSlipSolution(int knot_p
       result_->GetSolution(slip_contact_pos_vars_[knot_point]),
       result_->GetSolution(slip_contact_vel_vars_[knot_point]),
       result_->GetSolution(slip_force_vars_[knot_point]);
-  if(knot_point == 1){
+  if(knot_point == 3){
     auto grf_constraint =
         std::make_shared<SlipGrfReductionConstrain>(
             plant_, reducers[knot_point], 2, 4,knot_point);

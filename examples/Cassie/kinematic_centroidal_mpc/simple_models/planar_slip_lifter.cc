@@ -180,6 +180,9 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(const drake::VectorX<double> &c
     double r = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).norm();
     double dr = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).normalized().dot(com_vel);
     double slip_grf_mag = slip_contact_mask_[simple_index] ? slip_force[simple_index] + k_ * (r0_ - r) - b_ * dr : 0;
+    if(slip_grf_mag  < 0){
+      slip_grf_mag = 0;
+    }
     // Find the average location for all of the complex contact points that make up the SLIP foot
     drake::Vector3<double> average_pos = drake::VectorX<double>::Zero(3);
 

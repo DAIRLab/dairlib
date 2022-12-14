@@ -357,6 +357,7 @@ cc_binary(
         ":cassie_utils",
         "//examples/Cassie/osc_jump",
         "//examples/Cassie/kinematic_centroidal_planner:centroidal_tracking_controller",
+        "//examples/Cassie/kinematic_centroidal_planner:osc_centroidal_gains",
         "//lcm:trajectory_saver",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//multibody:utils",

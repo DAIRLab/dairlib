@@ -7,5 +7,5 @@ duration_scaling:
 gait_sequence: [ 'stand', 'left_step', 'stand' ]
 com_vel_values:
   [ 0, 0, 0,
-    1.0, 0, 0,
+    2.0, 0, 0,
     0, 0, 0 ]

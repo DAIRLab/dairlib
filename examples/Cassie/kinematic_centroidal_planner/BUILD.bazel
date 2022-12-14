@@ -100,3 +100,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "osc_centroidal_gains",
+    hdrs = ["osc_centroidal_gains.h"],
+    deps = [
+        "//systems/controllers/osc:osc_gains",
+        "@drake//:drake_shared_library",
+    ],
+)

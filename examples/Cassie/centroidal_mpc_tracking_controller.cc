@@ -10,7 +10,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/contact_scheduler.h"
 #include "examples/Cassie/kinematic_centroidal_planner/kinematic_trajectory_generator.h"
-#include "examples/Cassie/osc_jump/osc_jumping_gains.h"
+#include "examples/Cassie/kinematic_centroidal_planner/osc_centroidal_gains.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "systems/controllers/controller_failure_aggregator.h"
@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
       feet_contact_points = {left_toe, right_toe};
 
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
-  auto gains = drake::yaml::LoadYamlFile<OSCJumpingGains>(FLAGS_gains_filename);
+  auto gains = drake::yaml::LoadYamlFile<OSCCentroidalGains>(FLAGS_gains_filename);
 
   string output_traj_path = FLAGS_folder_path + FLAGS_traj_name;
 
@@ -262,7 +262,7 @@ int DoMain(int argc, char* argv[]) {
 
   /**** Tracking Data for OSC *****/
   TransTaskSpaceTrackingData pelvis_tracking_data(
-      "pelvis_trans_traj", gains.K_p_com, gains.K_d_com, gains.W_com,
+      "pelvis_trans_traj", gains.K_p_pelvis, gains.K_d_pelvis, gains.W_pelvis,
       plant_w_spr, plant_w_spr);
   pelvis_tracking_data.AddStateAndPointToTrack(DOUBLE_STANCE, "pelvis");
   pelvis_tracking_data.AddStateAndPointToTrack(LEFT_STANCE, "pelvis");
@@ -276,22 +276,22 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_tracking_data.AddStateAndFrameToTrack(RIGHT_STANCE, "pelvis");
 
   TransTaskSpaceTrackingData left_foot_tracking_data(
-      "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      "left_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_foot_tracking_data(
-      "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      "right_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
   left_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(FLIGHT, "toe_right");
   left_foot_tracking_data.AddStateAndPointToTrack(RIGHT_STANCE, "toe_left");
   right_foot_tracking_data.AddStateAndPointToTrack(LEFT_STANCE, "toe_right");
 
   TransTaskSpaceTrackingData left_hip_tracking_data(
-      "left_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      "left_hip_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
   TransTaskSpaceTrackingData right_hip_tracking_data(
-      "right_hip_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr);
+      "right_hip_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
   left_hip_tracking_data.AddStateAndPointToTrack(FLIGHT, "pelvis");
   right_hip_tracking_data.AddStateAndPointToTrack(FLIGHT, "pelvis");
   left_hip_tracking_data.AddStateAndPointToTrack(RIGHT_STANCE, "pelvis");
@@ -306,12 +306,12 @@ int DoMain(int argc, char* argv[]) {
   //      RIGHT_STANCE, "toe_right");
 
   RelativeTranslationTrackingData left_foot_rel_tracking_data(
-      "left_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr, &left_foot_tracking_data,
+      "left_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &left_foot_tracking_data,
       &left_hip_tracking_data);
   RelativeTranslationTrackingData right_foot_rel_tracking_data(
-      "right_ft_traj", gains.K_p_flight_foot, gains.K_d_flight_foot,
-      gains.W_flight_foot, plant_w_spr, plant_w_spr, &right_foot_tracking_data,
+      "right_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, &right_foot_tracking_data,
       &right_hip_tracking_data);
   //  auto pelvis_trans_rel_tracking_data =
   //      std::make_unique<RelativeTranslationTrackingData>(

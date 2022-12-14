@@ -403,7 +403,7 @@ void KinematicCentroidalSolver::SerializeSolution(int n_knot_points,
   this->SetFromSolution(*result_, &state_points, &contact_force_points,
                         &time_samples);
   for (auto& t : time_samples) {
-    t += time_offset + solve_time_;
+    t += time_offset;
   }
 
   int knot_points_to_serialize =

@@ -246,13 +246,13 @@ void KinematicCentroidalSolver::Build(
         AddCentroidalDynamics(knot_point);
         AddKinematicsIntegrator(knot_point);
         if (!is_last_knot(knot_point) and
-            complexity_schedule_[knot_point + 1] == PLANAR_SLIP) {
+            complexity_schedule_[knot_point + 1] == SLIP) {
           AddSlipReductionConstraint(knot_point + 1);
           AddCentroidalKinematicConsistency(knot_point + 1);
         }
         break;
-      case PLANAR_SLIP:
-        AddPlanarSlipConstraints(knot_point);
+      case SLIP:
+        AddSlipConstraints(knot_point);
         if (!is_last_knot(knot_point)) {
           switch (complexity_schedule_[knot_point + 1]) {
             case KINEMATIC_CENTROIDAL:
@@ -260,7 +260,7 @@ void KinematicCentroidalSolver::Build(
               AddKinematicsIntegrator(knot_point);
               AddSlipLiftingConstraint(knot_point);
               break;
-            case PLANAR_SLIP:
+            case SLIP:
               AddSlipDynamics(knot_point);
               break;
           }
@@ -324,8 +324,8 @@ void KinematicCentroidalSolver::AddCosts() {
                                        contact_force_[knot_point]);
         }
         break;
-      case PLANAR_SLIP:
-        AddPlanarSlipCost(knot_point, knot_point_gain);
+      case SLIP:
+        AddSlipCost(knot_point, knot_point_gain);
         break;
     }
   }
@@ -370,7 +370,7 @@ KinematicCentroidalSolver::Solve() {
       case KINEMATIC_CENTROIDAL:
         states.emplace_back(result_->GetSolution(state_vars(knot_point)));
         break;
-      case PLANAR_SLIP:
+      case SLIP:
         states.emplace_back(LiftSlipSolution(knot_point));
         break;
     }

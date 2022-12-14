@@ -12,9 +12,9 @@
 #include "drake/solvers/constraint.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
-class PlanarSlipReducer {
+class SlipReducer {
  public:
-  PlanarSlipReducer(
+  SlipReducer(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
       const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&

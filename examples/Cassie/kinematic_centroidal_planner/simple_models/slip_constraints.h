@@ -2,8 +2,8 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_reducer.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "solvers/nonlinear_constraint.h"
@@ -13,19 +13,18 @@
 #include "drake/common/symbolic.h"
 #include "drake/solvers/constraint.h"
 
-class PlanarSlipReductionConstraint
+class SlipReductionConstraint
     : public dairlib::solvers::NonlinearConstraint<double> {
  public:
-  PlanarSlipReductionConstraint(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      std::shared_ptr<PlanarSlipReducer> reducing_function, int n_slip_feet,
-      int n_complex_feet, int knot_index);
+  SlipReductionConstraint(const drake::multibody::MultibodyPlant<double>& plant,
+                          std::shared_ptr<SlipReducer> reducing_function,
+                          int n_slip_feet, int n_complex_feet, int knot_index);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
 
-  std::shared_ptr<PlanarSlipReducer> reducing_function_;
+  std::shared_ptr<SlipReducer> reducing_function_;
   const int slip_dim_;
   const int complex_dim_;
 };
@@ -35,43 +34,41 @@ class SlipGrfReductionConstrain
  public:
   SlipGrfReductionConstrain(
       const drake::multibody::MultibodyPlant<double>& plant,
-      std::shared_ptr<PlanarSlipReducer> reducing_function, int n_slip_feet,
+      std::shared_ptr<SlipReducer> reducing_function, int n_slip_feet,
       int n_complex_feet, int knot_index);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
 
-  std::shared_ptr<PlanarSlipReducer> reducing_function_;
+  std::shared_ptr<SlipReducer> reducing_function_;
   const int n_slip_feet_;
   const int n_complex_feet_;
 };
 
-class PlanarSlipLiftingConstraint
+class SlipLiftingConstraint
     : public dairlib::solvers::NonlinearConstraint<double> {
  public:
-  PlanarSlipLiftingConstraint(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      std::shared_ptr<PlanarSlipLifter> lifting_function, int n_slip_feet,
-      int n_complex_feet, int knot_index);
+  SlipLiftingConstraint(const drake::multibody::MultibodyPlant<double>& plant,
+                        std::shared_ptr<SlipLifter> lifting_function,
+                        int n_slip_feet, int n_complex_feet, int knot_index);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
                           drake::VectorX<double>* y) const override;
 
-  std::shared_ptr<PlanarSlipLifter> lifting_function_;
+  std::shared_ptr<SlipLifter> lifting_function_;
   const int slip_dim_;
   const int complex_dim_;
 };
 
 template <typename T>
-class PlanarSlipDynamicsConstraint
-    : public dairlib::solvers::NonlinearConstraint<T> {
+class SlipDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
  public:
-  PlanarSlipDynamicsConstraint(double r0, double k, double b, T m, int n_feet,
-                               std::vector<bool> contact_mask0,
-                               std::vector<bool> contact_mask1, double dt,
-                               int knot_index);
+  SlipDynamicsConstraint(double r0, double k, double b, T m, int n_feet,
+                         std::vector<bool> contact_mask0,
+                         std::vector<bool> contact_mask1, double dt,
+                         int knot_index);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -107,7 +104,7 @@ class QuadraticLiftedCost : public dairlib::solvers::NonlinearCost<double> {
   };
 
  public:
-  QuadraticLiftedCost(std::shared_ptr<PlanarSlipLifter> lifting_function,
+  QuadraticLiftedCost(std::shared_ptr<SlipLifter> lifting_function,
                       cost_element com_cost, cost_element momentum_cost,
                       cost_element contact_cost, cost_element grf_cost,
                       cost_element q_cost, cost_element v_cost,
@@ -121,7 +118,7 @@ class QuadraticLiftedCost : public dairlib::solvers::NonlinearCost<double> {
       const cost_element& cost,
       const Eigen::Ref<const drake::VectorX<double>>& x) const;
 
-  std::shared_ptr<PlanarSlipLifter> lifting_function_;
+  std::shared_ptr<SlipLifter> lifting_function_;
   const cost_element com_cost_;
   const cost_element momentum_cost_;
   const cost_element contact_cost_;

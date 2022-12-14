@@ -1,13 +1,17 @@
-#include "planar_slip_constraints.h"
+#include "slip_constraints.h"
 
 #include <iostream>
 #include <utility>
 
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_utils.h"
 #include "multibody/multibody_utils.h"
 
-PlanarSlipReductionConstraint::PlanarSlipReductionConstraint(
+double SlipGrf(double k, double r0, double b, double r, double dr,
+               double force) {}
+
+SlipReductionConstraint::SlipReductionConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
-    std::shared_ptr<PlanarSlipReducer> reducing_function, int n_slip_feet,
+    std::shared_ptr<SlipReducer> reducing_function, int n_slip_feet,
     int n_complex_feet, int knot_index)
     : dairlib::solvers::NonlinearConstraint<double>(
           3 + 3 + 3 * n_slip_feet + 3 * n_slip_feet + n_slip_feet,
@@ -16,7 +20,7 @@ PlanarSlipReductionConstraint::PlanarSlipReductionConstraint(
               plant.num_velocities(),
           Eigen::VectorXd::Zero(3 + 3 + 3 * 2 * n_slip_feet + n_slip_feet),
           Eigen::VectorXd::Zero(3 + 3 + 3 * 2 * n_slip_feet + n_slip_feet),
-          "PlanarSlipReductionConstraint[" + std::to_string(knot_index) + "]"),
+          "SlipReductionConstraint[" + std::to_string(knot_index) + "]"),
       reducing_function_(reducing_function),
       slip_dim_(3 + 3 + 2 * 3 * n_slip_feet + n_slip_feet),
       complex_dim_(6 + 3 + 3 * 3 * n_complex_feet + plant.num_positions() +
@@ -36,7 +40,7 @@ PlanarSlipReductionConstraint::PlanarSlipReductionConstraint(
 ///     complex_contact_force
 ///     complex_gen_pos
 ///     complex_gen_vel
-void PlanarSlipReductionConstraint::EvaluateConstraint(
+void SlipReductionConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& x,
     drake::VectorX<double>* y) const {
   const auto& slip_state = x.head(slip_dim_);
@@ -46,7 +50,7 @@ void PlanarSlipReductionConstraint::EvaluateConstraint(
 
 SlipGrfReductionConstrain::SlipGrfReductionConstrain(
     const drake::multibody::MultibodyPlant<double>& plant,
-    std::shared_ptr<PlanarSlipReducer> reducing_function, int n_slip_feet,
+    std::shared_ptr<SlipReducer> reducing_function, int n_slip_feet,
     int n_complex_feet, int knot_index)
     : dairlib::solvers::NonlinearConstraint<double>(
           n_slip_feet,
@@ -78,9 +82,9 @@ void SlipGrfReductionConstrain::EvaluateConstraint(
        slip_contact_force;
 }
 
-PlanarSlipLiftingConstraint::PlanarSlipLiftingConstraint(
+SlipLiftingConstraint::SlipLiftingConstraint(
     const drake::multibody::MultibodyPlant<double>& plant,
-    std::shared_ptr<PlanarSlipLifter> lifting_function, int n_slip_feet,
+    std::shared_ptr<SlipLifter> lifting_function, int n_slip_feet,
     int n_complex_feet, int knot_index)
     : dairlib::solvers::NonlinearConstraint<double>(
           6 + 3 + 3 * 3 * n_complex_feet + plant.num_positions() +
@@ -91,7 +95,7 @@ PlanarSlipLiftingConstraint::PlanarSlipLiftingConstraint(
                                 plant.num_positions() + plant.num_velocities()),
           Eigen::VectorXd::Zero(6 + 3 + 3 * 3 * n_complex_feet +
                                 plant.num_positions() + plant.num_velocities()),
-          "PlanarSlipLiftingConstraint[" + std::to_string(knot_index) + "]"),
+          "SlipLiftingConstraint[" + std::to_string(knot_index) + "]"),
       lifting_function_(std::move(lifting_function)),
       slip_dim_(2 + 2 + 2 * 2 * n_slip_feet + n_slip_feet),
       complex_dim_(6 + 3 + 3 * 3 * n_complex_feet + plant.num_positions() +
@@ -111,7 +115,7 @@ PlanarSlipLiftingConstraint::PlanarSlipLiftingConstraint(
 ///     complex_contact_force
 ///     complex_gen_pos
 ///     complex_gen_vel
-void PlanarSlipLiftingConstraint::EvaluateConstraint(
+void SlipLiftingConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& x,
     drake::VectorX<double>* y) const {
   const auto& slip_state = x.head(slip_dim_);
@@ -120,14 +124,14 @@ void PlanarSlipLiftingConstraint::EvaluateConstraint(
 }
 
 template <typename T>
-PlanarSlipDynamicsConstraint<T>::PlanarSlipDynamicsConstraint(
+SlipDynamicsConstraint<T>::SlipDynamicsConstraint(
     double r0, double k, double b, T m, int n_feet,
     std::vector<bool> contact_mask0, std::vector<bool> contact_mask1, double dt,
     int knot_index)
     : dairlib::solvers::NonlinearConstraint<T>(
           3 + 3, 2 * (3 + 3 + 3 * n_feet + n_feet), Eigen::VectorXd::Zero(6),
           Eigen::VectorXd::Zero(6),
-          "PlanarSlipDynamicsConstraint[" + std::to_string(knot_index) + "]"),
+          "SlipDynamicsConstraint[" + std::to_string(knot_index) + "]"),
       r0_(r0),
       k_(k),
       b_(b),
@@ -147,7 +151,7 @@ PlanarSlipDynamicsConstraint<T>::PlanarSlipDynamicsConstraint(
 ///   - contact_pos1, active contact positions at time k+1
 ///   - force1, slip force in parallel with spring at time k+1
 template <typename T>
-void PlanarSlipDynamicsConstraint<T>::EvaluateConstraint(
+void SlipDynamicsConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
   const auto& com0 = x.head(3);
   const auto& vel0 = x.segment(3, 3);
@@ -174,7 +178,7 @@ void PlanarSlipDynamicsConstraint<T>::EvaluateConstraint(
 }
 
 template <typename T>
-drake::VectorX<T> PlanarSlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
+drake::VectorX<T> SlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
     const drake::VectorX<T>& com_position, const drake::VectorX<T>& com_vel,
     const drake::VectorX<T>& contact_loc, const drake::VectorX<T>& slip_force,
     const std::vector<bool>& contact_mask) const {
@@ -186,10 +190,7 @@ drake::VectorX<T> PlanarSlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
       const auto r = com_rt_foot.norm();
       const auto unit_vec = com_rt_foot / r;
       const auto dr = com_vel.dot(unit_vec);
-      auto F = k_ * (r0_ - r) + slip_force[foot] - b_ * dr;
-      if (F < 0) {
-        F = 0;
-      }
+      auto F = SlipGrf<T>(k_, r0_, b_, r, dr, slip_force[foot]);
       ddcom = ddcom + F * unit_vec / m_;
     }
   }
@@ -199,7 +200,7 @@ drake::VectorX<T> PlanarSlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
 }
 
 QuadraticLiftedCost::QuadraticLiftedCost(
-    std::shared_ptr<PlanarSlipLifter> lifting_function,
+    std::shared_ptr<SlipLifter> lifting_function,
     QuadraticLiftedCost::cost_element com_cost,
     QuadraticLiftedCost::cost_element momentum_cost,
     QuadraticLiftedCost::cost_element contact_cost,
@@ -251,4 +252,4 @@ Eigen::Matrix<double, -1, 1, 0> QuadraticLiftedCost::CalcCost(
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(
-    class PlanarSlipDynamicsConstraint);
+    class SlipDynamicsConstraint);

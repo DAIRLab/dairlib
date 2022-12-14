@@ -1,12 +1,13 @@
-#include "planar_slip_lifter.h"
+#include "slip_lifter.h"
 
 #include <iostream>
 
 #include <drake/solvers/solve.h>
 
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_utils.h"
 #include "multibody/multibody_utils.h"
 
-PlanarSlipLifter::PlanarSlipLifter(
+SlipLifter::SlipLifter(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
@@ -62,7 +63,7 @@ PlanarSlipLifter::PlanarSlipLifter(
       M_PI * 13 / 180.0);
 }
 
-drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(
+drake::VectorX<double> SlipLifter::LiftGeneralizedPosition(
     const drake::Vector3<double>& com_position,
     const drake::VectorX<double>& slip_feet_positions) const {
   DRAKE_DEMAND(slip_feet_positions.size() == 3 * slip_contact_points_.size());
@@ -109,7 +110,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedPosition(
   }
   return q_sol_normd;
 }
-drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(
+drake::VectorX<double> SlipLifter::LiftGeneralizedVelocity(
     const drake::VectorX<double>& generalized_pos,
     const drake::Vector3<double>& linear_momentum,
     const drake::Vector3<double>& com_pos,
@@ -174,7 +175,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGeneralizedVelocity(
   return rv;
 }
 
-drake::VectorX<double> PlanarSlipLifter::LiftContactPos(
+drake::VectorX<double> SlipLifter::LiftContactPos(
     const drake::VectorX<double>& generalized_position) const {
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_position,
                                                 context_);
@@ -185,7 +186,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftContactPos(
   return rv;
 }
 
-drake::VectorX<double> PlanarSlipLifter::LiftContactVel(
+drake::VectorX<double> SlipLifter::LiftContactVel(
     const drake::VectorX<double>& generalized_pos,
     const drake::VectorX<double>& generalized_vel) const {
   dairlib::multibody::SetPositionsIfNew<double>(plant_, generalized_pos,
@@ -200,7 +201,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftContactVel(
   return rv;
 }
 
-drake::VectorX<double> PlanarSlipLifter::LiftGrf(
+drake::VectorX<double> SlipLifter::LiftGrf(
     const drake::VectorX<double>& com_pos,
     const drake::VectorX<double>& com_vel,
     const drake::VectorX<double>& slip_feet_pos,
@@ -217,7 +218,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(
                     .dot(com_vel);
     double slip_grf_mag =
         slip_contact_mask_[simple_index]
-            ? slip_force[simple_index] + k_ * (r0_ - r) - b_ * dr
+            ? SlipGrf<double>(k_, r0_, b_, r, dr, slip_force[simple_index])
             : 0;
     if (slip_grf_mag < 0) {
       slip_grf_mag = 0;
@@ -262,7 +263,7 @@ drake::VectorX<double> PlanarSlipLifter::LiftGrf(
 ///     complex_contact_force
 ///     complex_gen_pos
 ///     complex_gen_vel
-void PlanarSlipLifter::Lift(
+void SlipLifter::Lift(
     const Eigen::Ref<const drake::VectorX<double>>& slip_state,
     drake::VectorX<double>* complex_state) const {
   const auto& slip_com = slip_state.head(kSLIP_DIM);
@@ -297,7 +298,7 @@ void PlanarSlipLifter::Lift(
               complex_contact_pos),
       generalized_pos, generalized_vel;
 }
-drake::VectorX<double> PlanarSlipLifter::Lift(
+drake::VectorX<double> SlipLifter::Lift(
     const Eigen::Ref<const drake::VectorX<double>>& slip_state) const {
   drake::VectorX<double> complex_state(
       6 + 3 + 3 * 3 * complex_contact_points_.size() + n_q_ + n_v_);

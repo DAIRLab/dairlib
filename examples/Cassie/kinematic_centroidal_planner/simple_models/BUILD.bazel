@@ -2,13 +2,15 @@ package(default_visibility = ["//visibility:public"])
 
 
 cc_library(
-    name = "planar_slip",
-    srcs = ["planar_slip_constraints.cc",
-            "planar_slip_lifter.cc",
-            "planar_slip_reducer.cc"],
-    hdrs = ["planar_slip_constraints.h",
-            "planar_slip_lifter.h",
-            "planar_slip_reducer.h"],
+    name = "slip",
+    srcs = ["slip_constraints.cc",
+            "slip_lifter.cc",
+            "slip_reducer.cc",
+            "slip_utils.cc"],
+    hdrs = ["slip_constraints.h",
+            "slip_lifter.h",
+            "slip_reducer.h",
+            "slip_utils.h"],
     deps = [
         "//solvers:constraints",
         "//multibody/kinematic:kinematic",
@@ -19,11 +21,11 @@ cc_library(
 )
 
 cc_binary(
-    name = "cassie_planar_slip_lifting_test",
-    srcs = ["planar_slip_lifting_test.cc"],
+    name = "cassie_slip_lifting_test",
+    srcs = ["slip_lifting_test.cc"],
     deps = [
         "//examples/Cassie:cassie_utils",
-        "planar_slip",
+        "slip",
         "//common",
         "//multibody:visualization_utils",
         "//multibody/kinematic",

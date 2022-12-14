@@ -118,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),
             Complexity::KINEMATIC_CENTROIDAL);
   for (int i = 1; i < traj_params.n_knot_points; i++) {
-    complexity_schedule[i] = Complexity::PLANAR_SLIP;
+    complexity_schedule[i] = Complexity::SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);
 

@@ -14,9 +14,9 @@
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_constraints.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_constraints.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_reducer.h"
 #include "multibody/visualization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 
@@ -84,12 +84,12 @@ int main(int argc, char* argv[]) {
   //  std::cout<<left_slip_eval.EvalFull(*context)<<std::endl;
 
   std::vector<bool> contact_mask = {true, true};
-  PlanarSlipLifter lifter(
+  SlipLifter lifter(
       plant, context.get(), {left_toe_eval, right_toe_eval},
       {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
       {{0, {0, 1}}, {1, {2, 3}}}, reference_state.head(plant.num_positions()),
       2000, 0, 0.5, contact_mask);
-  PlanarSlipReducer reducer(
+  SlipReducer reducer(
       plant, context.get(), {left_toe_eval, right_toe_eval},
       {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
       {{0, {0, 1}}, {1, {2, 3}}}, 2000, 0, 0.5, contact_mask);
@@ -118,8 +118,8 @@ int main(int argc, char* argv[]) {
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
   std::cout << "Solve time 2:" << elapsed.count() << std::endl;
-  auto constraint = PlanarSlipReductionConstraint(
-      plant, std::make_shared<PlanarSlipReducer>(reducer), 2, 4, 0);
+  auto constraint = SlipReductionConstraint(
+      plant, std::make_shared<SlipReducer>(reducer), 2, 4, 0);
 
   drake::VectorX<double> error(slip_state.size());
   drake::VectorX<double> input(slip_state.size() + complex_state.size());
@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
   //  std::cout<<error<<std::endl;
 
   auto grf_constraint = SlipGrfReductionConstrain(
-      plant, std::make_shared<PlanarSlipReducer>(reducer), 2, 4, 0);
+      plant, std::make_shared<SlipReducer>(reducer), 2, 4, 0);
   drake::VectorX<double> grf_error(2);
   drake::VectorX<double> grf_input(3 + 3 * 2 + 3 * 4 + 2 + 3);
   //  grf_input << slip_com, slip_vel, slip_feet, complex_state.segment(3 + 6 +

@@ -97,7 +97,7 @@ cc_library(
         "//common",
         "//systems/trajectory_optimization/kinematic_centroidal_planner",
         "//multibody:visualization_utils",
-        "//examples/Cassie/kinematic_centroidal_planner/simple_models:planar_slip",
+        "//examples/Cassie/kinematic_centroidal_planner/simple_models:slip",
         "@drake//:drake_shared_library",
     ],
 )

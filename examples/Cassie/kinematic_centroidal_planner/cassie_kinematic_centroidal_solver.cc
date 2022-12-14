@@ -2,7 +2,7 @@
 
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_constraints.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_constraints.h"
 
 #include "drake/multibody/parsing/parser.h"
 
@@ -41,7 +41,7 @@ void CassieKinematicCentroidalSolver::AddLoopClosure() {
   }
 }
 
-void CassieKinematicCentroidalSolver::AddPlanarSlipConstraints(int knot_point) {
+void CassieKinematicCentroidalSolver::AddSlipConstraints(int knot_point) {
   for (int contact_index = 0; contact_index < slip_contact_points_.size();
        contact_index++) {
     prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) -
@@ -77,8 +77,8 @@ void CassieKinematicCentroidalSolver::AddPlanarSlipConstraints(int knot_point) {
   }
 }
 
-void CassieKinematicCentroidalSolver::AddPlanarSlipCost(int knot_point,
-                                                        double terminal_gain) {
+void CassieKinematicCentroidalSolver::AddSlipCost(int knot_point,
+                                                  double terminal_gain) {
   const double t = dt_ * knot_point;
   if (com_ref_traj_) {
     prog_->AddQuadraticErrorCost(terminal_gain * Q_com_,
@@ -173,7 +173,7 @@ void CassieKinematicCentroidalSolver::AddSlipReductionConstraint(
 }
 
 void CassieKinematicCentroidalSolver::AddSlipLiftingConstraint(int knot_point) {
-  auto lifting_constraint = std::make_shared<PlanarSlipLiftingConstraint>(
+  auto lifting_constraint = std::make_shared<SlipLiftingConstraint>(
       plant_, lifters_[knot_point], 2, n_contact_points_, knot_point);
   prog_->AddConstraint(
       lifting_constraint,
@@ -187,10 +187,9 @@ void CassieKinematicCentroidalSolver::AddSlipLiftingConstraint(int knot_point) {
 
 void CassieKinematicCentroidalSolver::AddSlipDynamics(int knot_point) {
   if (!is_last_knot(knot_point)) {
-    auto slip_com_dynamics =
-        std::make_shared<PlanarSlipDynamicsConstraint<double>>(
-            r0_, k_, b_, m_, 2, slip_contact_sequence_[knot_point],
-            slip_contact_sequence_[knot_point + 1], dt_, knot_point);
+    auto slip_com_dynamics = std::make_shared<SlipDynamicsConstraint<double>>(
+        r0_, k_, b_, m_, 2, slip_contact_sequence_[knot_point],
+        slip_contact_sequence_[knot_point + 1], dt_, knot_point);
 
     slip_dynamics_binding_.push_back(prog_->AddConstraint(
         slip_com_dynamics,
@@ -301,11 +300,11 @@ void CassieKinematicCentroidalSolver::SetForceGuess(
 void CassieKinematicCentroidalSolver::Build(
     const drake::solvers::SolverOptions& solver_options) {
   for (int knot = 0; knot < n_knot_points_; knot++) {
-    lifters_.emplace_back(new PlanarSlipLifter(
+    lifters_.emplace_back(new SlipLifter(
         plant_, contexts_[knot].get(), slip_contact_points_,
         CreateContactPoints(plant_, 0), {{0, {0, 1}}, {1, {2, 3}}},
         nominal_stand_, k_, b_, r0_, slip_contact_sequence_[knot]));
-    reducers.emplace_back(new PlanarSlipReducer(
+    reducers.emplace_back(new SlipReducer(
         plant_, contexts_[knot].get(), slip_contact_points_,
         CreateContactPoints(plant_, 0), {{0, {0, 1}}, {1, {2, 3}}}, k_, b_, r0_,
         slip_contact_sequence_[knot]));

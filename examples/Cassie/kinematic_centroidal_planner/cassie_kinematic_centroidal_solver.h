@@ -2,8 +2,8 @@
 #include <iostream>
 
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_lifter.h"
-#include "examples/Cassie/kinematic_centroidal_planner/simple_models/planar_slip_reducer.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_lifter.h"
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_reducer.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_solver.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/reference_generation_utils.h"
 
@@ -100,9 +100,9 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
  private:
   void MapModeSequence();
 
-  void AddPlanarSlipConstraints(int knot_point) override;
+  void AddSlipConstraints(int knot_point) override;
 
-  void AddPlanarSlipCost(int knot_point, double terminal_gain) override;
+  void AddSlipCost(int knot_point, double terminal_gain) override;
 
   void AddSlipReductionConstraint(int knot_point) override;
 
@@ -135,8 +135,8 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
   std::vector<drake::solvers::VectorXDecisionVariable> slip_contact_vel_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> slip_force_vars_;
 
-  std::vector<std::shared_ptr<PlanarSlipLifter>> lifters_;
-  std::vector<std::shared_ptr<PlanarSlipReducer>> reducers;
+  std::vector<std::shared_ptr<SlipLifter>> lifters_;
+  std::vector<std::shared_ptr<SlipReducer>> reducers;
 
   std::vector<dairlib::multibody::WorldPointEvaluator<double>>
       slip_contact_points_;

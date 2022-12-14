@@ -12,19 +12,18 @@
 #include "drake/solvers/constraint.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
-class PlanarSlipLifter {
+class SlipLifter {
  public:
-  PlanarSlipLifter(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
-      const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
-          slip_contact_points,
-      const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
-          complex_contact_points,
-      const std::map<int, std::vector<int>>&
-          simple_foot_index_to_complex_foot_index,
-      const drake::VectorX<double>& nominal_stand, double k, double b,
-      double r0, const std::vector<bool>& contact_mask);
+  SlipLifter(const drake::multibody::MultibodyPlant<double>& plant,
+             drake::systems::Context<double>* context,
+             const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
+                 slip_contact_points,
+             const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
+                 complex_contact_points,
+             const std::map<int, std::vector<int>>&
+                 simple_foot_index_to_complex_foot_index,
+             const drake::VectorX<double>& nominal_stand, double k, double b,
+             double r0, const std::vector<bool>& contact_mask);
 
   void Lift(const Eigen::Ref<const drake::VectorX<double>>& slip_state,
             drake::VectorX<double>* complex_state) const;
@@ -39,7 +38,7 @@ class PlanarSlipLifter {
    * @note assumes identity orientation
    * @note implements numerical ik (can be slow)
    * @param com_position center of mass position in the world
-   * @param slip_feet_positions [2*n_slip_feet] locations of the planar slip
+   * @param slip_feet_positions [3*n_slip_feet] locations of the slip
    * feet
    * @return the generalized positions
    */

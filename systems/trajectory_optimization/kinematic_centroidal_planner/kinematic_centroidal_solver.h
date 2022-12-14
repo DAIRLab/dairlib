@@ -15,7 +15,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
-enum Complexity { KINEMATIC_CENTROIDAL, PLANAR_SLIP };
+enum Complexity { KINEMATIC_CENTROIDAL, SLIP };
 
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation
@@ -393,11 +393,9 @@ class KinematicCentroidalSolver {
    */
   double GetKnotpointGain(int knot_point) const;
 
-  virtual void AddPlanarSlipConstraints(int knot_point) {
-    DRAKE_DEMAND(false);
-  };
+  virtual void AddSlipConstraints(int knot_point) { DRAKE_DEMAND(false); };
 
-  virtual void AddPlanarSlipCost(int knot_point, double terminal_gain) {
+  virtual void AddSlipCost(int knot_point, double terminal_gain) {
     DRAKE_DEMAND(false);
   };
 

@@ -1,10 +1,11 @@
-#include "planar_slip_reducer.h"
+#include "slip_reducer.h"
 
 #include <iostream>
 
+#include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_utils.h"
 #include "multibody/multibody_utils.h"
 
-PlanarSlipReducer::PlanarSlipReducer(
+SlipReducer::SlipReducer(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
@@ -42,7 +43,7 @@ PlanarSlipReducer::PlanarSlipReducer(
 ///     slip_contact_pos
 ///     slip_contact_vel
 ///     slip_force
-void PlanarSlipReducer::Reduce(
+void SlipReducer::Reduce(
     const Eigen::Ref<const drake::VectorX<double>>& complex_state,
     drake::VectorX<double>* slip_state) const {
   const auto& complex_com = complex_state.segment(0, 3);
@@ -72,7 +73,7 @@ void PlanarSlipReducer::Reduce(
                 complex_grf);
 }
 
-drake::VectorX<double> PlanarSlipReducer::Reduce(
+drake::VectorX<double> SlipReducer::Reduce(
     const Eigen::Ref<const drake::VectorX<double>>& complex_state) const {
   drake::VectorX<double> slip_state(
       kSLIP_DIM + kSLIP_DIM + 2 * kSLIP_DIM * slip_contact_points_.size() +
@@ -81,7 +82,7 @@ drake::VectorX<double> PlanarSlipReducer::Reduce(
   return slip_state;
 }
 
-drake::VectorX<double> PlanarSlipReducer::ReduceGrf(
+drake::VectorX<double> SlipReducer::ReduceGrf(
     const Eigen::Ref<const drake::VectorX<double>>& complex_com,
     const Eigen::Ref<const drake::VectorX<double>>& com_vel,
     const Eigen::Ref<const drake::VectorX<double>>& slip_contact_pos,
@@ -94,7 +95,7 @@ drake::VectorX<double> PlanarSlipReducer::ReduceGrf(
     const Eigen::VectorXd unit_vec =
         (complex_com - slip_contact_pos.segment(3 * i, 3)).normalized();
     const double dr = unit_vec.dot(com_vel);
-    const double spring_force = k_ * (r0_ - r) - b_ * dr;
+    const auto spring_force = SlipGrf<double>(k_, r0_, b_, r, dr, 0);
     auto complex_feet_it = simple_foot_index_to_complex_foot_index_.find(i);
     Eigen::Vector3d complex_force = Eigen::Vector3d::Zero(3);
     for (const auto complex_index : complex_feet_it->second) {

@@ -65,7 +65,10 @@ template <typename T>
 class PlanarSlipDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
 
  public:
-  PlanarSlipDynamicsConstraint(double r0, double k, double b, T m, int n_feet, std::vector<bool>  contact_mask, double dt, int knot_index);
+  PlanarSlipDynamicsConstraint(double r0, double k, double b, T m, int n_feet,
+                               std::vector<bool> contact_mask0,
+                               std::vector<bool> contact_mask1,
+                               double dt, int knot_index);
 
  private:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -75,14 +78,16 @@ class PlanarSlipDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
       const drake::VectorX<T>& com_position,
       const drake::VectorX<T>& com_vel,
       const drake::VectorX<T>& contact_loc,
-      const drake::VectorX<T> &slip_force) const;
+      const drake::VectorX<T> &slip_force,
+      const std::vector<bool> &contact_mask) const;
 
   const double r0_;
   const double k_;
   const double b_;
   const T m_;
   const int n_feet_;
-  const std::vector<bool> contact_mask_;
+  const std::vector<bool> contact_mask0_;
+  const std::vector<bool> contact_mask1_;
   const double dt_;
 };
 

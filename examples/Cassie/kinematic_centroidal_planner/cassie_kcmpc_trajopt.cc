@@ -104,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
   // Create MPC and set gains
   CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 6000, 80,
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 3000, 80,
       sqrt(pow(traj_params.target_com_height,2) + pow(traj_params.stance_width,2)), traj_params.stance_width);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);

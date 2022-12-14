@@ -121,7 +121,8 @@ PlanarSlipDynamicsConstraint<T>::PlanarSlipDynamicsConstraint(double r0,
                                                               double b,
                                                               T m,
                                                               int n_feet,
-                                                              std::vector<bool> contact_mask,
+                                                              std::vector<bool> contact_mask0,
+                                                              std::vector<bool> contact_mask1,
                                                               double dt,
                                                               int knot_index):dairlib::solvers::NonlinearConstraint<T>(
     3 + 3, 2 * (3 + 3 + 3 * n_feet + n_feet),
@@ -134,7 +135,8 @@ PlanarSlipDynamicsConstraint<T>::PlanarSlipDynamicsConstraint(double r0,
                                                                               b_(b),
                                                                               m_(m),
                                                                               n_feet_(n_feet),
-                                                                              contact_mask_(std::move(contact_mask)),
+                                                                              contact_mask0_(std::move(contact_mask0)),
+                                                                              contact_mask1_(std::move(contact_mask1)),
                                                                               dt_(dt) {}
 
 
@@ -162,8 +164,8 @@ void PlanarSlipDynamicsConstraint<T>::EvaluateConstraint(const Eigen::Ref<const 
   const auto& x0 = x.head(6);
   const auto& x1 = x.segment(3 + 3 + n_feet_ * 3 + n_feet_, 6);
 
-  drake::Vector<T, 6> xdot0 = CalcTimeDerivativesWithForce(com0, vel0,contact_pos0, force0);
-  drake::Vector<T, 6> xdot1 = CalcTimeDerivativesWithForce(com1, vel1,contact_pos1, force1);
+  drake::Vector<T, 6> xdot0 = CalcTimeDerivativesWithForce(com0, vel0,contact_pos0, force0, contact_mask0_);
+  drake::Vector<T, 6> xdot1 = CalcTimeDerivativesWithForce(com1, vel1,contact_pos1, force1, contact_mask1_);
 
   // Predict state and return error
   const auto x1Predict = x0 + 0.5 * dt_ * (xdot0 + xdot1);
@@ -174,10 +176,11 @@ template<typename T>
 drake::VectorX<T> PlanarSlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(const drake::VectorX<T> &com_position,
                                                                                 const drake::VectorX<T> &com_vel,
                                                                                 const drake::VectorX<T> &contact_loc,
-                                                                                const drake::VectorX<T> &slip_force) const {
+                                                                                const drake::VectorX<T> &slip_force,
+                                                                                const std::vector<bool> &contact_mask) const {
   drake::Vector3<T> ddcom = {0, 0, -9.81};
   for(int foot = 0; foot < n_feet_; foot ++){
-    if(contact_mask_[foot]){
+    if(contact_mask[foot]){
       drake::Vector3<T> com_rt_foot = com_position - contact_loc.segment(3 * foot, 3);
       const auto r = com_rt_foot.norm();
       const auto unit_vec = com_rt_foot/r;

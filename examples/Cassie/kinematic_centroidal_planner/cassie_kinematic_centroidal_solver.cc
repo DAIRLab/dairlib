@@ -117,10 +117,10 @@ void CassieKinematicCentroidalSolver::AddPlanarSlipCost(int knot_point, double t
         slip_contact_vel_vars(knot_point,1));
   }
   if (force_ref_traj_) {
-//    const Eigen::MatrixXd Q_contact_pos =Eigen::Vector2d(gains_.contact_force[2], gains_.contact_force[2]).asDiagonal();
-//    prog_->AddQuadraticErrorCost(terminal_gain * Q_contact_pos,
-//                                 Eigen::Vector2d::Zero(2),
-//                                 slip_force_vars_[knot_point]);
+    const Eigen::MatrixXd Q_contact_pos =Eigen::Vector2d(gains_.contact_force[2], gains_.contact_force[2]).asDiagonal();
+    prog_->AddQuadraticErrorCost(terminal_gain * Q_contact_pos,
+                                 Eigen::Vector2d::Zero(2),
+                                 slip_force_vars_[knot_point]);
   }
 }
 
@@ -166,7 +166,7 @@ void CassieKinematicCentroidalSolver::AddSlipDynamics(int knot_point) {
   if(!is_last_knot(knot_point)) {
     auto slip_com_dynamics =
         std::make_shared<PlanarSlipDynamicsConstraint<double>>(
-            r0_, k_, b_,m_, 2, slip_contact_sequence_[knot_point], dt_, knot_point);
+            r0_, k_, b_,m_, 2, slip_contact_sequence_[knot_point], slip_contact_sequence_[knot_point+1], dt_, knot_point);
 
     slip_dynamics_binding_.push_back(prog_->AddConstraint(slip_com_dynamics,
                          {slip_com_vars_[knot_point], slip_vel_vars_[knot_point], slip_contact_pos_vars_[knot_point], slip_force_vars_[knot_point],

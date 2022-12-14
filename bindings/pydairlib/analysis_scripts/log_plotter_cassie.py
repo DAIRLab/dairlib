@@ -45,10 +45,14 @@ def main():
   filename = ""
   filename2 = ""
 
-  # # Manual specifying log files' names
-  # filename = "/home/yuming/Downloads/2_/sim_cost_eval/lcmlog-idx_1_49"
-  # # Load a second log if we want to compare two logs
-  # filename2 = "/home/yuming/Downloads/2_/sim_cost_eval/lcmlog-idx_160_49"
+  # # # Manual specifying log files' names
+  # # filename = "/home/yuming/Desktop/data_on_desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/lcmlogs/lcmlog-idx_1_312"
+  # # filename = "/home/yuming/Desktop/data_on_desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/4_repeat_3_but_increase_stride_length_range/lcmlogs/lcmlog-idx_1_312"
+  # filename = "/home/yuming/Desktop/data_on_desktop/20221210_sim_eval_with_hybrid_mpc_with_rom27/1_fixed_spring_model/1_gains_from_mujoco/lcmlogs/lcmlog-idx_1_312"
+  # # # Load a second log if we want to compare two logs
+  # # filename2 = "/home/yuming/Desktop/data_on_desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/lcmlogs/lcmlog-idx_500_311"
+  # # filename2 = "/home/yuming/Desktop/data_on_desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/4_repeat_3_but_increase_stride_length_range/lcmlogs/lcmlog-idx_500_312"
+  # filename2 = "/home/yuming/Desktop/data_on_desktop/20221210_sim_eval_with_hybrid_mpc_with_rom27/1_fixed_spring_model/1_gains_from_mujoco/lcmlogs/lcmlog-idx_450_312"
 
   if filename == "":
     filename = sys.argv[1]
@@ -164,9 +168,9 @@ def main():
 
   # plot_dispatcher_torque(t_u, u, t_u_dispatcher, u_dispatcher, t_x, t_osc_debug, u_meas, u_datatypes, fsm)
 
-  plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
+  # plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
@@ -182,7 +186,7 @@ def main():
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
-  PlotOscQpSol(t_osc_debug, osc_output, fsm)
+  # PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
@@ -1242,14 +1246,24 @@ def PlotTwoCentroidalAngularMomentum(x1, t_x1, x2, t_x2, t_osc_debug, fsm, plant
 
   plt.rcParams.update({'font.size': 15.5})
   plt.figure("Centroidal angular momentum")
-  plt.plot(t_x1, centroidal_angular_momentum1[:,0], color="#990000", linewidth=2)
-  plt.gca().set_prop_cycle(None)  # reset color cycle
-  plt.plot(t_x2, centroidal_angular_momentum2[:,0], color="#0000D1", linewidth=2)
+  plot_only_x_component = True
+  if plot_only_x_component:
+    plt.plot(t_x1, centroidal_angular_momentum1[:,0], color="#990000", linewidth=2)
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    plt.plot(t_x2, centroidal_angular_momentum2[:,0], color="#0000D1", linewidth=2)
+    plt.legend(["Initial model", "Optimal model"])
+  else:
+    plt.plot(t_x1, centroidal_angular_momentum1[:,0], "-", linewidth=2)
+    plt.plot(t_x1, centroidal_angular_momentum1[:,1], "-", linewidth=2)
+    plt.plot(t_x1, centroidal_angular_momentum1[:,2], "-", linewidth=2)
+    plt.gca().set_prop_cycle(None)  # reset color cycle
+    plt.plot(t_x2, centroidal_angular_momentum2[:,0], "--", linewidth=2)
+    plt.plot(t_x2, centroidal_angular_momentum2[:,1], "--", linewidth=2)
+    plt.plot(t_x2, centroidal_angular_momentum2[:,2], "--", linewidth=2)
+    plt.legend(["x (initial)", "y (initial)", "z (initial)", "x (optimal)", "y (optimal)", "z (optimal)"])
   # plt.plot(t_osc_debug, 0.1 * fsm)
   plt.xlabel('time (s)')
   plt.ylabel('angular momentum ($kg \cdot m^2 / s$)')
-  # plt.legend(["x (initial)", "y (initial)", "z (initial)", "x (optimal)", "y (optimal)", "z (optimal)"])
-  plt.legend(["Initial model", "Optimal model"])
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.17)
 

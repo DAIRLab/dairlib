@@ -1,12 +1,11 @@
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/reference_generation_utils.h"
 
-#include "multibody/multibody_utils.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "multibody/multibody_utils.h"
 
-
-std::vector<dairlib::multibody::WorldPointEvaluator<double>> CreateContactPoints(const drake::multibody::MultibodyPlant<
-    double> &plant,
-                                                                                                                  double mu) {
+std::vector<dairlib::multibody::WorldPointEvaluator<double>>
+CreateContactPoints(const drake::multibody::MultibodyPlant<double>& plant,
+                    double mu) {
   auto left_toe_pair = dairlib::LeftToeFront(plant);
   auto left_heel_pair = dairlib::LeftToeRear(plant);
   auto right_toe_pair = dairlib::RightToeFront(plant);
@@ -58,9 +57,9 @@ drake::trajectories::PiecewisePolynomial<double> GenerateComTrajectory(
       time_points, samples);
 }
 
-drake::trajectories::PiecewisePolynomial<double> GenerateMomentumTrajectory(const std::vector<Eigen::Vector3d> &vel_ewrt_w,
-                                                                            const std::vector<double> &time_points,
-                                                                            double m) {
+drake::trajectories::PiecewisePolynomial<double> GenerateMomentumTrajectory(
+    const std::vector<Eigen::Vector3d>& vel_ewrt_w,
+    const std::vector<double>& time_points, double m) {
   DRAKE_DEMAND(vel_ewrt_w.size() == (time_points.size() - 1));
   auto n_points = time_points.size();
   std::vector<drake::MatrixX<double>> samples(n_points);
@@ -71,7 +70,6 @@ drake::trajectories::PiecewisePolynomial<double> GenerateMomentumTrajectory(cons
   return drake::trajectories::PiecewisePolynomial<double>::ZeroOrderHold(
       time_points, samples);
 }
-
 
 drake::trajectories::PiecewisePolynomial<double>
 GenerateGeneralizedPosTrajectory(
@@ -107,7 +105,7 @@ GenerateGeneralizedVelTrajectory(
 drake::trajectories::PiecewisePolynomial<double> GenerateModeSequence(
     const std::vector<Gait>& gait_sequence,
     const std::vector<double>& time_points) {
-  DRAKE_DEMAND(gait_sequence.size() == time_points.size()-1);
+  DRAKE_DEMAND(gait_sequence.size() == time_points.size() - 1);
 
   auto traj = gait_sequence[0].ToTrajectory(time_points[0], time_points[1]);
   for (int i = 1; i < gait_sequence.size(); i++) {

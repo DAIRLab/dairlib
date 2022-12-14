@@ -36,7 +36,7 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
           Eigen::MatrixXd::Zero(3 * n_contact_points_, 3 * n_contact_points_)),
       contact_sequence_(n_knot_points),
       contexts_(n_knot_points),
-      complexity_schedule_(n_knot_points){
+      complexity_schedule_(n_knot_points) {
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
@@ -66,7 +66,8 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
   std::vector<bool> stance_mode(n_contact_points_);
   std::fill(stance_mode.begin(), stance_mode.end(), true);
   std::fill(contact_sequence_.begin(), contact_sequence_.end(), stance_mode);
-  std::fill(complexity_schedule_.begin(), complexity_schedule_.end(), Complexity::KINEMATIC_CENTROIDAL);
+  std::fill(complexity_schedule_.begin(), complexity_schedule_.end(),
+            Complexity::KINEMATIC_CENTROIDAL);
 }
 
 void KinematicCentroidalSolver::SetGenPosReference(
@@ -100,7 +101,7 @@ void KinematicCentroidalSolver::SetMomentumReference(
 }
 
 void KinematicCentroidalSolver::AddCentroidalDynamics(int knot_point) {
-  if(!(is_last_knot(knot_point))){
+  if (!(is_last_knot(knot_point))) {
     auto constraint = std::make_shared<CentroidalDynamicsConstraint<double>>(
         plant_, contexts_[knot_point].get(), n_contact_points_, dt_,
         knot_point);
@@ -114,7 +115,7 @@ void KinematicCentroidalSolver::AddCentroidalDynamics(int knot_point) {
 }
 
 void KinematicCentroidalSolver::AddKinematicsIntegrator(int knot_point) {
-  if(!is_last_knot(knot_point)) {
+  if (!is_last_knot(knot_point)) {
     // Integrate generalized velocities to get generalized positions
     auto constraint = std::make_shared<KinematicIntegratorConstraint<double>>(
         plant_, contexts_[knot_point].get(), contexts_[knot_point + 1].get(),
@@ -166,7 +167,8 @@ void KinematicCentroidalSolver::AddContactConstraints(int knot_point) {
   }
 }
 
-void KinematicCentroidalSolver::AddCentroidalKinematicConsistency(int knot_point) {
+void KinematicCentroidalSolver::AddCentroidalKinematicConsistency(
+    int knot_point) {
   // Ensure linear and angular momentum line up
   auto centroidal_momentum =
       std::make_shared<CentroidalMomentumConstraint<double>>(
@@ -186,9 +188,8 @@ void KinematicCentroidalSolver::AddCentroidalKinematicConsistency(int knot_point
                           contact_pos_vars(knot_point, contact_index)});
   }
   // Constrain com position
-  auto com_position =
-      std::make_shared<CenterofMassPositionConstraint<double>>(
-          plant_, contexts_[knot_point].get(), knot_point);
+  auto com_position = std::make_shared<CenterofMassPositionConstraint<double>>(
+      plant_, contexts_[knot_point].get(), knot_point);
   prog_->AddConstraint(com_position,
                        {com_pos_vars(knot_point), state_vars(knot_point)});
 }
@@ -205,7 +206,8 @@ void KinematicCentroidalSolver::AddFrictionConeConstraints(int knot_point) {
   }
 }
 
-void KinematicCentroidalSolver::AddFlightContactForceConstraints(int knot_point) {
+void KinematicCentroidalSolver::AddFlightContactForceConstraints(
+    int knot_point) {
   for (int contact_index = 0; contact_index < n_contact_points_;
        contact_index++) {
     // Feet in flight produce no force
@@ -232,26 +234,27 @@ KinematicCentroidalSolver::joint_vel_vars(int knotpoint_index) const {
 
 void KinematicCentroidalSolver::Build(
     const drake::solvers::SolverOptions& solver_options) {
-  for(int knot_point = 0; knot_point < n_knot_points_; knot_point ++){
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     switch (complexity_schedule_[knot_point]) {
       case KINEMATIC_CENTROIDAL:
-        //Add complex constraints
+        // Add complex constraints
         AddContactConstraints(knot_point);
         AddCentroidalKinematicConsistency(knot_point);
         AddFrictionConeConstraints(knot_point);
         AddFlightContactForceConstraints(knot_point);
-        //Add complex dynamics
+        // Add complex dynamics
         AddCentroidalDynamics(knot_point);
         AddKinematicsIntegrator(knot_point);
-        if(!is_last_knot(knot_point) and complexity_schedule_[knot_point+1] == PLANAR_SLIP){
+        if (!is_last_knot(knot_point) and
+            complexity_schedule_[knot_point + 1] == PLANAR_SLIP) {
           AddSlipReductionConstraint(knot_point + 1);
           AddCentroidalKinematicConsistency(knot_point + 1);
         }
         break;
       case PLANAR_SLIP:
         AddPlanarSlipConstraints(knot_point);
-        if(!is_last_knot(knot_point)){
-          switch (complexity_schedule_[knot_point+1]) {
+        if (!is_last_knot(knot_point)) {
+          switch (complexity_schedule_[knot_point + 1]) {
             case KINEMATIC_CENTROIDAL:
               AddCentroidalDynamics(knot_point);
               AddKinematicsIntegrator(knot_point);
@@ -312,8 +315,7 @@ void KinematicCentroidalSolver::AddCosts() {
         }
         if (contact_ref_traj_) {
           prog_->AddQuadraticErrorCost(
-              knot_point_gain * Q_contact_,
-              contact_ref_traj_->value(t),
+              knot_point_gain * Q_contact_, contact_ref_traj_->value(t),
               {contact_pos_[knot_point], contact_vel_[knot_point]});
         }
         if (force_ref_traj_) {
@@ -329,7 +331,7 @@ void KinematicCentroidalSolver::AddCosts() {
   }
 }
 
-void KinematicCentroidalSolver::UpdateCosts() { DRAKE_DEMAND(false);}
+void KinematicCentroidalSolver::UpdateCosts() { DRAKE_DEMAND(false); }
 
 void KinematicCentroidalSolver::SetZeroInitialGuess() {
   Eigen::VectorXd initialGuess =
@@ -625,7 +627,8 @@ void KinematicCentroidalSolver::SetForceGuess(
 }
 
 void KinematicCentroidalSolver::SetMomentumGuess(
-    const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory) {
+    const drake::trajectories::PiecewisePolynomial<double>&
+        momentum_trajectory) {
   DRAKE_DEMAND(momentum_trajectory.rows() == 6);
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     prog_->SetInitialGuess(mom_vars_[knot_point],
@@ -640,7 +643,8 @@ void KinematicCentroidalSolver::SetModeSequence(
 void KinematicCentroidalSolver::SetModeSequence(
     const drake::trajectories::PiecewisePolynomial<double>& contact_sequence) {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    for (int contact_index = 0; contact_index < n_contact_points_; contact_index++) {
+    for (int contact_index = 0; contact_index < n_contact_points_;
+         contact_index++) {
       contact_sequence_[knot_point][contact_index] =
           contact_sequence.value(dt_ * knot_point).coeff(contact_index);
     }

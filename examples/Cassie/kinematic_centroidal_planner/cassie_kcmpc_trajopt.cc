@@ -1,5 +1,7 @@
+#include <unistd.h>
+
 #include <iostream>
-#include<unistd.h>
+
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
@@ -91,7 +93,7 @@ int DoMain(int argc, char* argv[]) {
   gait_library["jump"] = jump;
   // Create reference
   std::vector<Gait> gait_samples;
-  for (auto gait : traj_params.gait_sequence){
+  for (auto gait : traj_params.gait_sequence) {
     gait_samples.push_back(gait_library.at(gait));
   }
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
@@ -104,18 +106,21 @@ int DoMain(int argc, char* argv[]) {
   // Create MPC and set gains
   CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4, reference_state.head(plant.num_positions()), 3000, 80,
-      sqrt(pow(traj_params.target_com_height,2) + pow(traj_params.stance_width,2)), traj_params.stance_width);
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4,
+      reference_state.head(plant.num_positions()), 3000, 80,
+      sqrt(pow(traj_params.target_com_height, 2) +
+           pow(traj_params.stance_width, 2)),
+      traj_params.stance_width);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);
 
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
-  std::fill(complexity_schedule.begin(), complexity_schedule.end(),Complexity::KINEMATIC_CENTROIDAL);
-  for(int i = 1; i <traj_params.n_knot_points ; i++){
+  std::fill(complexity_schedule.begin(), complexity_schedule.end(),
+            Complexity::KINEMATIC_CENTROIDAL);
+  for (int i = 1; i < traj_params.n_knot_points; i++) {
     complexity_schedule[i] = Complexity::PLANAR_SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);
-
 
   KcmpcReferenceGenerator generator(plant, plant_context.get(),
                                     CreateContactPoints(plant, 0));
@@ -225,6 +230,4 @@ int DoMain(int argc, char* argv[]) {
   }
 }
 
-int main(int argc, char* argv[]) {
-  DoMain(argc, argv);
-}
+int main(int argc, char* argv[]) { DoMain(argc, argv); }

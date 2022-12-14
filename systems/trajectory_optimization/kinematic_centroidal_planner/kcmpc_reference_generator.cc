@@ -19,9 +19,8 @@ void KcmpcReferenceGenerator::Generate() {
   Eigen::Vector3d com = q_ref_.segment(4, 3) - p_ScmBase_W_;
   com_trajectory_ = GenerateComTrajectory(com, com_vel_knot_points_.samples,
                                           com_vel_knot_points_.times);
-  momentum_trajectory_ = GenerateMomentumTrajectory(com_vel_knot_points_.samples,
-                                          com_vel_knot_points_.times,
-                                          m_);
+  momentum_trajectory_ = GenerateMomentumTrajectory(
+      com_vel_knot_points_.samples, com_vel_knot_points_.times, m_);
   q_trajectory_ = GenerateGeneralizedPosTrajectory(q_ref_, p_ScmBase_W_,
                                                    com_trajectory_, 4);
   v_trajectory_ = GenerateGeneralizedVelTrajectory(com_trajectory_,

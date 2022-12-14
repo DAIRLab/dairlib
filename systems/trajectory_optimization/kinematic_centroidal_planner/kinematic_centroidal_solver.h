@@ -15,10 +15,7 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
-enum Complexity{
-  KINEMATIC_CENTROIDAL,
-  PLANAR_SLIP
-};
+enum Complexity { KINEMATIC_CENTROIDAL, PLANAR_SLIP };
 
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation
@@ -271,14 +268,16 @@ class KinematicCentroidalSolver {
   virtual void SetComPositionGuess(
       const drake::trajectories::PiecewisePolynomial<double>& com_trajectory);
 
-  virtual void SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>&
-                           contact_trajectory);
+  virtual void SetContactGuess(
+      const drake::trajectories::PiecewisePolynomial<double>&
+          contact_trajectory);
 
   virtual void SetForceGuess(
       const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
 
   virtual void SetMomentumGuess(
-      const drake::trajectories::PiecewisePolynomial<double>& momentum_trajectory);
+      const drake::trajectories::PiecewisePolynomial<double>&
+          momentum_trajectory);
 
   void CreateVisualizationCallback(const std::string& model_file, double alpha,
                                    const std::string& weld_frame_to_world = "");
@@ -327,7 +326,8 @@ class KinematicCentroidalSolver {
    * `contact_sequence[knot_point][contact_index]` tells you if at `knot_point`
    * is `contact_index` active
    */
-  virtual void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
+  virtual void SetModeSequence(
+      const std::vector<std::vector<bool>>& contact_sequence);
 
   /*!
    * @brief Set the mode sequence via a trajectory. The value of the trajectory
@@ -349,7 +349,11 @@ class KinematicCentroidalSolver {
    */
   void UpdateCosts();
 
-  void SetComplexitySchedule(const std::vector<Complexity>& complexity_schedule){complexity_schedule_ = complexity_schedule;};
+  void SetComplexitySchedule(
+      const std::vector<Complexity>& complexity_schedule) {
+    complexity_schedule_ = complexity_schedule;
+  };
+
  protected:
   /*!
    * @brief Adds dynamics for centroidal state
@@ -389,17 +393,27 @@ class KinematicCentroidalSolver {
    */
   double GetKnotpointGain(int knot_point) const;
 
-  virtual void AddPlanarSlipConstraints(int knot_point){ DRAKE_DEMAND(false);};
+  virtual void AddPlanarSlipConstraints(int knot_point) {
+    DRAKE_DEMAND(false);
+  };
 
-  virtual void AddPlanarSlipCost(int knot_point, double terminal_gain){ DRAKE_DEMAND(false);};
+  virtual void AddPlanarSlipCost(int knot_point, double terminal_gain) {
+    DRAKE_DEMAND(false);
+  };
 
-  virtual void AddSlipReductionConstraint(int knot_point){ DRAKE_DEMAND(false);};
+  virtual void AddSlipReductionConstraint(int knot_point) {
+    DRAKE_DEMAND(false);
+  };
 
-  virtual void AddSlipLiftingConstraint(int knot_point){ DRAKE_DEMAND(false);};
+  virtual void AddSlipLiftingConstraint(int knot_point) {
+    DRAKE_DEMAND(false);
+  };
 
-  virtual void AddSlipDynamics(int knot_point){ DRAKE_DEMAND(false);};
+  virtual void AddSlipDynamics(int knot_point) { DRAKE_DEMAND(false); };
 
-  virtual drake::VectorX<double> LiftSlipSolution(int knot_point){ DRAKE_DEMAND(false);};
+  virtual drake::VectorX<double> LiftSlipSolution(int knot_point) {
+    DRAKE_DEMAND(false);
+  };
 
   /*!
    * @brief Add costs from internally stored variables

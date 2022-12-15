@@ -46,7 +46,7 @@ void CassieKinematicCentroidalSolver::AddSlipConstraints(int knot_point) {
        contact_index++) {
     prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) -
                           slip_com_vars_[knot_point])
-                             .squaredNorm() <= 1.0);
+                             .squaredNorm() <= pow(max_slip_leg_length_, 2));
 
     if (slip_contact_sequence_[knot_point][contact_index]) {
       // Foot isn't moving
@@ -354,4 +354,8 @@ void CassieKinematicCentroidalSolver::AddSlipPosturePrincipleConstraint(
   //                        contact_pos_vars(knot_point, 2) / 2.0 -
   //                        contact_pos_vars(knot_point, 3) / 2.0)
   //                           .normalized());
+}
+void CassieKinematicCentroidalSolver::SetMaximumSlipLegLength(
+    double max_leg_length) {
+  max_slip_leg_length_ = max_leg_length;
 }

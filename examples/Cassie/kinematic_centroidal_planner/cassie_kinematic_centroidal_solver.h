@@ -99,6 +99,8 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
 
   void Build(const drake::solvers::SolverOptions& solver_options) override;
 
+  void SetMaximumSlipLegLength(double max_leg_length);
+
  private:
   void AddSlipPosturePrincipleConstraint(int knot_point);
 
@@ -130,6 +132,7 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
   double m_;
   const drake::VectorX<double> nominal_stand_;
   const double slip_ground_offset_ = 0;
+  double max_slip_leg_length_ = 10;
 
   std::vector<drake::solvers::VectorXDecisionVariable> slip_com_vars_;
   std::vector<drake::solvers::VectorXDecisionVariable> slip_vel_vars_;

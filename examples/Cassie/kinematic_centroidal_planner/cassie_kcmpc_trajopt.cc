@@ -114,6 +114,7 @@ int DoMain(int argc, char* argv[]) {
       traj_params.stance_width);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);
+  mpc.SetMaximumSlipLegLength(traj_params.max_slip_leg_length);
 
   mpc.SetComplexitySchedule(GenerateComplexitySchedule(
       traj_params.n_knot_points, traj_params.complexity_schedule));

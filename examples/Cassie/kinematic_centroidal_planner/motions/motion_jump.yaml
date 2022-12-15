@@ -2,6 +2,7 @@ n_knot_points: 25
 target_com_height: 0.8
 stance_width: 0.25
 swing_foot_minimum_height: 0.015
+max_slip_leg_length: 1
 spring_constant: 3000
 damping_coefficient: 115
 duration_scaling:

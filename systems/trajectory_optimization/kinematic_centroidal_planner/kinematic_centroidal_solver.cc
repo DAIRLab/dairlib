@@ -519,7 +519,6 @@ void KinematicCentroidalSolver::AddPlantJointLimits(
     }
   }
 }
-
 drake::solvers::VectorXDecisionVariable KinematicCentroidalSolver::com_pos_vars(
     int knotpoint_index) const {
   return com_vars_[knotpoint_index];

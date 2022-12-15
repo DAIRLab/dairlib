@@ -29,7 +29,9 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
         k_(k),
         r0_(r0),
         b_(b),
-        nominal_stand_(nominal_stand) {
+        nominal_stand_(nominal_stand),
+        positions_map_(dairlib::multibody::MakeNameToPositionsMap(plant_)),
+        velocity_map_(dairlib::multibody::MakeNameToVelocitiesMap(plant_)) {
     AddPlantJointLimits(dairlib::JointNames());
     AddLoopClosure();
 
@@ -98,6 +100,8 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
   void Build(const drake::solvers::SolverOptions& solver_options) override;
 
  private:
+  void AddSlipPosturePrincipleConstraint(int knot_point);
+
   void MapModeSequence();
 
   void AddSlipConstraints(int knot_point) override;
@@ -148,4 +152,7 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
       {{false, false, false, false}, {false, false}}};
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
       slip_dynamics_binding_;
+
+  std::map<std::string, int> positions_map_;
+  std::map<std::string, int> velocity_map_;
 };

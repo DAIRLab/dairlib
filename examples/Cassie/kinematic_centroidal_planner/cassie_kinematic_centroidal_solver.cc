@@ -170,6 +170,8 @@ void CassieKinematicCentroidalSolver::AddSlipReductionConstraint(
       {com_pos_vars(knot_point), slip_vel_vars_[knot_point],
        slip_contact_pos_vars_[knot_point], contact_force_[knot_point],
        slip_force_vars_[knot_point]});
+
+  AddSlipPosturePrincipleConstraint(knot_point);
 }
 
 void CassieKinematicCentroidalSolver::AddSlipLiftingConstraint(int knot_point) {
@@ -310,4 +312,71 @@ void CassieKinematicCentroidalSolver::Build(
         slip_contact_sequence_[knot]));
   }
   KinematicCentroidalSolver::Build(solver_options);
+}
+void CassieKinematicCentroidalSolver::AddSlipPosturePrincipleConstraint(
+    int knot_point) {
+  const double eps = 1e-2;
+  // Zero hip yaw
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, x_vars_[knot_point][positions_map_.at("hip_yaw_left")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, x_vars_[knot_point][positions_map_.at("hip_yaw_right")]);
+  //  // Zero hip yaw dot
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps,
+      state_vars(knot_point)[n_q_ + velocity_map_.at("hip_yaw_leftdot")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps,
+      state_vars(knot_point)[n_q_ + velocity_map_.at("hip_yaw_rightdot")]);
+
+  //  // Identity orientation
+  prog_->AddBoundingBoxConstraint(
+      1 - eps, 1 + eps, state_vars(knot_point)[positions_map_.at("base_qw")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qx")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qy")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qz")]);
+  //
+  // Zero angular velocity
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, state_vars(knot_point)[n_q_ + velocity_map_.at("base_wx")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, state_vars(knot_point)[n_q_ + velocity_map_.at("base_wy")]);
+  prog_->AddBoundingBoxConstraint(
+      -eps, eps, state_vars(knot_point)[n_q_ + velocity_map_.at("base_wz")]);
+
+  // Toe and heel same velocity
+  prog_->AddConstraint(contact_vel_vars(knot_point, 0) ==
+                       contact_vel_vars(knot_point, 1));
+  prog_->AddConstraint(contact_vel_vars(knot_point, 2) ==
+                       contact_vel_vars(knot_point, 3));
+
+  // Toe and heel same height
+  prog_->AddConstraint(contact_pos_vars(knot_point, 0)[2] ==
+                       contact_pos_vars(knot_point, 1)[2]);
+  prog_->AddConstraint(contact_pos_vars(knot_point, 2)[2] ==
+                       contact_pos_vars(knot_point, 3)[2]);
+
+  //  // GRF per foot equal
+  prog_->AddConstraint(contact_force_vars(knot_point, 0) ==
+                       contact_force_vars(knot_point, 1));
+  prog_->AddConstraint(contact_force_vars(knot_point, 2) ==
+                       contact_force_vars(knot_point, 3));
+
+  //  //  // GRF per foot parallel to vector from foot center to com
+  //  prog_->AddConstraint((contact_force_vars(knot_point, 0)
+  //  / 1.0).normalized() ==
+  //                       (com_pos_vars(knot_point) -
+  //                        contact_pos_vars(knot_point, 0) / 2.0 -
+  //                        contact_pos_vars(knot_point, 1) / 2.0)
+  //                           .normalized());
+  //
+  //  prog_->AddConstraint((contact_force_vars(knot_point, 2)
+  //  / 1.0).normalized() ==
+  //                       (com_pos_vars(knot_point) -
+  //                        contact_pos_vars(knot_point, 2) / 2.0 -
+  //                        contact_pos_vars(knot_point, 3) / 2.0)
+  //                           .normalized());
 }

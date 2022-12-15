@@ -43,9 +43,12 @@ def main():
   filepath3 = ""
 
   # Manually specify file paths to plots multiple samples on the same plot
-  # filepath = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/0_40_dircon_trajectory"
-  # filepath2 = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/1_40_dircon_trajectory"
-  # filepath3 = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/160_40_dircon_trajectory"
+  # base = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"
+  # sample_idx = 40 #40
+  # optimal_rom_iter = 500  #160
+  # filepath = "%s0_%d_dircon_trajectory" % (base, sample_idx)
+  # filepath2 = "%s1_%d_dircon_trajectory" % (base, sample_idx)
+  # filepath3 = "%s%d_%d_dircon_trajectory" % (base, optimal_rom_iter, sample_idx)
 
   dircon_traj = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath)
   if filepath2 != "":
@@ -153,11 +156,21 @@ def main():
   """
   if filepath2 != "":
     plt.rcParams.update({'font.size': 15.5})
-    ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant, True, "--", "k")
-    ComputeAndPlotCentroidalAngularMomentum(dircon_traj2, plant, True, "-", "#990000")
-    ComputeAndPlotCentroidalAngularMomentum(dircon_traj3, plant, True, "-", "#0000D1")
-    plt.legend(["Nominal (without ROM)", "Initial model", "Optimized model"])
-    # plt.title("Centroidal Angular Momentum about x Axis")
+    plot_only_x_component = False
+    if plot_only_x_component:
+      ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant, True, "--", "k")
+      ComputeAndPlotCentroidalAngularMomentum(dircon_traj2, plant, True, "-", "#990000")
+      ComputeAndPlotCentroidalAngularMomentum(dircon_traj3, plant, True, "-", "#0000D1")
+      plt.legend(["Nominal (without ROM)", "Initial model", "Optimized model"])
+      # plt.title("Centroidal Angular Momentum about x Axis")
+    else:
+      plt.gca().set_prop_cycle(None)
+      ComputeAndPlotCentroidalAngularMomentum(dircon_traj, plant, True, ":", None, [0,1,2])
+      plt.gca().set_prop_cycle(None)
+      ComputeAndPlotCentroidalAngularMomentum(dircon_traj2, plant, True, "-", None, [0,1,2])
+      plt.gca().set_prop_cycle(None)
+      ComputeAndPlotCentroidalAngularMomentum(dircon_traj3, plant, True, "--", None, [0,1,2])
+      plt.legend(["no ROM, x","no ROM, y","no ROM, z", "Initial ROM, x", "Initial ROM, y", "Initial ROM, z", "Optimal ROM, x","Optimal ROM, y","Optimal model, z",])
     plt.xlabel('time (s)')
     # plt.rcParams['text.usetex'] = True
     plt.ylabel('angular momentum ($kg \cdot m^2 / s$)')

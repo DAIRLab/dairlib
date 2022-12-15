@@ -9,10 +9,14 @@
 #include <fstream>
 #include <string>
 
-#include "drake/math/saturate.h"
-#include "drake/math/roll_pitch_yaw.h"
-#include "systems/controllers/control_utils.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/control_utils.h"
+
+#include "drake/math/saturate.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/bspline_trajectory.h"
+#include "drake/common/trajectories/path_parameterized_trajectory.h"
+
 
 using std::endl;
 using std::string;
@@ -22,6 +26,8 @@ using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
+using drake::Vector1d;
+
 
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
@@ -30,9 +36,11 @@ using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
-using drake::math::RollPitchYaw;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::BsplineTrajectory;
+using drake::trajectories::PathParameterizedTrajectory;
+using drake::trajectories::Trajectory;
+
 
 namespace dairlib {
 namespace systems {
@@ -142,50 +150,32 @@ EventStatus SwingFootTargetTrajGen::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
-PiecewisePolynomial<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
-    double start_time_of_this_interval, double end_time_of_this_interval,
-    const Vector3d& init_swing_foot_pos, const Vector3d& final_swing_foot_pos)
-    const {
+Trajectory<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
+    double start_time, double end_time, const Vector3d& init_pos,
+    const Vector3d& final_pos) const {
 
-  // Two segment of cubic polynomial with velocity constraints
-  std::vector<double> T_waypoint = {
-      start_time_of_this_interval,
-      (start_time_of_this_interval + end_time_of_this_interval) / 2,
-      end_time_of_this_interval};
+  const std::vector<double> time_scaling_breaks = {
+      start_time, 0.5 * (start_time + end_time), end_time
+  };
 
-  std::vector<MatrixXd> Y(T_waypoint.size(), MatrixXd::Zero(3, 1));
-  // x
-  Y[0](0, 0) = init_swing_foot_pos(0);
-  Y[1](0, 0) = (init_swing_foot_pos(0) + final_swing_foot_pos(0)) / 2;
-  Y[2](0, 0) = final_swing_foot_pos(0);
-  // y
-  Y[0](1, 0) = init_swing_foot_pos(1);
-  Y[1](1, 0) = (init_swing_foot_pos(1) + final_swing_foot_pos(1)) / 2;
-  Y[2](1, 0) = final_swing_foot_pos(1);
+  std::vector<Vector1d> time_scaling_knots(
+      time_scaling_breaks.size(), drake::Vector1<double>::Zero());
 
-  // z
-  // scale the mid foot height to reduce the
-  // accelarations needed to achieve shorter step durations
-  double mid_foot_height_scaled =
-      mid_foot_height_ *
-      pow((end_time_of_this_interval - start_time_of_this_interval), 2) / 0.09;
+  for (auto& t : time_scaling_knots) {
+    t(0) = start_time + (end_time - start_time) /
+           (time_scaling_breaks.size() - 1);
+  }
 
-  double mfh =
-      drake::math::saturate(mid_foot_height_scaled, 0.0, mid_foot_height_);
-
-  Y[0](2, 0) = init_swing_foot_pos(2);
-  Y[1](2, 0) = mfh + final_swing_foot_pos(2);
-  Y[2](2, 0) = desired_final_foot_height_ + final_swing_foot_pos(2);
-
-  MatrixXd Y_dot_start = MatrixXd::Zero(3, 1);
-  MatrixXd Y_dot_end = MatrixXd::Zero(3, 1);
-  Y_dot_end(2) = desired_final_vertical_foot_velocity_;
-
-  // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
-  // the traj smooth at the mid point
-  PiecewisePolynomial<double> swing_foot_spline =
+  auto time_scaling_trajectory =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          T_waypoint, Y, Y_dot_start, Y_dot_end);
+          time_scaling_breaks, time_scaling_knots, Vector1d::Zero(),
+          -desired_final_vertical_foot_velocity_ * Vector1d::Ones());
+
+
+  std::vector<double> nominal_heights = {0, 0.66, 1.0, 1.0, 0.75, 0};
+  auto basis = drake::math::BsplineBasis<double>(
+      nominal_heights.size(), nominal_heights.size());
+  auto control_points = Eigen::
 
   return swing_foot_spline;
 }
@@ -193,10 +183,6 @@ PiecewisePolynomial<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
 void SwingFootTargetTrajGen::CalcTrajs(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  // Cast traj for polymorphism
-  auto* pp_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
 
   // Get discrete states
   const auto swing_foot_pos_at_liftoff =
@@ -239,12 +225,12 @@ void SwingFootTargetTrajGen::CalcTrajs(
         this->EvalVectorInput(context, footstep_target_port_)->get_value();
 
     // Assign traj
-    *pp_traj = CreateSplineForSwingFoot(
+    *traj = CreateSplineForSwingFoot(
         start_time_of_this_interval, touchdown_time,
         swing_foot_pos_at_liftoff, footstep_target);
   } else {
     // Assign a constant traj
-    *pp_traj = PiecewisePolynomial<double>(Vector3d::Zero());
+    *traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }
 }
 }  // namespace systems

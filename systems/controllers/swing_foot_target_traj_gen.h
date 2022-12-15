@@ -4,8 +4,7 @@
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -52,10 +51,9 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  drake::trajectories::PiecewisePolynomial<double> CreateSplineForSwingFoot(
-      double start_time_of_this_interval, double end_time_of_this_interval,
-      const Eigen::Vector3d& init_swing_foot_pos,
-      const Eigen::Vector3d& final_swing_foot_pos) const;
+  drake::trajectories::Trajectory<double> CreateSplineForSwingFoot(
+      double start_time, double end_time, const Eigen::Vector3d& init_pos,
+      const Eigen::Vector3d& final_pos) const;
 
   void CalcTrajs(const drake::systems::Context<double>& context,
                  drake::trajectories::Trajectory<double>* traj) const;

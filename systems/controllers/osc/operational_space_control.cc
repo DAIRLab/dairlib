@@ -698,7 +698,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_costs_.at(i)->UpdateCoefficients(
-          J_t.transpose() * W * J_t, J_t.transpose() * W * (JdotV_t - ddy_t),
+          2 * J_t.transpose() * W * J_t, 2 * J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term, true);
     } else {
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),

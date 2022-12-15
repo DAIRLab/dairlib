@@ -125,9 +125,11 @@ def get_floating_base_velocity_in_body_frame(
 def process_osc_channel(data):
     t_osc = []
     if hasattr(data[0], 'regularization_cost_names'):
-        regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
+        regularization_costs = \
+            osc_regularlization_tracking_cost(data[0].regularization_cost_names)
     else:
-        regularization_costs = osc_regularlization_tracking_cost(['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
+        regularization_costs = osc_regularlization_tracking_cost(
+            ['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
     qp_solve_time = []
     u_sol = []
     lambda_c_sol = []

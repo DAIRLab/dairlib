@@ -37,9 +37,9 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.16
+mid_foot_height: 0.18
 final_foot_height: 0.05
-final_foot_velocity_z: -0.5
+final_foot_velocity_z: 0.0
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -52,7 +52,7 @@ w_soft_constraint: 8000
 w_input_reg: 0.0000001
 
 w_swing_toe: 1
-swing_toe_kp: 2000
+swing_toe_kp: 500
 swing_toe_kd: 4
 
 w_hip_yaw: 2

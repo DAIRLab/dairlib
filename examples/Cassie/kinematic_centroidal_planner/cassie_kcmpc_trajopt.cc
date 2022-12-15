@@ -18,8 +18,8 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_kc_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
-#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
@@ -107,20 +107,16 @@ int DoMain(int argc, char* argv[]) {
   CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
       time_points.back() / (traj_params.n_knot_points - 1), 0.4,
-      reference_state.head(plant.num_positions()), 3000, 115,
+      reference_state.head(plant.num_positions()), traj_params.spring_constant,
+      traj_params.damping_coefficient,
       sqrt(pow(traj_params.target_com_height, 2) +
            pow(traj_params.stance_width, 2)),
       traj_params.stance_width);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);
 
-  std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
-  std::fill(complexity_schedule.begin(), complexity_schedule.end(),
-            Complexity::KINEMATIC_CENTROIDAL);
-  for (int i = 10; i < 30; i++) {
-    complexity_schedule[i] = Complexity::SLIP;
-  }
-  mpc.SetComplexitySchedule(complexity_schedule);
+  mpc.SetComplexitySchedule(GenerateComplexitySchedule(
+      traj_params.n_knot_points, traj_params.complexity_schedule));
 
   KcmpcReferenceGenerator generator(plant, plant_context.get(),
                                     CreateContactPoints(plant, 0));

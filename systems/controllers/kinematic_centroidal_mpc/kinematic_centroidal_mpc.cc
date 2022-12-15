@@ -2,17 +2,17 @@
 
 #include <drake/common/yaml/yaml_io.h>
 
-//#include "multibody/multibody_utils.h"
+// #include "multibody/multibody_utils.h"
 #include "common/eigen_utils.h"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_kc_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
-#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
 #include "systems/framework/output_vector.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/gait.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
-//#include <iostream>
+// #include <iostream>
 
 using dairlib::systems::BasicVector;
 using dairlib::systems::OutputVector;

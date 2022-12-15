@@ -13,7 +13,7 @@
 
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_kc_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_constraints.h"
 #include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_lifter.h"
 #include "examples/Cassie/kinematic_centroidal_planner/simple_models/slip_reducer.h"

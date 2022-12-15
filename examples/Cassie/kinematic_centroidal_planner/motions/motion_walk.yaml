@@ -2,6 +2,8 @@ n_knot_points: 45
 target_com_height: 0.8
 stance_width: 0.25
 swing_foot_minimum_height: 0.02
+spring_constant: 3000
+damping_coefficient: 115
 duration_scaling:
   [ 1.0, 3.0, 1.0 ]
 gait_sequence: [ 'stand', 'walk', 'walk' ]
@@ -9,3 +11,4 @@ com_vel_values:
   [ 0, 0, 0,
     0.5, 0.0, 0,
     0, 0, 0 ]
+complexity_schedule: ['c 10', 's 20', 'c 15']

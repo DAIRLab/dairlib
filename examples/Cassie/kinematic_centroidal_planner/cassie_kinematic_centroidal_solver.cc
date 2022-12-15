@@ -46,7 +46,7 @@ void CassieKinematicCentroidalSolver::AddSlipConstraints(int knot_point) {
        contact_index++) {
     prog_->AddConstraint((slip_contact_pos_vars(knot_point, contact_index) -
                           slip_com_vars_[knot_point])
-                             .squaredNorm() <= 1.5);
+                             .squaredNorm() <= 1.0);
 
     if (slip_contact_sequence_[knot_point][contact_index]) {
       // Foot isn't moving
@@ -103,7 +103,7 @@ void CassieKinematicCentroidalSolver::AddSlipCost(int knot_point,
   }
 
   if (contact_ref_traj_) {
-    const Eigen::MatrixXd Q_contact_pos = gains_.contact_pos.asDiagonal();
+    const Eigen::MatrixXd Q_contact_pos = 2 * gains_.contact_pos.asDiagonal();
     prog_->AddQuadraticErrorCost(
         terminal_gain * Q_contact_pos,
         Eigen::VectorXd(contact_ref_traj_->value(t)).segment(0, 3),
@@ -113,7 +113,7 @@ void CassieKinematicCentroidalSolver::AddSlipCost(int knot_point,
         Eigen::VectorXd(contact_ref_traj_->value(t)).segment(6, 3),
         slip_contact_pos_vars(knot_point, 1));
 
-    const Eigen::MatrixXd Q_contact_vel = gains_.contact_vel.asDiagonal();
+    const Eigen::MatrixXd Q_contact_vel = 2 * gains_.contact_vel.asDiagonal();
     prog_->AddQuadraticErrorCost(
         terminal_gain * Q_contact_vel,
         Eigen::VectorXd(contact_ref_traj_->value(t)).segment(12, 3),
@@ -150,7 +150,7 @@ void CassieKinematicCentroidalSolver::MapModeSequence() {
         complex_mode_to_slip_mode_.at(contact_sequence_[knot_point]);
   }
 }
-void CassieKinematicCentroidalSolver::AddSlipReductionConstraint(
+void CassieKinematicCentroidalSolver::AddSlipEqualityConstraint(
     int knot_point) {
   prog_->AddConstraint(slip_com_vars_[knot_point] == com_pos_vars(knot_point));
   prog_->AddConstraint(slip_vel_vars_[knot_point] * m_ ==
@@ -172,19 +172,6 @@ void CassieKinematicCentroidalSolver::AddSlipReductionConstraint(
        slip_force_vars_[knot_point]});
 
   AddSlipPosturePrincipleConstraint(knot_point);
-}
-
-void CassieKinematicCentroidalSolver::AddSlipLiftingConstraint(int knot_point) {
-  auto lifting_constraint = std::make_shared<SlipLiftingConstraint>(
-      plant_, lifters_[knot_point], 2, n_contact_points_, knot_point);
-  prog_->AddConstraint(
-      lifting_constraint,
-      {slip_com_vars_[knot_point], slip_vel_vars_[knot_point],
-       slip_contact_pos_vars_[knot_point], slip_contact_vel_vars_[knot_point],
-       slip_force_vars_[knot_point], com_pos_vars(knot_point),
-       momentum_vars(knot_point), contact_pos_[knot_point],
-       contact_vel_[knot_point], contact_force_[knot_point],
-       state_vars(knot_point)});
 }
 
 void CassieKinematicCentroidalSolver::AddSlipDynamics(int knot_point) {
@@ -273,20 +260,6 @@ drake::VectorX<double> CassieKinematicCentroidalSolver::LiftSlipSolution(
       result_->GetSolution(slip_contact_pos_vars_[knot_point]),
       result_->GetSolution(slip_contact_vel_vars_[knot_point]),
       result_->GetSolution(slip_force_vars_[knot_point]);
-  if (knot_point == 1) {
-    auto grf_constraint = std::make_shared<SlipGrfReductionConstrain>(
-        plant_, reducers[knot_point], 2, 4, knot_point);
-    drake::VectorX<double> grf_input(3 + 3 * 2 + 3 * 4 + 2 + 3);
-    drake::VectorX<double> grf_error(2);
-    grf_input << result_->GetSolution(com_pos_vars(knot_point)),
-        result_->GetSolution(slip_vel_vars_[knot_point]),
-        result_->GetSolution(slip_contact_pos_vars_[knot_point]),
-        result_->GetSolution(contact_force_[knot_point]),
-        result_->GetSolution(slip_force_vars_[knot_point]);
-    grf_constraint->Eval(grf_input, &grf_error);
-    std::cout << "Grf error" << std::endl;
-    std::cout << grf_error << std::endl;
-  }
   return lifters_[knot_point]->Lift(slip_state).tail(n_q_ + n_v_);
 }
 
@@ -329,7 +302,8 @@ void CassieKinematicCentroidalSolver::AddSlipPosturePrincipleConstraint(
       -eps, eps,
       state_vars(knot_point)[n_q_ + velocity_map_.at("hip_yaw_rightdot")]);
 
-  //  // Identity orientation
+  // Identity orientation
+  // TODO figure out why this identity quaternion constraint is hard for the mpc
   prog_->AddBoundingBoxConstraint(
       1 - eps, 1 + eps, state_vars(knot_point)[positions_map_.at("base_qw")]);
   //  prog_->AddBoundingBoxConstraint(
@@ -338,7 +312,7 @@ void CassieKinematicCentroidalSolver::AddSlipPosturePrincipleConstraint(
   //      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qy")]);
   prog_->AddBoundingBoxConstraint(
       -eps, eps, state_vars(knot_point)[positions_map_.at("base_qz")]);
-  //
+
   // Zero angular velocity
   prog_->AddBoundingBoxConstraint(
       -eps, eps, state_vars(knot_point)[n_q_ + velocity_map_.at("base_wx")]);
@@ -365,7 +339,8 @@ void CassieKinematicCentroidalSolver::AddSlipPosturePrincipleConstraint(
   prog_->AddConstraint(contact_force_vars(knot_point, 2) ==
                        contact_force_vars(knot_point, 3));
 
-  //  //  // GRF per foot parallel to vector from foot center to com
+  // TODO figure out this constraint (nonlinear constraint)
+  // GRF per foot parallel to vector from foot center to com
   //  prog_->AddConstraint((contact_force_vars(knot_point, 0)
   //  / 1.0).normalized() ==
   //                       (com_pos_vars(knot_point) -

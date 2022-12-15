@@ -107,7 +107,7 @@ int DoMain(int argc, char* argv[]) {
   CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
       time_points.back() / (traj_params.n_knot_points - 1), 0.4,
-      reference_state.head(plant.num_positions()), 3000, 80,
+      reference_state.head(plant.num_positions()), 3000, 115,
       sqrt(pow(traj_params.target_com_height, 2) +
            pow(traj_params.stance_width, 2)),
       traj_params.stance_width);
@@ -117,7 +117,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<Complexity> complexity_schedule(traj_params.n_knot_points);
   std::fill(complexity_schedule.begin(), complexity_schedule.end(),
             Complexity::KINEMATIC_CENTROIDAL);
-  for (int i = 15; i < traj_params.n_knot_points; i++) {
+  for (int i = 10; i < 30; i++) {
     complexity_schedule[i] = Complexity::SLIP;
   }
   mpc.SetComplexitySchedule(complexity_schedule);

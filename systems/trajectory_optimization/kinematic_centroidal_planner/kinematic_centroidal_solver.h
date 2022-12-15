@@ -399,11 +399,7 @@ class KinematicCentroidalSolver {
     DRAKE_DEMAND(false);
   };
 
-  virtual void AddSlipReductionConstraint(int knot_point) {
-    DRAKE_DEMAND(false);
-  };
-
-  virtual void AddSlipLiftingConstraint(int knot_point) {
+  virtual void AddSlipEqualityConstraint(int knot_point) {
     DRAKE_DEMAND(false);
   };
 
@@ -417,6 +413,9 @@ class KinematicCentroidalSolver {
    * @brief Add costs from internally stored variables
    */
   void AddCosts();
+
+  void AddKinematicCentroidalCosts(int knot_point, double t,
+                                   double knot_point_gain);
 
   bool is_first_knot(int knot_point_index) const {
     return knot_point_index == 0;

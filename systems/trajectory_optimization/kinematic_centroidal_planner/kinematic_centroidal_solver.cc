@@ -247,7 +247,7 @@ void KinematicCentroidalSolver::Build(
         AddKinematicsIntegrator(knot_point);
         if (!is_last_knot(knot_point) and
             complexity_schedule_[knot_point + 1] == SLIP) {
-          AddSlipReductionConstraint(knot_point + 1);
+          AddSlipEqualityConstraint(knot_point + 1);
           AddCentroidalKinematicConsistency(knot_point + 1);
         }
         break;
@@ -258,7 +258,8 @@ void KinematicCentroidalSolver::Build(
             case KINEMATIC_CENTROIDAL:
               AddCentroidalDynamics(knot_point);
               AddKinematicsIntegrator(knot_point);
-              AddSlipLiftingConstraint(knot_point);
+              AddSlipEqualityConstraint(knot_point);
+              AddCentroidalKinematicConsistency(knot_point);
               break;
             case SLIP:
               AddSlipDynamics(knot_point);
@@ -280,54 +281,88 @@ void KinematicCentroidalSolver::SetConstantMomentumReference(
 }
 
 double KinematicCentroidalSolver::GetKnotpointGain(int knot_point) const {
-  const double terminal_gain = is_last_knot(knot_point) ? 50 : 1;
+  const double terminal_gain = is_last_knot(knot_point) ? 1 : 1;
   const double collocation_gain =
       (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
   return terminal_gain * collocation_gain;
 }
 
 void KinematicCentroidalSolver::AddCosts() {
+  // Loop through knot points and add running cost
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    double knot_point_gain = GetKnotpointGain(knot_point);
     double t = dt_ * knot_point;
 
     switch (complexity_schedule_[knot_point]) {
       case KINEMATIC_CENTROIDAL:
-        if (q_ref_traj_) {
-          prog_->AddQuadraticErrorCost(knot_point_gain * Q_q_,
-                                       q_ref_traj_->value(t),
-                                       state_vars(knot_point).head(n_q_));
-        }
-        if (v_ref_traj_) {
-          prog_->AddQuadraticErrorCost(knot_point_gain * Q_v_,
-                                       v_ref_traj_->value(t),
-                                       state_vars(knot_point).tail(n_v_));
-        }
-        if (com_ref_traj_) {
-          prog_->AddQuadraticErrorCost(knot_point_gain * Q_com_,
-                                       com_ref_traj_->value(t),
-                                       com_pos_vars(knot_point));
-        }
-        if (mom_ref_traj_) {
-          prog_->AddQuadraticErrorCost(knot_point_gain * Q_mom_,
-                                       mom_ref_traj_->value(t),
-                                       momentum_vars(knot_point));
-        }
-        if (contact_ref_traj_) {
-          prog_->AddQuadraticErrorCost(
-              knot_point_gain * Q_contact_, contact_ref_traj_->value(t),
-              {contact_pos_[knot_point], contact_vel_[knot_point]});
-        }
-        if (force_ref_traj_) {
-          prog_->AddQuadraticErrorCost(knot_point_gain * Q_force_,
-                                       force_ref_traj_->value(t),
-                                       contact_force_[knot_point]);
+        // If kinematic centroidal always going to integrate to kinematic
+        // centroidal
+        AddKinematicCentroidalCosts(knot_point, t, 0.5);
+        if (!is_last_knot(knot_point)) {
+          AddKinematicCentroidalCosts(knot_point + 1, t + dt_, 0.5);
         }
         break;
       case SLIP:
-        AddSlipCost(knot_point, knot_point_gain);
+        // If slip, and integrating to kinematic centroidal use kinematic
+        // centroidal cost If slip and integrating to slip use slip costs
+        if (!is_last_knot(knot_point)) {
+          switch (complexity_schedule_[knot_point + 1]) {
+            case KINEMATIC_CENTROIDAL:
+              AddKinematicCentroidalCosts(knot_point, t, 0.5);
+              AddKinematicCentroidalCosts(knot_point + 1, t + dt_, 0.5);
+              break;
+            case SLIP:
+              AddSlipCost(knot_point, 0.5);
+              AddSlipCost(knot_point + 1, 0.5);
+              break;
+          }
+        } else {
+          AddSlipCost(knot_point, 0.5);
+        }
         break;
     }
+  }
+  int knot_point = n_knot_points_ - 1;
+  double knot_point_gain = GetKnotpointGain(knot_point);
+  double t = dt_ * knot_point;
+  switch (complexity_schedule_[knot_point]) {
+    case KINEMATIC_CENTROIDAL:
+      AddKinematicCentroidalCosts(knot_point, t, knot_point_gain);
+      break;
+    case SLIP:
+      AddSlipCost(knot_point, knot_point_gain);
+      break;
+  }
+}
+
+void KinematicCentroidalSolver::AddKinematicCentroidalCosts(
+    int knot_point, double t, double knot_point_gain) {
+  if (q_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_q_, q_ref_traj_->value(t),
+                                 state_vars(knot_point).head(n_q_));
+  }
+  if (v_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_v_, v_ref_traj_->value(t),
+                                 state_vars(knot_point).tail(n_v_));
+  }
+  if (com_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_com_,
+                                 com_ref_traj_->value(t),
+                                 com_pos_vars(knot_point));
+  }
+  if (mom_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_mom_,
+                                 mom_ref_traj_->value(t),
+                                 momentum_vars(knot_point));
+  }
+  if (contact_ref_traj_) {
+    prog_->AddQuadraticErrorCost(
+        knot_point_gain * Q_contact_, contact_ref_traj_->value(t),
+        {contact_pos_[knot_point], contact_vel_[knot_point]});
+  }
+  if (force_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_force_,
+                                 force_ref_traj_->value(t),
+                                 contact_force_[knot_point]);
   }
 }
 

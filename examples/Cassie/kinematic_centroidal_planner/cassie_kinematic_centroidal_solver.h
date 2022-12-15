@@ -108,9 +108,7 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
 
   void AddSlipCost(int knot_point, double terminal_gain) override;
 
-  void AddSlipReductionConstraint(int knot_point) override;
-
-  void AddSlipLiftingConstraint(int knot_point) override;
+  void AddSlipEqualityConstraint(int knot_point) override;
 
   void AddSlipDynamics(int knot_point) override;
 

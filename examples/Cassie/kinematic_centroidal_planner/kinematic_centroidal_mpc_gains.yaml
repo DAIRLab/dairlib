@@ -1,4 +1,4 @@
-com_position: [1, 1, 10]
+com_position: [2, 2, 5]
 generalized_positions:
   base_qw: 1.0
   base_qx: 1.0
@@ -27,9 +27,9 @@ generalized_velocities:
   ankle_joint_: 0.00002
   toe_: 0.00004
 
-contact_pos: [0.3, 5, 0.001]
-contact_vel: [0.2, 0.2, 0.2]
-contact_force: [0.00001, 0.00001, 0.00001]
+contact_pos: [2, 5, 0.001]
+contact_vel: [0.4, 0.4, 0.1]
+contact_force: [0.00002, 0.00002, 0.0004]
 lin_momentum: [0.00001, 0.00001, 0.00001]
 ang_momentum: [0.0000000, 0.0000000, 0.0000000]
 

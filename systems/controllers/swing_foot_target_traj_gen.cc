@@ -1,13 +1,10 @@
-//
-// Created by brian on 6/1/22.
-//
-
 #include "swing_foot_target_traj_gen.h"
 
 #include <cmath>
 #include <algorithm>
 #include <fstream>
 #include <string>
+#include <iostream>
 
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
@@ -82,7 +79,10 @@ SwingFootTargetTrajGen::SwingFootTargetTrajGen(
       this->DeclareVectorInputPort("desired footstep target",3).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp(VectorXd::Zero(0));
+  PathParameterizedTrajectory<double> pp(
+      PiecewisePolynomial<double>(VectorXd::Zero(1)),
+      PiecewisePolynomial<double>(VectorXd::Zero(1))
+      );
   drake::trajectories::Trajectory<double>& traj_instance = pp;
   this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
                                   &SwingFootTargetTrajGen::CalcTrajs);
@@ -150,32 +150,54 @@ EventStatus SwingFootTargetTrajGen::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
-Trajectory<double> SwingFootTargetTrajGen::CreateSplineForSwingFoot(
+drake::trajectories::PathParameterizedTrajectory<double>
+SwingFootTargetTrajGen::CreateSplineForSwingFoot(
     double start_time, double end_time, const Vector3d& init_pos,
     const Vector3d& final_pos) const {
 
   const std::vector<double> time_scaling_breaks = {
-      start_time, 0.5 * (start_time + end_time), end_time
+      start_time,
+      0.5 * (start_time + end_time),
+      end_time
   };
 
-  std::vector<Vector1d> time_scaling_knots(
+  std::vector<MatrixXd> time_scaling_knots(
       time_scaling_breaks.size(), drake::Vector1<double>::Zero());
 
-  for (auto& t : time_scaling_knots) {
-    t(0) = start_time + (end_time - start_time) /
-           (time_scaling_breaks.size() - 1);
+  for (int i = 0; i < time_scaling_breaks.size(); i++) {
+    time_scaling_knots.at(i)(0) =
+        static_cast<double>(i) / (time_scaling_breaks.size() - 1);
   }
 
   auto time_scaling_trajectory =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
           time_scaling_breaks, time_scaling_knots, Vector1d::Zero(),
-          -desired_final_vertical_foot_velocity_ * Vector1d::Ones());
+          Vector1d::Zero());
 
 
   std::vector<double> nominal_heights = {0, 0.66, 1.0, 1.0, 0.75, 0};
   auto basis = drake::math::BsplineBasis<double>(
       nominal_heights.size(), nominal_heights.size());
-  auto control_points = Eigen::
+
+  std::vector<MatrixXd> control_points =
+      std::vector<MatrixXd>(nominal_heights.size(), Vector3d::Zero());
+
+  for (int i = 0; i < control_points.size(); i++) {
+    control_points.at(i).block(0, 0, 2, 1) =
+        init_pos.head<2>() + i *
+        (final_pos.head<2>() - init_pos.head<2>()) /
+        (control_points.size() - 1);
+    control_points.at(i)(2) =
+        mid_foot_height_ * nominal_heights.at(i) +
+        std::max(init_pos(2), final_pos(2));
+  }
+
+  control_points.front()(2) = init_pos(2);
+  control_points.back()(2) = final_pos(2) + desired_final_foot_height_;
+
+  auto swing_foot_path = BsplineTrajectory<double>(basis, control_points);
+  auto swing_foot_spline = PathParameterizedTrajectory<double>(
+      swing_foot_path,time_scaling_trajectory);
 
   return swing_foot_spline;
 }
@@ -225,12 +247,17 @@ void SwingFootTargetTrajGen::CalcTrajs(
         this->EvalVectorInput(context, footstep_target_port_)->get_value();
 
     // Assign traj
-    *traj = CreateSplineForSwingFoot(
+    auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double>*>(traj);
+    *pp_traj = CreateSplineForSwingFoot(
         start_time_of_this_interval, touchdown_time,
         swing_foot_pos_at_liftoff, footstep_target);
   } else {
     // Assign a constant traj
-    *traj = PiecewisePolynomial<double>(Vector3d::Zero());
+    auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double>*>(traj);
+    *pp_traj = PathParameterizedTrajectory<double>(
+        PiecewisePolynomial<double>(Vector3d::Zero()),
+        PiecewisePolynomial<double>(Vector1d::Ones())
+    );
   }
 }
 }  // namespace systems

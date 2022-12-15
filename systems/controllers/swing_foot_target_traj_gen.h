@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drake/common/trajectories/path_parameterized_trajectory.h>
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
@@ -51,7 +52,8 @@ class SwingFootTargetTrajGen : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  drake::trajectories::Trajectory<double> CreateSplineForSwingFoot(
+  drake::trajectories::PathParameterizedTrajectory<double>
+  CreateSplineForSwingFoot(
       double start_time, double end_time, const Eigen::Vector3d& init_pos,
       const Eigen::Vector3d& final_pos) const;
 

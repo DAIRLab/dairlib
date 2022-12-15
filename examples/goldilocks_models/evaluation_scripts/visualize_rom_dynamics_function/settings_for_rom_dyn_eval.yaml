@@ -1,23 +1,46 @@
+dir_script_backup: "../dairlib_data/goldilocks_models/rom_dyn_eval/"
+
 ### ROM parameter
 # dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"    # rom_option 30
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"    # rom_option 27
 
 rom_option: 27
-model_iter: 1
+model_iter: 400
 
 ### Evaluation parameters
-dir_data: "../dairlib_data/goldilocks_models/rom_dyn_eval/"
+dir_data: "../dairlib_data/goldilocks_models/rom_dyn_eval/data/"
+# dir_data: "examples/goldilocks_models/evaluation_scripts/visualize_rom_dynamics_function/data/"
 
+comdot_x: 0
+comdot_y: 0
+comdot_z: 0
+
+save_fig: true
+plot_xz_or_yz: 0
+
+######## We have to manually toggle the following parameter groups according to plot_xz_or_yz
+# x-z plane (if plot_xz_or_yz = 0)
 x_min: -0.1
 x_max: 0.1
-n_samples_x: 20
+n_samples_x: 10
 
-y_min: 0
-y_max: 0
-n_samples_y: 1
+y_min: -0.2  #0
+y_max: 0.2  #0
+n_samples_y: 10  #1
 
 z_min: 0.6
 z_max: 1.1
-n_samples_z: 20
+n_samples_z: 10
 
-save_fig: false
+## y-z plane (if plot_xz_or_yz = 1)
+# x_min: -0.3  #0
+# x_max: 0.3  #0
+# n_samples_x: 10  #1
+
+# y_min: -0.2
+# y_max: 0.2
+# n_samples_y: 10
+
+# z_min: 0.6
+# z_max: 1.1
+# n_samples_z: 10

@@ -66,6 +66,15 @@ int DoMain(int argc, char* argv[]) {
   DRAKE_DEMAND(gains.x_max >= gains.x_min);
   DRAKE_DEMAND(gains.y_max >= gains.y_min);
   DRAKE_DEMAND(gains.z_max >= gains.z_min);
+  DRAKE_DEMAND((gains.plot_xz_or_yz == 0) || (gains.plot_xz_or_yz == 1));
+
+  /// Create folder and copy scripts
+  if (!CreateFolderIfNotExist(gains.dir_data, false)) return 0;
+  std::system(("cp "
+               "examples/goldilocks_models/evaluation_scripts/"
+               "visualize_rom_dynamics_function/* " +
+               gains.dir_script_backup)
+                  .c_str());
 
   /// Evaluation
   // Construct script
@@ -99,40 +108,79 @@ int DoMain(int argc, char* argv[]) {
 
   // Eval dynamics function
   Vector3d y;
-  Vector3d ydot = Vector3d::Zero();
+  Vector3d ydot;
+  ydot << gains.comdot_x, gains.comdot_y, gains.comdot_z;
   Vector3d yddot;
   VectorXd tau(0);
-  MatrixXd x_accel(gains.n_samples_z, gains.n_samples_x);
-  MatrixXd y_accel(gains.n_samples_z, gains.n_samples_x);
-  MatrixXd z_accel(gains.n_samples_z, gains.n_samples_x);
-  for (int j = 0; j < gains.n_samples_y; j++) {
-    for (int i = 0; i < gains.n_samples_x; i++) {
-      for (int k = 0; k < gains.n_samples_z; k++) {
-        y << x_samples(i), y_samples(j), z_samples(k);
 
-        yddot = rom->EvalDynamicFunc(y, ydot, tau);
-        if (yddot.array().isNaN().all()) {
-          cout << "!!! yddot contains NaN !!!\n";
-          cout << "!!! we will stop running the program and not run python plotting script !!!\n";
-          cout << "x_samples = \n" << x_samples.transpose() << endl;
-          cout << "y_samples = \n" << y_samples.transpose() << endl;
-          cout << "z_samples = \n" << z_samples.transpose() << endl;
-          cout << "yddot = " << yddot << endl;
-          DRAKE_UNREACHABLE();
+  if (gains.plot_xz_or_yz == 0) {
+    MatrixXd x_accel(gains.n_samples_z, gains.n_samples_x);
+    MatrixXd y_accel(gains.n_samples_z, gains.n_samples_x);
+    MatrixXd z_accel(gains.n_samples_z, gains.n_samples_x);
+    for (int j = 0; j < gains.n_samples_y; j++) {
+      for (int i = 0; i < gains.n_samples_x; i++) {
+        for (int k = 0; k < gains.n_samples_z; k++) {
+          y << x_samples(i), y_samples(j), z_samples(k);
+
+          yddot = rom->EvalDynamicFunc(y, ydot, tau);
+          if (yddot.array().isNaN().all()) {
+            cout << "!!! yddot contains NaN !!!\n";
+            cout << "!!! we will stop running the program and not run python "
+                    "plotting script !!!\n";
+            cout << "x_samples = \n" << x_samples.transpose() << endl;
+            cout << "y_samples = \n" << y_samples.transpose() << endl;
+            cout << "z_samples = \n" << z_samples.transpose() << endl;
+            cout << "yddot = " << yddot << endl;
+            DRAKE_UNREACHABLE();
+          }
+          x_accel(k, i) = yddot(0);
+          y_accel(k, i) = yddot(1);
+          z_accel(k, i) = yddot(2);
         }
-        x_accel(k, i) = yddot(0);
-        y_accel(k, i) = yddot(1);
-        z_accel(k, i) = yddot(2);
       }
-    }
 
-    // Store data
-    writeCSV(gains.dir_data + string("x_accel_" + std::to_string(j) + ".csv"),
-             x_accel);
-    writeCSV(gains.dir_data + string("y_accel_" + std::to_string(j) + ".csv"),
-             y_accel);
-    writeCSV(gains.dir_data + string("z_accel_" + std::to_string(j) + ".csv"),
-             z_accel);
+      // Store data
+      writeCSV(gains.dir_data + string("x_accel_" + std::to_string(j) + ".csv"),
+               x_accel);
+      writeCSV(gains.dir_data + string("y_accel_" + std::to_string(j) + ".csv"),
+               y_accel);
+      writeCSV(gains.dir_data + string("z_accel_" + std::to_string(j) + ".csv"),
+               z_accel);
+    }
+  } else if (gains.plot_xz_or_yz == 1) {
+    MatrixXd x_accel(gains.n_samples_z, gains.n_samples_y);
+    MatrixXd y_accel(gains.n_samples_z, gains.n_samples_y);
+    MatrixXd z_accel(gains.n_samples_z, gains.n_samples_y);
+    for (int i = 0; i < gains.n_samples_x; i++) {
+      for (int j = 0; j < gains.n_samples_y; j++) {
+        for (int k = 0; k < gains.n_samples_z; k++) {
+          y << x_samples(i), y_samples(j), z_samples(k);
+
+          yddot = rom->EvalDynamicFunc(y, ydot, tau);
+          if (yddot.array().isNaN().all()) {
+            cout << "!!! yddot contains NaN !!!\n";
+            cout << "!!! we will stop running the program and not run python "
+                    "plotting script !!!\n";
+            cout << "x_samples = \n" << x_samples.transpose() << endl;
+            cout << "y_samples = \n" << y_samples.transpose() << endl;
+            cout << "z_samples = \n" << z_samples.transpose() << endl;
+            cout << "yddot = " << yddot << endl;
+            DRAKE_UNREACHABLE();
+          }
+          x_accel(k, j) = yddot(0);
+          y_accel(k, j) = yddot(1);
+          z_accel(k, j) = yddot(2);
+        }
+      }
+
+      // Store data
+      writeCSV(gains.dir_data + string("x_accel_" + std::to_string(i) + ".csv"),
+               x_accel);
+      writeCSV(gains.dir_data + string("y_accel_" + std::to_string(i) + ".csv"),
+               y_accel);
+      writeCSV(gains.dir_data + string("z_accel_" + std::to_string(i) + ".csv"),
+               z_accel);
+    }
   }
 
   return 0;

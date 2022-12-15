@@ -231,7 +231,7 @@ void SwingFootTargetTrajGen::CalcTrajs(
   if (is_single_support_phase) {
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
-    double start_time_of_this_interval = drake::math::saturate(
+    double start_time_of_this_interval = std::clamp(
         liftoff_time, -std::numeric_limits<double>::infinity(),
         touchdown_time - 0.001);
 

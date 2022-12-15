@@ -1,0 +1,25 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "eval_rom_dynamics_function",
+    srcs = ["visualize_rom_dynamics_function/eval_rom_dynamics_function.cc"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/goldilocks_models:goldilocks_utils",
+        "//examples/goldilocks_models:reduced_order_models",
+        "//examples/goldilocks_models/evaluation_scripts:settings_for_rom_dyn_eval",
+        "//multibody:utils",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "settings_for_rom_dyn_eval",
+    hdrs = ["visualize_rom_dynamics_function/settings_for_rom_dyn_eval.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

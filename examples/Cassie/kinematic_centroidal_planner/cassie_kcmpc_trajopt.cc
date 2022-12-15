@@ -223,7 +223,7 @@ int DoMain(int argc, char* argv[]) {
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(1.0);
+    simulator.set_target_realtime_rate(0.25);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
     sleep(2);

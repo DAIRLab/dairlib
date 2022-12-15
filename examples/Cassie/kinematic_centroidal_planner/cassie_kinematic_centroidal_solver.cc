@@ -332,10 +332,10 @@ void CassieKinematicCentroidalSolver::AddSlipPosturePrincipleConstraint(
   //  // Identity orientation
   prog_->AddBoundingBoxConstraint(
       1 - eps, 1 + eps, state_vars(knot_point)[positions_map_.at("base_qw")]);
-  prog_->AddBoundingBoxConstraint(
-      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qx")]);
-  prog_->AddBoundingBoxConstraint(
-      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qy")]);
+  //  prog_->AddBoundingBoxConstraint(
+  //      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qx")]);
+  //  prog_->AddBoundingBoxConstraint(
+  //      -eps, eps, state_vars(knot_point)[positions_map_.at("base_qy")]);
   prog_->AddBoundingBoxConstraint(
       -eps, eps, state_vars(knot_point)[positions_map_.at("base_qz")]);
   //

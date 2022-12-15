@@ -123,3 +123,18 @@ cc_binary(
     ],
     data = ["//examples/trifinger:trifinger_urdf"],
 )
+
+cc_library(
+    name = "pinocchio_plant",
+    srcs = [
+        "pinocchio_plant.cc",
+    ],
+    hdrs = [
+        "pinocchio_plant.h",
+    ],
+    deps = [
+        ":utils",
+        "@drake//:drake_shared_library",
+        "@pinocchio",
+    ],
+)

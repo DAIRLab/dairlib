@@ -1089,10 +1089,11 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   for model_slice_value in model_slices_cost_landsacpe:
     if model_slice_value == 1:
       continue
-    Generate2dCostLandscapeComparison(cmt, model_slice_value)
+    Generate2dCostLandscapeComparison(cmt, model_slice_value, True)
+    Generate2dCostLandscapeComparison(cmt, model_slice_value, False)
 
 
-def Generate2dCostLandscapeComparison(cmt, model_slice_value):
+def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoints_on_landscape):
   iter1 = 1
   iter2 = model_slice_value
 
@@ -1230,6 +1231,12 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
     rect = Rectangle((ave[0] - delta[0]/2, ave[1] - delta[1]/2), delta[0], delta[1], ls="--", ec="k", fc="none", linewidth=3)
     ax.add_patch(rect)
 
+  if visualize_datapoints_on_landscape:
+    # We only plot samples of the optimized model and not the initial model
+    cmt_to_visualize = cmt[cmt[:, 1] == model_slice_value]
+    plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'k.')
+    # plt.scatter(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], c=cmt_to_visualize[:, 0])
+
   # plt.xlim([-1, 1])
   # plt.ylim([0.85, 1.05])
   plt.xlabel('stride length (m)')
@@ -1238,7 +1245,7 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value):
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d.png" % (eval_dir, iter1, iter2))
+    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s.png" % (eval_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else ""))
 
 
 
@@ -1258,7 +1265,7 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     z = z[~np.isnan(z)]
 
     if no_plotting:
-      # Return [task1, task2, cost] with shape (N, 3)
+      # Return [cost, task1, task2] with shape (N, 3)
       return copy.deepcopy(np.vstack([z, data[:, 2], data[:, 3]]).T)
 
     if len(z) == 0:
@@ -1327,6 +1334,7 @@ def ComputeCostImprovementForIndividualTask(model_indices, cmt):
       f.write(message)
       f.close()
 
+  np.set_printoptions(linewidth=100)  # number of characters per line for wrapping
   msg = "\ncost_improvement_grid = \n" + str(cost_improvement_grid)
   print(msg)
   f = open(eval_dir + "costs_info.txt", "a")
@@ -1630,8 +1638,8 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/3_repeat_previous_but_with_much_better_sim_state_initialization/4_steps_steady_state/sim_cost_eval/"
 
   ### global parameters
-  sim_end_time = 14.0
-  t_no_logging_at_start = 10.0  # WARNING: only use this when we are confident that simulation is initialized correctly, and the controller behaves as we expect
+  sim_end_time = 10.0
+  t_no_logging_at_start = 6.0  # WARNING: only use this when we are confident that simulation is initialized correctly, and the controller behaves as we expect
   spring_model = False
   close_sim_gap = True
   # Parameters that are modified often
@@ -1719,7 +1727,8 @@ if __name__ == "__main__":
   # task_slice_value_sl = [-0.16, 0, 0.16]
   # task_slice_value_sl = [-0.2, -0.1, 0, 0.1, 0.2]
   # task_slice_value_sl = [-0.4, -0.2, 0, 0.2, 0.4]
-  task_slice_value_sl = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]
+  # task_slice_value_sl = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]
+  task_slice_value_sl = [-0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4]
   task_slice_value_ph = 0.95
   task_slice_value_list = [[sl, task_slice_value_ph] for sl in task_slice_value_sl]
 
@@ -1735,6 +1744,7 @@ if __name__ == "__main__":
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   model_slices = [1, 100, 200, 300, 400, 500]
+  # model_slices = [1, 100, 200, 300, 400, 450]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1744,7 +1754,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
-  model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
+  # model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
+  model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500]
+  # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 450]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [5, 50, 95]
   # model_slices_cost_landsacpe = [5, 95]
@@ -1754,7 +1766,8 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [75]
 
   # cost improvement for individual task
-  task_grid_sl = np.linspace(-0.3, 0.3, 7)
+  # task_grid_sl = np.linspace(-0.3, 0.3, 7)
+  task_grid_sl = np.linspace(-0.6, 0.6, 13)
   task_grid_ph = np.linspace(1.1, 0.6, 11)
   x_1, y_1 = np.meshgrid(task_grid_sl, task_grid_ph)
   task_value_grid_for_computing_cost_improvement = [x_1, y_1]

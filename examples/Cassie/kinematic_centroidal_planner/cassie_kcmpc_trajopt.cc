@@ -19,6 +19,7 @@
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.h"
+#include "multibody/pinocchio_plant.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_gains.h"
@@ -52,11 +53,12 @@ int DoMain(int argc, char* argv[]) {
       FLAGS_planner_parameters);
   // Create fix-spring Cassie MBP
   drake::systems::DiagramBuilder<double> builder;
+  drake::systems::DiagramBuilder<drake::AutoDiffXd> builder_ad;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  MultibodyPlant<double> plant(0.0);
-  MultibodyPlant<double> plant_vis(0.0);
+  MultibodyPlant<double> plant(1e-5);
+  MultibodyPlant<double> plant_vis(1e-5);
 
   Parser parser(&plant);
   Parser parser_vis(&plant_vis, &scene_graph);
@@ -67,6 +69,23 @@ int DoMain(int argc, char* argv[]) {
   parser_vis.AddModelFromFile(full_name);
   plant.Finalize();
   plant_vis.Finalize();
+
+
+  dairlib::multibody::PinocchioPlant<drake::AutoDiffXd> plant_ad(plant, full_name);
+//  dairlib::multibody::PinocchioPlant<double> plant_control(1e-5, full_name);
+//  Parser parser_pin(&plant_control);
+//  parser_pin.AddModelFromFile(full_name);
+
+  plant_ad.FinalizePlant();
+
+//  dairlib::multibody::PinocchioPlant<drake::AutoDiffXd> plant_ad(plant_control);
+
+//  SceneGraph<drake::AutoDiffXd>& scene_graph_ad = *builder_ad.AddSystem<SceneGraph>();
+//  Parser parser_ad(&plant_control, &scene_graph_ad);
+
+
+
+//  auto plant_ad = drake::systems::System<double>::ToAutoDiffXd(plant_control);
 
   auto plant_context = plant.CreateDefaultContext();
 
@@ -99,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create MPC and set gains
   CassieKinematicCentroidalSolver mpc(
-      plant, traj_params.n_knot_points,
+      plant, plant_ad, traj_params.n_knot_points,
       time_points.back() / (traj_params.n_knot_points - 1), 0.4);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);

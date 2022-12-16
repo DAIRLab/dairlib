@@ -46,7 +46,9 @@ class KinematicCentroidalSolver {
    * the mode sequence
    */
   KinematicCentroidalSolver(
-      const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      int n_knot_points,
       double dt,
       const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
           contact_points);
@@ -393,6 +395,12 @@ class KinematicCentroidalSolver {
   };
 
   const drake::multibody::MultibodyPlant<double>& plant_;
+  std::vector<std::unique_ptr<drake::systems::Context<double>>> contexts_;
+
+//  std::unique_ptr<drake::multibody::MultibodyPlant<drake::AutoDiffXd>> plant_ad_;
+  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  std::vector<std::unique_ptr<drake::systems::Context<drake::AutoDiffXd>>> contexts_ad_;
+
 
   int n_knot_points_;
   double dt_;
@@ -456,7 +464,6 @@ class KinematicCentroidalSolver {
   std::vector<drake::solvers::VectorXDecisionVariable> contact_vel_;
   std::vector<drake::solvers::VectorXDecisionVariable> contact_force_;
 
-  std::vector<std::unique_ptr<drake::systems::Context<double>>> contexts_;
 
   std::unique_ptr<dairlib::multibody::MultiposeVisualizer> callback_visualizer_;
 

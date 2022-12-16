@@ -263,7 +263,7 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
+          diagram_ptr_->ForcedPublish(diagram_context);
         }
 
         // Clear messages in the current input channel
@@ -291,7 +291,7 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
+          diagram_ptr_->ForcedPublish(diagram_context);
         }
 
         // Clear messages in the switch channel

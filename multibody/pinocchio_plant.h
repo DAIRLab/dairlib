@@ -17,11 +17,12 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PinocchioPlant)
 
-  explicit PinocchioPlant(double time_step, const std::string& urdf);
+  explicit PinocchioPlant<double>(double time_step, const std::string& urdf);
+  explicit PinocchioPlant<drake::AutoDiffXd>(const drake::multibody::MultibodyPlant<double>& plant, const std::string& urdf);
 
   void BuildPermutations();
 
-  void Finalize();
+  void FinalizePlant();
 
   drake::VectorX<T> MapPositionFromDrakeToPinocchio(
       const drake::VectorX<T>& q) const;
@@ -77,8 +78,8 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
 
   void RightMultiplicationFromDrakeToPinocchio(
-      const drake::VectorX<T>& quat,
-      drake::EigenPtr<drake::MatrixX<T>> M) const;
+      const drake::VectorX<double>& quat,
+      drake::EigenPtr<drake::MatrixX<double>> M) const;
 
   drake::VectorX<T> CalcInverseDynamics(
       const drake::systems::Context<T>& context,

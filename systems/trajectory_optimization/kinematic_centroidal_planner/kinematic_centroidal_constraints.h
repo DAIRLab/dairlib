@@ -1,19 +1,22 @@
-#pragma  once
+#pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
+
+#include "multibody/kinematic/kinematic_evaluator_set.h"
+#include "solvers/nonlinear_constraint.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic/expression.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
-#include "solvers/nonlinear_constraint.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
 
 /*!
- * @brief Nonlinear constraint for enforcing the centroidal dynamics using euler integration
+ * @brief Nonlinear constraint for enforcing the centroidal dynamics using euler
+ * integration
  */
 template <typename T>
-class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
-
+class CentroidalDynamicsConstraint
+    : public dairlib::solvers::NonlinearConstraint<T> {
  public:
   /*!
    * @param plant used for calculating inertia tensor and mass
@@ -23,8 +26,8 @@ class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
    * @param knot_index
    */
   CentroidalDynamicsConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                              drake::systems::Context<T>* context,
-                              int n_contact, double dt, int knot_index);
+                               drake::systems::Context<T>* context,
+                               int n_contact, double dt, int knot_index);
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -34,8 +37,10 @@ class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
   /*!
    * @brief Calculates the time derivative of the centroidal state
    * @param com_position center of mass position in world
-   * @param contact_locations vector of the contact locations in world frame = [contact1x, contact1y, contact1z, ...]
-   * @param contact_forces vector of the contact forces in world frame = [force1x, force1y, force1z, ...]
+   * @param contact_locations vector of the contact locations in world frame =
+   * [contact1x, contact1y, contact1z, ...]
+   * @param contact_forces vector of the contact forces in world frame =
+   * [force1x, force1y, force1z, ...]
    * @return time derivative of momentum
    */
   drake::VectorX<T> CalcTimeDerivativesWithForce(
@@ -55,14 +60,13 @@ class CentroidalDynamicsConstraint : public dairlib::solvers::NonlinearConstrain
  * @brief Nonlinear constraint on euler integrating generalized velocity
  */
 template <typename T>
-class KinematicIntegratorConstraint : public dairlib::solvers::NonlinearConstraint<T> {
-
+class KinematicIntegratorConstraint
+    : public dairlib::solvers::NonlinearConstraint<T> {
  public:
-  KinematicIntegratorConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                                 drake::systems::Context<T>* context0,
-                                drake::systems::Context<T>* context1,
-                                double dt,
-                                 int knot_index);
+  KinematicIntegratorConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      drake::systems::Context<T>* context0,
+      drake::systems::Context<T>* context1, double dt, int knot_index);
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -76,15 +80,38 @@ class KinematicIntegratorConstraint : public dairlib::solvers::NonlinearConstrai
   double dt_;
 };
 
-
 /*!
- * @brief Nonlinear constraint on center of mass position matching centroidal state
+ * @brief Nonlinear constraint on center of mass position matching centroidal
+ * state
  */
 template <typename T>
-class CenterofMassPositionConstraint : public dairlib::solvers::NonlinearConstraint<T> {
+class CenterofMassPositionConstraint
+    : public dairlib::solvers::NonlinearConstraint<T> {
+ public:
+  CenterofMassPositionConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      drake::systems::Context<T>* context, int knot_index);
 
  public:
-  CenterofMassPositionConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
+                          drake::VectorX<T>* y) const override;
+//  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+//              drake::AutoDiffVecXd* y) const override;
+
+  const drake::multibody::MultibodyPlant<T>& plant_;
+  drake::systems::Context<T>* context_;
+  int n_q_;
+};
+
+/*!
+ * @brief Nonlinear constraint on center of mass position matching centroidal
+ * state
+ */
+template <typename T>
+class CentroidalMomentumConstraint
+    : public dairlib::solvers::NonlinearConstraint<T> {
+ public:
+  CentroidalMomentumConstraint(const drake::multibody::MultibodyPlant<T>& plant,
                                drake::systems::Context<T>* context,
                                int knot_index);
 
@@ -94,19 +121,22 @@ class CenterofMassPositionConstraint : public dairlib::solvers::NonlinearConstra
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
-  int n_q_;
+  int n_x_;
+  int n_com_;
+  int n_h_;
 };
 
 /*!
- * @brief Nonlinear constraint on center of mass position matching centroidal state
+ * @brief Nonlinear constraint on center of mass velocity matching centroidal
+ * velocity
  */
 template <typename T>
-class CentroidalMomentumConstraint : public dairlib::solvers::NonlinearConstraint<T> {
-
+class CenterofMassVelocityConstraint
+    : public dairlib::solvers::NonlinearConstraint<T> {
  public:
-  CentroidalMomentumConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                                 drake::systems::Context<T>* context,
-                                 int knot_index);
+  CenterofMassVelocityConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
+      drake::systems::Context<T>* context, int knot_index);
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -118,35 +148,18 @@ class CentroidalMomentumConstraint : public dairlib::solvers::NonlinearConstrain
 };
 
 /*!
- * @brief Nonlinear constraint on center of mass velocity matching centroidal velocity
+ * @brief Nonlinear constraint on world frame angular velocity matching body
+ * frame angular velocity
  */
 template <typename T>
-class CenterofMassVelocityConstraint : public dairlib::solvers::NonlinearConstraint<T> {
-
- public:
-  CenterofMassVelocityConstraint(const drake::multibody::MultibodyPlant<T>& plant,
-                                 drake::systems::Context<T>* context,
-                                 int knot_index);
-
- public:
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                          drake::VectorX<T>* y) const override;
-
-  const drake::multibody::MultibodyPlant<T>& plant_;
-  drake::systems::Context<T>* context_;
-  int n_x_;
-};
-
-/*!
- * @brief Nonlinear constraint on world frame angular velocity matching body frame angular velocity
- */
-template <typename T>
-class AngularVelocityConstraint : public dairlib::solvers::NonlinearConstraint<T> {
-
+class AngularVelocityConstraint
+    : public dairlib::solvers::NonlinearConstraint<T> {
  public:
   AngularVelocityConstraint(int knot_index);
 
  public:
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
+//  void DoEval(const Eigen::Ref<const drake::AutoDiffVecXd>& x,
+//              drake::AutoDiffVecXd* y) const override;
 };

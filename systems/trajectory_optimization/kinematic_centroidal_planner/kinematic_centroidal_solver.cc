@@ -11,15 +11,19 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
 using dairlib::LcmTrajectory;
+using drake::AutoDiffXd;
+using drake::multibody::MultibodyPlant;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 KinematicCentroidalSolver::KinematicCentroidalSolver(
-    const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points,
-    double dt,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::multibody::MultibodyPlant<AutoDiffXd>& plant_ad,
+    int n_knot_points, double dt,
     const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
         contact_points)
     : plant_(plant),
+      plant_ad_(plant_ad),
       n_knot_points_(n_knot_points),
       dt_(dt),
       contact_points_(contact_points),
@@ -35,7 +39,9 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
       Q_force_(
           Eigen::MatrixXd::Zero(3 * n_contact_points_, 3 * n_contact_points_)),
       contact_sequence_(n_knot_points),
-      contexts_(n_knot_points) {
+      contexts_(n_knot_points),
+      contexts_ad_(n_knot_points) {
+
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
@@ -49,6 +55,7 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
 
   for (int knot = 0; knot < n_knot_points; knot++) {
     contexts_[knot] = plant_.CreateDefaultContext();
+    contexts_ad_[knot] = plant_ad_.CreateDefaultContext();
     x_vars_.push_back(prog_->NewContinuousVariables(
         n_q_ + n_v_, "x_vars_" + std::to_string(knot)));
     mom_vars_.push_back(
@@ -102,6 +109,10 @@ void KinematicCentroidalSolver::AddCentroidalDynamics() {
     auto constraint = std::make_shared<CentroidalDynamicsConstraint<double>>(
         plant_, contexts_[knot_point].get(), n_contact_points_, dt_,
         knot_point);
+    //    auto constraint =
+    //    std::make_shared<CentroidalDynamicsConstraint<AutoDiffXd>>(
+    //        *plant_ad_, contexts_ad_[knot_point].get(), n_contact_points_,
+    //        dt_, knot_point);
     centroidal_dynamics_binding_.push_back(prog_->AddConstraint(
         constraint,
         {momentum_vars(knot_point), momentum_vars(knot_point + 1),
@@ -169,9 +180,12 @@ void KinematicCentroidalSolver::AddContactConstraints() {
 void KinematicCentroidalSolver::AddCentroidalKinematicConsistency() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     // Ensure linear and angular momentum line up
+//    auto centroidal_momentum =
+//        std::make_shared<CentroidalMomentumConstraint<double>>(
+//            plant_, contexts_[knot_point].get(), knot_point);
     auto centroidal_momentum =
-        std::make_shared<CentroidalMomentumConstraint<double>>(
-            plant_, contexts_[knot_point].get(), knot_point);
+        std::make_shared<CentroidalMomentumConstraint<AutoDiffXd>>(
+            plant_ad_, contexts_ad_[knot_point].get(), knot_point);
     prog_->AddConstraint(centroidal_momentum,
                          {state_vars(knot_point), com_pos_vars(knot_point),
                           momentum_vars(knot_point)});

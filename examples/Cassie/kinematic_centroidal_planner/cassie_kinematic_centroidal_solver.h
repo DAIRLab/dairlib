@@ -10,8 +10,8 @@
  */
 class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
  public:
-  CassieKinematicCentroidalSolver(const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points, double dt, double mu) :
-      KinematicCentroidalSolver(plant, n_knot_points, dt, CreateContactPoints(plant, mu)),
+  CassieKinematicCentroidalSolver(const drake::multibody::MultibodyPlant<double>& plant, const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad, int n_knot_points, double dt, double mu) :
+      KinematicCentroidalSolver(plant, plant_ad, n_knot_points, dt, CreateContactPoints(plant, mu)),
       l_loop_evaluator_(dairlib::LeftLoopClosureEvaluator(Plant())),
       r_loop_evaluator_(dairlib::RightLoopClosureEvaluator(Plant())),
       loop_closure_evaluators(Plant()){

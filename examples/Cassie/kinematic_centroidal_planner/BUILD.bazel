@@ -38,6 +38,7 @@ cc_binary(
         "//common",
         "//multibody:visualization_utils",
         "//multibody/kinematic",
+        "//multibody:pinocchio_plant",
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_kinematic_centroidal_mpc",

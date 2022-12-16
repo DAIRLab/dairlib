@@ -22,8 +22,8 @@ namespace dairlib {
 namespace multibody {
 
 using drake::AutoDiffXd;
-using drake::Matrix6X;
 using drake::Matrix3X;
+using drake::Matrix6X;
 using drake::MatrixX;
 using drake::Vector3;
 using drake::VectorX;
@@ -32,6 +32,7 @@ using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::SpatialMomentum;
+using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -42,13 +43,23 @@ using std::endl;
 using std::map;
 using std::string;
 
-template <typename T>
-PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf)
-    : MultibodyPlant<T>(time_step), urdf_(urdf) {}
+//template <typename T>
+//PinocchioPlant<T>::PinocchioPlant(const MultibodyPlant<double>& plant, const std::string& urdf)
+//    : MultibodyPlant<T>(plant), urdf_(urdf) {}
+template <>
+PinocchioPlant<AutoDiffXd>::PinocchioPlant(const MultibodyPlant<double>& plant, const std::string& urdf)
+    : MultibodyPlant<AutoDiffXd>(plant), urdf_(urdf) {}
+
+//template <typename T>
+//PinocchioPlant<T>::PinocchioPlant(double time_step, const std::string& urdf)
+//    : MultibodyPlant<T>(time_step), urdf_(urdf) {}
+template <>
+PinocchioPlant<double>::PinocchioPlant(double time_step, const std::string& urdf)
+    : MultibodyPlant<double>(time_step), urdf_(urdf) {}
 
 template <typename T>
-void PinocchioPlant<T>::Finalize() {
-  MultibodyPlant<T>::Finalize();
+void PinocchioPlant<T>::FinalizePlant() {
+//  MultibodyPlant<T>::Finalize();
 
   is_floating_base_ = HasQuaternion(*this);
   if (is_floating_base_) {
@@ -79,6 +90,9 @@ void PinocchioPlant<T>::Finalize() {
   int nv = this->num_velocities();
   int nu = this->num_actuators();
 
+  n_q_ = nq;
+  n_v_ = nv;
+
   VectorX<T> x = VectorX<T>::Random(nq + nv);
   VectorX<T> u = 0 * VectorX<T>::Random(nu);
   VectorX<T> vdot = 0 * VectorX<T>::Random(nv);
@@ -96,30 +110,30 @@ void PinocchioPlant<T>::Finalize() {
     //    x(nq + 5) = 0.7;
   }
 
-  auto context = CreateContext<T>(*this, x, u);
+//  auto context = CreateContext<T>(*this, x, u);
   // TODO: need to test actual forces
-  drake::multibody::MultibodyForces<T> forces(*this);
-  this->CalcForceElementsContribution(*context, &forces);
+//  drake::multibody::MultibodyForces<T> forces(*this);
+//  this->CalcForceElementsContribution(*context, &forces);
 
-  if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
-    std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
-  }
-  if (!TestMassMatrix(*context, 1e-6)) {
-    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
-  }
-  if (is_floating_base_) {
-    // Pinocchio doesn't take the fixed-base body into account when computing
-    // the COM
-    if (!TestCenterOfMass(*context, 1e-6)) {
-      std::cout << "PinocchioPlant TestCenterOfMass FAILED!!" << std::endl;
-    }
-    if (!TestCenterOfMassVel(*context, 1e-6)) {
-      std::cout << "PinocchioPlant TestCenterOfMassVel FAILED!!" << std::endl;
-    }
-    if (!TestCenterOfMassJ(*context, 1e-6)) {
-      std::cout << "PinocchioPlant TestCenterOfMassJ FAILED!!" << std::endl;
-    }
-  }
+//  if (!TestInverseDynamics(*context, vdot, forces, 1e-6)) {
+//    std::cout << "PinocchioPlant TestInverseDynamics FAILED!!" << std::endl;
+//  }
+//  if (!TestMassMatrix(*context, 1e-6)) {
+//    std::cout << "PinocchioPlant TestMassMatrix FAILED!!" << std::endl;
+//  }
+//  if (is_floating_base_) {
+//    // Pinocchio doesn't take the fixed-base body into account when computing
+//    // the COM
+//    if (!TestCenterOfMass(*context, 1e-6)) {
+//      std::cout << "PinocchioPlant TestCenterOfMass FAILED!!" << std::endl;
+//    }
+//    if (!TestCenterOfMassVel(*context, 1e-6)) {
+//      std::cout << "PinocchioPlant TestCenterOfMassVel FAILED!!" << std::endl;
+//    }
+//    if (!TestCenterOfMassJ(*context, 1e-6)) {
+//      std::cout << "PinocchioPlant TestCenterOfMassJ FAILED!!" << std::endl;
+//    }
+//  }
 }
 
 template <typename T>
@@ -241,17 +255,31 @@ drake::MatrixX<T> PinocchioPlant<T>::GetVelocityMapFromPinocchioToDrake(
   return v_perm_ * ret;
 }
 
+//template <typename T>
+//void PinocchioPlant<T>::RightMultiplicationFromDrakeToPinocchio(
+//    const drake::VectorX<T>& quat, drake::EigenPtr<drake::MatrixX<T>> M) const {
+//  (*M) = (*M) * v_perm_.inverse();
+//  if (is_floating_base_) {
+//    drake::MatrixX<T> rot =
+//        Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
+//            .toRotationMatrix()
+//            .transpose();
+//    M->template leftCols<3>() = M->template leftCols<3>() * rot;
+//    M->template middleCols<3>(3) = M->template middleCols<3>(3) * rot;
+//  }
+//}
+
 template <typename T>
 void PinocchioPlant<T>::RightMultiplicationFromDrakeToPinocchio(
-    const drake::VectorX<T>& quat, drake::EigenPtr<drake::MatrixX<T>> M) const {
+    const drake::VectorX<double>& quat, drake::EigenPtr<drake::MatrixX<double>> M) const {
   (*M) = (*M) * v_perm_.inverse();
   if (is_floating_base_) {
     drake::MatrixX<T> rot =
         Eigen::Quaternion<T>(quat(0), quat(1), quat(2), quat(3))
             .toRotationMatrix()
             .transpose();
-    M->template leftCols<3>() = M->template leftCols<3>() * rot;
-    M->template middleCols<3>(3) = M->template middleCols<3>(3) * rot;
+    M->leftCols<3>() = M->leftCols<3>() * rot;
+    M->middleCols<3>(3) = M->middleCols<3>(3) * rot;
   }
 }
 
@@ -271,8 +299,8 @@ template <>
 void PinocchioPlant<double>::UpdateCentroidalDynamics(
     const Context<double>& context) const {
   drake::VectorX<double> a = drake::VectorX<double>::Zero(n_v_);
-  drake::Matrix6X<double> dhdq(6, n_q_);
-  drake::Matrix6X<double> dhdotdq(6, n_q_);
+  drake::Matrix6X<double> dhdq(6, n_v_);
+  drake::Matrix6X<double> dhdotdq(6, n_v_);
   drake::Matrix6X<double> dhdotdv(6, n_v_);
   drake::Matrix6X<double> dhdotda(6, n_v_);
   pinocchio::computeCentroidalMomentum(
@@ -285,11 +313,13 @@ void PinocchioPlant<double>::UpdateCentroidalDynamics(
 template <>
 void PinocchioPlant<AutoDiffXd>::UpdateCentroidalDynamicsDerivatives(
     const Context<AutoDiffXd>& context) const {
+
   drake::VectorX<double> a = drake::VectorX<double>::Zero(n_v_);
-  drake::Matrix6X<double> dhdq(6, n_q_);
-  drake::Matrix6X<double> dhdotdq(6, n_q_);
+  drake::Matrix6X<double> dhdq(6, n_v_);
+  drake::Matrix6X<double> dhdotdq(6, n_v_);
   drake::Matrix6X<double> dhdotdv(6, n_v_);
   drake::Matrix6X<double> dhdotda(6, n_v_);
+//  std::cout << "here: " << std::endl;
   drake::VectorX<double> q =
       ExtractValue(MapPositionFromDrakeToPinocchio(GetPositions(context)));
   drake::VectorX<double> v = ExtractValue(MapVelocityFromDrakeToPinocchio(
@@ -394,15 +424,19 @@ template <>
 drake::Vector3<AutoDiffXd>
 PinocchioPlant<AutoDiffXd>::CalcCenterOfMassTranslationalVelocityInWorld(
     const Context<AutoDiffXd>& context) const {
-//  pinocchio::centerOfMass(
-//      pinocchio_model_, pinocchio_data_,
-//      ExtractValue(MapPositionFromDrakeToPinocchio(GetPositions(context))),
-//      ExtractValue(MapVelocityFromDrakeToPinocchio(GetPositions(context).head<4>(),
-//                                      GetVelocities(context))));
-//  return pinocchio_data_.vcom[0];
-  throw std::domain_error(
-      "CalcCenterOfMassTranslationalVelocityInWorld not implemented with "
-      "AutoDiffXd");
+  pinocchio::centerOfMass(
+      pinocchio_model_, pinocchio_data_,
+      ExtractValue(MapPositionFromDrakeToPinocchio(GetPositions(context))),
+      ExtractValue(MapVelocityFromDrakeToPinocchio(
+          GetPositions(context).head<4>(), GetVelocities(context))));
+  return drake::math::InitializeAutoDiff(
+      pinocchio_data_.vcom[0], pinocchio::jacobianCenterOfMass(
+                                   pinocchio_model_, pinocchio_data_,
+                                   ExtractValue(MapPositionFromDrakeToPinocchio(
+                                       GetPositions(context)))));
+  //  throw std::domain_error(
+  //      "CalcCenterOfMassTranslationalVelocityInWorld not implemented with "
+  //      "AutoDiffXd");
 }
 
 template <>
@@ -440,11 +474,16 @@ PinocchioPlant<double>::CalcSpatialMomentumInWorldAboutPoint(
 template <>
 SpatialMomentum<AutoDiffXd>
 PinocchioPlant<AutoDiffXd>::CalcSpatialMomentumInWorldAboutPoint(
-    const Context<AutoDiffXd>& context, const Vector3<AutoDiffXd>& p_WoP_W) const {
+    const Context<AutoDiffXd>& context,
+    const Vector3<AutoDiffXd>& p_WoP_W) const {
   UpdateCentroidalDynamicsDerivatives(context);
   VectorXd hg = pinocchio_data_.hg.toVector();
   Matrix6X<double> dhdq = pinocchio_data_.dHdq;
   Matrix6X<double> dhdv = pinocchio_data_.Ag;
+
+  RightMultiplicationFromDrakeToPinocchio(ExtractValue(GetPositions(context).head<4>()), &dhdq);
+  RightMultiplicationFromDrakeToPinocchio(ExtractValue(GetPositions(context).head<4>()), &dhdv);
+
   MatrixXd dhdx = MatrixXd(6, n_q_ + n_v_);
   dhdx << dhdq, dhdv;
   Vector3<AutoDiffXd> h_linear =
@@ -492,10 +531,10 @@ void PinocchioPlant<AutoDiffXd>::CalcPointsPositions(
   Matrix6X<double> J = MatrixXd::Zero(6, n_v_);
   pinocchio::computeFrameJacobian(
       pinocchio_model_, pinocchio_data_,
-      ExtractValue(MapPositionFromDrakeToPinocchio(GetPositions(context))), frame_id, rf, J);
+      ExtractValue(MapPositionFromDrakeToPinocchio(GetPositions(context))),
+      frame_id, rf, J);
   Matrix3X<double> J_translation = J.topRows(3);
   *p_AQi = drake::math::InitializeAutoDiff(position, J_translation);
-
 }
 
 /// Comparisons against MultibodyPlant

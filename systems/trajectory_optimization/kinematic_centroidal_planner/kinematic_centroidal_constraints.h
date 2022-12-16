@@ -101,6 +101,7 @@ class CenterofMassPositionConstraint
   const drake::multibody::MultibodyPlant<T>& plant_;
   drake::systems::Context<T>* context_;
   int n_q_;
+  int n_v_;
 };
 
 /*!

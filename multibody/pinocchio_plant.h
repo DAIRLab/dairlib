@@ -33,11 +33,11 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
   drake::MatrixX<T> GetVelocityMapFromDrakeToPinocchio(
       const drake::VectorX<T>& quat) const;
-  drake::MatrixX<T> GetVelocityMapFromPinocchioToDrake(
-      const drake::VectorX<T>& quat) const;
+  drake::MatrixX<double> GetVelocityMapFromPinocchioToDrake(
+      const drake::VectorX<double>& quat) const;
 
-  void SetPositionsAndVelocities(const drake::VectorX<T>& q,
-                                 const drake::VectorX<T>& v);
+//  void SetPositionsAndVelocities(const drake::VectorX<T>& q,
+//                                 const drake::VectorX<T>& v);
 
   /**
    * This function updates the pinocchio data struct with forward kinematics.
@@ -74,8 +74,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
    */
   void UpdateCentroidalDynamicsDerivatives(
       const drake::systems::Context<drake::AutoDiffXd>& context) const;
-
-
 
   void RightMultiplicationFromDrakeToPinocchio(
       const drake::VectorX<double>& quat,
@@ -160,6 +158,8 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   // permutation matrices maps from Pinocchio to MBP
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> q_perm_;
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> v_perm_;
+  // Maps from pinocchio v to drake q
+  Eigen::MatrixXd vq_perm_;
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> u_perm_;
 };
 }  // namespace multibody

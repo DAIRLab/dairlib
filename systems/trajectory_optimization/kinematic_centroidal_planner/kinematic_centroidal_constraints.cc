@@ -8,8 +8,8 @@
 
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
-using drake::math::ExtractValue;
 using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
 using drake::multibody::SpatialMomentum;
 using Eigen::VectorXd;
 
@@ -142,18 +142,41 @@ CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(
           "center_of_mass_position[" + std::to_string(knot_index) + "]"),
       plant_(plant),
       context_(context),
-      n_q_(plant.num_positions()) {}
+      n_q_(plant.num_positions()),
+      n_v_(plant.num_velocities()) {}
 
 /// The format of the input to the eval() function is in the order
 ///   - rCOM, location of the center of mass
 ///   - x0, state
-template <typename T>
-void CenterofMassPositionConstraint<T>::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
+template <>
+void CenterofMassPositionConstraint<double>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<double>>& x,
+    drake::VectorX<double>* y) const {
   const auto& rCom = x.segment(0, 3);
   const auto& x0 = x.segment(3, n_q_);
-  dairlib::multibody::SetPositionsIfNew<T>(plant_, x0, context_);
+  dairlib::multibody::SetPositionsIfNew<double>(plant_, x0, context_);
   *y = rCom - plant_.CalcCenterOfMassPositionInWorld(*context_);
+}
+
+template <>
+void CenterofMassPositionConstraint<drake::AutoDiffXd>::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>>& x,
+    drake::VectorX<drake::AutoDiffXd>* y) const {
+  const auto& rCom = x.segment(0, 3);
+  const auto& x0 = x.segment(3, n_q_);
+  dairlib::multibody::SetPositionsIfNew<drake::AutoDiffXd>(plant_, x0,
+                                                           context_);
+
+  drake::Vector3<AutoDiffXd> com_pos =
+      plant_.CalcCenterOfMassPositionInWorld(*context_);
+  Eigen::MatrixXd gradient = Eigen::MatrixXd::Zero(3, num_vars());
+
+  gradient.leftCols(3) = Eigen::MatrixXd::Identity(3, 3);
+  gradient.rightCols(n_q_ + n_v_) = -1 * ExtractGradient(com_pos);
+
+  Eigen::VectorXd value =
+      drake::math::ExtractValue(rCom) - drake::math::ExtractValue(com_pos);
+  *y = drake::math::InitializeAutoDiff(value, gradient);
 }
 
 template <typename T>
@@ -182,7 +205,6 @@ void CentroidalMomentumConstraint<double>::EvaluateConstraint(
   const auto& x0 = x.head(n_x_);
   const auto& com = x.segment(n_x_, 3);
   const auto& h_WC = x.segment(n_x_ + 3, 6);
-//  std::cout << "Calling double version of centroidal momentum constraint" << std::endl;
 
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, x0,
                                                              context_);
@@ -198,7 +220,8 @@ void CentroidalMomentumConstraint<AutoDiffXd>::EvaluateConstraint(
   const auto& x0 = x.head(n_x_);
   const auto& com = x.segment(n_x_, 3);
   const auto& h_WC = x.segment(n_x_ + 3, 6);
-//  std::cout << "Calling auto diff version of centroidal momentum constraint" << std::endl;
+  //  std::cout << "Calling auto diff version of centroidal momentum constraint"
+  //  << std::endl;
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_, x0,
                                                                  context_);
 
@@ -251,15 +274,14 @@ void CenterofMassVelocityConstraint<AutoDiffXd>::EvaluateConstraint(
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_, x0,
                                                                  context_);
 
-  drake::Vector3<AutoDiffXd> com_vel = plant_.CalcCenterOfMassTranslationalVelocityInWorld(*context_);
+  drake::Vector3<AutoDiffXd> com_vel =
+      plant_.CalcCenterOfMassTranslationalVelocityInWorld(*context_);
   Eigen::MatrixXd gradient = Eigen::MatrixXd::Zero(3, num_vars());
-  gradient.block(0, 0, 3, 3) =
-      Eigen::MatrixXd::Identity(3, 3);
+  gradient.block(0, 0, 3, 3) = Eigen::MatrixXd::Identity(3, 3);
   gradient.block(0, 3, 3, 3 + n_x_) = ExtractGradient(com_vel);
 
   Eigen::VectorXd value =
-      drake::math::ExtractValue(com_vel) -
-          drake::math::ExtractValue(drCom);
+      drake::math::ExtractValue(com_vel) - drake::math::ExtractValue(drCom);
 
   *y = drCom - plant_.CalcCenterOfMassTranslationalVelocityInWorld(*context_);
 }

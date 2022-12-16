@@ -98,6 +98,20 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "pinocchio_kinematic_test",
+    size = "small",
+    srcs = ["test/pinocchio_kinematic_test.cc"],
+    deps = [
+        ":utils",
+        ":pinocchio_plant",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)
+
 cc_library(
     name = "ball_urdf",
     data = glob(["multibody/ball.urdf"]),

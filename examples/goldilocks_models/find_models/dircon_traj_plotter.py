@@ -50,6 +50,13 @@ def main():
   # filepath2 = "%s1_%d_dircon_trajectory" % (base, sample_idx)
   # filepath3 = "%s%d_%d_dircon_trajectory" % (base, optimal_rom_iter, sample_idx)
 
+  # Manual overwrite names
+  # filepath = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/%d_%d_dircon_trajectory" % (0, 70)
+
+  ###
+  filename = filepath.split("/")[-1]
+
+  # Read traj from file
   dircon_traj = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath)
   if filepath2 != "":
     dircon_traj2 = pydairlib.lcm.lcm_trajectory.DirconTrajectory(filepath2)
@@ -86,12 +93,15 @@ def main():
   context = plant.CreateDefaultContext()
   world = plant.world_frame()
   global l_toe_frame, r_toe_frame
-  global front_contact_disp, rear_contact_disp
+  global front_contact_disp, rear_contact_disp, mid_contact_disp
   global l_loop_closure, r_loop_closure
+  global foot_length
   l_toe_frame = plant.GetBodyByName("toe_left").body_frame()
   r_toe_frame = plant.GetBodyByName("toe_right").body_frame()
   front_contact_disp = np.array((-0.0457, 0.112, 0))
   rear_contact_disp = np.array((0.088, 0, 0))
+  mid_contact_disp = (front_contact_disp + rear_contact_disp) / 2
+  foot_length = np.linalg.norm(front_contact_disp - rear_contact_disp)
   l_loop_closure = LeftLoopClosureEvaluator(plant)
   r_loop_closure = RightLoopClosureEvaluator(plant)
 
@@ -152,6 +162,11 @@ def main():
   # import pdb; pdb.set_trace()
 
   """
+  Plot GRF in CoM frame
+  """
+  PlotGroundForceInCoMFrame(dircon_traj)
+
+  """
   Compare multiple samples
   """
   if filepath2 != "":
@@ -179,6 +194,49 @@ def main():
 
   if not savefig:
     plt.show()
+
+
+def PlotGroundForceInCoMFrame(dircon_traj):
+  # Get COM at knot points
+  com_at_knot, comdot_at_knot, comddot_at_knot = GetCoMAtKnotPoints(dircon_traj)
+
+  # Get left foot position at knot points
+  foot_pos = GetLeftFootPositionAtKnotPoints(dircon_traj, mid_contact_disp)
+
+  # Get data at knot points
+  t_knot = dircon_traj.GetStateBreaks(0)
+  force_knot = dircon_traj.GetForceSamples(0)
+
+  cop_rt_com = np.zeros(t_knot.size)
+  net_force_at_knot = np.zeros((3, t_knot.size))
+  for i in range(t_knot.size):
+    front_contact_force = force_knot[:,i][0:3]
+    rear_contact_force = force_knot[:,i][3:6]
+
+    net_force = front_contact_force + rear_contact_force
+    cop = (foot_length/2 * front_contact_force[2] - foot_length/2 * rear_contact_force[2]) / net_force[2]
+
+    net_force_at_knot[:, i] = net_force
+    cop_rt_com[i] = (cop + foot_pos[0,i]) - com_at_knot[0,i]
+
+  # Plot
+  figname = filename + " -- GRF in CoM frame "
+  plt.figure(figname, figsize=figsize)
+  plt.title("CRF in CoM frame -- iter %s" % filename)
+  for i in range(t_knot.size):
+    plt.arrow(x=cop_rt_com[i], y=0, dx=net_force_at_knot[0, i]/300, dy=net_force_at_knot[2, i]/300, width=.002)
+  plt.plot(np.zeros(t_knot.size), com_at_knot[2,:], 'b.')
+  # plt.plot([], [0, 0], 'k', lw=4)
+  plt.xlabel('x (m)')
+  plt.ylabel('z (m)')
+  plt.xlim([min(cop_rt_com)-0.05, max(cop_rt_com)+0.05])
+  plt.ylim([-0.2,1.3])
+  #plt.legend(state_datatypes[x_idx_start:x_idx_end])
+  if savefig:
+    plt.savefig(save_path + figname + ".png")
+
+
+
 
 
 def PrintAllDecisionVar(dircon_traj):
@@ -350,15 +408,22 @@ def PlotForce(dircon_traj):
   if savefig:
     plt.savefig(save_path + figname + ".png")
 
+def GetLeftFootPositionAtKnotPoints(dircon_traj, contact_disp_in_toe_frame):
+  t_knot = dircon_traj.GetStateBreaks(0)
+  x_knot = dircon_traj.GetStateSamples(0)
 
+  foot_pos = np.zeros((3, t_knot.size))
+  for i in range(t_knot.size):
+    plant.SetPositionsAndVelocities(context, x_knot[:, i])
+    foot_pos[:, [i]] = plant.CalcPointsPositions(context, l_toe_frame,
+      contact_disp_in_toe_frame, world)
+  return foot_pos
 
-def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
-  # Get data at knots
+def GetCoMAtKnotPoints(dircon_traj):
   t_knot = dircon_traj.GetStateBreaks(0)
   x_knot = dircon_traj.GetStateSamples(0)
   xdot_knot = dircon_traj.GetStateDerivativeSamples(0)
 
-  # Compute for knot points
   com_at_knot = np.zeros((3, t_knot.shape[0]))
   comdot_at_knot = np.zeros((3, t_knot.shape[0]))
   comddot_at_knot = np.zeros((3, t_knot.shape[0]))
@@ -372,6 +437,17 @@ def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
     JdotV_i = plant.CalcBiasCenterOfMassTranslationalAcceleration(context,
       JacobianWrtVariable.kV, world, world)
     comddot_at_knot[:, i] = J @ xdot_knot[nq:, i] + JdotV_i
+  return com_at_knot, comdot_at_knot, comddot_at_knot
+
+
+def PlotCenterOfMass(dircon_traj, visualize_only_collocation_point=False):
+  # Get data at knots
+  t_knot = dircon_traj.GetStateBreaks(0)
+  x_knot = dircon_traj.GetStateSamples(0)
+  xdot_knot = dircon_traj.GetStateDerivativeSamples(0)
+
+  # Compute for knot points
+  com_at_knot, comdot_at_knot, comddot_at_knot = GetCoMAtKnotPoints(dircon_traj)
 
   # # Plot com at knot points only
   # plt.figure("com traj at knot pts")

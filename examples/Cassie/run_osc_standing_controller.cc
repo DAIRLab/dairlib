@@ -140,7 +140,7 @@ int DoMain(int argc, char* argv[]) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm_local;
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   auto gains = drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
 
   MatrixXd K_p_com = Eigen::Map<

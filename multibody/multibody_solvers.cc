@@ -151,7 +151,8 @@ template <typename T>
 void MultibodyProgram<T>::AddJointLimitConstraints(VectorXDecisionVariable q) {
   for (int i = 0; i < plant_.num_joints(); i++) {
     const auto& joint = plant_.get_joint(drake::multibody::JointIndex(i));
-    if (joint.num_positions() > 0) {
+    // only consider joint limits on revolute joints
+    if (joint.num_positions() == 1) {
       auto q_joint = q.segment(joint.position_start(), joint.num_positions());
       AddConstraint(q_joint <= joint.position_upper_limits());
       AddConstraint(q_joint >= joint.position_lower_limits()); 

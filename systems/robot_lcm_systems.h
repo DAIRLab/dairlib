@@ -29,15 +29,24 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   explicit RobotOutputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant);
 
+  /// Convenience function to initialize an lcmt_robot_output subscriber with
+  /// positions and velocities which are all zero except for the quaternion
+  /// positions, which are all 1, 0, 0, 0
+  /// @param context The context of a
+  ///                drake::LcmSubScriberSystem<lcmt_robot_output>
+  void InitializeSubscriberPositions(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>& context) const;
+
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
                   OutputVector<double>* output) const;
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> effortIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> effort_index_map_;
 };
 
 /// Converts a OutputVector object to LCM type lcmt_robot_output
@@ -70,9 +79,9 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   std::vector<std::string> ordered_position_names_;
   std::vector<std::string> ordered_velocity_names_;
   std::vector<std::string> ordered_effort_names_;
-  std::map<std::string, int> positionIndexMap_;
-  std::map<std::string, int> velocityIndexMap_;
-  std::map<std::string, int> effortIndexMap_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  std::map<std::string, int> effort_index_map_;
   int state_input_port_ = -1;
   int effort_input_port_ = -1;
   int imu_input_port_ = -1;
@@ -93,7 +102,7 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
                     TimestampedVector<double>* output) const;
 
   int num_actuators_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> actuator_index_map_;
 };
 
 /// Receives the output of a controller, and outputs it as an LCM
@@ -110,13 +119,13 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 
   int num_actuators_;
   std::vector<std::string> ordered_actuator_names_;
-  std::map<std::string, int> actuatorIndexMap_;
+  std::map<std::string, int> actuator_index_map_;
 };
 
 
 ///
 /// Convenience method to add and connect leaf systems for controlling
-/// a MultibodyPlant via LCM. Makes two prmary connections:
+/// a MultibodyPlant via LCM. Makes two primary connections:
 ///  (1) connects the state output from the plant to a RobotOutputSender and
 ///      LCM publisher, publishing lcmt_robot_output
 ///  (2) connects the actuation input port of the plant to a RobotInputReceiver
@@ -145,16 +154,5 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     double publish_rate,
     bool publish_efforts = true,
     double actuator_delay = 0);
-
-/// Convenience function to initialize an lcmt_robot_output subscriber with
-/// positions and velocities which are all zero except for the quaternion
-/// positions, which are all 1, 0, 0, 0
-/// @param context The context of a
-///                drake::LcmSubScriberSystem<lcmt_robot_output>
-/// @param plant The plant for which the lcmt_robot_output messages are defined
-void InitializeRobotOutputSubscriberQuaternionPositions(
-    drake::systems::Context<double>& context,
-    const drake::multibody::MultibodyPlant<double>& plant);
-
 }  // namespace systems
 }  // namespace dairlib

@@ -81,6 +81,9 @@ DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
 
 DEFINE_bool(spring_model, true, "");
 
+DEFINE_bool(plan_offboard, false,
+            "Set to true to run planner on cassie-laptop");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -111,6 +114,7 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
+  drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
@@ -165,14 +169,23 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), 1.5, 0.8, -0.4);
 
   auto footstep_sender = builder.AddSystem<FootstepSender>();
-  auto footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
+
+  std::unique_ptr<LcmPublisherSystem> footstep_pub_ptr;
+  std::unique_ptr<LcmPublisherSystem> fsm_pub_ptr;
+  std::unique_ptr<LcmPublisherSystem> com_traj_pub_ptr;
+  if (FLAGS_plan_offboard) {
+    footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_network);
+    fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_network);
+    com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_network);
+  } else {
+    footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
+    fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_local);
+    com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
+  }
+
   auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
-
   auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
-  auto fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_local);
   auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
-
-  auto com_traj_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
   auto com_traj_pub = builder.AddSystem(std::move(com_traj_pub_ptr));
 
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(

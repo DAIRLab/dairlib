@@ -568,11 +568,11 @@ int DoMain(int argc, char* argv[]) {
 
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return com_traj_sub->GetInternalMessageCount() > 1; });
-  com_traj_sub->Publish(loop.get_diagram()->
+  com_traj_sub->ForcedPublish(loop.get_diagram()->
       GetMutableSubsystemContext(*com_traj_sub, &loop_context));
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return footstep_sub->GetInternalMessageCount() > 1; });
-  footstep_sub->Publish(loop.get_diagram()->
+  footstep_sub->ForcedPublish(loop.get_diagram()->
       GetMutableSubsystemContext(*footstep_sub, &loop_context));
 
   loop.Simulate();

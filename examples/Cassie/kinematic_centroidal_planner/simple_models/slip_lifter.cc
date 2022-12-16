@@ -102,7 +102,7 @@ drake::VectorX<double> SlipLifter::LiftGeneralizedPosition(
 
   q_sol_normd.segment(4, 3) = q_sol_normd.segment(4, 3) + com_position;
   // Set initial guess for next time
-  //  ik_.get_mutable_prog()->SetInitialGuess(ik_.q(), q_sol_normd);
+  ik_.get_mutable_prog()->SetInitialGuess(ik_.q(), q_sol_normd);
   // Remove added constraints
   ik_.get_mutable_prog()->RemoveConstraint(com_constraint);
   for (const auto& constraint : foot_constraints) {
@@ -212,17 +212,14 @@ drake::VectorX<double> SlipLifter::LiftGrf(
   for (int simple_index = 0; simple_index < slip_contact_points_.size();
        simple_index++) {
     // Calculate the slip grf
-    double r = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos).norm();
-    double dr = (slip_feet_pos.segment(simple_index * 3, 3) - com_pos)
+    double r = (com_pos - slip_feet_pos.segment(simple_index * 3, 3)).norm();
+    double dr = (com_pos - slip_feet_pos.segment(simple_index * 3, 3))
                     .normalized()
                     .dot(com_vel);
     double slip_grf_mag =
         slip_contact_mask_[simple_index]
             ? SlipGrf<double>(k_, r0_, b_, r, dr, slip_force[simple_index])
             : 0;
-    if (slip_grf_mag < 0) {
-      slip_grf_mag = 0;
-    }
     // Find the average location for all of the complex contact points that make
     // up the SLIP foot
     drake::Vector3<double> average_pos = drake::VectorX<double>::Zero(3);

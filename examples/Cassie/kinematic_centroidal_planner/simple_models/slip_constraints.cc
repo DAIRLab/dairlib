@@ -82,47 +82,6 @@ void SlipGrfReductionConstrain::EvaluateConstraint(
        slip_contact_force;
 }
 
-SlipLiftingConstraint::SlipLiftingConstraint(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    std::shared_ptr<SlipLifter> lifting_function, int n_slip_feet,
-    int n_complex_feet, int knot_index)
-    : dairlib::solvers::NonlinearConstraint<double>(
-          6 + 3 + 3 * 3 * n_complex_feet + plant.num_positions() +
-              plant.num_velocities(),
-          3 + 3 + 3 * 2 * n_slip_feet + 6 + 3 + 3 * 3 * n_complex_feet +
-              plant.num_positions() + n_slip_feet + plant.num_velocities(),
-          Eigen::VectorXd::Zero(6 + 3 + 3 * 3 * n_complex_feet +
-                                plant.num_positions() + plant.num_velocities()),
-          Eigen::VectorXd::Zero(6 + 3 + 3 * 3 * n_complex_feet +
-                                plant.num_positions() + plant.num_velocities()),
-          "SlipLiftingConstraint[" + std::to_string(knot_index) + "]"),
-      lifting_function_(std::move(lifting_function)),
-      slip_dim_(2 + 2 + 2 * 2 * n_slip_feet + n_slip_feet),
-      complex_dim_(6 + 3 + 3 * 3 * n_complex_feet + plant.num_positions() +
-                   plant.num_velocities()) {}
-
-/// Input is of the form and should match the lifting function input and output:
-///     slip_com
-///     slip_velocity
-///     slip_contact_pos
-///     slip_contact_vel
-///     slip_force
-///     complex_com
-///     complex_ang_momentum
-///     complex_lin_momentum
-///     complex_contact_pos
-///     complex_contact_vel
-///     complex_contact_force
-///     complex_gen_pos
-///     complex_gen_vel
-void SlipLiftingConstraint::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<double>>& x,
-    drake::VectorX<double>* y) const {
-  const auto& slip_state = x.head(slip_dim_);
-  const auto& complex_state = x.tail(complex_dim_);
-  *y = lifting_function_->Lift(slip_state) - complex_state;
-}
-
 template <typename T>
 SlipDynamicsConstraint<T>::SlipDynamicsConstraint(
     double r0, double k, double b, T m, int n_feet,
@@ -197,58 +156,6 @@ drake::VectorX<T> SlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
   drake::Vector6<T> derivative;
   derivative << com_vel, ddcom;
   return derivative;
-}
-
-QuadraticLiftedCost::QuadraticLiftedCost(
-    std::shared_ptr<SlipLifter> lifting_function,
-    QuadraticLiftedCost::cost_element com_cost,
-    QuadraticLiftedCost::cost_element momentum_cost,
-    QuadraticLiftedCost::cost_element contact_cost,
-    QuadraticLiftedCost::cost_element grf_cost,
-    QuadraticLiftedCost::cost_element q_cost,
-    QuadraticLiftedCost::cost_element v_cost, double terminal_gain,
-    int n_slip_feet, int knot_point)
-    : dairlib::solvers::NonlinearCost<double>(
-          3 + 3 + 3 * 2 * n_slip_feet + n_slip_feet,
-          "LiftedCost[" + std::to_string(knot_point) + "]"),
-      lifting_function_(std::move(lifting_function)),
-      com_cost_(std::move(com_cost)),
-      momentum_cost_(std::move(momentum_cost)),
-      contact_cost_(std::move(contact_cost)),
-      grf_cost_(std::move(grf_cost)),
-      q_cost_(std::move(q_cost)),
-      v_cost_(std::move(v_cost)),
-      terminal_gain_(terminal_gain) {}
-
-void QuadraticLiftedCost::EvaluateCost(
-    const Eigen::Ref<const drake::VectorX<double>>& x,
-    drake::VectorX<double>* y) const {
-  const auto lifted_state = lifting_function_->Lift(x);
-
-  const auto& com = lifted_state.head(3);
-  const auto& momentum = lifted_state.segment(3, 6);
-  const auto& contact_info =
-      lifted_state.segment(3 + 6, contact_cost_.ref.size());
-  const auto& grf = lifted_state.segment(3 + 6 + contact_cost_.ref.size(),
-                                         grf_cost_.ref.size());
-  const auto& q = lifted_state.segment(
-      3 + 6 + contact_cost_.ref.size() + grf_cost_.ref.size(),
-      q_cost_.ref.size());
-  const auto& v =
-      lifted_state.segment(3 + 6 + contact_cost_.ref.size() +
-                               grf_cost_.ref.size() + q_cost_.ref.size(),
-                           v_cost_.ref.size());
-
-  *y = CalcCost(com_cost_, com) + CalcCost(momentum_cost_, momentum) +
-       CalcCost(contact_cost_, contact_info) + CalcCost(grf_cost_, grf) +
-       CalcCost(q_cost_, q) + CalcCost(v_cost_, v);
-}
-
-Eigen::Matrix<double, -1, 1, 0> QuadraticLiftedCost::CalcCost(
-    const QuadraticLiftedCost::cost_element& cost,
-    const Eigen::Ref<const drake::VectorX<double>>& x) const {
-  auto error = x - cost.ref;
-  return terminal_gain_ * error.transpose() * cost.Q * error;
 }
 
 DRAKE_DEFINE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_NONSYMBOLIC_SCALARS(

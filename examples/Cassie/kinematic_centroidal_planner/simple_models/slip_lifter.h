@@ -12,8 +12,33 @@
 #include "drake/solvers/constraint.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
+/*!
+ * @brief This class lifts the slip state and control to an equivalent kinematic
+ * centroidal state and control. It assumes that there is zero orientation and
+ * angular momentum
+ *
+ * @note Currently this class assumes the slip contact points or [ltoe, rtoe]
+ * and the complex contact points are [ltoe, lheel, rtoe, rheel]
+ */
 class SlipLifter {
  public:
+  /*!
+   * @brief Constructor
+   * @param plant
+   * @param context
+   * @param slip_contact_points vector of world point evaluators for slip
+   * contact points
+   * @param complex_contact_points vector of world point evaluators for complex
+   * contact points
+   * @param simple_foot_index_to_complex_foot_index map from slip contact point
+   * index to vector of complex contact points on the same feet
+   * @param nominal_stand
+   * @param k
+   * @param b
+   * @param r0
+   * @param contact_mask vector of booleans describing which slip contact points
+   * are in stance
+   */
   SlipLifter(const drake::multibody::MultibodyPlant<double>& plant,
              drake::systems::Context<double>* context,
              const std::vector<dairlib::multibody::WorldPointEvaluator<double>>&
@@ -25,6 +50,21 @@ class SlipLifter {
              const drake::VectorX<double>& nominal_stand, double k, double b,
              double r0, const std::vector<bool>& contact_mask);
 
+  /// Input is of the form:
+  ///     slip_com
+  ///     slip_velocity
+  ///     slip_contact_pos
+  ///     slip_contact_vel
+  ///     slip_force
+  /// Output is of the form:
+  ///     complex_com
+  ///     complex_ang_momentum
+  ///     complex_lin_momentum
+  ///     complex_contact_pos
+  ///     complex_contact_vel
+  ///     complex_contact_force
+  ///     complex_gen_pos
+  ///     complex_gen_vel
   void Lift(const Eigen::Ref<const drake::VectorX<double>>& slip_state,
             drake::VectorX<double>* complex_state) const;
 
@@ -70,6 +110,17 @@ class SlipLifter {
       const drake::VectorX<double>& generalized_pos,
       const drake::VectorX<double>& generalized_vel) const;
 
+  /*!
+   * @brief Lifts the grf by evenly distributing the slip grf into the
+   * equivalent toe and heel such that the toe and heel grf are equal and
+   * parallel
+   * @param com_pos
+   * @param com_vel
+   * @param slip_feet_pos
+   * @param slip_force
+   * @param complex_contact_point_pos
+   * @return
+   */
   drake::VectorX<double> LiftGrf(
       const drake::VectorX<double>& com_pos,
       const drake::VectorX<double>& com_vel,
@@ -84,7 +135,6 @@ class SlipLifter {
   const double k_;
   const double b_;
   const double r0_;
-  const std::vector<double> stance_widths_;
   const std::vector<dairlib::multibody::WorldPointEvaluator<double>>
       slip_contact_points_;
   const std::vector<dairlib::multibody::WorldPointEvaluator<double>>

@@ -71,28 +71,22 @@ int main(int argc, char* argv[]) {
       plant, right_heel_pair.first, right_heel_pair.second,
       Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
 
-  //  auto left_slip_eval = dairlib::multibody::WorldPointEvaluator<double>(
-  //      plant, {0,0,0}, left_heel_pair.second,
-  //      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-  //
-  //  auto right_slip_eval = dairlib::multibody::WorldPointEvaluator<double>(
-  //      plant, {0,0,0}, right_heel_pair.second,
-  //      Eigen::Matrix3d::Identity(), Eigen::Vector3d::Zero(), active_inds);
-
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant, reference_state, context.get());
-  //  std::cout<<left_slip_eval.EvalFull(*context)<<std::endl;
 
   std::vector<bool> contact_mask = {true, true};
+  double r0 = 0.8;
+  double k = 2000;
+  double b = 20;
   SlipLifter lifter(
       plant, context.get(), {left_toe_eval, right_toe_eval},
       {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
       {{0, {0, 1}}, {1, {2, 3}}}, reference_state.head(plant.num_positions()),
-      2000, 0, 0.5, contact_mask);
+      k, b, r0, contact_mask);
   SlipReducer reducer(
       plant, context.get(), {left_toe_eval, right_toe_eval},
       {left_toe_eval, left_heel_eval, right_toe_eval, right_heel_eval},
-      {{0, {0, 1}}, {1, {2, 3}}}, 2000, 0, 0.5, contact_mask);
+      {{0, {0, 1}}, {1, {2, 3}}}, k, b, r0, contact_mask);
 
   Eigen::Vector3d slip_com = {0.2, 0, 0.7};
   Eigen::Vector3d slip_vel = {0.1, 0, 0.1};
@@ -127,19 +121,16 @@ int main(int argc, char* argv[]) {
   constraint.DoEval(input, &error);
   std::cout << "Max Error in inverse test: " << error.cwiseAbs().maxCoeff()
             << std::endl;
-  //  std::cout<<error<<std::endl;
 
   auto grf_constraint = SlipGrfReductionConstrain(
       plant, std::make_shared<SlipReducer>(reducer), 2, 4, 0);
   drake::VectorX<double> grf_error(2);
   drake::VectorX<double> grf_input(3 + 3 * 2 + 3 * 4 + 2 + 3);
-  //  grf_input << slip_com, slip_vel, slip_feet, complex_state.segment(3 + 6 +
-  //  12 + 12,12),slip_force;
-
+  grf_input << slip_com, slip_vel, slip_feet,
+      complex_state.segment(3 + 6 + 12 + 12, 12), slip_force;
   grf_constraint.DoEval(grf_input, &grf_error);
   std::cout << "Max Error in grf inverse test: "
             << grf_error.cwiseAbs().maxCoeff() << std::endl;
-
   if (true) {
     // Build temporary diagram for visualization
     drake::systems::DiagramBuilder<double> builder_ik;

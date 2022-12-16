@@ -46,22 +46,6 @@ class SlipGrfReductionConstrain
   const int n_complex_feet_;
 };
 
-class SlipLiftingConstraint
-    : public dairlib::solvers::NonlinearConstraint<double> {
- public:
-  SlipLiftingConstraint(const drake::multibody::MultibodyPlant<double>& plant,
-                        std::shared_ptr<SlipLifter> lifting_function,
-                        int n_slip_feet, int n_complex_feet, int knot_index);
-
- private:
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
-                          drake::VectorX<double>* y) const override;
-
-  std::shared_ptr<SlipLifter> lifting_function_;
-  const int slip_dim_;
-  const int complex_dim_;
-};
-
 template <typename T>
 class SlipDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
  public:
@@ -87,43 +71,4 @@ class SlipDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
   const std::vector<bool> contact_mask0_;
   const std::vector<bool> contact_mask1_;
   const double dt_;
-};
-
-///     complex_com
-///     complex_ang_momentum
-///     complex_lin_momentum
-///     complex_contact_pos
-///     complex_contact_vel
-///     complex_contact_force
-///     complex_gen_pos
-///     complex_gen_vel
-class QuadraticLiftedCost : public dairlib::solvers::NonlinearCost<double> {
-  struct cost_element {
-    const Eigen::MatrixXd& Q;
-    Eigen::MatrixXd ref;
-  };
-
- public:
-  QuadraticLiftedCost(std::shared_ptr<SlipLifter> lifting_function,
-                      cost_element com_cost, cost_element momentum_cost,
-                      cost_element contact_cost, cost_element grf_cost,
-                      cost_element q_cost, cost_element v_cost,
-                      double terminal_gain, int n_slip_feet, int knot_point);
-
- private:
-  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
-                    drake::VectorX<double>* y) const override;
-
-  Eigen::Matrix<double, -1, 1, 0> CalcCost(
-      const cost_element& cost,
-      const Eigen::Ref<const drake::VectorX<double>>& x) const;
-
-  std::shared_ptr<SlipLifter> lifting_function_;
-  const cost_element com_cost_;
-  const cost_element momentum_cost_;
-  const cost_element contact_cost_;
-  const cost_element grf_cost_;
-  const cost_element q_cost_;
-  const cost_element v_cost_;
-  const double terminal_gain_;
 };

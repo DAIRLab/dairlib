@@ -393,18 +393,40 @@ class KinematicCentroidalSolver {
    */
   double GetKnotpointGain(int knot_point) const;
 
+  /*!
+   * @brief Add relevant slip constraints to knot point
+   * @param knot_point
+   */
   virtual void AddSlipConstraints(int knot_point) { DRAKE_DEMAND(false); };
 
-  virtual void AddSlipCost(int knot_point, double terminal_gain) {
+  /*!
+   * @brief add slip cost to knot point
+   * @param knot_point
+   * @param gain
+   */
+  virtual void AddSlipCost(int knot_point, double gain) {
     DRAKE_DEMAND(false);
   };
 
+  /*!
+   * @brief Add constraint to knot point that slip state is equivalent to complex state
+   * @param knot_point
+   */
   virtual void AddSlipEqualityConstraint(int knot_point) {
     DRAKE_DEMAND(false);
   };
 
+  /*!
+   * @brief Add constraint to knot point
+   * @param knot_point
+   */
   virtual void AddSlipDynamics(int knot_point) { DRAKE_DEMAND(false); };
 
+  /*!
+   * @brief Lift the slip solution to generalized state at knot point
+   * @param knot_point
+   * @return full robot generalized state
+   */
   virtual drake::VectorX<double> LiftSlipSolution(int knot_point) {
     DRAKE_DEMAND(false);
   };
@@ -414,6 +436,12 @@ class KinematicCentroidalSolver {
    */
   void AddCosts();
 
+  /*!
+   * @brief Add cost for kinematic centroidal at knot point
+   * @param knot_point
+   * @param t
+   * @param knot_point_gain
+   */
   void AddKinematicCentroidalCosts(int knot_point, double t,
                                    double knot_point_gain);
 

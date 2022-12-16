@@ -83,17 +83,34 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
   drake::solvers::VectorXDecisionVariable slip_contact_vel_vars(
       int knot_point_index, int slip_foot_index);
 
+  /*!
+   * @brief Overload of setting kc com position to also set slip com position
+   * @param com_trajectory
+   */
   void SetComPositionGuess(
       const drake::trajectories::PiecewisePolynomial<double>& com_trajectory)
       override;
 
+  /*!
+   * @brief overload of setting kc generalized state guess to also set slip contact postion and velocity
+   * @param q_traj
+   * @param v_traj
+   */
   void SetRobotStateGuess(
       const drake::trajectories::PiecewisePolynomial<double>& q_traj,
       const drake::trajectories::PiecewisePolynomial<double>& v_traj) override;
 
+  /*!
+   * @brief overload of setting kc momentum guess to set slip com velocity
+   * @param momentum_trajectory
+   */
   void SetMomentumGuess(const drake::trajectories::PiecewisePolynomial<double>&
                             momentum_trajectory) override;
 
+  /*!
+   * @brief overload of setting kc force to set initial guess for slip force
+   * @param force_trajectory
+   */
   void SetForceGuess(const drake::trajectories::PiecewisePolynomial<double>&
                          force_trajectory) override;
 
@@ -102,8 +119,15 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
   void SetMaximumSlipLegLength(double max_leg_length);
 
  private:
+  /*!
+   * @brief Add constraint at knot point for complex state to be on the slip submanifold
+   * @param knot_point
+   */
   void AddSlipPosturePrincipleConstraint(int knot_point);
 
+  /*!
+   * @brief map complex mode sequence to the simple mode sequence
+   */
   void MapModeSequence();
 
   void AddSlipConstraints(int knot_point) override;

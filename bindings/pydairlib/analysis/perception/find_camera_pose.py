@@ -12,6 +12,32 @@ import sensor_msgs.point_cloud2 as pc2
 from scipy.spatial.transform import Rotation
 from sklearn.linear_model import RANSACRegressor
 
+from pydrake.solvers import MathematicalProgram, Solve
+
+
+# Takes a data dictionary containing N datapoints with the entries {
+#   'N': number of data points
+#   'world_points': Nx3 numpy array, each row is a point in world frame
+#   'camera points': Nx3 numpy array, corresponding points in camera frame
+#   'pelvis_orientations': list of pelvis poses in the world frame as drake Rotation matrices
+#   'pelvis positions': Nx3 nupy array, each row is the position of the pelvis in the world frame
+# }
+def find_camera_pose_by_constrained_optimization(data):
+    N = data['N']
+    XT = data['world_points'] - data['pelvis_positions']
+    for i in range(N):
+        XT[i] = data['pelvis_orientations'][i].inverse().multiply(XT[i])
+    X = XT.T
+    Y = np.hstack([data['camera_points'], np.ones((N, 1))]).T
+
+    prog = MathematicalProgram()
+    R = prog.NewContinuousVariables(3, 3, "R")
+    p = prog.NewContinuousVariables(3, 1, "p")
+    X_PC = np.hstack([R, p])
+
+    prog.AddQuadraticCost(np.trace((X - X_PC @ Y) @ (X - X_PC @ Y).T))
+    prog.AddConstraint(R.T @ R == np.eye(3))
+    sol = prog.Solve()
 
 def get_points(pc2_msg):
     points_list = []

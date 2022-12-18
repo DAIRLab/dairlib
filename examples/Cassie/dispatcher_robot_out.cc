@@ -53,7 +53,7 @@ DEFINE_bool(broadcast_robot_state, false, "broadcast to planner thread");
 DEFINE_string(address, "127.0.0.1", "IPv4 address to receive on.");
 DEFINE_int64(port, 25001, "Port to receive on.");
 DEFINE_double(pub_rate, 0.1, "Network LCM pubishing period (s).");
-DEFINE_double(fast_network_pub_rate, 0.01, "Network LCM pubishing period (s).");
+DEFINE_double(fast_network_pub_rate, 0.005, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
 DEFINE_bool(test_with_ground_truth_state, false,

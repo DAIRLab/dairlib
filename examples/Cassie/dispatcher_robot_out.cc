@@ -32,7 +32,7 @@
 #include "ros/ros.h"
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
-#include "systems/ros/robot_base_tf_broadcaster_system.h"
+#include "systems/ros/multibody_plant_tf_broadcaster_system.h"
 #endif
 
 namespace dairlib {
@@ -331,11 +331,13 @@ int do_main(int argc, char* argv[]) {
       "base_link",
       camera::ReadCameraPoseFromYaml(FLAGS_camera_pose_calib)
     });
+    std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};
 
     const auto& tf_broadcaster =
-        builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
+        builder.AddSystem<systems::MultibodyPlantTfBroadcasterSystem>(
             plant,
             plant_context.get(),
+            frames,
             "pelvis",
             "map",
             bff,
@@ -444,7 +446,7 @@ int do_main(int argc, char* argv[]) {
 
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
-      diagram.Publish(diagram_context);
+      diagram.ForcedPublish(diagram_context);
 
       prev_time = time;
     }
@@ -494,7 +496,7 @@ int do_main(int argc, char* argv[]) {
 
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
-      diagram.Publish(diagram_context);
+      diagram.ForcedPublish(diagram_context);
     }
   }
   return 0;

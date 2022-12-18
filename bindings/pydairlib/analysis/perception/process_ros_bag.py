@@ -26,9 +26,9 @@ def split_log(fname, outfolder):
 
 def main():
     fname = sys.argv[1]
-    outfolder = sys.argv[2]
+    # outfolder = sys.argv[2]
 
-    split_log(fname, outfolder)
+    # split_log(fname, outfolder)
 
     topics = {}
     for topic, msg, t in rosbag.Bag(fname):

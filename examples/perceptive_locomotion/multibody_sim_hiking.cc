@@ -19,7 +19,7 @@
 #ifdef DAIR_ROS_ON
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
-#include "systems/ros/robot_base_tf_broadcaster_system.h"
+#include "systems/ros/multibody_plant_tf_broadcaster_system.h"
 #include "systems/cameras/drake_to_ros_pointcloud.h"
 #endif
 
@@ -208,11 +208,13 @@ int do_main(int argc, char* argv[]) {
 
     std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
     bff.push_back({ "camera_depth_optical_frame", cam_transform});
+    std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};
 
     const auto& tf_broadcaster =
-        builder.AddSystem<systems::RobotBaseTfBroadcasterSystem>(
+        builder.AddSystem<systems::MultibodyPlantTfBroadcasterSystem>(
             plant,
             context.get(),
+            frames,
             "pelvis",
             "map",
             bff,

@@ -6,12 +6,16 @@ except ImportError as e:
     raise e
 
 import sys
+import argparse
+import apriltag
 import numpy as np
+from dataclasses import dataclass
 from tf_bag import BagTfTransformer
 import sensor_msgs.point_cloud2 as pc2
 from scipy.spatial.transform import Rotation
 from sklearn.linear_model import RANSACRegressor
 
+from pydrake.math import RigidTransform
 from pydrake.solvers import MathematicalProgram, Solve
 
 
@@ -39,47 +43,74 @@ def find_camera_pose_by_constrained_optimization(data):
     prog.AddConstraint(R.T @ R == np.eye(3))
     sol = prog.Solve()
 
-def get_points(pc2_msg):
-    points_list = []
-    for data in pc2.read_points(pc2_msg, skip_nans=True):
-        points_list.append([data[0], data[1], data[2]])
-    return np.array(points_list)
+
+@dataclass
+class CalibrationParams:
+    apriltag_family: str = "t36h11"
+    margin: float = 0.05
+    tag_size: float = 0.174
+    valid_pose_error_threshold: float = 0.01
+    board_pose_in_world_frame: RigidTransform = RigidTransform.Identity()
 
 
-def fit_plane(points):
-    points_copy = np.copy(points)
-    mask = np.any(np.isinf(points_copy), axis=-1)
-    points_copy = points_copy[~mask, :]
-    ransac = RANSACRegressor(residual_threshold=0.001)
-    xy = points_copy[:, :2]
-    z = points_copy[:, 2]
-    try:
-        ransac.fit(xy, z)
-    except:
-        import pdb; pdb.set_trace()
-    a, b = ransac.estimator_.coef_
-    c = ransac.estimator_.intercept_
-    normal = np.array([a, b, -1.0])
-    norm = np.linalg.norm(normal)
-    print(normal / norm)
-    return {"normal": normal / norm, "d": -c / norm}
+# Extracts data from rosbags to assemble the data dictionary used by
+# find_camera_pose_by_constrained_optimization
+def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
+                             calibration_params):
+
+    # Load the processed (distortion corrected) camera messages
+    rosbag_rectified = rosbag.Bag(postprocessed_rosbag_path)
+
+    # Create an apriltag detector
+    detector = apriltag.Detector()
+
+    # get the first camera info message
+    _, camera_info, _ = next(
+        rosbag_rectified.read_messages(topics=['/camera/color/camera_info'])
+    )
 
 
-def get_ground_normals(bagpath: str):
-    bag = rosbag.Bag(bagpath)
-    normals = []
-    times = []
-    points = []
+    # Get the intrinsic matrix
+    # [fx 0 cx]
+    # [0 fy cy]
+    # [0  0  1]
+    # and map to apriltag intrinsics [fx, fy, cx, cy]
+    intrinsics = np.reshape(camera_info.K, (3,3))
+    apriltag_intrinsics = [intrinsics[0,0],
+                           intrinsics[0,2],
+                           intrinsics[1,1],
+                           intrinsics[1,2]]
 
-    for topic, msg, t in bag.read_messages(topics=['/camera/depth/color/points']):
-        cloud = get_points(msg)
-        plane = fit_plane(cloud)
-        normals.append(plane["normal"])
-        times.append(t)
-        points.append(cloud)
 
-    bag.close()
-    return {"points": points, "normals": normals, "t": times}
+    timestamped_poses = {}
+
+    for topic, msg, t in \
+        rosbag_rectified.read_messages(topics=[
+            "/camera/color/image_rect"]):
+
+        valid_poses = get_valid_apriltag_poses(
+            detector, msg, apriltag_intrinsics, calibration_params
+        )
+        if valid_poses:
+            timestamped_poses[msg.header.stamp] = valid_poses
+
+    import pdb; pdb.set_trace()
+
+
+def get_valid_apriltag_poses(detector, msg, intrinsics, calibration_params):
+    img = np.frombuffer(msg.data, dtype=np.uint8). \
+        reshape(msg.height, msg.width)
+    tags = detector.detect(img)
+    poses = [
+        detector.detection_pose(
+            tag,
+            intrinsics,
+            tag_size=calibration_params.tag_size) for tag in tags]
+    valid_poses = []
+    for pose in poses:
+        if pose[-1] < calibration_params.valid_pose_error_threshold:
+            valid_poses.append(RigidTransform(pose[0]))
+    return valid_poses
 
 
 def collect_transforms(parent_frame, child_frame, times, fname):
@@ -93,27 +124,11 @@ def collect_transforms(parent_frame, child_frame, times, fname):
     return transforms
 
 
-def find_camera_orientation_in_frame_P(normals, R_WPs, world_normal):
-    b = np.vstack([world_normal.T @ R.as_matrix() for R in R_WPs])
-    R_CP = np.linalg.lstsq(normals, b, rcond=None)[0]
-    return R_CP.T
-
 
 def main():
-    fname = sys.argv[1]
-    normal_data = get_ground_normals(fname)
-    tfs = collect_transforms(
-        "map",
-        "pelvis",
-        normal_data["t"],
-        fname
-    )
-    rotation = find_camera_orientation_in_frame_P(
-        np.vstack(normal_data["normals"]),
-        tfs["rotations"],
-        np.array([0, 0, 1])
-    )
-    import pdb; pdb.set_trace()
+    processed_fname = sys.argv[1]
+    extract_calibration_data("", processed_fname, CalibrationParams())
+
 
 
 if __name__ == "__main__":

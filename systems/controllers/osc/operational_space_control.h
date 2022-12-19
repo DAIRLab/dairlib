@@ -398,12 +398,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable lambda_c_;
   drake::solvers::VectorXDecisionVariable lambda_h_;
   drake::solvers::VectorXDecisionVariable epsilon_;
-  // Cost and constraints
+
+  // Constraints
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
 
+  // Costs
   std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
   drake::solvers::QuadraticCost* accel_cost_ = nullptr;
   drake::solvers::LinearCost* joint_limit_cost_ = nullptr;

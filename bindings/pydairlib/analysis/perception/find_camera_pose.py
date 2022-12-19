@@ -8,6 +8,7 @@ except ImportError as e:
 import sys
 import argparse
 import apriltag
+import datetime
 import numpy as np
 from dataclasses import dataclass
 from tf_bag import BagTfTransformer
@@ -15,6 +16,7 @@ import sensor_msgs.point_cloud2 as pc2
 from scipy.spatial.transform import Rotation
 from sklearn.linear_model import RANSACRegressor
 
+from pydrake.common.eigen_geometry import Quaternion
 from pydrake.math import RigidTransform
 from pydrake.solvers import MathematicalProgram, Solve
 
@@ -49,8 +51,23 @@ class CalibrationParams:
     apriltag_family: str = "t36h11"
     margin: float = 0.05
     tag_size: float = 0.174
+    start_id: int = 78
     valid_pose_error_threshold: float = 0.01
     board_pose_in_world_frame: RigidTransform = RigidTransform.Identity()
+
+
+# returns a dictionary mapping the tag id to that tag's position in the
+# calibration board frame
+# assumes cassie's right foot is on the start_id tag and there are 6 tags
+def get_tag_positions_on_board(params):
+    tag_positions = {}
+    for i in range(6):
+        x = float(i % 3) * (params.tag_size + params.margin)
+        y = (params.margin + params.tag_size) / 2.0 if i > 3 else \
+            -(params.margin + params.tag_size) / 2.0
+        z = 0
+        tag_positions[params.start_id + i] = np.array([x, y, z])
+    return tag_positions
 
 
 # Extracts data from rosbags to assemble the data dictionary used by
@@ -69,21 +86,20 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
         rosbag_rectified.read_messages(topics=['/camera/color/camera_info'])
     )
 
-
     # Get the intrinsic matrix
     # [fx 0 cx]
     # [0 fy cy]
     # [0  0  1]
     # and map to apriltag intrinsics [fx, fy, cx, cy]
-    intrinsics = np.reshape(camera_info.K, (3,3))
-    apriltag_intrinsics = [intrinsics[0,0],
-                           intrinsics[0,2],
-                           intrinsics[1,1],
-                           intrinsics[1,2]]
+    intrinsics = np.reshape(camera_info.K, (3, 3))
+    apriltag_intrinsics = [intrinsics[0, 0],
+                           intrinsics[0, 2],
+                           intrinsics[1, 1],
+                           intrinsics[1, 2]]
 
+    timestamped_apriltag_poses = {}
 
-    timestamped_poses = {}
-
+    # Detect the apriltags in the (rectified) input images
     for topic, msg, t in \
         rosbag_rectified.read_messages(topics=[
             "/camera/color/image_rect"]):
@@ -92,8 +108,18 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
             detector, msg, apriltag_intrinsics, calibration_params
         )
         if valid_poses:
-            timestamped_poses[msg.header.stamp] = valid_poses
+            timestamped_apriltag_poses[msg.header.stamp] = valid_poses
 
+    # for time in timestamped_apriltag_poses.keys():
+    #     print(datetime.datetime.utcfromtimestamp(time.to_sec()).strftime("%m/%d/%Y, %H:%M:%S"))
+
+    # Get the pelvis transform for the timestamps with valid apriltag poses
+    timestamped_pelvis_poses = collect_transforms(
+        "map",
+        "pelvis",
+        timestamped_apriltag_poses.keys(),
+        hardware_rosbag_path
+    )
     import pdb; pdb.set_trace()
 
 
@@ -101,33 +127,44 @@ def get_valid_apriltag_poses(detector, msg, intrinsics, calibration_params):
     img = np.frombuffer(msg.data, dtype=np.uint8). \
         reshape(msg.height, msg.width)
     tags = detector.detect(img)
-    poses = [
-        detector.detection_pose(
+    valid_poses = {}
+    for tag in tags:
+        pose = detector.detection_pose(
             tag,
             intrinsics,
-            tag_size=calibration_params.tag_size) for tag in tags]
-    valid_poses = []
-    for pose in poses:
+            tag_size=calibration_params.tag_size)
         if pose[-1] < calibration_params.valid_pose_error_threshold:
-            valid_poses.append(RigidTransform(pose[0]))
+            valid_poses[tag.tag_id] = RigidTransform(pose[0])
+
     return valid_poses
 
 
 def collect_transforms(parent_frame, child_frame, times, fname):
-    transforms = {"translations": [], "rotations": []}
+    transforms = {}
     bag_transformer = BagTfTransformer(fname)
+    print(bag_transformer.getTransformGraphInfo())
     for time in times:
+        print(
+            datetime.datetime.utcfromtimestamp(time.to_sec()).
+            strftime("%m/%d/%Y, %H:%M:%S")
+        )
         translation, quat = \
             bag_transformer.lookupTransform(parent_frame, child_frame, time)
-        transforms["translations"].append(translation)
-        transforms["rotations"].append(Rotation.from_quat(quat))
+        transforms[time] = RigidTransform(
+            Quaternion(quat.w, quat.x, quat.y, quat.z),
+            translation
+        )
     return transforms
-
 
 
 def main():
     processed_fname = sys.argv[1]
-    extract_calibration_data("", processed_fname, CalibrationParams())
+    hardware_fname = sys.argv[2]
+    extract_calibration_data(
+        hardware_fname,
+        processed_fname,
+        CalibrationParams()
+    )
 
 
 

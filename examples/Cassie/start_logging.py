@@ -2,17 +2,32 @@ import subprocess
 import os
 import glob
 import codecs
+import socket
 from datetime import date
+
+
+def is_cassie():
+    return socket.gethostname() == 'dair-cassie'
 
 
 def main():
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
     logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
-    dair = f"{os.getenv('HOME')}/workspace/dairlib/"
-    standing_gains = dair + "examples/Cassie/osc/osc_standing_gains.yaml"
-    walking_gains = dair + "examples/Cassie/osc/osc_walking_gains.yaml"
-    alip_walking_gains = dair + "examples/Cassie/osc/alip_osc_walking_gains.yaml"
+    dair = f"{os.getenv('HOME')}/workspace/{'brian/' if is_cassie() else''}" \
+           f"dairlib/"
+    standing_gains = os.path.join(
+        dair,
+        "examples/Cassie/osc/osc_standing_gains.yaml"
+    )
+    mpc_gains = os.path.join(
+        dair,
+        "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml"
+    )
+    osc_gains = os.path.join(
+        dair,
+        "examples/perceptive_locomotion/gains/osc_gains.yaml"
+    )
 
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
@@ -28,15 +43,14 @@ def main():
     else:
         log_num = '00'
 
-    with open('commit_tag%s' % log_num, 'w') as f:
+    with open('commit_tag-%s' % log_num, 'w') as f:
         f.write(str(commit_tag))
         f.write("\n\ngit diff:\n\n")
         f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
 
     subprocess.run(['cp', standing_gains, 'standing_gains_%s.yaml' % log_num])
-    subprocess.run(['cp', walking_gains, 'walking_gains_%s.yaml' % log_num])
-    subprocess.run(['cp', alip_walking_gains,
-                    'walking_gains_alip_%s.yaml' % log_num])
+    subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])
+    subprocess.run(['cp', osc_gains, 'alip_minlp_osc_gains_%s.yaml' % log_num])
     subprocess.run(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
 
 

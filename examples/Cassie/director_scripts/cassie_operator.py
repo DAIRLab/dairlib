@@ -34,7 +34,7 @@ position_names = [
 
 
 # Set of gains with which COM is within support polygon when we lower the hoist
-joint_default = [-0.01, .01, 0, 0, 0.55, 0.55, -1.5, -1.5, -1.8, -1.8]
+joint_default = [0.05, -.05, 0, 0, 0.55, 0.55, -1.5, -1.5, -1.8, -1.8]
 kp_default = [80, 80, 50, 50, 50, 50, 50, 50, 10, 10]
 kd_default = [1, 1, 1, 1, 1, 1, 2, 2, 1, 1]
 

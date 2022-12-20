@@ -29,6 +29,11 @@ from pydrake.solvers import MathematicalProgram, Solve
 #   'pelvis positions': Nx3 nupy array, each row is the position of the pelvis in the world frame
 # }
 def find_camera_pose_by_constrained_optimization(data):
+    prog = MathematicalProgram()
+    R = prog.NewContinuousVariables(3, 3, "R")
+    p = prog.NewContinuousVariables(3, 1, "p")
+    X_PC = np.hstack([R, p])
+
     N = data['N']
     XT = data['world_points'] - data['pelvis_positions']
     for i in range(N):
@@ -36,12 +41,11 @@ def find_camera_pose_by_constrained_optimization(data):
     X = XT.T
     Y = np.hstack([data['camera_points'], np.ones((N, 1))]).T
 
-    prog = MathematicalProgram()
-    R = prog.NewContinuousVariables(3, 3, "R")
-    p = prog.NewContinuousVariables(3, 1, "p")
-    X_PC = np.hstack([R, p])
+    for i in range(N):
+        prog.AddQuadraticCost((X[:, i] - X_PC @ Y[:, i]).T @
+                              (X[:, i] - X_PC @ Y[:, i]))
 
-    prog.AddQuadraticCost(np.trace((X - X_PC @ Y) @ (X - X_PC @ Y).T))
+    # prog.AddQuadraticCost(np.trace((X - X_PC @ Y) @ (X - X_PC @ Y).T))
     orthonomral_constraint = (R.T @ R).reshape((-1, 1)) - np.eye(3).reshape((-1, 1))
     orthonomral_constraint = orthonomral_constraint.ravel()
     [prog.AddConstraint(orthonomral_constraint[i], 0, 0) for i in range(9)]
@@ -52,6 +56,12 @@ def find_camera_pose_by_constrained_optimization(data):
     )
     prog.SetInitialGuess(p, np.array([0.15, 0, 0.17]))
     sol = Solve(prog)
+
+    if sol.is_success():
+        print(f"\n\nSolution found! the total normalized cost is"
+              f" {sol.get_optimal_cost() / data['N']}")
+    else:
+        print(f"\n\nSysID failed with code {sol.get_solution_result()}")
     return RigidTransform(
         RotationMatrix(sol.GetSolution(R)),
         sol.GetSolution(p)
@@ -64,7 +74,7 @@ class CalibrationParams:
     margin: float = 0.05
     tag_size: float = 0.174
     start_id: int = 78
-    valid_pose_error_threshold: float = 0.02
+    valid_pose_error_threshold: float = 0.005
     board_pose_in_world_frame: RigidTransform = RigidTransform.Identity()
 
 
@@ -193,12 +203,11 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
         right_toe_front = X_WR.multiply(np.array([-0.0457, 0.112, 0])).ravel()
         left_toe_front = X_WL.multiply(np.array([-0.0457, 0.112, 0])).ravel()
 
-        board_origin_in_world = 0.25 * \
-            right_toe_front + right_toe_rear + \
-            left_toe_front + left_toe_rear
+        board_origin_in_world = 0.5 * (right_toe_front + right_toe_rear) - \
+                                tag_positions[calibration_params.start_id]
 
-        board_x_in_world = (right_toe_front - right_toe_rear) + \
-                           (left_toe_front - left_toe_rear)
+        board_x_in_world = (right_toe_front - right_toe_rear)
+
         board_yaw_in_world = np.arctan2(
             board_x_in_world[1],
             board_x_in_world[0])
@@ -257,10 +266,6 @@ def main():
         CalibrationParams()
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
-    print()
-    print()
-    print('Solution Found!')
-    print(X_PC)
 
 
 if __name__ == "__main__":

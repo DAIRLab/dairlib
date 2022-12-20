@@ -1,11 +1,12 @@
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
 
+#include <iostream>
+
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
-#include <iostream>
 
 using std::string;
 using std::vector;
@@ -90,7 +91,8 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
     return PiecewisePolynomial<double>();
   }
 
-  Vector3d f_g = {0, 0, -9.81};
+//  Vector3d f_g = {0, 0, -9.81};
+  Vector3d f_g = drake::multibody::UniformGravityFieldElement<double>().gravity_vector();
   Vector3d foot_pos = Vector3d::Zero();
   Vector3d pelvis_pos = Vector3d::Zero();
   Vector3d pelvis_vel = Vector3d::Zero();
@@ -108,9 +110,10 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   double compression = leg_length.norm() - rest_length_;
   Vector3d f_leg =
       k_leg_ * compression * leg_length.normalized() + b_leg_ * pelvis_vel;
-  VectorXd rddot = f_g + f_leg;
+//  Vector3d rddot = f_g + f_leg;
+  Vector3d rddot = f_g;
 
-  //  double dt = 1e-3;
+  double dt = 1e-3;
   Eigen::Vector2d breaks;
   //  if (t <= 0.3) {
   //    breaks << 0, 0.25, 0.4;
@@ -121,8 +124,8 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   MatrixXd samples(3, 2);
   MatrixXd samples_dot(3, 2);
 
-//  std::cout << "t0:" << t0 << std::endl;
-//  std::cout << "tf:" << tf << std::endl;
+  //  std::cout << "t0:" << t0 << std::endl;
+  //  std::cout << "tf:" << tf << std::endl;
   //  samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
   //  samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
 
@@ -134,11 +137,20 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   } else if (fsm_state == 1) {
     y_dist_des = 0.1;
   }
-//  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ + rest_length_offset_;
-  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_;
-//  samples_dot << 0, 0, 0, 0, 0.25, 0.0;
+  //  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ +
+  //  rest_length_offset_;
+
+  samples << 0, 0 + 0.5 * rddot[0] * dt * dt,
+            y_dist_des, y_dist_des + 0.5 * rddot[1] * dt * dt,
+            rest_length_, rest_length_ + 0.5 * rddot[2] * dt * dt;
+  samples_dot <<  0, 0 + rddot[0] * dt,
+                  0, 0 + rddot[1] * dt,
+                  0, 0 + rddot[2] * dt;
   //  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
-  return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+
+  //  return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
+  return PiecewisePolynomial<double>::CubicHermite(breaks, samples, samples_dot);
+
   //  return PiecewisePolynomial<double>::CubicHermite(
   //      breaks, samples, samples_dot);
   //  return PiecewisePolynomial<double>::CubicShapePreserving(breaks, samples);

@@ -119,10 +119,8 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
 
     double vel_scale_trans_sagital =
         (radio_out->channel[6] + 1.0) * vel_scale_trans_sagital_;
-    double a =
-        .001 /
-        (stick_filter_dt_ +
-         .001);  // approximately 1KHz sampling rate - no need to be too precise
+    // approximately 1KHz sampling rate - no need to be too precise
+    double a = .001 / (stick_filter_dt_ + .001);
     Vector3d des_vel_prev = discrete_state->get_value(des_vel_idx_);
     Vector3d des_vel;
     //    des_vel << vel_scale_rot_ * radio_out->channel[3],
@@ -232,8 +230,8 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
     double com_vel_lateral = local_com_vel(1);
     des_lateral_vel = kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
                       kd_pos_lateral_ * (-com_vel_lateral);
-    des_lateral_vel = std::clamp(des_lateral_vel, -vel_max_lateral_,
-                                            vel_max_lateral_);
+    des_lateral_vel =
+        std::clamp(des_lateral_vel, -vel_max_lateral_, vel_max_lateral_);
   }
   Vector3d des_vel;
   des_vel << desired_filtered_yaw_vel, des_sagital_vel, des_lateral_vel;

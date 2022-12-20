@@ -1150,16 +1150,57 @@ def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_val
   y = y[~np.isnan(z)]
   z = z[~np.isnan(z)]
 
+  ### Get rid of costs > 1 due to artifacts
+  if filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts:
+    x = x[~((1 < z)*(z < 2))]
+    y = y[~((1 < z)*(z < 2))]
+    z = z[~((1 < z)*(z < 2))]
+
+  ### Get rid of tail data due to artifacts
+  if tail_percentile > 0:
+    x_lost = x[z >= big_val]
+    y_lost = y[z >= big_val]
+    z_lost = z[z >= big_val]
+    x_gained = x[z <= small_val]
+    y_gained = y[z <= small_val]
+    z_gained = z[z <= small_val]
+    x_overlap = x[(small_val < z)*(z < big_val)]
+    y_overlap = y[(small_val < z)*(z < big_val)]
+    z_overlap = z[(small_val < z)*(z < big_val)]
+
+    idx_low_percentile = int((0.01 * tail_percentile) * len(z))
+    idx_high_percentile = int((1 - 0.01 * tail_percentile) * len(z))
+    inds = z_overlap.argsort()
+    x_overlap_sorted = x_overlap[inds]
+    y_overlap_sorted = y_overlap[inds]
+    z_overlap_sorted = z_overlap[inds]
+    x_overlap_filterred = x_overlap_sorted[idx_low_percentile:idx_high_percentile]
+    y_overlap_filterred = y_overlap_sorted[idx_low_percentile:idx_high_percentile]
+    z_overlap_filterred = z_overlap_sorted[idx_low_percentile:idx_high_percentile]
+
+    x = np.hstack([x_gained, x_overlap_filterred, x_lost])
+    y = np.hstack([y_gained, y_overlap_filterred, y_lost])
+    z = np.hstack([z_gained, z_overlap_filterred, z_lost])
+
   return [x,y,z]
 
+# Sometimes we set `hide_artifacts_of_increased_cost`=True because the ratio bigger than 1 was from bad solves at boundary
 def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
   x, y, z = superimposed_data
 
   iter1 = 1
   iter2 = model_slice_value
 
+  # Parameters
+  n_level = 5
+  n_decimal = 2
+  plot_lost_task = True
+  show_legend = False
+
   # Colors for 0 and inf
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
+  color_improved_low = np.array([0.2, 0.2, 1])
+  color_improved_high = np.array([0.1, 0.1, 0.5])
   color_inf = 'darkred'
 
   min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val)])
@@ -1168,31 +1209,25 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   print("min_nonzero_ratio = ", min_nonzero_ratio)
   print("max_nonzero_ratio = ", max_nonzero_ratio)
 
-  # Flags
+  # Update flags
   plot_the_ratio_bigger_than_1 = max_nonzero_ratio > 1
   if hide_artifacts_of_increased_cost:
-    plot_the_ratio_bigger_than_1 = False  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
-  plot_lost_task = True
-  show_legend = False
+    plot_the_ratio_bigger_than_1 = False
 
   # discrete color map
-  n_level = 6
   delta_level = (min(1, max_nonzero_ratio) - min_nonzero_ratio) / (n_level - 1)
 
-  order = 3
   levels = []
   for i in range(n_level)[::-1]:
-    levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, order))
-  levels[0] = levels[0] - 0.1**order
-  # levels[-1] = levels[-1] + 0.1**order
+    levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, n_decimal))
+  levels[0] = levels[0] - 0.1**n_decimal
+  # levels[-1] = levels[-1] + 0.1**n_decimal
 
-  start_color = np.array([0.1, 0.1, 0.5])
-  end_color = np.array([0.3, 0.3, 1])
-  colors = [tuple(start_color + (end_color - start_color) * i / (n_level - 2)) for i in range(n_level - 1)]
+  colors = [tuple(color_improved_high + (color_improved_low - color_improved_high) * i / (n_level - 2)) for i in range(n_level - 1)]
 
   # Extend levels and colors for values bigger than 1
   if plot_the_ratio_bigger_than_1:
-    levels.append(round(max_nonzero_ratio, order) + 0.1**order)
+    levels.append(round(max_nonzero_ratio, n_decimal) + 0.1**n_decimal)
     colors.append('red')
 
   # # Extend levels and colors to include 0 and inf if we want to do it manually
@@ -1217,6 +1252,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   fig, ax = plt.subplots()
 
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
+  ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # we plot again but only the overlapped area to cover up the artifact of lost/acquired area
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
   # ax.contour(x, y, z)
 
@@ -1240,8 +1276,8 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     if show_legend:
       plt.legend(handles=[new_skill_patch])
 
-  cbar.set_ticks([round(m, 3) for m in levels])
-  cbar.ax.set_yticklabels([round(m, 3) for m in levels])
+  cbar.set_ticks(levels)
+  cbar.ax.set_yticklabels(levels)
 
   if visualize_training_task_range:
     ave = np.average(training_task_range, axis=1)
@@ -1260,6 +1296,9 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     cmt_to_visualize = cmt[cmt[:, 1] == 1]
     plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'wx', markersize=3)
 
+  limit_margin = 0.01
+  plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
+  plt.ylim([min(y) - limit_margin, max(y) + limit_margin])
   # plt.xlim([-1, 1])
   # plt.ylim([0.85, 1.05])
   plt.xlabel('stride length (m)')
@@ -1661,8 +1700,8 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/3_repeat_previous_but_with_much_better_sim_state_initialization/4_steps_steady_state/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/1215/20221210_sim_eval_with_hybrid_mpc_with_rom27/1_fixed_spring_model/2_strong_gains_for_fixed_spring/5_steps_steady_state/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/1215/20221210_sim_eval_with_hybrid_mpc_with_rom27/2_spring_model/1_stride_length_40cm/5_steps_steady_state/sim_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/4_steps_steady_states/sim_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/5_repeat_3_but_spring_model/4_steps_steady_state/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/has_scp_or_uploaded/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/5_steps_steady_states/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/has_scp_or_uploaded/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/5_repeat_3_but_spring_model/5_steps_steady_state/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1747,6 +1786,10 @@ if __name__ == "__main__":
   cost_choice = 2  # 0: all cost including regularization cost
                    # 1: main cost (v cost, vdot cost and torque cost); Btw, main cost is the cost of which we take gradient during model optimization
                    # 2: only torque cost (this is a hack to ignore vdot cost, since vdot cost is too noisy)
+  # for cost landscape comparison
+  filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts = False
+  tail_percentile = 1   # only applied to the overlapped area; get rid of occasional edge cases (either extremely good or bad periodic gait)
+
 
   # 2D plot (cost vs model)
   task_to_plot = ['stride_length', 'pelvis_height']
@@ -1771,6 +1814,7 @@ if __name__ == "__main__":
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
   model_slices = [1, 100, 200, 300, 400, 500]
+  # model_slices = [500]
   # model_slices = [1, 100, 200, 300, 400, 450]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
@@ -1784,6 +1828,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   # model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
   model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500]
+  # model_slices_cost_landsacpe = [500]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 450]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [5, 50, 95]

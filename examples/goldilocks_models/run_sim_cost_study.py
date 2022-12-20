@@ -1089,16 +1089,24 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   for model_slice_value in model_slices_cost_landsacpe:
     if model_slice_value == 1:
       continue
-    Generate2dCostLandscapeComparison(cmt, model_slice_value, True)
-    Generate2dCostLandscapeComparison(cmt, model_slice_value, False)
+    superimposed_data = InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value)
+    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, True)
+    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, True)
+    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
+    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
 
 
-def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoints_on_landscape):
+big_val = 1000000
+small_val = -1e-8
+def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value):
   iter1 = 1
   iter2 = model_slice_value
 
-  ct1 = Generate2dCostLandscape(cmt, iter1, True)
-  ct2 = Generate2dCostLandscape(cmt, iter2, True)
+  if cmt.shape[1] != 4:
+    raise ValueError("We assume cmt is [cost, model iter, task1 value, task2 value], since we hard-coded the column index in the code below")
+
+  ct1 = Generate2dCostLandscape(cmt, iter1, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter1][:, [0,2,3]]
+  ct2 = Generate2dCostLandscape(cmt, iter2, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter2][:, [0,2,3]]
 
   if len(ct1) == 0:
     print("iter 1 has no samples, we don't plot the landscape comparison for iter %d" % model_slice_value)
@@ -1124,8 +1132,6 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
   z2 = interpolator(np.vstack((x, y)).T)
 
   # z = z2/z1
-  big_val = 1000000
-  small_val = -1e-8
   z = np.zeros(x.size)
   for i in range(x.size):
     if np.isnan(z1[i]):
@@ -1144,6 +1150,14 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
   y = y[~np.isnan(z)]
   z = z[~np.isnan(z)]
 
+  return [x,y,z]
+
+def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
+  x, y, z = superimposed_data
+
+  iter1 = 1
+  iter2 = model_slice_value
+
   # Colors for 0 and inf
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
   color_inf = 'darkred'
@@ -1156,8 +1170,10 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
 
   # Flags
   plot_the_ratio_bigger_than_1 = max_nonzero_ratio > 1
-  # plot_the_ratio_bigger_than_1 = False  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
+  if hide_artifacts_of_increased_cost:
+    plot_the_ratio_bigger_than_1 = False  # sometimes we want to manually set this to false because the ratio bigger than 1 was from bad solves at boundary
   plot_lost_task = True
+  show_legend = False
 
   # discrete color map
   n_level = 6
@@ -1218,9 +1234,11 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
   new_skill_patch = mpatches.Patch(color=color_0, label='new tasks')
   if plot_lost_task:
     lost_skill_patch = mpatches.Patch(color=color_inf, label='lost tasks')
-    plt.legend(handles=[new_skill_patch, lost_skill_patch])
+    if show_legend:
+      plt.legend(handles=[new_skill_patch, lost_skill_patch])
   else:
-    plt.legend(handles=[new_skill_patch])
+    if show_legend:
+      plt.legend(handles=[new_skill_patch])
 
   cbar.set_ticks([round(m, 3) for m in levels])
   cbar.ax.set_yticklabels([round(m, 3) for m in levels])
@@ -1228,7 +1246,8 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
   if visualize_training_task_range:
     ave = np.average(training_task_range, axis=1)
     delta = np.diff(training_task_range)
-    rect = Rectangle((ave[0] - delta[0]/2, ave[1] - delta[1]/2), delta[0], delta[1], ls="--", ec="k", fc="none", linewidth=3)
+    line_style = "-" if visualize_datapoints_on_landscape else "--"
+    rect = Rectangle((ave[0] - delta[0]/2, ave[1] - delta[1]/2), delta[0], delta[1], ls=line_style, ec="k", fc="none", linewidth=3)
     ax.add_patch(rect)
 
   if visualize_datapoints_on_landscape:
@@ -1236,6 +1255,10 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
     cmt_to_visualize = cmt[cmt[:, 1] == model_slice_value]
     plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'k.')
     # plt.scatter(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], c=cmt_to_visualize[:, 0])
+
+    # Visualize iter 1's samples for debugging
+    cmt_to_visualize = cmt[cmt[:, 1] == 1]
+    plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'wx', markersize=3)
 
   # plt.xlim([-1, 1])
   # plt.ylim([0.85, 1.05])
@@ -1245,7 +1268,7 @@ def Generate2dCostLandscapeComparison(cmt, model_slice_value, visualize_datapoin
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s.png" % (eval_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else ""))
+    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (eval_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""))
 
 
 
@@ -1636,6 +1659,10 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/1211/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/3_repeat_previous_but_with_much_better_sim_state_initialization/4_steps_steady_state/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/1215/20221210_sim_eval_with_hybrid_mpc_with_rom27/1_fixed_spring_model/2_strong_gains_for_fixed_spring/5_steps_steady_state/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/1215/20221210_sim_eval_with_hybrid_mpc_with_rom27/2_spring_model/1_stride_length_40cm/5_steps_steady_state/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/4_steps_steady_states/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/5_repeat_3_but_spring_model/4_steps_steady_state/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1749,6 +1776,7 @@ if __name__ == "__main__":
   # color_names = ["k", "maroon"]
 
   # 2D landscape (task1 vs task2)
+  interpolate_across_iterations = False  # Do NOT do this for final figure. Interpolate across iterations creates weird artifacts (e.g. makes the level sets choppy in some cases)
   # model_slices_cost_landsacpe = []
   # model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]

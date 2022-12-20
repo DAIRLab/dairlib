@@ -1109,10 +1109,10 @@ def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_val
   ct2 = Generate2dCostLandscape(cmt, iter2, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter2][:, [0,2,3]]
 
   if len(ct1) == 0:
-    print("iter 1 has no samples, we don't plot the landscape comparison for iter %d" % model_slice_value)
+    print("WARNING!!! iter 1 has no samples, we don't plot the landscape comparison for iter %d" % model_slice_value)
     return
   if len(ct2) == 0:
-    print("iter %d has no samples, we don't plot the landscape comparison for iter %d" % (model_slice_value, model_slice_value))
+    print("WARNING!!! iter %d has no samples, we don't plot the landscape comparison for iter %d" % (model_slice_value, model_slice_value))
     return
 
   # Grid of the whole task space
@@ -1197,7 +1197,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plot_lost_task = True
   show_legend = False
 
-  # Colors for 0 and inf
+  # Colors
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
   color_improved_low = np.array([0.2, 0.2, 1])
   color_improved_high = np.array([0.1, 0.1, 0.5])
@@ -1787,6 +1787,7 @@ if __name__ == "__main__":
                    # 1: main cost (v cost, vdot cost and torque cost); Btw, main cost is the cost of which we take gradient during model optimization
                    # 2: only torque cost (this is a hack to ignore vdot cost, since vdot cost is too noisy)
   # for cost landscape comparison
+  interpolate_across_iterations = False  # Do NOT do this for final figure. Interpolate across iterations creates weird artifacts (e.g. makes the level sets choppy in some cases)
   filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts = False
   tail_percentile = 1   # only applied to the overlapped area; get rid of occasional edge cases (either extremely good or bad periodic gait)
 
@@ -1820,7 +1821,6 @@ if __name__ == "__main__":
   # color_names = ["k", "maroon"]
 
   # 2D landscape (task1 vs task2)
-  interpolate_across_iterations = False  # Do NOT do this for final figure. Interpolate across iterations creates weird artifacts (e.g. makes the level sets choppy in some cases)
   # model_slices_cost_landsacpe = []
   # model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]

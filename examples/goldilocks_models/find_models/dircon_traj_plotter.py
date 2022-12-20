@@ -225,6 +225,7 @@ def PlotGroundForceInCoMFrame(dircon_traj):
   plt.title("CRF in CoM frame -- iter %s" % filename)
   for i in range(t_knot.size):
     plt.arrow(x=cop_rt_com[i], y=0, dx=net_force_at_knot[0, i]/300, dy=net_force_at_knot[2, i]/300, width=.002)
+    plt.text(cop_rt_com[i], -0.1, str(i), fontsize=12)
   plt.plot(np.zeros(t_knot.size), com_at_knot[2,:], 'b.')
   # plt.plot([], [0, 0], 'k', lw=4)
   plt.xlabel('x (m)')

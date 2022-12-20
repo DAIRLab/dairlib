@@ -43,6 +43,7 @@ def main():
   filepath3 = ""
 
   # Manually specify file paths to plots multiple samples on the same plot
+  # base = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"
   # base = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"
   # sample_idx = 40 #40
   # optimal_rom_iter = 500  #160
@@ -222,7 +223,7 @@ def PlotGroundForceInCoMFrame(dircon_traj):
   # Plot
   figname = filename + " -- GRF in CoM frame "
   plt.figure(figname, figsize=figsize)
-  plt.title("CRF in CoM frame -- iter %s" % filename)
+  plt.title("GRF in CoM frame -- %s" % filename)
   for i in range(t_knot.size):
     plt.arrow(x=cop_rt_com[i], y=0, dx=net_force_at_knot[0, i]/300, dy=net_force_at_knot[2, i]/300, width=.002)
     plt.text(cop_rt_com[i], -0.1, str(i), fontsize=12)

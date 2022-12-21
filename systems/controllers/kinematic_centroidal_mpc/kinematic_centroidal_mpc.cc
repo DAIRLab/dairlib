@@ -6,6 +6,7 @@
 #include "common/eigen_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
+#include "multibody/pinocchio_plant.h"
 #include "systems/framework/output_vector.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/gait.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
@@ -64,11 +65,17 @@ KinematicCentroidalMPC::KinematicCentroidalMPC(
       motion.duration_scaling, gait_samples_);
 
   time_points_ = Eigen::Vector4d(time_vector.data());
-
   n_knot_points_ = motion.n_knot_points;
+  plant_ad_ =
+      std::make_unique<dairlib::multibody::PinocchioPlant<drake::AutoDiffXd>>(
+          plant_wo_spr,
+          FindResourceOrThrow(
+              "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf"));
+  plant_ad_->FinalizePlant();
+
   // Create MPC and set gains
   solver_ = std::make_unique<CassieKinematicCentroidalSolver>(
-      plant_wo_spr_, n_knot_points_, time_vector.back() / (n_knot_points_ - 1),
+      plant_wo_spr_, *plant_ad_, n_knot_points_, time_vector.back() / (n_knot_points_ - 1),
       0.4);
   solver_->SetGains(gains);
   solver_->SetMinimumFootClearance(motion.swing_foot_minimum_height);
@@ -218,7 +225,7 @@ void KinematicCentroidalMPC::CalcTraj(
   // (TODO) yangwill: think carefully about this time offset. This is just a
   // placeholder for now
   traj->saved_traj =
-      solver_->GenerateLcmTraj(n_knot_points_, robot_output->get_timestamp());
+      solver_->GenerateLcmTraj(n_knot_points_, robot_output->get_timestamp() + 2.5);
   traj->utime = robot_output->get_timestamp() * 1e6;
 }
 

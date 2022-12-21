@@ -43,7 +43,7 @@ def main():
     plant_wo_spr = MultibodyPlant(0.0)
     AddCassieMultibody(plant_wo_spr, scene_graph_wo_spr,
                        True, "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-                       False, False)
+                       False, False, True)
     plant_wo_spr.Finalize()
 
     nq = plant_wo_spr.num_positions()

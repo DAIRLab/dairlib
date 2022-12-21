@@ -11,6 +11,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "multibody/pinocchio_plant.h"
 
 namespace dairlib {
 
@@ -49,6 +50,7 @@ class KinematicCentroidalMPC : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
+  std::unique_ptr<dairlib::multibody::PinocchioPlant<drake::AutoDiffXd>> plant_ad_;
   drake::systems::Context<double>* context_wo_spr_;
   const drake::multibody::BodyFrame<double>& world_;
 

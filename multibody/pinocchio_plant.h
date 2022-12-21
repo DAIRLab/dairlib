@@ -24,8 +24,10 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
   void FinalizePlant();
 
-  drake::VectorX<T> MapPositionFromDrakeToPinocchio(
-      const drake::VectorX<T>& q) const;
+//  drake::VectorX<T> MapPositionFromDrakeToPinocchio(
+//      const drake::VectorX<T>& q) const;
+  drake::VectorX<double> MapPositionFromDrakeToPinocchio(
+      const drake::VectorX<double>& q) const;
   drake::VectorX<T> MapVelocityFromDrakeToPinocchio(
       const drake::VectorX<T>& q, const drake::VectorX<T>& v) const;
   drake::VectorX<T> MapVelocityFromPinocchioToDrake(

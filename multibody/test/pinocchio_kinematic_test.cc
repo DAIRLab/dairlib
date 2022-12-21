@@ -57,12 +57,13 @@ class PinocchioKinematicTest : public ::testing::Test {
     pin_context_ad_ = pin_plant_ad_->CreateDefaultContext();
 
     x_ = VectorXd::Zero(plant_->num_positions() + plant_->num_velocities());
-    x_(0) = 0.467;
-    x_(1) = 0.003;
-    x_(2) = 0.839;
-    x_(3) = -0.280;
-    x_(4) = 1;
-    x_(10) = 1;
+    x_(0) = 0.56270512;
+    x_(1) = -0.32191005;
+    x_(2) = 0.13835005;
+    x_(3) = 0.74872968;
+//    x_(4) = 1;
+//    x_(10) = 1;
+    x_.tail(12) = VectorXd::Random(12);
     x_ad_ = drake::math::InitializeAutoDiff(x_);
   }
 
@@ -128,6 +129,7 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassAD) {
       plant_ad_->CalcCenterOfMassPositionInWorld(*context_ad_);
   drake::Vector3<AutoDiffXd> pin_com =
       pin_plant_ad_->CalcCenterOfMassPositionInWorld(*pin_context_ad_);
+
   std::cout << "com value = " << ExtractValue(com).transpose() << std::endl;
   std::cout << "pin_com value = " << ExtractValue(pin_com).transpose()
             << std::endl;
@@ -136,10 +138,67 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassAD) {
   std::cout << "pin_com gradient = " << ExtractGradient(pin_com).transpose()
             << std::endl;
 
+
   EXPECT_TRUE((ExtractValue(com) - ExtractValue(pin_com)).norm() < tol);
   EXPECT_TRUE(ExtractGradient(com).rows() == ExtractGradient(pin_com).rows());
   EXPECT_TRUE(ExtractGradient(com).cols() == ExtractGradient(pin_com).cols());
   EXPECT_TRUE((ExtractGradient(com) - ExtractGradient(pin_com)).norm() < tol);
+}
+
+TEST_F(PinocchioKinematicTest, TestCentroidalMomentumDouble) {
+  plant_->SetPositionsAndVelocities(context_.get(), x_);
+  pin_plant_->SetPositionsAndVelocities(pin_context_.get(), x_);
+  Eigen::Vector3d com = plant_->CalcCenterOfMassPositionInWorld(*context_);
+  Eigen::Vector3d pin_com =
+      pin_plant_->CalcCenterOfMassPositionInWorld(*pin_context_);
+  auto spatial_momentum =
+      plant_->CalcSpatialMomentumInWorldAboutPoint(*context_, com);
+  auto pin_spatial_momentum =
+      pin_plant_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_, com);
+
+  std::cout << "translational: spatial_momentum = " << spatial_momentum.translational().transpose() << std::endl;
+  std::cout << "translational: pin_spatial_momentum = " << pin_spatial_momentum.translational().transpose() << std::endl;
+  std::cout << "rotational: spatial_momentum = " << spatial_momentum.rotational().transpose() << std::endl;
+  std::cout << "rotational: pin_spatial_momentum = " << pin_spatial_momentum.rotational().transpose() << std::endl;
+
+  EXPECT_TRUE((com - pin_com).norm() < tol);
+  EXPECT_TRUE((spatial_momentum.translational() - pin_spatial_momentum.translational()).norm() < tol);
+  EXPECT_TRUE((spatial_momentum.rotational() - pin_spatial_momentum.rotational()).norm() < tol);
+}
+
+TEST_F(PinocchioKinematicTest, TestCentroidalMomentumAD) {
+  plant_ad_->SetPositionsAndVelocities(context_ad_.get(), x_ad_);
+  pin_plant_ad_->SetPositionsAndVelocities(pin_context_ad_.get(), x_ad_);
+  drake::Vector3<AutoDiffXd> com = plant_ad_->CalcCenterOfMassPositionInWorld(*context_ad_);
+  drake::Vector3<AutoDiffXd> pin_com =
+      pin_plant_ad_->CalcCenterOfMassPositionInWorld(*pin_context_ad_);
+  auto spatial_momentum =
+      plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*context_ad_, com);
+  auto pin_spatial_momentum =
+      pin_plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_ad_, pin_com);
+
+  std::cout << "translational: spatial_momentum = " << spatial_momentum.translational().transpose() << std::endl;
+  std::cout << "translational: pin_spatial_momentum = " << pin_spatial_momentum.translational().transpose() << std::endl;
+  std::cout << "rotational: spatial_momentum = " << spatial_momentum.rotational().transpose() << std::endl;
+  std::cout << "rotational: pin_spatial_momentum = " << pin_spatial_momentum.rotational().transpose() << std::endl;
+
+//  EXPECT_TRUE((com - pin_com).norm() < tol);
+//  EXPECT_TRUE((spatial_momentum.translational() - pin_spatial_momentum.translational()).norm() < tol);
+//  EXPECT_TRUE((spatial_momentum.rotational() - pin_spatial_momentum.rotational()).norm() < tol);
+  EXPECT_TRUE((ExtractValue(spatial_momentum.translational()) - ExtractValue(pin_spatial_momentum.translational())).norm() < tol);
+  EXPECT_TRUE((ExtractValue(spatial_momentum.rotational()) - ExtractValue(pin_spatial_momentum.rotational())).norm() < tol);
+  EXPECT_TRUE(ExtractGradient(spatial_momentum.translational()).rows() == ExtractGradient(pin_spatial_momentum.translational()).rows());
+  EXPECT_TRUE(ExtractGradient(spatial_momentum.translational()).cols() == ExtractGradient(pin_spatial_momentum.translational()).cols());
+  EXPECT_TRUE(ExtractGradient(spatial_momentum.rotational()).rows() == ExtractGradient(pin_spatial_momentum.rotational()).rows());
+  EXPECT_TRUE(ExtractGradient(spatial_momentum.rotational()).cols() == ExtractGradient(pin_spatial_momentum.rotational()).cols());
+  std::cout << "linear momentum gradient = " << ExtractGradient(spatial_momentum.translational()).transpose()
+            << std::endl;
+  std::cout << "linear momentum gradient = " << ExtractGradient(pin_spatial_momentum.translational()).transpose()
+            << std::endl;
+  std::cout << "angular momentum gradient = " << ExtractGradient(spatial_momentum.rotational()).transpose()
+            << std::endl;
+  std::cout << "angular momentum gradient = " << ExtractGradient(pin_spatial_momentum.rotational()).transpose()
+            << std::endl;
 }
 
 //

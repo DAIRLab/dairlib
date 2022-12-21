@@ -43,6 +43,7 @@ DEFINE_string(planner_parameters,
               "planner parameters containing initial states and other "
               "regularization parameters");
 DEFINE_double(knot_points_to_publish, 10, "Number of knot points to publish");
+DEFINE_string(save_filename, "kcmpc_solution", "Filename to save solution to.");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -195,7 +196,7 @@ int DoMain(int argc, char* argv[]) {
   timestamped_msg.utime = 1;
   drake::lcm::Publish(lcm.get(), FLAGS_channel_reference, timestamped_msg);
   try {
-    mpc.SaveSolutionToFile("examples/Cassie/saved_trajectories/kcmpc_solution");
+    mpc.SaveSolutionToFile("examples/Cassie/saved_trajectories/" + FLAGS_save_filename);
   } catch (...) {
     std::cout << "Unable to save trajectory, try running binary manually "
                  "rather than using bazel run"

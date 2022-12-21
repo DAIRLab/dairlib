@@ -201,12 +201,15 @@ void KinematicCentroidalSolver::AddCentroidalKinematicConsistency() {
                             contact_pos_vars(knot_point, contact_index)});
     }
     // Constrain com position
-    auto com_position =
-        std::make_shared<CenterofMassPositionConstraint<double>>(
-            plant_, contexts_[knot_point].get(), knot_point);
+//    auto com_position =
+//        std::make_shared<CenterofMassPositionConstraint<double>>(
+//            plant_, contexts_[knot_point].get(), knot_point);
 //    auto com_position =
 //        std::make_shared<CenterofMassPositionConstraint<drake::AutoDiffXd>>(
-//            plant_ad_, contexts_ad_[knot_point].get(), knot_point);
+//            plant_, contexts_[knot_point].get(), knot_point);
+    auto com_position =
+        std::make_shared<CenterofMassPositionConstraint<drake::AutoDiffXd>>(
+            plant_ad_, contexts_ad_[knot_point].get(), knot_point);
     prog_->AddConstraint(com_position,
                          {com_pos_vars(knot_point), state_vars(knot_point)});
   }

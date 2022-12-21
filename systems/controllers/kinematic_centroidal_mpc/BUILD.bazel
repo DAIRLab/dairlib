@@ -12,6 +12,7 @@ cc_library(
         "//examples/Cassie/kinematic_centroidal_planner:trajectory_parameters",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
         "//systems/framework:vector",
+        "//multibody:pinocchio_plant",
         "@drake//:drake_shared_library",
     ],
 )

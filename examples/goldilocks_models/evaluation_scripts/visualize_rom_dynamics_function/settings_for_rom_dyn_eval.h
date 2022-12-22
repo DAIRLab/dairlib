@@ -27,6 +27,9 @@ struct RomDynEvalSettings {
 
   int plot_xz_or_yz;
   bool save_fig;
+  bool plot_vector_field;
+  bool plot_magnitude_field;
+  bool show_title;
 
 
   template <typename Archive>
@@ -54,5 +57,8 @@ struct RomDynEvalSettings {
 
     a->Visit(DRAKE_NVP(plot_xz_or_yz));
     a->Visit(DRAKE_NVP(save_fig));
+    a->Visit(DRAKE_NVP(plot_vector_field));
+    a->Visit(DRAKE_NVP(plot_magnitude_field));
+    a->Visit(DRAKE_NVP(show_title));
   }
 };

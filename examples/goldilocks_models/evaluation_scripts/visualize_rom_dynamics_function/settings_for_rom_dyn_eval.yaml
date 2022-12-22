@@ -18,14 +18,14 @@ comdot_z: 0
 save_fig: true
 plot_xz_or_yz: 0
 
-plot_vector_field: true
-plot_magnitude_field: false
+plot_vector_field: false
+plot_magnitude_field: true
 show_title: false
 
 ######## We have to manually toggle the following parameter groups according to plot_xz_or_yz
 # x-z plane (if plot_xz_or_yz = 0)
-x_min: -0.1 #-0.3  #-0.1
-x_max: 0.1 #0.3  #0.1
+x_min: -0.3 #-0.3  #-0.1
+x_max: 0.3 #0.3  #0.1
 n_samples_x: 9
 
 y_min: -0.2  #0

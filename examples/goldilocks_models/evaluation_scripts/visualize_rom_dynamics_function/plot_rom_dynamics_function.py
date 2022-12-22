@@ -96,8 +96,8 @@ if __name__ == "__main__":
 
     # Heatmap of the vector's magnitude
     if plot_magnitude_field:
-      x_samples_ticks = ["%.3f" % val for val in x_samples]
-      z_samples_ticks = ["%.3f" % val for val in z_samples]
+      x_samples_ticks = ["%.2f" % val for val in x_samples]
+      z_samples_ticks = ["%.2f" % val for val in z_samples]
       z_samples_ticks = np.flip(z_samples_ticks)
       for i in range(n_samples_y):
         y_val = y_samples[i]
@@ -108,8 +108,8 @@ if __name__ == "__main__":
         mag_map = np.sqrt(np.square(x_accel) + np.square(z_accel))
         mag_map = np.flip(mag_map, axis=0)
 
+        plt.rcParams.update({'font.size': 12})
         fig, ax = plt.subplots(figsize=(6.4, 4.8))
-        plt.rcParams.update({'font.size': 15.5})
         im = ax.imshow(mag_map)
         # Show all ticks and label them with the respective list entries
         ax.set_xticks(np.arange(len(x_samples_ticks)))
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         plt.ylabel('CoM z (m)')
         # ax.xaxis.set_label_coords(1.1,-0.02)
         ax.xaxis.set_label_coords(0.5,-0.16)
-        plt.gcf().subplots_adjust(bottom=0.15)
+        plt.gcf().subplots_adjust(bottom=0.18)
         if save_fig:
           plt.savefig("%s%d_CoM_accel_vector_magnitude_field__CoM_y=%dcm__iter%d.png" % (dir_plots, i, y_val*100, model_iter))
 

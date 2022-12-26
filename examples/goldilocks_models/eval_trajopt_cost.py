@@ -440,6 +440,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
 
   colors = [tuple(color_improved_high + (color_improved_low - color_improved_high) * i / (n_level - 2)) for i in range(n_level - 1)]
 
+  # levels = [0.92, 0.94, 0.96, 0.98, 1.0]
 
   # Extend levels and colors for values bigger than 1
   if plot_the_ratio_bigger_than_1:
@@ -452,8 +453,8 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # colors.append(color_inf)
   # levels.append(big_val+0.1)
 
-  # print("levels = ", levels)
-  # print("colors = ", colors)
+  print("levels = ", levels)
+  print("colors = ", colors)
   cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
   cmap.set_under(color_0)
   if plot_lost_task:
@@ -465,6 +466,10 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # we plot again but only the overlapped area to cover up the artifact of lost/acquired area
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+
+  # Add contour lines
+  ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
+  # ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels[0:3], extend='both')
 
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10)
@@ -751,8 +756,10 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/Desktop/temp/0405/20220108_big_vel_weight_and_grad_main_cost_and_big_range_0_pelvis_omega/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/0601/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/"
-  trajopt_base_dir = "/home/yuming/Desktop/data_on_desktop/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
-  trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
+  trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/"
+  # trajopt_base_dir = "/home/yuming/Desktop/data_on_desktop/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
+  # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/1221/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -829,7 +836,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 100, 150, 200, 250, 300, 320, 350, 400, 450, 500]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400]
   # model_slices_cost_landsacpe = model_indices
-  model_slices_cost_landsacpe = [301]
+  model_slices_cost_landsacpe = [401]
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}

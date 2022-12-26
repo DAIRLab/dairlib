@@ -1254,7 +1254,9 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
   ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # we plot again but only the overlapped area to cover up the artifact of lost/acquired area
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
-  # ax.contour(x, y, z)
+
+  # Add contour lines
+  ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
 
   # Add contour values
   # manual_locations = [(0,0.95)]
@@ -1696,12 +1698,12 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/0405/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/0423/2_2/sim_cost_eval/"
   # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/hardware_cost_eval/"
-  # eval_dir = "/home/yuming/Desktop/temp/1211/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/3_repeat_previous_but_with_much_better_sim_state_initialization/4_steps_steady_state/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/1215/20221210_sim_eval_with_hybrid_mpc_with_rom27/1_fixed_spring_model/2_strong_gains_for_fixed_spring/5_steps_steady_state/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/1215/20221210_sim_eval_with_hybrid_mpc_with_rom27/2_spring_model/1_stride_length_40cm/5_steps_steady_state/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/has_scp_or_uploaded/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/5_steps_steady_states/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/has_scp_or_uploaded/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/5_repeat_3_but_spring_model/5_steps_steady_state/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Desktop/temp/sim_cost_eval/"
 
   ### global parameters
   sim_end_time = 10.0
@@ -1829,6 +1831,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
   model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500]
   # model_slices_cost_landsacpe = [500]
+  model_slices_cost_landsacpe = [300, 400]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 450]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [5, 50, 95]

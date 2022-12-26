@@ -49,6 +49,7 @@ if __name__ == "__main__":
   plot_vector_field = parsed_yaml_file.get('plot_vector_field')
   plot_magnitude_field = parsed_yaml_file.get('plot_magnitude_field')
   show_title = parsed_yaml_file.get('show_title')
+  manual_color_scale = parsed_yaml_file.get('manual_color_scale')
 
   # Get model name to create subfolder in data folder
   # Extract unique_folder_name
@@ -108,9 +109,17 @@ if __name__ == "__main__":
         mag_map = np.sqrt(np.square(x_accel) + np.square(z_accel))
         mag_map = np.flip(mag_map, axis=0)
 
+        # if manual_color_scale:
+        #   , vmin=0, vmax=10
+        vmin = None
+        vmax = None
+        if manual_color_scale:
+          vmin = 0
+          vmax = 5
+
         plt.rcParams.update({'font.size': 12})
         fig, ax = plt.subplots(figsize=(6.4, 4.8))
-        im = ax.imshow(mag_map)
+        im = ax.imshow(mag_map, vmin=vmin, vmax=vmax)
         # Show all ticks and label them with the respective list entries
         ax.set_xticks(np.arange(len(x_samples_ticks)))
         ax.set_yticks(np.arange(len(z_samples_ticks)))

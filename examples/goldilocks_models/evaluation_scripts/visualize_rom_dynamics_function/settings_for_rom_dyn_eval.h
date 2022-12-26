@@ -30,6 +30,7 @@ struct RomDynEvalSettings {
   bool plot_vector_field;
   bool plot_magnitude_field;
   bool show_title;
+  bool manual_color_scale;
 
 
   template <typename Archive>
@@ -60,5 +61,6 @@ struct RomDynEvalSettings {
     a->Visit(DRAKE_NVP(plot_vector_field));
     a->Visit(DRAKE_NVP(plot_magnitude_field));
     a->Visit(DRAKE_NVP(show_title));
+    a->Visit(DRAKE_NVP(manual_color_scale));
   }
 };

@@ -21,6 +21,7 @@ plot_xz_or_yz: 0
 plot_vector_field: false
 plot_magnitude_field: true
 show_title: false
+manual_color_scale: false  # if true, also need to manually set the number in python script; this is for setting the same color scale for all plots
 
 ######## We have to manually toggle the following parameter groups according to plot_xz_or_yz
 # x-z plane (if plot_xz_or_yz = 0)

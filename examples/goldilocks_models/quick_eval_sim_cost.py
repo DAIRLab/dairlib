@@ -34,6 +34,7 @@ if temp_log_path[-1] != "/":
 print("log file path =", temp_log_path + log_name)
 
 temp_output_dir=temp_log_path + "temp_cost_eval__can_be_deleted/" + log_name + "/"
+print("temp_output_dir = ", temp_output_dir)
 cmd = "rm -rf " + temp_output_dir
 RunCommand(cmd, True)
 

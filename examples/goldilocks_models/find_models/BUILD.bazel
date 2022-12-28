@@ -11,6 +11,7 @@ cc_binary(
         "//examples/goldilocks_models:task",
         "//lcm:dircon_trajectory_saver",
         "//multibody:visualization_utils",
+        "//systems:system_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",

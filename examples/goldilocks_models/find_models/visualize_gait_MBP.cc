@@ -9,6 +9,7 @@
 #include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
+#include "systems/system_utils.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
@@ -346,6 +347,9 @@ void visualizeGait(int argc, char* argv[]) {
     multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                            pp_xtraj, *ball_plant);
     auto diagram = builder.Build();
+    diagram->set_name("traj_visualizer");
+    DrawAndSaveDiagramGraph(*diagram);
+
     // while (true)
     for (int i = 0; i < n_loops; i++) {
       drake::systems::Simulator<double> simulator(*diagram);

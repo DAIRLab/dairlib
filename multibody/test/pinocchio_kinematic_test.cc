@@ -29,7 +29,6 @@ class PinocchioKinematicTest : public ::testing::Test {
     // Building a floating-base plant
     std::string full_name = FindResourceOrThrow(
         "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf");
-    std::cout << "Constructing double plants" << std::endl;
 
     plant_ = std::make_unique<MultibodyPlant<double>>(dt_);
     pin_plant_ = std::make_unique<dairlib::multibody::PinocchioPlant<double>>(
@@ -42,10 +41,7 @@ class PinocchioKinematicTest : public ::testing::Test {
     pin_plant_->Finalize();
     pin_plant_->FinalizePlant();
 
-    std::cout << "Finished constructing double plants" << std::endl;
-
     plant_ad_ = drake::systems::System<double>::ToAutoDiffXd(*plant_);
-    //    plant_ad_->Finalize();
     pin_plant_ad_ =
         std::make_unique<dairlib::multibody::PinocchioPlant<AutoDiffXd>>(
             *plant_, full_name);
@@ -56,13 +52,23 @@ class PinocchioKinematicTest : public ::testing::Test {
     context_ad_ = plant_ad_->CreateDefaultContext();
     pin_context_ad_ = pin_plant_ad_->CreateDefaultContext();
 
+    foot_frame_ = &plant_->GetBodyByName("toe_left").body_frame();
+    pin_foot_frame_ = &pin_plant_->GetBodyByName("toe_left").body_frame();
+    foot_frame_ad_ = &plant_ad_->GetBodyByName("toe_left").body_frame();
+    pin_foot_frame_ad_ = &pin_plant_ad_->GetBodyByName("toe_left").body_frame();
+    world_ = &plant_->world_frame();
+    pin_world_ = &pin_plant_->world_frame();
+    world_ad_ = &plant_ad_->world_frame();
+    pin_world_ad_ = &pin_plant_ad_->world_frame();
+    toe_front_ = Eigen::Vector3d(-0.0457, 0.112, 0);
+    toe_front_ad_ =
+        drake::math::InitializeAutoDiff(Eigen::Vector3d(-0.0457, 0.112, 0));
+
     x_ = VectorXd::Zero(plant_->num_positions() + plant_->num_velocities());
     x_(0) = 0.56270512;
     x_(1) = -0.32191005;
     x_(2) = 0.13835005;
     x_(3) = 0.74872968;
-//    x_(4) = 1;
-//    x_(10) = 1;
     x_.tail(12) = VectorXd::Random(12);
     x_ad_ = drake::math::InitializeAutoDiff(x_);
   }
@@ -71,6 +77,16 @@ class PinocchioKinematicTest : public ::testing::Test {
   double dt_ = 1e-3;
   std::unique_ptr<MultibodyPlant<double>> plant_{};
   std::unique_ptr<PinocchioPlant<double>> pin_plant_{};
+  Eigen::Vector3d toe_front_;
+  drake::Vector3<AutoDiffXd> toe_front_ad_;
+  const drake::multibody::BodyFrame<double>* foot_frame_;
+  const drake::multibody::BodyFrame<double>* pin_foot_frame_;
+  const drake::multibody::BodyFrame<AutoDiffXd>* foot_frame_ad_;
+  const drake::multibody::BodyFrame<AutoDiffXd>* pin_foot_frame_ad_;
+  const drake::multibody::Frame<double>* world_;
+  const drake::multibody::Frame<double>* pin_world_;
+  const drake::multibody::Frame<AutoDiffXd>* world_ad_;
+  const drake::multibody::Frame<AutoDiffXd>* pin_world_ad_;
   std::unique_ptr<MultibodyPlant<AutoDiffXd>> plant_ad_{};
   std::unique_ptr<PinocchioPlant<AutoDiffXd>> pin_plant_ad_{};
   std::unique_ptr<drake::systems::Context<double>> context_;
@@ -82,32 +98,19 @@ class PinocchioKinematicTest : public ::testing::Test {
   drake::VectorX<AutoDiffXd> x_ad_;
 };
 
-// template <>
-// bool PinocchioPlant<double>::TestInverseDynamics(
-//    const drake::systems::Context<double>& context, const VectorXd&
-//    known_vdot, const drake::multibody::MultibodyForces<double>&
-//    external_forces, double tol) const {
-//  auto f = MultibodyPlant<double>::CalcInverseDynamics(context, known_vdot,
-//                                                       external_forces);
-//  auto pin_f = CalcInverseDynamics(context, known_vdot, external_forces);
-//
-//  return (f - pin_f).norm() < tol;
-//}
-//
-// template <>
-// bool PinocchioPlant<double>::TestMassMatrix(const Context<double>& context,
-//                                            double tol) const {
-//  int nv = num_velocities();
-//
-//  MatrixXd M(nv, nv);
-//  MatrixXd pin_M(nv, nv);
-//
-//  MultibodyPlant<double>::CalcMassMatrix(context, &M);
-//
-//  CalcMassMatrix(context, &pin_M);
-//
-//  return (M - pin_M).norm() < tol;
-//}
+TEST_F(PinocchioKinematicTest, TestMassMatrixDouble) {
+  int nv = plant_->num_velocities();
+  plant_->SetPositionsAndVelocities(context_.get(), x_);
+  pin_plant_->SetPositionsAndVelocities(pin_context_.get(), x_);
+  Eigen::MatrixXd M(nv, nv);
+  Eigen::MatrixXd pin_M(nv, nv);
+
+  plant_->CalcMassMatrix(*context_, &M);
+
+  pin_plant_->CalcMassMatrix(*pin_context_, &pin_M);
+
+  EXPECT_TRUE((M - pin_M).norm() < tol);
+}
 
 TEST_F(PinocchioKinematicTest, TestCenterOfMassDouble) {
   plant_->SetPositionsAndVelocities(context_.get(), x_);
@@ -115,9 +118,6 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassDouble) {
   Eigen::Vector3d com = plant_->CalcCenterOfMassPositionInWorld(*context_);
   Eigen::Vector3d pin_com =
       pin_plant_->CalcCenterOfMassPositionInWorld(*pin_context_);
-
-  std::cout << "com = " << com.transpose() << std::endl;
-  std::cout << "pin_com = " << pin_com.transpose() << std::endl;
 
   EXPECT_TRUE((com - pin_com).norm() < tol);
 }
@@ -129,15 +129,6 @@ TEST_F(PinocchioKinematicTest, TestCenterOfMassAD) {
       plant_ad_->CalcCenterOfMassPositionInWorld(*context_ad_);
   drake::Vector3<AutoDiffXd> pin_com =
       pin_plant_ad_->CalcCenterOfMassPositionInWorld(*pin_context_ad_);
-
-  std::cout << "com value = " << ExtractValue(com).transpose() << std::endl;
-  std::cout << "pin_com value = " << ExtractValue(pin_com).transpose()
-            << std::endl;
-  std::cout << "com gradient = " << ExtractGradient(com).transpose()
-            << std::endl;
-  std::cout << "pin_com gradient = " << ExtractGradient(pin_com).transpose()
-            << std::endl;
-
 
   EXPECT_TRUE((ExtractValue(com) - ExtractValue(pin_com)).norm() < tol);
   EXPECT_TRUE(ExtractGradient(com).rows() == ExtractGradient(pin_com).rows());
@@ -156,116 +147,90 @@ TEST_F(PinocchioKinematicTest, TestCentroidalMomentumDouble) {
   auto pin_spatial_momentum =
       pin_plant_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_, com);
 
-  std::cout << "translational: spatial_momentum = " << spatial_momentum.translational().transpose() << std::endl;
-  std::cout << "translational: pin_spatial_momentum = " << pin_spatial_momentum.translational().transpose() << std::endl;
-  std::cout << "rotational: spatial_momentum = " << spatial_momentum.rotational().transpose() << std::endl;
-  std::cout << "rotational: pin_spatial_momentum = " << pin_spatial_momentum.rotational().transpose() << std::endl;
-
   EXPECT_TRUE((com - pin_com).norm() < tol);
-  EXPECT_TRUE((spatial_momentum.translational() - pin_spatial_momentum.translational()).norm() < tol);
-  EXPECT_TRUE((spatial_momentum.rotational() - pin_spatial_momentum.rotational()).norm() < tol);
+  EXPECT_TRUE(
+      (spatial_momentum.translational() - pin_spatial_momentum.translational())
+          .norm() < tol);
+  EXPECT_TRUE(
+      (spatial_momentum.rotational() - pin_spatial_momentum.rotational())
+          .norm() < tol);
 }
 
 TEST_F(PinocchioKinematicTest, TestCentroidalMomentumAD) {
   plant_ad_->SetPositionsAndVelocities(context_ad_.get(), x_ad_);
   pin_plant_ad_->SetPositionsAndVelocities(pin_context_ad_.get(), x_ad_);
-  drake::Vector3<AutoDiffXd> com = plant_ad_->CalcCenterOfMassPositionInWorld(*context_ad_);
+  drake::Vector3<AutoDiffXd> com =
+      plant_ad_->CalcCenterOfMassPositionInWorld(*context_ad_);
   drake::Vector3<AutoDiffXd> pin_com =
       pin_plant_ad_->CalcCenterOfMassPositionInWorld(*pin_context_ad_);
   auto spatial_momentum =
       plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*context_ad_, com);
   auto pin_spatial_momentum =
-      pin_plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_ad_, pin_com);
+      pin_plant_ad_->CalcSpatialMomentumInWorldAboutPoint(*pin_context_ad_,
+                                                          pin_com);
 
-  std::cout << "translational: spatial_momentum = " << spatial_momentum.translational().transpose() << std::endl;
-  std::cout << "translational: pin_spatial_momentum = " << pin_spatial_momentum.translational().transpose() << std::endl;
-  std::cout << "rotational: spatial_momentum = " << spatial_momentum.rotational().transpose() << std::endl;
-  std::cout << "rotational: pin_spatial_momentum = " << pin_spatial_momentum.rotational().transpose() << std::endl;
-
-//  EXPECT_TRUE((com - pin_com).norm() < tol);
-//  EXPECT_TRUE((spatial_momentum.translational() - pin_spatial_momentum.translational()).norm() < tol);
-//  EXPECT_TRUE((spatial_momentum.rotational() - pin_spatial_momentum.rotational()).norm() < tol);
-  EXPECT_TRUE((ExtractValue(spatial_momentum.translational()) - ExtractValue(pin_spatial_momentum.translational())).norm() < tol);
-  EXPECT_TRUE((ExtractValue(spatial_momentum.rotational()) - ExtractValue(pin_spatial_momentum.rotational())).norm() < tol);
-  EXPECT_TRUE(ExtractGradient(spatial_momentum.translational()).rows() == ExtractGradient(pin_spatial_momentum.translational()).rows());
-  EXPECT_TRUE(ExtractGradient(spatial_momentum.translational()).cols() == ExtractGradient(pin_spatial_momentum.translational()).cols());
-  EXPECT_TRUE(ExtractGradient(spatial_momentum.rotational()).rows() == ExtractGradient(pin_spatial_momentum.rotational()).rows());
-  EXPECT_TRUE(ExtractGradient(spatial_momentum.rotational()).cols() == ExtractGradient(pin_spatial_momentum.rotational()).cols());
-  std::cout << "linear momentum gradient = " << ExtractGradient(spatial_momentum.translational()).transpose()
-            << std::endl;
-  std::cout << "linear momentum gradient = " << ExtractGradient(pin_spatial_momentum.translational()).transpose()
-            << std::endl;
-  std::cout << "angular momentum gradient = " << ExtractGradient(spatial_momentum.rotational()).transpose()
-            << std::endl;
-  std::cout << "angular momentum gradient = " << ExtractGradient(pin_spatial_momentum.rotational()).transpose()
-            << std::endl;
+  EXPECT_TRUE((ExtractValue(spatial_momentum.translational()) -
+               ExtractValue(pin_spatial_momentum.translational()))
+                  .norm() < tol);
+  EXPECT_TRUE((ExtractValue(spatial_momentum.rotational()) -
+               ExtractValue(pin_spatial_momentum.rotational()))
+                  .norm() < tol);
+  EXPECT_TRUE((ExtractGradient(spatial_momentum.translational()) -
+               ExtractGradient(pin_spatial_momentum.translational()))
+                  .norm() < tol);
+  EXPECT_TRUE((ExtractGradient(spatial_momentum.translational()) -
+               ExtractGradient(pin_spatial_momentum.translational()))
+                  .norm() < tol);
+  EXPECT_TRUE((ExtractGradient(spatial_momentum.rotational()) -
+               ExtractGradient(pin_spatial_momentum.rotational()))
+                  .norm() < tol);
+  EXPECT_TRUE((ExtractGradient(spatial_momentum.rotational()) -
+               ExtractGradient(pin_spatial_momentum.rotational()))
+                  .norm() < tol);
 }
 
-//
-// template <>
-// bool PinocchioPlant<double>::TestCenterOfMassVel(const Context<double>&
-// context,
-//                                                 double tol) const {
-//  Eigen::Vector3d com_vel =
-//      MultibodyPlant<double>::CalcCenterOfMassTranslationalVelocityInWorld(
-//          context);
-//  Eigen::Vector3d pin_com_vel =
-//      CalcCenterOfMassTranslationalVelocityInWorld(context);
-//  std::cout << "com_vel = " << com_vel.transpose() << std::endl;
-//  std::cout << "pin_com_vel = " << pin_com_vel.transpose() << std::endl;
-//
-//  return (com_vel - pin_com_vel).norm() < tol;
-//}
-//
-// template <>
-// bool PinocchioPlant<double>::TestCenterOfMassJ(const Context<double>&
-// context,
-//                                               double tol) const {
-//  int nv = num_velocities();
-//
-//  MatrixXd J(3, nv);
-//  MatrixXd pin_J(3, nv);
-//
-//  MultibodyPlant<double>::CalcJacobianCenterOfMassTranslationalVelocity(
-//      context, JacobianWrtVariable::kV, this->world_frame(),
-//      this->world_frame(), &J);
-//
-//  CalcJacobianCenterOfMassTranslationalVelocity(
-//      context, JacobianWrtVariable::kV, this->world_frame(),
-//      this->world_frame(), &pin_J);
-//  return (J - pin_J).norm() < tol;
-//}
-//
-// template <>
-// bool PinocchioPlant<AutoDiffXd>::TestInverseDynamics(
-//    const drake::systems::Context<AutoDiffXd>& context,
-//    const drake::VectorX<AutoDiffXd>& known_vdot,
-//    const drake::multibody::MultibodyForces<AutoDiffXd>& external_forces,
-//    double tol) const {
-//  throw std::domain_error(
-//      "TestInverseDynamics not implemented with AutoDiffXd");
-//}
-//
-// template <>
-// bool PinocchioPlant<AutoDiffXd>::TestMassMatrix(
-//    const Context<AutoDiffXd>& context, double tol) const {
-//  throw std::domain_error("TestMassMatrix not implemented with AutoDiffXd");
-//}
-//
-//
-// template <>
-// bool PinocchioPlant<AutoDiffXd>::TestCenterOfMassVel(
-//    const Context<AutoDiffXd>& context, double tol) const {
-//  throw std::domain_error(
-//      "CalcCenterOfMassPositionInWorld not implemented with AutoDiffXd");
-//}
-//
-// template <>
-// bool PinocchioPlant<AutoDiffXd>::TestCenterOfMassJ(
-//    const Context<AutoDiffXd>& context, double tol) const {
-//  throw std::domain_error("TestCenterOfMassJ not implemented with
-//  AutoDiffXd");
-//}
+TEST_F(PinocchioKinematicTest, TestCenterOfMassVel) {
+  Eigen::Vector3d com_vel =
+      plant_->CalcCenterOfMassTranslationalVelocityInWorld(*context_);
+  Eigen::Vector3d pin_com_vel =
+      pin_plant_->CalcCenterOfMassTranslationalVelocityInWorld(*pin_context_);
+
+  EXPECT_TRUE((com_vel - pin_com_vel).norm() < tol);
+}
+
+TEST_F(PinocchioKinematicTest, TestCalcPointsPositionDouble) {
+  plant_->SetPositionsAndVelocities(context_.get(), x_);
+  pin_plant_->SetPositionsAndVelocities(pin_context_.get(), x_);
+  Eigen::Vector3d foot_pos;
+  Eigen::Vector3d pin_foot_pos;
+  plant_->CalcPointsPositions(*context_, *foot_frame_, toe_front_, *world_,
+                              &foot_pos);
+  pin_plant_->CalcPointsPositions(*pin_context_, *pin_foot_frame_, toe_front_,
+                                  *pin_world_, &pin_foot_pos);
+  EXPECT_TRUE((foot_pos - pin_foot_pos).norm() < tol);
+}
+
+TEST_F(PinocchioKinematicTest, TestCalcPointsPositionAD) {
+  plant_ad_->SetPositionsAndVelocities(context_ad_.get(), x_ad_);
+  pin_plant_ad_->SetPositionsAndVelocities(pin_context_ad_.get(), x_ad_);
+  drake::Vector3<AutoDiffXd> foot_pos;
+  drake::Vector3<AutoDiffXd> pin_foot_pos;
+  plant_ad_->CalcPointsPositions(*context_ad_, *foot_frame_ad_, toe_front_ad_,
+                                 *world_ad_, &foot_pos);
+  pin_plant_ad_->CalcPointsPositions(*pin_context_ad_, *pin_foot_frame_ad_,
+                                     toe_front_ad_, *pin_world_ad_,
+                                     &pin_foot_pos);
+  std::cout << ExtractGradient(foot_pos).leftCols(18) << std::endl;
+  std::cout << ExtractGradient(pin_foot_pos) << std::endl;
+  std::cout << ExtractGradient(foot_pos).rows() << std::endl;
+  std::cout << ExtractGradient(foot_pos).cols() << std::endl;
+  std::cout << ExtractGradient(pin_foot_pos).rows() << std::endl;
+  std::cout << ExtractGradient(pin_foot_pos).cols() << std::endl;
+  EXPECT_TRUE((ExtractValue(foot_pos) - ExtractValue(pin_foot_pos)).norm() <
+              tol);
+  EXPECT_TRUE(
+      (ExtractGradient(foot_pos) - ExtractGradient(pin_foot_pos)).norm() < tol);
+}
 
 }  // namespace
 }  // namespace multibody

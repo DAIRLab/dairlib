@@ -8,7 +8,7 @@
 
 // TODO: Needs a fixed vs. floating base mechanism
 // Move test methods here as self-verification steps
-// Needs joint correspondance
+// Needs joint correspondence
 
 namespace dairlib {
 namespace multibody {
@@ -24,8 +24,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
 
   void FinalizePlant();
 
-//  drake::VectorX<T> MapPositionFromDrakeToPinocchio(
-//      const drake::VectorX<T>& q) const;
   drake::VectorX<double> MapPositionFromDrakeToPinocchio(
       const drake::VectorX<double>& q) const;
   drake::VectorX<T> MapVelocityFromDrakeToPinocchio(
@@ -38,8 +36,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
   drake::MatrixX<double> GetVelocityMapFromPinocchioToDrake(
       const drake::VectorX<double>& quat) const;
 
-//  void SetPositionsAndVelocities(const drake::VectorX<T>& q,
-//                                 const drake::VectorX<T>& v);
 
   /**
    * This function updates the pinocchio data struct with forward kinematics.
@@ -120,27 +116,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
       const drake::systems::Context<T>& context,
       const drake::Vector3<T>& p_WoP_W) const override;
 
-  //
-  // Comparisons against MultibodyPlant
-  //
-
-  bool TestInverseDynamics(
-      const drake::systems::Context<T>& context,
-      const drake::VectorX<T>& known_vdot,
-      const drake::multibody::MultibodyForces<T>& external_forces,
-      double tol) const;
-
-  bool TestMassMatrix(const drake::systems::Context<T>& context,
-                      double tol = 1e-5) const;
-
-  bool TestCenterOfMass(const drake::systems::Context<T>& context,
-                        double tol = 1e-5) const;
-
-  bool TestCenterOfMassVel(const drake::systems::Context<T>& context,
-                           double tol = 1e-5) const;
-
-  bool TestCenterOfMassJ(const drake::systems::Context<T>& context,
-                         double tol = 1e-5) const;
 
  private:
   std::string urdf_;

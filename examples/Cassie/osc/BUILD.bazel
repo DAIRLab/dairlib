@@ -8,6 +8,7 @@ cc_library(
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:hip_yaw_traj_gen",
+        "//systems/controllers/osc:osc_gains",
         "//examples/Cassie/osc:osc_walking_gains",
         "//examples/Cassie/osc:osc_walking_gains_alip",
         "//examples/Cassie/osc:standing_com_traj",

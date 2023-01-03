@@ -28,9 +28,11 @@ cc_library(
     hdrs = ["impact_aware_time_based_fsm.h"],
     deps = [
         "//systems/controllers:time_based_fsm",
+        "//common",
         "@drake//:drake_shared_library",
     ],
 )
+
 
 cc_binary(
     name = "five_link_biped_sim",

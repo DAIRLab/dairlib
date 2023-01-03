@@ -1,6 +1,5 @@
 #pragma once
 
-#include <drake/solvers/mathematical_program.h>
 #include <osqp.h>
 
 #include "drake/common/drake_copyable.h"
@@ -16,6 +15,30 @@ namespace solvers {
  * MathematicalProgramResult::get_solver_details<OsqpSolver>() to obtain the
  * details.
  */
+
+/**
+ * For a sparse(or dense) matrix, return a vector of triplets, such that we can
+ * reconstruct the matrix using setFromTriplet function
+ * @param matrix A sparse matrix
+ * @return A triplet with the row, column and value of the non-zero entries.
+ * See https://eigen.tuxfamily.org/dox/group__TutorialSparse.html for more
+ * information on the triplet
+ */
+template <typename Derived>
+std::vector<Eigen::Triplet<typename Derived::Scalar>>
+SparseOrDenseMatrixToTriplets(
+    const Derived& matrix) {
+  using Scalar = typename Derived::Scalar;
+  std::vector<Eigen::Triplet<Scalar>> triplets;
+  triplets.reserve(matrix.nonZeros());
+  for (int i = 0; i < matrix.outerSize(); i++) {
+    for (typename Derived::InnerIterator it(matrix, i); it; ++it) {
+      triplets.push_back(
+          Eigen::Triplet<Scalar>(it.row(), it.col(), it.value()));
+    }
+  }
+  return triplets;
+}
 
 class FastOsqpSolver final : public drake::solvers::SolverBase {
  public:
@@ -66,6 +89,16 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
                drake::solvers::MathematicalProgramResult*) const final;
 
   OSQPData* osqp_data_;
+  mutable csc* P_csc_ = nullptr;
+  mutable csc* A_csc_ = nullptr;
+  mutable Eigen::SparseMatrix<c_float> P_sparse_;
+  mutable Eigen::SparseMatrix<c_float> A_sparse_;
+  mutable std::vector<c_float> l_;
+  mutable std::vector<c_float> u_;
+  mutable std::vector<c_float> q_;
+  mutable std::vector<Eigen::Triplet<c_float>> P_triplets_;
+  mutable std::vector<Eigen::Triplet<c_float>> A_triplets_;
+
   mutable OSQPSettings* osqp_settings_;
   mutable OSQPWorkspace* workspace_;
   mutable bool warm_start_ = true;

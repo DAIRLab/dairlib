@@ -6,26 +6,26 @@ except ImportError as e:
     raise e
 
 import sys
-import argparse
 import apriltag
 import datetime
 import numpy as np
+import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from tf_bag import BagTfTransformer
-import sensor_msgs.point_cloud2 as pc2
-from scipy.spatial.transform import Rotation
-from sklearn.linear_model import RANSACRegressor
 
 from pydrake.common.eigen_geometry import Quaternion
-from pydrake.math import RigidTransform, RotationMatrix
 from pydrake.solvers import MathematicalProgram, Solve
+from pydrake.math import RigidTransform, RotationMatrix
+
+TOE_REAR = np.array([0.088, 0, 0])
+TOE_FRONT = np.array([-0.0457, 0.112, 0])
 
 
 # Takes a data dictionary containing N datapoints with the entries {
 #   'N': number of data points
 #   'world_points': Nx3 numpy array, each row is a point in world frame
 #   'camera points': Nx3 numpy array, corresponding points in camera frame
-#   'pelvis_orientations': list of pelvis poses in the world frame as drake Rotation matrices
+#   'pelvis_orientations': list of pelvis orientations in the world frame as drake Rotation matrices
 #   'pelvis positions': Nx3 nupy array, each row is the position of the pelvis in the world frame
 # }
 def find_camera_pose_by_constrained_optimization(data):
@@ -42,13 +42,19 @@ def find_camera_pose_by_constrained_optimization(data):
     Y = np.hstack([data['camera_points'], np.ones((N, 1))]).T
 
     for i in range(N):
-        prog.AddQuadraticCost((X[:, i] - X_PC @ Y[:, i]).T @
-                              (X[:, i] - X_PC @ Y[:, i]))
+        t = prog.NewContinuousVariables(3, f"t_{i}")
+        for j in range(3):
+            prog.AddLinearConstraint(t[j] >= 0)
+            prog.AddLinearConstraint((X[:, i] - X_PC @ Y[:, i]).ravel()[j] <= t[j])
+            prog.AddLinearConstraint((X_PC @ Y[:, i] - X[:, i]).ravel()[j] <= t[j])
+            prog.AddLinearCost(t[j])
+        # prog.AddQuadraticCost((X[:, i] - X_PC @ Y[:, i]).T @
+        #                       (X[:, i] - X_PC @ Y[:, i]))
 
     # prog.AddQuadraticCost(np.trace((X - X_PC @ Y) @ (X - X_PC @ Y).T))
-    orthonomral_constraint = (R.T @ R).reshape((-1, 1)) - np.eye(3).reshape((-1, 1))
-    orthonomral_constraint = orthonomral_constraint.ravel()
-    [prog.AddConstraint(orthonomral_constraint[i], 0, 0) for i in range(9)]
+    orthonormal_constraint = (R.T @ R).reshape((-1, 1)) - np.eye(3).reshape((-1, 1))
+    orthonormal_constraint = orthonormal_constraint.ravel()
+    [prog.AddConstraint(orthonormal_constraint[i], 0, 0) for i in range(9)]
 
     prog.SetInitialGuess(
         R,
@@ -74,7 +80,7 @@ class CalibrationParams:
     margin: float = 0.05
     tag_size: float = 0.174
     start_id: int = 78
-    valid_pose_error_threshold: float = 0.005
+    valid_pose_error_threshold: float = 0.02
     board_pose_in_world_frame: RigidTransform = RigidTransform.Identity()
 
 
@@ -109,10 +115,9 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
         rosbag_hardware.read_messages(topics=['/camera/color/camera_info'])
     )
 
-    # Get the intrinsic matrix
-    # [fx 0 cx]
-    # [0 fy cy]
-    # [0  0  1]
+    # Get the intrinsic matrix [fx 0 cx]
+    #                          [0 fy cy]
+    #                          [0  0  1]
     # and map to apriltag intrinsics [fx, fy, cx, cy]
     intrinsics = np.reshape(camera_info.K, (3, 3))
     apriltag_intrinsics = [intrinsics[0, 0],
@@ -135,7 +140,9 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
 
     rosbag_rectified.close()
     # for time in timestamped_apriltag_poses.keys():
-    #     print(datetime.datetime.utcfromtimestamp(time.to_sec()).strftime("%m/%d/%Y, %H:%M:%S"))
+    #     print(datetime.datetime.utcfromtimestamp(
+    #           time.to_sec()
+    #     ).strftime("%m/%d/%Y, %H:%M:%S"))
 
     # Get the pelvis transform for the timestamps with valid apriltag poses
     print("Getting pelvis pose data at apriltag pose timestamps...")
@@ -198,9 +205,9 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
         X_WR = timestamped_right_toe_poses[timestamp]
         X_WL = timestamped_left_toe_poses[timestamp]
 
-        right_toe_rear = X_WR.multiply(np.array([0.088, 0, 0])).ravel()
-        left_toe_rear = X_WL.multiply(np.array([0.088, 0, 0])).ravel()
-        right_toe_front = X_WR.multiply(np.array([-0.0457, 0.112, 0])).ravel()
+        right_toe_rear = X_WR.multiply(TOE_REAR).ravel()
+        left_toe_rear = X_WL.multiply(TOE_REAR).ravel()
+        right_toe_front = X_WR.multiply(TOE_FRONT).ravel()
         left_toe_front = X_WL.multiply(np.array([-0.0457, 0.112, 0])).ravel()
 
         board_origin_in_world = 0.5 * (right_toe_front + right_toe_rear) - \
@@ -257,6 +264,20 @@ def collect_transforms(parent_frame, child_frame, times, fname):
     return transforms
 
 
+def validate_calibration(data, X_PC):
+    N = data['N']
+    camera_points_in_world = np.zeros((N, 3))
+    for i in range(N):
+        camera_points_in_world[i] = data['pelvis_positions'][i] + \
+                                    data['pelvis_orientations'][i].multiply(
+                                        X_PC.multiply(data['camera_points'][i])
+                                    )
+    error = data['world_points'] - camera_points_in_world
+    plt.plot(error)
+    plt.legend(['x', 'y', 'z'])
+    plt.show()
+
+
 def main():
     processed_fname = sys.argv[1]
     hardware_fname = sys.argv[2]
@@ -266,6 +287,8 @@ def main():
         CalibrationParams()
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
+    print(X_PC)
+    validate_calibration(data, X_PC)
 
 
 if __name__ == "__main__":

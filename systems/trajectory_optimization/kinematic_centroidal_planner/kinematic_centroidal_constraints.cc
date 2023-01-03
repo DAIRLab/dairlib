@@ -132,8 +132,8 @@ void KinematicIntegratorConstraint<T>::EvaluateConstraint(
   *y = 0.5 * dt_ * (qdot0 + qdot1) + q0 - q1;
 }
 
- template <typename T>
- CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(
+template <typename T>
+CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     drake::systems::Context<T>* context, int knot_index)
     : dairlib::solvers::NonlinearConstraint<T>(
@@ -145,8 +145,8 @@ void KinematicIntegratorConstraint<T>::EvaluateConstraint(
       n_q_(plant.num_positions()),
       n_v_(plant.num_velocities()) {}
 
-//template <typename T>
-//CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(
+// template <typename T>
+// CenterofMassPositionConstraint<T>::CenterofMassPositionConstraint(
 //    const drake::multibody::MultibodyPlant<double>& plant,
 //    drake::systems::Context<double>* context, int knot_index)
 //    : dairlib::solvers::NonlinearConstraint<T>(
@@ -177,7 +177,8 @@ void CenterofMassPositionConstraint<drake::AutoDiffXd>::EvaluateConstraint(
     drake::VectorX<AutoDiffXd>* y) const {
   const auto& rCom = x.segment(0, 3);
   const auto& q0 = x.segment(3, n_q_);
-  dairlib::multibody::SetPositionsIfNew<drake::AutoDiffXd>(plant_, q0, context_);
+  dairlib::multibody::SetPositionsIfNew<drake::AutoDiffXd>(plant_, q0,
+                                                           context_);
 
   drake::Vector3<AutoDiffXd> com =
       plant_.CalcCenterOfMassPositionInWorld(*context_);
@@ -196,13 +197,13 @@ CentroidalMomentumConstraint<T>::CentroidalMomentumConstraint(
     const drake::multibody::MultibodyPlant<T>& plant,
     drake::systems::Context<T>* context, int knot_index)
     : dairlib::solvers::NonlinearConstraint<T>(
-          6, plant.num_positions() + plant.num_velocities() + 6 + 3,
+          //          6, plant.num_positions() + plant.num_velocities() + 6 + 3,
+          6, plant.num_positions() + plant.num_velocities() + 6,
           Eigen::VectorXd::Zero(6), Eigen::VectorXd::Zero(6),
           "centroidal_momentum[" + std::to_string(knot_index) + "]"),
       plant_(plant),
       context_(context),
       n_x_(plant.num_positions() + plant.num_velocities()),
-      n_com_(3),
       n_h_(6) {}
 
 /// The format of the input to the eval() function is in the order
@@ -215,11 +216,13 @@ void CentroidalMomentumConstraint<double>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& x,
     drake::VectorX<double>* y) const {
   const auto& x0 = x.head(n_x_);
-  const auto& com = x.segment(n_x_, 3);
-  const auto& h_WC = x.segment(n_x_ + 3, 6);
+  //  const auto& com = x.segment(n_x_, 3);
+  const auto& h_WC = x.segment(n_x_, 6);
 
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, x0,
                                                              context_);
+  drake::Vector3<double> com =
+      plant_.CalcCenterOfMassPositionInWorld(*context_);
   const auto& spatial_momentum =
       plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com);
   *y = spatial_momentum.get_coeffs() - h_WC;
@@ -230,13 +233,11 @@ void CentroidalMomentumConstraint<AutoDiffXd>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<AutoDiffXd>>& x,
     drake::VectorX<AutoDiffXd>* y) const {
   const auto& x0 = x.head(n_x_);
-  const auto& com = x.segment(n_x_, 3);
-  const auto& h_WC = x.segment(n_x_ + 3, 6);
+  const auto& h_WC = x.tail(6);
   dairlib::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_, x0,
                                                                  context_);
-
-  const auto& spatial_momentum =
-      plant_.CalcSpatialMomentumInWorldAboutPoint(*context_, com);
+  const auto& spatial_momentum = plant_.CalcSpatialMomentumInWorldAboutPoint(
+      *context_, drake::math::InitializeAutoDiff(Eigen::Vector3d::Zero()));
   Eigen::VectorXd value =
       drake::math::ExtractValue(spatial_momentum.get_coeffs()) -
       drake::math::ExtractValue(h_WC);
@@ -244,7 +245,7 @@ void CentroidalMomentumConstraint<AutoDiffXd>::EvaluateConstraint(
 
   gradient.block(0, 0, 6, n_x_) =
       drake::math::ExtractGradient(spatial_momentum.get_coeffs());
-  gradient.block(0, n_x_ + 3, 6, 6) = -1 * Eigen::MatrixXd::Identity(6, 6);
+  gradient.block(0, n_x_, 6, 6) = -1 * Eigen::MatrixXd::Identity(6, 6);
   *y = drake::math::InitializeAutoDiff(value, gradient);
 }
 

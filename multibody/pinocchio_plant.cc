@@ -422,6 +422,7 @@ SpatialMomentum<AutoDiffXd>
 PinocchioPlant<AutoDiffXd>::CalcSpatialMomentumInWorldAboutPoint(
     const Context<AutoDiffXd>& context,
     const Vector3<AutoDiffXd>& p_WoP_W) const {
+  drake::unused(p_WoP_W);
   UpdateCentroidalDynamicsDerivatives(context);
   VectorXd hg = pinocchio_data_.hg.toVector();
 
@@ -438,10 +439,11 @@ PinocchioPlant<AutoDiffXd>::CalcSpatialMomentumInWorldAboutPoint(
   drake::MatrixX<double> rot = drake_quat.toRotationMatrix().transpose();
   auto map = drake::multibody::internal::QuaternionFloatingMobilizer<
       double>::AngularVelocityToQuaternionRateMatrix(drake_quat);
-  MatrixXd gradient_quat =
-      4 * map * rot.transpose() * dhdq.block<6, 3>(0, 3).transpose();
+//  MatrixXd gradient_quat =
+//      4 * map * rot.transpose() * dhdq.block<6, 3>(0, 3).transpose();
+  MatrixXd gradient_quat = 4 * dhdq.block<6, 3>(0, 3) * rot * map.transpose();
   Matrix6X<double> gradient_pos = dhdq.block<6, 3>(0, 0) * rot;
-  gradient_quat.transposeInPlace();
+//  gradient_quat.transposeInPlace();
 
   MatrixXd dhdx = MatrixXd(6, n_q_ + n_v_);
   dhdx << gradient_quat, gradient_pos, dhdq.rightCols(n_q_ - 7), dhdv;

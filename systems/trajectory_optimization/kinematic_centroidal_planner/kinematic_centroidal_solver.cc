@@ -41,7 +41,6 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
       contact_sequence_(n_knot_points),
       contexts_(n_knot_points),
       contexts_ad_(n_knot_points) {
-
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
@@ -180,15 +179,14 @@ void KinematicCentroidalSolver::AddContactConstraints() {
 void KinematicCentroidalSolver::AddCentroidalKinematicConsistency() {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     // Ensure linear and angular momentum line up
-    auto centroidal_momentum =
-        std::make_shared<CentroidalMomentumConstraint<double>>(
-            plant_, contexts_[knot_point].get(), knot_point);
 //    auto centroidal_momentum =
-//        std::make_shared<CentroidalMomentumConstraint<AutoDiffXd>>(
-//            plant_ad_, contexts_ad_[knot_point].get(), knot_point);
+//        std::make_shared<CentroidalMomentumConstraint<double>>(
+//            plant_, contexts_[knot_point].get(), knot_point);
+    auto centroidal_momentum =
+        std::make_shared<CentroidalMomentumConstraint<AutoDiffXd>>(
+            plant_ad_, contexts_ad_[knot_point].get(), knot_point);
     prog_->AddConstraint(centroidal_momentum,
-                         {state_vars(knot_point), com_pos_vars(knot_point),
-                          momentum_vars(knot_point)});
+                         {state_vars(knot_point), momentum_vars(knot_point)});
     for (int contact_index = 0; contact_index < n_contact_points_;
          contact_index++) {
       // Ensure foot position line up with kinematics
@@ -201,12 +199,12 @@ void KinematicCentroidalSolver::AddCentroidalKinematicConsistency() {
                             contact_pos_vars(knot_point, contact_index)});
     }
     // Constrain com position
-//    auto com_position =
-//        std::make_shared<CenterofMassPositionConstraint<double>>(
-//            plant_, contexts_[knot_point].get(), knot_point);
-//    auto com_position =
-//        std::make_shared<CenterofMassPositionConstraint<drake::AutoDiffXd>>(
-//            plant_, contexts_[knot_point].get(), knot_point);
+    //    auto com_position =
+    //        std::make_shared<CenterofMassPositionConstraint<double>>(
+    //            plant_, contexts_[knot_point].get(), knot_point);
+    //    auto com_position =
+    //        std::make_shared<CenterofMassPositionConstraint<drake::AutoDiffXd>>(
+    //            plant_, contexts_[knot_point].get(), knot_point);
     auto com_position =
         std::make_shared<CenterofMassPositionConstraint<drake::AutoDiffXd>>(
             plant_ad_, contexts_ad_[knot_point].get(), knot_point);

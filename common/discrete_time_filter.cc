@@ -12,6 +12,8 @@ void DiscreteTimeFilter::Reset(){
 
 FirstOrderLowPassFilter::FirstOrderLowPassFilter(double alpha, int vector_size)
     : alpha_(alpha) {
+  DRAKE_DEMAND(alpha <= 1);
+  DRAKE_DEMAND(alpha >= 0);
   y_.resize(vector_size);
   y_.setZero();
 }
@@ -24,6 +26,8 @@ void FirstOrderLowPassFilter::Update(VectorXd value) {
 }
 
 void FirstOrderLowPassFilter::UpdateParameters(double alpha) {
+  DRAKE_DEMAND(alpha <= 1);
+  DRAKE_DEMAND(alpha >= 0);
   alpha_ = alpha;
 }
 

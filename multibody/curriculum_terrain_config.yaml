@@ -1,4 +1,6 @@
-total_length: 100
-n_difficulties: 4
-difficulty_length: 25  # size (in meters) of each area of difficulty
-difficulty_heights: [0.00, 0.03, 0.06, 0.09]
+total_length: 45
+n_difficulties: 3
+difficulty_length: 15
+difficulty_heights: [0.00, 0.03, 0.07]
+min_box_width: 0.2
+max_box_width: 0.7

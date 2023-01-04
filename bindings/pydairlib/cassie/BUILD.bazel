@@ -27,6 +27,7 @@ py_binary(
     name = "footstep_ppo",
     srcs = ["footstep_ppo.py"],
     deps = [
+        "//bindings/pydairlib/cassie/cassie_gym:footstep_env_utils",
         "//bindings/pydairlib/cassie/cassie_gym:drake_cassie_gym",
         "//bindings/pydairlib/cassie/cassie_gym:footstep_env",
     ],

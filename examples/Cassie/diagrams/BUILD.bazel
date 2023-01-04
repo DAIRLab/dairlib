@@ -87,6 +87,8 @@ cc_library(
         "//examples/Cassie/systems:cassie_encoder",
         "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
         "//multibody:boxy_height_map",
+        "//multibody:curriculum_height_map",
+        "//multibody:curriculum_terrain_config",
         "//multibody:cube_height_map",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",

@@ -13,4 +13,4 @@ class VisualLocoReward:
         # TODO(hersh500): implement yaw following.
         vel = cassie_state.get_velocities()
         return (self.weights[0] * np.clip(vel[0], -0.5, 0.5) +
-                self.weights[1] * vel[1])
+                self.weights[1] * np.abs(vel[1]))

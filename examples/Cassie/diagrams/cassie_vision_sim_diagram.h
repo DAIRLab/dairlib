@@ -5,6 +5,7 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include "multibody/boxy_height_map.h"
+#include "multibody/curriculum_height_map.h"
 #include "systems/cameras/camera_utils.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 #include "drake/common/drake_copyable.h"
@@ -69,7 +70,7 @@ class CassieVisionSimDiagram : public drake::systems::Diagram<double> {
  private:
 
   drake::multibody::MultibodyPlant<double>* plant_;
-  multibody::BoxyHeightMap hmap_;
+  multibody::CurriculumHeightMap hmap_;
   drake::math::RigidTransform<double> cam_transform_;
   const systems::SimCassieSensorAggregator* sensor_aggregator_;
   drake::geometry::SceneGraph<double>* scene_graph_;

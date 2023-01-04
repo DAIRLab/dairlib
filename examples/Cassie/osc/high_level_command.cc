@@ -128,9 +128,12 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     des_vel << vel_scale_rot_ * radio_out->channel[3],
         vel_scale_trans_sagital * radio_out->channel[0],
         vel_scale_trans_lateral_ * radio_out->channel[1];
+
     Vector3d des_vel_filt;
     des_vel_filt(0) = des_vel(0);
-    des_vel_filt.tail(2) = a * des_vel.tail(2) + (1 - a) * des_vel_prev.tail(2);
+    // commented out for RL code
+    // des_vel_filt.tail(2) = a * des_vel.tail(2) + (1 - a) * des_vel_prev.tail(2);
+    des_vel_filt.tail(2) = des_vel.tail(2);
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel_filt);
   } else {
     discrete_state->get_mutable_vector(des_vel_idx_)

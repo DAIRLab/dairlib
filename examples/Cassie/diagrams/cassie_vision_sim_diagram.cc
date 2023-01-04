@@ -35,6 +35,7 @@
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
 #include "drake/geometry/render_vtk/factory.h"
 #include "drake/common/yaml/yaml_io.h"
+#include "multibody/curriculum_height_map.h"
 
 namespace dairlib {
 namespace examples {
@@ -75,11 +76,10 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
 
   plant_ = builder.AddSystem(std::move(plant));
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
-  auto gains = drake::yaml::LoadYamlFile<CurriculumTerrainInfo>(map_config_fname);
+  auto curriculum_info = drake::yaml::LoadYamlFile<multibody::CurriculumTerrainInfo>(map_config_fname);
 
-  // TODO(hersh500): create a terrain curriculum heightmap class for this, that takes in the
-  // config info.
-  hmap_ = multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu, map_height);
+  hmap_ = multibody::CurriculumHeightMap(normal, 5, 0.5, map_yaw, mu, curriculum_info);
+//  hmap_ = multibody::BoxyHeightMap::MakeRandomMap(normal, map_yaw, mu, map_height);
 //  multibody::CubeHeightMap hmap =
 //      multibody::CubeHeightMap::MakeRandomMap(normal, map_yaw, mu);
   hmap_.AddHeightMapToPlant(plant_, scene_graph_);

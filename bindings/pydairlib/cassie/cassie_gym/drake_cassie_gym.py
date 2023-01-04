@@ -1,6 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
+from stable_baselines3.common.monitor import Monitor
 import gym
 
 from pydrake.multibody.parsing import Parser
@@ -99,7 +100,9 @@ class DrakeCassieGym(gym.Env):
         self.plant_context = None
         self.controller_output_port = None
 
-    def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
+    def make(self, controller,
+             urdf='examples/Cassie/urdf/cassie_v2.urdf',
+             terrain_config="multibody/flat_terrain_config.yaml"):
         self.builder = DiagramBuilder()
         self.plant = MultibodyPlant(8e-5)
         self.controller = controller
@@ -110,12 +113,13 @@ class DrakeCassieGym(gym.Env):
             mu=self.params.mu,
             map_yaw=self.params.map_yaw,
             normal=self.params.terrain_normal,
-            map_height=self.params.max_step_magnitude)
+            map_config_fname=terrain_config)
         self.sim_plant = self.cassie_sim.get_plant()
         self.builder.AddSystem(self.controller)
         self.builder.AddSystem(self.cassie_sim)
 
         if self.visualize:
+            # This visualization seems to cause LCM problems...
             '''
             self.lcm = DrakeLcm()
             self.image_array_sender = self.builder.AddSystem(
@@ -251,5 +255,5 @@ def make_vec_env(env_func, n_envs, seed, **kwargs):
         visualize=False
     else:
         visualize=True
-    envs = [env_func(i, seed, visualize, **kwargs) for i in range(n_envs)]
+    envs = [env_func(0, seed, visualize, **kwargs) for i in range(n_envs)]
     return SubprocVecEnv(envs)

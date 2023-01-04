@@ -46,7 +46,7 @@ drake::geometry::render::DepthRenderCamera>
 MakeD415CameraModel(const std::string &renderer_name) {
   // Typical D415 intrinsics for 848 x 480 resolution, note that rgb and
   // depth are slightly different (in both intrinsics and relative to the
-  // camera body frame).
+  // camera body frame).  
   // RGB:
   // - w: 848, h: 480, fx: 616.285, fy: 615.778, ppx: 405.418, ppy: 232.864
   // DEPTH:

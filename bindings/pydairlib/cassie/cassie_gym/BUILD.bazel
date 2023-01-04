@@ -44,6 +44,19 @@ py_binary(
     ],
 )
 
+py_library(
+    name = "footstep_env_utils",
+    srcs = ["footstep_env_utils.py"],
+    deps = [
+        ":drake_cassie_gym",
+        ":footstep_env",
+        "//bindings/pydairlib",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+        "//bindings/pydairlib/systems:primitives_py",
+    ],
+)
 
 py_library(
     name = "drake_cassie_gym",

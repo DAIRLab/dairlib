@@ -58,6 +58,18 @@ cc_library(
 )
 
 cc_library(
+    name = "curriculum_height_map",
+    srcs = ["curriculum_height_map.cc"],
+    hdrs = ["curriculum_height_map.h"],
+    deps = [
+        ":boxy_height_map",
+        ":curriculum_terrain_config",
+        ":utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "visualization_utils",
     srcs = [
         "visualization_utils.cc",

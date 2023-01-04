@@ -1,0 +1,20 @@
+---
+# config to use when testing infrastructure things
+n_envs: 2
+eval_seed: 70
+train_seed: 90
+batch_size: 64
+n_steps_per_update: 256
+eval_freq: 10
+total_training_steps: 2048
+reward_weights: [0.2, -0.2]
+n_eval_episodes: 10
+
+# Terrain Information
+# terrain_config_path: "./multibody/curriculum_terrain_config.yaml"
+terrain_config_path: "./multibody/fixed_terrain_config.yaml"
+curriculum_schedule: []
+blind: False
+terrain_randomize: True
+eval_randomize: False  # test evaluation on rough terrains as well (False will only test on flat ground)
+goal_x: 4.0

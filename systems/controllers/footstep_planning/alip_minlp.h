@@ -91,7 +91,7 @@ class AlipMINLP {
     return Eigen::VectorBlock<Derived, 4>(xx.derived(), 4 * knot);
   }
   template<typename Derived>
-  static const Eigen::VectorBlock<const Derived, 4>
+  static Eigen::VectorBlock<const Derived, 4>
   GetStateAtKnot(const Eigen::MatrixBase<Derived>& xx, int knot) {
     return Eigen::VectorBlock<const Derived, 4>(xx.derived(), 4 * knot);
   }
@@ -101,17 +101,23 @@ class AlipMINLP {
     return Eigen::VectorBlock<Derived, 1>(uu.derived(), knot);
   }
   template<typename Derived>
-  static const Eigen::VectorBlock<const Derived, 1>
+  static Eigen::VectorBlock<const Derived, 1>
   GetInputAtKnot(const Eigen::MatrixBase<Derived>& uu, int knot) {
     return Eigen::VectorBlock<const Derived, 1>(uu.derived(), knot);
   }
 
   /// Constructor takes a nominal robot mass and walking height
-  AlipMINLP(double m, double H) : m_(m), H_(H) {};
+  AlipMINLP(double m, double H, int nknots) : m_(m), H_(H), nknots_(nknots) {};
+
+  AlipMINLP(double m, double H, int nk, int nmodes) : AlipMINLP(m, H, nk) {
+    for (int i = 0; i < nmodes; i ++) {
+      AddMode();
+    }
+  }
 
   /* -- Problem setup - these must be called before Build() -- */
 
-  void AddMode(int n_knots);
+  void AddMode();
   void AddInputCost(double R);
   void SetMinimumStanceTime(double tmin) {
     tmin_ = vector<double>(nmodes_, tmin);
@@ -123,8 +129,7 @@ class AlipMINLP {
   void SetInputLimit(double umax) { umax_ = umax; };
   void AddTrackingCost(
       const vector<Eigen::VectorXd> &xd,
-      const Eigen::Matrix4d &Q, const Eigen::MatrixXd &Qf
-  );
+      const Eigen::Matrix4d &Q, const Eigen::MatrixXd &Qf);
   void AddFootholds(const vector<geometry::ConvexFoothold> &footholds) {
     footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
   }
@@ -177,16 +182,14 @@ class AlipMINLP {
   vector<Eigen::VectorXd> GetInputGuess() const;
 
   // getting the desired solution
-  Eigen::VectorXd GetDesiredTiming() const;
-  vector<Eigen::VectorXd> GetDesiredState() const {
-    return xd_;
-  }
-  vector<Eigen::Vector3d> GetDesiredFootsteps() const {
+  Eigen::VectorXd GetTimingDesired() const;
+  vector<Eigen::VectorXd> GetStateDesired() const { return xd_; }
+  vector<Eigen::Vector3d> GetFootstepDesired() const {
     return vector<Eigen::Vector3d>(nmodes_, Eigen::Vector3d::Zero()); // NOLINT(modernize-return-braced-init-list)
   };
-  vector<Eigen::VectorXd> GetDesiredInputs() const {
+  vector<Eigen::VectorXd> GetInputDesired() const {
     return vector<Eigen::VectorXd>( // NOLINT(modernize-return-braced-init-list)
-        nmodes_, Eigen::VectorXd::Zero(nu_ * (nknots_.front() - 1)));
+        nmodes_, Eigen::VectorXd::Zero(nu_ * (nknots_ - 1)));
   };
 
   // misc getters and setters
@@ -196,7 +199,7 @@ class AlipMINLP {
   double H() const {return H_;}
   double m() const {return m_;}
   int nmodes() const { return nmodes_; }
-  vector<int> nknots() const { return nknots_; }
+  int nknots() const { return nknots_; }
 
   drake::solvers::MathematicalProgram *get_prog() { return prog_.get_mutable(); }
   drake::solvers::MathematicalProgramResult &get_solution() { return solution_.first; }
@@ -207,6 +210,7 @@ class AlipMINLP {
   // TODO(@Brian-Acosta): Make these gains/parameters as appropriate
   double m_;
   double H_;
+  const int nknots_;  // knots per mode
   const int np_ = 3;
   const int nx_ = 4;
   const int nu_ = 1;
@@ -219,7 +223,6 @@ class AlipMINLP {
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
   vector<double> td_;
-  vector<int> nknots_{};
   vector<Eigen::VectorXd> xd_;
   vector<vector<int>> mode_sequnces_{};
   vector<geometry::ConvexFoothold> footholds_;

@@ -25,7 +25,9 @@ PYBIND11_MODULE(controllers, m) {
 
   py::class_<AlipMINLP>(
       m, "AlipMINLP")
-      .def(py::init<double, double>(), py::arg("m"), py::arg("H"))
+      .def(
+          py::init<double, double, int, int>(),
+          py::arg("m"), py::arg("H"), py::arg("nk"), py::arg("nmodes"))
       .def("AddFootholds", &AlipMINLP::AddFootholds)
       .def("AddMode", &AlipMINLP::AddMode)
       .def("AddInputCost", &AlipMINLP::AddInputCost)
@@ -50,10 +52,10 @@ PYBIND11_MODULE(controllers, m) {
       .def("GetStateGuess", &AlipMINLP::GetStateGuess)
       .def("GetInputGuess", &AlipMINLP::GetInputGuess)
       .def("GetTimingSGuess", &AlipMINLP::GetTimingGuess)
-      .def("GetDesiredState", &AlipMINLP::GetDesiredTiming)
-      .def("GetDesiredInput", &AlipMINLP::GetDesiredTiming)
-      .def("GetDesiredTiming", &AlipMINLP::GetDesiredTiming)
-      .def("GetDesiredFootstep", &AlipMINLP::GetDesiredTiming)
+      .def("GetStateDesired", &AlipMINLP::GetTimingDesired)
+      .def("GetDesiredInput", &AlipMINLP::GetTimingDesired)
+      .def("GetTimingDesired", &AlipMINLP::GetTimingDesired)
+      .def("GetDesiredFootstep", &AlipMINLP::GetTimingDesired)
       .def("get_prog", &AlipMINLP::get_prog, py_rvp::reference_internal)
       .def("get_solution", &AlipMINLP::get_solution, py_rvp::reference_internal)
       .def("nmodes", &AlipMINLP::nmodes)

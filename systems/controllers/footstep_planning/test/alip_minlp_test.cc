@@ -34,11 +34,8 @@ int do_main(int argc, char* argv[]) {
     }
     footholds.push_back(foothold);
   }
-  auto trajopt = AlipMINLP(32, 0.85);
+  auto trajopt = AlipMINLP(32, 0.85, 10, 3);
   trajopt.AddFootholds(footholds);
-  trajopt.AddMode(10);
-  trajopt.AddMode(10);
-  trajopt.AddMode(10);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
   trajopt.UpdateNominalStanceTime(0.35, 0.35);

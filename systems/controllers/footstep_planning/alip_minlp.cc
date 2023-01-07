@@ -110,9 +110,9 @@ void AlipMINLP::SolveOCProblemAsIs() {
     vector<VectorXd> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
     for (int n = 0; n < nmodes_; n++) {
-      VectorXd duals = VectorXd::Zero((nknots_.at(n) - 1) * nx_);
+      VectorXd duals = VectorXd::Zero((nknots_ - 1) * nx_);
       if (sol.is_success()) {
-        for (int k = 0; k < nknots_.at(n) - 1; k++) {
+        for (int k = 0; k < nknots_ - 1; k++) {
           GetStateAtKnot(duals, k) =
               sol.GetDualSolution<LinearEqualityConstraint>(
                   dynamics_c_.at(n).at(k));
@@ -128,9 +128,9 @@ void AlipMINLP::SolveOCProblemAsIs() {
       const auto sol = solver_.Solve(*prog_);
 //      prof.solves_.push_back( std::chrono::steady_clock::now() - prof.start_);
       for (int n = 0; n < nmodes_; n++) {
-        VectorXd duals = VectorXd::Zero((nknots_.at(n) - 1) * nx_);
+        VectorXd duals = VectorXd::Zero((nknots_ - 1) * nx_);
         if (sol.is_success()) {
-          for (int k = 0; k < nknots_.at(n) - 1; k++) {
+          for (int k = 0; k < nknots_ - 1; k++) {
             GetStateAtKnot(duals, k) =
                 sol.GetDualSolution<LinearEqualityConstraint>(
                     dynamics_c_.at(n).at(k));
@@ -189,22 +189,21 @@ void AlipMINLP::Build() {
   built_ = true;
 }
 
-void AlipMINLP::AddMode(int n_knots) {
+void AlipMINLP::AddMode() {
   std::string nm = to_string(nmodes_);
   pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + nm));
-  xx_.push_back(prog_->NewContinuousVariables(nx_ * n_knots, "xx_" + nm));
-  uu_.push_back(prog_->NewContinuousVariables(nu_ * (n_knots - 1), "uu_" + nm));
+  xx_.push_back(prog_->NewContinuousVariables(nx_ * nknots_, "xx_" + nm));
+  uu_.push_back(prog_->NewContinuousVariables(nu_ * (nknots_- 1), "uu_" + nm));
   nmodes_ += 1;
-  nknots_.push_back(n_knots);
 }
 
 void AlipMINLP::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
                                 const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
   for (int i = 1; i < nmodes_; i++){
-    DRAKE_DEMAND(xd.at(i).size() == nx_ * nknots_.at(i));
+    DRAKE_DEMAND(xd.at(i).size() == nx_ * nknots_);
     vector<Binding<QuadraticCost>> QQ;
-    for (int k = 0; k < nknots_.at(i); k++){
+    for (int k = 0; k < nknots_ ; k++){
       QQ.push_back(
           prog_->AddQuadraticErrorCost(
               Q,
@@ -221,7 +220,7 @@ void AlipMINLP::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
 
 void AlipMINLP::AddInputCost(double R) {
   for (int i = 0; i < nmodes_; i++){
-    int n = nknots_.at(i) - 1;
+    int n = nknots_ - 1;
     input_costs_.push_back(
         prog_->AddQuadraticCost(
             R * MatrixXd::Identity(n, n),
@@ -290,7 +289,7 @@ void AlipMINLP::MakeFootholdConstraints() {
 void AlipMINLP::MakeDynamicsConstraints() {
   for (int i = 0; i < nmodes_; i++) {
     vector<Binding<LinearEqualityConstraint>> dyn_c_this_mode;
-    double t = tt_(i) / (nknots_.at(i) - 1);
+    double t = tt_(i) / (nknots_ - 1);
     Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
     Vector4d Bd = alip_utils::CalcA(H_, m_).inverse() * (Ad - Matrix4d::Identity()) * Vector4d::UnitW();
 
@@ -299,7 +298,7 @@ void AlipMINLP::MakeDynamicsConstraints() {
     Adyn.col(4) = Bd;
     Adyn.rightCols<4>() = -Matrix4d::Identity();
 
-    for (int k = 0; k < nknots_.at(i) - 1; k++) {
+    for (int k = 0; k < nknots_ - 1; k++) {
       dyn_c_this_mode.push_back(
           prog_->AddLinearEqualityConstraint(
               Adyn, Vector4d::Zero(),
@@ -344,7 +343,7 @@ void AlipMINLP::MakeInputBoundConstaints() {
 
 void AlipMINLP::MakeWorkspaceConstraints() {
   for (int n = 1; n < nmodes_; n++) {
-    for (int k = 0; k < nknots_.at(n); k++) {
+    for (int k = 0; k < nknots_; k++) {
       prog_->AddLinearConstraint(
           MatrixXd::Identity(2, 2),
           Vector2d(-0.8, -0.75),
@@ -402,7 +401,7 @@ void AlipMINLP::UpdateMaximumCurrentStanceTime(double tmax) {
 
 void AlipMINLP::UpdateTrackingCost(const vector<VectorXd>& xd) {
   for(int n = 0; n < nmodes_ - 1 ; n++) {
-    for (int k = 0; k < nknots_.at(n); k++) {
+    for (int k = 0; k < nknots_; k++) {
       tracking_costs_.at(n).at(k).evaluator()->
           UpdateCoefficients( 2.0*Q_,
                               -2.0*Q_ * GetStateAtKnot(xd.at(n+1), k));
@@ -452,16 +451,16 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   vector<VectorXd> xg = xd_;
 
   // Set the initial guess for the current mode based on limited time
-  VectorXd xx = VectorXd (nx_ * nknots_.front());
+  VectorXd xx = VectorXd (nx_ * nknots_);
   xx.head<4>() = x0;
-  Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_.front() - 1));
-  for (int i = 1; i < nknots_.front(); i++) {
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_ - 1));
+  for (int i = 1; i < nknots_; i++) {
     GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i-1);
   }
   xg.front() = xx;
 
   for (int n = 0; n < nmodes_; n++) {
-    for (int k = 0; k < nknots_.at(n); k++) {
+    for (int k = 0; k < nknots_ ; k++) {
       prog_->SetInitialGuess(
           GetStateAtKnot(xx_.at(n), k),
           GetStateAtKnot(xg.at(n), k));
@@ -524,12 +523,12 @@ void AlipMINLP::UpdateTimingGradientStep() {
 
   for (int n = 0; n < nmodes_; n++) {
     double dLdt_n = 0;
-    Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(n) / (nknots_.at(n) - 1));
-    for (int k = 0; k < nknots_.at(n) - 1; k++) {
+    Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(n) / (nknots_ - 1));
+    for (int k = 0; k < nknots_ - 1; k++) {
       Vector4d nu = GetStateAtKnot(solution_.second.at(n), k);
       Vector4d x = solution_.first.GetSolution(GetStateAtKnot(xx_.at(n), k));
       VectorXd u = solution_.first.GetSolution(GetInputAtKnot(uu_.at(n), k));
-      dLdt_n += (1.0 / (nknots_.at(n) - 1)) * nu.dot(A * Ad * x + Ad * B * u);
+      dLdt_n += (1.0 / (nknots_ - 1)) * nu.dot(A * Ad * x + Ad * B * u);
     }
     double tnew = tt_(n) - 1e-7 * dLdt_n;
     tt_(n) =  std::isnan(tnew) ? tt_(n)  : std::clamp(tnew, tmin_.at(n), tmax_.at(n));
@@ -538,7 +537,7 @@ void AlipMINLP::UpdateTimingGradientStep() {
 
 void AlipMINLP::UpdateDynamicsConstraints() {
   for (int n = 0; n < nmodes_; n++) {
-    int nk =  nknots_.at(n) - 1;
+    int nk =  nknots_ - 1;
     double t = tt_(n) / nk;
     Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
     Vector4d Bd = alip_utils::CalcBd(H_, m_, t);
@@ -618,7 +617,7 @@ VectorXd AlipMINLP::GetTimingGuess() const {
   return tt_;
 }
 
-VectorXd AlipMINLP::GetDesiredTiming() const {
+VectorXd AlipMINLP::GetTimingDesired() const {
   const VectorXd tt = Eigen::Map<const VectorXd>(td_.data(), td_.size());
   return tt; // NOLINT(performance-no-automatic-move)
 }

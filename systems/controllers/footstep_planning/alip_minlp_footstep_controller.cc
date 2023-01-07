@@ -38,7 +38,13 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     const drake::solvers::SolverOptions& trajopt_solver_options) :
     plant_(plant),
     context_(plant_context),
-    trajopt_(AlipMINLP(plant.CalcTotalMass(*plant_context), gains.hdes)),
+    trajopt_(
+        AlipMINLP(
+          plant.CalcTotalMass(*plant_context),
+          gains.hdes,
+          gains.knots_per_mode,
+          gains.nmodes)
+        ),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
     post_left_right_fsm_states_(post_left_right_fsm_states),
     double_stance_duration_(double_stance_duration),
@@ -67,9 +73,6 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
   initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
 
-  for (int n = 0; n < gains_.nmodes; n++) {
-    trajopt_.AddMode(gains_.knots_per_mode);
-  }
   trajopt_.SetDoubleSupportTime(double_stance_duration);
   auto xd = trajopt_.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
@@ -382,10 +385,10 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
                        trajopt_.GetTimingSolution(),
                        &mpc_debug->solution);
 
-  CopyMpcSolutionToLcm(trajopt_.GetDesiredFootsteps(),
-                       trajopt_.GetDesiredState(),
-                       trajopt_.GetDesiredInputs(),
-                       trajopt_.GetDesiredTiming(),
+  CopyMpcSolutionToLcm(trajopt_.GetFootstepDesired(),
+                       trajopt_.GetStateDesired(),
+                       trajopt_.GetInputDesired(),
+                       trajopt_.GetTimingDesired(),
                        &mpc_debug->desired);
 
   CopyMpcSolutionToLcm(trajopt_.GetFootstepGuess(),

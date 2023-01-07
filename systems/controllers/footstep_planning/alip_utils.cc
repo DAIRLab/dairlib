@@ -132,10 +132,6 @@ std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
       gait_params.double_stance_duration
   );
 
-//  DRAKE_DEMAND(!p.hasNaN());
-//  DRAKE_DEMAND(!Ad.hasNaN());
-//  DRAKE_DEMAND(!Ar.hasNaN());
-
   Matrix4d Rx = Matrix4d::Identity();
   Rx(1,1) = -1;
   Rx(2,2) = -1;

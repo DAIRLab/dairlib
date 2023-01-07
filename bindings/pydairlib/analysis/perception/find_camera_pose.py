@@ -13,6 +13,10 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from tf_bag import BagTfTransformer
 
+from std_msgs.msg import Header
+from geometry_msgs.msg import TransformStamped
+from tf2_msgs.msg import TFMessage
+
 from pydrake.common.eigen_geometry import Quaternion
 from pydrake.solvers import MathematicalProgram, Solve
 from pydrake.math import RigidTransform, RotationMatrix
@@ -41,15 +45,18 @@ def find_camera_pose_by_constrained_optimization(data):
     X = XT.T
     Y = np.hstack([data['camera_points'], np.ones((N, 1))]).T
 
+    linear = False
     for i in range(N):
-        t = prog.NewContinuousVariables(3, f"t_{i}")
-        for j in range(3):
-            prog.AddLinearConstraint(t[j] >= 0)
-            prog.AddLinearConstraint((X[:, i] - X_PC @ Y[:, i]).ravel()[j] <= t[j])
-            prog.AddLinearConstraint((X_PC @ Y[:, i] - X[:, i]).ravel()[j] <= t[j])
-            prog.AddLinearCost(t[j])
-        # prog.AddQuadraticCost((X[:, i] - X_PC @ Y[:, i]).T @
-        #                       (X[:, i] - X_PC @ Y[:, i]))
+        if linear:
+            t = prog.NewContinuousVariables(3, f"t_{i}")
+            for j in range(3):
+                prog.AddLinearConstraint(t[j] >= 0)
+                prog.AddLinearConstraint((X[:, i] - X_PC @ Y[:, i]).ravel()[j] <= t[j])
+                prog.AddLinearConstraint((X_PC @ Y[:, i] - X[:, i]).ravel()[j] <= t[j])
+                prog.AddLinearCost(t[j])
+        else:
+            prog.AddQuadraticCost((X[:, i] - X_PC @ Y[:, i]).T @
+                                  (X[:, i] - X_PC @ Y[:, i]))
 
     # prog.AddQuadraticCost(np.trace((X - X_PC @ Y) @ (X - X_PC @ Y).T))
     orthonormal_constraint = (R.T @ R).reshape((-1, 1)) - np.eye(3).reshape((-1, 1))
@@ -68,6 +75,7 @@ def find_camera_pose_by_constrained_optimization(data):
               f" {sol.get_optimal_cost() / data['N']}")
     else:
         print(f"\n\nSysID failed with code {sol.get_solution_result()}")
+
     return RigidTransform(
         RotationMatrix(sol.GetSolution(R)),
         sol.GetSolution(p)
@@ -219,9 +227,10 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
             board_x_in_world[1],
             board_x_in_world[0])
 
+        R_WB = RotationMatrix.MakeZRotation(board_yaw_in_world)
         X_WB = RigidTransform(
-            RotationMatrix.MakeZRotation(board_yaw_in_world),
-            board_origin_in_world
+            R_WB,
+            R_WB.multiply(board_origin_in_world)
         )
 
         X_WP = timestamped_pelvis_poses[timestamp]
@@ -264,7 +273,7 @@ def collect_transforms(parent_frame, child_frame, times, fname):
     return transforms
 
 
-def validate_calibration(data, X_PC):
+def plot_calibration_error(data, X_PC):
     N = data['N']
     camera_points_in_world = np.zeros((N, 3))
     for i in range(N):
@@ -278,6 +287,9 @@ def validate_calibration(data, X_PC):
     plt.show()
 
 
+def write_rosbag_for_validation(timestamped_poses, X_PC):
+    pass
+
 def main():
     processed_fname = sys.argv[1]
     hardware_fname = sys.argv[2]
@@ -288,7 +300,7 @@ def main():
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
     print(X_PC)
-    validate_calibration(data, X_PC)
+    plot_calibration_error(data, X_PC)
 
 
 if __name__ == "__main__":

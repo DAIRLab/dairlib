@@ -26,7 +26,9 @@ cc_library(
     name = "diagrams",
     deps = [
         ":alip_walking_controller_diagram",
+        ":footstep_target_controller_diagram",
         ":cassie_vision_sim_diagram",
+        ":depth_camera_render_no_terrain"
     ],
 )
 
@@ -80,6 +82,29 @@ cc_library(
     name = "cassie_vision_sim_diagram",
     srcs = ["cassie_vision_sim_diagram.cc"],
     hdrs = ["cassie_vision_sim_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//multibody:boxy_height_map",
+        "//multibody:cube_height_map",
+        "//multibody:stairs",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/cameras:camera_utils",
+        "//systems/framework:geared_motor",
+        "//systems/primitives",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "depth_camera_render_no_terrain",
+    srcs = ["depth_camera_render_no_terrain.cc"],
+    hdrs = ["depth_camera_render_no_terrain.h"],
     deps = [
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_urdf",

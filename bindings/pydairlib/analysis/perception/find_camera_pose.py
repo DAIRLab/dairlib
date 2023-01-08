@@ -13,6 +13,10 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from tf_bag import BagTfTransformer
 
+from std_msgs.msg import Header
+from geometry_msgs.msg import TransformStamped
+from tf2_msgs.msg import TFMessage
+
 from pydrake.common.eigen_geometry import Quaternion
 from pydrake.solvers import MathematicalProgram, Solve
 from pydrake.math import RigidTransform, RotationMatrix
@@ -169,11 +173,17 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
 
     print(f"Assembling data matrix from {len(timestamped_apriltag_poses)} "
           f"sets of poses...")
-    return collate_data(timestamped_apriltag_poses,
-                        timestamped_pelvis_poses,
-                        timestamped_left_toe_poses,
-                        timestamped_right_toe_poses,
-                        calibration_params)
+    poses = {
+        "pelvis": timestamped_pelvis_poses,
+        "toe_left": timestamped_left_toe_poses,
+        "toe_right": timestamped_right_toe_poses,
+        "apriltags": timestamped_apriltag_poses
+    }
+    return poses, collate_data(timestamped_apriltag_poses,
+                               timestamped_pelvis_poses,
+                               timestamped_left_toe_poses,
+                               timestamped_right_toe_poses,
+                               calibration_params)
 
 
 # produces a data dictionary containing N datapoints with the entries {
@@ -219,12 +229,9 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
             board_x_in_world[1],
             board_x_in_world[0])
 
-        X_WB = RigidTransform(
-            RotationMatrix.MakeZRotation(board_yaw_in_world),
-            board_origin_in_world
-        )
-
         X_WP = timestamped_pelvis_poses[timestamp]
+        R_WB =  RotationMatrix.MakeZRotation(board_yaw_in_world)
+        X_WB = RigidTransform(R_WB, R_WB.multiply(board_origin_in_world))
 
         for tag_id, pose in timestamped_apriltag_poses[timestamp].items():
             data['world_points'][row_idx] = X_WB.multiply(tag_positions[tag_id]).ravel()
@@ -278,17 +285,64 @@ def validate_calibration(data, X_PC):
     plt.show()
 
 
+def rigid_transform_to_tf_stamped(frame_id, child_frame_id, timestamp, X_AB):
+    msg = TransformStamped()
+
+    # metadata
+    msg.header.stamp = timestamp
+    msg.header.frame_id = frame_id
+    msg.child_frame_id = child_frame_id
+
+    # transform
+    translation = X_AB.translation().ravel()
+    rotation = X_AB.rotation().ToQuaternion()
+    msg.transform.translation.x = translation[0]
+    msg.transform.translation.y = translation[1]
+    msg.transform.translation.z = translation[2]
+    msg.transform.rotation.x = rotation.x()
+    msg.transform.rotation.y = rotation.y()
+    msg.transform.rotation.z = rotation.z()
+    msg.transform.rotation.w = rotation.w()
+    return msg
+
+
+def write_bag_for_calibration_playback(poses, X_PC, bag_path):
+    with rosbag.Bag(bag_path, 'w') as bag:
+        for timestamp in poses["apriltags"].keys():
+            tf_msg = TFMessage()
+            tf_msg.transforms = []
+            for key in ["pelvis", "toe_left", "toe_right"]:
+                tf_msg.transforms.append(
+                    rigid_transform_to_tf_stamped(
+                        "map", key, timestamp, poses[key][timestamp]
+                    )
+                )
+            tf_msg.transforms.append(rigid_transform_to_tf_stamped(
+                "pelvis", "camera_frame", timestamp, X_PC
+            ))
+            for tag_id in poses["apriltags"][timestamp].keys():
+                tf_msg.transforms.append(
+                    rigid_transform_to_tf_stamped(
+                        "camera_frame", f"apriltag_{tag_id}", timestamp,
+                        poses["apriltags"][timestamp][tag_id]
+                    )
+                )
+            bag.write('/tf', tf_msg, timestamp)
+
+
 def main():
     processed_fname = sys.argv[1]
     hardware_fname = sys.argv[2]
-    data = extract_calibration_data(
+    poses, data = extract_calibration_data(
         hardware_fname,
         processed_fname,
         CalibrationParams()
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
     print(X_PC)
-    validate_calibration(data, X_PC)
+    print("Writing validation bag...")
+    write_bag_for_calibration_playback(poses, X_PC, hardware_fname+".validate")
+    print("Done.")
 
 
 if __name__ == "__main__":

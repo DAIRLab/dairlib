@@ -290,16 +290,16 @@ void DoMain() {
 
   land_mode.MakeConstraintRelative(left_toe_eval_ind, 0);
   land_mode.MakeConstraintRelative(left_toe_eval_ind, 1);
-  //  land_mode.MakeConstraintRelative(left_toe_eval_ind, 2);
+  land_mode.MakeConstraintRelative(left_toe_eval_ind, 2);
   land_mode.MakeConstraintRelative(left_heel_eval_ind, 0);
   land_mode.MakeConstraintRelative(left_heel_eval_ind, 1);
-  //  land_mode.MakeConstraintRelative(left_heel_eval_ind, 2);
+  land_mode.MakeConstraintRelative(left_heel_eval_ind, 2);
   land_mode.MakeConstraintRelative(right_toe_eval_ind, 0);
   land_mode.MakeConstraintRelative(right_toe_eval_ind, 1);
-  //  land_mode.MakeConstraintRelative(right_toe_eval_ind, 2);
+  land_mode.MakeConstraintRelative(right_toe_eval_ind, 2);
   land_mode.MakeConstraintRelative(right_heel_eval_ind, 0);
   land_mode.MakeConstraintRelative(right_heel_eval_ind, 1);
-  //  land_mode.MakeConstraintRelative(right_heel_eval_ind, 2);
+  land_mode.MakeConstraintRelative(right_heel_eval_ind, 2);
 
   auto all_modes = DirconModeSequence<double>(plant);
   all_modes.AddMode(&crouch_mode);
@@ -329,7 +329,7 @@ void DoMain() {
     solver_options.SetOption(id, "acceptable_obj_change_tol", 1e-3);  // NOLINT
     solver_options.SetOption(id, "acceptable_tol", 1e2);              // NOLINT
     solver_options.SetOption(id, "acceptable_iter", 5);               // NOLINT
-    solver_options.SetOption(id, "max_iter", (int)FLAGS_ipopt_iter);       // NOLINT
+    solver_options.SetOption(id, "max_iter", (int)FLAGS_ipopt_iter);  // NOLINT
 
   } else {
     // Snopt settings
@@ -681,8 +681,10 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
       auto x_i = trajopt->state((mode_lengths[mode] - 1) * mode + index);
       prog->AddConstraint(left_foot_y_constraint, x_i.head(n_q));
       prog->AddConstraint(right_foot_y_constraint, x_i.head(n_q));
-      prog->AddConstraint(left_foot_z_ground_constraint, x_i.head(n_q));
-      prog->AddConstraint(right_foot_z_ground_constraint, x_i.head(n_q));
+      if(FLAGS_height >= 0){
+        prog->AddConstraint(left_foot_z_ground_constraint, x_i.head(n_q));
+        prog->AddConstraint(right_foot_z_ground_constraint, x_i.head(n_q));
+      }
     }
   }
 
@@ -772,13 +774,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Only add constraints of lambdas for stance modes
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
-//  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
-//    auto lambda = trajopt->force_vars(0, index);
-//    prog->AddLinearConstraint(lambda(2) >= 60);
-//    prog->AddLinearConstraint(lambda(5) >= 60);
-//    prog->AddLinearConstraint(lambda(8) >= 60);
-//    prog->AddLinearConstraint(lambda(11) >= 60);
-//  }
+  //  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
+  //    auto lambda = trajopt->force_vars(0, index);
+  //    prog->AddLinearConstraint(lambda(2) >= 60);
+  //    prog->AddLinearConstraint(lambda(5) >= 60);
+  //    prog->AddLinearConstraint(lambda(8) >= 60);
+  //    prog->AddLinearConstraint(lambda(11) >= 60);
+  //  }
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);

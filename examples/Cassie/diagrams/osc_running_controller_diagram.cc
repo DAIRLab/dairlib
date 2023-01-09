@@ -230,10 +230,10 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       osc_running_gains.rest_length, osc_running_gains.rest_length_offset);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_left", "pelvis",
-      osc_running_gains.relative_feet, LEFT_STANCE);
+      LEFT_STANCE);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
       plant, plant_context.get(), "toe_right", "pelvis",
-      osc_running_gains.relative_feet, RIGHT_STANCE);
+      RIGHT_STANCE);
   l_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_running_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(

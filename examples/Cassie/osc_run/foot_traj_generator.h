@@ -15,7 +15,7 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   FootTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
                     drake::systems::Context<double>* context,
                     const std::string& foot_name, const std::string& hip_name,
-                    bool relative_feet, int stance_state);
+                    int stance_state);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -82,7 +82,6 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd Kd_ = Eigen::MatrixXd::Zero(3, 3);
 
   bool is_left_foot_;
-  bool relative_feet_;
   int stance_state_;
 
   drake::systems::InputPortIndex state_port_;

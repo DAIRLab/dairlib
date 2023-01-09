@@ -3,8 +3,6 @@
 #include <iostream>
 #include <utility>
 
-#include <drake/math/saturate.h>
-
 #include "common/eigen_utils.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
@@ -103,12 +101,12 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
 
   auto stored_fsm_state = (RUNNING_FSM_STATE)state->get_mutable_discrete_state(
       stored_fsm_state_index_)[0];
-  double stored_transition_time =
-      state->get_discrete_state(stored_transition_time_index_)[0];
-  double nominal_stance_duration =
-      state->get_discrete_state(nominal_state_durations_index_)[0];
-  double nominal_flight_duration =
-      state->get_discrete_state(nominal_state_durations_index_)[1];
+//  double stored_transition_time =
+//      state->get_discrete_state(stored_transition_time_index_)[0];
+//  double nominal_stance_duration =
+//      state->get_discrete_state(nominal_state_durations_index_)[0];
+//  double nominal_flight_duration =
+//      state->get_discrete_state(nominal_state_durations_index_)[1];
   auto transition_times =
       state->get_mutable_discrete_state(transition_times_index_)
           .get_mutable_value();
@@ -180,8 +178,8 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
 
       // TODO(yangwill): calculate end of stance duration
       double stance_scale = (rest_length_) / (pelvis_z);
-      stance_scale = drake::math::saturate(stance_scale, 1 - stance_variance_,
-                                           1 + stance_variance_);
+      stance_scale =
+          std::clamp(stance_scale, 1 - stance_variance_, 1 + stance_variance_);
       double next_transition_time =
           stored_transition_time + stance_scale * stance_duration_;
       //      double next_transition_time = stored_transition_time +
@@ -202,7 +200,8 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 {transition_times[RIGHT_FLIGHT], RIGHT_FLIGHT}};
       }
     } else {
-      // set default to minimum touchdown time in case pelvis is below rest length
+      // set default to minimum touchdown time in case pelvis is below rest
+      // length
       double time_to_touchdown = (1 - flight_variance_) * flight_duration_;
       if (pelvis_zdot * pelvis_zdot - 2 * g * (rest_length_ - pelvis_z) > 0) {
         time_to_touchdown =
@@ -210,7 +209,7 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
                                 2 * g * (rest_length_ - pelvis_z))) /
             g;
       }
-      double time_to_touchdown_saturated = drake::math::saturate(
+      double time_to_touchdown_saturated = std::clamp(
           time_to_touchdown, (1 - flight_variance_) * flight_duration_,
           (1 + flight_variance_) * flight_duration_);
       double next_transition_time =

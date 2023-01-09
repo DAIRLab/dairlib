@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-#include <drake/math/saturate.h>
-
 #include "dairlib/lcmt_radio_out.hpp"
 #include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 #include "multibody/multibody_utils.h"
@@ -34,19 +32,17 @@ namespace dairlib::examples::osc_run {
 FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
                                      Context<double>* context,
                                      const string& foot_name,
-                                     const string& hip_name, bool relative_feet,
+                                     const string& hip_name,
                                      const int stance_state)
     : plant_(plant),
       context_(context),
       world_(plant.world_frame()),
       foot_frame_(plant.GetFrameByName(foot_name)),
       hip_frame_(plant.GetFrameByName(hip_name)),
-      relative_feet_(relative_feet),
       stance_state_(stance_state) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  target_vel_filter_ =
-      std::make_unique<FirstOrderLowPassFilter>(1.0, 2);
+  target_vel_filter_ = std::make_unique<FirstOrderLowPassFilter>(1.0, 2);
 
   if (foot_name == "toe_left") {
     is_left_foot_ = true;
@@ -156,12 +152,11 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto desired_pelvis_vel_xy =
       this->EvalVectorInput(context, target_vel_port_)->get_value();
-  double clock = this->EvalVectorInput(context, clock_port_)->get_value()(0);
   const auto& mode_lengths =
       this->EvalVectorInput(context, contact_scheduler_port_)->get_value();
 
-  double pelvis_t0 = mode_lengths[0];
-  double pelvis_tf = mode_lengths[1];
+//  double pelvis_t0 = mode_lengths[0];
+//  double pelvis_tf = mode_lengths[1];
   double left_t0 = mode_lengths[2];
   double left_tf = mode_lengths[3];
   double right_t0 = mode_lengths[4];
@@ -243,16 +238,16 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   // corrections
   if (is_left_foot_) {
     //    Y[1](1) -= lateral_offset_;
-    Y[1](1) = drake::math::saturate(Y[1](1), lateral_offset_, 0.2);
-    Y[2](1) = drake::math::saturate(Y[2](1), lateral_offset_, 0.2);
+    Y[1](1) = std::clamp(Y[1](1), lateral_offset_, 0.2);
+    Y[2](1) = std::clamp(Y[2](1), lateral_offset_, 0.2);
 
   } else {
     //    Y[1](1) += lateral_offset_;
-    Y[1](1) = drake::math::saturate(Y[1](1), -0.2, -lateral_offset_);
-    Y[2](1) = drake::math::saturate(Y[2](1), -0.2, -lateral_offset_);
+    Y[1](1) = std::clamp(Y[1](1), -0.2, -lateral_offset_);
+    Y[2](1) = std::clamp(Y[2](1), -0.2, -lateral_offset_);
   }
-  Y[1](0) = drake::math::saturate(Y[1](0), -0.4, 0.4);
-  Y[2](0) = drake::math::saturate(Y[2](0), -0.4, 0.4);
+  Y[1](0) = std::clamp(Y[1](0), -0.4, 0.4);
+  Y[2](0) = std::clamp(Y[2](0), -0.4, 0.4);
 
   PiecewisePolynomial<double> swing_foot_spline =
       PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(

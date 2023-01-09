@@ -111,9 +111,6 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_w_spr);
   auto right_heel = RightToeRear(plant_w_spr);
 
-  int n_v = plant_w_spr.num_velocities();
-  int n_u = plant_w_spr.num_actuators();
-
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
@@ -156,28 +153,28 @@ int DoMain(int argc, char* argv[]) {
   for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_foot_traj =
         output_trajs.GetTrajectory("left_foot_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_foot_traj =
         output_trajs.GetTrajectory("right_foot_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_hip_traj =
         output_trajs.GetTrajectory("left_hip_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_hip_traj =
         output_trajs.GetTrajectory("right_hip_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_toe_traj =
         output_trajs.GetTrajectory("left_toe_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_toe_traj =
         output_trajs.GetTrajectory("right_toe_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
-                                   std::to_string(mode));
+            std::to_string(mode));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
@@ -223,7 +220,7 @@ int DoMain(int argc, char* argv[]) {
   double flight_time =
       FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
   double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
-                     osc_gains.landing_delay;
+      osc_gains.landing_delay;
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
@@ -303,13 +300,13 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
 
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
 
   // Soft constraint on contacts
   osc->SetInputSmoothingCostWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-                                              gains.W_lambda_h_regularization);
+      gains.W_lambda_h_regularization);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
@@ -491,7 +488,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(fsm->get_impact_output_port(),
                   osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
@@ -535,12 +532,12 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_fsm_input_port());
 
   // Publisher connections
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
-  builder.Connect(osc->get_failure_output_port(),
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_failure(),
                   failure_aggregator->get_input_port(0));
   builder.Connect(failure_aggregator->get_status_output_port(),
                   controller_failure_pub->get_input_port());

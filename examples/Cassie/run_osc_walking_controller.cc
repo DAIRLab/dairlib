@@ -415,7 +415,7 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  osc->SetSoftConstraintWeight(gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
@@ -582,7 +582,7 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   builder.Connect(fsm->get_output_port(0), osc->get_input_port_fsm());
   if (use_pelvis_for_lipm_tracking) {
     builder.Connect(
@@ -609,7 +609,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             "OSC_DEBUG_WALKING", &lcm_local,
             TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+    builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   }
 
   // Create the diagram

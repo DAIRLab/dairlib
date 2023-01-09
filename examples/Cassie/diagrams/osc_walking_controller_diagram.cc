@@ -230,7 +230,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   osc->SetInputSmoothingCostWeights(
       osc_walking_gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(osc_walking_gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(osc_walking_gains.w_soft_constraint);
 
   // Contact information for OSC
   osc->SetContactFriction(osc_walking_gains.mu);
@@ -509,7 +509,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   builder.Connect(fsm->get_output_port(0), osc->get_input_port_fsm());
   builder.Connect(
       pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
@@ -533,7 +533,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.ExportInput(radio_parser->get_input_port(),
                       "raw_radio");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
-  builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+  builder.ExportOutput(osc->get_output_port_osc_command(), "u, t");
 
   //  builder.ExportOutput(failure_aggregator->get_status_output_port(),
   //  "failure_status");

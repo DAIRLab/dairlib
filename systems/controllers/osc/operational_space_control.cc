@@ -163,7 +163,7 @@ OperationalSpaceControl::OperationalSpaceControl(
 // Optional features
 void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
     double ds_duration, int left_support_state, int right_support_state,
-    std::vector<int> ds_states) {
+    const std::vector<int>& ds_states) {
   DRAKE_DEMAND(ds_duration > 0);
   DRAKE_DEMAND(!ds_states.empty());
   ds_duration_ = ds_duration;
@@ -172,7 +172,7 @@ void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
   ds_states_ = ds_states;
 }
 
-void OperationalSpaceControl::AddInputCostByJointAndFsmState(
+void OperationalSpaceControl::SetInputCostForJointAndFsmStateWeight(
     const std::string& joint_u_name, int fsm, double w) {
   if (W_input_.size() == 0) {
     W_input_ = Eigen::MatrixXd::Zero(n_u_, n_u_);
@@ -222,7 +222,7 @@ void OperationalSpaceControl::AddKinematicConstraint(
 void OperationalSpaceControl::AddTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, double t_lb, double t_ub) {
   tracking_data_vec_->push_back(std::move(tracking_data));
-  fixed_position_vec_.push_back(VectorXd::Zero(0));
+  fixed_position_vec_.emplace_back(VectorXd::Zero(0));
   t_s_vec_.push_back(t_lb);
   t_e_vec_.push_back(t_ub);
 
@@ -344,7 +344,7 @@ void OperationalSpaceControl::Build() {
           .evaluator()
           .get();
   // 3. Contact constraint
-  if (all_contacts_.size() > 0) {
+  if (!all_contacts_.empty()) {
     if (w_soft_constraint_ <= 0) {
       contact_constraints_ =
           prog_
@@ -447,6 +447,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // 5. Joint Limit cost
+  // TODO(yangwill) discuss best way to implement joint limit cost
   if (w_joint_limit_ > 0) {
     K_joint_pos_ = w_joint_limit_ * W_joint_accel_.bottomRightCorner(
                                         n_revolute_joints_, n_revolute_joints_);
@@ -480,21 +481,8 @@ void OperationalSpaceControl::Build() {
     /// hard constraint version
     prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
   }
-  //  blend_constraint_ =
-  //      prog_
-  //          ->AddBoundingBoxConstraint(
-  //              VectorXd::Zero(4), VectorXd::Zero(4),
-  //              {lambda_c_.segment(kSpaceDim * 0 + 2, 1),
-  //               lambda_c_.segment(kSpaceDim * 1 + 2, 1),
-  //               lambda_c_.segment(kSpaceDim * 2 + 2, 1),
-  //               lambda_c_.segment(kSpaceDim * 3 + 2, 1)})
-  //          .evaluator()
-  //          .get();
 
-  for (int i = -1; i < 5; ++i) {
-    //    solvers_[i] = std::make_unique<solvers::FastOsqpSolver>();
-    solvers_[i] = std::make_unique<drake::solvers::OsqpSolver>();
-  }
+  solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
   prog_->SetSolverOptions(solver_options_);
 }
 
@@ -711,7 +699,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       tracking_costs_.at(i)->UpdateCoefficients(
-          2 * J_t.transpose() * W * J_t, 2 * J_t.transpose() * W * (JdotV_t - ddy_t),
+          2 * J_t.transpose() * W * J_t,
+          2 * J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term, true);
     } else {
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
@@ -775,7 +764,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   // (Testing) 7. Cost for staying close to the previous input
-  if (W_input_smoothing_.size() > 0 && initial_guess_x_.count(fsm_state) > 0) {
+  if (W_input_smoothing_.size() > 0 && u_prev_) {
     input_smoothing_cost_->UpdateCoefficients(
         W_input_smoothing_, -W_input_smoothing_ * *u_prev_,
         0.5 * u_prev_->transpose() * W_input_smoothing_ * *u_prev_);
@@ -790,21 +779,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     lambda_h_cost_->UpdateCoefficients(alpha * W_lambda_h_reg_,
                                        VectorXd::Zero(n_h_));
   }
-
-  //  if (!solvers_.at(0)->IsInitialized()) {
-  //    solvers_.at(0)->InitializeSolver(*prog_, solver_options_);
-  //  }
-  //
-  //  if (initial_guess_x_.count(0) > 0) {
-  //    solvers_.at(0)->WarmStart(initial_guess_x_.at(0),
-  //                              initial_guess_y_.at(0));
-  //  }
+  if (!solver_->IsInitialized()) {
+    solver_->InitializeSolver(*prog_, solver_options_);
+  }
 
   // Solve the QP
   MathematicalProgramResult result;
-  result = solvers_.at(0)->Solve(*prog_);
-  //  auto osqp_solver = drake::solvers::OsqpSolver();
-  //  result = osqp_solver.Solve(*prog_, std::nullopt, solver_options_);
+  result = solver_->Solve(*prog_);
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 
   if (result.is_success()) {
@@ -814,10 +795,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
-    initial_guess_x_[0] = result.GetSolution();
-    initial_guess_y_[0] = result.get_solver_details<OsqpSolver>().y;
   } else {
-    //    *u_prev_ = VectorXd::Zero(n_u_);
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
   }
 
@@ -986,21 +964,18 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_costs.clear();
   output->regularization_cost_names.clear();
 
-  //  output->regularization_costs.reserve(4);
   output->regularization_costs.push_back(input_cost);
-  output->regularization_cost_names.push_back("input_cost");
+  output->regularization_cost_names.emplace_back("input_cost");
   output->regularization_costs.push_back(acceleration_cost);
-  output->regularization_cost_names.push_back("acceleration_cost");
+  output->regularization_cost_names.emplace_back("acceleration_cost");
   output->regularization_costs.push_back(soft_constraint_cost);
-  output->regularization_cost_names.push_back("soft_constraint_cost");
+  output->regularization_cost_names.emplace_back("soft_constraint_cost");
   output->regularization_costs.push_back(input_smoothing_cost);
-  output->regularization_cost_names.push_back("input_smoothing_cost");
+  output->regularization_cost_names.emplace_back("input_smoothing_cost");
   output->regularization_costs.push_back(lambda_c_cost);
-  output->regularization_cost_names.push_back("lambda_c_cost");
+  output->regularization_cost_names.emplace_back("lambda_c_cost");
   output->regularization_costs.push_back(lambda_h_cost);
-  output->regularization_cost_names.push_back("lambda_h_cost");
-  //  output->regularization_costs.push_back(joint_limit_cost);
-  //  output->regularization_cost_names.push_back("joint_limit_cost");
+  output->regularization_cost_names.emplace_back("lambda_h_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -1020,18 +995,12 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
 
-  //  output->tracking_data =
-  //      std::vector<lcmt_osc_tracking_data>(tracking_data_vec_->size());
-  //  output->tracking_costs = std::vector<double>(tracking_data_vec_->size());
-  //  output->tracking_data_names =
-  //      std::vector<std::string>(tracking_data_vec_->size());
   output->tracking_data = std::vector<lcmt_osc_tracking_data>();
   output->tracking_costs = std::vector<double>();
   output->tracking_data_names = std::vector<std::string>();
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i).get();
-    //    output->tracking_data_names[i] = tracking_data->GetName();
 
     lcmt_osc_tracking_data osc_output;
     osc_output.y_dim = tracking_data->GetYDim();
@@ -1047,8 +1016,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     osc_output.yddot_des = std::vector<double>(osc_output.ydot_dim);
     osc_output.yddot_command = std::vector<double>(osc_output.ydot_dim);
     osc_output.yddot_command_sol = std::vector<double>(osc_output.ydot_dim);
-
-    //    output->tracking_costs[i] = 0;
 
     if (tracking_data->IsActive(fsm_state) &&
         time_since_last_state_switch >= t_s_vec_.at(i) &&
@@ -1069,13 +1036,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
 
       VectorXd y_tracking_cost = VectorXd::Zero(1);
-      tracking_costs_.at(i)->Eval(*dv_sol_, &y_tracking_cost);
+      tracking_costs_[i]->Eval(*dv_sol_, &y_tracking_cost);
       total_cost += y_tracking_cost[0];
       output->tracking_costs.push_back(y_tracking_cost[0]);
-      output->tracking_data.push_back(osc_output);
-      output->tracking_data_names.push_back(tracking_data->GetName());
-    } else {
-      output->tracking_costs.push_back(0);
       output->tracking_data.push_back(osc_output);
       output->tracking_data_names.push_back(tracking_data->GetName());
     }

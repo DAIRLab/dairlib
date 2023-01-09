@@ -154,14 +154,6 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, osc_walking_gains.pelvis_xyz_vel_filter_tau);
   builder.Connect(*state_receiver, *pelvis_filt);
 
-  if (FLAGS_publish_filtered_state) {
-    auto [filtered_state_scope, filtered_state_sender]=
-    // AddToBuilder will add the systems to the diagram and connect their ports
-    drake::systems::lcm::LcmScopeSystem::AddToBuilder(
-        &builder, &lcm_local,pelvis_filt->get_output_port(),
-        "CASSIE_STATE_FB_FILTERED", 0);
-  }
-
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -417,7 +409,7 @@ int DoMain(int argc, char* argv[]) {
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
   // important
-  osc->SetSoftConstraintWeight(osc_walking_gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(osc_walking_gains.w_soft_constraint);
   // Friction coefficient
   osc->SetContactFriction(osc_walking_gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
@@ -592,7 +584,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   builder.Connect(fsm->get_fsm_output_port(), osc->get_input_port_fsm());
   builder.Connect(alip_traj_generator->get_output_port_com(),
                   osc->get_input_port_tracking_data("alip_com_traj"));
@@ -617,7 +609,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             "OSC_DEBUG_WALKING", &lcm_local,
             TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+    builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   }
 
   // Create the diagram

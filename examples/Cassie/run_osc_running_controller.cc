@@ -2,8 +2,8 @@
 
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
 #include <drake/systems/primitives/zero_order_hold.h>
+#include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -156,9 +156,9 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.stance_duration, osc_gains.flight_duration, 0.0};
   vector<double> accumulated_state_durations;
   accumulated_state_durations.push_back(0);
-  for (double state_duration: state_durations) {
+  for (double state_duration : state_durations) {
     accumulated_state_durations.push_back(accumulated_state_durations.back() +
-        state_duration);
+                                          state_duration);
   }
   accumulated_state_durations.pop_back();
 
@@ -196,24 +196,25 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact_timing>(
           "CONTACT_TIMING", &lcm, TriggerTypeSet({TriggerType::kForced})));
   //  std::vector<double> tau = {.05, .01, .01};
-//  auto ekf_filter = builder.AddSystem<systems::FloatingBaseVelocityFilter>(
-//      plant, osc_gains.ekf_filter_tau);
+  //  auto ekf_filter = builder.AddSystem<systems::FloatingBaseVelocityFilter>(
+  //      plant, osc_gains.ekf_filter_tau);
 
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
   osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
   osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
-      osc_gains.W_input_regularization);
-  osc->SetInputSmoothingConstraintWeights(osc_gains.w_input_accel);
+                                    osc_gains.W_input_regularization);
+//  osc->SetInputSmoothingCostWeights(osc_gains.w_input_accel *
+//                                    MatrixXd::Identity(nu, nu));
   osc->SetInputCostWeights(osc_gains.w_input *
-      osc_gains.W_input_regularization);
+                           osc_gains.W_input_regularization);
   osc->SetLambdaContactRegularizationWeight(
       osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(
       osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(osc_gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(osc_gains.w_soft_constraint);
   osc->SetJointLimitWeight(osc_gains.w_joint_limit);
 
   // Contact information for OSC
@@ -484,7 +485,7 @@ int DoMain(int argc, char* argv[]) {
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
-  if (osc_gains.rot_filter_tau>0) {
+  if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});
   }
@@ -545,8 +546,9 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
   auto controller_frequency_regulator =
-      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(osc_gains.controller_frequency,
-                                                               osc->get_osc_output_port().size());
+      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+          osc_gains.controller_frequency,
+          osc->get_output_port_osc_command().size());
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
@@ -563,15 +565,15 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   osc->get_input_port_clock());
 
-//  if (osc_gains.ekf_filter_tau[0] > 0) {
-//    builder.Connect(state_receiver->get_output_port(0),
-//                    ekf_filter->get_input_port());
-//    builder.Connect(ekf_filter->get_output_port(),
-//                    osc->get_robot_output_input_port());
-//  } else {
+  //  if (osc_gains.ekf_filter_tau[0] > 0) {
+  //    builder.Connect(state_receiver->get_output_port(0),
+  //                    ekf_filter->get_input_port());
+  //    builder.Connect(ekf_filter->get_output_port(),
+  //                    osc->get_robot_output_input_port());
+  //  } else {
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
-//  }
+                  osc->get_input_port_robot_output());
+  //  }
 
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
@@ -645,16 +647,17 @@ int DoMain(int argc, char* argv[]) {
                   cassie_out_to_radio->get_input_port());
   builder.Connect(cassie_out_to_radio->get_output_port(),
                   high_level_command->get_radio_input_port());
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-//  builder.Connect(osc->get_osc_output_port(),
-//                  controller_frequency_regulator->get_input_port());
-//  builder.Connect(controller_frequency_regulator->get_output_port(),
-//                  command_sender->get_input_port(0));
+  //  builder.Connect(osc->get_osc_output_port(),
+  //                  controller_frequency_regulator->get_input_port());
+  //  builder.Connect(controller_frequency_regulator->get_output_port(),
+  //                  command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
-  builder.Connect(osc->get_failure_output_port(),
+  builder.Connect(osc->get_output_port_osc_debug(),
+                  osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_failure(),
                   failure_aggregator->get_input_port(0));
   builder.Connect(failure_aggregator->get_status_output_port(),
                   controller_failure_pub->get_input_port());
@@ -670,16 +673,16 @@ int DoMain(int argc, char* argv[]) {
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
-//  std::cout << "waiting for messages" << std::endl;
-//  LcmHandleSubscriptionsUntil(&lcm, [&]() {
-//    return cassie_out_receiver->GetInternalMessageCount()>2;
-//  });
-//  controller_frequency_regulator->LatchInputPortToState(&loop.get_diagram()->GetMutableSubsystemContext(
-//      *controller_frequency_regulator,
-//      &loop.get_diagram_mutable_context()));
-//
-//  std::cout << "got message, starting simulator" << std::endl;
-//
+  //  std::cout << "waiting for messages" << std::endl;
+  //  LcmHandleSubscriptionsUntil(&lcm, [&]() {
+  //    return cassie_out_receiver->GetInternalMessageCount()>2;
+  //  });
+  //  controller_frequency_regulator->LatchInputPortToState(&loop.get_diagram()->GetMutableSubsystemContext(
+  //      *controller_frequency_regulator,
+  //      &loop.get_diagram_mutable_context()));
+  //
+  //  std::cout << "got message, starting simulator" << std::endl;
+  //
   loop.Simulate();
 
   return 0;

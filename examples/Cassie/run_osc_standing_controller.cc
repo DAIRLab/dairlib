@@ -280,10 +280,10 @@ int DoMain(int argc, char* argv[]) {
   osc->Build();
   // Connect ports
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
-  builder.Connect(osc->get_osc_output_port(),
+                  osc->get_input_port_robot_output());
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),

@@ -192,7 +192,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                                               gains.W_lambda_h_regularization);
 
   // Soft constraint on contacts
-  osc->SetSoftConstraintWeight(osc_running_gains.w_soft_constraint);
+  osc->SetContactSoftConstraintWeight(osc_running_gains.w_soft_constraint);
 
   // Contact information for OSC
   osc->SetContactFriction(osc_running_gains.mu);
@@ -452,7 +452,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   osc->get_input_port_clock());
 
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
                   contact_scheduler->get_input_port_state());
@@ -515,7 +515,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("right_toe_angle_traj"));
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
   builder.Connect(radio_parser->get_output_port(),
                   high_level_command->get_radio_input_port());
@@ -524,7 +524,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   builder.ExportInput(state_receiver->get_input_port(), "lcmt_robot_output");
   builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
   builder.ExportOutput(command_sender->get_output_port(), "lcmt_robot_input");
-  builder.ExportOutput(osc->get_osc_output_port(), "u, t");
+  builder.ExportOutput(osc->get_output_port_osc_command(), "u, t");
   builder.ExportOutput(failure_aggregator->get_status_output_port(),
                        "lcmt_controller_failure");
 

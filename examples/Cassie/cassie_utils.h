@@ -64,9 +64,12 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 /// @param filename the URDF or SDF file to use for Cassie
 ///        omit to use default value
 /// @param add_leaf_springs Whether or not to add the 4 leaf springs in the legs
-///     Default = true
-/// @param add_loop_closure_springs Whether or not to add the loop closure
-///     distance constraint via stiff springs. Default = true.
+///        Default = true
+/// @param add_loop_closure Whether or not to add the loop closure
+///        distance constraint via stiff springs. Default = true.
+/// @param add_reflected_inertia Whether or not to add reflected inertia.
+///        Rotor inertia and gear ratio values are constant values from the
+///        model given by Agility Robotics
 void AddCassieMultibody(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,

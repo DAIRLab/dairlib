@@ -104,29 +104,61 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context_wo_spr,
       bool used_with_finite_state_machine = true);
 
-  const drake::systems::OutputPort<double>& get_osc_output_port() const {
+  /***** Input/output ports *****/
+
+  /*!
+   * Output: TimestampedVector<double> that contains the optimal controller
+   * input
+   */
+  const drake::systems::OutputPort<double>& get_output_port_osc_command()
+      const {
     return this->get_output_port(osc_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_osc_debug_port() const {
+  /*!
+   * Output: lcmt_osc_debug message that contains various details of each
+   * individual osc solve
+   */
+  const drake::systems::OutputPort<double>& get_output_port_osc_debug() const {
     return this->get_output_port(osc_debug_port_);
   }
-  const drake::systems::OutputPort<double>& get_failure_output_port() const {
+  /*!
+   * Output: ControllerStatus that contains whether the controller believes it
+   * has failed.
+   */
+  const drake::systems::OutputPort<double>& get_output_port_failure() const {
     return this->get_output_port(failure_port_);
   }
 
-  // Input/output ports
-  const drake::systems::InputPort<double>& get_robot_output_input_port() const {
+  /*!
+   * Input: OutputVector containing the robot state
+   */
+  const drake::systems::InputPort<double>& get_input_port_robot_output() const {
     return this->get_input_port(state_port_);
   }
+  /*!
+   * Input: Scalar that determines the current contact mode
+   */
   const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
+  /*!
+   * Clock is used for specifying phase for periodic trajectories as an
+   * alternative to universal time.
+   */
   const drake::systems::InputPort<double>& get_input_port_clock() const {
     return this->get_input_port(clock_port_);
   }
+  /*!
+   * ImpactInfo stores the contact configuration of the near impact event along
+   * with a blending constant proportional to the proximity to the impact event
+   */
   const drake::systems::InputPort<double>& get_input_port_impact_info() const {
     return this->get_input_port(impact_info_port_);
   }
+  /*!
+   * Contains the desired trajectory in the same representation as the target
+   * output (OscTrackingData)
+   */
   const drake::systems::InputPort<double>& get_input_port_tracking_data(
       const std::string& name) const {
     try {
@@ -137,28 +169,58 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     return this->get_input_port(0);
   }
 
-  // Regularization cost weights
-  void AddInputCostByJointAndFsmState(const std::string& joint_u_name, int fsm,
-                                      double w);
+  /***** Regularization cost weights *****/
+
+  /*!
+   * @brief Add quadratic cost for specific joint effort during state fsm
+   * Cost = w * u[joint].T * u[joint]
+   */
+  void SetInputCostForJointAndFsmStateWeight(const std::string& joint_u_name,
+                                             int fsm, double w);
+  /*!
+   * @brief Add quadratic cost on the magnitude of inputs u
+   * Cost = u.T W u
+   */
   void SetInputCostWeights(const Eigen::MatrixXd& W) { W_input_ = W; }
+  /*!
+   * @brief Add quadratic cost on the magnitude of accelerations vdot
+   * Cost = vdot.T W vdot
+   */
   void SetAccelerationCostWeights(const Eigen::MatrixXd& W) {
     W_joint_accel_ = W;
   }
+  /*!
+   * @brief Add quadratic cost on the deviation of inputs u from the previous
+   * solution. Cost = (u - u_prev).T  W (u - u_prev)
+   */
   void SetInputSmoothingCostWeights(const Eigen::MatrixXd& W) {
     W_input_smoothing_ = W;
   }
-  void SetInputSmoothingConstraintWeights(const double w) {
-    w_input_smoothing_constraint_ = w;
-  }
-  void SetSoftConstraintWeight(double w_soft_constraint) {
+  /*!
+   * @brief Add quadratic cost on the contact constraint violation epsilon
+   * Cost = (epsilon).T  W (epsilon)
+   */
+  void SetContactSoftConstraintWeight(double w_soft_constraint) {
     w_soft_constraint_ = w_soft_constraint;
   }
+  /*!
+   * @brief Add quadratic cost on the magnitude of the contact forces
+   * Cost = (lambda_c).T  W (lambda_c)
+   */
   void SetLambdaContactRegularizationWeight(const Eigen::MatrixXd& W) {
     W_lambda_c_reg_ = W;
   }
+  /*!
+   * @brief Add quadratic cost on the magnitude of the constraint forces
+   * Cost = (lambda_h).T  W (lambda_h)
+   */
   void SetLambdaHolonomicRegularizationWeight(const Eigen::MatrixXd& W) {
     W_lambda_h_reg_ = W;
   }
+  /*!
+   * @brief Add linear cost on the deviation from the joint limits
+   * Currently unused
+   */
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
   // Constraint methods
@@ -191,7 +253,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetUpDoubleSupportPhaseBlending(double ds_duration,
                                        int left_support_state,
                                        int right_support_state,
-                                       std::vector<int> ds_states);
+                                       const std::vector<int>& ds_states);
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
   }
@@ -321,7 +383,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool is_quaternion_;
 
   // Solver
-  std::unordered_map<int, std::unique_ptr<drake::solvers::OsqpSolver>> solvers_;
+  std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
@@ -340,7 +402,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
-//  drake::solvers::BoundingBoxConstraint* input_smoothing_constraint_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
 
   std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
@@ -392,10 +453,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;
 
-  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_x_ = {};
-  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
-  //  mutable std::unordered_map<int, Eigen::VectorXd> u_prev_ = {};
-
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
       tracking_data_vec_ =
@@ -419,12 +476,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable double prev_distinct_fsm_state_ = -1;
   drake::solvers::LinearEqualityConstraint* blend_constraint_;
   drake::solvers::VectorXDecisionVariable epsilon_blend_;
-  //  drake::solvers::BoundingBoxConstraint*
-  //  contact_force_smoothing_constraint_;
-
-  // Optional feature -- regularizing input
-//  mutable double total_cost_ = 0;
-//  mutable double soft_constraint_cost_ = 0;
 };
 
 }  // namespace dairlib::systems::controllers

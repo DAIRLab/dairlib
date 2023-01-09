@@ -1,4 +1,5 @@
 #include "blending_utils.h"
+
 #include <Eigen/Dense>
 
 double blend_sigmoid(double t, double tau, double window) {

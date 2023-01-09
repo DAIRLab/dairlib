@@ -31,15 +31,15 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
       blend_func_(blend_func) {
   state_port_ =
       this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
+                                                                   plant.num_velocities(),
+                                                                   plant.num_actuators()))
           .get_index();
 
   // Configure the contact info port for the particular simulator
   contact_port_ = this->DeclareAbstractInputPort(
-                          "lcmt_contact_results_for_viz",
-                          drake::Value<drake::lcmt_contact_results_for_viz>{})
-                      .get_index();
+          "lcmt_contact_results_for_viz",
+          drake::Value<drake::lcmt_contact_results_for_viz>{})
+      .get_index();
   fsm_output_port_ =
       this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                     &JumpingEventFsm::CalcFiniteState)
@@ -95,7 +95,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   prev_time << timestamp;
 
   if (abs(transition_times_[BALANCE] - timestamp -
-          round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
+      round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
     std::cout << "Time until crouch: "
               << round(transition_times_[BALANCE] - timestamp) << std::endl;
   }
@@ -173,10 +173,10 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
     if (abs(timestamp - transition_times_[FLIGHT]) < blend_window) {
       if (timestamp < transition_times_[FLIGHT]) {
         near_impact->SetAlpha(alpha_func(timestamp - transition_times_[FLIGHT],
-                                       tau_, impact_threshold_));
+                                         tau_, impact_threshold_));
       } else {
         near_impact->SetAlpha(alpha_func(transition_times_[FLIGHT] - timestamp,
-                                       tau_, impact_threshold_));
+                                         tau_, impact_threshold_));
       }
       near_impact->SetCurrentContactMode(LAND);
     }

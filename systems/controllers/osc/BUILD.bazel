@@ -12,6 +12,7 @@ cc_library(
     ],
     deps = [
         ":osc_tracking_datas",
+        ":osc_gains",
         "//common:eigen_utils",
         "//common:find_resource",
         "//lcmtypes:lcmt_robot",
@@ -130,3 +131,4 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+

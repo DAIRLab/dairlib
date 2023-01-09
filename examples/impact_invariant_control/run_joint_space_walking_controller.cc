@@ -134,7 +134,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(Q_accel);
   // Soft constraint on contacts
   double w_contact_relax = gains.w_soft_constraint;
-  osc->SetSoftConstraintWeight(w_contact_relax);
+  osc->SetContactSoftConstraintWeight(w_contact_relax);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
@@ -188,21 +188,21 @@ int DoMain(int argc, char* argv[]) {
   /*****Connect ports*****/
 
   // OSC connections
-  builder.Connect(fsm->get_fsm_output_port(), osc->get_input_port_fsm());
+  builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
   builder.Connect(fsm->get_output_port_impact_info(),
                   osc->get_input_port_impact_info());
   builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_robot_output_input_port());
+                  osc->get_input_port_robot_output());
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),
-                  fsm->get_state_input_port());
+                  fsm->get_input_port_state());
 
   // Publisher connections
-  builder.Connect(osc->get_osc_output_port(),
+  builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_osc_debug_port(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

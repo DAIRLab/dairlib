@@ -26,9 +26,8 @@ cc_library(
     name = "diagrams",
     deps = [
         ":alip_walking_controller_diagram",
-        ":footstep_target_controller_diagram",
         ":cassie_vision_sim_diagram",
-        ":depth_camera_render_no_terrain"
+        ":footstep_target_controller_diagram",
     ],
 )
 
@@ -105,6 +104,7 @@ cc_library(
     name = "depth_camera_render_no_terrain",
     srcs = ["depth_camera_render_no_terrain.cc"],
     hdrs = ["depth_camera_render_no_terrain.h"],
+    tags = ["manual"],
     deps = [
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_urdf",

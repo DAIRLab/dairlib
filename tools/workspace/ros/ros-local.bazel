@@ -1,0 +1,13 @@
+# -*- python -*-
+
+package(default_visibility = ["//visibility:public"])
+
+# Prebuilt C++ and Python ROS libraries including local, unpublished packages
+
+cc_library(
+    name='ros-local',
+    srcs=glob(['lib/*.so']),
+    hdrs=glob(['include/**/*.h', 'include/**/*.hpp']),
+    strip_include_prefix='include',
+    deps=["@ros"]
+)

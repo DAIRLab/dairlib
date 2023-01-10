@@ -7,6 +7,7 @@ cc_library(
     srcs = ["convex_foothold.cc"],
     hdrs = ["convex_foothold.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "@eigen",
     ],
 )

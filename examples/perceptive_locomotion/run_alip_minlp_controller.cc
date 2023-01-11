@@ -223,13 +223,13 @@ int DoMain(int argc, char* argv[]) {
 
     if (FLAGS_use_perception) {
 #ifdef DAIR_ROS_ON
-      plane_subscriber = builder.AddSystem(
+      auto plane_subscriber = builder.AddSystem(
           systems::RosSubscriberSystem<
               convex_plane_decomposition_msgs::PlanarTerrain>::Make(
                   FLAGS_foothold_topic, &node_handle));
-      plane_receiver = builder.AddSystem<ConvexFootholdReceiver>();
+      auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);
-      builder.Connect(plane_receiver->get_output_port,
+      builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
 #endif
     } else {

@@ -5,6 +5,12 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "run_alip_minlp_controller",
     srcs = ["run_alip_minlp_controller.cc"],
+    local_defines = select(
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+        },
+    ),
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",

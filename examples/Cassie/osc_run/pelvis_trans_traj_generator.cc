@@ -113,7 +113,7 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
 //  Vector3d rddot = f_g + f_leg;
   Vector3d rddot = f_g;
 
-  double dt = 1e-3;
+  double dt = 1e-2;
   Eigen::Vector2d breaks;
   //  if (t <= 0.3) {
   //    breaks << 0, 0.25, 0.4;

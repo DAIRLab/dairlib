@@ -328,7 +328,7 @@ int do_main(int argc, char* argv[]) {
 
     std::vector<std::pair<std::string, drake::math::RigidTransformd>> bff;
     bff.push_back({
-      "base_link",
+      "camera_depth_optical_frame",
       camera::ReadCameraPoseFromYaml(FLAGS_camera_pose_calib)
     });
     std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};

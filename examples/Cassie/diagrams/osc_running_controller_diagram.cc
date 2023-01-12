@@ -1,7 +1,5 @@
 #include "osc_running_controller_diagram.h"
 
-#include <fstream>
-
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
@@ -17,9 +15,6 @@
 #include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
-#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
-#include "lcm/dircon_saved_trajectory.h"
-#include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/controller_failure_aggregator.h"
@@ -171,7 +166,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(
           control_channel_name_, 1);
-  std::vector<double> tau = {.05, .01, .01};
+//  std::vector<double> tau = {.05, .01, .01};
   //  auto ekf_filter =
   //      builder.AddSystem<systems::FloatingBaseVelocityFilter>(plant, tau);
 
@@ -278,6 +273,11 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   right_foot_tracking_data->AddStateAndPointToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right");
 
+  left_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left");
+  right_foot_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right");
+
   left_foot_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_ft_traj", osc_running_gains.K_p_swing_foot,
       osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot, plant,
@@ -306,6 +306,11 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   right_hip_tracking_data->AddStateAndPointToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
   left_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+
+  left_hip_tracking_data->AddStateAndPointToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(
       RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
 
   left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -402,6 +407,11 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+
+  if (osc_running_gains.rot_filter_tau > 0) {
+    pelvis_rot_tracking_data->SetLowPassFilter(osc_running_gains.rot_filter_tau,
+                                               {0, 1, 2});
+  }
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 

@@ -21,7 +21,6 @@
 #include "examples/Cassie/osc_run/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
-#include "lcm/dircon_saved_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
@@ -37,7 +36,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -563,7 +561,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_clock());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
-  //  }
 
   // FSM connections
   builder.Connect(state_receiver->get_output_port(0),

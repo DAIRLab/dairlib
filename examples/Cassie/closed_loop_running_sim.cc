@@ -77,7 +77,7 @@ int DoMain(int argc, char* argv[]) {
   simulator.Initialize();
   //  auto sim = drake::systems::Simulator(diagram);
   std::cout << "advancing simulator: " << std::endl;
-  simulator.AdvanceTo(1.0);
+  simulator.AdvanceTo(5.0);
 }
 }}
 

@@ -14,15 +14,15 @@ def main():
     osc_walking_gains_filename = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc_run/osc_running_qp_settings.yaml'
     default_osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
-    urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
+    urdf = 'examples/Cassie/urdf/cassie_v2_conservative.urdf'
     reward_function_weights = ''
 
     action = np.zeros(18)
     action[2] = 1.0
     cumulative_reward = 0
     while 1:
-        controller_plant = MultibodyPlant(8e-5)
-        AddCassieMultibody(controller_plant, None, True, urdf, False, False)
+        controller_plant = MultibodyPlant(1e-3)
+        AddCassieMultibody(controller_plant, None, True, urdf, False, False, False)
         controller_plant.Finalize()
         controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
         # controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)

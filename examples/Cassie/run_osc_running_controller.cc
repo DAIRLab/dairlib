@@ -64,6 +64,7 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::Trajectory;
 using examples::osc::PelvisPitchTrajGenerator;
 using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
@@ -205,8 +206,6 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
   osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
                                     osc_gains.W_input_regularization);
-//  osc->SetInputSmoothingCostWeights(osc_gains.w_input_accel *
-//                                    MatrixXd::Identity(nu, nu));
   osc->SetInputCostWeights(osc_gains.w_input *
                            osc_gains.W_input_regularization);
   osc->SetLambdaContactRegularizationWeight(
@@ -301,11 +300,9 @@ int DoMain(int argc, char* argv[]) {
                                              osc_gains.rest_length_offset);
 
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "pelvis",
-      LEFT_STANCE);
+      plant, plant_context.get(), "toe_left", "pelvis", LEFT_STANCE);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_right", "pelvis",
-      RIGHT_STANCE);
+      plant, plant_context.get(), "toe_right", "pelvis", RIGHT_STANCE);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
@@ -431,17 +428,17 @@ int DoMain(int argc, char* argv[]) {
   right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
 
-  PiecewisePolynomial<double> foot_traj_weight_trajectory =
-      PiecewisePolynomial<double>::FirstOrderHold(
-          {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
-          {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)});
-  PiecewisePolynomial<double> foot_traj_gain_trajectory =
-      PiecewisePolynomial<double>::FirstOrderHold(
-          {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
-          {0.5 * MatrixXd::Identity(3, 3), 2.0 * MatrixXd::Identity(3, 3)});
-  //  PiecewisePolynomial<double> foot_traj_weight_trajectory =
-  //      PiecewisePolynomial<double>::FirstOrderHold(
-  //          {0, 0.25 + 0.2}, {VectorXd::Ones(1), VectorXd::Ones(1)});
+  auto foot_traj_weight_trajectory =
+      std::make_shared<PiecewisePolynomial<double>>(
+          PiecewisePolynomial<double>::FirstOrderHold(
+              {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
+              {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)}));
+  auto foot_traj_gain_trajectory =
+      std::make_shared<PiecewisePolynomial<double>>(
+          PiecewisePolynomial<double>::FirstOrderHold(
+              {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
+              {0.5 * MatrixXd::Identity(3, 3),
+               2.0 * MatrixXd::Identity(3, 3)}));
   left_foot_rel_tracking_data->SetTimeVaryingWeights(
       foot_traj_weight_trajectory);
   right_foot_rel_tracking_data->SetTimeVaryingWeights(
@@ -564,13 +561,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_impact_info());
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   osc->get_input_port_clock());
-
-  //  if (osc_gains.ekf_filter_tau[0] > 0) {
-  //    builder.Connect(state_receiver->get_output_port(0),
-  //                    ekf_filter->get_input_port());
-  //    builder.Connect(ekf_filter->get_output_port(),
-  //                    osc->get_robot_output_input_port());
-  //  } else {
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
   //  }

@@ -23,9 +23,9 @@ class OptionsTrackingData : public OscTrackingData {
   // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
   //  finite state
   void SetTimeVaryingGains(
-      const drake::trajectories::Trajectory<double>& gain_multiplier);
+      std::shared_ptr<drake::trajectories::Trajectory<double>> gain_multiplier);
   void SetTimeVaryingWeights(
-      const drake::trajectories::Trajectory<double>& weight_trajectory);
+      std::shared_ptr<drake::trajectories::Trajectory<double>> weight_trajectory);
 
   void SetFeedforwardAccelMultiplier(
       const drake::trajectories::Trajectory<double>& ff_accel_multiplier);
@@ -69,8 +69,8 @@ class OptionsTrackingData : public OscTrackingData {
   void UpdateYddotCmd(double t, double t_since_state_switch) override;
   void UpdateW(double t, double t_since_state_switch);
 
-  const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
-  const drake::trajectories::Trajectory<double>* weight_trajectory_ = nullptr;
+  std::shared_ptr<drake::trajectories::Trajectory<double>> gain_multiplier_;
+  std::shared_ptr<drake::trajectories::Trajectory<double>> weight_trajectory_;
 
   void UpdateFilters(double t);
 

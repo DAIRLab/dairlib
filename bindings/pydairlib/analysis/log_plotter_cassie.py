@@ -64,8 +64,10 @@ def main():
     ''' Plot Positions '''
     # Plot floating base positions if applicable
     if use_floating_base and plot_config.plot_floating_base_positions:
-        mbp_plots.plot_floating_base_positions(
+        plot = mbp_plots.plot_floating_base_positions(
             robot_output, pos_names, 7, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
 
     # Plot joint positions
     if plot_config.plot_joint_positions:
@@ -163,9 +165,9 @@ def main():
         plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
-    if plot_config.plot_active_tracking_datas:
-        plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-        plot.save_fig('active_tracking_datas.png')
+    # if plot_config.plot_active_tracking_datas:
+    #     plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    #     plot.save_fig('active_tracking_datas.png')
     plt.show()
 
 

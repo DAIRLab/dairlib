@@ -2,23 +2,14 @@
 #include <gflags/gflags.h>
 #include <iostream>
 
-#include "dairlib/lcmt_pd_config.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/diagrams/cassie_sim_diagram.h"
 #include "examples/Cassie/diagrams/osc_running_controller_diagram.h"
 #include "examples/Cassie/diagrams/osc_walking_controller_diagram.h"
-#include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/zero_order_hold.h"
 
 namespace dairlib {
@@ -29,24 +20,23 @@ namespace examples {
 
 int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
-  std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+  std::string urdf = "examples/Cassie/urdf/cassie_v2_conservative.urdf";
   std::string osc_running_gains = "examples/Cassie/osc_run/osc_running_gains.yaml";
-  std::string osc_walking_gains = "examples/Cassie/osc/osc_walking_gains.yaml";
+  std::string osc_walking_gains = "examples/Cassie/osc/osc_walking_gains_alip.yaml";
   std::string osqp_settings =
       "examples/Cassie/osc_run/osc_running_qp_settings.yaml";
   std::unique_ptr<MultibodyPlant<double>> plant =
-      std::make_unique<MultibodyPlant<double>>(8e-5);
+      std::make_unique<MultibodyPlant<double>>(1e-3);
   MultibodyPlant<double> controller_plant =
-      MultibodyPlant<double>(8e-5);
+      MultibodyPlant<double>(1e-3);
   // Built the Cassie MBPs
   AddCassieMultibody(&controller_plant, nullptr, true,
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      false /*spring model*/, false /*loop closure*/);
   controller_plant.Finalize();
-//  auto controller_context = controller_plant.CreateDefaultContext();
 
   auto sim_diagram = builder.AddSystem<examples::CassieSimDiagram>(
-      std::move(plant), urdf, 0.4, 1e5, 1e2);
+      std::move(plant), urdf, 0.4);
   MultibodyPlant<double>& new_plant = sim_diagram->get_plant();
   auto controller_diagram =
       builder.AddSystem<examples::controllers::OSCRunningControllerDiagram>(
@@ -87,7 +77,7 @@ int DoMain(int argc, char* argv[]) {
   simulator.Initialize();
   //  auto sim = drake::systems::Simulator(diagram);
   std::cout << "advancing simulator: " << std::endl;
-  simulator.AdvanceTo(5.0);
+  simulator.AdvanceTo(1.0);
 }
 }}
 

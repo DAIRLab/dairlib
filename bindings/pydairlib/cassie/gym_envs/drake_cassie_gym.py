@@ -38,7 +38,7 @@ class DrakeCassieGym():
 
     def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.builder = DiagramBuilder()
-        self.dt = 8e-5
+        self.dt = 1e-3
         self.plant = MultibodyPlant(self.dt)
         self.controller = controller
         self.simulator = CassieSimDiagram(self.plant, urdf, self.visualize, 0.8, 1e4, 1e2)
@@ -91,7 +91,6 @@ class DrakeCassieGym():
         if not self.initialized:
             print("Call make() before calling step() or advance()")
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
-        action[2] = 1.0
         self.simulator.get_input_port_radio().FixValue(self.simulator_context, action)
         self.controller.get_input_port_radio().FixValue(self.controller_context, action)
         self.sim.AdvanceTo(next_timestep)

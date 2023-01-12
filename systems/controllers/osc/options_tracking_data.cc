@@ -67,11 +67,10 @@ void OptionsTrackingData::UpdateFilters(double t) {
     }
 
     // Assign filtered values
-    if (n_y_ == 4){
+    if (n_y_ == 4) {
       y_ = filtered_y_;
       ydot_ = filtered_ydot_;
-    }
-    else{
+    } else {
       for (auto idx : low_pass_filter_element_idx_) {
         y_(idx) = filtered_y_(idx);
         ydot_(idx) = filtered_ydot_(idx);
@@ -132,7 +131,7 @@ void OptionsTrackingData::SetLowPassFilter(double tau,
   DRAKE_DEMAND(tau > 0);
   tau_ = tau;
 
-//  DRAKE_DEMAND(n_y_ == n_ydot_);  // doesn't support quaternion yet
+  //  DRAKE_DEMAND(n_y_ == n_ydot_);  // doesn't support quaternion yet
   if (element_idx.empty()) {
     for (int i = 0; i < n_y_; i++) {
       low_pass_filter_element_idx_.insert(i);
@@ -143,19 +142,20 @@ void OptionsTrackingData::SetLowPassFilter(double tau,
 }
 
 void OptionsTrackingData::SetTimeVaryingGains(
-    const drake::trajectories::Trajectory<double>& gain_multiplier) {
-  DRAKE_DEMAND(gain_multiplier.cols() == n_ydot_);
-  DRAKE_DEMAND(gain_multiplier.rows() == n_ydot_);
-  DRAKE_DEMAND(gain_multiplier.start_time() == 0);
-  gain_multiplier_ = &gain_multiplier;
+    std::shared_ptr<drake::trajectories::Trajectory<double>> gain_multiplier) {
+  DRAKE_DEMAND(gain_multiplier->cols() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier->rows() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier->start_time() == 0);
+  gain_multiplier_ = gain_multiplier;
 }
 
 void OptionsTrackingData::SetTimeVaryingWeights(
-    const drake::trajectories::Trajectory<double>& weight_trajectory) {
-  //  DRAKE_DEMAND(weight_trajectory.cols() == n_ydot_);
-  //  DRAKE_DEMAND(weight_trajectory.rows() == n_ydot_);
-  //  DRAKE_DEMAND(weight_trajectory.start_time() == 0);
-  weight_trajectory_ = &weight_trajectory;
+    std::shared_ptr<drake::trajectories::Trajectory<double>>
+        weight_trajectory) {
+//  DRAKE_DEMAND(weight_trajectory->cols() == n_ydot_);
+//  DRAKE_DEMAND(weight_trajectory->rows() == n_ydot_);
+//  DRAKE_DEMAND(weight_trajectory->start_time() == 0);
+  weight_trajectory_ = weight_trajectory;
 }
 void OptionsTrackingData::SetFeedforwardAccelMultiplier(
     const drake::trajectories::Trajectory<double>& ff_accel_multiplier) {

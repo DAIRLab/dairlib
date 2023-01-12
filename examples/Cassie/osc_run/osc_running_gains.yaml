@@ -40,7 +40,7 @@ target_vel_filter_alpha: 0.01
 # SLIP parameters
 rest_length: 0.85
 rest_length_offset: 0.025
-stance_duration: 0.3
+stance_duration: 0.31
 flight_duration: 0.09
 # max percent variance
 stance_variance: 0.1

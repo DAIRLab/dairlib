@@ -50,10 +50,11 @@ CassieSimDiagram::CassieSimDiagram(
   scene_graph_->set_name("scene_graph");
 
   plant_ = builder.AddSystem(std::move(plant));
+  plant_->set_discrete_contact_solver(
+      drake::multibody::DiscreteContactSolver::kSap);
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
   multibody::AddFlatTerrain(plant_, scene_graph_, mu, mu,
-                            Eigen::Vector3d(0, 0, 1), stiffness,
-                            dissipation_rate);
+                            Eigen::Vector3d(0, 0, 1));
   plant_->Finalize();
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(*plant_);

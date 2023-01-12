@@ -35,7 +35,8 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
       Q_force_(
           Eigen::MatrixXd::Zero(3 * n_contact_points_, 3 * n_contact_points_)),
       contact_sequence_(n_knot_points),
-      contexts_(n_knot_points) {
+      contexts_(n_knot_points),
+      complexity_schedule_(n_knot_points) {
   n_joint_q_ = n_q_ - kCentroidalPosDim;
   n_joint_v_ = n_v_ - kCentroidalVelDim;
   prog_ = std::make_unique<drake::solvers::MathematicalProgram>();
@@ -97,8 +98,8 @@ void KinematicCentroidalSolver::SetMomentumReference(
   mom_ref_traj_ = std::move(ref_traj);
 }
 
-void KinematicCentroidalSolver::AddCentroidalDynamics() {
-  for (int knot_point = 0; knot_point < n_knot_points_ - 1; knot_point++) {
+void KinematicCentroidalSolver::AddCentroidalDynamics(int knot_point) {
+  if (!(is_last_knot(knot_point))) {
     auto constraint = std::make_shared<CentroidalDynamicsConstraint<double>>(
         plant_, contexts_[knot_point].get(), n_contact_points_, dt_,
         knot_point);
@@ -111,8 +112,8 @@ void KinematicCentroidalSolver::AddCentroidalDynamics() {
   }
 }
 
-void KinematicCentroidalSolver::AddKinematicsIntegrator() {
-  for (int knot_point = 0; knot_point < n_knot_points_ - 1; knot_point++) {
+void KinematicCentroidalSolver::AddKinematicsIntegrator(int knot_point) {
+  if (!is_last_knot(knot_point)) {
     // Integrate generalized velocities to get generalized positions
     auto constraint = std::make_shared<KinematicIntegratorConstraint<double>>(
         plant_, contexts_[knot_point].get(), contexts_[knot_point + 1].get(),
@@ -135,90 +136,83 @@ void KinematicCentroidalSolver::AddKinematicsIntegrator() {
   }
 }
 
-void KinematicCentroidalSolver::AddContactConstraints() {
-  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    for (int contact_index = 0; contact_index < n_contact_points_;
-         contact_index++) {
-      // Make sure feet in stance are not moving and on the ground
-      if (contact_sequence_[knot_point][contact_index]) {
+void KinematicCentroidalSolver::AddContactConstraints(int knot_point) {
+  for (int contact_index = 0; contact_index < n_contact_points_;
+       contact_index++) {
+    // Make sure feet in stance are not moving and on the ground
+    if (contact_sequence_[knot_point][contact_index]) {
+      prog_->AddBoundingBoxConstraint(
+          Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3),
+          contact_vel_vars(knot_point, contact_index));
+      if (knot_point != 0) {
         prog_->AddBoundingBoxConstraint(
-            Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3),
-            contact_vel_vars(knot_point, contact_index));
-        if (knot_point != 0) {
-          prog_->AddBoundingBoxConstraint(
-              0, 0, contact_pos_vars(knot_point, contact_index)[2]);
-        }
-      } else {
-        // Feet are above the ground
-        double lb = 0;
-        // Check if at least one of the time points before or after is also in
-        // flight before restricting the foot to be in the air to limit over
-        // constraining the optimization problem
-        if (!is_first_knot(knot_point) and !is_last_knot(knot_point) and
-            (!contact_sequence_[knot_point - 1][contact_index] or
-             !contact_sequence_[knot_point + 1][contact_index])) {
-          lb = swing_foot_minimum_height_;
-        }
-        prog_->AddBoundingBoxConstraint(
-            lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
+            0, 0, contact_pos_vars(knot_point, contact_index)[2]);
       }
+    } else {
+      // Feet are above the ground
+      double lb = 0;
+      // Check if at least one of the time points before or after is also in
+      // flight before restricting the foot to be in the air to limit over
+      // constraining the optimization problem
+      if (!is_first_knot(knot_point) and !is_last_knot(knot_point) and
+          (!contact_sequence_[knot_point - 1][contact_index] or
+           !contact_sequence_[knot_point + 1][contact_index])) {
+        lb = swing_foot_minimum_height_;
+      }
+      prog_->AddBoundingBoxConstraint(
+          lb, 10, contact_pos_vars(knot_point, contact_index)[2]);
     }
   }
 }
 
-void KinematicCentroidalSolver::AddCentroidalKinematicConsistency() {
-  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    // Ensure linear and angular momentum line up
-    auto centroidal_momentum =
-        std::make_shared<CentroidalMomentumConstraint<double>>(
-            plant_, contexts_[knot_point].get(), knot_point);
-    prog_->AddConstraint(centroidal_momentum,
-                         {state_vars(knot_point), com_pos_vars(knot_point),
-                          momentum_vars(knot_point)});
-    for (int contact_index = 0; contact_index < n_contact_points_;
-         contact_index++) {
-      // Ensure foot position line up with kinematics
-      auto foot_position_constraint = std::make_shared<
-          dairlib::multibody::KinematicPositionConstraint<double>>(
-          plant_, contact_sets_[contact_index], Eigen::Vector3d::Zero(),
-          Eigen::Vector3d::Zero(), full_constraint_relative_);
-      prog_->AddConstraint(foot_position_constraint,
-                           {state_vars(knot_point).head(n_q_),
-                            contact_pos_vars(knot_point, contact_index)});
-    }
-    // Constrain com position
-    auto com_position =
-        std::make_shared<CenterofMassPositionConstraint<double>>(
-            plant_, contexts_[knot_point].get(), knot_point);
-    prog_->AddConstraint(com_position,
-                         {com_pos_vars(knot_point), state_vars(knot_point)});
+void KinematicCentroidalSolver::AddCentroidalKinematicConsistency(
+    int knot_point) {
+  // Ensure linear and angular momentum line up
+  auto centroidal_momentum =
+      std::make_shared<CentroidalMomentumConstraint<double>>(
+          plant_, contexts_[knot_point].get(), knot_point);
+  prog_->AddConstraint(centroidal_momentum,
+                       {state_vars(knot_point), com_pos_vars(knot_point),
+                        momentum_vars(knot_point)});
+  for (int contact_index = 0; contact_index < n_contact_points_;
+       contact_index++) {
+    // Ensure foot position line up with kinematics
+    auto foot_position_constraint = std::make_shared<
+        dairlib::multibody::KinematicPositionConstraint<double>>(
+        plant_, contact_sets_[contact_index], Eigen::Vector3d::Zero(),
+        Eigen::Vector3d::Zero(), full_constraint_relative_);
+    prog_->AddConstraint(foot_position_constraint,
+                         {state_vars(knot_point).head(n_q_),
+                          contact_pos_vars(knot_point, contact_index)});
   }
+  // Constrain com position
+  auto com_position = std::make_shared<CenterofMassPositionConstraint<double>>(
+      plant_, contexts_[knot_point].get(), knot_point);
+  prog_->AddConstraint(com_position,
+                       {com_pos_vars(knot_point), state_vars(knot_point)});
 }
 
-void KinematicCentroidalSolver::AddFrictionConeConstraints() {
-  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    for (int contact_index = 0; contact_index < n_contact_points_;
-         contact_index++) {
-      auto force_constraints_vec =
-          contact_points_[contact_index].CreateLinearFrictionConstraints();
-      for (const auto& constraint : force_constraints_vec) {
-        prog_->AddConstraint(constraint,
-                             contact_force_vars(knot_point, contact_index));
-      }
+void KinematicCentroidalSolver::AddFrictionConeConstraints(int knot_point) {
+  for (int contact_index = 0; contact_index < n_contact_points_;
+       contact_index++) {
+    auto force_constraints_vec =
+        contact_points_[contact_index].CreateLinearFrictionConstraints();
+    for (const auto& constraint : force_constraints_vec) {
+      prog_->AddConstraint(constraint,
+                           contact_force_vars(knot_point, contact_index));
     }
   }
 }
 
-void KinematicCentroidalSolver::AddFlightContactForceConstraints() {
-  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    for (int contact_index = 0; contact_index < n_contact_points_;
-         contact_index++) {
-      // Feet in flight produce no force
-      if (!contact_sequence_[knot_point][contact_index]) {
-        prog_->AddBoundingBoxConstraint(
-            Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3),
-            contact_force_vars(knot_point, contact_index));
-      }
+void KinematicCentroidalSolver::AddFlightContactForceConstraints(
+    int knot_point) {
+  for (int contact_index = 0; contact_index < n_contact_points_;
+       contact_index++) {
+    // Feet in flight produce no force
+    if (!contact_sequence_[knot_point][contact_index]) {
+      prog_->AddBoundingBoxConstraint(
+          Eigen::VectorXd::Zero(3), Eigen::VectorXd::Zero(3),
+          contact_force_vars(knot_point, contact_index));
     }
   }
 }
@@ -238,12 +232,41 @@ KinematicCentroidalSolver::joint_vel_vars(int knotpoint_index) const {
 
 void KinematicCentroidalSolver::Build(
     const drake::solvers::SolverOptions& solver_options) {
-  AddCentroidalDynamics();
-  AddKinematicsIntegrator();
-  AddContactConstraints();
-  AddCentroidalKinematicConsistency();
-  AddFrictionConeConstraints();
-  AddFlightContactForceConstraints();
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    switch (complexity_schedule_[knot_point]) {
+      case KINEMATIC_CENTROIDAL:
+        // Add complex constraints
+        AddContactConstraints(knot_point);
+        AddCentroidalKinematicConsistency(knot_point);
+        AddFrictionConeConstraints(knot_point);
+        AddFlightContactForceConstraints(knot_point);
+        // Add complex dynamics
+        AddCentroidalDynamics(knot_point);
+        AddKinematicsIntegrator(knot_point);
+        if (!is_last_knot(knot_point) and
+            complexity_schedule_[knot_point + 1] == SLIP) {
+          AddSlipEqualityConstraint(knot_point + 1);
+          AddCentroidalKinematicConsistency(knot_point + 1);
+        }
+        break;
+      case SLIP:
+        AddSlipConstraints(knot_point);
+        if (!is_last_knot(knot_point)) {
+          switch (complexity_schedule_[knot_point + 1]) {
+            case KINEMATIC_CENTROIDAL:
+              AddCentroidalDynamics(knot_point);
+              AddKinematicsIntegrator(knot_point);
+              AddSlipEqualityConstraint(knot_point);
+              AddCentroidalKinematicConsistency(knot_point);
+              break;
+            case SLIP:
+              AddSlipDynamics(knot_point);
+              break;
+          }
+        }
+        break;
+    }
+  }
   AddCosts();
   prog_->SetSolverOptions(solver_options);
 }
@@ -256,103 +279,92 @@ void KinematicCentroidalSolver::SetConstantMomentumReference(
 }
 
 double KinematicCentroidalSolver::GetKnotpointGain(int knot_point) const {
-  const double terminal_gain = is_last_knot(knot_point) ? 100 : 1;
+  const double terminal_gain = is_last_knot(knot_point) ? 1 : 1;
   const double collocation_gain =
       (is_first_knot(knot_point) or is_last_knot(knot_point)) ? 0.5 : 1;
   return terminal_gain * collocation_gain;
 }
 
 void KinematicCentroidalSolver::AddCosts() {
+  // Loop through knot points and add running cost
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    double knot_point_gain = GetKnotpointGain(knot_point);
     double t = dt_ * knot_point;
-    if (q_ref_traj_) {
-      q_ref_cost_.push_back(
-          prog_
-              ->AddQuadraticErrorCost(knot_point_gain * Q_q_,
-                                      q_ref_traj_->value(t),
-                                      state_vars(knot_point).head(n_q_))
-              .evaluator());
+
+    switch (complexity_schedule_[knot_point]) {
+      case KINEMATIC_CENTROIDAL:
+        // If kinematic centroidal always going to integrate to kinematic
+        // centroidal
+        AddKinematicCentroidalCosts(knot_point, t, 0.5);
+        if (!is_last_knot(knot_point)) {
+          AddKinematicCentroidalCosts(knot_point + 1, t + dt_, 0.5);
+        }
+        break;
+      case SLIP:
+        // If slip, and integrating to kinematic centroidal use kinematic
+        // centroidal cost If slip and integrating to slip use slip costs
+        if (!is_last_knot(knot_point)) {
+          switch (complexity_schedule_[knot_point + 1]) {
+            case KINEMATIC_CENTROIDAL:
+              AddKinematicCentroidalCosts(knot_point, t, 0.5);
+              AddKinematicCentroidalCosts(knot_point + 1, t + dt_, 0.5);
+              break;
+            case SLIP:
+              AddSlipCost(knot_point, 0.5);
+              AddSlipCost(knot_point + 1, 0.5);
+              break;
+          }
+        } else {
+          AddSlipCost(knot_point, 0.5);
+        }
+        break;
     }
-    if (v_ref_traj_) {
-      v_ref_cost_.push_back(
-          prog_
-              ->AddQuadraticErrorCost(knot_point_gain * Q_v_,
-                                      v_ref_traj_->value(t),
-                                      state_vars(knot_point).tail(n_v_))
-              .evaluator());
-    }
-    if (com_ref_traj_) {
-      com_ref_cost_.push_back(
-          prog_
-              ->AddQuadraticErrorCost(knot_point_gain * Q_com_,
-                                      com_ref_traj_->value(t),
-                                      com_pos_vars(knot_point))
-              .evaluator());
-    }
-    if (mom_ref_traj_) {
-      mom_ref_cost_.push_back(
-          prog_
-              ->AddQuadraticErrorCost(knot_point_gain * Q_mom_,
-                                      mom_ref_traj_->value(t),
-                                      momentum_vars(knot_point))
-              .evaluator());
-    }
-    if (contact_ref_traj_) {
-      contact_ref_cost_.push_back(
-          prog_
-              ->AddQuadraticErrorCost(
-                  knot_point_gain * Q_contact_, contact_ref_traj_->value(t),
-                  {contact_pos_[knot_point], contact_vel_[knot_point]})
-              .evaluator());
-    }
-    if (force_ref_traj_) {
-      force_ref_cost_.push_back(
-          prog_
-              ->AddQuadraticErrorCost(knot_point_gain * Q_force_,
-                                      force_ref_traj_->value(t),
-                                      contact_force_[knot_point])
-              .evaluator());
-    }
+  }
+  int knot_point = n_knot_points_ - 1;
+  double knot_point_gain = GetKnotpointGain(knot_point);
+  double t = dt_ * knot_point;
+  switch (complexity_schedule_[knot_point]) {
+    case KINEMATIC_CENTROIDAL:
+      AddKinematicCentroidalCosts(knot_point, t, knot_point_gain);
+      break;
+    case SLIP:
+      AddSlipCost(knot_point, knot_point_gain);
+      break;
   }
 }
 
-void KinematicCentroidalSolver::UpdateCosts() {
-  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    const double knot_point_gain = GetKnotpointGain(knot_point);
-    double t = dt_ * knot_point;
-    if (q_ref_cost_[knot_point]) {
-      q_ref_cost_[knot_point]->UpdateCoefficients(
-          knot_point_gain * 2 * Q_q_,
-          -knot_point_gain * 2 * Q_q_ * q_ref_traj_->value(t));
-    }
-    if (v_ref_cost_[knot_point]) {
-      v_ref_cost_[knot_point]->UpdateCoefficients(
-          knot_point_gain * 2 * Q_v_,
-          -knot_point_gain * 2 * Q_v_ * v_ref_traj_->value(t));
-    }
-    if (com_ref_cost_[knot_point]) {
-      com_ref_cost_[knot_point]->UpdateCoefficients(
-          knot_point_gain * 2 * Q_com_,
-          -knot_point_gain * 2 * Q_com_ * com_ref_traj_->value(t));
-    }
-    if (mom_ref_cost_[knot_point]) {
-      mom_ref_cost_[knot_point]->UpdateCoefficients(
-          knot_point_gain * 2 * Q_mom_,
-          -knot_point_gain * 2 * Q_mom_ * mom_ref_traj_->value(t));
-    }
-    if (contact_ref_cost_[knot_point]) {
-      contact_ref_cost_[knot_point]->UpdateCoefficients(
-          knot_point_gain * 2 * Q_contact_,
-          -knot_point_gain * 2 * Q_contact_ * contact_ref_traj_->value(t));
-    }
-    if (force_ref_cost_[knot_point]) {
-      force_ref_cost_[knot_point]->UpdateCoefficients(
-          knot_point_gain * 2 * Q_force_,
-          -knot_point_gain * 2 * Q_force_ * force_ref_traj_->value(t));
-    }
+void KinematicCentroidalSolver::AddKinematicCentroidalCosts(
+    int knot_point, double t, double knot_point_gain) {
+  if (q_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_q_, q_ref_traj_->value(t),
+                                 state_vars(knot_point).head(n_q_));
+  }
+  if (v_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_v_, v_ref_traj_->value(t),
+                                 state_vars(knot_point).tail(n_v_));
+  }
+  if (com_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_com_,
+                                 com_ref_traj_->value(t),
+                                 com_pos_vars(knot_point));
+  }
+  if (mom_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_mom_,
+                                 mom_ref_traj_->value(t),
+                                 momentum_vars(knot_point));
+  }
+  if (contact_ref_traj_) {
+    prog_->AddQuadraticErrorCost(
+        knot_point_gain * Q_contact_, contact_ref_traj_->value(t),
+        {contact_pos_[knot_point], contact_vel_[knot_point]});
+  }
+  if (force_ref_traj_) {
+    prog_->AddQuadraticErrorCost(knot_point_gain * Q_force_,
+                                 force_ref_traj_->value(t),
+                                 contact_force_[knot_point]);
   }
 }
+
+void KinematicCentroidalSolver::UpdateCosts() { DRAKE_DEMAND(false); }
 
 void KinematicCentroidalSolver::SetZeroInitialGuess() {
   Eigen::VectorXd initialGuess =
@@ -387,7 +399,14 @@ KinematicCentroidalSolver::Solve() {
   std::vector<drake::MatrixX<double>> states;
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
     time_points.emplace_back(dt_ * knot_point);
-    states.emplace_back(result_->GetSolution(state_vars(knot_point)));
+    switch (complexity_schedule_[knot_point]) {
+      case KINEMATIC_CENTROIDAL:
+        states.emplace_back(result_->GetSolution(state_vars(knot_point)));
+        break;
+      case SLIP:
+        states.emplace_back(LiftSlipSolution(knot_point));
+        break;
+    }
   }
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
       time_points, states);
@@ -533,7 +552,6 @@ void KinematicCentroidalSolver::AddPlantJointLimits(
     }
   }
 }
-
 drake::solvers::VectorXDecisionVariable KinematicCentroidalSolver::com_pos_vars(
     int knotpoint_index) const {
   return com_vars_[knotpoint_index];
@@ -640,6 +658,16 @@ void KinematicCentroidalSolver::SetForceGuess(
   }
 }
 
+void KinematicCentroidalSolver::SetMomentumGuess(
+    const drake::trajectories::PiecewisePolynomial<double>&
+        momentum_trajectory) {
+  DRAKE_DEMAND(momentum_trajectory.rows() == 6);
+  for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
+    prog_->SetInitialGuess(mom_vars_[knot_point],
+                           momentum_trajectory.value(dt_ * knot_point));
+  }
+}
+
 void KinematicCentroidalSolver::SetModeSequence(
     const std::vector<std::vector<bool>>& contact_sequence) {
   contact_sequence_ = contact_sequence;
@@ -647,7 +675,8 @@ void KinematicCentroidalSolver::SetModeSequence(
 void KinematicCentroidalSolver::SetModeSequence(
     const drake::trajectories::PiecewisePolynomial<double>& contact_sequence) {
   for (int knot_point = 0; knot_point < n_knot_points_; knot_point++) {
-    for (int contact_index = 0; contact_index < 4; contact_index++) {
+    for (int contact_index = 0; contact_index < n_contact_points_;
+         contact_index++) {
       contact_sequence_[knot_point][contact_index] =
           contact_sequence.value(dt_ * knot_point).coeff(contact_index);
     }
@@ -671,6 +700,7 @@ void KinematicCentroidalSolver::UpdateInitialStateConstraint(
 
 void KinematicCentroidalSolver::SetGains(
     const KinematicCentroidalGains& gains) {
+  gains_ = gains;
   std::map<std::string, int> positions_map =
       dairlib::multibody::MakeNameToPositionsMap(plant_);
   std::map<std::string, int> velocities_map =

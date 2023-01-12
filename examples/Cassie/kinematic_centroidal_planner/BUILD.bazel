@@ -41,7 +41,7 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems/primitives",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_kinematic_centroidal_mpc",
-        "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
+        "//examples/Cassie/kinematic_centroidal_planner:cassie_kc_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -76,14 +76,15 @@ cc_library(
 )
 
 cc_library(
-    name = "cassie_reference_utils",
-    srcs = ["cassie_reference_utils.cc"],
-    hdrs = ["cassie_reference_utils.h"],
+    name = "cassie_kc_utils",
+    srcs = ["cassie_kc_utils.cc"],
+    hdrs = ["cassie_kc_utils.h"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//common",
         "//systems/trajectory_optimization/kinematic_centroidal_planner:kinematic_centroidal_planner",
         "//multibody:visualization_utils",
+        ":cassie_kinematic_centroidal_mpc",
         "@drake//:drake_shared_library",
     ],
 )
@@ -97,6 +98,7 @@ cc_library(
         "//common",
         "//systems/trajectory_optimization/kinematic_centroidal_planner",
         "//multibody:visualization_utils",
+        "//examples/Cassie/kinematic_centroidal_planner/simple_models:slip",
         "@drake//:drake_shared_library",
     ],
 )

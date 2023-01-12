@@ -71,6 +71,7 @@ class KcmpcReferenceGenerator {
   drake::trajectories::PiecewisePolynomial<double> contact_sequence_;
   drake::trajectories::PiecewisePolynomial<double> grf_traj_;
   drake::trajectories::PiecewisePolynomial<double> contact_traj_;
+  drake::trajectories::PiecewisePolynomial<double> momentum_trajectory_;
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;

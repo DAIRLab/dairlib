@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <iostream>
 
 #include <drake/common/yaml/yaml_io.h>
@@ -16,12 +18,13 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/Cassie/kinematic_centroidal_planner/cassie_kc_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/cassie_kinematic_centroidal_solver.h"
-#include "examples/Cassie/kinematic_centroidal_planner/cassie_reference_utils.h"
 #include "examples/Cassie/kinematic_centroidal_planner/trajectory_parameters.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kcmpc_reference_generator.h"
 #include "systems/trajectory_optimization/kinematic_centroidal_planner/kinematic_centroidal_gains.h"
+#include "systems/trajectory_optimization/kinematic_centroidal_planner/reference_generation_utils.h"
 
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
@@ -33,7 +36,7 @@ DEFINE_string(channel_reference, "KCMPC_REF",
               "MPC are published");
 DEFINE_string(
     trajectory_parameters,
-    "examples/Cassie/kinematic_centroidal_planner/motions/motion_test.yaml",
+    "examples/Cassie/kinematic_centroidal_planner/motions/motion_walk.yaml",
     "YAML file that contains trajectory parameters such as speed, tolerance, "
     "target_com_height");
 DEFINE_string(planner_parameters,
@@ -90,25 +93,35 @@ int DoMain(int argc, char* argv[]) {
   gait_library["jump"] = jump;
   // Create reference
   std::vector<Gait> gait_samples;
-  for (auto gait : traj_params.gait_sequence){
+  for (auto gait : traj_params.gait_sequence) {
     gait_samples.push_back(gait_library.at(gait));
   }
   DRAKE_DEMAND(gait_samples.size() == traj_params.duration_scaling.size());
   std::vector<double> time_points = KcmpcReferenceGenerator::GenerateTimePoints(
       traj_params.duration_scaling, gait_samples);
 
+  Eigen::VectorXd reference_state = GenerateNominalStand(
+      plant, traj_params.target_com_height, traj_params.stance_width, false);
+
   // Create MPC and set gains
   CassieKinematicCentroidalSolver mpc(
       plant, traj_params.n_knot_points,
-      time_points.back() / (traj_params.n_knot_points - 1), 0.4);
+      time_points.back() / (traj_params.n_knot_points - 1), 0.4,
+      reference_state.head(plant.num_positions()), traj_params.spring_constant,
+      traj_params.damping_coefficient,
+      sqrt(pow(traj_params.target_com_height, 2) +
+           pow(traj_params.stance_width, 2)),
+      traj_params.stance_width);
   mpc.SetGains(gains);
   mpc.SetMinimumFootClearance(traj_params.swing_foot_minimum_height);
+  mpc.SetMaximumSlipLegLength(traj_params.max_slip_leg_length);
+
+  mpc.SetComplexitySchedule(GenerateComplexitySchedule(
+      traj_params.n_knot_points, traj_params.complexity_schedule));
 
   KcmpcReferenceGenerator generator(plant, plant_context.get(),
                                     CreateContactPoints(plant, 0));
 
-  Eigen::VectorXd reference_state = GenerateNominalStand(
-      plant, traj_params.target_com_height, traj_params.stance_width, false);
   generator.SetNominalReferenceConfiguration(
       reference_state.head(plant.num_positions()));
   generator.SetComKnotPoints({time_points, traj_params.com_vel_vector});
@@ -131,7 +144,9 @@ int DoMain(int argc, char* argv[]) {
   mpc.SetContactTrackingReference(
       std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
           generator.contact_traj_));
-  mpc.SetConstantMomentumReference(Eigen::VectorXd::Zero(6));
+  mpc.SetMomentumReference(
+      std::make_unique<drake::trajectories::PiecewisePolynomial<double>>(
+          generator.momentum_trajectory_));
   mpc.SetModeSequence(generator.contact_sequence_);
   //
   //  // Set initial guess
@@ -140,6 +155,7 @@ int DoMain(int argc, char* argv[]) {
   mpc.SetComPositionGuess(generator.com_trajectory_);
   mpc.SetContactGuess(generator.contact_traj_);
   mpc.SetForceGuess(generator.grf_traj_);
+  mpc.SetMomentumGuess(generator.momentum_trajectory_);
 
   {
     drake::solvers::SolverOptions options;
@@ -148,7 +164,7 @@ int DoMain(int argc, char* argv[]) {
     options.SetOption(id, "dual_inf_tol", gains.tol);
     options.SetOption(id, "constr_viol_tol", gains.tol);
     options.SetOption(id, "compl_inf_tol", gains.tol);
-    options.SetOption(id, "max_iter", 200);
+    options.SetOption(id, "max_iter", 800);
     options.SetOption(id, "nlp_lower_bound_inf", -1e6);
     options.SetOption(id, "nlp_upper_bound_inf", 1e6);
     options.SetOption(id, "print_timing_statistics", "yes");
@@ -204,12 +220,11 @@ int DoMain(int argc, char* argv[]) {
 
   while (true) {
     drake::systems::Simulator<double> simulator(*diagram);
-    simulator.set_target_realtime_rate(1.0);
+    simulator.set_target_realtime_rate(0.25);
     simulator.Initialize();
     simulator.AdvanceTo(pp_xtraj.end_time());
+    sleep(2);
   }
 }
 
-int main(int argc, char* argv[]) {
-  DoMain(argc, argv);
-}
+int main(int argc, char* argv[]) { DoMain(argc, argv); }

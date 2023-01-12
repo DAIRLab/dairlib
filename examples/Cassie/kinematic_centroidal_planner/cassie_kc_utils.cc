@@ -1,30 +1,34 @@
-#include "cassie_reference_utils.h"
-#include <drake/systems/framework/diagram_builder.h>
+#include "cassie_kc_utils.h"
+
+#include <iostream>
+#include <regex>
+
 #include <drake/geometry/scene_graph.h>
+#include <drake/multibody/inverse_kinematics/com_position_constraint.h>
+#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/multibody/plant/multibody_plant.h>
-#include <iostream>
-#include <drake/systems/analysis/simulator.h>
-#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
 #include <drake/solvers/solve.h>
+#include <drake/systems/analysis/simulator.h>
+#include <drake/systems/framework/diagram_builder.h>
+
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/visualization_utils.h"
-#include <drake/multibody/inverse_kinematics/com_position_constraint.h>
 
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 
-Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<double> &plant,
-                                     double com_height,
-                                     double stance_width,
-                                     bool visualize) {
-  using Eigen::VectorXd;
+Eigen::VectorXd GenerateNominalStand(
+    const drake::multibody::MultibodyPlant<double>& plant, double com_height,
+    double stance_width, bool visualize) {
   using Eigen::Vector3d;
+  using Eigen::VectorXd;
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
   int n_x = n_q + n_v;
-  std::map<std::string, int> positions_map = dairlib::multibody::MakeNameToPositionsMap(plant);
+  std::map<std::string, int> positions_map =
+      dairlib::multibody::MakeNameToPositionsMap(plant);
 
   Eigen::VectorXd q_ik_guess = Eigen::VectorXd::Zero(n_q);
 
@@ -58,12 +62,11 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   Eigen::Vector3d heel_rt_toe = {.122, 0, 0};
 
   Eigen::Vector3d pelvis_pos = {0, 0, com_height};
-  Eigen::Vector3d l_toe_pos = {0.06, stance_width/2, 0};
-  Eigen::Vector3d r_toe_pos = {0.06, -stance_width/2, 0};
+  Eigen::Vector3d l_toe_pos = {0.06, stance_width / 2, 0};
+  Eigen::Vector3d r_toe_pos = {0.06, -stance_width / 2, 0};
 
   Eigen::Vector3d l_heel_pos = l_toe_pos - heel_rt_toe;
-  Eigen::Vector3d r_heel_pos = r_toe_pos-heel_rt_toe;
-
+  Eigen::Vector3d r_heel_pos = r_toe_pos - heel_rt_toe;
 
   const auto& world_frame = plant.world_frame();
   const auto& pelvis_frame = plant.GetFrameByName("pelvis");
@@ -74,19 +77,22 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   drake::multibody::InverseKinematics ik(plant, context.get());
   double eps = 1e-3;
   Vector3d eps_vec = eps * VectorXd::Ones(3);
-  ik.AddOrientationConstraint(pelvis_frame, drake::math::RotationMatrix<double>(),
-                              world_frame, drake::math::RotationMatrix<double>(), eps);
-  ik.AddPositionConstraint(toe_left_frame, dairlib::LeftToeFront(plant).first, world_frame,
-                           l_toe_pos - eps_vec,
+  ik.AddOrientationConstraint(
+      pelvis_frame, drake::math::RotationMatrix<double>(), world_frame,
+      drake::math::RotationMatrix<double>(), eps);
+  ik.AddPositionConstraint(toe_left_frame, dairlib::LeftToeFront(plant).first,
+                           world_frame, l_toe_pos - eps_vec,
                            l_toe_pos + eps_vec);
-  ik.AddPositionConstraint(toe_left_frame, dairlib::LeftToeRear(plant).first, world_frame,
-                           l_heel_pos - eps_vec,
+  ik.AddPositionConstraint(toe_left_frame, dairlib::LeftToeRear(plant).first,
+                           world_frame, l_heel_pos - eps_vec,
                            l_heel_pos + eps_vec);
 
-  ik.AddPositionConstraint(toe_right_frame, dairlib::RightToeFront(plant).first, world_frame,
-                           r_toe_pos - eps_vec, r_toe_pos + eps_vec);
-  ik.AddPositionConstraint(toe_right_frame, dairlib::RightToeRear(plant).first, world_frame,
-                           r_heel_pos - eps_vec, r_heel_pos + eps_vec);
+  ik.AddPositionConstraint(toe_right_frame, dairlib::RightToeFront(plant).first,
+                           world_frame, r_toe_pos - eps_vec,
+                           r_toe_pos + eps_vec);
+  ik.AddPositionConstraint(toe_right_frame, dairlib::RightToeRear(plant).first,
+                           world_frame, r_heel_pos - eps_vec,
+                           r_heel_pos + eps_vec);
 
   ik.get_mutable_prog()->AddLinearConstraint(
       (ik.q())(positions_map.at("hip_yaw_left")) == 0);
@@ -96,15 +102,16 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   ik.get_mutable_prog()->AddLinearConstraint(
       (ik.q())(positions_map.at("knee_left")) +
           (ik.q())(positions_map.at("ankle_joint_left")) ==
-          M_PI * 13 / 180.0);
+      M_PI * 13 / 180.0);
   ik.get_mutable_prog()->AddLinearConstraint(
       (ik.q())(positions_map.at("knee_right")) +
           (ik.q())(positions_map.at("ankle_joint_right")) ==
-          M_PI * 13 / 180.0);
+      M_PI * 13 / 180.0);
 
-  auto constraint = std::make_shared<drake::multibody::ComPositionConstraint>(&plant, std::nullopt, plant.world_frame(), context.get());
+  auto constraint = std::make_shared<drake::multibody::ComPositionConstraint>(
+      &plant, std::nullopt, plant.world_frame(), context.get());
   auto r = ik.get_mutable_prog()->NewContinuousVariables(3);
-  ik.get_mutable_prog()->AddConstraint(constraint, {ik.q(),r});
+  ik.get_mutable_prog()->AddConstraint(constraint, {ik.q(), r});
   Eigen::Vector3d rdes = {0, 0, com_height};
   ik.get_mutable_prog()->AddBoundingBoxConstraint(rdes, rdes, r);
 
@@ -117,15 +124,16 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
   q_ik_guess = q_sol_normd;
 
-  if(visualize){
+  if (visualize) {
     // Build temporary diagram for visualization
     drake::systems::DiagramBuilder<double> builder_ik;
-    drake::geometry::SceneGraph<double>& scene_graph_ik = *builder_ik.AddSystem<drake::geometry::SceneGraph>();
+    drake::geometry::SceneGraph<double>& scene_graph_ik =
+        *builder_ik.AddSystem<drake::geometry::SceneGraph>();
     scene_graph_ik.set_name("scene_graph_ik");
     MultibodyPlant<double> plant_ik(0.0);
     Parser parser(&plant_ik, &scene_graph_ik);
-    std::string full_name =
-        dairlib::FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
+    std::string full_name = dairlib::FindResourceOrThrow(
+        "examples/Cassie/urdf/cassie_fixed_springs.urdf");
     parser.AddModelFromFile(full_name);
     plant_ik.Finalize();
 
@@ -148,4 +156,28 @@ Eigen::VectorXd GenerateNominalStand(const drake::multibody::MultibodyPlant<doub
   return rv;
 }
 
-
+std::vector<Complexity> GenerateComplexitySchedule(
+    int n_knot_points, const std::vector<std::string>& complexity_string_list) {
+  std::vector<Complexity> complexity_schedule;
+  std::regex number_regex("(^|\\s)([0-9]+)($|\\s)");
+  std::smatch match;
+  for (const auto& complexity_string : complexity_string_list) {
+    DRAKE_DEMAND(complexity_string.at(0) == 'c' or
+                 complexity_string.at(0) == 's');
+    if (complexity_string.at(0) == 'c') {
+      std::regex_search(complexity_string, match, number_regex);
+      std::cout << std::stoi(match[0]) << std::endl;
+      for (int i = 0; i < std::stoi(match[0]); i++) {
+        complexity_schedule.push_back(Complexity::KINEMATIC_CENTROIDAL);
+      }
+    } else if (complexity_string.at(0) == 's') {
+      std::regex_search(complexity_string, match, number_regex);
+      std::cout << std::stoi(match[0]) << std::endl;
+      for (int i = 0; i < std::stoi(match[0]); i++) {
+        complexity_schedule.push_back(Complexity::SLIP);
+      }
+    }
+  }
+  DRAKE_DEMAND(n_knot_points == complexity_schedule.size());
+  return complexity_schedule;
+}

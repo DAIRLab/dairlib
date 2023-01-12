@@ -15,11 +15,13 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
+enum Complexity { KINEMATIC_CENTROIDAL, SLIP };
+
 /*!
  * @brief Class for solving nonlinear kinematic centroidal mpc. Implementation
  * is based on Dai, Hongkai, Andres Valenzuela, and Russ Tedrake. “Whole-Body
- * TrajectoryParameters Planning with Centroidal Dynamics and Full Kinematics.”
- * 2014 IEEE-RAS International Conference on Humanoid Robots (November 2014).
+ * Motion Planning with Centroidal Dynamics and Full Kinematics.” 2014 IEEE-RAS
+ * International Conference on Humanoid Robots (November 2014).
  *
  * The optimization contains two coupled problems. The centroidal problem
  * optimizes over: Angular momentum Linear momentum Center of mass position
@@ -193,7 +195,7 @@ class KinematicCentroidalSolver {
    * @brief Adds standard constraints to optimization problem and sets options
    * @param solver_options
    */
-  void Build(const drake::solvers::SolverOptions& solver_options);
+  virtual void Build(const drake::solvers::SolverOptions& solver_options);
 
   /*!
    * @brief Solve the optimization problem and return a piecewise linear
@@ -257,20 +259,25 @@ class KinematicCentroidalSolver {
       const drake::trajectories::PiecewisePolynomial<double>& state_trajectory);
 
   // TODO remove once drake has trajectory stacking
-  void SetRobotStateGuess(
+  virtual void SetRobotStateGuess(
       const drake::trajectories::PiecewisePolynomial<double>& q_traj,
       const drake::trajectories::PiecewisePolynomial<double>& v_traj);
 
   void SetComPositionGuess(const drake::Vector3<double>& state);
 
-  void SetComPositionGuess(
+  virtual void SetComPositionGuess(
       const drake::trajectories::PiecewisePolynomial<double>& com_trajectory);
 
-  void SetContactGuess(const drake::trajectories::PiecewisePolynomial<double>&
-                           contact_trajectory);
+  virtual void SetContactGuess(
+      const drake::trajectories::PiecewisePolynomial<double>&
+          contact_trajectory);
 
-  void SetForceGuess(
+  virtual void SetForceGuess(
       const drake::trajectories::PiecewisePolynomial<double>& force_trajectory);
+
+  virtual void SetMomentumGuess(
+      const drake::trajectories::PiecewisePolynomial<double>&
+          momentum_trajectory);
 
   void CreateVisualizationCallback(const std::string& model_file, double alpha,
                                    const std::string& weld_frame_to_world = "");
@@ -319,14 +326,15 @@ class KinematicCentroidalSolver {
    * `contact_sequence[knot_point][contact_index]` tells you if at `knot_point`
    * is `contact_index` active
    */
-  void SetModeSequence(const std::vector<std::vector<bool>>& contact_sequence);
+  virtual void SetModeSequence(
+      const std::vector<std::vector<bool>>& contact_sequence);
 
   /*!
    * @brief Set the mode sequence via a trajectory. The value of the trajectory
    * at each time, cast to a bool is if a contact point is active or not
    * @param contact_sequence
    */
-  void SetModeSequence(
+  virtual void SetModeSequence(
       const drake::trajectories::PiecewisePolynomial<double>& contact_sequence);
 
   void AddInitialStateConstraint(const Eigen::VectorXd& state);
@@ -341,38 +349,43 @@ class KinematicCentroidalSolver {
    */
   void UpdateCosts();
 
- private:
+  void SetComplexitySchedule(
+      const std::vector<Complexity>& complexity_schedule) {
+    complexity_schedule_ = complexity_schedule;
+  };
+
+ protected:
   /*!
    * @brief Adds dynamics for centroidal state
    */
-  void AddCentroidalDynamics();
+  void AddCentroidalDynamics(int knot_point);
 
   /*!
    * @brief Enforces zero force for feet in flight
    */
-  void AddFlightContactForceConstraints();
+  void AddFlightContactForceConstraints(int knot_point);
 
   /*!
    * @brief Enforce dynamics for kinematics and location of the contacts
    */
-  void AddKinematicsIntegrator();
+  void AddKinematicsIntegrator(int knot_point);
 
   /*!
    * @brief Feet that in stance are not moving and on the ground, feet in the
    * air are above the ground
    */
-  void AddContactConstraints();
+  void AddContactConstraints(int knot_point);
 
   /*!
    * @brief Ensures that contact point for feet line up with kinematics, and
    * centroidal state lines up with kinematic state
    */
-  void AddCentroidalKinematicConsistency();
+  void AddCentroidalKinematicConsistency(int knot_point);
 
   /*!
    * @brief Ensures feet are not pulling on the ground
    */
-  void AddFrictionConeConstraints();
+  void AddFrictionConeConstraints(int knot_point);
 
   //  void AddTorqueLimits();
   /*!
@@ -381,9 +394,56 @@ class KinematicCentroidalSolver {
   double GetKnotpointGain(int knot_point) const;
 
   /*!
+   * @brief Add relevant slip constraints to knot point
+   * @param knot_point
+   */
+  virtual void AddSlipConstraints(int knot_point) { DRAKE_DEMAND(false); };
+
+  /*!
+   * @brief add slip cost to knot point
+   * @param knot_point
+   * @param gain
+   */
+  virtual void AddSlipCost(int knot_point, double gain) {
+    DRAKE_DEMAND(false);
+  };
+
+  /*!
+   * @brief Add constraint to knot point that slip state is equivalent to complex state
+   * @param knot_point
+   */
+  virtual void AddSlipEqualityConstraint(int knot_point) {
+    DRAKE_DEMAND(false);
+  };
+
+  /*!
+   * @brief Add constraint to knot point
+   * @param knot_point
+   */
+  virtual void AddSlipDynamics(int knot_point) { DRAKE_DEMAND(false); };
+
+  /*!
+   * @brief Lift the slip solution to generalized state at knot point
+   * @param knot_point
+   * @return full robot generalized state
+   */
+  virtual drake::VectorX<double> LiftSlipSolution(int knot_point) {
+    DRAKE_DEMAND(false);
+  };
+
+  /*!
    * @brief Add costs from internally stored variables
    */
   void AddCosts();
+
+  /*!
+   * @brief Add cost for kinematic centroidal at knot point
+   * @param knot_point
+   * @param t
+   * @param knot_point_gain
+   */
+  void AddKinematicCentroidalCosts(int knot_point, double t,
+                                   double knot_point_gain);
 
   bool is_first_knot(int knot_point_index) const {
     return knot_point_index == 0;
@@ -467,4 +527,7 @@ class KinematicCentroidalSolver {
   // saving and publishing solutions
   std::unique_ptr<drake::lcm::DrakeLcm> lcm_;
   dairlib::LcmTrajectory lcm_trajectory_;
+
+  std::vector<Complexity> complexity_schedule_;
+  KinematicCentroidalGains gains_;
 };

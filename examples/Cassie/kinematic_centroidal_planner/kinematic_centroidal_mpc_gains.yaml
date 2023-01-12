@@ -1,4 +1,4 @@
-com_position: [1, 1, 10]
+com_position: [2, 2, 5]
 generalized_positions:
   base_qw: 1.0
   base_qx: 1.0
@@ -7,30 +7,30 @@ generalized_positions:
   base_x: 0
   base_y: 0
   base_z: 0
-  hip_roll_: 0.01
-  hip_yaw_: 0.01
-  hip_pitch_: 0.001
-  knee_: 0.001
-  ankle_joint_: 0.001
-  toe_: 0.0000
+  hip_roll_: 0.001
+  hip_yaw_: 0.001
+  hip_pitch_: 0.00001
+  knee_: 0.00001
+  ankle_joint_: 0.00001
+  toe_: 0.000001
 generalized_velocities:
   base_wx: 0.5
   base_wy: 0.5
   base_wz: 0.5
-  base_vx: 0.1
-  base_vy: 0.1
+  base_vx: 0.2
+  base_vy: 0.2
   base_vz: 0.1
-  hip_roll_: 0.02
-  hip_yaw_: 0.02
-  hip_pitch_: 0.002
-  knee_: 0.002
-  ankle_joint_: 0.002
-  toe_: 0.004
+  hip_roll_: 0.002
+  hip_yaw_: 0.002
+  hip_pitch_: 0.00002
+  knee_: 0.00002
+  ankle_joint_: 0.00002
+  toe_: 0.00004
 
-contact_pos: [0.1, 16, 0.001]
-contact_vel: [0.02, 0.02, 0.02]
-contact_force: [0.0001, 0.0001, 0.0001]
+contact_pos: [2, 5, 0.001]
+contact_vel: [0.4, 0.4, 0.1]
+contact_force: [0.00002, 0.00002, 0.0004]
 lin_momentum: [0.00001, 0.00001, 0.00001]
-ang_momentum: [0.0000001, 0.0000001, 0.0000001]
+ang_momentum: [0.0000000, 0.0000000, 0.0000000]
 
 tol: 1e-2

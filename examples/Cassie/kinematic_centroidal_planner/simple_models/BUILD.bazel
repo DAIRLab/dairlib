@@ -1,0 +1,37 @@
+package(default_visibility = ["//visibility:public"])
+
+
+cc_library(
+    name = "slip",
+    srcs = ["slip_constraints.cc",
+            "slip_lifter.cc",
+            "slip_reducer.cc",
+            "slip_utils.cc"],
+    hdrs = ["slip_constraints.h",
+            "slip_lifter.h",
+            "slip_reducer.h",
+            "slip_utils.h"],
+    deps = [
+        "//solvers:constraints",
+        "//multibody/kinematic:kinematic",
+        "//multibody/kinematic:constraints",
+        "//solvers:nonlinear_cost",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "cassie_slip_lifting_test",
+    srcs = ["slip_lifting_test.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "slip",
+        "//common",
+        "//multibody:visualization_utils",
+        "//multibody/kinematic",
+        "//systems/primitives",
+        "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

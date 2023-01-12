@@ -19,42 +19,7 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
       const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points,
       double dt, double mu, const drake::VectorX<double>& nominal_stand,
       double k = 1000, double b = 20, double r0 = 0.5,
-      double stance_width = 0.2)
-      : KinematicCentroidalSolver(plant, n_knot_points, dt,
-                                  CreateContactPoints(plant, mu)),
-        l_loop_evaluator_(dairlib::LeftLoopClosureEvaluator(Plant())),
-        r_loop_evaluator_(dairlib::RightLoopClosureEvaluator(Plant())),
-        loop_closure_evaluators(Plant()),
-        slip_contact_sequence_(n_knot_points),
-        k_(k),
-        r0_(r0),
-        b_(b),
-        nominal_stand_(nominal_stand),
-        positions_map_(dairlib::multibody::MakeNameToPositionsMap(plant_)),
-        velocity_map_(dairlib::multibody::MakeNameToVelocitiesMap(plant_)) {
-    AddPlantJointLimits(dairlib::JointNames());
-    AddLoopClosure();
-
-    slip_contact_points_ = CreateSlipContactPoints(plant, mu);
-    for (int knot = 0; knot < n_knot_points; knot++) {
-      slip_com_vars_.push_back(
-          prog_->NewContinuousVariables(3, "slip_com_" + std::to_string(knot)));
-      slip_vel_vars_.push_back(
-          prog_->NewContinuousVariables(3, "slip_vel_" + std::to_string(knot)));
-      slip_contact_pos_vars_.push_back(prog_->NewContinuousVariables(
-          2 * 3, "slip_contact_pos_" + std::to_string(knot)));
-      slip_contact_vel_vars_.push_back(prog_->NewContinuousVariables(
-          2 * 3, "slip_contact_vel_" + std::to_string(knot)));
-      slip_force_vars_.push_back(prog_->NewContinuousVariables(
-          2, "slip_force_" + std::to_string(knot)));
-    }
-    std::vector<bool> stance_mode(2);
-    std::fill(stance_mode.begin(), stance_mode.end(), true);
-    std::fill(slip_contact_sequence_.begin(), slip_contact_sequence_.end(),
-              stance_mode);
-
-    m_ = plant_.CalcTotalMass(*contexts_[0]);
-  }
+      double stance_width = 0.2);
 
   std::vector<dairlib::multibody::WorldPointEvaluator<double>>
   CreateSlipContactPoints(const drake::multibody::MultibodyPlant<double>& plant,
@@ -92,7 +57,8 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
       override;
 
   /*!
-   * @brief overload of setting kc generalized state guess to also set slip contact postion and velocity
+   * @brief overload of setting kc generalized state guess to also set slip
+   * contact postion and velocity
    * @param q_traj
    * @param v_traj
    */
@@ -120,7 +86,8 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
 
  private:
   /*!
-   * @brief Add constraint at knot point for complex state to be on the slip submanifold
+   * @brief Add constraint at knot point for complex state to be on the slip
+   * submanifold
    * @param knot_point
    */
   void AddSlipPosturePrincipleConstraint(int knot_point);
@@ -170,11 +137,12 @@ class CassieKinematicCentroidalSolver : public KinematicCentroidalSolver {
   std::vector<dairlib::multibody::WorldPointEvaluator<double>>
       slip_contact_points_;
 
-  std::map<std::vector<bool>, std::vector<bool>> complex_mode_to_slip_mode_{
-      {{true, true, true, true}, {true, true}},
-      {{true, true, false, false}, {true, false}},
-      {{false, false, true, true}, {false, true}},
-      {{false, false, false, false}, {false, false}}};
+  std::unordered_map<std::vector<bool>, std::vector<bool>>
+      complex_mode_to_slip_mode_{
+          {{true, true, true, true}, {true, true}},
+          {{true, true, false, false}, {true, false}},
+          {{false, false, true, true}, {false, true}},
+          {{false, false, false, false}, {false, false}}};
   std::vector<drake::solvers::Binding<drake::solvers::Constraint>>
       slip_dynamics_binding_;
 

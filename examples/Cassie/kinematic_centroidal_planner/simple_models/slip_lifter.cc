@@ -218,7 +218,7 @@ drake::VectorX<double> SlipLifter::LiftGrf(
                     .dot(com_vel);
     double slip_grf_mag =
         slip_contact_mask_[simple_index]
-            ? SlipGrf<double>(k_, r0_, b_, r, dr, slip_force[simple_index])
+            ? CalcSlipGrf<double>(k_, r0_, b_, r, dr, slip_force[simple_index])
             : 0;
     // Find the average location for all of the complex contact points that make
     // up the SLIP foot

@@ -149,7 +149,7 @@ drake::VectorX<T> SlipDynamicsConstraint<T>::CalcTimeDerivativesWithForce(
       const auto r = com_rt_foot.norm();
       const auto unit_vec = com_rt_foot / r;
       const auto dr = com_vel.dot(unit_vec);
-      auto F = SlipGrf<T>(k_, r0_, b_, r, dr, slip_force[foot]);
+      auto F = CalcSlipGrf<T>(k_, r0_, b_, r, dr, slip_force[foot]);
       ddcom = ddcom + F * unit_vec / m_;
     }
   }

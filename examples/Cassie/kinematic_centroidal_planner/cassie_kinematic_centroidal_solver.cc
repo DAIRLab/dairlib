@@ -6,6 +6,41 @@
 
 #include "drake/multibody/parsing/parser.h"
 
+CassieKinematicCentroidalSolver::CassieKinematicCentroidalSolver(
+    const drake::multibody::MultibodyPlant<double>& plant, int n_knot_points,
+    double dt, double mu, const drake::VectorX<double>& nominal_stand, double k,
+    double b, double r0, double stance_width)
+    : KinematicCentroidalSolver(plant, n_knot_points, dt,
+                                CreateContactPoints(plant, mu)),
+      l_loop_evaluator_(dairlib::LeftLoopClosureEvaluator(Plant())),
+      r_loop_evaluator_(dairlib::RightLoopClosureEvaluator(Plant())),
+      loop_closure_evaluators(Plant()),
+      slip_contact_sequence_(n_knot_points),
+      k_(k),
+      r0_(r0),
+      b_(b),
+      nominal_stand_(nominal_stand),
+      positions_map_(dairlib::multibody::MakeNameToPositionsMap(plant_)),
+      velocity_map_(dairlib::multibody::MakeNameToVelocitiesMap(plant_)) {
+  AddPlantJointLimits(dairlib::JointNames());
+  AddLoopClosure();
+
+  slip_contact_points_ = CreateSlipContactPoints(plant, mu);
+  for (int knot = 0; knot < n_knot_points; knot++) {
+    slip_com_vars_.push_back(
+        prog_->NewContinuousVariables(3, "slip_com_" + std::to_string(knot)));
+    slip_vel_vars_.push_back(
+        prog_->NewContinuousVariables(3, "slip_vel_" + std::to_string(knot)));
+    slip_contact_pos_vars_.push_back(prog_->NewContinuousVariables(
+        2 * 3, "slip_contact_pos_" + std::to_string(knot)));
+    slip_contact_vel_vars_.push_back(prog_->NewContinuousVariables(
+        2 * 3, "slip_contact_vel_" + std::to_string(knot)));
+    slip_force_vars_.push_back(
+        prog_->NewContinuousVariables(2, "slip_force_" + std::to_string(knot)));
+  }
+  m_ = plant_.CalcTotalMass(*contexts_[0]);
+}
+
 std::vector<dairlib::multibody::WorldPointEvaluator<double>>
 CassieKinematicCentroidalSolver::CreateSlipContactPoints(
     const drake::multibody::MultibodyPlant<double>& plant, double mu) {
@@ -86,9 +121,10 @@ void CassieKinematicCentroidalSolver::AddSlipCost(int knot_point,
                                  slip_com_vars_[knot_point]);
   }
 
-  // Project linear momentum
+  // Project linear momentum cost into center of mass velocity by multiplying
+  // gain by mass
   if (mom_ref_traj_) {
-    const Eigen::MatrixXd Q_vel = gains_.lin_momentum.asDiagonal() * m_;
+    const Eigen::MatrixXd Q_vel = m_ * gains_.lin_momentum.asDiagonal();
     prog_->AddQuadraticErrorCost(
         terminal_gain * Q_vel, Eigen::VectorXd(mom_ref_traj_->value(t)).tail(3),
         slip_vel_vars_[knot_point]);
@@ -153,7 +189,7 @@ void CassieKinematicCentroidalSolver::MapModeSequence() {
 void CassieKinematicCentroidalSolver::AddSlipEqualityConstraint(
     int knot_point) {
   prog_->AddConstraint(slip_com_vars_[knot_point] == com_pos_vars(knot_point));
-  prog_->AddConstraint(slip_vel_vars_[knot_point] * m_ ==
+  prog_->AddConstraint(m_ * slip_vel_vars_[knot_point] ==
                        momentum_vars(knot_point).tail(3));
   prog_->AddConstraint(slip_contact_pos_vars(knot_point, 0) ==
                        contact_pos_vars(knot_point, 0));
@@ -187,6 +223,8 @@ void CassieKinematicCentroidalSolver::AddSlipDynamics(int knot_point) {
          slip_com_vars_[knot_point + 1], slip_vel_vars_[knot_point + 1],
          slip_contact_pos_vars_[knot_point + 1],
          slip_force_vars_[knot_point + 1]}));
+
+    // Trapazoidal integration of the contact positions
     prog_->AddConstraint(slip_contact_pos_vars_[knot_point + 1] ==
                          slip_contact_pos_vars_[knot_point] +
                              0.5 * dt_ *

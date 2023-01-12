@@ -162,6 +162,8 @@ std::vector<Complexity> GenerateComplexitySchedule(
   std::regex number_regex("(^|\\s)([0-9]+)($|\\s)");
   std::smatch match;
   for (const auto& complexity_string : complexity_string_list) {
+    DRAKE_DEMAND(complexity_string.at(0) == 'c' or
+                 complexity_string.at(0) == 's');
     if (complexity_string.at(0) == 'c') {
       std::regex_search(complexity_string, match, number_regex);
       std::cout << std::stoi(match[0]) << std::endl;
@@ -174,8 +176,6 @@ std::vector<Complexity> GenerateComplexitySchedule(
       for (int i = 0; i < std::stoi(match[0]); i++) {
         complexity_schedule.push_back(Complexity::SLIP);
       }
-    } else {
-      DRAKE_DEMAND(false);
     }
   }
   DRAKE_DEMAND(n_knot_points == complexity_schedule.size());

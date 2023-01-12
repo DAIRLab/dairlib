@@ -68,6 +68,8 @@ class SlipDynamicsConstraint : public dairlib::solvers::NonlinearConstraint<T> {
   const double b_;
   const T m_;
   const int n_feet_;
+
+  // Boolean vectors describing which feet are active (in stance).
   const std::vector<bool> contact_mask0_;
   const std::vector<bool> contact_mask1_;
   const double dt_;

@@ -95,7 +95,7 @@ drake::VectorX<double> SlipReducer::ReduceGrf(
     const Eigen::VectorXd unit_vec =
         (complex_com - slip_contact_pos.segment(3 * i, 3)).normalized();
     const double dr = unit_vec.dot(com_vel);
-    const auto spring_force = SlipGrf<double>(k_, r0_, b_, r, dr, 0);
+    const auto spring_force = CalcSlipGrf<double>(k_, r0_, b_, r, dr, 0);
     auto complex_feet_it = simple_foot_index_to_complex_foot_index_.find(i);
     Eigen::Vector3d complex_force = Eigen::Vector3d::Zero(3);
     for (const auto complex_index : complex_feet_it->second) {

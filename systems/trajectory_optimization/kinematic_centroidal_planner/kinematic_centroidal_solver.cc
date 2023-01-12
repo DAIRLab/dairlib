@@ -66,8 +66,6 @@ KinematicCentroidalSolver::KinematicCentroidalSolver(
   std::vector<bool> stance_mode(n_contact_points_);
   std::fill(stance_mode.begin(), stance_mode.end(), true);
   std::fill(contact_sequence_.begin(), contact_sequence_.end(), stance_mode);
-  std::fill(complexity_schedule_.begin(), complexity_schedule_.end(),
-            Complexity::KINEMATIC_CENTROIDAL);
 }
 
 void KinematicCentroidalSolver::SetGenPosReference(

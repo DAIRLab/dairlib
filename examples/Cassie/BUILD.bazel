@@ -190,9 +190,9 @@ cc_binary(
         "//examples/Cassie/systems:cassie_encoder",
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/framework:vector",
         "//systems/primitives",
-        "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -300,8 +300,8 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
-        "@lcm",
         "@gflags",
+        "@lcm",
     ],
 )
 
@@ -311,8 +311,8 @@ cc_binary(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//lcm",
-        "@lcm",
         "@gflags",
+        "@lcm",
     ],
 )
 

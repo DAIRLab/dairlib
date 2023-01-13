@@ -3,7 +3,7 @@ t_min: 0.22
 t_max: 0.45
 u_max: 1
 h_des: 0.83
-stance_width: 0.2
+stance_width: 0.3
 ss_time: 0.3
 ds_time: 0.1
 nmodes: 3
@@ -19,6 +19,6 @@ q:
    0, 0, 1, 0,
    0, 0, 0, 1]
 r: [100.0]
-filter_alip_state: false
+filter_alip_state: true
 qfilt: [.001, .001, .01, .01]
 rfilt: [.0001, .0001, .01, .01]

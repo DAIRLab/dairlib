@@ -19,7 +19,7 @@ group "5.trajectory-optimization" {
         host = "localhost";
     }
     cmd "visualize_jumping_trajectory" {
-        exec = "bazel-bin/examples/Cassie/visualize_trajectory --folder_path=\"examples/Cassie/saved_trajectories/\"  --realtime_rate=0.1 --num_poses=20 --visualize_mode=2 --use_transparency=1  --trajectory_name=\"jumping_0.15h_0.3d\"";
+        exec = "bazel-bin/examples/Cassie/visualize_trajectory --folder_path=\"examples/Cassie/saved_trajectories/\"  --realtime_rate=0.5 --num_poses=20 --visualize_mode=1 --use_transparency=1  --trajectory_name=\"jumping_0.15h_0.3d\"";
         host = "localhost";
     }
     cmd "convert_traj_for_controller" {
@@ -46,7 +46,7 @@ group "1.simulated-robot" {
         host = "localhost";
     }
     cmd "five_link_biped_sim" {
-        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"/home/yangwill/Documents/research/projects/five_link_biped/walking/saved_trajs/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --target_realtime_rate=0.25";
+        exec = "bazel-bin/examples/impact_invariant_control/five_link_biped_sim --folder_path=\"examples/impact_invariant_control/saved_trajectories/\" --trajectory_name=\"rabbit_walking\" --sim_time=1.0 --target_realtime_rate=0.25";
         host = "localhost";
     }
 }

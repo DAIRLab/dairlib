@@ -39,14 +39,13 @@ DEFINE_double(mu_kinetic, 0.7, "The dynamic coefficient of friction");
 DEFINE_double(v_tol, 0.01,
               "The maximum slipping speed allowed during stiction (m/s)");
 DEFINE_double(height, 0.75, "The jump height wrt to the torso COM (m)");
-DEFINE_int64(knot_points, 10, "Number of knot points per mode");
+DEFINE_int32(knot_points, 10, "Number of knot points per mode");
 
 DEFINE_double(max_duration, 1.0, "Maximum trajectory duration (s)");
 
 // Simulation parameters.
-DEFINE_double(timestep, 1e-5, "The simulator time step (s)");
 DEFINE_string(data_directory,
-              "examples/impact_invariant_control/saved_trajectories",
+              "examples/impact_invariant_control/saved_trajectories/",
               "Directory path to save decision vars to.");
 DEFINE_string(save_filename, "rabbit_walking",
               "Filename to save decision "
@@ -92,14 +91,14 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   const Body<double>& left_lower_leg = plant->GetBodyByName("left_lower_leg");
   const Body<double>& right_lower_leg = plant->GetBodyByName("right_lower_leg");
 
-  Vector3d pt;
-  pt << 0, 0, -0.4;
+  Vector3d foot_on_leg;
+  foot_on_leg << 0, 0, -0.4;
   bool isXZ = true;
 
   auto leftFootConstraint =
-      DirconPositionData<double>(*plant, left_lower_leg, pt, isXZ);
+      DirconPositionData<double>(*plant, left_lower_leg, foot_on_leg, isXZ);
   auto rightFootConstraint =
-      DirconPositionData<double>(*plant, right_lower_leg, pt, isXZ);
+      DirconPositionData<double>(*plant, right_lower_leg, foot_on_leg, isXZ);
 
   // Specifies that the foot has to be on the
   // ground with normal/friction specified by normal/mu
@@ -244,6 +243,11 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   trajopt->AddRunningCost(u.transpose() * R * u);
   trajopt->AddRunningCost(x.transpose() * Q * x);
 
+  double alpha = .2;
+  int num_poses = std::max((int)(timesteps.size() + 1), FLAGS_knot_points);
+  trajopt->CreateVisualizationCallback(FindResourceOrThrow(
+      "examples/impact_invariant_control/five_link_biped.urdf"), num_poses, alpha);
+
   // Solve the traj optimization problem
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = Solve(prog, prog.initial_guess());
@@ -282,13 +286,12 @@ int doMain(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  //  print_state_map(&plant);
-
   // Generate guesses for states, inputs, and contact forces
   std::srand(time(0));  // Initialize random number generator.
   int nx = plant.num_positions() + plant.num_velocities();
   //  Eigen::VectorXd x_0(nx);
-  Eigen::VectorXd x_0 = Eigen::VectorXd::Zero(nx);
+  Eigen::VectorXd x_0 = Eigen::VectorXd::Random(nx);
+//  x_0(0) = 1;
 
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, 15 * FLAGS_gravity;
@@ -317,9 +320,9 @@ int doMain(int argc, char* argv[]) {
   }
 
   auto init_x_traj =
-      PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
+      PiecewisePolynomial<double>::FirstOrderHold(init_time, init_x);
   auto init_u_traj =
-      PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
+      PiecewisePolynomial<double>::FirstOrderHold(init_time, init_u);
 
   for (int j = 0; j < n_modes; ++j) {
     std::vector<MatrixXd> init_l_j;
@@ -349,8 +352,6 @@ int doMain(int argc, char* argv[]) {
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
       run_traj_opt(&plant, init_x_traj, init_u_traj, init_l_traj, init_lc_traj,
                    init_vc_traj);
-  multibody::ConnectTrajectoryVisualizer(&plant, &builder, &scene_graph,
-                                         optimal_traj);
   return 0;
 }
 

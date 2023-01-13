@@ -618,7 +618,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
-  holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
+  if (n_h_ > 0){
+    holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
+  }
   // 3. Contact constraint
   if (!all_contacts_.empty()) {
     if (w_soft_constraint_ <= 0) {
@@ -880,20 +882,25 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   }
 
   //  int n_holonomic_constraints = n_h_;
-  MatrixXd J_h = kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
   MatrixXd A_constrained = MatrixXd::Zero(active_constraint_dim + n_h_,
                                           active_constraint_dim + n_h_);
-  MatrixXd C = J_h * M_Jt_;
-  VectorXd Ab = A.transpose() * ydot_err_vec;
-  VectorXd d = J_h * x_w_spr.tail(n_v_);
   A_constrained.block(0, 0, active_constraint_dim, active_constraint_dim) =
       A.transpose() * A;
-  A_constrained.block(active_constraint_dim, 0, n_h_, active_constraint_dim) =
-      C;
-  A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) =
-      C.transpose();
   VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + n_h_);
-  b_constrained << Ab, d;
+  VectorXd Ab = A.transpose() * ydot_err_vec;
+  if (n_h_ > 0){
+    MatrixXd J_h = kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
+    MatrixXd C = J_h * M_Jt_;
+    VectorXd d = J_h * x_w_spr.tail(n_v_);
+    A_constrained.block(active_constraint_dim, 0, n_h_, active_constraint_dim) =
+        C;
+    A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) =
+        C.transpose();
+    b_constrained << Ab, d;
+  }
+  else{
+    b_constrained << Ab;
+  }
 
   ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
                        .solve(b_constrained)

@@ -48,7 +48,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_double(dt, 8e-5,
+DEFINE_double(dt, 1e-3,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
@@ -75,6 +75,8 @@ DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
 DEFINE_bool(use_traj_state, false,
               "Whether to intialize the sim from a specific state");
+DEFINE_string(contact_solver, "SAP",
+              "Contact solver to use. Either TAMSI or SAP.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -94,6 +96,16 @@ int do_main(int argc, char* argv[]) {
                          ? "examples/Cassie/urdf/cassie_v2.urdf"
                          : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
 
+  if (FLAGS_contact_solver == "SAP") {
+    plant.set_discrete_contact_solver(
+        drake::multibody::DiscreteContactSolver::kSap);
+  } else if (FLAGS_contact_solver == "TAMSI") {
+    plant.set_discrete_contact_solver(
+        drake::multibody::DiscreteContactSolver::kTamsi);
+  } else {
+    std::cerr << "Unknown contact solver setting." << std::endl;
+  }
+
   if (FLAGS_platform_height != 0) {
     Parser parser(&plant, &scene_graph);
     std::string terrain_name =
@@ -104,9 +116,6 @@ int do_main(int argc, char* argv[]) {
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
   }
-
-  plant.set_penetration_allowance(FLAGS_penetration_allowance);
-  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);

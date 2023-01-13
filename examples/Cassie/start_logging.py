@@ -42,7 +42,7 @@ def mpc_debug_logging_main():
         f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
 
     subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])
-    subprocess.run(['lcm-logger', '-f', 'lcmlog-%s' % log_num])
+    subprocess.run(['lcm-logger', '-f', '-c', 'ALIP_MINLP_DEBUG', 'lcmlog-%s' % log_num])
 
 
 def log_everything_main():
@@ -95,5 +95,7 @@ if __name__ == '__main__':
             log_everything_main()
         elif sys.argv[1] == 'cassie-laptop':
             mpc_debug_logging_main()
+        else:
+            print("invalid computer - quitting")
     else:
         log_everything_main()

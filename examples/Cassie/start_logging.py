@@ -42,7 +42,7 @@ def mpc_debug_logging_main():
         f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
 
     subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])
-    subprocess.run(['lcm-logger', '-f', '-c', 'ALIP_MINLP_DEBUG', 'lcmlog-%s' % log_num])
+    subprocess.run(['lcm-logger', '-f', '-c', 'ALIP_*', 'lcmlog-%s' % log_num])
 
 
 def log_everything_main():

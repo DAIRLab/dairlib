@@ -29,7 +29,7 @@ def mpc_debug_logging_main():
         os.mkdir(logdir)
 
     os.chdir(logdir)
-    current_logs = sorted(glob.glob('lcmlog-*'))
+    current_logs = sorted(glob.glob('lcmlog-mpc-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
         log_num = f'{last_log+1:02}'
@@ -42,7 +42,7 @@ def mpc_debug_logging_main():
         f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
 
     subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])
-    subprocess.run(['lcm-logger', '-f', '-c', 'ALIP_MINLP_DEBUG', 'lcmlog-%s' % log_num])
+    subprocess.run(['lcm-logger', '-f', '-c', 'ALIP_MINLP_DEBUG', 'lcmlog-mpc-%s' % log_num])
 
 
 def log_everything_main():

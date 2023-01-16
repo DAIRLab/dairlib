@@ -1,4 +1,4 @@
-#include "swing_and_com_traj_gen.h"
+#include "alip_mpc_interface_system.h"
 
 #include <cmath>
 #include <algorithm>
@@ -8,12 +8,18 @@
 
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/primitives/timestamped_subvector_pass_through.h"
 
 #include "drake/math/saturate.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/bspline_trajectory.h"
 #include "drake/common/trajectories/path_parameterized_trajectory.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/primitives/pass_through.h"
+#include "drake/systems/primitives/adder.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
+using dairlib::systems::controllers::alip_utils::PointOnFramed;
 
 using std::endl;
 using std::string;
@@ -25,11 +31,13 @@ using Eigen::Vector4d;
 using Eigen::VectorXd;
 using drake::Vector1d;
 
-
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
 using drake::systems::Context;
+using drake::systems::ConstantVectorSource;
+using drake::systems::PassThrough;
+using drake::systems::Adder;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
@@ -43,27 +51,23 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-SwingFootAndComTrajGen::SwingFootAndComTrajGen(
+SwingFootInterfaceSystem::SwingFootInterfaceSystem(
     const drake::multibody::MultibodyPlant<double> &plant,
     drake::systems::Context<double> *context,
-    std::vector<int> left_right_support_fsm_states,
-    std::vector<std::pair<const Vector3d, const Frame<double> &>>
-    left_right_foot,
-    double mid_foot_height, double desired_final_foot_height,
-    double desired_final_vertical_foot_velocity, bool relative_to_com)
+    const SwingFootInterfaceSystemParams& params)
     : plant_(plant),
-      context_(context),
+      plant_context_(context),
       world_(plant_.world_frame()),
-      left_right_support_fsm_states_(left_right_support_fsm_states),
-      mid_foot_height_(mid_foot_height),
-      desired_final_foot_height_(desired_final_foot_height),
+      left_right_support_fsm_states_(params.left_right_support_fsm_states),
+      mid_foot_height_(params.mid_foot_height),
+      desired_final_foot_height_(params.desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
-          desired_final_vertical_foot_velocity),
-      relative_to_com_(relative_to_com) {
+          params.desired_final_vertical_foot_velocity),
+      relative_to_com_(params.relative_to_com) {
 
   this->set_name("swing_ft_traj");
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
-  DRAKE_DEMAND(left_right_foot.size() == 2);
+  DRAKE_DEMAND(params.left_right_foot.size() == 2);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -85,12 +89,18 @@ SwingFootAndComTrajGen::SwingFootAndComTrajGen(
       PiecewisePolynomial<double>(VectorXd::Zero(1))
   );
   drake::trajectories::Trajectory<double> &traj_instance = pp;
-  this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
-                                  &SwingFootAndComTrajGen::CalcTrajs);
+
+  swing_foot_traj_output_port_ = this->DeclareAbstractOutputPort(
+     "swing_foot_xyz", traj_instance, &SwingFootInterfaceSystem::CalcSwingTraj)
+     .get_index();
+
+  com_height_offset_output_port_ = this->DeclareVectorOutputPort(
+      "com_z_next_td_offset", 1, &SwingFootInterfaceSystem::CopyComHeightOffset)
+      .get_index();
 
   // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(
-      &SwingFootAndComTrajGen::DiscreteVariableUpdate);
+      &SwingFootInterfaceSystem::DiscreteVariableUpdate);
 
   // The swing foot position in the beginning of the swing phase
   liftoff_swing_foot_pos_idx_ = this->DeclareDiscreteState(3);
@@ -101,16 +111,16 @@ SwingFootAndComTrajGen::SwingFootAndComTrajGen(
 
   // Construct maps
   stance_foot_map_.insert(
-      {left_right_support_fsm_states.at(0), left_right_foot.at(0)});
+      {params.left_right_support_fsm_states.at(0), params.left_right_foot.at(0)});
   stance_foot_map_.insert(
-      {left_right_support_fsm_states.at(1), left_right_foot.at(1)});
+      {params.left_right_support_fsm_states.at(1), params.left_right_foot.at(1)});
   swing_foot_map_.insert(
-      {left_right_support_fsm_states.at(0), left_right_foot.at(1)});
+      {params.left_right_support_fsm_states.at(0), params.left_right_foot.at(1)});
   swing_foot_map_.insert(
-      {left_right_support_fsm_states.at(1), left_right_foot.at(0)});
+      {params.left_right_support_fsm_states.at(1), params.left_right_foot.at(0)});
 }
 
-EventStatus SwingFootAndComTrajGen::DiscreteVariableUpdate(
+EventStatus SwingFootInterfaceSystem::DiscreteVariableUpdate(
     const Context<double> &context,
     DiscreteValues<double> *discrete_state) const {
   // Read from ports
@@ -131,27 +141,27 @@ EventStatus SwingFootAndComTrajGen::DiscreteVariableUpdate(
     prev_fsm_state(0) = fsm_state;
 
     VectorXd q = robot_output->GetPositions();
-    multibody::SetPositionsIfNew<double>(plant_, q, context_);
+    multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
     auto swing_foot_pos_at_liftoff = discrete_state->get_mutable_vector(
         liftoff_swing_foot_pos_idx_).get_mutable_value();
 
     auto swing_foot = swing_foot_map_.at(fsm_state);
-    plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
+    plant_.CalcPointsPositions(*plant_context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
 
     if (relative_to_com_) {
       swing_foot_pos_at_liftoff =
           multibody::ReExpressWorldVector3InBodyYawFrame(
-              plant_, *context_, "pelvis",
+              plant_, *plant_context_, "pelvis",
               swing_foot_pos_at_liftoff -
-                  plant_.CalcCenterOfMassPositionInWorld(*context_));
+                  plant_.CalcCenterOfMassPositionInWorld(*plant_context_));
     }
   }
   return EventStatus::Succeeded();
 }
 
 drake::trajectories::PathParameterizedTrajectory<double>
-SwingFootAndComTrajGen::CreateSplineForSwingFoot(
+SwingFootInterfaceSystem::CreateSplineForSwingFoot(
     double start_time, double end_time, const Vector3d &init_pos,
     const Vector3d &final_pos) const {
 
@@ -201,7 +211,17 @@ SwingFootAndComTrajGen::CreateSplineForSwingFoot(
   return swing_foot_spline;
 }
 
-void SwingFootAndComTrajGen::CalcTrajs(
+bool SwingFootInterfaceSystem::is_single_support(int fsm_state) const {
+  // Find fsm_state in left_right_support_fsm_states
+  auto it = find(left_right_support_fsm_states_.begin(),
+                 left_right_support_fsm_states_.end(), fsm_state);
+
+  // swing phase if current state is in left_right_support_fsm_states_
+  bool is_single_support_phase = it != left_right_support_fsm_states_.end();
+  return is_single_support_phase;
+}
+
+void SwingFootInterfaceSystem::CalcSwingTraj(
     const Context<double> &context,
     drake::trajectories::Trajectory<double> *traj) const {
 
@@ -210,36 +230,21 @@ void SwingFootAndComTrajGen::CalcTrajs(
       context.get_discrete_state(liftoff_swing_foot_pos_idx_).get_value();
   // Read in finite state machine switch time
   double liftoff_time =
-      this->EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
+      EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
   double touchdown_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+      EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   // Read in finite state machine
-  int fsm_state =
-      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-
-  // Find fsm_state in left_right_support_fsm_states
-  auto it = find(left_right_support_fsm_states_.begin(),
-                 left_right_support_fsm_states_.end(), fsm_state);
-
-  // swing phase if current state is in left_right_support_fsm_states_
-  bool is_single_support_phase = it != left_right_support_fsm_states_.end();
+  int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // Generate trajectory if it's currently in swing phase.
   // Otherwise, generate a constant trajectory
-  if (is_single_support_phase) {
+  if (is_single_support(fsm_state)) {
     // Ensure current_time < end_time_of_this_interval to avoid error in
     // creating trajectory.
     double start_time_of_this_interval = std::clamp(
         liftoff_time, -std::numeric_limits<double>::infinity(),
         touchdown_time - 0.001);
-
-    // SOME DEBUGGING
-//    const OutputVector<double>* robot_output =
-//        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-//    std::cout << "t, ts, te: " << robot_output->get_timestamp() << ", "
-//                               << liftoff_time << ", "
-//                               << touchdown_time << std::endl;
 
     // Swing foot position at touchdown
     Vector3d footstep_target =
@@ -259,6 +264,92 @@ void SwingFootAndComTrajGen::CalcTrajs(
     );
   }
 }
+
+void SwingFootInterfaceSystem::CopyComHeightOffset(
+    const Context<double> &context,
+    BasicVector<double> *com_height_offset) const {
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, state_port_));
+  int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  const VectorXd& q = robot_output->GetPositions();
+  multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
+  Vector3d stance_foot_pos = Vector3d::Zero();
+
+  if (is_single_support(fsm_state)) {
+    plant_.CalcPointsPositions(*plant_context_, stance_foot_map_.at(fsm_state).second,
+                               stance_foot_map_.at(fsm_state).first, world_,
+                               &stance_foot_pos);
+  } else {
+    Vector3d pos_temp;
+    for (const auto& [_ , stance_foot] : stance_foot_map_) {
+      plant_.CalcPointsPositions(*plant_context_, stance_foot.second,
+                                 stance_foot.first, world_, &pos_temp);
+      stance_foot_pos += pos_temp;
+    }
+    stance_foot_pos /= stance_foot_map_.size();
+  }
+
+  // Swing foot position at touchdown
+  const Vector3d& footstep_target =
+      this->EvalVectorInput(context, footstep_target_port_)->get_value();
+  std::cout << "Target: " << footstep_target.transpose() << std::endl;
+  std::cout << "offset: " << footstep_target.tail(1) - stance_foot_pos.tail(1) << std::endl;
+  com_height_offset->set_value(footstep_target.tail(1) - stance_foot_pos.tail(1));
+}
+
+AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
+    const drake::multibody::MultibodyPlant<double> &plant,
+    drake::systems::Context<double> *context,
+    ALIPTrajGeneratorParams com_params,
+    SwingFootInterfaceSystemParams swing_params) {
+
+  drake::systems::DiagramBuilder<double> builder;
+  auto swing_interface =
+      builder.AddSystem<SwingFootInterfaceSystem>(plant, context, swing_params);
+  auto com_interface =
+      builder.AddSystem<ALIPTrajGenerator>(plant, context, com_params);
+  auto com_height_source = builder.AddSystem<ConstantVectorSource<double>>(
+      com_params.desired_com_height);
+  auto com_height_to_traj_gen = builder.AddSystem<Adder<double>>(2, 1);
+
+  auto fsm_pt = builder.AddSystem<PassThrough<double>>(1);
+  auto touchdown_time_pt = builder.AddSystem<PassThrough<double>>(1);
+
+  // Connect passthroughs
+  builder.Connect(fsm_pt->get_output_port(),
+                  swing_interface->get_input_port_fsm());
+  builder.Connect(fsm_pt->get_output_port(),
+                  com_interface->get_input_port_fsm());
+  builder.Connect(touchdown_time_pt->get_output_port(),
+                  com_interface->get_input_port_touchdown_time());
+  builder.Connect(touchdown_time_pt->get_output_port(),
+                  swing_interface->get_input_port_next_fsm_switch_time());
+
+  // Connect com traj
+  builder.Connect(swing_interface->get_output_port_com_height_offset(),
+                  com_height_to_traj_gen->get_input_port(0));
+  builder.Connect(com_height_source->get_output_port(),
+                  com_height_to_traj_gen->get_input_port(1));
+  builder.Connect(com_height_to_traj_gen->get_output_port(),
+                  com_interface->get_input_port_target_com_z());
+
+  // Export ports
+  state_port_ = builder.ExportInput(swing_interface->get_input_port_state(), "x, u, t");
+  builder.ConnectInput("x, u, t", com_interface->get_input_port_state());
+  fsm_port_ = builder.ExportInput(fsm_pt->get_input_port(), "fsm");
+  next_touchdown_time_port_ =
+      builder.ExportInput(touchdown_time_pt->get_input_port());
+  prev_liftoff_time_port_ =
+      builder.ExportInput(swing_interface->get_input_port_fsm_switch_time());
+  footstep_target_port_ =
+      builder.ExportInput(swing_interface->get_input_port_footstep_target());
+  com_traj_port_ = builder.ExportOutput(com_interface->get_output_port_com());
+  swing_traj_port_ =
+      builder.ExportOutput(swing_interface->get_output_port_swing_foot_traj());
+
+  builder.BuildInto(this);
+
+  }
 
 }  // namespace controllers
 }  // namespace systems

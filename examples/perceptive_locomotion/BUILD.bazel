@@ -55,7 +55,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers:lcm_trajectory_receiver",
-        "//systems/controllers:swing_foot_target_traj_gen",
+        "//systems/controllers/footstep_planning:alip_mpc_interface_system",
         "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",

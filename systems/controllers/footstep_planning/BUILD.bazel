@@ -71,14 +71,16 @@ cc_library(
 )
 
 cc_library(
-    name = "swing_and_com_traj_gen",
-    srcs = ["swing_and_com_traj_gen.cc"],
-    hdrs = ["swing_and_com_traj_gen.h"],
+    name = "alip_mpc_interface_system",
+    srcs = ["alip_mpc_interface_system.cc"],
+    hdrs = ["alip_mpc_interface_system.h"],
     deps = [
         ":alip_utils",
         "//multibody:utils",
+        "//systems/controllers:alip_traj_gen",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )

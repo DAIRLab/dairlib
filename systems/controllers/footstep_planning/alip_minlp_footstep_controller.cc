@@ -299,7 +299,6 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
   footstep_in_com_yaw_frame.head(2) =
       (pp.at(1) - pp.at(0)).head(2) - xx.front().tail<4>().head(2);
-  footstep_in_com_yaw_frame(2) = -gains_.hdes;
   p_B_FC->set_value(footstep_in_com_yaw_frame);
 }
 

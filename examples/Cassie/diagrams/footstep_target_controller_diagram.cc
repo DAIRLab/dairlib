@@ -215,8 +215,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       plant, plant_context.get());
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant, plant_context.get(), gains.lipm_height,
-      unordered_fsm_states, unordered_state_durations,
-      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
+      unordered_fsm_states, contact_points_in_each_state,
+      gains.Q_alip_kalman_filter.asDiagonal(),
       gains.R_alip_kalman_filter.asDiagonal(), false, true);
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
@@ -435,7 +435,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   hip_yaw_traj_gen->get_radio_input_port());
 
   // Connect footstep planning pipeline
-  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+  builder.Connect(stance_duration_adder->get_output_port(),
                   alip_traj_generator->get_input_port_touchdown_time());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());

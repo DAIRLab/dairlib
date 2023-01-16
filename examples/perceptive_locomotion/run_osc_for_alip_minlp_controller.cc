@@ -25,7 +25,7 @@
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/controllers/lcm_trajectory_receiver.h"
-#include "systems/controllers/swing_foot_target_traj_gen.h"
+#include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
 
 // OSC
 #include "systems/controllers/osc/com_tracking_data.h"
@@ -46,6 +46,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_scope_system.h"
+
 
 namespace dairlib {
 
@@ -70,10 +71,10 @@ using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
 using systems::FsmReceiver;
-using systems::SwingFootTargetTrajGen;
 using systems::controllers::LcmTrajectoryReceiver;
 using systems::controllers::TrajectoryType;
 using systems::controllers::FootstepReceiver;
+using systems::controllers::AlipMPCInterfaceSystem;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
@@ -236,15 +237,6 @@ int DoMain(int argc, char* argv[]) {
   std::vector<int> double_support_states = {post_left_double_support_state,
                                             post_right_double_support_state};
 
-  // Get CoM traj from MPC over lcm
-  auto com_traj_subscriber_ptr =
-      LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_channel_com, &lcm_local);
-  auto com_traj_sub = builder.AddSystem(std::move(com_traj_subscriber_ptr));
-  auto com_traj_receiver = builder.AddSystem<LcmTrajectoryReceiver>(
-          "com_traj", TrajectoryType::kCubicShapePreserving);
-  builder.Connect(*com_traj_sub, *com_traj_receiver);
-
-
   // Create swing leg trajectory generator
   vector<int> unordered_fsm_states;
   vector<double> unordered_state_durations;
@@ -279,22 +271,40 @@ int DoMain(int argc, char* argv[]) {
   auto footstep_sub_ptr = LcmSubscriberSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
   auto footstep_sub = builder.AddSystem(std::move(footstep_sub_ptr));
   auto footstep_receiver = builder.AddSystem<FootstepReceiver>();
-  auto swing_ft_traj_generator = builder.AddSystem<SwingFootTargetTrajGen>(
-      plant_w_spr, context_w_spr.get(), left_right_support_fsm_states,
-      left_right_foot, gains.mid_foot_height, gains.final_foot_height,
-      gains.final_foot_velocity_z, true);
+
+  systems::controllers::SwingFootInterfaceSystemParams swing_params{
+    left_right_support_fsm_states,
+    left_right_foot,
+    gains.mid_foot_height,
+    gains.final_foot_height,
+    gains.final_foot_velocity_z,
+    true
+  };
+
+  systems::ALIPTrajGeneratorParams com_params{
+      gains_mpc.h_des,
+      unordered_fsm_states,
+      contact_points_in_each_state,
+      gains.Q_alip_kalman_filter.asDiagonal(),
+      gains.R_alip_kalman_filter.asDiagonal(),
+      false,
+      true
+  };
+
+  auto mpc_interface = builder.AddSystem<AlipMPCInterfaceSystem>(
+      plant_w_spr, context_w_spr.get(), com_params, swing_params);
 
   builder.Connect(fsm->get_output_port_fsm(),
-                  swing_ft_traj_generator->get_input_port_fsm());
+                  mpc_interface->get_input_port_fsm());
   builder.Connect(fsm->get_output_port_prev_switch_time(),
-                  swing_ft_traj_generator->get_input_port_fsm_switch_time());
+                  mpc_interface->get_input_port_fsm_switch_time());
   builder.Connect(fsm->get_output_port_next_switch_time(),
-                  swing_ft_traj_generator->get_input_port_next_fsm_switch_time());
+                  mpc_interface->get_input_port_next_fsm_switch_time());
   builder.Connect(state_receiver->get_output_port(0),
-                  swing_ft_traj_generator->get_input_port_state());
+                  mpc_interface->get_input_port_state());
   builder.Connect(*footstep_sub, *footstep_receiver);
   builder.Connect(footstep_receiver->get_output_port(),
-                  swing_ft_traj_generator->get_input_port_footstep_target());
+                  mpc_interface->get_input_port_footstep_target());
 
   // Swing toe joint trajectory
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
@@ -529,9 +539,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
   builder.Connect(fsm->get_output_port_fsm(), osc->get_input_port_fsm());
-  builder.Connect(com_traj_receiver->get_output_port(),
+  builder.Connect(mpc_interface->get_output_port_com_traj(),
                   osc->get_input_port_tracking_data("alip_com_traj"));
-  builder.Connect(swing_ft_traj_generator->get_output_port(0),
+  builder.Connect(mpc_interface->get_output_port_swing_foot_traj(),
                   osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_heading_traj"));
@@ -566,10 +576,6 @@ int DoMain(int argc, char* argv[]) {
       true);
   auto& loop_context = loop.get_diagram_mutable_context();
 
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return com_traj_sub->GetInternalMessageCount() > 1; });
-  com_traj_sub->ForcedPublish(loop.get_diagram()->
-      GetMutableSubsystemContext(*com_traj_sub, &loop_context));
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
     return footstep_sub->GetInternalMessageCount() > 1; });
   footstep_sub->ForcedPublish(loop.get_diagram()->

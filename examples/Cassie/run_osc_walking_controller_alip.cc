@@ -29,6 +29,8 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/systems/primitives/adder.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_scope_system.h"
@@ -291,14 +293,23 @@ int DoMain(int argc, char* argv[]) {
     contact_points_in_each_state.push_back({right_toe_mid});
   }
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
-      plant_w_spr, context_w_spr.get(), desired_com_height,
-      unordered_fsm_states, unordered_state_durations,
+      plant_w_spr, context_w_spr.get(), desired_com_height, unordered_fsm_states,
       contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
       gains.R_alip_kalman_filter.asDiagonal());
 
+  auto stance_duration_adder = builder.AddSystem<drake::systems::Adder<double>>(2,1);
+  auto stance_duration =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
+          left_support_duration * VectorXd::Ones(1));
+
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  stance_duration_adder->get_input_port(0));
+  builder.Connect(stance_duration->get_output_port(),
+                  stance_duration_adder->get_input_port(1));
+
   builder.Connect(fsm->get_output_port(0),
                   alip_traj_generator->get_input_port_fsm());
-  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+  builder.Connect(stance_duration_adder->get_output_port(),
                   alip_traj_generator->get_input_port_touchdown_time());
   builder.Connect(simulator_drift->get_output_port(0),
                   alip_traj_generator->get_input_port_state());

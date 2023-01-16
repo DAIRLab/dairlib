@@ -15,6 +15,18 @@
 namespace dairlib {
 namespace systems {
 
+struct ALIPTrajGeneratorParams {
+  double desired_com_height;
+  const std::vector<int>& unordered_fsm_states;
+  const std::vector<std::vector<std::pair<
+      const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
+      contact_points_in_each_state;
+  const Eigen::MatrixXd& Q;
+  const Eigen::MatrixXd& R;
+  bool filter_alip_state = true;
+  bool target_com_z = false;
+};
+
 /// This class creates predicted center of mass (COM) trajectory of a bipedal
 /// robot.
 /// The trajectories in horizontal directions (x and y axes) are predicted, and
@@ -29,8 +41,6 @@ namespace systems {
 ///  @param plant, the MultibodyPlant
 ///  @param desired_com_height, desired COM height
 ///  @param unordered_fsm_states, vector of fsm states
-///  @param unordered_state_durations, duration of each state in
-///         unordered_fsm_states
 ///  @param contact_points_in_each_state, <position of the points on the bodies,
 ///         body frame> pairs of plant for calculating the stance foot
 ///         position (of each state in unordered_fsm_states). If there are two
@@ -43,12 +53,23 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context, double desired_com_height,
       const std::vector<int>& unordered_fsm_states,
-      const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state, const Eigen::MatrixXd& Q,
       const Eigen::MatrixXd& R, bool filter_alip_state = true,
       bool target_com_z = false);
+
+  ALIPTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
+                    drake::systems::Context<double>* context,
+                    ALIPTrajGeneratorParams params) :
+                    ALIPTrajGenerator(plant, context,
+                                      params.desired_com_height,
+                                      params.unordered_fsm_states,
+                                      params.contact_points_in_each_state,
+                                      params.Q,
+                                      params.R,
+                                      params.filter_alip_state,
+                                      params.target_com_z) {}
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -133,7 +154,6 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const std::vector<std::vector<std::pair<
       const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
       contact_points_in_each_state_;
-  const drake::multibody::BodyFrame<double>& world_;
 
   bool filter_alip_state_;
   bool target_com_z_;

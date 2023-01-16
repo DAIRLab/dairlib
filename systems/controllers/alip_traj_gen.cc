@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <string>
+#include <iostream>
 
 #include <drake/math/saturate.h>
 
@@ -38,7 +39,6 @@ namespace systems {
 ALIPTrajGenerator::ALIPTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     double desired_com_height, const vector<int>& unordered_fsm_states,
-    const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
     contact_points_in_each_state, const Eigen::MatrixXd& Q,
@@ -47,13 +47,10 @@ ALIPTrajGenerator::ALIPTrajGenerator(
     context_(context),
     desired_com_height_(desired_com_height),
     unordered_fsm_states_(unordered_fsm_states),
-    unordered_state_durations_(unordered_state_durations),
     contact_points_in_each_state_(contact_points_in_each_state),
-    world_(plant_.world_frame()) ,
     filter_alip_state_(filter_alip_state),
     target_com_z_(target_com_z) {
 
-  DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_points_in_each_state.size());
 
   this->set_name("ALIP_traj");
@@ -120,14 +117,12 @@ drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
   int prev_fsm = state->get_discrete_state(prev_fsm_idx_).value()(0);
 
   // Read in current state
-  const OutputVector<double>* robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, state_port_));
   VectorXd v = robot_output->GetVelocities();
 
   // Read in finite state machine
-  const BasicVector<double>* fsm_output =
-      (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  int fsm_state = (int)fsm_output->get_value()(0);
+  int fsm_state = EvalVectorInput(context, fsm_port_)->get_value()(0);
   int mode_index = GetModeIdx(fsm_state);
 
   // calculate current estimate of ALIP state
@@ -182,12 +177,11 @@ ALIPTrajGenerator::ConstructAlipComTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double start_height = drake::math::saturate(
-      desired_com_height_ + stance_foot_pos(2),
-      CoM(2) - max_height_diff_per_step,
-      CoM(2) + max_height_diff_per_step);
+  double start_height = std::clamp(desired_com_height_ + stance_foot_pos(2),
+                                   CoM(2) - max_height_diff_per_step,
+                                   CoM(2) + max_height_diff_per_step);
   double final_height = com_z_rel_to_stance_at_next_td + stance_foot_pos(2);
-  Y(2,0) = start_height;
+  Y(2, 0) = start_height;
   Y(2, 1) = final_height;
 
   Vector3d Y_dot_start = Vector3d::Zero();
@@ -241,14 +235,14 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
       this->EvalVectorInput(context, fsm_port_)->value()(0));
 
   // Read in finite state machine switch time
-  VectorXd prev_event_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value();
+  double end_time =
+      EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   // read in next touchdown com z
   double com_z_td_des = desired_com_height_;
   if (target_com_z_) {
-    com_z_td_des =
-        this->EvalVectorInput(context, com_z_input_port_)->get_value()(0);
+    com_z_td_des = EvalVectorInput(context, com_z_input_port_)->get_value()(0);
+    std::cout << "com_z_des: " << com_z_td_des << std::endl;
   }
 
   int mode_index = GetModeIdx(fsm_state);
@@ -256,10 +250,8 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
   // Get time
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
-  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = drake::math::saturate(start_time,
-                                     -std::numeric_limits<double>::infinity(),
-                                     end_time - 0.001);
+  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
+                          end_time - 0.001);
 
   Vector3d CoM, L, stance_foot_pos;
   CalcAlipState(
@@ -291,21 +283,18 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   // Read in finite state machine
-  int fsm_state = this->EvalVectorInput(context, fsm_port_)->value()(0);
+  int fsm_state = EvalVectorInput(context, fsm_port_)->value()(0);
 
   // Read in finite state machine switch time
-  VectorXd prev_event_time =
-      this->EvalVectorInput(context, touchdown_time_port_)->get_value();
+  double end_time = EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
 
   int mode_index = GetModeIdx(fsm_state);
 
   // Get time
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
-  double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = drake::math::saturate(start_time,
-                                     -std::numeric_limits<double>::infinity(),
-                                     end_time - 0.001);
+  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
+                          end_time - 0.001);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<

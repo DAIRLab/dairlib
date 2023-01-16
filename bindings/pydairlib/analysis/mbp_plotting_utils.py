@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-from pydairlib.common import plot_styler, plotting_utils
-from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
-from pydairlib.multibody import MakeNameToPositionsMap, \
+from bindings.pydairlib.common import plot_styler, plotting_utils
+from bindings.pydairlib.analysis.osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
+from bindings.pydairlib.multibody import MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
 

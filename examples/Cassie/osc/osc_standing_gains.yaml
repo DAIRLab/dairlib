@@ -5,6 +5,7 @@
 # -Kp * x - Kd * xdot =
 # -Kp * x + Kd * sqrt(g/l) * x = g/l * x
 # Kp = sqrt(g/l) * Kd - g/l
+controller_frequency: 1000
 
 rows: 3
 cols: 3

@@ -20,6 +20,9 @@ py_binary(
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
+        "//bindings/pydairlib/lcm:process_lcm_log",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:osc_debug_py",
         "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/multibody:kinematic_py",
         "//bindings/pydairlib/multibody:multibody_py",

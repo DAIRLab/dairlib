@@ -8,7 +8,6 @@
 using Eigen::MatrixXd;
 
 struct OSCRunningGains : OSCGains {
-  double controller_frequency;
 
   double weight_scaling;
   double w_swing_toe;

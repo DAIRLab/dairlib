@@ -40,6 +40,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
         if 0 < duration <= (event.timestamp - t) * 1e-6:
             break
         event = lcm_log.read_next_event()
+    import pdb; pdb.set_trace()
     return data_processing_callback(data_to_process, *args, *kwargs)
 
 

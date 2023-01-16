@@ -31,6 +31,13 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+py_library(
+    name = "process_lcm_log",
+    srcs = ["process_lcm_log.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+    ],
+)
 
 pybind_py_library(
     name = "lcm_trajectory_py",
@@ -63,6 +70,7 @@ py_library(
 PY_LIBRARIES = [
     ":lcm_trajectory_py",
     ":lcm_py",
+    ":process_lcm_log",
 ]
 
 # Package roll-up (for Bazel dependencies).

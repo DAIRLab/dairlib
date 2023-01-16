@@ -430,13 +430,13 @@ int DoMain(int argc, char* argv[]) {
       std::make_shared<PiecewisePolynomial<double>>(
           PiecewisePolynomial<double>::FirstOrderHold(
               {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
-              {0.5 * VectorXd::Ones(1), 5.0 * VectorXd::Ones(1)}));
+              {0.5 * VectorXd::Ones(1), 4.0 * VectorXd::Ones(1)}));
   auto foot_traj_gain_trajectory =
       std::make_shared<PiecewisePolynomial<double>>(
           PiecewisePolynomial<double>::FirstOrderHold(
               {0, osc_gains.stance_duration + 2 * osc_gains.flight_duration},
               {0.5 * MatrixXd::Identity(3, 3),
-               2.0 * MatrixXd::Identity(3, 3)}));
+               1.5 * MatrixXd::Identity(3, 3)}));
   left_foot_rel_tracking_data->SetTimeVaryingWeights(
       foot_traj_weight_trajectory);
   right_foot_rel_tracking_data->SetTimeVaryingWeights(
@@ -540,10 +540,10 @@ int DoMain(int argc, char* argv[]) {
                             VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
-  auto controller_frequency_regulator =
-      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-          osc_gains.controller_frequency,
-          osc->get_output_port_osc_command().size());
+//  auto controller_frequency_regulator =
+//      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+//          1 / gains.controller_frequency,
+//          osc->get_output_port_osc_command().size());
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem

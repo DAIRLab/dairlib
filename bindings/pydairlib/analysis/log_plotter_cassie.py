@@ -1,15 +1,13 @@
 import sys
 import lcm
 import matplotlib.pyplot as plt
-import code
 import numpy as np
 
-import dairlib
-from process_lcm_log import get_log_data
+from bindings.pydairlib.lcm.process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import mbp_plotting_utils as mbp_plots
-from spring_compensation import SpringCompensation
+
 
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'

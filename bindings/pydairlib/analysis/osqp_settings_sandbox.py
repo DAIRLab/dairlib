@@ -1,6 +1,6 @@
 import lcm
 import numpy as np
-from process_lcm_log import get_log_data
+from bindings.pydairlib.lcm.process_lcm_log import get_log_data
 from dairlib import lcmt_qp
 import sys
 import matplotlib.pyplot as plt

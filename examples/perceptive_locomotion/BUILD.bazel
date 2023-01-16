@@ -5,6 +5,12 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "run_alip_minlp_controller",
     srcs = ["run_alip_minlp_controller.cc"],
+    local_defines = select(
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+        },
+    ),
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",
@@ -21,7 +27,15 @@ cc_binary(
         "//systems/primitives:fsm_lcm_systems",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
+    ] + select(
+        {
+            "//tools/workspace/ros:dair_ros_on": [
+                "//geometry:convex_foothold_reciever",
+                "//systems/ros:dairlib_ros",
+            ],
+            "//tools/workspace/ros:dair_ros_off": [],
+        },
+    ),
 )
 
 cc_binary(

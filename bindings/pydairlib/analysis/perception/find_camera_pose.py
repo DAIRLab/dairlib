@@ -6,6 +6,7 @@ except ImportError as e:
     raise e
 
 import sys
+import rospy
 import apriltag
 import datetime
 import numpy as np
@@ -108,11 +109,10 @@ def get_tag_positions_on_board(params):
 
 # Extracts data from rosbags to assemble the data dictionary used by
 # find_camera_pose_by_constrained_optimization
-def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
-                             calibration_params):
+def extract_calibration_data(hardware_rosbag_path, calibration_params,
+                             time_offset=0.0):
 
     # Load the processed (distortion corrected) camera messages
-    rosbag_rectified = rosbag.Bag(postprocessed_rosbag_path)
     rosbag_hardware = rosbag.Bag(hardware_rosbag_path)
 
     # Create an apriltag detector
@@ -120,7 +120,7 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
 
     # get the first camera info message
     _, camera_info, _ = next(
-        rosbag_hardware.read_messages(topics=['/camera/color/camera_info'])
+        rosbag_hardware.read_messages(topics=['camera/color/camera_info'])
     )
 
     # Get the intrinsic matrix [fx 0 cx]
@@ -138,15 +138,16 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
     # Detect the apriltags in the (rectified) input images
     print("Detecting apriltags...")
     for topic, msg, t in \
-        rosbag_rectified.read_messages(
-            topics=["/camera/color/image_rect"]):
+        rosbag_hardware.read_messages(
+            topics=["camera/color/image_rect"]):
         valid_poses = get_valid_apriltag_poses(
             detector, msg, apriltag_intrinsics, calibration_params
         )
         if valid_poses:
-            timestamped_apriltag_poses[msg.header.stamp] = valid_poses
+            timestamped_apriltag_poses[
+                msg.header.stamp + rospy.Duration(time_offset)] = valid_poses
 
-    rosbag_rectified.close()
+    rosbag_hardware.close()
     # for time in timestamped_apriltag_poses.keys():
     #     print(datetime.datetime.utcfromtimestamp(
     #           time.to_sec()
@@ -172,16 +173,24 @@ def extract_calibration_data(hardware_rosbag_path, postprocessed_rosbag_path,
         timestamped_apriltag_poses.keys(),
         hardware_rosbag_path
     )
-
+    timestamped_apriltag_poses = dict(
+        (k, timestamped_apriltag_poses[k]) for k in timestamped_pelvis_poses.keys()
+    )
     rosbag_hardware.close()
 
     print(f"Assembling data matrix from {len(timestamped_apriltag_poses)} "
           f"sets of poses...")
-    return collate_data(timestamped_apriltag_poses,
-                        timestamped_pelvis_poses,
-                        timestamped_left_toe_poses,
-                        timestamped_right_toe_poses,
-                        calibration_params)
+    poses = {
+        "pelvis": timestamped_pelvis_poses,
+        "toe_left": timestamped_left_toe_poses,
+        "toe_right": timestamped_right_toe_poses,
+        "apriltags": timestamped_apriltag_poses
+    }
+    return poses, collate_data(timestamped_apriltag_poses,
+                               timestamped_pelvis_poses,
+                               timestamped_left_toe_poses,
+                               timestamped_right_toe_poses,
+                               calibration_params)
 
 
 # produces a data dictionary containing N datapoints with the entries {
@@ -227,13 +236,9 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
             board_x_in_world[1],
             board_x_in_world[0])
 
-        R_WB = RotationMatrix.MakeZRotation(board_yaw_in_world)
-        X_WB = RigidTransform(
-            R_WB,
-            R_WB.multiply(board_origin_in_world)
-        )
-
         X_WP = timestamped_pelvis_poses[timestamp]
+        R_WB = RotationMatrix.MakeZRotation(board_yaw_in_world)
+        X_WB = RigidTransform(R_WB, R_WB.multiply(board_origin_in_world))
 
         for tag_id, pose in timestamped_apriltag_poses[timestamp].items():
             data['world_points'][row_idx] = X_WB.multiply(tag_positions[tag_id]).ravel()
@@ -264,12 +269,15 @@ def collect_transforms(parent_frame, child_frame, times, fname):
     transforms = {}
     bag_transformer = BagTfTransformer(fname)
     for time in times:
-        translation, quat = \
-            bag_transformer.lookupTransform(parent_frame, child_frame, time)
-        transforms[time] = RigidTransform(
-            Quaternion(quat[-1], quat[0], quat[1], quat[2]),
-            np.array(translation)
-        )
+        try:
+            translation, quat = \
+                bag_transformer.lookupTransform(parent_frame, child_frame, time)
+            transforms[time] = RigidTransform(
+                Quaternion(quat[-1], quat[0], quat[1], quat[2]),
+                np.array(translation)
+            )
+        except RuntimeError:
+            continue
     return transforms
 
 
@@ -287,20 +295,81 @@ def plot_calibration_error(data, X_PC):
     plt.show()
 
 
-def write_rosbag_for_validation(timestamped_poses, X_PC):
-    pass
+def rigid_transform_to_tf_stamped(frame_id, child_frame_id, timestamp, X_AB):
+    msg = TransformStamped()
+
+    # metadata
+    msg.header.stamp = timestamp
+    msg.header.frame_id = frame_id
+    msg.child_frame_id = child_frame_id
+
+    # transform
+    translation = X_AB.translation().ravel()
+    rotation = X_AB.rotation().ToQuaternion()
+    msg.transform.translation.x = translation[0]
+    msg.transform.translation.y = translation[1]
+    msg.transform.translation.z = translation[2]
+    msg.transform.rotation.x = rotation.x()
+    msg.transform.rotation.y = rotation.y()
+    msg.transform.rotation.z = rotation.z()
+    msg.transform.rotation.w = rotation.w()
+    return msg
+
+
+def plot_z_over_time(poses):
+    t0 = next(iter(poses["apriltags"])).to_sec()
+    N = len(poses["apriltags"].keys())
+    t = np.zeros((N,))
+    zp = np.zeros((N,))
+    za = np.zeros((N,))
+    for i, timestamp in enumerate(poses["apriltags"].keys()):
+        t[i] = timestamp.to_sec() - t0
+        zp[i] = poses["pelvis"][timestamp].translation().ravel()[-1]
+        za[i] = next(iter(poses["apriltags"][timestamp].items()))[1].translation().ravel()[-1]
+
+    plt.plot(t, zp)
+    plt.plot(t, za)
+
+
+def write_bag_for_calibration_playback(poses, X_PC, bag_path):
+    with rosbag.Bag(bag_path, 'w') as bag:
+        for timestamp in poses["apriltags"].keys():
+            tf_msg = TFMessage()
+            tf_msg.transforms = []
+            for key in ["pelvis", "toe_left", "toe_right"]:
+                tf_msg.transforms.append(
+                    rigid_transform_to_tf_stamped(
+                        "map", key, timestamp, poses[key][timestamp]
+                    )
+                )
+            tf_msg.transforms.append(rigid_transform_to_tf_stamped(
+                "pelvis", "camera_frame", timestamp, X_PC
+            ))
+            for tag_id in poses["apriltags"][timestamp].keys():
+                tf_msg.transforms.append(
+                    rigid_transform_to_tf_stamped(
+                        "camera_frame", f"apriltag_{tag_id}", timestamp,
+                        poses["apriltags"][timestamp][tag_id]
+                    )
+                )
+            bag.write('/tf', tf_msg, timestamp)
+
 
 def main():
-    processed_fname = sys.argv[1]
-    hardware_fname = sys.argv[2]
-    data = extract_calibration_data(
+    hardware_fname = sys.argv[1]
+    time_offset = -11.5778
+    poses, data = extract_calibration_data(
         hardware_fname,
-        processed_fname,
-        CalibrationParams()
+        CalibrationParams(),
+        time_offset
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
     print(X_PC)
-    plot_calibration_error(data, X_PC)
+    print("Writing validation bag...")
+    plot_z_over_time(poses)
+    plt.show()
+    write_bag_for_calibration_playback(poses, X_PC, hardware_fname+".validate")
+    print("Done.")
 
 
 if __name__ == "__main__":

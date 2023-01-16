@@ -1,0 +1,12 @@
+package dairlib;
+
+struct lcmt_convex_foothold
+{
+
+  double Aeq[3];
+  double beq;
+
+  int16_t nfaces;
+  double A[nfaces][3];
+  double b[nfaces];
+}

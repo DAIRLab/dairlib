@@ -14,7 +14,6 @@ import dairlib
 
 mpc_channels = {
     "ALIP_MINLP_DEBUG": dairlib.lcmt_mpc_debug,
-    "ALIP_COM_TRAJ": dairlib.lcmt_saved_traj
 }
 
 
@@ -116,10 +115,10 @@ def mpc_processing_callback(data, mpc_channel, com_traj_channel):
     for msg in data[mpc_channel]:
         dbg.append(msg)
     dbg.to_numpy()
-    com_trajs = []
-    for msg in data[com_traj_channel]:
-        com_trajs.append(LcmTrajectory(msg))
-    return dbg, com_trajs
+    # com_trajs = []
+    # for msg in data[com_traj_channel]:
+    #     com_trajs.append(LcmTrajectory(msg))
+    return dbg #, com_trajs
 
 
 def main():
@@ -128,10 +127,14 @@ def main():
             'bindings/pydairlib/analysis/plot_configs/mpc_plot_config.yaml')
 
     filename = sys.argv[1]
+    filenum = filename.split('/')[-1].split('-')[-1]
+    filename_mpc = filename.replace(f'lcmlog-{filenum}', f'lcmlog-mpc-{filenum}')
     log = lcm.EventLog(filename, "r")
+    log_mpc = lcm.EventLog(filename_mpc, "r")
     plotter_main(plot_config.cassie_plot_config, log)
-    mpc_debug, com_trajs = get_log_data(
-        log, mpc_channels,
+
+    mpc_debug = get_log_data(
+        log_mpc, mpc_channels,
         plot_config.start_time, plot_config.end_time,
         mpc_processing_callback, "ALIP_MINLP_DEBUG", "ALIP_COM_TRAJ"
     )

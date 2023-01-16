@@ -25,6 +25,11 @@
 
 #include "geometry/convex_foothold.h"
 
+#ifdef DAIR_ROS_ON
+#include "geometry/convex_foothold_receiver.h"
+#include "systems/ros/ros_subscriber_system.h"
+#endif
+
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -79,13 +84,28 @@ DEFINE_string(minlp_gains_filename,
 
 DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
 
+DEFINE_string(foothold_topic, "", "ros topic containing the footholds");
+
 DEFINE_bool(spring_model, true, "");
 
+DEFINE_bool(use_perception, false, "get footholds from percption system");
+
 DEFINE_bool(plan_offboard, false,
+            "Sets the planner lcm TTL to be 1. "
             "Set to true to run planner on cassie-laptop");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+#ifdef DAIR_ROS_ON
+  ros::init(argc, argv, "alip_minlp_controller");
+  ros::NodeHandle node_handle;
+#else
+  if (FLAGS_use_perception) {
+    throw std::runtime_error(
+        "You cannot use perception without building against ROS.");
+  }
+#endif
 
   auto gains_mpc =
       drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
@@ -200,13 +220,27 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(foothold_oracle->get_output_port(),
                     foot_placement_controller->get_input_port_footholds());
   } else {
-    auto foothold_oracle =
-        builder.AddSystem<FlatTerrainFootholdSource>(
-            plant_w_spr, context_w_spr.get(), left_right_toe);
-    builder.Connect(*state_receiver, *foothold_oracle);
-    builder.Connect(foothold_oracle->get_output_port(),
-                    foot_placement_controller->get_input_port_footholds());
+
+    if (FLAGS_use_perception) {
+#ifdef DAIR_ROS_ON
+      auto plane_subscriber = builder.AddSystem(
+          systems::RosSubscriberSystem<
+              convex_plane_decomposition_msgs::PlanarTerrain>::Make(
+                  FLAGS_foothold_topic, &node_handle));
+      auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdReceiver>();
+      builder.Connect(*plane_subscriber, *plane_receiver);
+      builder.Connect(plane_receiver->get_output_port(),
+                      foot_placement_controller->get_input_port_footholds());
+#endif
+    } else {
+      auto foothold_oracle =
+          builder.AddSystem<FlatTerrainFootholdSource>(
+              plant_w_spr, context_w_spr.get(), left_right_toe);
+      builder.Connect(*state_receiver, *foothold_oracle);
+      builder.Connect(foothold_oracle->get_output_port(),
+                      foot_placement_controller->get_input_port_footholds());
   }
+}
 
 
 

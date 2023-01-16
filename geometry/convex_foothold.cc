@@ -33,8 +33,14 @@ void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {
 }
 
 // Add a face with the (outward facing) normal and a point on the face
-void ConvexFoothold::AddFace(Eigen::Vector3d normal, Eigen::Vector3d pt) {
+void ConvexFoothold::AddFace(const Vector3d& normal, const Vector3d& pt) {
   AddHalfspace(normal, normal.dot(pt) * VectorXd::Ones(1));
+}
+
+void ConvexFoothold::AddVertices(const Vector3d &v1, const Vector3d &v2) {
+  Vector3d face = v2 - v1;
+  Vector3d normal = face.cross(A_eq_.transpose());
+  AddFace(normal, v1);
 }
 
 std::pair<MatrixXd, VectorXd> ConvexFoothold::GetConstraintMatrices() const {

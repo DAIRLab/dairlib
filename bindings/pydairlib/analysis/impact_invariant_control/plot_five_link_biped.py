@@ -47,9 +47,11 @@ def compute_control_law(N, d):
 
 
 def load_logs(plant, t_impact, window):
-    log_dir = '/media/yangwill/backups/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/logs/nominal/'
+    # log_dir = '/media/yangwill/backups/home/yangwill/Documents/research/projects/five_link_biped/invariant_impacts/logs/nominal/'
+    log_dir = '/home/yangwill/Documents/research/papers/impact_invariant_control/data/five_link_biped/'
     # filename = 'lcmlog-000'
-    filename = 'lcmlog-025-iros21'
+    # filename = 'lcmlog-nominal'
+    filename = 'lcmlog-error'
     print(log_dir + filename)
     log = lcm.EventLog(log_dir + filename, "r")
     default_channels = {'RABBIT_STATE': dairlib.lcmt_robot_output,
@@ -62,6 +64,7 @@ def load_logs(plant, t_impact, window):
         get_log_data(log, default_channels, start_time, duration, callback,
                      plant,
                      'RABBIT_STATE', 'RABBIT_INPUT', 'OSC_DEBUG_WALKING')
+    return robot_output, robot_input, osc_debug
 
 
 def main():
@@ -88,7 +91,7 @@ def main():
     nc = 2
     n_samples = 1000
     window_length = 0.05
-    tau = 0.005
+    tau = 0.0025
     # selected_joint_idxs = slice(6,7)
     selected_joint_idxs = slice(0, 7)
 
@@ -103,7 +106,7 @@ def main():
     x_pre = state_traj.value(transition_time - 1e-6)
     x_post = state_traj.value(transition_time)
 
-    load_logs(plant, transition_time, window_length)
+    robot_output, robot_input, osc_debug = load_logs(plant, transition_time, window_length)
 
     plant.SetPositionsAndVelocities(context, x_pre)
     M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -120,6 +123,7 @@ def main():
                                                         pt_on_body, world,
                                                         world)
     M_Jt = M_inv @ J_r.T
+
     # compute_control_law(M_Jt, np.ones(nv))
 
     P = null_space(M_Jt.T).T
@@ -133,26 +137,45 @@ def main():
     v_post = x_post[-nv:]
     t_impact = dircon_traj.GetStateBreaks(0)[-1]
 
+    J_y = np.zeros((4, 7))
+    J_y[0, 3] = 1
+    J_y[1, 4] = 1
+    J_y[2, 5] = 1
+    J_y[3, 6] = 1
     ydot_pre = J_r @ v_pre
     ydot_post = J_r @ v_post
     # transform = J_r @ M_inv @ J_r.T @ np.linalg.pinv(J_r @ M_inv @ J_r.T)
-    transform = M_inv @ J_r.T @ np.linalg.pinv(J_r @ M_inv @ J_r.T)
+    transform = M_inv @ J_r.T @ np.linalg.pinv(J_y @ M_inv @ J_r.T)
 
-    t = np.linspace(t_impact - 2 * window_length, t_impact + 2 * window_length,
-                    n_samples)
+
+    start_time = t_impact - 2 * window_length
+    end_time = t_impact + 2 * window_length
+    start_idx = np.argwhere(np.abs(robot_output['t_x'] - start_time) < 1e-3)[0][0]
+    end_idx = np.argwhere(np.abs(robot_output['t_x'] - end_time) < 1e-3)[0][0]
+    t = np.linspace(start_time, end_time,
+                    end_idx - start_idx)
+    print(start_idx)
+    print(end_idx)
     t_proj = np.array(
         [t_impact[0] - window_length, t_impact[0] + window_length])
 
     vel_proj = np.zeros((t.shape[0], nv))
+    vel_proj_actual = np.zeros((t.shape[0], nv))
     vel_time_varying_proj = np.zeros((t.shape[0], nv))
     vel = np.zeros((t.shape[0], nv))
+    vel_actual = np.zeros((t.shape[0], nv))
     vel_corrected = np.zeros((t.shape[0], nv))
+    vel_correction = np.zeros((t.shape[0], nv))
     vel_corrected_blend = np.zeros((t.shape[0], nv))
     alphas = np.zeros((t.shape[0], 1))
     for i in range(t.shape[0]):
-        x = state_traj.value(t[i])
+    # for i in range(0, end_idx - start_idx):
+        # x = state_traj.value(t[i])
+        x = state_traj.value(robot_output['t_x'][i + start_idx])
         vel[i] = x[-nv:, 0]
+        vel_actual[i] = robot_output['v'][i + start_idx]
         vel_proj[i] = P.T @ P @ vel[i]
+        vel_proj_actual[i] = P.T @ P @ vel_actual[i]
 
         plant.SetPositions(context, x[:nq])
         M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -173,14 +196,16 @@ def main():
                                   0.5 * window_length)
         alphas[i] = alpha
         vel_time_varying_proj[i] = TV_J_space.T @ TV_J_space @ vel[i]
-        # import pdb; pdb.set_trace()
-        vel_correction = transform @ (J_r @ (vel[i] - np.zeros(nv)))
-        # vel_correction = transform @ (J_r @ (vel[i] - np.ones(nv)))
-        vel_corrected[i] = vel[i] - vel_correction
-        vel_corrected_blend[i] = vel[i] - alpha * vel_correction
+        # vel_correction[i] = transform @ (J_r @ (vel[i] - vel_actual[i]))
+        vel_correction[i] = transform @ (J_y @ vel[i] - J_y @ vel_actual[i])
+        vel_corrected[i] = vel_actual[i] + vel_correction[i]
+        vel_corrected_blend[i] = vel_actual[i] + alpha * vel_correction[i]
+    # t_plot = robot_output['t_x'][start_idx:end_idx]
 
     gen_vel_plot = plot_styler.PlotStyler()
     gen_vel_plot.plot(t, vel, title='Generalized Velocities near Impact',
+                      xlabel='time (s)', ylabel='velocity (m/s)')
+    gen_vel_plot.plot(t, vel_actual, title='Generalized Velocities near Impact',
                       xlabel='time (s)', ylabel='velocity (m/s)')
     ylim = gen_vel_plot.fig.gca().get_ylim()
     gen_vel_plot.save_fig('gen_vel_plot.png')
@@ -188,6 +213,9 @@ def main():
 
     proj_vel_plot = plot_styler.PlotStyler()
     proj_vel_plot.plot(t, vel_proj,
+                       title='Constant Impact-Invariant Projection',
+                       xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
+    proj_vel_plot.plot(t, vel_proj_actual,
                        title='Constant Impact-Invariant Projection',
                        xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     proj_vel_plot.save_fig('proj_vel_plot.png')
@@ -201,15 +229,33 @@ def main():
 
     blended_vel_plot = plot_styler.PlotStyler()
     ax = blended_vel_plot.fig.axes[0]
-    blended_vel_plot.plot(t, vel[:, selected_joint_idxs],
-                          title='Blended Impact-Invariant Correction',
-                          xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
+    # blended_vel_plot.plot(t, vel_actual[:, selected_joint_idxs],
+    #                       title='Blended Impact-Invariant Correction',
+    #                       xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     blended_vel_plot.plot(t, vel_corrected_blend[:, selected_joint_idxs],
-                          title='Blended Impact-Invariant Projection',
+                          title='Blended Impact-Invariant Correction',
                           xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=blended_vel_plot.grey,
                     alpha=0.2)
     blended_vel_plot.save_fig('blended_vel_plot.png')
+
+    projected_vel_error = plot_styler.PlotStyler()
+    ax = projected_vel_error.fig.axes[0]
+    projected_vel_error.plot(t, vel_proj - vel_proj_actual[:, selected_joint_idxs],
+                                title='Impact-Invariant Projection Error',
+                                xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
+    ax.fill_between(t_proj, ylim[0], ylim[1], color=projected_vel_error.grey,
+                    alpha=0.2)
+    projected_vel_error.save_fig('projected_vel_error.png')
+
+    corrected_vel_error = plot_styler.PlotStyler()
+    ax = corrected_vel_error.fig.axes[0]
+    corrected_vel_error.plot(t, vel - vel_corrected[:, selected_joint_idxs],
+                          title='Impact-Invariant Correction Error',
+                          xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
+    ax.fill_between(t_proj, ylim[0], ylim[1], color=corrected_vel_error.grey,
+                    alpha=0.2)
+    corrected_vel_error.save_fig('corrected_vel_error.png')
 
     blending_function_plot = plot_styler.PlotStyler()
     ax = blending_function_plot.fig.axes[0]

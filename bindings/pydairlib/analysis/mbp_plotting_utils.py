@@ -158,7 +158,7 @@ def process_c3_channel(data):
     xdot_d.append(xdot_d_temp)
 
     # extract force info in n, t1, t2 directions
-    f_d_temp = [msg.data[20], msg.data[21]-msg.data[22], msg.data[23]-msg.data[24]]
+    f_d_temp = [msg.data[24], msg.data[25]-msg.data[26], msg.data[27]-msg.data[28]]
     f_d.append(f_d_temp)
 
     t.append(msg.utime / 1e6)

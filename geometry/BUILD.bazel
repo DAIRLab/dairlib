@@ -3,7 +3,7 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "convex_foothold_reciever",
+    name = "convex_foothold_receiver",
     srcs = ["convex_foothold_receiver.cc"],
     hdrs = ["convex_foothold_receiver.h"],
     deps = [
@@ -12,6 +12,7 @@ cc_library(
         "@drake//:drake_shared_library",
         "@ros-local",
     ],
+    tags = ["ros"],
 )
 
 cc_library(

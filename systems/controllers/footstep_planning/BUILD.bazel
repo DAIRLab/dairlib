@@ -71,6 +71,19 @@ cc_library(
 )
 
 cc_library(
+    name = "swing_and_com_traj_gen",
+    srcs = ["swing_and_com_traj_gen.cc"],
+    hdrs = ["swing_and_com_traj_gen.h"],
+    deps = [
+        ":alip_utils",
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "footstep_lcm_systems",
     srcs = ["footstep_lcm_systems.cc"],
     hdrs = ["footstep_lcm_systems.h"],

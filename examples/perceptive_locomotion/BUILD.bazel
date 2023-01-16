@@ -30,7 +30,7 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//geometry:convex_foothold_reciever",
+                "//geometry:convex_foothold_receiver",
                 "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],

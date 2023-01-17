@@ -132,11 +132,11 @@ class AlipWalkingControllerDiagram final
   std::vector<double> left_right_support_state_durations;
   std::vector<double> swing_ft_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples;
-  drake::trajectories::PiecewisePolynomial<double>
+  std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>
       swing_ft_gain_multiplier_gain_multiplier;
   std::vector<double> swing_ft_accel_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples;
-  drake::trajectories::PiecewisePolynomial<double>
+  std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>
       swing_ft_accel_gain_multiplier_gain_multiplier;
 
   multibody::KinematicEvaluatorSet<double> evaluators;

@@ -22,23 +22,21 @@ class OptionsTrackingData : public OscTrackingData {
   // Additional feature -- multipliers for gains and feedforward acceleration
   // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
   //  finite state
-  void SetTimeVaryingGains(
-      const drake::trajectories::Trajectory<double>& gain_multiplier);
-  const drake::trajectories::Trajectory<double>* gain_multiplier_ = nullptr;
-  void SetFeedforwardAccelMultiplier(
-      const drake::trajectories::Trajectory<double>& ff_accel_multiplier);
-  const drake::trajectories::Trajectory<double>* ff_accel_multiplier_ = nullptr;
+  void SetTimeVaryingPDGains(
+      std::shared_ptr<drake::trajectories::Trajectory<double>>
+          gain_multiplier_trajectory);
 
-  // Additional feature -- ViewFrame
-  const multibody::ViewFrame<double>* view_frame_;
-  Eigen::Matrix3d view_frame_rot_T_;
-  void SetViewFrame(const multibody::ViewFrame<double>& view_frame) {
-    view_frame_ = &view_frame;
+  void SetTimerVaryingFeedForwardAccelMultiplier(
+      std::shared_ptr<drake::trajectories::Trajectory<double>>
+          ff_accel_multiplier_traj);
+
+  void SetViewFrame(std::shared_ptr<multibody::ViewFrame<double>> view_frame) {
+    view_frame_ = view_frame;
     with_view_frame_ = true;
   }
 
-  // Additional feature -- disable feedforward acceleration
-  std::set<int> idx_zero_feedforward_accel_ = {};
+  // disable feedforward acceleration for the components of the task space given
+  // by indices
   void DisableFeedforwardAccel(const std::set<int>& indices) {
     idx_zero_feedforward_accel_ = indices;
   };
@@ -47,7 +45,18 @@ class OptionsTrackingData : public OscTrackingData {
   // State must be added to the tracking data already
   void AddJointAndStateToIgnoreInJacobian(int joint_vel_idx, int fsm_state);
 
+ protected:
+  std::shared_ptr<
+      drake::trajectories::Trajectory<double>> ff_accel_multiplier_traj_;
+  std::shared_ptr<
+      drake::trajectories::Trajectory<double>> pd_gain_multiplier_traj_;
+  std::set<int> idx_zero_feedforward_accel_ = {};
+  std::shared_ptr<multibody::ViewFrame<double>> view_frame_;
+  Eigen::Matrix3d view_frame_rot_T_;
+  bool with_view_frame_ = false;
+
  private:
+
   // This method is called from the parent class (OscTrackingData) due to C++
   // polymorphism.
   void UpdateActual(const Eigen::VectorXd& x_w_spr,
@@ -70,8 +79,6 @@ class OptionsTrackingData : public OscTrackingData {
 
   void UpdateFilters(double t);
 
-  bool with_view_frame_ = false;
-
   // Members of low-pass filter
   Eigen::VectorXd filtered_y_;
   Eigen::VectorXd filtered_ydot_;
@@ -79,6 +86,7 @@ class OptionsTrackingData : public OscTrackingData {
   std::set<int> low_pass_filter_element_idx_;
   std::unordered_map<int, std::vector<int>> joint_idx_to_ignore_;
   double last_timestamp_ = -1;
+
 };
 
 }  // namespace controllers

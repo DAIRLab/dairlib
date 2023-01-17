@@ -18,7 +18,7 @@ namespace dairlib::multibody {
 template <typename T>
 class ViewFrame {
  public:
-  ViewFrame() {}
+  virtual ~ViewFrame() = 0;
   virtual drake::Matrix3X<T> CalcWorldToFrameRotation(
       const drake::multibody::MultibodyPlant<T>& plant_w_spr,
       const drake::systems::Context<T>& context_w_spr) const = 0;
@@ -27,6 +27,7 @@ class ViewFrame {
 template <typename T>
 class WorldYawViewFrame : public ViewFrame<T> {
  public:
+  ~WorldYawViewFrame() = default;
   explicit WorldYawViewFrame(const drake::multibody::Body<T>& body)
       : ViewFrame<T>(), body_(body) {}
 
@@ -42,6 +43,7 @@ template <typename T>
 class IdentityViewFrame : public ViewFrame<T> {
  public:
   explicit IdentityViewFrame() : ViewFrame<T>() {}
+  ~IdentityViewFrame() = default;
 
   drake::Matrix3X<T> CalcWorldToFrameRotation(
       const drake::multibody::MultibodyPlant<T>& plant_w_spr,

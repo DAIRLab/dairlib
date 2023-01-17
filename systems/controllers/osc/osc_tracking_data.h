@@ -55,17 +55,17 @@ class OscTrackingData {
   }
   void CheckOscTrackingData();
 
-  // Set whether or not to use springs in the calculation of the actual outputs
+  // Set whether to use springs in the calculation of the actual outputs
   void SetSpringsInKinematicCalculation(bool use_springs_in_eval) {
     use_springs_in_eval_ = use_springs_in_eval;
   }
 
-  // Set whether or not to use the impact invariant projection
+  // Set whether to use the impact invariant projection
   void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
     impact_invariant_projection_ = use_impact_invariant_projection;
   }
 
-  // Set whether or not to use the impact invariant projection
+  // Set whether to use the impact invariant projection
   bool GetImpactInvariantProjection() { return impact_invariant_projection_; }
 
   // Getters for debugging

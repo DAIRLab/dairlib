@@ -5,6 +5,9 @@ using Eigen::Vector3d;
 
 namespace dairlib::multibody {
 
+template<typename T>
+ViewFrame<T>::~ViewFrame(){};
+
 /**** WorldYawViewFrame ****/
 template <>
 drake::Matrix3X<double> WorldYawViewFrame<double>::CalcWorldToFrameRotation(
@@ -27,5 +30,7 @@ drake::Matrix3X<double> IdentityViewFrame<double>::CalcWorldToFrameRotation(
     const drake::systems::Context<double>& context_w_spr) const {
   return Eigen::MatrixXd::Identity(3, 3);
 }
+
+template ViewFrame<double>::~ViewFrame();
 
 }  // namespace dairlib::multibody

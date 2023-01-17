@@ -398,14 +398,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable lambda_c_;
   drake::solvers::VectorXDecisionVariable lambda_h_;
   drake::solvers::VectorXDecisionVariable epsilon_;
-
-  // Constraints
+  // Cost and constraints
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
   drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
 
-  // Costs
   std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
   drake::solvers::QuadraticCost* accel_cost_ = nullptr;
   drake::solvers::LinearCost* joint_limit_cost_ = nullptr;
@@ -454,9 +452,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;
-
-  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_x_ = {};
-  mutable std::unordered_map<int, Eigen::VectorXd> initial_guess_y_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>

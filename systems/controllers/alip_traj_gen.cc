@@ -167,7 +167,6 @@ ALIPTrajGenerator::ConstructAlipComTraj(
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};
-  std::cout << "times" << T_waypoint_com.transpose() << std::endl;
   MatrixXd Y = MatrixXd::Zero(3, 2);
   Y.col(0).head(2) = stance_foot_pos.head(2);
   Y.col(1).head(2) = stance_foot_pos.head(2);
@@ -247,7 +246,6 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
   double com_z_td_des = desired_com_height_;
   if (target_com_z_) {
     com_z_td_des = EvalVectorInput(context, com_z_input_port_)->get_value()(0);
-    std::cout << "com_z_des: " << com_z_td_des << std::endl;
   }
 
   Vector3d CoM, L, stance_foot_pos;

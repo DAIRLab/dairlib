@@ -5,6 +5,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/osc_walking_gains.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
@@ -368,16 +369,15 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true,
-      FLAGS_qp_time_limit);
+      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
   int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingWeights(gains.w_input_reg *
-                                MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingCostWeights(gains.w_input_reg *
+                                    MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -492,88 +492,101 @@ int DoMain(int argc, char* argv[]) {
                            plant_w_spr, plant_w_spr);
   com_data.AddFiniteStateToTrack(left_stance_state);
   com_data.AddFiniteStateToTrack(right_stance_state);
-  RelativeTranslationTrackingData swing_ft_traj_local(
+  auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
       &com_data);
   WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
-  swing_ft_traj_local.SetViewFrame(pelvis_view_frame);
+  swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
-  TransTaskSpaceTrackingData swing_ft_traj_global(
+  auto swing_ft_traj_global = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
-  swing_ft_traj_global.AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global.AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_ft_traj_global->AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_ft_traj_global->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
   if (FLAGS_spring_model) {
     // swing_ft_traj.DisableFeedforwardAccel({2});
   }
 
   if (wrt_com_in_local_frame) {
-    swing_ft_traj_local.SetTimeVaryingGains(
+    swing_ft_traj_local->SetTimeVaryingGains(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_local.SetFeedforwardAccelMultiplier(
+    swing_ft_traj_local->SetFeedforwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_local);
+    osc->AddTrackingData(std::move(swing_ft_traj_local));
   } else {
-    swing_ft_traj_global.SetTimeVaryingGains(
+    swing_ft_traj_global->SetTimeVaryingGains(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_global.SetFeedforwardAccelMultiplier(
+    swing_ft_traj_global->SetFeedforwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
-    osc->AddTrackingData(&swing_ft_traj_global);
+    osc->AddTrackingData(std::move(swing_ft_traj_global));
   }
 
   // Center of mass tracking
   bool use_pelvis_for_lipm_tracking = true;
 
-  TransTaskSpaceTrackingData pelvis_traj("lipm_traj", gains.K_p_com,
-                                         gains.K_d_com, gains.W_com,
-                                         plant_w_spr, plant_w_spr);
-  pelvis_traj.AddPointToTrack("pelvis");
-  ComTrackingData center_of_mass_traj("lipm_traj", gains.K_p_com, gains.K_d_com,
-                                      gains.W_com, plant_w_spr, plant_w_spr);
+  auto pelvis_traj = std::make_unique<TransTaskSpaceTrackingData>(
+      "lipm_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant_w_spr,
+      plant_w_spr);
+  pelvis_traj->AddPointToTrack("pelvis");
+  auto center_of_mass_traj = std::make_unique<ComTrackingData>(
+      "lipm_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant_w_spr,
+      plant_w_spr);
   if (use_pelvis_for_lipm_tracking) {
-    osc->AddTrackingData(&pelvis_traj);
+    osc->AddTrackingData(std::move(pelvis_traj));
   } else {
-    osc->AddTrackingData(&center_of_mass_traj);
+    osc->AddTrackingData(std::move(center_of_mass_traj));
   }
   // Pelvis rotation tracking (pitch and roll)
-  RotTaskSpaceTrackingData pelvis_balance_traj(
+  auto pelvis_balance_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
-  pelvis_balance_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_balance_traj);
+  pelvis_balance_traj->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_balance_traj));
   // Pelvis rotation tracking (yaw)
-  RotTaskSpaceTrackingData pelvis_heading_traj(
+  auto pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
       gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
-  pelvis_heading_traj.AddFrameToTrack("pelvis");
-  osc->AddTrackingData(&pelvis_heading_traj,
+  pelvis_heading_traj->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_heading_traj),
                        gains.period_of_no_heading_control);
 
   // Swing toe joint tracking
-  JointSpaceTrackingData swing_toe_traj_left(
+  auto swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
       gains.W_swing_toe, plant_w_spr, plant_w_spr);
-  JointSpaceTrackingData swing_toe_traj_right(
+  auto swing_toe_traj_right = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
       gains.W_swing_toe, plant_w_spr, plant_w_spr);
-  swing_toe_traj_right.AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                               "toe_rightdot");
-  swing_toe_traj_left.AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                              "toe_leftdot");
-  osc->AddTrackingData(&swing_toe_traj_left);
-  osc->AddTrackingData(&swing_toe_traj_right);
+  swing_toe_traj_right->AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                                "toe_rightdot");
+  swing_toe_traj_left->AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                               "toe_leftdot");
+  osc->AddTrackingData(std::move(swing_toe_traj_left));
+  osc->AddTrackingData(std::move(swing_toe_traj_right));
+
+  auto hip_yaw_traj_gen =
+      builder.AddSystem<cassie::HipYawTrajGen>(left_stance_state);
 
   // Swing hip yaw joint tracking
-  JointSpaceTrackingData swing_hip_yaw_traj(
+  auto swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
       gains.W_hip_yaw, plant_w_spr, plant_w_spr);
-  swing_hip_yaw_traj.AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
-                                             "hip_yaw_rightdot");
-  swing_hip_yaw_traj.AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
-                                             "hip_yaw_leftdot");
-  osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+  swing_hip_yaw_traj->AddStateAndJointToTrack(
+      left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
+  swing_hip_yaw_traj->AddStateAndJointToTrack(
+      right_stance_state, "hip_yaw_left", "hip_yaw_leftdot");
+
+  if (FLAGS_use_radio) {
+    builder.Connect(cassie_out_to_radio->get_output_port(),
+                    hip_yaw_traj_gen->get_radio_input_port());
+    builder.Connect(fsm->get_output_port_fsm(),
+                    hip_yaw_traj_gen->get_fsm_input_port());
+    osc->AddTrackingData(std::move(swing_hip_yaw_traj));
+  } else {
+    osc->AddConstTrackingData(std::move(swing_hip_yaw_traj), VectorXd::Zero(1));
+  }
 
   // Set double support duration for force blending
   osc->SetUpDoubleSupportPhaseBlending(
@@ -588,33 +601,38 @@ int DoMain(int argc, char* argv[]) {
   // Connect ports
   builder.Connect(simulator_drift->get_output_port(0),
                   osc->get_input_port_robot_output());
-  builder.Connect(fsm->get_output_port(0), osc->get_fsm_input_port());
+  builder.Connect(fsm->get_output_port(0), osc->get_input_port_fsm());
   if (use_pelvis_for_lipm_tracking) {
     builder.Connect(
         pelvis_traj_generator->get_output_port_lipm_from_touchdown(),
-        osc->get_tracking_data_input_port("lipm_traj"));
+        osc->get_input_port_tracking_data("lipm_traj"));
   } else {
     builder.Connect(lipm_traj_generator->get_output_port_lipm_from_touchdown(),
-                    osc->get_tracking_data_input_port("lipm_traj"));
+                    osc->get_input_port_tracking_data("lipm_traj"));
   }
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
-                  osc->get_tracking_data_input_port("swing_ft_traj"));
+                  osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_heading_traj"));
+                  osc->get_input_port_tracking_data("pelvis_heading_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("pelvis_balance_traj"));
+                  osc->get_input_port_tracking_data("pelvis_balance_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("left_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
-                  osc->get_tracking_data_input_port("right_toe_angle_traj"));
+                  osc->get_input_port_tracking_data("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  if (FLAGS_use_radio) {
+    builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
+                    osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
+  }
   if (FLAGS_publish_osc_data) {
     // Create osc debug sender.
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
             "OSC_DEBUG_WALKING", &lcm_local,
             TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+    builder.Connect(osc->get_output_port_osc_debug(),
+                    osc_debug_pub->get_input_port());
   }
 
   // Create the diagram

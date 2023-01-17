@@ -61,11 +61,9 @@ ALIPTrajGenerator::ALIPTrajGenerator(
                                           plant.num_velocities(),
                                           plant.num_actuators()))
       .get_index();
-  fsm_port_ =
-      this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
-  touchdown_time_port_ =
-      this->DeclareVectorInputPort("t_touchdown", BasicVector<double>(1))
-          .get_index();
+  fsm_port_ = DeclareVectorInputPort("fsm", 1).get_index();
+  next_touchdown_time_port_ = DeclareVectorInputPort("t1", 1).get_index();
+  prev_liftoff_time_port_ = DeclareVectorInputPort("t0", 1).get_index();
   if (target_com_z_) {
     com_z_input_port_ =
         this->DeclareVectorInputPort("com_z", BasicVector<double>(1))
@@ -163,13 +161,13 @@ ExponentialPlusPiecewisePolynomial<double>
 ALIPTrajGenerator::ConstructAlipComTraj(
     const Vector3d& CoM, const Vector3d& stance_foot_pos,
     const Vector4d& x_alip, double com_z_rel_to_stance_at_next_td,
-    double start_time, double end_time_of_this_fsm_state) const {
+    double start_time, double current_time, double end_time_of_this_fsm_state) const {
 
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  //DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};
+  std::cout << "times" << T_waypoint_com.transpose() << std::endl;
   MatrixXd Y = MatrixXd::Zero(3, 2);
   Y.col(0).head(2) = stance_foot_pos.head(2);
   Y.col(1).head(2) = stance_foot_pos.head(2);
@@ -194,7 +192,9 @@ ALIPTrajGenerator::ConstructAlipComTraj(
   K.topLeftCorner(2,2) = MatrixXd::Identity(2,2);
   auto A = CalcA(CoM_wrt_foot_z);
 
-  return {K, A, x_alip, pp_part};
+  return {K, A,
+          CalcAd(CoM_wrt_foot_z, current_time - start_time).inverse() * x_alip,
+          pp_part};
 }
 
 ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipStateTraj(
@@ -236,7 +236,12 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
 
   // Read in finite state machine switch time
   double end_time =
-      EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+      EvalVectorInput(context, next_touchdown_time_port_)->get_value()(0);
+  double start_time =
+      EvalVectorInput(context, prev_liftoff_time_port_)->get_value()(0);
+  double timestamp = robot_output->get_timestamp();
+
+  int mode_index = GetModeIdx(fsm_state);
 
   // read in next touchdown com z
   double com_z_td_des = desired_com_height_;
@@ -244,14 +249,6 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
     com_z_td_des = EvalVectorInput(context, com_z_input_port_)->get_value()(0);
     std::cout << "com_z_des: " << com_z_td_des << std::endl;
   }
-
-  int mode_index = GetModeIdx(fsm_state);
-
-  // Get time
-  double timestamp = robot_output->get_timestamp();
-  double start_time = timestamp;
-  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
-                          end_time - 0.001);
 
   Vector3d CoM, L, stance_foot_pos;
   CalcAlipState(
@@ -273,7 +270,7 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj =
       ConstructAlipComTraj(
-          CoM, stance_foot_pos, x_alip, com_z_td_des, start_time, end_time);
+          CoM, stance_foot_pos, x_alip, com_z_td_des, start_time, timestamp, end_time);
 }
 
 void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
@@ -286,7 +283,7 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
   int fsm_state = EvalVectorInput(context, fsm_port_)->value()(0);
 
   // Read in finite state machine switch time
-  double end_time = EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+  double end_time = EvalVectorInput(context, next_touchdown_time_port_)->get_value()(0);
 
   int mode_index = GetModeIdx(fsm_state);
 

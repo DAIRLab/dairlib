@@ -436,7 +436,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
 
   // Connect footstep planning pipeline
   builder.Connect(stance_duration_adder->get_output_port(),
-                  alip_traj_generator->get_input_port_touchdown_time());
+                  alip_traj_generator->get_input_port_next_fsm_switch_time());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(high_level_command->get_yaw_output_port(),

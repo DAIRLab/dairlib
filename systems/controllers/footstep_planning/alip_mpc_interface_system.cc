@@ -59,8 +59,10 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
       plant_context_(context),
       world_(plant_.world_frame()),
       left_right_support_fsm_states_(params.left_right_support_fsm_states),
+      com_height_(params.com_height_),
       mid_foot_height_(params.mid_foot_height),
       desired_final_foot_height_(params.desired_final_foot_height),
+      foot_height_offset_(params.foot_height_offset_),
       desired_final_vertical_foot_velocity_(
           params.desired_final_vertical_foot_velocity),
       relative_to_com_(params.relative_to_com) {
@@ -250,6 +252,10 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
     Vector3d footstep_target =
         this->EvalVectorInput(context, footstep_target_port_)->get_value();
 
+    if (relative_to_com_) {
+      footstep_target(2) -= com_height_;
+    }
+
     // Assign traj
     auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
     *pp_traj = CreateSplineForSwingFoot(
@@ -292,9 +298,10 @@ void SwingFootInterfaceSystem::CopyComHeightOffset(
   // Swing foot position at touchdown
   const Vector3d& footstep_target =
       this->EvalVectorInput(context, footstep_target_port_)->get_value();
+  double offset = footstep_target(2) - stance_foot_pos(2) + foot_height_offset_;
   std::cout << "Target: " << footstep_target.transpose() << std::endl;
-  std::cout << "offset: " << footstep_target.tail(1) - stance_foot_pos.tail(1) << std::endl;
-  com_height_offset->set_value(footstep_target.tail(1) - stance_foot_pos.tail(1));
+  std::cout << "offset: " << offset << std::endl;
+  com_height_offset->set_value(drake::Vector1d(offset));
 }
 
 AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
@@ -312,19 +319,6 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
       com_params.desired_com_height);
   auto com_height_to_traj_gen = builder.AddSystem<Adder<double>>(2, 1);
 
-  auto fsm_pt = builder.AddSystem<PassThrough<double>>(1);
-  auto touchdown_time_pt = builder.AddSystem<PassThrough<double>>(1);
-
-  // Connect passthroughs
-  builder.Connect(fsm_pt->get_output_port(),
-                  swing_interface->get_input_port_fsm());
-  builder.Connect(fsm_pt->get_output_port(),
-                  com_interface->get_input_port_fsm());
-  builder.Connect(touchdown_time_pt->get_output_port(),
-                  com_interface->get_input_port_touchdown_time());
-  builder.Connect(touchdown_time_pt->get_output_port(),
-                  swing_interface->get_input_port_next_fsm_switch_time());
-
   // Connect com traj
   builder.Connect(swing_interface->get_output_port_com_height_offset(),
                   com_height_to_traj_gen->get_input_port(0));
@@ -334,13 +328,30 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
                   com_interface->get_input_port_target_com_z());
 
   // Export ports
-  state_port_ = builder.ExportInput(swing_interface->get_input_port_state(), "x, u, t");
-  builder.ConnectInput("x, u, t", com_interface->get_input_port_state());
-  fsm_port_ = builder.ExportInput(fsm_pt->get_input_port(), "fsm");
-  next_touchdown_time_port_ =
-      builder.ExportInput(touchdown_time_pt->get_input_port());
-  prev_liftoff_time_port_ =
-      builder.ExportInput(swing_interface->get_input_port_fsm_switch_time());
+  state_port_ = ExportSharedInput(
+      builder,
+      swing_interface->get_input_port_state(),
+      com_interface->get_input_port_state(),
+      "x, u, t");
+
+  fsm_port_ = ExportSharedInput(
+      builder,
+      swing_interface->get_input_port_fsm(),
+      com_interface->get_input_port_fsm(),
+      "fsm");
+
+  next_touchdown_time_port_ = ExportSharedInput(
+      builder,
+      swing_interface->get_input_port_next_fsm_switch_time(),
+      com_interface->get_input_port_next_fsm_switch_time(),
+      "tnext");
+
+  prev_liftoff_time_port_ = ExportSharedInput(
+      builder,
+      swing_interface->get_input_port_fsm_switch_time(),
+      com_interface->get_input_port_fsm_switch_time(),
+      "tprev");
+
   footstep_target_port_ =
       builder.ExportInput(swing_interface->get_input_port_footstep_target());
   com_traj_port_ = builder.ExportOutput(com_interface->get_output_port_com());
@@ -349,7 +360,17 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
 
   builder.BuildInto(this);
 
-  }
+}
+
+const drake::systems::InputPortIndex AlipMPCInterfaceSystem::ExportSharedInput(
+    drake::systems::DiagramBuilder<double>& builder,
+    const drake::systems::InputPort<double> &p1,
+    const drake::systems::InputPort<double> &p2, std::string name) {
+
+  const drake::systems::InputPortIndex idx = builder.ExportInput(p1, name);
+  builder.ConnectInput(name, p2);
+  return idx;
+}
 
 }  // namespace controllers
 }  // namespace systems

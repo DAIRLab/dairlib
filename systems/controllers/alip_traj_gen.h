@@ -78,9 +78,14 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_touchdown_time()
+  const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
+  const{
+    return this->get_input_port(prev_liftoff_time_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_next_fsm_switch_time()
   const {
-    return this->get_input_port(touchdown_time_port_);
+    return this->get_input_port(next_touchdown_time_port_);
   }
   // Input port for the desired CoM height at the following touchdown relative
   // to the current stance foot
@@ -117,6 +122,7 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
                        const Eigen::Vector4d& x_alip,
                        double com_z_rel_to_stance_at_next_td,
                        double start_time,
+                       double current_time,
                        double end_time_of_this_fsm_state) const;
 
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
@@ -134,10 +140,15 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
     return controllers::alip_utils::CalcA(com_z, m_);
   }
 
+  Eigen::Matrix4d CalcAd(double com_z, double t) const {
+    return controllers::alip_utils::CalcAd(com_z, m_, t);
+  }
+
   // Port indices
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
-  drake::systems::InputPortIndex touchdown_time_port_;
+  drake::systems::InputPortIndex prev_liftoff_time_port_;
+  drake::systems::InputPortIndex next_touchdown_time_port_;
   drake::systems::InputPortIndex com_z_input_port_;
 
   drake::systems::OutputPortIndex output_port_alip_state_;

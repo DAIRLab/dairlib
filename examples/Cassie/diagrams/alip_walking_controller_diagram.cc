@@ -437,7 +437,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
 
   // Connect footstep planning pipeline
   builder.Connect(stance_duration_adder->get_output_port(),
-                  alip_traj_generator->get_input_port_touchdown_time());
+                  alip_traj_generator->get_input_port_next_fsm_switch_time());
   builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   footstep_planner->get_input_port_alip_state());
   builder.Connect(high_level_command->get_xy_output_port(),

@@ -275,7 +275,9 @@ int DoMain(int argc, char* argv[]) {
   systems::controllers::SwingFootInterfaceSystemParams swing_params{
     left_right_support_fsm_states,
     left_right_foot,
+    gains_mpc.h_des,
     gains.mid_foot_height,
+    0.05608,
     gains.final_foot_height,
     gains.final_foot_velocity_z,
     true
@@ -580,6 +582,11 @@ int DoMain(int argc, char* argv[]) {
     return footstep_sub->GetInternalMessageCount() > 1; });
   footstep_sub->ForcedPublish(loop.get_diagram()->
       GetMutableSubsystemContext(*footstep_sub, &loop_context));
+
+  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+    return fsm_sub->GetInternalMessageCount() > 1; });
+  fsm_sub->ForcedPublish(loop.get_diagram()->
+      GetMutableSubsystemContext(*fsm_sub, &loop_context));
 
   loop.Simulate();
 

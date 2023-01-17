@@ -22,7 +22,9 @@ namespace controllers {
 struct SwingFootInterfaceSystemParams {
   std::vector<int> left_right_support_fsm_states;
   std::vector<alip_utils::PointOnFramed>left_right_foot;
+  double com_height_;
   double mid_foot_height;
+  double foot_height_offset_;
   double desired_final_foot_height;
   double desired_final_vertical_foot_velocity;
   bool relative_to_com = true;
@@ -100,10 +102,12 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   std::vector<int> left_right_support_fsm_states_;
 
   // Parameters
-  double mid_foot_height_;
-  double desired_final_foot_height_;
-  double desired_final_vertical_foot_velocity_;
-  bool relative_to_com_;
+  const double com_height_;
+  const double mid_foot_height_;
+  const double foot_height_offset_;
+  const double desired_final_foot_height_;
+  const double desired_final_vertical_foot_velocity_;
+  const bool relative_to_com_;
 
   // Maps
   std::map<int, alip_utils::PointOnFramed> stance_foot_map_;
@@ -147,8 +151,9 @@ class AlipMPCInterfaceSystem : public drake::systems::Diagram<double> {
  private:
 
   const drake::systems::InputPortIndex ExportSharedInput(
+      drake::systems::DiagramBuilder<double>& builder,
       const drake::systems::InputPort<double>& p1,
-      const drake::systems::InputPort<double>& p2);
+      const drake::systems::InputPort<double>& p2, std::string name);
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;

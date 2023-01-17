@@ -239,6 +239,15 @@ def main():
                     alpha=0.2)
     blended_vel_plot.save_fig('blended_vel_plot.png')
 
+    gen_vel_error = plot_styler.PlotStyler()
+    ax = gen_vel_error.fig.axes[0]
+    gen_vel_error.plot(t, vel - vel_actual[:, selected_joint_idxs],
+                                title='Generalized Velocity Error',
+                                xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
+    ax.fill_between(t_proj, ylim[0], ylim[1], color=gen_vel_error.grey,
+                    alpha=0.2)
+    gen_vel_error.save_fig('gen_vel_error.png')
+
     projected_vel_error = plot_styler.PlotStyler()
     ax = projected_vel_error.fig.axes[0]
     projected_vel_error.plot(t, vel_proj - vel_proj_actual[:, selected_joint_idxs],

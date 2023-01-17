@@ -101,6 +101,7 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
+
   // connect input receiver
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
@@ -116,7 +117,7 @@ int do_main(int argc, char* argv[]) {
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant);
+  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
 
   // Contact results to lcm msg.
   builder.Connect(*input_sub, *input_receiver);
@@ -129,6 +130,8 @@ int do_main(int argc, char* argv[]) {
                   contact_results_publisher.get_input_port());
   builder.Connect(plant.get_state_output_port(),
                   state_sender->get_input_port_state());
+  builder.Connect(passthrough->get_output_port(),
+                  state_sender->get_input_port_effort());
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
   builder.Connect(

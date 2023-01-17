@@ -94,6 +94,7 @@ py_binary(
     ],
     deps = [
         ":cassie_plot_config",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",

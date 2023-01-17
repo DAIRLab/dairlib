@@ -57,7 +57,7 @@ hip_yaw_kd: 5
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.00
 footstep_lateral_offset: 0.04 # drake
-mid_foot_height: 0.4
+mid_foot_height: 0.2
 FootstepKd:
   [ 0.01,     0,  0,
     0,     0.3, 0,

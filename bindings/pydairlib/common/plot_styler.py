@@ -20,7 +20,7 @@ class PlotStyler():
     # self.directory = None
     self.dpi = 200
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    # matplotlib.rcParams['figure.figsize'] = 8, 4
+    matplotlib.rcParams['figure.figsize'] = 8, 12
     self.fig = plt.figure(dpi=self.dpi) if figure is None else figure
     self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number

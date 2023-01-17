@@ -13,23 +13,28 @@ from pydairlib.multibody import \
     MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, \
     CreateStateNameVectorFromMap
+
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.cassie.controllers import \
     FootstepTargetWalkingControllerFactory
+
 from pydairlib.cassie.cassie_gym.config_types import \
     CassieGymParams,\
     DepthCameraInfo,\
     DataGeneratorParams,\
     DomainRandomizationBounds
+
 from pydairlib.cassie.cassie_gym.drake_cassie_gym import \
     DrakeCassieGym,\
     FixedVectorInputPort
+
 from pydairlib.cassie.simulators import CassieVisionSimDiagram, VisionSimTerrainType
 from pydairlib.cassie.cassie_gym.cassie_env_state import \
     CASSIE_QUATERNION_SLICE, CASSIE_POSITION_SLICE, CASSIE_OMEGA_SLICE,\
     CASSIE_VELOCITY_SLICE, CASSIE_JOINT_POSITION_SLICE,\
     CASSIE_JOINT_VELOCITY_SLICE, CASSIE_FB_POSITION_SLICE,\
     CASSIE_FB_VELOCITY_SLICE
+
 from pydairlib.cassie.cassie_traj_visualizer import CassieTrajVisualizer
 
 # Plant and Simulation Constants

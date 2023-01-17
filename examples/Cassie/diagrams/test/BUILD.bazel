@@ -8,6 +8,7 @@ cc_binary(
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/diagrams",
+        "//systems:system_utils",
         "@drake//:drake_shared_library",
     ],
 )

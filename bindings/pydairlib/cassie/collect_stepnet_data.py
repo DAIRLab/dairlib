@@ -17,7 +17,7 @@ from pydairlib.cassie.cassie_gym.stepnet_data_generator import \
 
 HOME = os.getenv("HOME")
 DATASET_DIR = HOME + '/workspace/stepnet_learning_data/step_3d_no_terrain_v2/'
-FLAT_GROUND_DATASET_DIR = HOME + '/workspace/stepnet_learning_data/flat_ground/'
+FLAT_GROUND_DATASET_DIR = HOME + '/workspace/stepnet_learning_data/flat_ground/01_17_23/'
 DEPTH_DIR = DATASET_DIR + 'depth/'
 ROBO_DIR = DATASET_DIR + 'robot/'
 
@@ -69,6 +69,8 @@ def collect_flat_ground_data(size, seed, params):
 def flat_main(collection_params):
     if not os.path.isdir(collection_params.robot_path):
         os.makedirs(collection_params.robot_path)
+
+    collect_flat_ground_data(1, 1, collection_params)
 
     nsteps = collection_params.nsteps
     nthreads = collection_params.nthreads

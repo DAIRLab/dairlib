@@ -309,6 +309,8 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(fsm->get_output_port(0),
                   alip_traj_generator->get_input_port_fsm());
+  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
+                  alip_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(stance_duration_adder->get_output_port(),
                   alip_traj_generator->get_input_port_next_fsm_switch_time());
   builder.Connect(simulator_drift->get_output_port(0),

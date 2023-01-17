@@ -45,7 +45,7 @@ URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
 MBP_TIMESTEP = 8e-5
 
 # Data Collection Constants
-INITIAL_CONDITIONS_FILE = '.learning_data/initial_conditions.npy'
+INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
 MAX_ERROR = 1.0
 
 
@@ -104,10 +104,12 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         self.add_controller()
         self.make(self.controller)
+        import pdb; pdb.set_trace()
 
     def add_controller(self):
         self.controller_plant = MultibodyPlant(MBP_TIMESTEP)
-        AddCassieMultibody(self.controller_plant, None, True, URDF, False, False)
+        AddCassieMultibody(
+            self.controller_plant, None, True, URDF, True, False, True)
         self.controller_plant.Finalize()
         if self.data_gen_params.randomize_time:
             self.ss_time = np.random.uniform(

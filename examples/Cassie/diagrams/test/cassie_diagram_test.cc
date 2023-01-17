@@ -1,6 +1,8 @@
 #include "examples/Cassie/diagrams/alip_walking_controller_diagram.h"
 #include "examples/Cassie/diagrams/cassie_vision_sim_diagram.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "systems/system_utils.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/analysis/simulator.h"
@@ -30,6 +32,8 @@ int DoMain(int argc, char* argv[]){
 
   auto controller_diagram = builder.AddSystem<AlipWalkingControllerDiagram>(
       plant_w_spr, true, controller_gains, osc_gains);
+
+  DrawAndSaveDiagramGraph(*controller_diagram);
 
   auto sim_plant = std::make_unique<MultibodyPlant<double>>(8e-5);
   auto sim_diagram = builder.AddSystem<CassieVisionSimDiagram>(

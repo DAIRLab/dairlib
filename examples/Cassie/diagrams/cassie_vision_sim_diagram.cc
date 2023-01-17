@@ -67,7 +67,7 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
           drake::geometry::RenderEngineVtkParams()));
 
   plant_ = builder.AddSystem(std::move(plant));
-  AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
+  AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true, true);
 
   cam_transform_ = drake::math::RigidTransformd(
       camera::MakeXZAlignedCameraRotation(camera_pitch),camera_position);

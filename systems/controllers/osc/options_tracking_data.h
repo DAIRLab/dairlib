@@ -22,7 +22,7 @@ class OptionsTrackingData : public OscTrackingData {
   // Additional feature -- multipliers for gains and feedforward acceleration
   // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
   //  finite state
-  void SetTimeVaryingPDGains(
+  void SetTimeVaryingPDGainMultiplier(
       std::shared_ptr<drake::trajectories::Trajectory<double>>
           gain_multiplier_trajectory);
 

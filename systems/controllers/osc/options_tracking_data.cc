@@ -129,7 +129,7 @@ void OptionsTrackingData::AddJointAndStateToIgnoreInJacobian(int joint_vel_idx,
   }
 }
 
-void OptionsTrackingData::SetTimeVaryingPDGains(
+void OptionsTrackingData::SetTimeVaryingPDGainMultiplier(
     std::shared_ptr<drake::trajectories::Trajectory<double>> gain_multiplier_trajectory) {
   DRAKE_DEMAND(gain_multiplier_trajectory->cols() == n_ydot_);
   DRAKE_DEMAND(gain_multiplier_trajectory->rows() == n_ydot_);

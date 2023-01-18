@@ -29,7 +29,7 @@ def _impl(repository_ctx):
 
     root_path = repository_ctx.path("")
 
-    repository_ctx.download_and_extract(urls, "", sha256=sha256, stripPrefix=prefix)
+    repository_ctx.download_and_extract(urls, "", sha256 = sha256, stripPrefix = prefix)
 
     file_content = """# -*- python -*-
 
@@ -47,7 +47,6 @@ filegroup(
         content = file_content,
         executable = False,
     )
-
 
 signal_scope_repository = repository_rule(
     implementation = _impl,

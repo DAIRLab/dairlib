@@ -54,7 +54,7 @@ class DrakeCassieGym:
 
     def make(self, controller, urdf='examples/Cassie/urdf/cassie_v2.urdf'):
         self.builder = DiagramBuilder()
-        self.plant = MultibodyPlant(8e-5)
+        self.plant = MultibodyPlant(5e-4)
         self.controller = controller
         self.cassie_sim = CassieVisionSimDiagram(
             plant=self.plant,

@@ -70,12 +70,11 @@ def flat_main(collection_params):
     if not os.path.isdir(collection_params.robot_path):
         os.makedirs(collection_params.robot_path)
 
-    collect_flat_ground_data(1, 1, collection_params)
-
     nsteps = collection_params.nsteps
     nthreads = collection_params.nthreads
     batch_size = collection_params.nmaps
-    for j in range(int(nsteps/ (nthreads * batch_size))):
+    for j in range(int(nsteps / (nthreads * batch_size))):
+        print(j)
         with multiprocessing.Pool(nthreads) as pool:
             results = [
                 pool.apply_async(
@@ -166,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument('--nmaps', type=int, default=50000)
     parser.add_argument('--nsteps', type=int, default=10)
     parser.add_argument('--nthreads', type=int, default=5)
-    parser.add_argument('--dataset_parent_folder', type=str, default=DATASET_DIR)
+    parser.add_argument('--dataset_parent_folder', type=str, default=FLAT_GROUND_DATASET_DIR)
 
     try:
         args = parser.parse_args()

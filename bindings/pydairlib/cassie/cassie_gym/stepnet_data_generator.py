@@ -42,7 +42,7 @@ OSC_GAINS = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
 OSQP_SETTINGS = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
 SIM_URDF = 'examples/Cassie/urdf/cassie_v2_self_collision.urdf'
 URDF = 'examples/Cassie/urdf/cassie_v2.urdf'
-MBP_TIMESTEP = 8e-5
+MBP_TIMESTEP = 5e-4
 
 # Data Collection Constants
 INITIAL_CONDITIONS_FILE = '.learning_data/hardware_ics.npy'
@@ -104,7 +104,6 @@ class StepnetDataGenerator(DrakeCassieGym):
 
         self.add_controller()
         self.make(self.controller)
-        import pdb; pdb.set_trace()
 
     def add_controller(self):
         self.controller_plant = MultibodyPlant(MBP_TIMESTEP)

@@ -67,6 +67,8 @@ CassieVisionSimDiagram::CassieVisionSimDiagram(
           drake::geometry::RenderEngineVtkParams()));
 
   plant_ = builder.AddSystem(std::move(plant));
+  plant_->set_discrete_contact_solver(
+      drake::multibody::DiscreteContactSolver::kSap);
   AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true, true);
 
   cam_transform_ = drake::math::RigidTransformd(

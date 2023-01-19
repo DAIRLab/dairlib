@@ -131,7 +131,7 @@ class StepnetDataGenerator(DrakeCassieGym):
                 osqp_settings_filename=OSQP_SETTINGS
             )
 
-        self.simulate_until = self.ss_time + 0.01
+        self.simulate_until = self.ss_time
 
     def make(self, controller, urdf=SIM_URDF):
         super().make(controller, urdf=urdf)
@@ -139,14 +139,11 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.cassie_sim.get_camera_out_output_port()
         self.depth_camera_pose_output_port = \
             self.cassie_sim.get_camera_pose_output_port()
-        self.fsm_output_port = \
-            self.controller.get_fsm_output_port()
         self.foot_target_input_port = \
             self.controller.get_footstep_target_input_port()
-        self.alip_target_port = \
-            self.controller.get_alip_target_footstep_port()
-        self.com_z_port = \
-            self.controller.get_com_z_input_port()
+        self.fsm_output_port = self.controller.get_fsm_output_port()
+        self.alip_target_port = self.controller.get_alip_target_footstep_port()
+        self.com_z_port = self.controller.get_com_z_input_port()
 
         # Multibody objects for Cassie's feet
         self.foot_frames = {
@@ -201,7 +198,7 @@ class StepnetDataGenerator(DrakeCassieGym):
         Reflects and remaps the robot state about the pelvis centerline
         assuming we have already transformed the state to a local frame
     '''
-    def reflect_state_about_centerline(self, x):
+    def reflect_state(self, x):
         xnew = np.zeros((self.nq + self.nv,))
         self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
         R_WB = self.pelvis_pose(self.calc_context).rotation().matrix()
@@ -239,13 +236,13 @@ class StepnetDataGenerator(DrakeCassieGym):
             self.contact_pt_in_ft_frame,
             self.sim_plant.world_frame()).ravel()
 
-    def make_world_to_robot_yaw_rotation(self, context):
+    def R_BW(self, context):
         pose = self.pelvis_pose(context)
         b_x = pose.rotation().col(0).ravel()
         yaw = np.arctan2(b_x[1], b_x[0])
         return RotationMatrix.MakeZRotation(yaw).inverse()
 
-    def make_robot_yaw_to_world_rotation(self, context):
+    def R_WB(self, context):
         pose = self.pelvis_pose(context)
         b_x = pose.rotation().col(0).ravel()
         yaw = np.arctan2(b_x[1], b_x[0])
@@ -262,29 +259,20 @@ class StepnetDataGenerator(DrakeCassieGym):
         stance = self.fsm_state_stances[int(fsm)]
 
         # Align the robot state with the robot yaw
-        R = self.make_world_to_robot_yaw_rotation(self.calc_context)
-        Rmat = R.matrix()
-        xc[CASSIE_QUATERNION_SLICE] = \
-            (R @ self.pelvis_pose(self.calc_context).rotation()).ToQuaternion().wxyz()
+        R_BW = self.R_BW(self.calc_context)
+        Rmat = R_BW.matrix()
+        xc[CASSIE_QUATERNION_SLICE] = (
+            R_BW @ self.pelvis_pose(self.calc_context).rotation()
+        ).ToQuaternion().wxyz()
         xc[CASSIE_FB_VELOCITY_SLICE] = Rmat @ xc[CASSIE_FB_VELOCITY_SLICE]
         xc[CASSIE_OMEGA_SLICE] = Rmat @ xc[CASSIE_OMEGA_SLICE]
         xc[CASSIE_FB_POSITION_SLICE] = Rmat @ (
             xc[CASSIE_FB_POSITION_SLICE] -
             self.calc_foot_position_in_world(self.calc_context, stance)
         )
-
         # Always remap the state to look like it's left stance
-        if stance == 'right':
-            xc = self.reflect_state_about_centerline(xc)
+        xc = self.reflect_state(xc) if stance == 'right' else xc
         return xc
-
-    def move_robot_to_origin(self, x):
-        self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
-        x[CASSIE_FB_POSITION_SLICE] = (
-            x[CASSIE_FB_POSITION_SLICE] -
-            self.calc_foot_position_in_world(self.calc_context, 'left')
-        )
-        return x
 
     def get_current_depth_image(self):
         return np.copy(
@@ -296,30 +284,22 @@ class StepnetDataGenerator(DrakeCassieGym):
             ).data
         )
 
-    def get_noisy_height_from_current_depth_image(self, var_z, target_w):
-        image = self.depth_image_output_port.Eval(
-            self.diagram.GetMutableSubsystemContext(
-                self.cassie_sim,
-                self.drake_simulator.get_mutable_context()
-            )
-        ).data
+    def get_height_from_depth_image(self, image, target_w):
         # Get the depth camera pose in the world frame
-        X_WC = self.depth_camera_pose_output_port.Eval(
+        X_CW = self.depth_camera_pose_output_port.Eval(
             self.diagram.GetMutableSubsystemContext(
                 self.cassie_sim,
                 self.drake_simulator.get_mutable_context()
             )
-        )
+        ).inverse()
 
-        X_CW = X_WC.inverse()
         K = self.depth_camera_info.intrinsic_matrix()
-        pt_w1 = np.array([target_w[0], target_w[1], -0.5])
-        pt_w2 = np.array([target_w[0], target_w[1], 1.0])
-        pt_c1 = X_CW.multiply(pt_w1)
-        pt_c2 = X_CW.multiply(pt_w2)
+        pt_c1 = X_CW.multiply(np.array([target_w[0], target_w[1], -0.5]))
+        pt_c2 = X_CW.multiply(np.array([target_w[0], target_w[1], 1.0]))
 
         found_point = False
-        theta = 0.01
+        theta = 0.0
+        pt_c = np.zeros((3,))
         while not found_point and theta <= 1:
             # search along upward-pointing ray until pixel z matches cam frame z
             pt_c = pt_c1 + theta * (pt_c2 - pt_c1)
@@ -333,11 +313,23 @@ class StepnetDataGenerator(DrakeCassieGym):
             if np.abs(im_z - pt_c[2]) < 5e-3:
                 found_point = True
             theta += 0.005
-        if not found_point:
+
+        return X_CW.inverse().multiply(pt_c)[2] if found_point else None
+
+    def get_noisy_height_from_current_depth_image(self, var_z, target_w):
+        image = self.depth_image_output_port.Eval(
+            self.diagram.GetMutableSubsystemContext(
+                self.cassie_sim,
+                self.drake_simulator.get_mutable_context()
+            )
+        ).data
+
+        z = self.get_height_from_depth_image(image, target_w)
+
+        if z is None:
             return np.copy(image), np.random.normal(scale=var_z)
         else:
-            pt_b = X_WC.multiply(pt_c)
-            return np.copy(image), pt_b[2] + np.random.normal(scale=var_z)
+            return np.copy(image), z + np.random.normal(scale=var_z)
 
     def step(self, footstep_target: np.ndarray, radio: np.ndarray):
         return super().step(
@@ -358,67 +350,45 @@ class StepnetDataGenerator(DrakeCassieGym):
 
     def draw_random_initial_condition(self):
         if self.initial_condition_bank is None:
-            self.initial_condition_bank = \
-                np.load(INITIAL_CONDITIONS_FILE)
-        return self.move_robot_to_origin(
-            self.initial_condition_bank[
-                np.random.choice(
-                    self.initial_condition_bank.shape[0],
-                    size=1,
-                    replace=False
-                )
-            ].ravel()
+            self.initial_condition_bank = np.load(INITIAL_CONDITIONS_FILE)
+        x = self.initial_condition_bank[np.random.choice(
+                self.initial_condition_bank.shape[0],
+                size=1,
+                replace=False
+            )].ravel()
+        self.sim_plant.SetPositionsAndVelocities(self.calc_context, x)
+        x[CASSIE_FB_POSITION_SLICE] -= self.calc_foot_position_in_world(
+            self.calc_context, 'left'
         )
+        return x
 
     def get_alip_footstep_target(self, radio):
         self.cassie_sim.get_radio_input_port().FixValue(
             context=self.cassie_sim_context,
             value=radio
         )
-        # Get the current ALIP footstep target in the body yaw frame
-        com_w = self.sim_plant.CalcCenterOfMassPositionInWorld(
-            self.plant_context)
+        return self.alip_target_port.Eval(self.controller_context) + \
+            ReExpressWorldVector3InBodyYawFrame(
+                self.plant,
+                self.plant_context,
+                "pelvis",
+                self.sim_plant.CalcCenterOfMassPositionInWorld(
+                    self.plant_context
+            ))
 
-        alip_target_b = self.alip_target_port.Eval(self.controller_context) + \
-                        ReExpressWorldVector3InBodyYawFrame(
-                            self.plant, self.plant_context, "pelvis", com_w)
-        return alip_target_b
-
-    def get_footstep_target_with_random_offset(self):
-        # Apply a random velocity command
-        radio = np.zeros((18,))
-        '''
-        radio[2:4] = np.random.uniform(
-            low=self.data_gen_params.radio_lb,
-            high=self.data_gen_params.radio_ub
-        )
-        if self.data_gen_params.randomize_yaw:
-            radio[9] = np.random.uniform(
-                low=-self.data_gen_params.target_yaw_noise_bound,
-                high=self.data_gen_params.target_yaw_noise_bound
-            )
-        '''
-        # TODO: Fix the above?
-        alip_target_b = np.random.uniform(
+    def get_random_footstep_target(self):
+        target_cylindrical = np.random.uniform(
             low=self.data_gen_params.target_lb,
             high=self.data_gen_params.target_ub
         )
+        target_b = np.array([
+            target_cylindrical[0] * np.cos(target_cylindrical[1]),
+            target_cylindrical[0] * np.sin(target_cylindrical[1]),
+            target_cylindrical[2]
+        ])
+        target_w = self.R_WB(self.plant_context).matrix() @ target_b
 
-        # Apply a random offset to the target XY position
-        target = alip_target_b
-        #     np.random.uniform(
-        #     low=-self.data_gen_params.target_xyz_noise_bound,
-        #     high=self.data_gen_params.target_xyz_noise_bound
-        # )
-        target_b = np.clip(
-            target,
-            self.data_gen_params.target_lb,
-            self.data_gen_params.target_ub
-        )
-        target_w = self.make_robot_yaw_to_world_rotation(
-            self.plant_context).matrix() @ target_b
-
-        return target_w, target_b, radio
+        return target_w, target_b
 
     def make_data_dict(self, depth, x, xyz, yaw, error):
         return {
@@ -429,39 +399,39 @@ class StepnetDataGenerator(DrakeCassieGym):
             'error': error
         }
 
-    def get_stepnet_data_point(self, seed=0):
+    def get_stepnet_data_point(self, seed=0, target_z_mode=None):
         np.random.seed(seed)
+        radio = np.zeros((18,))
 
-        # Reset the simulation to a random initial state
         x_pre = self.draw_random_initial_condition()
-        self.reset(x_pre)
         x = self.get_robot_centric_state(x_pre)
+        self.reset(x_pre)
 
-        target_w, target_b, radio = \
-            self.get_footstep_target_with_random_offset()
+        target_w, target_b, = self.get_random_footstep_target()
+        depth_image, target_z = self.get_noisy_height_from_current_depth_image(
+            self.data_gen_params.depth_var_z, target_w
+        )
 
-        depth_image, target_z = \
-            self.get_noisy_height_from_current_depth_image(
-                self.data_gen_params.depth_var_z, target_w
-            )
-        # target_w[-1] = target_z
+        if target_z_mode is not None:
+            if target_z_mode == 'flat':
+                target_w[-1] = target_z
+            elif target_z_mode == 'terrain':
+                target_w[-1] = target_z
 
         # Get the current swing leg
         swing = self.swing_states[
             int(self.fsm_output_port.Eval(self.controller_context))
         ]
+        init_foot_pos = self.calc_foot_position_in_world(
+            self.plant_context, swing
+        )
 
-        og_foot_position = \
-            self.calc_foot_position_in_world(self.plant_context, swing)
-
-        # Step the simulation forward until middle of next double stance
+        # Step the simulation forward until start of next double stance
         while self.current_time < self.ss_time + self.ds_time:
             self.step(footstep_target=target_w, radio=radio)
-            # Abort and return max error if something crazy happens
-
             if self.current_time > self.ss_time / 2 and np.linalg.norm(
-                self.calc_foot_position_in_world(
-                    self.plant_context, swing) - og_foot_position) < 4e-2:
+                self.calc_foot_position_in_world(self.plant_context, swing)
+                    - init_foot_pos) < 4e-2:
                 return self.get_stepnet_data_point(
                     np.random.randint(low=0, high=1e5)
                 )
@@ -469,67 +439,23 @@ class StepnetDataGenerator(DrakeCassieGym):
                 return self.make_data_dict(
                     depth_image, x, target_b, radio[9], MAX_ERROR)
 
-        new_target_b = self.get_alip_footstep_target(radio)
-        new_target_w = self.make_robot_yaw_to_world_rotation(
-            self.plant_context).matrix() @ new_target_b
-        _, new_target_w[2] = \
-            self.get_noisy_height_from_current_depth_image(0, new_target_w)
-        while self.current_time < self.simulate_until:
-            self.step(footstep_target=new_target_w, radio=radio)
-            if self.check_termination():
-                return self.make_data_dict(
-                    depth_image, x, target_b, radio[9], MAX_ERROR)
-
         # Calculate error
         swing_foot_final_pos = self.calc_foot_position_in_world(
-            self.plant_context, swing)
-
+            self.plant_context, swing
+        )
         error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target_w))
+
         return self.make_data_dict(
-            depth_image, x, target_b, radio[9], error)
+            depth_image,
+            x,
+            target_b,
+            radio[9], error
+        )
 
     def get_flat_ground_stepnet_datapoint(self, seed=0):
-        np.random.seed(seed)
-
-        # Reset the simulation to a random initial state
-        x_pre = self.draw_random_initial_condition()
-        self.reset(x_pre)
-        x = self.get_robot_centric_state(x_pre)
-
-        target_w, target_b, radio = \
-            self.get_footstep_target_with_random_offset()
-        target_w[-1] = 0
-        target_b[-1] = 0
-
-        # Get the current swing leg
-        swing = self.swing_states[
-            int(self.fsm_output_port.Eval(self.controller_context))
-        ]
-
-        # Step the simulation forward until about the
-        # middle of next double stance
-        while self.current_time < self.simulate_until:
-            self.step(footstep_target=target_w, radio=radio)
-            # Abort and return max error if something crazy happens
-            if self.check_termination():
-                return {
-                    'state': x,
-                    'target': {'xyz': target_b, 'yaw': radio[9]},
-                    'time': self.ss_time,
-                    'error': MAX_ERROR
-                }
-
-        # Calculate error
-        swing_foot_final_pos = self.calc_foot_position_in_world(
-            self.plant_context, swing)
-        error = min(MAX_ERROR, np.linalg.norm(swing_foot_final_pos - target_w))
-
-        return {
-            'state': x,
-            'target': {'xyz': target_b, 'yaw': radio[9]},
-            'time': self.ss_time,
-            'error': error
-        }
+        data = self.get_stepnet_data_point(seed=seed, target_z_mode='flat')
+        data.pop('depth')
+        return data
 
     @staticmethod
     def make_randomized_env(data_gen_params, rand_domain, visualize=False):

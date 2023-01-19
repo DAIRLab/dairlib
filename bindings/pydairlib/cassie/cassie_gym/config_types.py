@@ -133,9 +133,9 @@ class DataGeneratorParams(StepnetDataClass):
     randomize_time: bool = True
     randomize_yaw: bool = True
 
-    """ Bounds on footstep coordinates"""
-    target_lb: np.ndarray = default_array([-2.0, -2.0, 0.0])
-    target_ub: np.ndarray = default_array([2.0, 2.0, 0.3])
+    """ Bounds on footstep cylindrical coordinates"""
+    target_lb: np.ndarray = default_array([0, -np.pi, 0.0])
+    target_ub: np.ndarray = default_array([1.5, np.pi, 0.4])
 
     """ Bounds on radio commands """
     radio_lb: np.ndarray = default_array([-1.0, -1.0])

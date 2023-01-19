@@ -158,6 +158,9 @@ int QuaternionStartIndex(const drake::multibody::MultibodyPlant<T>& plant);
 template <typename T>
 bool HasQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 
+
+/// Given a vector expressed in the world frame, re-express that vector in
+/// a new frame, F, which has Fz // Wz, and Fx // proj_{Wx-y}(B_{x})
 template <typename T>
 Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(
     const drake::multibody::MultibodyPlant<T>& plant,
@@ -165,6 +168,8 @@ Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(
     const std::string& body_name,
     const Eigen::Vector3d& vec);
 
+
+/// Same as above except only considering the x and y components of 'vec'
 template <typename T>
 Eigen::Vector2d ReExpressWorldVector2InBodyYawFrame(
     const drake::multibody::MultibodyPlant<T>& plant,

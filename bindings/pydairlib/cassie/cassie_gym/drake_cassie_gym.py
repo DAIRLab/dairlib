@@ -102,15 +102,15 @@ class DrakeCassieGym:
         self.initialized = True
 
     def set_context_members(self, diagram_context):
-        self.cassie_sim_context = \
-            self.diagram.GetMutableSubsystemContext(
-                self.cassie_sim, diagram_context)
-        self.controller_context = \
-            self.diagram.GetMutableSubsystemContext(
-                self.controller, diagram_context)
-        self.plant_context = \
-            self.diagram.GetMutableSubsystemContext(
-                self.sim_plant, diagram_context)
+        self.cassie_sim_context = self.diagram.GetMutableSubsystemContext(
+            self.cassie_sim, diagram_context
+        )
+        self.controller_context = self.diagram.GetMutableSubsystemContext(
+            self.controller, diagram_context
+        )
+        self.plant_context = self.diagram.GetMutableSubsystemContext(
+            self.sim_plant, diagram_context
+        )
 
     def reset(self):
         new_context = self.diagram.CreateDefaultContext()

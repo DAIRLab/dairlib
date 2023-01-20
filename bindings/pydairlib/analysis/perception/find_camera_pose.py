@@ -364,7 +364,11 @@ def main():
         time_offset
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
-    print(X_PC)
+    X_CD = RigidTransform(RotationMatrix(), np.array([-0.059, 0, 0]))
+    X_PD = X_PC.multiply(X_CD)
+
+    print(f'Camera color optical frame:\n{X_PC}')
+    print(f'Camera depth optical frame:\n{X_PD}')
     print("Writing validation bag...")
     plot_z_over_time(poses)
     plt.show()

@@ -177,7 +177,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   // PD position control
   double des_yaw_vel = kp_yaw_ * heading_error + kd_yaw_ * (-yaw_vel);
-  des_yaw_vel = drake::math::saturate(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
+  des_yaw_vel = std::clamp(des_yaw_vel, -vel_max_yaw_, vel_max_yaw_);
 
   // Convex combination of 0 and desired yaw velocity
   double weight = 1 / (1 + exp(-params_of_no_turning_(0) *

@@ -467,9 +467,12 @@ int DoMain(int argc, char* argv[]) {
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
       3, drake::MatrixX<double>::Identity(3, 3));
   swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
-  PiecewisePolynomial<double> swing_ft_gain_multiplier_gain_multiplier =
-      PiecewisePolynomial<double>::FirstOrderHold(
-          swing_ft_gain_multiplier_breaks, swing_ft_gain_multiplier_samples);
+  auto swing_ft_gain_multiplier_gain_multiplier =
+      std::make_shared<PiecewisePolynomial<double>>(
+          PiecewisePolynomial<double>::FirstOrderHold(
+              swing_ft_gain_multiplier_breaks,
+              swing_ft_gain_multiplier_samples));
+
   std::vector<double> swing_ft_accel_gain_multiplier_breaks{
       0, left_support_duration / 2, left_support_duration * 3 / 4,
       left_support_duration};
@@ -477,10 +480,11 @@ int DoMain(int argc, char* argv[]) {
       4, drake::MatrixX<double>::Identity(3, 3));
   swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
   swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
-  PiecewisePolynomial<double> swing_ft_accel_gain_multiplier_gain_multiplier =
-      PiecewisePolynomial<double>::FirstOrderHold(
-          swing_ft_accel_gain_multiplier_breaks,
-          swing_ft_accel_gain_multiplier_samples);
+  auto swing_ft_accel_gain_multiplier_gain_multiplier =
+      std::make_shared<PiecewisePolynomial<double>>(
+          PiecewisePolynomial<double>::FirstOrderHold(
+              swing_ft_accel_gain_multiplier_breaks,
+              swing_ft_accel_gain_multiplier_samples));
 
   TransTaskSpaceTrackingData swing_foot_data(
       "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
@@ -496,7 +500,7 @@ int DoMain(int argc, char* argv[]) {
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, &swing_foot_data,
       &com_data);
-  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
   auto swing_ft_traj_global = std::make_unique<TransTaskSpaceTrackingData>(
@@ -510,15 +514,15 @@ int DoMain(int argc, char* argv[]) {
   }
 
   if (wrt_com_in_local_frame) {
-    swing_ft_traj_local->SetTimeVaryingGains(
+    swing_ft_traj_local->SetTimeVaryingPDGainMultiplier(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_local->SetFeedforwardAccelMultiplier(
+    swing_ft_traj_local->SetTimerVaryingFeedForwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(std::move(swing_ft_traj_local));
   } else {
-    swing_ft_traj_global->SetTimeVaryingGains(
+    swing_ft_traj_global->SetTimeVaryingPDGainMultiplier(
         swing_ft_gain_multiplier_gain_multiplier);
-    swing_ft_traj_global->SetFeedforwardAccelMultiplier(
+    swing_ft_traj_global->SetTimerVaryingFeedForwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(std::move(swing_ft_traj_global));
   }

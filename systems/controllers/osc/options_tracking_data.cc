@@ -84,24 +84,27 @@ void OptionsTrackingData::UpdateYddotDes(double t,
   for (auto idx : idx_zero_feedforward_accel_) {
     yddot_des_converted_(idx) = 0;
   }
-  if (ff_accel_multiplier_ != nullptr) {
-    yddot_des_converted_ = ff_accel_multiplier_->value(t_since_state_switch) *
-                           yddot_des_converted_;
+  if (ff_accel_multiplier_traj_ != nullptr) {
+    yddot_des_converted_ =
+        ff_accel_multiplier_traj_->value(t_since_state_switch) *
+            yddot_des_converted_;
   }
 }
 
 void OptionsTrackingData::UpdateYddotCmd(double t,
                                          double t_since_state_switch) {
   // 4. Update command output (desired output with pd control)
-  MatrixXd gain_multiplier;
-  if (gain_multiplier_ != nullptr) {
-    gain_multiplier = gain_multiplier_->value(t_since_state_switch);
-  } else {
-    gain_multiplier = MatrixXd::Identity(n_ydot_, n_ydot_);
-  }
+  MatrixXd p_gain_multiplier = (p_gain_multiplier_traj_ != nullptr) ?
+      p_gain_multiplier_traj_->value(t_since_state_switch) :
+      MatrixXd::Identity(n_ydot_, n_ydot_);
+
+  MatrixXd d_gain_multiplier = (d_gain_multiplier_traj_ != nullptr) ?
+      d_gain_multiplier_traj_->value(t_since_state_switch) :
+      MatrixXd::Identity(n_ydot_, n_ydot_);
 
   yddot_command_ = yddot_des_converted_ +
-                   gain_multiplier * (K_p_ * (error_y_) + K_d_ * (error_ydot_));
+                   p_gain_multiplier * K_p_ * error_y_ +
+                   d_gain_multiplier * K_d_ * error_ydot_;
 }
 
 void OptionsTrackingData::SetLowPassFilter(double tau,
@@ -131,19 +134,38 @@ void OptionsTrackingData::AddJointAndStateToIgnoreInJacobian(int joint_vel_idx,
   }
 }
 
-void OptionsTrackingData::SetTimeVaryingGains(
-    const drake::trajectories::Trajectory<double>& gain_multiplier) {
-  DRAKE_DEMAND(gain_multiplier.cols() == n_ydot_);
-  DRAKE_DEMAND(gain_multiplier.rows() == n_ydot_);
-  DRAKE_DEMAND(gain_multiplier.start_time() == 0);
-  gain_multiplier_ = &gain_multiplier;
+void OptionsTrackingData::SetTimeVaryingPDGainMultiplier(
+    std::shared_ptr<drake::trajectories::Trajectory<double>>
+    gain_multiplier_trajectory) {
+  SetTimeVaryingProportionalGainMultiplier(gain_multiplier_trajectory);
+  SetTimeVaryingDerivativeGainMultiplier(gain_multiplier_trajectory);
 }
-void OptionsTrackingData::SetFeedforwardAccelMultiplier(
-    const drake::trajectories::Trajectory<double>& ff_accel_multiplier) {
-  DRAKE_DEMAND(ff_accel_multiplier.cols() == n_ydot_);
-  DRAKE_DEMAND(ff_accel_multiplier.rows() == n_ydot_);
-  DRAKE_DEMAND(ff_accel_multiplier.start_time() == 0);
-  ff_accel_multiplier_ = &ff_accel_multiplier;
+
+void OptionsTrackingData::SetTimeVaryingProportionalGainMultiplier(
+    std::shared_ptr<drake::trajectories::Trajectory<double>>
+    gain_multiplier_trajectory) {
+  DRAKE_DEMAND(gain_multiplier_trajectory->cols() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier_trajectory->rows() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier_trajectory->start_time() == 0);
+  p_gain_multiplier_traj_ = gain_multiplier_trajectory;
+}
+
+void OptionsTrackingData::SetTimeVaryingDerivativeGainMultiplier(
+    std::shared_ptr<drake::trajectories::Trajectory<double>>
+    gain_multiplier_trajectory) {
+  DRAKE_DEMAND(gain_multiplier_trajectory->cols() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier_trajectory->rows() == n_ydot_);
+  DRAKE_DEMAND(gain_multiplier_trajectory->start_time() == 0);
+  d_gain_multiplier_traj_ = gain_multiplier_trajectory;
+}
+
+void OptionsTrackingData::SetTimerVaryingFeedForwardAccelMultiplier(
+    std::shared_ptr<drake::trajectories::Trajectory<double>>
+    ff_accel_multiplier_traj) {
+  DRAKE_DEMAND(ff_accel_multiplier_traj->cols() == n_ydot_);
+  DRAKE_DEMAND(ff_accel_multiplier_traj->rows() == n_ydot_);
+  DRAKE_DEMAND(ff_accel_multiplier_traj->start_time() == 0);
+  ff_accel_multiplier_traj_ = ff_accel_multiplier_traj;
 }
 
 }  // namespace dairlib::systems::controllers

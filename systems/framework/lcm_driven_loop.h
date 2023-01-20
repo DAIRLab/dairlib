@@ -32,12 +32,12 @@ namespace systems {
 /// `lcm_parser` with the incoming lcm message. This would cause a problem if
 /// the user has a `lcm_parser` with multiple InputPort's.
 
-/// Notice that diagram.Publish() is for dispatching the publish of
+/// Notice that diagram.ForcedPublish() is for dispatching the publish of
 /// TriggerType::kForced type. In LcmPublisherSystem, both periodic and
 /// per-step publishes are also forced publish.
 /// https://github.com/RobotLocomotion/drake/blob/03fe7e4/systems/lcm/lcm_publisher_system.h#L54-L56
 /// Therefore, in the case of periodic and per-step publishes, we should
-/// not run diagram.Publish() after AdvanceTo(). Otherwise, we double
+/// not run diagram.ForcedPublish() after AdvanceTo(). Otherwise, we double
 /// publish.
 /// With the above things being said, the parameter is_forced_publish_ should be
 /// set to true only when LcmPublisher is of TriggerType::kForced type and NOT
@@ -262,7 +262,7 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
+          diagram_ptr_->ForcedPublish(diagram_context);
         }
 
         // Clear messages in the current input channel
@@ -290,7 +290,7 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         if (is_forced_publish_) {
           // Force-publish via the diagram
-          diagram_ptr_->Publish(diagram_context);
+          diagram_ptr_->ForcedPublish(diagram_context);
         }
 
         // Clear messages in the switch channel

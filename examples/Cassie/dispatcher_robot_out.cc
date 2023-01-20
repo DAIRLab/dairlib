@@ -381,7 +381,7 @@ int do_main(int argc, char* argv[]) {
 
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
-      diagram.Publish(diagram_context);
+      diagram.ForcedPublish(diagram_context);
 
       prev_time = time;
     }
@@ -431,7 +431,7 @@ int do_main(int argc, char* argv[]) {
 
       simulator.AdvanceTo(time);
       // Force-publish via the diagram
-      diagram.Publish(diagram_context);
+      diagram.ForcedPublish(diagram_context);
     }
   }
   return 0;

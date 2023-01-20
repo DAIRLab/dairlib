@@ -894,7 +894,7 @@
         <parent link="pelvis" />
         <child link="yaw_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.05" upper="0.100" effort="90"/>
+        <limit lower="-0.05" upper="0.20" effort="90"/>
         <dynamics damping="1" />
     </joint>
 
@@ -903,7 +903,7 @@
         <parent link="pelvis" />
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.100" upper="0.05" effort="90"/>
+        <limit lower="-0.20" upper="0.05" effort="90"/>
         <dynamics damping="1" />
     </joint>
 

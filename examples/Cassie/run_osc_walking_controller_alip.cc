@@ -468,10 +468,12 @@ int DoMain(int argc, char* argv[]) {
       4, drake::MatrixX<double>::Identity(3, 3));
   swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
   swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
-  PiecewisePolynomial<double> swing_ft_accel_gain_multiplier_gain_multiplier =
-      PiecewisePolynomial<double>::FirstOrderHold(
-          swing_ft_accel_gain_multiplier_breaks,
-          swing_ft_accel_gain_multiplier_samples);
+  auto swing_ft_accel_gain_multiplier_gain_multiplier =
+      std::make_shared<PiecewisePolynomial<double>>(
+          PiecewisePolynomial<double>::FirstOrderHold(
+              swing_ft_accel_gain_multiplier_breaks,
+              swing_ft_accel_gain_multiplier_samples));
+
 
   auto swing_foot_data = std::make_unique<TransTaskSpaceTrackingData> (
       "swing_ft_data", osc_walking_gains.K_p_swing_foot, osc_walking_gains.K_d_swing_foot,
@@ -493,7 +495,8 @@ int DoMain(int argc, char* argv[]) {
       "swing_ft_traj", osc_walking_gains.K_p_swing_foot, osc_walking_gains.K_d_swing_foot,
       osc_walking_gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data.get(),
       com_data.get());
-  WorldYawViewFrame pelvis_view_frame(plant_w_spr.GetBodyByName("pelvis"));
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
+      plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
   auto swing_ft_traj_global = std::make_unique<TransTaskSpaceTrackingData> (
@@ -506,9 +509,9 @@ int DoMain(int argc, char* argv[]) {
     // swing_ft_traj.DisableFeedforwardAccel({2});
   }
 
-  swing_ft_traj_local->SetTimeVaryingGains(
+  swing_ft_traj_local->SetTimeVaryingPDGainMultiplier(
       swing_ft_gain_multiplier_gain_multiplier);
-  swing_ft_traj_local->SetFeedforwardAccelMultiplier(
+  swing_ft_traj_local->SetTimerVaryingFeedForwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
   osc->AddTrackingData(std::move(swing_ft_traj_local));
 
@@ -532,7 +535,6 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_heading_traj", osc_walking_gains.K_p_pelvis_heading, osc_walking_gains.K_d_pelvis_heading,
       osc_walking_gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
-//  pelvis_heading_traj->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_heading_traj),
                        osc_walking_gains.period_of_no_heading_control);
 

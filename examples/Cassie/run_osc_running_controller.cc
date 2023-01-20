@@ -217,19 +217,18 @@ int DoMain(int argc, char* argv[]) {
   // Contact information for OSC
   osc->SetContactFriction(osc_gains.mu);
 
-  const auto& pelvis = plant.GetBodyByName("pelvis");
-  multibody::WorldYawViewFrame view_frame(pelvis);
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, view_frame, Matrix3d::Identity(),
+      plant, left_toe.first, left_toe.second, *pelvis_view_frame, Matrix3d::Identity(),
       Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, view_frame,
+      plant, left_heel.first, left_heel.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, view_frame,
+      plant, right_toe.first, right_toe.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, view_frame,
+      plant, right_heel.first, right_heel.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
   osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
@@ -420,11 +419,11 @@ int DoMain(int argc, char* argv[]) {
           "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
           osc_gains.W_pelvis, plant, plant, pelvis_tracking_data.get(),
           stance_foot_tracking_data.get());
-  left_foot_rel_tracking_data->SetViewFrame(view_frame);
-  right_foot_rel_tracking_data->SetViewFrame(view_frame);
-  left_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
-  right_foot_yz_rel_tracking_data->SetViewFrame(view_frame);
-  pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
+  left_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
+  right_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
+  left_foot_yz_rel_tracking_data->SetViewFrame(pelvis_view_frame);
+  right_foot_yz_rel_tracking_data->SetViewFrame(pelvis_view_frame);
+  pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
 
   auto foot_traj_weight_trajectory =
       std::make_shared<PiecewisePolynomial<double>>(
@@ -441,8 +440,8 @@ int DoMain(int argc, char* argv[]) {
       foot_traj_weight_trajectory);
   right_foot_rel_tracking_data->SetTimeVaryingWeights(
       foot_traj_weight_trajectory);
-  left_foot_rel_tracking_data->SetTimeVaryingGains(foot_traj_gain_trajectory);
-  right_foot_rel_tracking_data->SetTimeVaryingGains(foot_traj_gain_trajectory);
+  left_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(foot_traj_gain_trajectory);
+  right_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(foot_traj_gain_trajectory);
 
   //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
   //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});

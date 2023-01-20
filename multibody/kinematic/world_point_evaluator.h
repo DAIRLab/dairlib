@@ -34,7 +34,7 @@ class WorldPointEvaluator : public KinematicEvaluator<T> {
                       std::vector<int> active_directions = {0, 1, 2});
 
   /// The same constructor as the above one except for the argument
-  /// `view_frame`.
+  /// `view_frame_`.
   /// `WorldPointEvaluator` computes position, Jacobian and JdotV in the world
   /// frame, and expresses them in `ViewFrame` (i.e. rotates the vectors and
   /// matrix).

@@ -46,6 +46,7 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using multibody::FixedJointEvaluator;
+using multibody::WorldYawViewFrame;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -234,8 +235,7 @@ int DoMain(int argc, char* argv[]) {
                                               gains.W_lambda_h_regularization);
   osc->SetJointLimitWeight(1.0);
 
-  const auto& pelvis = plant.GetBodyByName("pelvis");
-  multibody::WorldYawViewFrame view_frame(pelvis);
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", MatrixXd::Zero(3, 3), MatrixXd::Zero(3, 3),
       MatrixXd::Zero(3, 3), plant, plant);
@@ -253,7 +253,7 @@ int DoMain(int argc, char* argv[]) {
     pelvis_trans_rel_tracking_data->SetLowPassFilter(
         osc_gains.center_of_mass_filter_tau, {0, 1, 2});
   }
-  pelvis_trans_rel_tracking_data->SetViewFrame(view_frame);
+  pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);

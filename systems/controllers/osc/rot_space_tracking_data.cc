@@ -126,7 +126,7 @@ void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
     std::cerr << "RotTaskSpaceTrackingData does not support zero feedforward "
                  "acceleration";
   }
-  if (ff_accel_multiplier_ != nullptr) {
+  if (ff_accel_multiplier_traj_ != nullptr) {
     std::cerr << "RotTaskSpaceTrackingData does not support feedforward multipliers ";
   }
 }

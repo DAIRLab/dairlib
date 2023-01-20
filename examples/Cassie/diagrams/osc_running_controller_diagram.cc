@@ -82,18 +82,18 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       left_foot_points({left_heel, left_toe}),
       right_foot_points({right_heel, right_toe}),
       view_frame(
-          multibody::WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))),
+          std::make_shared<multibody::WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"))),
       left_toe_evaluator(multibody::WorldPointEvaluator(
-          plant, left_toe.first, left_toe.second, view_frame,
+          plant, left_toe.first, left_toe.second, *view_frame,
           Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
       left_heel_evaluator(multibody::WorldPointEvaluator(
-          plant, left_heel.first, left_heel.second, view_frame,
+          plant, left_heel.first, left_heel.second, *view_frame,
           Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
       right_toe_evaluator(multibody::WorldPointEvaluator(
-          plant, right_toe.first, right_toe.second, view_frame,
+          plant, right_toe.first, right_toe.second, *view_frame,
           Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
       right_heel_evaluator(multibody::WorldPointEvaluator(
-          plant, right_heel.first, right_heel.second, view_frame,
+          plant, right_heel.first, right_heel.second, *view_frame,
           Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
       left_loop(LeftLoopClosureEvaluator(plant)),
       right_loop(RightLoopClosureEvaluator(plant)),
@@ -378,8 +378,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       foot_traj_weight_trajectory);
   right_foot_rel_tracking_data->SetTimeVaryingWeights(
       foot_traj_weight_trajectory);
-  left_foot_rel_tracking_data->SetTimeVaryingGains(foot_traj_gain_trajectory);
-  right_foot_rel_tracking_data->SetTimeVaryingGains(foot_traj_gain_trajectory);
+  left_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(foot_traj_gain_trajectory);
+  right_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(foot_traj_gain_trajectory);
 
   left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
   right_foot_rel_tracking_data->SetImpactInvariantProjection(true);

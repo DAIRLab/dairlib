@@ -90,7 +90,7 @@ class OSCRunningControllerDiagram final
   std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
       right_foot_points;
-  multibody::WorldYawViewFrame<double> view_frame;
+  std::shared_ptr<multibody::WorldYawViewFrame<double>> view_frame;
   multibody::WorldPointEvaluator<double> left_toe_evaluator;
   multibody::WorldPointEvaluator<double> left_heel_evaluator;
   multibody::WorldPointEvaluator<double> right_toe_evaluator;

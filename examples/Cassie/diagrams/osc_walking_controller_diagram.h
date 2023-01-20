@@ -106,7 +106,7 @@ class OSCWalkingControllerDiagram final
   std::vector<
       std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
       right_foot_points;
-  multibody::WorldYawViewFrame<double> view_frame;
+  std::shared_ptr<multibody::WorldYawViewFrame<double>> view_frame_;
   multibody::WorldPointEvaluator<double> left_toe_evaluator;
   multibody::WorldPointEvaluator<double> left_heel_evaluator;
   multibody::WorldPointEvaluator<double> right_toe_evaluator;
@@ -130,12 +130,12 @@ class OSCWalkingControllerDiagram final
   std::vector<double> left_right_support_state_durations;
   std::vector<double> swing_ft_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples;
-  drake::trajectories::PiecewisePolynomial<double>
-      swing_ft_gain_multiplier_gain_multiplier;
+//  drake::trajectories::PiecewisePolynomial<double>
+//      swing_ft_gain_multiplier_gain_multiplier;
   std::vector<double> swing_ft_accel_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples;
-  drake::trajectories::PiecewisePolynomial<double>
-      swing_ft_accel_gain_multiplier_gain_multiplier;
+//  std::shared_ptr<drake::trajectories::Trajectory<double>>
+//      swing_ft_accel_gain_multiplier_gain_multiplier;
 
   multibody::KinematicEvaluatorSet<double> evaluators;
 
@@ -146,18 +146,18 @@ class OSCWalkingControllerDiagram final
 
   std::unique_ptr<TransTaskSpaceTrackingData> swing_foot_data;
   std::unique_ptr<ComTrackingData> com_data;
-  std::unique_ptr<RelativeTranslationTrackingData> swing_ft_traj_local;
-  std::unique_ptr<TransTaskSpaceTrackingData> swing_ft_traj_global;
+  std::unique_ptr<RelativeTranslationTrackingData> swing_ft_traj_local_;
+  std::unique_ptr<TransTaskSpaceTrackingData> swing_ft_traj_global_;
 
-  std::unique_ptr<TransTaskSpaceTrackingData> pelvis_traj;
+  std::unique_ptr<TransTaskSpaceTrackingData> pelvis_traj_;
 
-  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_balance_traj;
-  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_heading_traj;
+  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_balance_traj_;
+  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_heading_traj_;
 
-  std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_left;
-  std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_right;
+  std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_left_;
+  std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_right_;
 
-  std::unique_ptr<JointSpaceTrackingData> swing_hip_yaw_traj;
+  std::unique_ptr<JointSpaceTrackingData> swing_hip_yaw_traj_;
 
   const int state_input_port_index_ = 0;
   const int radio_input_port_index_ = 1;

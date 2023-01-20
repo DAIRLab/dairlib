@@ -79,7 +79,7 @@ def main():
     # reconstruct_trajectory(left_foot_traj)
     reconstruct_trajectory_left_ft(left_foot_traj)
 
-    # plot_trajectory(pelvis_traj, 'pelvis')
+    # plot_trajectory(pelvis_traj_, 'pelvis')
     # plot_trajectory(left_foot_traj - left_hip_traj, 'left_foot')
     # plot_trajectory(right_foot_traj, 'right_foot')
     plt.show()

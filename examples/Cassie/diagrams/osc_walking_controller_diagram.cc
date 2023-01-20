@@ -92,19 +92,19 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
       left_right_foot({left_toe_origin, right_toe_origin}),
       left_foot_points({left_heel, left_toe}),
       right_foot_points({right_heel, right_toe}),
-      view_frame(
-          multibody::WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))),
+      view_frame_(
+          std::make_shared<multibody::WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"))),
       left_toe_evaluator(multibody::WorldPointEvaluator(
-          plant, left_toe.first, left_toe.second, view_frame,
+          plant, left_toe.first, left_toe.second, *view_frame_,
           Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
       left_heel_evaluator(multibody::WorldPointEvaluator(
-          plant, left_heel.first, left_heel.second, view_frame,
+          plant, left_heel.first, left_heel.second, *view_frame_,
           Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
       right_toe_evaluator(multibody::WorldPointEvaluator(
-          plant, right_toe.first, right_toe.second, view_frame,
+          plant, right_toe.first, right_toe.second, *view_frame_,
           Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
       right_heel_evaluator(multibody::WorldPointEvaluator(
-          plant, right_heel.first, right_heel.second, view_frame,
+          plant, right_heel.first, right_heel.second, *view_frame_,
           Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
       left_loop(LeftLoopClosureEvaluator(plant)),
       right_loop(RightLoopClosureEvaluator(plant)),
@@ -197,10 +197,10 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
       4, drake::MatrixX<double>::Identity(3, 3));
   swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
   swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
-  swing_ft_accel_gain_multiplier_gain_multiplier =
-      PiecewisePolynomial<double>::FirstOrderHold(
+  auto swing_ft_accel_gain_multiplier_gain_multiplier =
+      std::make_shared<PiecewisePolynomial<double>>(PiecewisePolynomial<double>::FirstOrderHold(
           swing_ft_accel_gain_multiplier_breaks,
-          swing_ft_accel_gain_multiplier_samples);
+          swing_ft_accel_gain_multiplier_samples));
 
   /**** Initialize all the leaf systems ****/
 
@@ -336,70 +336,69 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
       plant);
   com_data->AddFiniteStateToTrack(left_stance_state);
   com_data->AddFiniteStateToTrack(right_stance_state);
-  swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData>(
+  swing_ft_traj_local_ = std::make_unique<RelativeTranslationTrackingData>(
       "swing_ft_traj", osc_walking_gains.K_p_swing_foot,
       osc_walking_gains.K_d_swing_foot, osc_walking_gains.W_swing_foot, plant,
       plant, swing_foot_data.get(), com_data.get());
-  //  WorldYawViewFrame pelvis_view_frame(plant.GetBodyByName("pelvis"));
-  swing_ft_traj_local->SetViewFrame(view_frame);
+  swing_ft_traj_local_->SetViewFrame(view_frame_);
 
-  swing_ft_traj_global = std::make_unique<TransTaskSpaceTrackingData>(
+  swing_ft_traj_global_ = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_traj", osc_walking_gains.K_p_swing_foot,
       osc_walking_gains.K_d_swing_foot, osc_walking_gains.W_swing_foot, plant,
       plant);
-  swing_ft_traj_global->AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global->AddStateAndPointToTrack(right_stance_state, "toe_left");
-  swing_ft_traj_local->SetTimeVaryingGains(
+  swing_ft_traj_global_->AddStateAndPointToTrack(left_stance_state, "toe_right");
+  swing_ft_traj_global_->AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_ft_traj_local_->SetTimeVaryingPDGainMultiplier(
       swing_ft_gain_multiplier_gain_multiplier);
-  swing_ft_traj_local->SetFeedforwardAccelMultiplier(
+  swing_ft_traj_local_->SetTimerVaryingFeedForwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(std::move(swing_ft_traj_local));
+  osc->AddTrackingData(std::move(swing_ft_traj_local_));
   bool use_pelvis_for_lipm_tracking = true;
 
-  pelvis_traj = std::make_unique<TransTaskSpaceTrackingData>(
+  pelvis_traj_ = std::make_unique<TransTaskSpaceTrackingData>(
       "lipm_traj", osc_walking_gains.K_p_com, osc_walking_gains.K_d_com,
       osc_walking_gains.W_com, plant, plant);
-  pelvis_traj->AddPointToTrack("pelvis");
-  osc->AddTrackingData(std::move(pelvis_traj));
+  pelvis_traj_->AddPointToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_traj_));
 
-  pelvis_balance_traj = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_balance_traj", osc_walking_gains.K_p_pelvis_balance,
+  pelvis_balance_traj_ = std::make_unique<RotTaskSpaceTrackingData>(
+      "pelvis_balance_traj_", osc_walking_gains.K_p_pelvis_balance,
       osc_walking_gains.K_d_pelvis_balance, osc_walking_gains.W_pelvis_balance,
       plant, plant);
-  pelvis_balance_traj->AddFrameToTrack("pelvis");
-  osc->AddTrackingData(std::move(pelvis_balance_traj));
+  pelvis_balance_traj_->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_balance_traj_));
   // Pelvis rotation tracking (yaw)
-  pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_heading_traj", osc_walking_gains.K_p_pelvis_heading,
+  pelvis_heading_traj_ = std::make_unique<RotTaskSpaceTrackingData>(
+      "pelvis_heading_traj_", osc_walking_gains.K_p_pelvis_heading,
       osc_walking_gains.K_d_pelvis_heading, osc_walking_gains.W_pelvis_heading,
       plant, plant);
-  pelvis_heading_traj->AddFrameToTrack("pelvis");
-  osc->AddTrackingData(std::move(pelvis_heading_traj),
+  pelvis_heading_traj_->AddFrameToTrack("pelvis");
+  osc->AddTrackingData(std::move(pelvis_heading_traj_),
                        osc_walking_gains.period_of_no_heading_control);
 
-  swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
+  swing_toe_traj_left_ = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", osc_walking_gains.K_p_swing_toe,
       osc_walking_gains.K_d_swing_toe, osc_walking_gains.W_swing_toe, plant,
       plant);
-  swing_toe_traj_right = std::make_unique<JointSpaceTrackingData>(
+  swing_toe_traj_right_ = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", osc_walking_gains.K_p_swing_toe,
       osc_walking_gains.K_d_swing_toe, osc_walking_gains.W_swing_toe, plant,
       plant);
-  swing_toe_traj_left->AddStateAndJointToTrack(right_stance_state, "toe_left",
-                                               "toe_leftdot");
-  swing_toe_traj_right->AddStateAndJointToTrack(left_stance_state, "toe_right",
-                                                "toe_rightdot");
-  osc->AddTrackingData(std::move(swing_toe_traj_left));
-  osc->AddTrackingData(std::move(swing_toe_traj_right));
+  swing_toe_traj_left_->AddStateAndJointToTrack(right_stance_state, "toe_left",
+                                                "toe_leftdot");
+  swing_toe_traj_right_->AddStateAndJointToTrack(left_stance_state, "toe_right",
+                                                 "toe_rightdot");
+  osc->AddTrackingData(std::move(swing_toe_traj_left_));
+  osc->AddTrackingData(std::move(swing_toe_traj_right_));
 
-  swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
-      "swing_hip_yaw_traj", osc_walking_gains.K_p_hip_yaw,
+  swing_hip_yaw_traj_ = std::make_unique<JointSpaceTrackingData>(
+      "swing_hip_yaw_traj_", osc_walking_gains.K_p_hip_yaw,
       osc_walking_gains.K_d_hip_yaw, osc_walking_gains.W_hip_yaw, plant, plant);
-  swing_hip_yaw_traj->AddStateAndJointToTrack(
+  swing_hip_yaw_traj_->AddStateAndJointToTrack(
       left_stance_state, "hip_yaw_right", "hip_yaw_rightdot");
-  swing_hip_yaw_traj->AddStateAndJointToTrack(
+  swing_hip_yaw_traj_->AddStateAndJointToTrack(
       right_stance_state, "hip_yaw_left", "hip_yaw_leftdot");
-  osc->AddConstTrackingData(std::move(swing_hip_yaw_traj), VectorXd::Zero(1));
+  osc->AddConstTrackingData(std::move(swing_hip_yaw_traj_), VectorXd::Zero(1));
 
   /**** OSC settings ****/
 
@@ -470,9 +469,9 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   builder.Connect(swing_ft_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_input_port_tracking_data("pelvis_heading_traj"));
+                  osc->get_input_port_tracking_data("pelvis_heading_traj_"));
   builder.Connect(head_traj_gen->get_output_port(0),
-                  osc->get_input_port_tracking_data("pelvis_balance_traj"));
+                  osc->get_input_port_tracking_data("pelvis_balance_traj_"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

@@ -253,7 +253,7 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
         this->EvalVectorInput(context, footstep_target_port_)->get_value();
 
     if (relative_to_com_) {
-      footstep_target(2) -= com_height_;
+      footstep_target(2) = -com_height_;
     }
 
     // Assign traj

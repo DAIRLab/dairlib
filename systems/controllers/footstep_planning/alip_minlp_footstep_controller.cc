@@ -296,7 +296,7 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
   const auto& pp = trajopt_.GetFootstepSolution();
   const auto& xx = trajopt_.GetStateSolution();
-  Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
+  Vector3d footstep_in_com_yaw_frame = pp.at(1);
   footstep_in_com_yaw_frame.head(2) =
       (pp.at(1) - pp.at(0)).head(2) - xx.front().tail<4>().head(2);
   p_B_FC->set_value(footstep_in_com_yaw_frame);

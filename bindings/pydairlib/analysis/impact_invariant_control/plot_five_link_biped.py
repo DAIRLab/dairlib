@@ -92,8 +92,8 @@ def main():
     n_samples = 1000
     window_length = 0.05
     tau = 0.0025
-    # selected_joint_idxs = slice(6,7)
-    selected_joint_idxs = slice(0, 7)
+    selected_joint_idxs = slice(6,7)
+    # selected_joint_idxs = slice(0, 7)
 
     # Map to 2d
     TXZ = np.array([[1, 0, 0], [0, 0, 1]])
@@ -137,11 +137,15 @@ def main():
     v_post = x_post[-nv:]
     t_impact = dircon_traj.GetStateBreaks(0)[-1]
 
-    J_y = np.zeros((4, 7))
-    J_y[0, 3] = 1
-    J_y[1, 4] = 1
-    J_y[2, 5] = 1
-    J_y[3, 6] = 1
+    # J_y = np.zeros((4, 7))
+    J_y = np.eye((7))
+    # J_y[0, 0] = 1
+    # J_y[0, 1] = 1
+    # J_y[0, 2] = 1
+    # J_y[0, 3] = 1
+    # J_y[1, 4] = 1
+    # J_y[2, 5] = 1
+    # J_y[3, 6] = 1
     ydot_pre = J_r @ v_pre
     ydot_post = J_r @ v_post
     # transform = J_r @ M_inv @ J_r.T @ np.linalg.pinv(J_r @ M_inv @ J_r.T)
@@ -203,10 +207,13 @@ def main():
     # t_plot = robot_output['t_x'][start_idx:end_idx]
 
     gen_vel_plot = plot_styler.PlotStyler()
-    gen_vel_plot.plot(t, vel, title='Generalized Velocities near Impact',
+    gen_vel_plot.plot(t, vel[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)')
-    gen_vel_plot.plot(t, vel_actual, title='Generalized Velocities near Impact',
+    gen_vel_plot.plot(t, vel_actual[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)')
+    gen_vel_plot.plot(t, vel[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
+                      xlabel='time (s)', ylabel='velocity (m/s)', grid=False)
+    gen_vel_plot.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
     ylim = gen_vel_plot.fig.gca().get_ylim()
     gen_vel_plot.save_fig('gen_vel_plot.png')
     # ps.save_fig('generalized_velocities_around_impact.png')
@@ -239,18 +246,27 @@ def main():
                     alpha=0.2)
     blended_vel_plot.save_fig('blended_vel_plot.png')
 
+
+
     gen_vel_error = plot_styler.PlotStyler()
     ax = gen_vel_error.fig.axes[0]
-    gen_vel_error.plot(t, vel - vel_actual[:, selected_joint_idxs],
-                                title='Generalized Velocity Error',
-                                xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
-    ax.fill_between(t_proj, ylim[0], ylim[1], color=gen_vel_error.grey,
-                    alpha=0.2)
+    gen_vel_error.plot(t, vel[:, selected_joint_idxs],
+                      xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.blue)
+    gen_vel_error.plot(t, vel_actual[:, selected_joint_idxs],
+                      xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.red)
+    gen_vel_error.plot(t, vel[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
+                      xlabel='Time', ylabel='Velocity', grid=False, color=gen_vel_error.grey)
+    gen_vel_error.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    # ax.spines['bottom'].set_visible(False)
+    # ax.spines['left'].set_visible(False)
+    ylim = gen_vel_error.fig.gca().get_ylim()
     gen_vel_error.save_fig('gen_vel_error.png')
 
     projected_vel_error = plot_styler.PlotStyler()
     ax = projected_vel_error.fig.axes[0]
-    projected_vel_error.plot(t, vel_proj - vel_proj_actual[:, selected_joint_idxs],
+    projected_vel_error.plot(t, vel_proj[:, selected_joint_idxs] - vel_proj_actual[:, selected_joint_idxs],
                                 title='Impact-Invariant Projection Error',
                                 xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=projected_vel_error.grey,
@@ -259,7 +275,7 @@ def main():
 
     corrected_vel_error = plot_styler.PlotStyler()
     ax = corrected_vel_error.fig.axes[0]
-    corrected_vel_error.plot(t, vel - vel_corrected[:, selected_joint_idxs],
+    corrected_vel_error.plot(t, vel[:, selected_joint_idxs] - vel_corrected[:, selected_joint_idxs],
                           title='Impact-Invariant Correction Error',
                           xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=corrected_vel_error.grey,

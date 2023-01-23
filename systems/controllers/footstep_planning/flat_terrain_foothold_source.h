@@ -1,7 +1,7 @@
 #pragma once
 
 #include "alip_utils.h"
-#include "geometry/convex_foothold.h"
+#include "geometry/convex_foothold_set.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
@@ -21,7 +21,7 @@ class FlatTerrainFootholdSource : public drake::systems::LeafSystem<double> {
 
  private:
   void CalcFoothold(const drake::systems::Context<double>& context,
-                      std::vector<geometry::ConvexFoothold>* footholds) const;
+                      geometry::ConvexFootholdSet* footholds) const;
 
   std::vector<controllers::alip_utils::PointOnFramed> left_right_foot_;
   const drake::multibody::MultibodyPlant<double>& plant_;

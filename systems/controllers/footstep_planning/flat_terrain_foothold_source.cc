@@ -26,14 +26,14 @@ FlatTerrainFootholdSource::FlatTerrainFootholdSource(
                                       plant_.num_actuators()));
 
   DeclareAbstractOutputPort("footholds",
-                            std::vector<geometry::ConvexFoothold>(1),
+                            geometry::ConvexFootholdSet(),
                             &FlatTerrainFootholdSource::CalcFoothold);
 
 }
 
 void FlatTerrainFootholdSource::CalcFoothold(
     const Context<double> &context,
-    std::vector<geometry::ConvexFoothold> *footholds) const {
+    geometry::ConvexFootholdSet *footholds) const {
 
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, 0));
@@ -59,8 +59,7 @@ void FlatTerrainFootholdSource::CalcFoothold(
   ConvexFoothold f;
   f.SetContactPlane(Vector3d::UnitZ(), left_pos);
   f.AddFace(-Vector3d::UnitZ(), left_pos -Vector3d::UnitZ());
-  footholds->clear();
-  footholds->push_back(f);
+  *footholds = geometry::ConvexFootholdSet({f});
 }
 
 

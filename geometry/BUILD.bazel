@@ -24,3 +24,13 @@ cc_library(
         "@eigen",
     ],
 )
+
+cc_library(
+    name = "convex_foothold_set",
+    srcs = ["convex_foothold_set.cc"],
+    hdrs = ["convex_foothold_set.h"],
+    deps = [
+        ":convex_foothold",
+        "@drake//:drake_shared_library"
+    ],
+)

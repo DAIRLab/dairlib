@@ -17,7 +17,7 @@ void ConvexFoothold::SetContactPlane(Eigen::Vector3d normal,
 // becomes A R_WF x_F <= b
 void ConvexFoothold::ReExpressInNewFrame(const Eigen::Matrix3d &R_WF) {
   A_ = A_ * R_WF;
-  A_eq_ * R_WF;
+  A_eq_ = A_eq_ * R_WF;
 }
 
 void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {

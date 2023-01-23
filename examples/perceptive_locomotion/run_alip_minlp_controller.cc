@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<ConvexFoothold> footholds;
   if ( !FLAGS_foothold_yaml.empty() ) {
     footholds =
-        multibody::LoadSteppingStonesFramYaml(FLAGS_foothold_yaml).footholds;
+        multibody::LoadSteppingStonesFromYaml(FLAGS_foothold_yaml).footholds;
   }
   auto foothold_source =
       std::make_unique<ConstantValueSource<double>>(
@@ -187,7 +187,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::CassieOutToRadio>();
 
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), 1.5, 0.8, -0.4);
+      plant_w_spr, context_w_spr.get(), 2.0, 0.4, -1.0, 0.1);
 
   auto footstep_sender = builder.AddSystem<FootstepSender>();
 

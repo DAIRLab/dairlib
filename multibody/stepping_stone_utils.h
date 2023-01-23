@@ -48,7 +48,7 @@ struct SquareSteppingStoneList {
       ConvexFoothold foothold;
       foothold.SetContactPlane(normal, center);
 
-      double e = 0.05; // Add a 5 cm margin of error to
+      double e = 0.075; // Add a 5 cm margin of error to
                        // stepping stone boundaries
       foothold.AddFace(
           R_WB.matrix() * Vector3d::UnitX(),
@@ -67,7 +67,7 @@ struct SquareSteppingStoneList {
   }
 };
 
-SquareSteppingStoneList LoadSteppingStonesFramYaml(const std::string& filename);
+SquareSteppingStoneList LoadSteppingStonesFromYaml(const std::string& filename);
 
 void AddSteppingStonesToSim(drake::multibody::MultibodyPlant<double>* plant,
                             drake::geometry::SceneGraph<double>* scene_graph,

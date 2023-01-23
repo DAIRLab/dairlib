@@ -342,7 +342,7 @@ void AlipMINLP::MakeInputBoundConstaints() {
 }
 
 void AlipMINLP::MakeWorkspaceConstraints() {
-  Vector2d bb(0.8, 0.45);
+  Vector2d bb(0.6, 0.35);
 
   MatrixXd I1 = MatrixXd::Zero(2, 4);
   MatrixXd I2 = MatrixXd::Zero(2, 4);
@@ -355,7 +355,7 @@ void AlipMINLP::MakeWorkspaceConstraints() {
     ee_.push_back(prog_->NewContinuousVariables(2 * nknots_));
     for (int k = 0; k < nknots_; k++) {
       const auto& ee = ee_.at(n-1).segment(2*k, 2);
-      prog_->AddQuadraticErrorCost(100 * MatrixXd::Identity(2,2), bb, ee);
+      prog_->AddQuadraticErrorCost(1000 * MatrixXd::Identity(2,2), bb, ee);
       prog_->AddLinearConstraint(
           I1,
           -numeric_limits<double>::infinity() * Vector2d::Ones(),
@@ -385,7 +385,7 @@ void AlipMINLP::MakeNoCrossoverConstraint() {
     Eigen::RowVector2d A = {stance, -stance};
     no_crossover_constraint_.push_back(
         prog_->AddLinearConstraint(
-            A, -numeric_limits<double>::infinity(), -0.02,
+            A, -numeric_limits<double>::infinity(), -0.05,
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)})
     );
     no_crossover_constraint_.back().evaluator()->set_description(

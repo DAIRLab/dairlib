@@ -112,7 +112,7 @@ Vector4d CalcBd(double com_z, double m, double t) {
             (CalcAd(com_z, m, t) - Matrix4d::Identity()) * Vector4d::UnitW();
 }
 
-std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
+std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params) {
 
   double s = gait_params.intial_stance_foot == Stance::kLeft ? -1 : 1;
@@ -136,14 +136,14 @@ std::pair<Vector4d, Vector2d> MakePeriodicAlipGait(
   Rx(1,1) = -1;
   Rx(2,2) = -1;
 
-  const Vector4d offset = 2 * gait_params.desired_velocity(1) *
-                              gait_params.height *
-                              gait_params.mass * Vector4d::UnitZ();
+  const Vector4d offset = - gait_params.desired_velocity(1) *
+                            gait_params.height *
+                            gait_params.mass * Vector4d::UnitZ();
 
   const Matrix4d A = Ar.leftCols<4>() * Ad - Rx;
-  const Vector4d b = -Ar.rightCols<2>() * p - offset;
+  const Vector4d b = -Ar.rightCols<2>() * p  + (- Ar.leftCols<4>() * Ad  + Matrix4d::Identity()) * offset;
   const Vector4d x0 = A.inverse() * (b);
-  return {x0, p};
+  return {x0 + offset, Rx * x0 + offset};
 }
 
 std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
@@ -151,7 +151,7 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
 
   vector<VectorXd> gait = vector<VectorXd>(
       nmodes, VectorXd::Zero(4 * knots_per_mode));
-  auto [x0, p] = MakePeriodicAlipGait(gait_params);
+  auto [x0, x1] = MakePeriodicAlipGait(gait_params);
 
   Matrix4d Rx = Matrix4d::Identity();
   Rx(1,1) = -1;
@@ -163,7 +163,7 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
   );
 
   for (int i = 0; i < nmodes; i++) {
-    gait.at(i).head<4>() = (i % 2) == 0 ? x0 : Rx * x0;
+    gait.at(i).head<4>() = (i % 2) == 0 ? x0 : x1;
     for (int k = 1; k < knots_per_mode; k++) {
       gait.at(i).segment(4 * k, 4) = Ad * gait.at(i).segment(4 * (k-1), 4);
     }

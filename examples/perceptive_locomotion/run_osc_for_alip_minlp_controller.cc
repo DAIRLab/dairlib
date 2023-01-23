@@ -183,8 +183,12 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-      gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral, 0.4);
+      plant_w_spr,
+      context_w_spr.get(),
+      gains.vel_scale_rot,
+      gains.vel_scale_trans_sagital,
+      gains.vel_scale_trans_lateral,
+      1.0);
 
 
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);

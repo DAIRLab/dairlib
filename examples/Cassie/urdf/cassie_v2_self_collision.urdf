@@ -669,60 +669,6 @@
         </collision>
 
         <!-- Toe spheres -->
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="-0.0335 0.1008 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="-0.02 0.0896 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="-0.0065 0.0784 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.007 0.0672 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.0205 0.056 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.034 0.0448 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.0475 0.0336 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.061 0.0224 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.0745 0.0112 0"/>
-        </collision>
         <visual>
             <geometry>
                 <sphere radius="0.001"/>
@@ -778,60 +724,6 @@
 
         <!-- <mesh filename="meshes/toe-r.obj" /> -->
         <!-- Toe spheres -->
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="-0.0335 0.1008 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="-0.02 0.0896 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="-0.0065 0.0784 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.007 0.0672 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.0205 0.056 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.034 0.0448 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.0475 0.0336 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.061 0.0224 0"/>
-        </collision>
-        <collision>
-            <geometry>
-                <sphere radius="0.0"/>
-            </geometry>
-            <origin xyz="0.0745 0.0112 0"/>
-        </collision>
         <visual>
             <geometry>
                 <sphere radius="0.001"/>
@@ -894,7 +786,7 @@
         <parent link="pelvis" />
         <child link="yaw_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.05" upper="0.100" effort="90"/>
+        <limit lower="-0.34" upper="0.34" effort="90"/>
         <dynamics damping="1" />
     </joint>
 
@@ -903,7 +795,7 @@
         <parent link="pelvis" />
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.100" upper="0.05" effort="90"/>
+        <limit lower="-0.34" upper="0.34" effort="90"/>
         <dynamics damping="1" />
     </joint>
 

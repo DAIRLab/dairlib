@@ -86,7 +86,7 @@ double XImpactTime(double t_start, double H, double m, double x, double Ly,
 double YImpactTime(double t_start, double H, double m, double y, double Lx,
                    double y_impact);
 
-std::pair<Eigen::Vector4d, Eigen::Vector2d> MakePeriodicAlipGait(
+std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params);
 
 std::vector<Eigen::VectorXd> MakePeriodicAlipGaitTrajectory(

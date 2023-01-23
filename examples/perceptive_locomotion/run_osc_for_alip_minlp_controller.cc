@@ -183,8 +183,12 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
             FLAGS_cassie_out_channel, &lcm_local));
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-      gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral, 0.4);
+      plant_w_spr,
+      context_w_spr.get(),
+      gains.vel_scale_rot,
+      gains.vel_scale_trans_sagital,
+      gains.vel_scale_trans_lateral,
+      1.0);
 
 
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
@@ -462,7 +466,7 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
-  swing_ft_traj_local->SetTimeVaryingPDGains(
+  swing_ft_traj_local->SetTimeVaryingPDGainMultiplier(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local->SetTimerVaryingFeedForwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);

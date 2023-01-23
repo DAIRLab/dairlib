@@ -27,12 +27,11 @@ cc_library(
     srcs = ["impact_aware_time_based_fsm.cc"],
     hdrs = ["impact_aware_time_based_fsm.h"],
     deps = [
-        "//systems/controllers:time_based_fsm",
         "//common",
+        "//systems/controllers:time_based_fsm",
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "five_link_biped_sim",
@@ -70,8 +69,8 @@ cc_binary(
     deps = [
         "//common",
         "//lcm:trajectory_saver",
-        "//systems/primitives",
         "//multibody:visualization_utils",
+        "//systems/primitives",
         "//systems/trajectory_optimization:dircon",
         "@drake//:drake_shared_library",
         "@gflags",

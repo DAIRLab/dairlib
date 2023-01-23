@@ -11,6 +11,7 @@ namespace dairlib::systems::controllers {
 using multibody::ReExpressWorldVector3InBodyYawFrame;
 using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
+using geometry::ConvexFootholdSet;
 using geometry::ConvexFoothold;
 using alip_utils::Stance;
 
@@ -107,7 +108,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       .get_index();
   vdes_input_port_ = DeclareVectorInputPort("vdes_x_y", 2).get_index();
   foothold_input_port_ = DeclareAbstractInputPort(
-      "footholds", drake::Value<std::vector<ConvexFoothold>>())
+      "footholds", drake::Value<ConvexFootholdSet>())
       .get_index();
 
   // output ports
@@ -143,8 +144,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  auto footholds = this->EvalAbstractInput(context, foothold_input_port_)->
-      get_value<std::vector<ConvexFoothold>>();
+  auto foothold_set = this->EvalAbstractInput(context, foothold_input_port_)->
+      get_value<ConvexFootholdSet>();
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
@@ -152,10 +153,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
 
   // re-express footholds in robot yaw frame from world frame
-  for (auto& foothold : footholds) {
-    foothold.ReExpressInNewFrame(
-        GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
-  }
+  foothold_set.ReExpressInNewFrame(
+      GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
 
   // initialize local variables
   int fsm_idx =
@@ -253,7 +252,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   // Update the trajopt_ problem data and solve
   //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
-  trajopt_.UpdateFootholds(footholds);
+  trajopt_.UpdateFootholds(
+      foothold_set.GetSubsetCloseToPoint(p_b, 2.0).footholds());
   trajopt_.UpdateNominalStanceTime(t_next_impact - t, single_stance_duration_);
 
   if (committed) {
@@ -296,7 +296,7 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
   const auto& pp = trajopt_.GetFootstepSolution();
   const auto& xx = trajopt_.GetStateSolution();
-  Vector3d footstep_in_com_yaw_frame = Vector3d::Zero();
+  Vector3d footstep_in_com_yaw_frame = pp.at(1);
   footstep_in_com_yaw_frame.head(2) =
       (pp.at(1) - pp.at(0)).head(2) - xx.front().tail<4>().head(2);
   p_B_FC->set_value(footstep_in_com_yaw_frame);

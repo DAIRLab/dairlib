@@ -11,8 +11,8 @@ cc_library(
         "operational_space_control.h",
     ],
     deps = [
-        ":osc_tracking_datas",
         ":osc_gains",
+        ":osc_tracking_datas",
         "//common:eigen_utils",
         "//common:find_resource",
         "//lcmtypes:lcmt_robot",
@@ -131,4 +131,3 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-

@@ -118,7 +118,7 @@ def mpc_processing_callback(data, mpc_channel, com_traj_channel):
     # com_trajs = []
     # for msg in data[com_traj_channel]:
     #     com_trajs.append(LcmTrajectory(msg))
-    return dbg #, com_trajs
+    return dbg#, com_trajs
 
 
 def main():
@@ -128,7 +128,10 @@ def main():
 
     filename = sys.argv[1]
     filenum = filename.split('/')[-1].split('-')[-1]
-    filename_mpc = filename.replace(f'lcmlog-{filenum}', f'lcmlog-mpc-{filenum}')
+    if sys.argv[2] == 'hardware':
+        filename_mpc = filename.replace(f'lcmlog-{filenum}', f'lcmlog-mpc-{filenum}')
+    else:
+        filename_mpc = filename
     log = lcm.EventLog(filename, "r")
     log_mpc = lcm.EventLog(filename_mpc, "r")
     plotter_main(plot_config.cassie_plot_config, log)

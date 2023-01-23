@@ -25,7 +25,7 @@ cc_library(
         ":alip_minlp",
         ":alip_utils",
         "//common:eigen_utils",
-        "//geometry:convex_foothold",
+        "//geometry:convex_foothold_set",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//systems/filters:s2s_kalman_filter",

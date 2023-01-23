@@ -342,13 +342,30 @@ void AlipMINLP::MakeInputBoundConstaints() {
 }
 
 void AlipMINLP::MakeWorkspaceConstraints() {
+  Vector2d bb(0.6, 0.35);
+
+  MatrixXd I1 = MatrixXd::Zero(2, 4);
+  MatrixXd I2 = MatrixXd::Zero(2, 4);
+  I1.leftCols(2) = MatrixXd::Identity(2, 2);
+  I1.rightCols(2) = -MatrixXd::Identity(2, 2);
+  I2.leftCols(2) = -MatrixXd::Identity(2, 2);
+  I2.rightCols(2) = -MatrixXd::Identity(2, 2);
+
   for (int n = 1; n < nmodes_; n++) {
+    ee_.push_back(prog_->NewContinuousVariables(2 * nknots_));
     for (int k = 0; k < nknots_; k++) {
+      const auto& ee = ee_.at(n-1).segment(2*k, 2);
+      prog_->AddQuadraticErrorCost(1000 * MatrixXd::Identity(2,2), bb, ee);
       prog_->AddLinearConstraint(
-          MatrixXd::Identity(2, 2),
-          Vector2d(-0.8, -0.75),
-          Vector2d(0.8, 0.75),
-          GetStateAtKnot(xx_.at(n), k).head<2>());
+          I1,
+          -numeric_limits<double>::infinity() * Vector2d::Ones(),
+          Vector2d::Zero(),
+          {GetStateAtKnot(xx_.at(n), k).head<2>(), ee});
+      prog_->AddLinearConstraint(
+          I2,
+          -numeric_limits<double>::infinity() * Vector2d::Ones(),
+          Vector2d::Zero(),
+          {GetStateAtKnot(xx_.at(n), k).head<2>(), ee});
     }
   }
 }
@@ -368,7 +385,7 @@ void AlipMINLP::MakeNoCrossoverConstraint() {
     Eigen::RowVector2d A = {stance, -stance};
     no_crossover_constraint_.push_back(
         prog_->AddLinearConstraint(
-            A, -numeric_limits<double>::infinity(), -0.04,
+            A, -numeric_limits<double>::infinity(), -0.05,
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)})
     );
     no_crossover_constraint_.back().evaluator()->set_description(
@@ -530,7 +547,8 @@ void AlipMINLP::UpdateTimingGradientStep() {
       VectorXd u = solution_.first.GetSolution(GetInputAtKnot(uu_.at(n), k));
       dLdt_n += (1.0 / (nknots_ - 1)) * nu.dot(A * Ad * x + Ad * B * u);
     }
-    double tnew = tt_(n) - 1e-7 * dLdt_n;
+    double dt = std::clamp(1e-4 * dLdt_n, -0.02, 0.02);
+    double tnew = tt_(n) - dt;
     tt_(n) =  std::isnan(tnew) ? tt_(n)  : std::clamp(tnew, tmin_.at(n), tmax_.at(n));
   }
 }

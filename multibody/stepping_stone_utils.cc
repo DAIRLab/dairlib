@@ -22,13 +22,13 @@ void AddSteppingStonesToSimFromYaml(MultibodyPlant<double>* plant,
   AddSteppingStonesToSim(
       plant,
       scene_graph,
-      LoadSteppingStonesFramYaml(filename),
+      LoadSteppingStonesFromYaml(filename),
       mu
   );
 }
 
 SquareSteppingStoneList
-LoadSteppingStonesFramYaml(const std::string& filename) {
+LoadSteppingStonesFromYaml(const std::string& filename) {
   return drake::yaml::LoadYamlFile<SquareSteppingStoneList>(filename);
 }
 

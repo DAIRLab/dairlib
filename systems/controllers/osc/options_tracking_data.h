@@ -22,9 +22,17 @@ class OptionsTrackingData : public OscTrackingData {
   // Additional feature -- multipliers for gains and feedforward acceleration
   // TOOD(yminchen): You can make ratio dictionary so that we have one ratio per
   //  finite state
-  void SetTimeVaryingPDGains(
+  void SetTimeVaryingPDGainMultiplier(
       std::shared_ptr<drake::trajectories::Trajectory<double>>
           gain_multiplier_trajectory);
+
+  void SetTimeVaryingProportionalGainMultiplier(
+      std::shared_ptr<drake::trajectories::Trajectory<double>>
+      gain_multiplier_trajectory);
+
+  void SetTimeVaryingDerivativeGainMultiplier(
+      std::shared_ptr<drake::trajectories::Trajectory<double>>
+      gain_multiplier_trajectory);
 
   void SetTimerVaryingFeedForwardAccelMultiplier(
       std::shared_ptr<drake::trajectories::Trajectory<double>>
@@ -49,7 +57,10 @@ class OptionsTrackingData : public OscTrackingData {
   std::shared_ptr<
       drake::trajectories::Trajectory<double>> ff_accel_multiplier_traj_;
   std::shared_ptr<
-      drake::trajectories::Trajectory<double>> pd_gain_multiplier_traj_;
+      drake::trajectories::Trajectory<double>> p_gain_multiplier_traj_;
+  std::shared_ptr<
+      drake::trajectories::Trajectory<double>> d_gain_multiplier_traj_;
+
   std::set<int> idx_zero_feedforward_accel_ = {};
   std::shared_ptr<multibody::ViewFrame<double>> view_frame_;
   Eigen::Matrix3d view_frame_rot_T_;

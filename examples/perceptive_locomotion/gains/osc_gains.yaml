@@ -3,8 +3,8 @@ cols: 3
 
 # High level command gains (with radio)
 vel_scale_rot: -1.5
-vel_scale_trans_sagital: 0.8
-vel_scale_trans_lateral: -0.4
+vel_scale_trans_sagital: 0.0
+vel_scale_trans_lateral: 0.0
 
 # Filter settings
 pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
@@ -64,9 +64,9 @@ CoMW:
       0,    0,     0,
       0,    0,    10]
 CoMKp:
-  [   10,   0,     0,
-      0,    0,     0,
-      0,    0,    50]
+  [   0,   0,     0,
+      0,    0,    0,
+      0,    0,   100]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
@@ -104,7 +104,7 @@ SwingFootW:
     0,    0,     2]
 SwingFootKp:
   [ 120,  0,     0,
-    0,   170,     0,
+    0,   170,    0,
     0,    0,   200]
 SwingFootKd:
   [0.5,    0,     0,

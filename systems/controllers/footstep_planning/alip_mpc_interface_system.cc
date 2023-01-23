@@ -253,7 +253,7 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
         this->EvalVectorInput(context, footstep_target_port_)->get_value();
 
     if (relative_to_com_) {
-      footstep_target(2) -= com_height_;
+      footstep_target(2) = -com_height_;
     }
 
     // Assign traj
@@ -299,8 +299,6 @@ void SwingFootInterfaceSystem::CopyComHeightOffset(
   const Vector3d& footstep_target =
       this->EvalVectorInput(context, footstep_target_port_)->get_value();
   double offset = footstep_target(2) - stance_foot_pos(2) + foot_height_offset_;
-  std::cout << "Target: " << footstep_target.transpose() << std::endl;
-  std::cout << "offset: " << offset << std::endl;
   com_height_offset->set_value(drake::Vector1d(offset));
 }
 

@@ -261,6 +261,7 @@ class AlipMINLP {
   vector<VectorXDecisionVariable> pp_{};
   vector<VectorXDecisionVariable> xx_{};
   vector<VectorXDecisionVariable> uu_{};
+  vector<VectorXDecisionVariable> ee_{};
 
   // store the mode timing as doubles and take gradient steps external to the QP
   Eigen::VectorXd tt_;

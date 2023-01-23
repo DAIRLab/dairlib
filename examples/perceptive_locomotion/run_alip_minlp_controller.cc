@@ -23,7 +23,7 @@
 #include "systems/system_utils.h"
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
 
-#include "geometry/convex_foothold.h"
+#include "geometry/convex_foothold_set.h"
 
 #ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_receiver.h"
@@ -44,6 +44,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using geometry::ConvexFoothold;
+using geometry::ConvexFootholdSet;
 
 using systems::controllers::AlipMINLPFootstepController;
 using systems::controllers::alip_utils::PointOnFramed;
@@ -128,7 +129,7 @@ int DoMain(int argc, char* argv[]) {
   }
   auto foothold_source =
       std::make_unique<ConstantValueSource<double>>(
-      drake::Value<std::vector<ConvexFoothold>>(footholds));
+      drake::Value<ConvexFootholdSet>(footholds));
 
   // Build the controller diagram
   DiagramBuilder<double> builder;

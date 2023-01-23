@@ -5,7 +5,7 @@
 
 #include "alip_utils.h"
 #include "alip_minlp.h"
-#include "geometry/convex_foothold.h"
+#include "geometry/convex_foothold_set.h"
 #include "systems/filters/s2s_kalman_filter.h"
 
 #include "drake/multibody/plant/multibody_plant.h"

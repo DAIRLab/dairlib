@@ -18,6 +18,8 @@ class ConvexFootholdSet {
   ConvexFootholdSet GetSubsetCloseToPoint(
       const Eigen::Vector3d &query_pt, double threshold) const;
 
+  const std::vector<ConvexFoothold>& footholds() { return set_; }
+
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   void append(const ConvexFoothold& f) { set_.push_back(f); }
   size_t size() { return set_.size(); }

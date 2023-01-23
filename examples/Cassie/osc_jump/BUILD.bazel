@@ -84,8 +84,8 @@ cc_library(
     name = "osc_jumping_gains",
     hdrs = ["osc_jumping_gains.h"],
     deps = [
-        "@drake//:drake_shared_library",
         "//systems/controllers/osc:osc_gains",
+        "@drake//:drake_shared_library",
     ],
 )
 

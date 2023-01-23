@@ -317,7 +317,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  swing_foot_data->SetTimeVaryingPDGains(
+  swing_foot_data->SetTimeVaryingPDGainMultiplier(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_foot_data->SetTimerVaryingFeedForwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);

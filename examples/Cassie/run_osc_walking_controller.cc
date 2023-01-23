@@ -514,13 +514,13 @@ int DoMain(int argc, char* argv[]) {
   }
 
   if (wrt_com_in_local_frame) {
-    swing_ft_traj_local->SetTimeVaryingPDGains(
+    swing_ft_traj_local->SetTimeVaryingPDGainMultiplier(
         swing_ft_gain_multiplier_gain_multiplier);
     swing_ft_traj_local->SetTimerVaryingFeedForwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);
     osc->AddTrackingData(std::move(swing_ft_traj_local));
   } else {
-    swing_ft_traj_global->SetTimeVaryingPDGains(
+    swing_ft_traj_global->SetTimeVaryingPDGainMultiplier(
         swing_ft_gain_multiplier_gain_multiplier);
     swing_ft_traj_global->SetTimerVaryingFeedForwardAccelMultiplier(
         swing_ft_accel_gain_multiplier_gain_multiplier);

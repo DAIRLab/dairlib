@@ -318,7 +318,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
-  swing_ft_traj_local->SetTimeVaryingPDGains(
+  swing_ft_traj_local->SetTimeVaryingPDGainMultiplier(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local->SetTimerVaryingFeedForwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);

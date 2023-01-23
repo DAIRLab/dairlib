@@ -16,20 +16,21 @@ load(
 
 py_library(
     name = "log_processor",
-    srcs=["log_processor.py"],
+    srcs = ["log_processor.py"],
     deps = [
         "//bindings/pydairlib/lcm",
-    ]
+    ],
 )
 
 py_library(
     name = "cassie_model",
     srcs = ["cassie_model.py"],
     deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/multibody",
-        "//bindings/pydairlib/cassie:cassie_utils_py"
-    ]
+    ],
 )
+
 py_binary(
     name = "residual_analysis",
     srcs = ["residual_analysis.py"],
@@ -38,6 +39,6 @@ py_binary(
     ],
     deps = [
         ":cassie_model",
-        ":log_processor"
-    ]
+        ":log_processor",
+    ],
 )

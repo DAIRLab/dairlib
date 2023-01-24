@@ -1,9 +1,9 @@
 t_commit: 0.32
 t_min: 0.31
-t_max: 0.45
+t_max: 0.5
 u_max: 0
 h_des: 0.83
-stance_width: 0.2
+stance_width: 0.3
 ss_time: 0.3
 ds_time: 0.1
 nmodes: 3

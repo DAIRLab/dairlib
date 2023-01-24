@@ -10,6 +10,7 @@ struct lcmt_mpc_debug
   double x0[4];
   double p0[3];
 
+  lcmt_foothold_set footholds;
   lcmt_mpc_solution desired;
   lcmt_mpc_solution guess;
   lcmt_mpc_solution solution;

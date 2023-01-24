@@ -374,6 +374,16 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
 
+  const auto& x = robot_output->GetState();
+  const auto R_WB_x = drake::math::RotationMatrixd(
+      Eigen::Quaterniond(x(0), x(1), x(2), x(3))).matrix().col(0);
+  const auto Ryaw =
+      drake::math::RotationMatrixd::MakeZRotation(atan2(R_WB_x(1), R_WB_x(0)));
+  auto foothold_set =
+      EvalAbstractInput(context, foothold_input_port_)->get_value<ConvexFootholdSet>();
+  foothold_set.ReExpressInNewFrame(Ryaw.matrix());
+  foothold_set.CopyToLcm(&mpc_debug->footholds);
+
   int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);
   double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
   int fsm = curr_fsm(static_cast<int>(fsmd));

@@ -2,7 +2,9 @@
 
 #include <utility>
 #include <vector>
+
 #include "convex_foothold.h"
+#include "dairlib/lcmt_foothold_set.hpp"
 
 namespace dairlib{
 namespace geometry{
@@ -22,12 +24,16 @@ class ConvexFootholdSet {
 
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   void append(const ConvexFoothold& f) { set_.push_back(f); }
-  size_t size() { return set_.size(); }
+  void CopyToLcm(lcmt_foothold_set* set) const;
+  size_t size() const { return set_.size(); }
 
 
  private:
   std::vector<ConvexFoothold> set_;
 };
+
+
+
 }
 }
 

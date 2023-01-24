@@ -18,6 +18,8 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
     data_to_process = {}
     print('Processing LCM log (this may take a while)...')
     lcm_log.seek(0)
+    while lcm_log.read_next_event().channel not in lcm_channels:
+        pass
     first_timestamp = lcm_log.read_next_event().timestamp
     start_timestamp = int(first_timestamp + start_time * 1e6)
     print('Start time: ' + str(start_time))
@@ -65,15 +67,3 @@ def print_log_summary(filename, log):
 def passthrough_callback(data, *args, **kwargs):
     return data
 
-
-# def main():
-#     import lcm
-#     import sys
-#
-#     logfile = sys.argv[1]
-#     log = lcm.EventLog(logfile, "r")
-#     print_log_summary(logfile, log)
-#
-#
-# if __name__ == "__main__":
-#     main()

@@ -618,7 +618,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
-  if (n_h_ > 0){
+  if (n_h_ > 0) {
     holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
   }
   // 3. Contact constraint
@@ -888,7 +888,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
       A.transpose() * A;
   VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + n_h_);
   VectorXd Ab = A.transpose() * ydot_err_vec;
-  if (n_h_ > 0){
+  if (n_h_ > 0) {
     MatrixXd J_h = kinematic_evaluators_->EvalFullJacobian(*context_wo_spr_);
     MatrixXd C = J_h * M_Jt_;
     VectorXd d = J_h * x_w_spr.tail(n_v_);
@@ -897,8 +897,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     A_constrained.block(0, active_constraint_dim, active_constraint_dim, n_h_) =
         C.transpose();
     b_constrained << Ab, d;
-  }
-  else{
+  } else {
     b_constrained << Ab;
   }
 

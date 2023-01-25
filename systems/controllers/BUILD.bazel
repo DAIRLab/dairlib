@@ -150,6 +150,14 @@ cc_library(
 )
 
 cc_library(
+    name = "minimum_snap_trajectory_generation",
+    hdrs = ["minimum_snap_trajectory_generation.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "alip_footstep_planner",
     srcs = ["alip_footstep_planner.cc"],
     hdrs = ["alip_footstep_planner.h"],

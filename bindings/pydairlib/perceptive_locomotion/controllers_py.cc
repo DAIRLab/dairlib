@@ -5,6 +5,7 @@
 
 #include "systems/controllers/footstep_planning/alip_minlp.h"
 #include "systems/controllers/footstep_planning/alip_utils.h"
+#include "systems/controllers/minimum_snap_trajectory_generation.h"
 
 namespace py = pybind11;
 
@@ -60,6 +61,10 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_solution", &AlipMINLP::get_solution, py_rvp::reference_internal)
       .def("nmodes", &AlipMINLP::nmodes)
       .def("nknots", &AlipMINLP::nknots);
+
+  m.def("MakeMinSnapTrajFromWaypoints",
+        &minsnap::MakeMinSnapTrajFromWaypoints, py::arg("waypoints"),
+        py::arg("breaks"));
 }
 
 

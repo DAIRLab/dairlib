@@ -2,13 +2,11 @@
 
 #include <cmath>
 #include <algorithm>
-#include <fstream>
 #include <string>
 #include <iostream>
 
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/control_utils.h"
-#include "systems/primitives/timestamped_subvector_pass_through.h"
+#include "systems/controllers/minimum_snap_trajectory_generation.h"
 
 #include "drake/math/saturate.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -167,46 +165,27 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
     double start_time, double end_time, const Vector3d &init_pos,
     const Vector3d &final_pos) const {
 
-  const std::vector<double> time_scaling_breaks = {
-      start_time,
-      0.5 * (start_time + end_time),
-      end_time
-  };
+  const Vector2d time_scaling_breaks(start_time, end_time);
+  auto time_scaling_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+      time_scaling_breaks, Vector2d(0, 1).transpose());
 
-  std::vector<MatrixXd> time_scaling_knots(
-      time_scaling_breaks.size(), drake::Vector1<double>::Zero());
+  std::vector<double> nominal_heights = {0, 1.0, 0};
 
-  for (int i = 0; i < time_scaling_breaks.size(); i++) {
-    time_scaling_knots.at(i)(0) =
-        static_cast<double>(i) / (time_scaling_breaks.size() - 1);
+  Eigen::Matrix3Xd control_points = MatrixXd::Zero(3, nominal_heights.size());
+
+  std::vector<double> path_breaks = std::vector<double>(nominal_heights.size(), 0);
+  for (int i = 0; i < nominal_heights.size(); i++) {
+    path_breaks.at(i) = static_cast<double>(i) /
+                     static_cast<double>(nominal_heights.size() - 1);
+    control_points.col(i) = init_pos + i * (final_pos - init_pos) /
+            (control_points.cols() - 1);
+    control_points.col(i)(2) = mid_foot_height_ * nominal_heights.at(i) +
+                               std::max(init_pos(2), final_pos(2));
   }
-
-  auto time_scaling_trajectory =
-      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          time_scaling_breaks, time_scaling_knots, Vector1d::Zero(),
-          Vector1d::Zero());
-
-  std::vector<double> nominal_heights = {0, 0.66, 1.0, 1.0, 0.75, 0};
-  auto basis = drake::math::BsplineBasis<double>(
-      nominal_heights.size(), nominal_heights.size());
-
-  std::vector<MatrixXd> control_points =
-      std::vector<MatrixXd>(nominal_heights.size(), Vector3d::Zero());
-
-  for (int i = 0; i < control_points.size(); i++) {
-    control_points.at(i).block(0, 0, 2, 1) =
-        init_pos.head<2>() + i *
-            (final_pos.head<2>() - init_pos.head<2>()) /
-            (control_points.size() - 1);
-    control_points.at(i)(2) =
-        mid_foot_height_ * nominal_heights.at(i) +
-            std::max(init_pos(2), final_pos(2));
-  }
-
-  control_points.front()(2) = init_pos(2);
-  control_points.back()(2) = final_pos(2) + desired_final_foot_height_;
-
-  auto swing_foot_path = BsplineTrajectory<double>(basis, control_points);
+  control_points.col(0)(2) = init_pos(2);
+  control_points.col(control_points.cols() - 1)(2) = final_pos(2) + desired_final_foot_height_;
+  auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(control_points,
+                                                               path_breaks);
   auto swing_foot_spline = PathParameterizedTrajectory<double>(
       swing_foot_path, time_scaling_trajectory);
 

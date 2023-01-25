@@ -79,6 +79,7 @@ cc_library(
         "//multibody:utils",
         "//systems/controllers:alip_traj_gen",
         "//systems/controllers:control_utils",
+        "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",

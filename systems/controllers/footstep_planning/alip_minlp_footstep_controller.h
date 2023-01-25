@@ -70,9 +70,6 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   const {
     return this->get_output_port(footstep_target_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_com_traj() const {
-    return this->get_output_port(com_traj_output_port_);
-  }
   const drake::systems::OutputPort<double>& get_output_port_mpc_debug() const {
     return this->get_output_port(mpc_debug_output_port_);
   }
@@ -92,9 +89,6 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
 
   void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
                               drake::systems::BasicVector<double>* p_W) const;
-
-  void CopyCoMTrajOutput(const drake::systems::Context<double>& context,
-                         lcmt_saved_traj* traj_msg) const;
 
   void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
                          lcmt_mpc_debug* mpc_debug) const;
@@ -128,7 +122,6 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex next_impact_time_output_port_;
   drake::systems::OutputPortIndex prev_impact_time_output_port_;
   drake::systems::OutputPortIndex footstep_target_output_port_;
-  drake::systems::OutputPortIndex com_traj_output_port_;
   drake::systems::OutputPortIndex mpc_debug_output_port_;
 
   // controller states

@@ -169,7 +169,7 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   auto time_scaling_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       time_scaling_breaks, Vector2d(0, 1).transpose());
 
-  std::vector<double> nominal_heights = {0, 1.0, 0};
+  std::vector<double> nominal_heights = {0, 1.0, 1.0, 0};
 
   Eigen::Matrix3Xd control_points = MatrixXd::Zero(3, nominal_heights.size());
 

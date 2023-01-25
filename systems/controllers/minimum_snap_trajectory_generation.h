@@ -37,9 +37,12 @@
 
 namespace dairlib::minsnap {
 
+#ifndef DBL_EPSILON
 #define DBL_EPSILON std::numeric_limits<double>::epsilon()
+#endif
+#ifndef FLT_EPSILON
 #define FLT_EPSILON std::numeric_limits<float>::epsilon()
-
+#endif
 namespace RootFinderParam
 {
 constexpr size_t highestOrder = 64;
@@ -2242,7 +2245,8 @@ class SnapOpt
 };
 
 drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
-    const Eigen::Matrix3Xd& waypoints, const std::vector<double>& breaks) {
+    const Eigen::Matrix3Xd& waypoints,
+    const std::vector<double>& breaks) {
   DRAKE_DEMAND(waypoints.cols() == breaks.size());
 
   int N = waypoints.cols();
@@ -2254,10 +2258,19 @@ drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
   init_state.col(0) = waypoints.col(0);
   final_state.col(0) = waypoints.rightCols<1>();
 
+
   Eigen::VectorXd durations = Eigen::VectorXd::Zero(N-1);
   for (int i = 0; i < N-1; i++) {
     durations(i) = breaks.at(i+1) - breaks.at(i);
   }
+
+  init_state.col(2) = 2 * (waypoints.col(1) - waypoints.col(0)) /
+                          (durations(0) * durations(0));
+  init_state.col(3) =  3 * init_state.col(2) / durations(0);
+  final_state.col(2) = -2 * (waypoints.col(N-1) - waypoints.col(N-2)) /
+                            (durations(N-2) * durations(N-2));
+  init_state.col(3) =  3 * final_state.col(2) / durations(0);
+
   opt.reset(init_state, final_state, N-1);
   opt.generate(waypoints.block(0, 1, 3, N-2), durations);
   opt.getTraj(traj);

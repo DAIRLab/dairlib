@@ -2262,10 +2262,14 @@ drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
   opt.generate(waypoints.block(0, 1, 3, N-2), durations);
   opt.getTraj(traj);
 
-  std::vector<drake::Polynomiald> polys;
+  std::vector<drake::MatrixX<drake::Polynomial<double>>> polys;
   for (auto& segment : traj) {
     Eigen::Matrix3Xd coeffs = segment.getCoeffMat().rowwise().reverse();
-    polys.push_back(drake::Polynomiald(coeffs));
+    auto polymat = drake::Vector<drake::Polynomial<double>, 3>();
+    for (int i = 0; i < 3; i++) {
+      polymat(i) = drake::Polynomiald(coeffs.row(i).transpose());
+    }
+    polys.push_back(polymat);
   }
   return {polys, breaks};
 }

@@ -299,6 +299,7 @@ PiecewisePolynomial<double>
 DirconTrajectory::ReconstructStateTrajectoryWithSprings(
     Eigen::MatrixXd& spr_to_wo_spr_map) const {
   PiecewisePolynomial<double> state_traj;
+  DRAKE_DEMAND(spr_to_wo_spr_map.cols() == x_[0]->datapoints.rows());
 
   for (int mode = 0; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
@@ -306,8 +307,8 @@ DirconTrajectory::ReconstructStateTrajectoryWithSprings(
       continue;
     }
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
-        x_[mode]->time_vector, spr_to_wo_spr_map * x_[mode]->datapoints,
-        spr_to_wo_spr_map * xdot_[mode]->datapoints));
+        x_[mode]->time_vector, spr_to_wo_spr_map * state_map_ * x_[mode]->datapoints,
+        spr_to_wo_spr_map * state_map_ * xdot_[mode]->datapoints));
   }
   return state_traj;
 }

@@ -124,9 +124,6 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   footstep_target_output_port_ = DeclareVectorOutputPort(
       "p_SW", 3, &AlipMINLPFootstepController::CopyNextFootstepOutput)
       .get_index();
-  com_traj_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_saved_traj", &AlipMINLPFootstepController::CopyCoMTrajOutput)
-      .get_index();
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
       "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm)
       .get_index();
@@ -300,70 +297,6 @@ void AlipMINLPFootstepController::CopyNextFootstepOutput(
   footstep_in_com_yaw_frame.head(2) =
       (pp.at(1) - pp.at(0)).head(2) - xx.front().tail<4>().head(2);
   p_B_FC->set_value(footstep_in_com_yaw_frame);
-}
-
-void AlipMINLPFootstepController::CopyCoMTrajOutput(
-    const Context<double> &context, lcmt_saved_traj *traj_msg) const {
-  DRAKE_ASSERT(traj_msg != nullptr);
-
-  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      this->EvalVectorInput(context, state_input_port_));
-  double t_prev_switch =
-      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  double t_next_switch =
-      context.get_discrete_state(next_impact_time_state_idx_).get_value()(0);
-  int fsm_idx = static_cast<int>(
-      context.get_discrete_state(fsm_state_idx_).get_value()(0));
-
-  double t0 = robot_output->get_timestamp();
-  const auto& xx = trajopt_.GetStateSolution();
-  const auto& pp = trajopt_.GetFootstepSolution();
-  const auto& tt = trajopt_.GetTimingSolution();
-
-  LcmTrajectory::Trajectory com_traj;
-
-  com_traj.traj_name = "com_traj";
-  com_traj.datatypes = vector<std::string>(3, "double");
-
-  int nk = gains_.knots_per_mode;
-  int nm = gains_.nmodes;
-  int N = (nk - 1) * nm + 1;
-  double s = 1.0 / (nk - 1);
-
-  MatrixXd com_knots = MatrixXd::Zero(3, N);
-  VectorXd t = VectorXd::Zero(N);
-
-  // Note for tracking the MPC output: this solution is in the body yaw frame
-  for (int n = 0; n < nm; n++) {
-    const Vector3d& pcurr = pp.at(n);
-    const Vector3d& pnext = pp.at(std::min(n+1, nm-1));
-    for (int k = 0; k < nk - 1; k++) {
-      int idx = n * (nk-1) + k;
-      double tk = t0 + (double_stance_duration_ * n) + tt(n) * k * s;
-      double lerp = (tk - t_prev_switch) / (t_next_switch - t_prev_switch);
-      t(idx) = tk;
-      com_knots.col(idx).head(2) = pcurr.head(2) + AlipMINLP::GetStateAtKnot(xx.at(n), k).head(2);
-      com_knots(2, idx) = gains_.hdes + lerp * pnext(2) + (1 - lerp) * pcurr(2);
-    }
-    t0 += tt(n);
-  }
-  t(N-1) = 2 * t(N-2) - t(N-3);
-  com_knots.topRightCorner(2, 1) = xx.back().tail<4>().head(2) + pp.back().head(2);
-  com_knots(2, N-1) = com_knots(2,N-2);
-
-  // If we've basically already finished this mode,
-  // let's move to the next so we don't get weird trajectory stuff
-    if (t(nk-2) - t(0) < .00001) {
-      com_knots = com_knots.rightCols(N - (nk - 1));
-      t = t.tail(com_knots.cols());
-      t(0) = robot_output->get_timestamp();
-    }
-
-  com_traj.datapoints = com_knots;
-  com_traj.time_vector = t;
-
-  LcmTrajectory lcm_traj({com_traj}, {"com_traj"}, "com_traj", "com_traj");
-  *traj_msg = lcm_traj.GenerateLcmObject();
 }
 
 void AlipMINLPFootstepController::CopyMpcDebugToLcm(

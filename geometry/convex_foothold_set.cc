@@ -1,9 +1,10 @@
 #include <limits>
 
 #include "convex_foothold_set.h"
+#include "common/eigen_utils.h"
+
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
-#include "include/_usr_include_eigen3/Eigen/Core"
 
 using Eigen::Matrix3d;
 using Eigen::VectorXd;
@@ -48,6 +49,29 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetCloseToPoint(
 void ConvexFootholdSet::ReExpressInNewFrame(const Matrix3d &R_WF) {
   for (auto& f: set_) {
     f.ReExpressInNewFrame(R_WF);
+  }
+}
+
+void ConvexFootholdSet::CopyToLcm(lcmt_foothold_set *set) const {
+  set->footholds.clear();
+  set->n = this->size();
+  for (const auto& foothold : set_) {
+    lcmt_convex_foothold foothold_lcm;
+    const auto& [Aeq, beq] = foothold.GetEqualityConstraintMatrices();
+    const auto& [A, b] = foothold.GetConstraintMatrices();
+    for (int i = 0; i < 3; i++) {
+      foothold_lcm.Aeq[i] = Aeq(i);
+    }
+    foothold_lcm.beq = beq(0);
+    foothold_lcm.nfaces = A.rows();
+    foothold_lcm.A.clear();
+    for (int i = 0; i < A.rows(); i++) {
+      foothold_lcm.A.push_back(
+          CopyVectorXdToStdVector(A.block(i, 0, 1, 3).transpose())
+      );
+    }
+    foothold_lcm.b = CopyVectorXdToStdVector(b);
+    set->footholds.push_back(foothold_lcm);
   }
 }
 

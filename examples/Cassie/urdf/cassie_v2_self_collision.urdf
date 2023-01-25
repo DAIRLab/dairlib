@@ -677,13 +677,13 @@
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0"/>
+                <sphere radius="0.01"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.01"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
@@ -732,13 +732,13 @@
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0"/>
+                <sphere radius="0.01"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.001"/>
+                <sphere radius="0.01"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
@@ -786,7 +786,7 @@
         <parent link="pelvis" />
         <child link="yaw_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.34" upper="0.34" effort="90"/>
+        <limit lower="-0.11" upper="0.2" effort="90"/>
         <dynamics damping="1" />
     </joint>
 
@@ -795,7 +795,7 @@
         <parent link="pelvis" />
         <child link="yaw_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.34" upper="0.34" effort="90"/>
+        <limit lower="-0.11" upper="0.2" effort="90"/>
         <dynamics damping="1" />
     </joint>
 
@@ -805,7 +805,7 @@
         <parent link="yaw_left" />
         <child link="hip_left" />
         <axis xyz="0 0 1" />
-        <limit lower="0.0" upper="0.2" effort="60"/>
+        <limit lower="-0.235" upper="0.235" effort="60"/>
         <dynamics damping="1" />
     </joint>
 
@@ -814,7 +814,7 @@
         <parent link="yaw_right" />
         <child link="hip_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-0.2" upper="0.0" effort="60"/>
+        <limit lower="-0.235" upper="0.235" effort="60"/>
         <dynamics damping="1" />
     </joint>
 

@@ -298,7 +298,8 @@ void SwingFootInterfaceSystem::CopyComHeightOffset(
   // Swing foot position at touchdown
   const Vector3d& footstep_target =
       this->EvalVectorInput(context, footstep_target_port_)->get_value();
-  double offset = footstep_target(2) - stance_foot_pos(2) + foot_height_offset_;
+  double offset = is_single_support(fsm_state) ?
+      footstep_target(2) - stance_foot_pos(2) + foot_height_offset_ : 0;
   com_height_offset->set_value(drake::Vector1d(offset));
 }
 

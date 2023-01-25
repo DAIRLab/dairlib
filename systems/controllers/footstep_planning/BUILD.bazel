@@ -64,7 +64,7 @@ cc_library(
     hdrs = ["flat_terrain_foothold_source.h"],
     deps = [
         ":alip_utils",
-        "//geometry:convex_foothold",
+        "//geometry:convex_foothold_set",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

@@ -9,6 +9,10 @@ from bindings.pydairlib.multibody import MakeNameToPositionsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
 
 
+OSC_DERIV_UNITS = {'pos' : 'Position (m)',
+                   'vel' : 'Velocity (m/s)',
+                   'accel' : '$Acceleration (m/s^2)$'}
+
 def make_name_to_mbp_maps(plant):
     return MakeNameToPositionsMap(plant), \
            MakeNameToVelocitiesMap(plant), \
@@ -463,7 +467,7 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
         {},
         {key: [key] for key in keys},
         {'xlabel': 'Time',
-         'ylabel': '',
+         'ylabel': OSC_DERIV_UNITS[deriv],
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
     return ps
 

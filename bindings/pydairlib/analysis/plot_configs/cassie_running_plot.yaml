@@ -7,7 +7,7 @@ use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
 start_time: 2.2
-duration: 2
+duration: 6
 
 # Plant properties
 use_springs: true

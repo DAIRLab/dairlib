@@ -20,49 +20,49 @@ one 3 dimensional data channel named 'pos'
 def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
               slices_to_plot, legend_entries, plot_labels,
               ps):
-    legend = []
-    for key in keys_to_plot:
-        if key not in slices_to_plot:
-            ps.plot(data_dictionary[time_key][time_slice],
-                    data_dictionary[key][time_slice])
-        else:
-            ps.plot(data_dictionary[time_key][time_slice],
-                    data_dictionary[key][time_slice, slices_to_plot[key]])
-        if key in legend_entries:
-            legend.extend(legend_entries[key])
+  legend = []
+  for key in keys_to_plot:
+    if key not in slices_to_plot:
+      ps.plot(data_dictionary[time_key][time_slice],
+              data_dictionary[key][time_slice], xlabel=plot_labels['xlabel'],
+              ylabel=plot_labels['ylabel'], title=plot_labels['title'])
+    else:
+      ps.plot(data_dictionary[time_key][time_slice],
+              data_dictionary[key][time_slice, slices_to_plot[key]],
+              xlabel=plot_labels['xlabel'], ylabel=plot_labels['ylabel'],
+              title=plot_labels['title'])
+    if key in legend_entries:
+      legend.extend(legend_entries[key])
 
-    ps.add_legend(legend)
-    plt.xlabel(plot_labels['xlabel'])
-    plt.ylabel(plot_labels['ylabel'])
-    plt.title(plot_labels['title'])
+  ps.add_legend(legend)
 
 
 def make_mixed_data_plot(data_dictionaries, time_keys, time_slices,
                          keys_to_plot, slices_to_plot,
                          legend_entries, plot_labels,
                          ps):
-    legend = []
-    for i, data_dictionary in enumerate(data_dictionaries):
-        time_key = time_keys[i]
-        time_slice = time_slices[i]
-        for key in keys_to_plot[i]:
-            if key not in slices_to_plot[i]:
-                ps.plot(data_dictionary[time_key][time_slice],
-                        data_dictionary[key][time_slice])
-            else:
-                ps.plot(data_dictionary[time_key][time_slice],
-                        data_dictionary[key][time_slice, slices_to_plot[key]])
-            legend.extend(legend_entries[key])
+  legend = []
+  for i, data_dictionary in enumerate(data_dictionaries):
+    time_key = time_keys[i]
+    time_slice = time_slices[i]
+    for key in keys_to_plot[i]:
+      if key not in slices_to_plot[i]:
+        ps.plot(data_dictionary[time_key][time_slice],
+                data_dictionary[key][time_slice])
+      else:
+        ps.plot(data_dictionary[time_key][time_slice],
+                data_dictionary[key][time_slice, slices_to_plot[key]])
+      legend.extend(legend_entries[key])
 
-    ps.add_legend(legend)
-    plt.xlabel(plot_labels['xlabel'])
-    plt.ylabel(plot_labels['ylabel'])
-    plt.title(plot_labels['title'])
+  ps.add_legend(legend)
+  plt.xlabel(plot_labels['xlabel'])
+  plt.ylabel(plot_labels['ylabel'])
+  plt.title(plot_labels['title'])
 
 
 def slice_to_string_list(slice_):
-    if isinstance(slice_, slice):
-        return [str(i) for i in range(slice_.start, slice_.stop,
-                                      slice_.step if slice_.step else 1)]
-    if isinstance(slice_, list):
-        return [str(i) for i in slice_]
+  if isinstance(slice_, slice):
+    return [str(i) for i in range(slice_.start, slice_.stop,
+                                  slice_.step if slice_.step else 1)]
+  if isinstance(slice_, list):
+    return [str(i) for i in slice_]

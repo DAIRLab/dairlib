@@ -54,6 +54,10 @@ class MultiposeVisualizer {
   /// ignored.
   void DrawPoses(Eigen::MatrixXd poses);
 
+  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat(){
+    return meshcat_;
+  }
+
  private:
   int num_poses_;
   drake::multibody::MultibodyPlant<double>* plant_;

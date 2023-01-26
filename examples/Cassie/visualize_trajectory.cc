@@ -45,12 +45,33 @@ int DoMain() {
   // Drake system initialization stuff
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
+  SceneGraph<double>& scene_graph_w_spr = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
-  MultibodyPlant<double> plant(1e-5);
+  MultibodyPlant<double> plant(1e-3);
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile(
-      FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf"));
+  const std::string& fixed_spring_urdf =
+      "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+  parser.AddModelFromFile(fixed_spring_urdf);
   plant.Finalize();
+
+  MultibodyPlant<double> plant_w_spr(1e-3);
+  const std::string& spring_urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf";
+  Parser parser_w_spr(&plant_w_spr, &scene_graph_w_spr);
+
+  parser_w_spr.AddModelFromFile(spring_urdf);
+  plant_w_spr.Finalize();
+  auto pos_spr_map =
+      multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr, plant);
+  auto vel_spr_map =
+      multibody::CreateWithSpringsToWithoutSpringsMapVel(plant_w_spr, plant);
+  pos_spr_map.transposeInPlace();
+  vel_spr_map.transposeInPlace();
+  MatrixXd state_spr_map =
+      MatrixXd::Zero(plant_w_spr.num_positions() + plant_w_spr.num_velocities(),
+                     plant.num_positions() + plant.num_velocities());
+  state_spr_map.block(0, 0, 23, 19) = pos_spr_map;
+  state_spr_map.block(23, 19, 22, 18) = vel_spr_map;
+  auto vis_urdf = FLAGS_use_springs ? spring_urdf : fixed_spring_urdf;
 
   int nq = plant.num_positions();
   int nv = plant.num_positions();
@@ -66,6 +87,10 @@ int DoMain() {
 
   PiecewisePolynomial<double> optimal_traj =
       saved_traj.ReconstructStateTrajectory();
+  if (FLAGS_use_springs) {
+    optimal_traj =
+        saved_traj.ReconstructStateTrajectoryWithSprings(state_spr_map);
+  }
   std::vector<double> time_vector = optimal_traj.get_segment_times();
 
   if (FLAGS_mirror_traj) {
@@ -109,27 +134,42 @@ int DoMain() {
       simulator.AdvanceTo(optimal_traj.end_time());
     } while (FLAGS_visualize_mode == 1);
   } else if (FLAGS_visualize_mode == 2) {
-    MatrixXd poses = MatrixXd::Zero(nq, FLAGS_num_poses);
+    MatrixXd poses = MatrixXd::Zero(23, FLAGS_num_poses);
     for (int i = 0; i < FLAGS_num_poses; ++i) {
       poses.col(i) = optimal_traj.value(
           time_vector[i * time_vector.size() / FLAGS_num_poses]);
+      //      poses(6, i) += 0.4;
     }
+    VectorXd alpha_scale = VectorXd::Ones(FLAGS_num_poses);
     if (FLAGS_use_transparency) {
-      VectorXd alpha_scale = VectorXd::LinSpaced(FLAGS_num_poses, 0.2, 1.0);
-      multibody::MultiposeVisualizer visualizer =
-          multibody::MultiposeVisualizer(
-              FindResourceOrThrow(
-                  "examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-              FLAGS_num_poses, alpha_scale.array().square());
-      visualizer.DrawPoses(poses);
-    } else {
-      multibody::MultiposeVisualizer visualizer =
-          multibody::MultiposeVisualizer(
-              FindResourceOrThrow(
-                  "examples/Cassie/urdf/cassie_fixed_springs.urdf"),
-              FLAGS_num_poses);
-      visualizer.DrawPoses(poses);
+      alpha_scale = VectorXd::LinSpaced(FLAGS_num_poses, 0.2, 1.0);
     }
+    multibody::MultiposeVisualizer visualizer = multibody::MultiposeVisualizer(
+        vis_urdf, FLAGS_num_poses, alpha_scale.array().square());
+    auto ortho_camera = drake::geometry::Meshcat::OrthographicCamera();
+    ortho_camera.top = 2;
+    ortho_camera.bottom = -0.1;
+    ortho_camera.left = -1;
+    ortho_camera.right = 4;
+    ortho_camera.near = 0;
+    ortho_camera.far = 500;
+    ortho_camera.zoom = 1;
+    auto perspective_camera = drake::geometry::Meshcat::PerspectiveCamera();
+    perspective_camera.fov = 75;
+    perspective_camera.aspect = 1;
+    perspective_camera.near = 1;
+    perspective_camera.far = 1000;
+    perspective_camera.zoom = 1;
+    auto translation = Vector3d();
+    translation << 0.45, 0, 0.25;
+    auto origin = drake::math::RigidTransform<double>(translation);
+    auto box = drake::geometry::Box(0.5, 1.0, 0.5);
+    visualizer.GetMeshcat()->SetObject("box", box);
+    visualizer.GetMeshcat()->SetTransform("box", origin);
+//    visualizer.GetMeshcat()->SetCamera(perspective_camera);
+    visualizer.GetMeshcat()->SetCamera(ortho_camera);
+    visualizer.DrawPoses(poses);
+    while (true){}
   }
 
   return 0;

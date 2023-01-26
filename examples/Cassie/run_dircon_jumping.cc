@@ -271,7 +271,7 @@ void DoMain() {
   auto flight_mode = DirconMode<double>(flight_phase_constraints,
                                         flight_phase_knotpoints, 0.4, 0.4);
   auto land_mode = DirconMode<double>(double_stance_constraints,
-                                      stance_knotpoints, 1.2875, 1.2875);
+                                      stance_knotpoints, 0.5, 1.2875);
   //  auto crouch_mode = DirconMode<double>(double_stance_constraints,
   //                                        stance_knotpoints, 0.1, 2.0);
   //  auto flight_mode = DirconMode<double>(flight_phase_constraints,
@@ -474,19 +474,19 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   double midpoint = 0.045;
 
   // bounding box constraints on all decision variables
-  for (int i = 0; i < mode_lengths.size(); ++i) {
-    for (int j = 0; j < mode_lengths[i]; ++i) {
-      //      auto state_vars_ij = trajopt->state_vars(i, j);
-      //      auto input_vars_ij = trajopt->input_vars(i, j);
-      auto force_vars_ij = trajopt->force_vars(i, j);
-      prog->AddBoundingBoxConstraint(
-          VectorXd::Constant(force_vars_ij.rows(), -200),
-          VectorXd::Constant(force_vars_ij.rows(), 200), force_vars_ij);
-      prog->AddBoundingBoxConstraint(
-          VectorXd::Constant(force_vars_ij.rows(), -200),
-          VectorXd::Constant(force_vars_ij.rows(), 200), force_vars_ij);
-    }
-  }
+//  for (int i = 0; i < mode_lengths.size(); ++i) {
+//    for (int j = 0; j < mode_lengths[i]; ++i) {
+//      //      auto state_vars_ij = trajopt->state_vars(i, j);
+//      //      auto input_vars_ij = trajopt->input_vars(i, j);
+//      auto force_vars_ij = trajopt->force_vars(i, j);
+//      prog->AddBoundingBoxConstraint(
+//          VectorXd::Constant(force_vars_ij.rows(), -200),
+//          VectorXd::Constant(force_vars_ij.rows(), 200), force_vars_ij);
+//      prog->AddBoundingBoxConstraint(
+//          VectorXd::Constant(force_vars_ij.rows(), -200),
+//          VectorXd::Constant(force_vars_ij.rows(), 200), force_vars_ij);
+//    }
+//  }
 
   // position constraints
   prog->AddBoundingBoxConstraint(0 - midpoint, 0 - midpoint,
@@ -533,16 +533,16 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   // Jumping height constraints
   prog->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
                                  x_0(pos_map.at("base_z")));
-  //  if (FLAGS_height < 0) {
-  //    prog->AddBoundingBoxConstraint(FLAGS_height + rest_height + eps,
-  //                                   0.5 * FLAGS_height + rest_height - eps,
-  //                                   x_top(pos_map.at("base_z")));
-  //
-  //  } else {
-  //    prog->AddBoundingBoxConstraint(0.5 * FLAGS_height + rest_height - eps,
-  //                                   FLAGS_height + rest_height + eps,
-  //                                   x_top(pos_map.at("base_z")));
-  //  }
+  if (FLAGS_height < 0) {
+    prog->AddBoundingBoxConstraint(FLAGS_height + rest_height + eps,
+                                   0.5 * FLAGS_height + rest_height - eps,
+                                   x_top(pos_map.at("base_z")));
+
+  } else {
+    prog->AddBoundingBoxConstraint(0.5 * FLAGS_height + rest_height - eps,
+                                   FLAGS_height + rest_height + eps,
+                                   x_top(pos_map.at("base_z")));
+  }
   prog->AddBoundingBoxConstraint(0.8 * FLAGS_height + rest_height - eps,
                                  0.8 * FLAGS_height + rest_height + eps,
                                  x_f(pos_map.at("base_z")));
@@ -681,7 +681,7 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
       auto x_i = trajopt->state((mode_lengths[mode] - 1) * mode + index);
       prog->AddConstraint(left_foot_y_constraint, x_i.head(n_q));
       prog->AddConstraint(right_foot_y_constraint, x_i.head(n_q));
-      if(FLAGS_height >= 0){
+      if (FLAGS_height >= 0) {
         prog->AddConstraint(left_foot_z_ground_constraint, x_i.head(n_q));
         prog->AddConstraint(right_foot_z_ground_constraint, x_i.head(n_q));
       }
@@ -733,18 +733,20 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   // Foot ground clearance constraint
 
   // Foot clearance constraint
-  //  auto left_foot_z_box_constraint =
-  //      std::make_shared<PointPositionConstraint<double>>(
-  //          plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-  //          (0.1 + FLAGS_height - eps) * VectorXd::Ones(1),
-  //          (0.3 + FLAGS_height + eps) * VectorXd::Ones(1));
-  //  auto right_foot_z_box_constraint =
-  //      std::make_shared<PointPositionConstraint<double>>(
-  //          plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
-  //          (0.1 + FLAGS_height - eps) * VectorXd::Ones(1),
-  //          (0.3 + FLAGS_height + eps) * VectorXd::Ones(1));
-  //  prog->AddConstraint(left_foot_z_box_constraint, x_top.head(n_q));
-  //  prog->AddConstraint(right_foot_z_box_constraint, x_top.head(n_q));
+  if (fLD::FLAGS_height > 0.3) {
+    auto left_foot_z_box_constraint =
+        std::make_shared<PointPositionConstraint<double>>(
+            plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+            (0.1 + FLAGS_height - eps) * VectorXd::Ones(1),
+            (0.3 + FLAGS_height + eps) * VectorXd::Ones(1));
+    auto right_foot_z_box_constraint =
+        std::make_shared<PointPositionConstraint<double>>(
+            plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 0, 1),
+            (0.1 + FLAGS_height - eps) * VectorXd::Ones(1),
+            (0.3 + FLAGS_height + eps) * VectorXd::Ones(1));
+    prog->AddConstraint(left_foot_z_box_constraint, x_top.head(n_q));
+    prog->AddConstraint(right_foot_z_box_constraint, x_top.head(n_q));
+  }
 
   auto left_foot_rear_z_final_constraint =
       std::make_shared<PointPositionConstraint<double>>(
@@ -1059,10 +1061,11 @@ void SetInitialGuessFromDirconTrajectory(Dircon<double>& trajopt,
   auto gamma_traj = previous_traj.ReconstructGammaCTrajectory();
 
   trajopt.SetInitialTrajectory(input_traj, state_traj);
-  for (int mode = 0; mode < trajopt.num_modes(); ++mode) {
-    trajopt.SetInitialForceTrajectory(mode, lambda_traj[mode],
-                                      lambda_c_traj[mode], gamma_traj[mode]);
-  }
+  //  for (int mode = 0; mode < trajopt.num_modes(); ++mode) {
+  //    trajopt.SetInitialForceTrajectory(mode, lambda_traj[mode],
+  //                                      lambda_c_traj[mode],
+  //                                      gamma_traj[mode]);
+  //  }
 }
 
 void SetInitialGuessFromKCTrajectory(Dircon<double>& trajopt,

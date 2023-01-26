@@ -9,9 +9,9 @@ from bindings.pydairlib.multibody import MakeNameToPositionsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
 
 
-OSC_DERIV_UNITS = {'pos' : 'Position (m)',
-                   'vel' : 'Velocity (m/s)',
-                   'accel' : '$Acceleration (m/s^2)$'}
+OSC_DERIV_UNITS = {'pos' : 'Position $(m)$',
+                   'vel' : 'Velocity $(m/s)$',
+                   'accel' : 'Acceleration $(m/s^2)$'}
 
 def make_name_to_mbp_maps(plant):
     return MakeNameToPositionsMap(plant), \

@@ -16,8 +16,13 @@ class TimeVisualizer(object):
         self._subscriber = None
         # Number of messages used to average for real time factor.
         self._num_msg_for_average = 20
-
+        self.text_time = vis.TextItem('sim_info', 'sim_info', view)
+        self.text_time.setProperty('Position', [10, 900])
+        self.text_time.setProperty('Font Size', 36)
+        self.text_time.setProperty('Bold', True)
         self.set_enabled(True)
+        gridObj.setProperty('Grid Half Width', 100)
+        gridObj.setProperty('Major Tick Resolution', 100)
 
     def add_subscriber(self):
         if (self._subscriber is not None):
@@ -81,7 +86,9 @@ class TimeVisualizer(object):
             realtime_text = 'realtime rate: %.2f' % rt_ratio
             # my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
-        vis.updateText(my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text +'\n' + realtime_text, 'text')
+        # vis.updateText(my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text +'\n' + realtime_text, 'text')
+        self.text_time.setProperty('Text', my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text +'\n' + realtime_text)
+
         # vis.updateText(my_text + '\n' + pelvis_velocity_text, 'text')
 
 

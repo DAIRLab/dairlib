@@ -279,6 +279,7 @@ int DoMain(int argc, char* argv[]) {
   systems::controllers::SwingFootInterfaceSystemParams swing_params{
     left_right_support_fsm_states,
     left_right_foot,
+    {post_left_double_support_state, post_right_double_support_state},
     gains_mpc.h_des,
     gains.mid_foot_height,
     0.05608,
@@ -437,6 +438,7 @@ int DoMain(int argc, char* argv[]) {
       gains_mpc.t_max};
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
       4, drake::MatrixX<double>::Identity(3, 3));
+  swing_ft_accel_gain_multiplier_samples[0](2,2) *= 1.1;
   swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0.5;
   swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
   auto swing_ft_accel_gain_multiplier_gain_multiplier =

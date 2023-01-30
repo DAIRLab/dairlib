@@ -115,6 +115,10 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
       {params.left_right_support_fsm_states.at(0), params.left_right_foot.at(0)});
   stance_foot_map_.insert(
       {params.left_right_support_fsm_states.at(1), params.left_right_foot.at(1)});
+  stance_foot_map_.insert(
+      {params.post_left_post_right_fsm_states.at(0), params.left_right_foot.at(0)});
+  stance_foot_map_.insert(
+      {params.post_left_post_right_fsm_states.at(1), params.left_right_foot.at(1)});
   swing_foot_map_.insert(
       {params.left_right_support_fsm_states.at(0), params.left_right_foot.at(1)});
   swing_foot_map_.insert(
@@ -131,14 +135,8 @@ EventStatus SwingFootInterfaceSystem::DiscreteVariableUpdate(
 
   auto prev_fsm_state = discrete_state->get_mutable_value(prev_fsm_state_idx_);
 
-  // Find fsm_state in left_right_support_fsm_states
-  bool is_single_support_phase = (find(left_right_support_fsm_states_.begin(),
-                                       left_right_support_fsm_states_.end(),
-                                       fsm_state)
-      != left_right_support_fsm_states_.end());
-
   // when entering a new state which is in left_right_support_fsm_states
-  if (fsm_state != prev_fsm_state(0) && is_single_support_phase) {
+  if (fsm_state != prev_fsm_state(0) && is_single_support(fsm_state)) {
     prev_fsm_state(0) = fsm_state;
 
     VectorXd q = robot_output->GetPositions();
@@ -175,10 +173,11 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   control_points.col(0) = init_pos;
   control_points.col(2) = final_pos;
   double hdiff = final_pos(2) - init_pos(2);
-  double tadj = 0.3;
+  double tadj = 0.25;
 
   if (hdiff > mid_foot_height_ / 4.0) {
-    control_points.col(1) = init_pos;
+    control_points.col(1) = init_pos + (init_pos - final_pos) * 2 * tadj /
+                            (end_time - start_time);
     control_points.col(1)(2) = final_pos(2) + mid_foot_height_ ;
     path_breaks.at(1) = tadj;
   } else if (-hdiff > mid_foot_height_ / 4.0) {
@@ -267,25 +266,14 @@ void SwingFootInterfaceSystem::CopyComHeightOffset(
   multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
   Vector3d stance_foot_pos = Vector3d::Zero();
 
-  if (is_single_support(fsm_state)) {
-    plant_.CalcPointsPositions(*plant_context_, stance_foot_map_.at(fsm_state).second,
-                               stance_foot_map_.at(fsm_state).first, world_,
-                               &stance_foot_pos);
-  } else {
-    Vector3d pos_temp;
-    for (const auto& [_ , stance_foot] : stance_foot_map_) {
-      plant_.CalcPointsPositions(*plant_context_, stance_foot.second,
-                                 stance_foot.first, world_, &pos_temp);
-      stance_foot_pos += pos_temp;
-    }
-    stance_foot_pos /= stance_foot_map_.size();
-  }
+  plant_.CalcPointsPositions(
+      *plant_context_, stance_foot_map_.at(fsm_state).second,
+      stance_foot_map_.at(fsm_state).first, world_, &stance_foot_pos);
 
   // Swing foot position at touchdown
   const Vector3d& footstep_target =
       this->EvalVectorInput(context, footstep_target_port_)->get_value();
-  double offset = is_single_support(fsm_state) ?
-      footstep_target(2) - stance_foot_pos(2) + foot_height_offset_ : 0;
+  double offset = footstep_target(2) - stance_foot_pos(2) + foot_height_offset_;
   com_height_offset->set_value(drake::Vector1d(offset));
 }
 

@@ -21,7 +21,8 @@ namespace controllers {
 
 struct SwingFootInterfaceSystemParams {
   std::vector<int> left_right_support_fsm_states;
-  std::vector<alip_utils::PointOnFramed>left_right_foot;
+  std::vector<alip_utils::PointOnFramed> left_right_foot;
+  std::vector<int> post_left_post_right_fsm_states;
   double com_height_;
   double mid_foot_height;
   double foot_height_offset_;

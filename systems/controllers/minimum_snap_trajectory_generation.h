@@ -5,6 +5,7 @@
     MIT License
 
     Copyright (c) 2020 Zhepei Wang (wangzhepei@live.com)
+                  2023 Brian Acosta (bjacosta@seas.upenn.edu)
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -2246,7 +2247,11 @@ class SnapOpt
 
 drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
     const Eigen::Matrix3Xd& waypoints,
-    const std::vector<double>& breaks) {
+    const std::vector<double>& breaks,
+    double des_final_vertical_velocity=0) {
+
+  // Convention: positive numer represents velocity toward the ground
+  DRAKE_DEMAND(des_final_vertical_velocity >= 0);
   DRAKE_DEMAND(waypoints.cols() == breaks.size());
 
   int N = waypoints.cols();
@@ -2257,6 +2262,7 @@ drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
   Eigen::Matrix<double, 3, 4> final_state = Eigen::Matrix<double, 3, 4>::Zero();
   init_state.col(0) = waypoints.col(0);
   final_state.col(0) = waypoints.rightCols<1>();
+  final_state(2, 1) = -des_final_vertical_velocity;
 
 
   Eigen::VectorXd durations = Eigen::VectorXd::Zero(N-1);
@@ -2264,6 +2270,8 @@ drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
     durations(i) = breaks.at(i+1) - breaks.at(i);
   }
 
+  // Set the initial acceleration and jerk to be relatively large in the
+  // direction of the first intermediate waypoint
   init_state.col(2) = 2 * (waypoints.col(1) - waypoints.col(0)) /
                           (durations(0) * durations(0));
   init_state.col(3) =  3 * init_state.col(2) / durations(0);

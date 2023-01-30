@@ -23,6 +23,7 @@ using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::Vector4d;
@@ -169,23 +170,29 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   auto time_scaling_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       time_scaling_breaks, Vector2d(0, 1).transpose());
 
-  std::vector<double> nominal_heights = {0, 1.0, 1.0, 0};
+  std::vector<double> path_breaks = {0, 0.5, 1.0};
+  Eigen::Matrix3d control_points = Matrix3d::Zero();
+  control_points.col(0) = init_pos;
+  control_points.col(2) = final_pos;
+  double hdiff = final_pos(2) - init_pos(2);
+  double tadj = 0.3;
 
-  Eigen::Matrix3Xd control_points = MatrixXd::Zero(3, nominal_heights.size());
-
-  std::vector<double> path_breaks = std::vector<double>(nominal_heights.size(), 0);
-  for (int i = 0; i < nominal_heights.size(); i++) {
-    path_breaks.at(i) = static_cast<double>(i) /
-                     static_cast<double>(nominal_heights.size() - 1);
-    control_points.col(i) = init_pos + i * (final_pos - init_pos) /
-            (control_points.cols() - 1);
-    control_points.col(i)(2) = mid_foot_height_ * nominal_heights.at(i) +
-                               std::max(init_pos(2), final_pos(2));
+  if (hdiff > mid_foot_height_ / 2.0) {
+    control_points.col(1) = init_pos;
+    control_points.col(1)(2) = final_pos(2) + mid_foot_height_ / 2;
+    path_breaks.at(1) = tadj;
+  } else if (-hdiff > mid_foot_height_ / 2.0) {
+    control_points.col(1) = final_pos;
+    control_points.col(1)(2) = init_pos(2) + mid_foot_height_ / 2;
+    path_breaks.at(1) = 1.0 - tadj;
+  } else {
+    control_points.col(1) = 0.5 * (init_pos + final_pos);
+    control_points.col(1)(2) += mid_foot_height_;
   }
-  control_points.col(0)(2) = init_pos(2);
-  control_points.col(control_points.cols() - 1)(2) = final_pos(2) + desired_final_foot_height_;
-  auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(control_points,
-                                                               path_breaks);
+  control_points.rightCols<1>()(2) += desired_final_foot_height_;
+  auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
+      control_points, path_breaks, desired_final_vertical_foot_velocity_);
+
   auto swing_foot_spline = PathParameterizedTrajectory<double>(
       swing_foot_path, time_scaling_trajectory);
 

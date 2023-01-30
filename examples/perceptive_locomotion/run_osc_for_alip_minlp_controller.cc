@@ -425,8 +425,8 @@ int DoMain(int argc, char* argv[]) {
       {0, left_support_duration / 2, left_support_duration};
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples(
       3, drake::MatrixX<double>::Identity(3, 3));
-  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.3;
-  swing_ft_gain_multiplier_samples[0].topLeftCorner<1,1>() *= 0;
+  swing_ft_gain_multiplier_samples[2](2, 2) *= 0.5;
+//  swing_ft_gain_multiplier_samples[0].topLeftCorner<1,1>() *= 0;
   auto swing_ft_gain_multiplier_gain_multiplier =
       std::make_shared< PiecewisePolynomial<double>>(
           PiecewisePolynomial<double>::FirstOrderHold(
@@ -437,7 +437,7 @@ int DoMain(int argc, char* argv[]) {
       gains_mpc.t_max};
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
       4, drake::MatrixX<double>::Identity(3, 3));
-  swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
+  swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0.5;
   swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
   auto swing_ft_accel_gain_multiplier_gain_multiplier =
       std::make_shared<PiecewisePolynomial<double>>(

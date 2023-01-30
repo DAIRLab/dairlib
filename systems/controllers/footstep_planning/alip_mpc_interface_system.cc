@@ -177,13 +177,13 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   double hdiff = final_pos(2) - init_pos(2);
   double tadj = 0.3;
 
-  if (hdiff > mid_foot_height_ / 2.0) {
+  if (hdiff > mid_foot_height_ / 4.0) {
     control_points.col(1) = init_pos;
-    control_points.col(1)(2) = final_pos(2) + mid_foot_height_ / 2;
+    control_points.col(1)(2) = final_pos(2) + mid_foot_height_ ;
     path_breaks.at(1) = tadj;
-  } else if (-hdiff > mid_foot_height_ / 2.0) {
+  } else if (-hdiff > mid_foot_height_ / 4.0) {
     control_points.col(1) = final_pos;
-    control_points.col(1)(2) = init_pos(2) + mid_foot_height_ / 2;
+    control_points.col(1)(2) = init_pos(2) + mid_foot_height_ ;
     path_breaks.at(1) = 1.0 - tadj;
   } else {
     control_points.col(1) = 0.5 * (init_pos + final_pos);

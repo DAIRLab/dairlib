@@ -93,4 +93,8 @@ const systems::GearedMotor& AddMotorModel(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant);
 
+Eigen::VectorXd SolveFourBarIK(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Eigen::VectorXd& q_nominal);
+
 }  // namespace dairlib

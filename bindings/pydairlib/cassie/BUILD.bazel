@@ -11,6 +11,15 @@ load(
     "pybind_py_library",
 )
 
+py_binary(
+    name = "make_acom_learning_data",
+    srcs = ["make_acom_learning_data.py"],
+    deps = [
+        ":cassie_utils_py",
+        "//bindings/pydairlib/multibody",
+    ],
+)
+
 pybind_py_library(
     name = "cassie_utils_py",
     cc_deps = [

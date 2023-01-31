@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 
 # dairlib python binding imports
@@ -65,27 +66,45 @@ class PlantHarness:
         return q_constrained
 
     def get_centroidal_momentum_matrix(self, q: np.ndarray) -> np.ndarray:
-        v = InitializeAutoDiff(np.ones((self.plant.num_velocities,)))
+        v = InitializeAutoDiff(
+            np.zeros((self.plant.num_velocities(),))
+        )
         self.plant_ad.SetPositions(self.context_ad, q)
         self.plant_ad.SetVelocities(self.context_ad, v)
         com = self.plant_ad.CalcCenterOfMassPositionInWorld(self.context_ad)
-        L = self.plant_ad.CalcSpatialMomentumInWorldAboutPoint(self.context_ad, com).rotational()
-        A = ExtractGradient(L)
+        H = self.plant_ad.CalcSpatialMomentumInWorldAboutPoint(self.context_ad, com)
+        A = np.vstack((
+            ExtractGradient(H.rotational()),
+            ExtractGradient(H.translational())
+        ))
         return A
 
 
 def make_dataset(filepath: str, N: int) -> None:
-    pass
+    plant = PlantHarness()
+    for i in range(N):
+        q = plant.make_random_pose()
+        A = plant.get_centroidal_momentum_matrix(q)
+        fname_q = os.path.join(filepath, f'{i}_position_vector.csv')
+        fname_A = os.path.join(filepath, f'{i}_connection_matrix.csv')
+        np.savetxt(fname_q, q, delimiter=',')
+        np.savetxt(fname_A, A, delimiter=',')
 
 
 def test():
     plant = PlantHarness()
     qp = plant.make_random_pose()
-    for i in range(8):
+    for i in range(7, 7+8):
         print(f'{qp[i]}, {qp[i+8]}')
     A = plant.get_centroidal_momentum_matrix(qp)
     import pdb; pdb.set_trace()
 
 
+def main():
+    fname = sys.argv[1]
+    n = sys.argv[2]
+    make_dataset(fname, n)
+
+
 if __name__ == "__main__":
-    test()
+    main()

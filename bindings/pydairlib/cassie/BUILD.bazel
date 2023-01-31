@@ -12,6 +12,15 @@ load(
 )
 
 py_binary(
+    name = "make_states_fixed",
+    srcs = ["make_states_fixed.py"],
+    deps = [
+        ":cassie_utils_py",
+        "//bindings/pydairlib/multibody",
+    ],
+)
+
+py_binary(
     name = "collect_stepnet_data",
     srcs = ["collect_stepnet_data.py"],
     deps = [

@@ -309,6 +309,11 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
     x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
     x_alip.tail(2) = L.head(2);
   }
+
+  if (fsm_state > 1 && target_com_z_) {
+    stance_foot_pos(2) +=
+        EvalVectorInput(context, com_z_input_port_)->get_value()(0);
+  }
   double com_z = context.get_discrete_state(com_z_idx_).value()(0);
   *exp_pp_traj =
       ConstructAlipStateTraj(x_alip, com_z, start_time, end_time);

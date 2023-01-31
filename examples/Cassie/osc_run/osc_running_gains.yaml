@@ -28,6 +28,7 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 
 relative_feet: true
 relative_pelvis: true
+use_acom: true
 rot_filter_tau: 0.005
 ekf_filter_tau: [ 0.05, 0.01, 0.001 ]
 

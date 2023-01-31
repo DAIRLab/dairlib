@@ -28,6 +28,7 @@ struct OSCRunningGains : OSCGains {
   double target_vel_filter_alpha;
   bool relative_feet;
   bool relative_pelvis;
+  bool use_acom;
   double rest_length;
   double rest_length_offset;
   double stance_duration;
@@ -90,6 +91,7 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(weight_scaling));
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));
+    a->Visit(DRAKE_NVP(use_acom));
     a->Visit(DRAKE_NVP(rest_length));
     a->Visit(DRAKE_NVP(rest_length_offset));
     a->Visit(DRAKE_NVP(stance_duration));

@@ -30,6 +30,7 @@
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/acom_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -74,6 +75,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::AcomTrackingData;
 
 namespace examples {
 
@@ -466,18 +468,42 @@ int DoMain(int argc, char* argv[]) {
   auto heading_traj_generator =
       builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant,
                                                            plant_context.get());
+  std::unique_ptr<RotTaskSpaceTrackingData> pelvis_rot_tracking_data;
+  std::unique_ptr<AcomTrackingData> acom_tracking_data;
+  if (osc_gains.use_acom){
+     acom_tracking_data = std::make_unique<AcomTrackingData>(
+        "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+        osc_gains.W_pelvis_rot, plant, plant);
+    acom_tracking_data->AddStateToTrack(
+        RUNNING_FSM_STATE::LEFT_STANCE);
+    acom_tracking_data->AddStateToTrack(
+        RUNNING_FSM_STATE::RIGHT_STANCE);
+    acom_tracking_data->AddStateToTrack(
+        RUNNING_FSM_STATE::RIGHT_FLIGHT);
+    acom_tracking_data->AddStateToTrack(
+        RUNNING_FSM_STATE::LEFT_FLIGHT);
+  }else{
+    pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
+        "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+        osc_gains.W_pelvis_rot, plant, plant);
+    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+        RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+        RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+        RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+        RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+  }
 
-  auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-      osc_gains.W_pelvis_rot, plant, plant);
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
-  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+//  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+//      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+//  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+//      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+//  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+//      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+//  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+//      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
   if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,

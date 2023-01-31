@@ -30,6 +30,7 @@ cc_library(
 cc_library(
     name = "osc_tracking_datas",
     deps = [
+        ":acom_tracking_data",
         ":com_tracking_data",
         ":joint_space_tracking_data",
         ":osc_tracking_data",
@@ -91,6 +92,18 @@ cc_library(
     name = "rot_space_tracking_data",
     srcs = ["rot_space_tracking_data.cc"],
     hdrs = ["rot_space_tracking_data.h"],
+    deps = [
+        ":options_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "acom_tracking_data",
+    srcs = ["acom_tracking_data.cc"],
+    hdrs = ["acom_tracking_data.h"],
     deps = [
         ":options_tracking_data",
         "//multibody:utils",

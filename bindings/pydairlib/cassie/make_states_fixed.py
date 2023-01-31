@@ -1,7 +1,7 @@
 import numpy as np
 
 # dairlib python binding imports
-from pydairlib.cassie.cassie_utils import AddCassieMultibody
+from pydairlib.cassie.cassie_utils import AddCassieMultibody, SolveFourBarIK
 
 from pydairlib.multibody import MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
@@ -11,7 +11,6 @@ from pydairlib.multibody import MakeNameToPositionsMap, \
 
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
-from pydrake.solvers import Constraint
 from pydrake.autodiffutils import ExtractGradient, ExtractValue, InitializeAutoDiff
 
 
@@ -36,41 +35,51 @@ class PlantHarness:
         state_names = CreateStateNameVectorFromMap(self.plant)
         self.pos_names = state_names[:self.nq]
 
+    # Set the right to be a mirror of the left (arbitrary choice)
+    def symmetrize_in_place(self, q):
+        for name in self.pos_names:
+            s = -1.0 if 'hip_roll' in name or 'hip_yaw' in name else 1.0
+            if 'left' in name:
+                q[self.pos_map[name.replace('left', 'right')]] = \
+                    s * q[self.pos_map[name]]
+
     def make_random_pose(self, symmetric: bool = True) -> np.ndarray:
         q = np.random.uniform(low=self.plant.GetPositionLowerLimits().ravel(),
                               high=self.plant.GetPositionUpperLimits().ravel())
 
-        # Set the right to be a mirror of the left if symmetric
-        # (arbitrary choice)
         if symmetric:
-            for name in self.pos_names:
-                s = -1.0 if 'hip_roll' in name or 'hip_yaw' in name else 1.0
-                if 'left' in name:
-                    q[self.pos_map[name.replace('left', 'right')]] = \
-                        s * q[self.pos_map[name]]
+            self.symmetrize_in_place(q)
 
-        # TODO: solve the fourbar to get valid positions
+        q_constrained = SolveFourBarIK(self.plant, q)
 
-        return q
+        # re-symmetrize after IK to ensure
+        if symmetric:
+            self.symmetrize_in_place(q_constrained)
+
+        return q_constrained
 
     def get_centroidal_momentum_matrix(self, q: np.ndarray) -> np.ndarray:
         qad = InitializeAutoDiff(q)
-        vad = InitializeAutoDiff(np.ones(self.nv,))
         self.plant_ad.SetPositions(self.context_ad, qad)
-        self.plant_ad.SetVelocities(self.context_ad, vad)
+        self.plant_ad.SetVelocities(self.context_ad, np.ones(self.nv,))
         com = self.plant_ad.CalcCenterOfMassPositionInWorld(self.context_ad)
         L = self.plant_ad.CalcSpatialMomentumInWorldAboutPoint(self.context_ad, com).rotational()
         A = ExtractGradient(L)
-        import pdb; pdb.set_trace()
-        return A[:, self.nq:]
+        return A
 
 
-def main():
+def make_dataset(filepath: str, N: int) -> None:
+    pass
+
+
+def test():
     plant = PlantHarness()
-    q = plant.make_random_pose()
-    A = plant.get_centroidal_momentum_matrix(q)
+    qp = plant.make_random_pose()
+    for i in range(8):
+        print(f'{qp[i]}, {qp[i+8]}')
+    A = plant.get_centroidal_momentum_matrix(qp)
     import pdb; pdb.set_trace()
 
 
 if __name__ == "__main__":
-    main()
+    test()

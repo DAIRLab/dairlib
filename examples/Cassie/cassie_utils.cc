@@ -1,9 +1,12 @@
+#include <iostream>
 #include "examples/Cassie/cassie_utils.h"
-
 #include "common/find_resource.h"
-#include "examples/Cassie/systems/cassie_encoder.h"
 
+#include "examples/Cassie/systems/cassie_encoder.h"
+#include "multibody/multibody_solvers.h"
 #include "drake/geometry/scene_graph.h"
+
+#include "drake/solvers/solve.h"
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/tree/linear_spring_damper.h"
@@ -240,6 +243,30 @@ const systems::GearedMotor& AddMotorModel(
   auto cassie_motor =
       builder->AddSystem<systems::GearedMotor>(plant, omega_max);
   return *cassie_motor;
+}
+
+VectorXd SolveFourBarIK(const MultibodyPlant<double>& plant,
+                        const VectorXd& q_nominal) {
+  auto prog = multibody::MultibodyProgram<double>(plant);
+  auto q = prog.AddPositionVariables();
+  auto fourbar_right = RightLoopClosureEvaluator(plant);
+  auto fourbar_left = LeftLoopClosureEvaluator(plant);
+  auto left_right_loops = multibody::KinematicEvaluatorSet<double>(plant);
+  left_right_loops.add_evaluator(&fourbar_left);
+  left_right_loops.add_evaluator(&fourbar_right);
+  prog.AddKinematicPositionConstraint(left_right_loops, q);
+  prog.AddQuadraticErrorCost(
+      Eigen::MatrixXd::Identity(plant.num_positions(), plant.num_positions()),
+      q_nominal,
+      q);
+  auto sol = drake::solvers::Solve(prog);
+  if (sol.is_success()) {
+    return sol.GetSolution(q);
+  } else {
+    std::cerr << "Failed with code " << sol.get_solution_result() << std::endl;
+    DRAKE_DEMAND(false);
+  }
+
 }
 
 template std::pair<const Vector3d, const Frame<double>&> LeftToeFront(

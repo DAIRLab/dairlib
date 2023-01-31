@@ -31,6 +31,7 @@ cc_library(
         "//common",
         "//examples/Cassie/systems:cassie_encoder",
         "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//multibody:multibody_solvers",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems:robot_lcm_systems",
@@ -390,6 +391,7 @@ cc_binary(
 cc_binary(
     name = "run_osc_walking_controller",
     srcs = ["run_osc_walking_controller.cc"],
+    tags = ["manual"],
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
@@ -407,7 +409,6 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    tags = ["manual"],
 )
 
 cc_binary(

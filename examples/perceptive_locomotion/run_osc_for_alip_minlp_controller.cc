@@ -243,25 +243,19 @@ int DoMain(int argc, char* argv[]) {
 
   // Create swing leg trajectory generator
   vector<int> unordered_fsm_states;
-  vector<double> unordered_state_durations;
-  vector<vector<std::pair<const Vector3d, const Frame<double>&>>>
-      contact_points_in_each_state;
+  vector<std::pair<const Vector3d, const Frame<double>&>> contact_points_in_each_state;
   if (FLAGS_is_two_phase) {
     unordered_fsm_states = {left_stance_state, right_stance_state};
-    unordered_state_durations = {left_support_duration, right_support_duration};
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
   } else {
     unordered_fsm_states = {left_stance_state, right_stance_state,
                             post_left_double_support_state,
                             post_right_double_support_state};
-    unordered_state_durations = {left_support_duration, right_support_duration,
-                                 double_support_duration,
-                                 double_support_duration};
-    contact_points_in_each_state.push_back({left_toe_mid});
-    contact_points_in_each_state.push_back({right_toe_mid});
-    contact_points_in_each_state.push_back({left_toe_mid});
-    contact_points_in_each_state.push_back({right_toe_mid});
+    contact_points_in_each_state.push_back(left_toe_mid);
+    contact_points_in_each_state.push_back(right_toe_mid);
+    contact_points_in_each_state.push_back(left_toe_mid);
+    contact_points_in_each_state.push_back(right_toe_mid);
   }
 
 
@@ -288,14 +282,11 @@ int DoMain(int argc, char* argv[]) {
     true
   };
 
-  systems::ALIPTrajGeneratorParams com_params{
+  systems::controllers::ComTrajInterfaceParams com_params{
       gains_mpc.h_des,
+      gains_mpc.ds_time,
       unordered_fsm_states,
       contact_points_in_each_state,
-      gains.Q_alip_kalman_filter.asDiagonal(),
-      gains.R_alip_kalman_filter.asDiagonal(),
-      false,
-      true
   };
 
   auto mpc_interface = builder.AddSystem<AlipMPCInterfaceSystem>(

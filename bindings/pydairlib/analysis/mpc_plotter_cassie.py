@@ -42,6 +42,17 @@ def plot_state_traj_over_time(xx):
     plt.legend(['x', 'y', 'Lx', 'Ly'])
 
 
+def plot_mpc_initial_state(dbg):
+    plt.figure()
+    xx = np.zeros((len(dbg.t_mpc), 4))
+    for i, t in enumerate(dbg.t_mpc):
+        xx[i] = dbg.x0[t]
+
+    plt.title('MPC initial State')
+    plt.plot(dbg.t_mpc, xx)
+    plt.legend(['x', 'y', 'Lx', 'Ly'])
+
+
 def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     nm = len(pp)
     nk = len(xx[0])
@@ -146,6 +157,7 @@ def main():
     plot_state_traj_over_time(
         mpc_debug.mpc_trajs["desired"].xxs[mpc_debug.t_mpc[5]]
     )
+    plot_mpc_initial_state(mpc_debug)
 
     # plot_com_traj_solutions(com_trajs, [0])
     # plot_com_traj_solutions(com_trajs, [1])
@@ -163,7 +175,6 @@ def main():
         mpc_debug.p0[t]
     )
     plot_foot_targets(mpc_debug, 1)
-    plot_mpc_timing(mpc_debug)
     plt.show()
 
 

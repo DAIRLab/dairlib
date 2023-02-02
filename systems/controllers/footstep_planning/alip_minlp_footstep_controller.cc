@@ -267,10 +267,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
 
-  workspace.AddFace( Vector3d::UnitY(),  10 * Vector3d::UnitY());
-  workspace.AddFace(-Vector3d::UnitY(),-10 * Vector3d::UnitY());
-  workspace.AddFace(Vector3d::UnitX(), 10 * Vector3d::UnitX());
-  workspace.AddFace(-Vector3d::UnitX(), -10 * Vector3d::UnitX());
+  workspace.AddFace( Vector3d::UnitY(),  com_xy + 10 * Vector3d::UnitY());
+  workspace.AddFace(-Vector3d::UnitY(), com_xy -10 * Vector3d::UnitY());
+  workspace.AddFace(Vector3d::UnitX(), com_xy + 10 * Vector3d::UnitX());
+  workspace.AddFace(-Vector3d::UnitX(), com_xy - 10 * Vector3d::UnitX());
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
   trajopt_.CalcOptimalFootstepPlan(x, p_b, warmstart);

@@ -34,6 +34,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/constant_value_source.h"
+#include "drake/systems/primitives/zero_order_hold.h"
 
 namespace dairlib {
 
@@ -94,6 +95,9 @@ DEFINE_bool(use_perception, false, "get footholds from percption system");
 DEFINE_bool(plan_offboard, false,
             "Sets the planner lcm TTL to be 1. "
             "Set to true to run planner on cassie-laptop");
+
+DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
+
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -270,9 +274,27 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
   builder.Connect(cassie_out_to_radio->get_output_port(),
                   high_level_command->get_radio_port());
-  builder.Connect(fsm_sender->get_output_port_fsm_info(),
-                  fsm_pub->get_input_port());
-  builder.Connect(*footstep_sender, *footstep_pub);
+
+
+  if (FLAGS_sim_delay > 0) {
+    auto fzoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+        FLAGS_sim_delay, drake::Value<dairlib::lcmt_footstep_target>());
+    builder.Connect(*footstep_sender, *fzoh);
+    builder.Connect(*fzoh, *footstep_pub);
+    auto fsmzoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+        FLAGS_sim_delay, drake::Value<dairlib::lcmt_fsm_info>());
+    builder.Connect(fsm_sender->get_output_port_fsm_info(),
+                    fsmzoh->get_input_port());
+    builder.Connect(*fsmzoh, *fsm_pub);
+
+  } else {
+    builder.Connect(*footstep_sender, *footstep_pub);
+    builder.Connect(fsm_sender->get_output_port_fsm_info(),
+                    fsm_pub->get_input_port());
+  }
+
+
+
 
   // Create the diagram
   auto owned_diagram = builder.Build();

@@ -78,12 +78,16 @@ def plotter_main(plot_config, log):
     ''' Plot Velocities '''
     # Plot floating base velocities if applicable
     if use_floating_base and plot_config.plot_floating_base_velocities:
-        mbp_plots.plot_floating_base_velocities(
+        plot = mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
+                                  plot_config.fsm_state_names)
 
-    if plot_config.plot_floating_base_velocity_body_frame:
-        mbp_plots.plot_floating_base_body_frame_velocities(
+    if use_floating_base and plot_config.plot_floating_base_velocity_body_frame:
+        plot = mbp_plots.plot_floating_base_body_frame_velocities(
             robot_output, t_x_slice, plant, context, "pelvis")
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
+                                  plot_config.fsm_state_names)
 
     # Plot all joint velocities
     if plot_config.plot_joint_positions:

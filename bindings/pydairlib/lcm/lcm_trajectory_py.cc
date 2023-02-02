@@ -82,7 +82,10 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("ReconstructLambdaCTrajectory",
            &DirconTrajectory::ReconstructLambdaCTrajectory)
       .def("ReconstructGammaCTrajectory",
-           &DirconTrajectory::ReconstructGammaCTrajectory);
+           &DirconTrajectory::ReconstructGammaCTrajectory)
+      .def("ReconstructStateTrajectoryWithSprings",
+           &DirconTrajectory::ReconstructStateTrajectoryWithSprings,
+           py::arg("wo_spr_to_spr_map"));
 }
 
 }  // namespace pydairlib

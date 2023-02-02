@@ -87,16 +87,8 @@ int DoMain(int argc, char* argv[]) {
                      "examples/Cassie/urdf/cassie_v2_conservative.urdf",
                      true /*spring model*/, false /*loop closure*/);
   plant.Finalize();
-  // Build fix-spring Cassie MBP
-  //  drake::multibody::MultibodyPlant<double> plant(0.0);
-  //  AddCassieMultibody(
-  //      &plant, nullptr, true,
-  //      "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf", false,
-  //      false);
-  //  plant.Finalize();
 
   auto context_w_spr = plant.CreateDefaultContext();
-  //  auto context_wo_spr = plant.CreateDefaultContext();
 
   // Get contact frames and position (doesn't matter whether we use
   // plant or plant because the contact frames exit in both

@@ -364,14 +364,11 @@ int DoMain(int argc, char* argv[]) {
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", osc_gains.K_p_com, osc_gains.K_d_com,
       osc_gains.W_com, plant_w_spr, plant_w_spr);
-  for (auto mode : stance_modes) {
-    pelvis_tracking_data->AddStateAndPointToTrack(mode, "pelvis");
-  }
-
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_tracking_data", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis, plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
+    pelvis_tracking_data->AddStateAndPointToTrack(mode, "pelvis");
     pelvis_rot_tracking_data->AddStateAndFrameToTrack(mode, "pelvis");
   }
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);

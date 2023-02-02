@@ -12,6 +12,16 @@ load(
 )
 
 py_binary(
+    name = "test_minsnap",
+    srcs = ["test_minsnap.py"],
+    deps = [
+        ":perceptive_locomotion",
+        "//bindings/pydairlib/common:plot_shapes",
+        "//bindings/pydairlib/common:plot_styler",
+    ],
+)
+
+py_binary(
     name = "alip_minlp_test",
     srcs = ["alip_minlp_test.py"],
     deps = [
@@ -49,6 +59,7 @@ py_library(
 pybind_py_library(
     name = "controllers_py",
     cc_deps = [
+        "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/controllers/footstep_planning:alip_minlp",
         "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
         "@drake//:drake_shared_library",

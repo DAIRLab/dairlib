@@ -3,21 +3,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "alip_s2s_planner",
-    srcs = ["alip_s2s_planner.cc"],
-    hdrs = ["alip_s2s_planner.h"],
-    deps = [
-        ":alip_utils",
-        "//geometry:convex_foothold",
-        "//multibody:utils",
-        "//systems/controllers:control_utils",
-        "//systems/filters:s2s_kalman_filter",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_minlp_footstep_controller",
     srcs = ["alip_minlp_footstep_controller.cc"],
     hdrs = ["alip_minlp_footstep_controller.h"],
@@ -79,6 +64,7 @@ cc_library(
         "//multibody:utils",
         "//systems/controllers:alip_traj_gen",
         "//systems/controllers:control_utils",
+        "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",

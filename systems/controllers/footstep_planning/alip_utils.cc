@@ -118,7 +118,8 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
   double s = gait_params.intial_stance_foot == Stance::kLeft ? -1 : 1;
 
   const Vector2d p = Vector2d(
-      gait_params.desired_velocity(0) * gait_params.single_stance_duration,
+      gait_params.desired_velocity(0) * (gait_params.single_stance_duration +
+                                         gait_params.double_stance_duration),
       gait_params.stance_width * s
   );
   const Matrix4d Ad = CalcAd(

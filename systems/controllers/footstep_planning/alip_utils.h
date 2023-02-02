@@ -61,6 +61,22 @@ inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
 typedef std::pair<const Eigen::Vector3d,
                   const drake::multibody::Frame<double>&> PointOnFramed;
 
+
+/// Calculates parameters used to construct the ALIP state from the state of a
+/// MultibodyPlant
+/// \param plant the plant for which the ALIP state is being calculated
+/// \param context context for plant
+/// \param x plant state
+/// \param stance_locations list of PointOnFramed representing all of the
+/// contact points used to calculate the ALIP state. The ALIP contact point is
+/// calculated as a weighted average of stance_locations using cop_weights
+/// \param cop_weights see above
+/// \param CoM_p pointer to a Vector3d which will store the calculated COM
+/// position in the plant's world frame
+/// \param L_p pointer to a Vector3d which will store the calculated angular
+/// momentum of the plant about the contact point
+/// \param stance_pos_p pointer to a vector3d which will store the location of
+/// the calculated contact point in the plant's world frame
 void CalcAlipState(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    const Eigen::VectorXd &x,
@@ -70,21 +86,25 @@ void CalcAlipState(const drake::multibody::MultibodyPlant<double>& plant,
                    const drake::EigenPtr<Eigen::Vector3d> &L_p,
                    const drake::EigenPtr<Eigen::Vector3d> &stance_pos_p);
 
+
+/// Calculates a reset map, A, which relates the pre and post double stance
+/// ALIP states to the pre-and-port double stance stance leg locations via the
+/// linear map x+ = A [x-, p-, p+]^{T}. Assumes
+/// \param com_z height of the ALIP
+/// \param m mass of the ALIP
+/// \param Tds double stance time
+/// \return A as described above
 Eigen::Matrix<double, 4, 8> CalcResetMap(double com_z, double m, double Tds);
 
-Eigen::Vector4d CalcReset(
-    double com_z, double m, double Tds,
-    const Eigen::Vector4d& x, const Eigen::Vector3d& p0, const Eigen::Vector3d& p1);
+/// Applies the reset map described in CalcResetMap to the pre-impact
+/// ALIP state x
+Eigen::Vector4d CalcReset(double com_z, double m, double Tds,
+                          const Eigen::Vector4d& x, const Eigen::Vector3d& p0,
+                          const Eigen::Vector3d& p1);
 
 Eigen::Matrix4d CalcA(double com_z, double m);
 Eigen::Matrix4d CalcAd(double com_z, double m, double t);
 Eigen::Vector4d CalcBd(double com_z, double m, double t);
-
-double XImpactTime(double t_start, double H, double m, double x, double Ly,
-                   double x_impact);
-
-double YImpactTime(double t_start, double H, double m, double y, double Lx,
-                   double y_impact);
 
 std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params);

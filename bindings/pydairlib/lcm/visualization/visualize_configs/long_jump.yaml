@@ -1,7 +1,7 @@
-filename: examples/Cassie/saved_trajectories/long_jump_conservative_3
+filename: examples/Cassie/saved_trajectories/long_jump_conservative
 spring_urdf: examples/Cassie/urdf/cassie_v2_shells.urdf
 fixed_spring_urdf: examples/Cassie/urdf/cassie_fixed_springs.urdf
-visualize_mode: 1
+visualize_mode: 2
 realtime_rate: 0.5
 num_poses: 10
 use_transparency: 1

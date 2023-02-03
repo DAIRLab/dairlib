@@ -2,7 +2,7 @@ spring_urdf: examples/Cassie/urdf/cassie_v2.urdf
 fixed_spring_urdf: examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf
 
 knot_points:  8
-delta_height:  0.5
+delta_height:  0.0
 start_height: 0.8
 distance:  0.3
 min_stance_duration:  0.2
@@ -24,8 +24,8 @@ use_ipopt: false
 ipopt_iter: 100
 
 data_directory: examples/Cassie/saved_trajectories/
-load_filename: jumping_box_0.5h_0.3d_2
-save_filename: jumping_box_0.5h_0.3d_3
+load_filename: jump
+save_filename: jump
 use_springs: false
 convert_to_springs: false
 same_knotpoints: true

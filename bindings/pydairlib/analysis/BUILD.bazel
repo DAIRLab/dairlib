@@ -33,7 +33,7 @@ py_library(
     name = "mpc_plot_config",
     srcs = ["mpc_plot_config.py"],
     deps = [
-        ":cassie_plot_config"
+        ":cassie_plot_config",
     ],
 )
 
@@ -43,6 +43,19 @@ py_library(
     data = ["@lcm//:lcm-python"],
     deps = [
         ":osc_debug_py",
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/common:plotting_utils",
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/multibody:kinematic_py",
+        "//bindings/pydairlib/multibody:multibody_py",
+    ],
+)
+
+py_library(
+    name = "mpc_plotting_utils",
+    srcs = ["mpc_plotting_utils.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
         "//bindings/pydairlib/common:plot_styler",
         "//bindings/pydairlib/common:plotting_utils",
         "//bindings/pydairlib/lcm",
@@ -116,6 +129,7 @@ py_binary(
     ],
     deps = [
         ":mpc_plot_config",
+        ":mpc_plotting_utils",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",
@@ -125,5 +139,4 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_archive_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
-
 )

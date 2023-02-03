@@ -18,8 +18,7 @@ one 3 dimensional data channel named 'pos'
 
 
 def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
-              slices_to_plot, legend_entries, plot_labels,
-              ps):
+              slices_to_plot, legend_entries, plot_labels, ps):
     legend = []
     for key in keys_to_plot:
         if key not in slices_to_plot:
@@ -36,6 +35,17 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
     plt.xlabel(plot_labels['xlabel'])
     plt.ylabel(plot_labels['ylabel'])
     plt.title(plot_labels['title'])
+
+
+def make_plot_of_entire_series(data_dictionary, time_key, legend_entries,
+                               plot_labels, ps):
+    keys_to_plot = []
+    for key in data_dictionary.keys():
+        if key != time_key:
+            keys_to_plot.append(key)
+
+    make_plot(data_dictionary, time_key, slice(len(data_dictionary[time_key])),
+              keys_to_plot, {}, legend_entries, plot_labels, ps)
 
 
 def make_mixed_data_plot(data_dictionaries, time_keys, time_slices,

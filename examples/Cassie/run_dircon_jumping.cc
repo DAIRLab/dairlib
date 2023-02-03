@@ -141,7 +141,7 @@ struct DirconJumpingParameters {
   double dual_inf_tol;
   double constr_viol_tol;
   double compl_inf_tol;
-  int acceptable_tol;
+  double acceptable_tol;
   double acceptable_iter;
   double cost_scaling;
   bool use_ipopt;

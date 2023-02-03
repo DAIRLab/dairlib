@@ -658,11 +658,11 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.05 * VectorXd::Ones(1), 0.2 * VectorXd::Ones(1));
+          0.1 * VectorXd::Ones(1), 0.2 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.2 * VectorXd::Ones(1), -0.05 * VectorXd::Ones(1));
+          -0.2 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
   auto left_foot_z_ground_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", pt_front_contact, Eigen::RowVector3d(0, 0, 1),

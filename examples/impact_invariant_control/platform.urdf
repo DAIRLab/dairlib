@@ -7,8 +7,8 @@
             <geometry>
                 <box size="1.0 1.0 1.0"/>
             </geometry>
-            <material name="blue">
-                <color rgba="0 0 1 1"/>
+            <material name="white">
+                <color rgba="1 1 1 1"/>
             </material>
             <origin xyz="0.5 0 -0.5" rpy="0 0 0"/>
         </visual>

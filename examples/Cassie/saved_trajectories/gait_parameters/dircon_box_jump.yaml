@@ -24,7 +24,7 @@ use_ipopt: false
 ipopt_iter: 100
 
 data_directory: examples/Cassie/saved_trajectories/
-load_filename: jumping_box_0.5h_0.3d_3
+load_filename: box_jump
 save_filename: box_jump
 use_springs: false
 convert_to_springs: false

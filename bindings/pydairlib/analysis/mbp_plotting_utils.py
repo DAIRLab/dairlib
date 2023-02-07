@@ -420,7 +420,7 @@ def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
     data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
         robot_output, plant, context,
         plant.GetBodyByName(fb_frame_name).body_frame())
-    legend_entries = {'base_vel': ['base_vx', 'base_vy', 'base_vz']}
+    legend_entries = {'base_vel': ['forward', 'lateral', 'vertical']}
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
         data_dict,
@@ -430,9 +430,8 @@ def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
         {},
         legend_entries,
         {'title': 'Floating Base Velocity (Body Frame)',
-         'xlabel': 'time (s)',
+         'xlabel': 'Time (s)',
          'ylabel': 'Velocity (m/s)'}, ps)
-
     return ps
 
 
@@ -471,6 +470,20 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
     return ps
 
+def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
+    ps = plot_styler.PlotStyler()
+    keys = [key for key in data.keys() if key != 't']
+    plotting_utils.make_plot(
+        data,
+        't',
+        time_slice,
+        keys,
+        {},
+        {key: [key] for key in keys},
+        {'xlabel': 'Time',
+         'ylabel': OSC_DERIV_UNITS[deriv],
+         'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
+    return ps
 
 def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     tracking_data = osc_debug['osc_debug_tracking_datas'][traj]
@@ -492,6 +505,30 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     data['t'] = tracking_data.t
     return plot_general_osc_tracking_data(traj, deriv, dim, data, time_slice)
 
+def plot_osc_tracking_data_in_space(osc_debug, traj, dims, deriv, time_slice):
+    tracking_data = osc_debug['osc_debug_tracking_datas'][traj]
+    data = {}
+    for dim in dims:
+        if deriv == 'pos':
+            data['y_des_' + str(dim)] = tracking_data.y_des[:, dim]
+            data['y_' + str(dim)] = tracking_data.y[:, dim]
+            data['error_y_' + str(dim)] = tracking_data.error_y[:, dim]
+        elif deriv == 'vel':
+            data['ydot_des_' + str(dim)] = tracking_data.ydot_des[:, dim]
+            data['ydot_' + str(dim)] = tracking_data.ydot[:, dim]
+            data['error_ydot_' + str(dim)] = tracking_data.ydot_des[:, dim] - tracking_data.ydot[:, dim]
+            data['projected_error_ydot_' + str(dim)] = tracking_data.error_ydot[:, dim]
+        elif deriv == 'accel':
+            data['yddot_des_' + str(dim)] = tracking_data.yddot_des[:, dim]
+            data['yddot_command_' + str(dim)] = tracking_data.yddot_command[:, dim]
+            data['yddot_command_sol_' + str(dim)] = tracking_data.yddot_command_sol[:, dim]
+
+    data['t'] = tracking_data.t
+    ps = plot_styler.PlotStyler()
+    ps.plot(data['y_des_' + str(0)], data['y_des_' + str(2)] - data['y_des_' + str(2)][0], xlabel='Forward Position (m)', ylabel='Vertical Position (m)', grid=False)
+    # ps.tight_layout()
+    # ps.axes[0].set_ylim([-0.05, 0.5])
+    return ps
 
 def plot_qp_costs(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()

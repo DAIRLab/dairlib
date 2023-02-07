@@ -7,14 +7,15 @@ from bindings.pydairlib.lcm.process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import pydairlib.analysis.mbp_plotting_utils as mbp_plots
+from pydairlib.common import plot_styler
 
 
 def main():
-    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_standing_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
-    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -23,6 +24,8 @@ def main():
     channel_x = plot_config.channel_x
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
+
+    plot_styler.PlotStyler.set_default_styling()
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
@@ -88,8 +91,10 @@ def main():
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_floating_base_velocity_body_frame:
-        mbp_plots.plot_floating_base_body_frame_velocities(
+        plot = mbp_plots.plot_floating_base_body_frame_velocities(
             robot_output, t_x_slice, plant, context, "pelvis")
+        # plot.tight_layout()
+        # plot.save_fig('running_speed_plot.png')
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:
@@ -142,7 +147,9 @@ def main():
                     plot = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
                                                             deriv, t_osc_slice)
                     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-                    plot.save_fig(traj_name + '_' + deriv + '_' + str(dim)  + '.png')
+                    # plot.save_fig(traj_name + '_' + deriv + '_' + str(dim)  + '.png')
+                plot = mbp_plots.plot_osc_tracking_data_in_space(osc_debug, traj_name, config['dims'], deriv, t_osc_slice)
+                # plot.save_fig('swing_foot_target_trajectory.png')
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:

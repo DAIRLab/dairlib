@@ -6,8 +6,9 @@ channel_osc: "OSC_DEBUG_RUNNING"
 use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 5
-duration: 10
+start_time: 4
+#duration: 0.47
+duration: 5.1
 
 # Plant properties
 use_springs: true
@@ -45,12 +46,12 @@ plot_tracking_costs: true
 plot_active_tracking_datas: true
 tracking_datas_to_plot: {
   #  pelvis_trans_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'accel' ] },
-  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'vel', 'accel'] },
+#  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'vel', 'accel'] },
   #  pelvis_rot_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos' ] },
   #  hip_yaw_left_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
   #  hip_yaw_right_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
   #  right_ft_traj: { 'dims': [0, 1, 2], 'derivs': [ 'pos' ] },
-  left_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'vel'] },
+  left_ft_traj: { 'dims': [0, 2 ], 'derivs': [ 'pos'] },
   #  left_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },
   #  right_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },
   #  left_toe_angle_traj: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel' ] },

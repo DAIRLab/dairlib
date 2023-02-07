@@ -8,10 +8,21 @@ from matplotlib.patches import PathPatch
 
 
 class PlotStyler():
+  @staticmethod
+  def set_default_styling():
+    # matplotlib.rcParams['figure.figsize'] = 20, 12
+    # matplotlib.rcParams['figure.figsize'] = 20, 6
+    matplotlib.rcParams['figure.figsize'] = 8, 6
+    matplotlib.rcParams['figure.autolayout'] = True
+    font = {'size': 20}
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 2
+    plt.set_cmap('tab20')
 
   def __init__(self, figure=None, nrows=1, ncols=1):
 
-
+    plt.subplots_adjust(left=0.1, right=0.85, bottom=0.15, top=0.75)  # List is [left, bottom, width, height]
+    # plt.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)  # List is [left, bottom, width, height]
     # self.cmap = plt.get_cmap('tab10')
     self.cmap = plt.get_cmap('tab20')
     self.blue = '#011F5B'
@@ -22,7 +33,7 @@ class PlotStyler():
     # self.directory = None
     self.dpi = 200
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    matplotlib.rcParams['figure.figsize'] = 6, 4
+    matplotlib.rcParams['figure.figsize'] = 12, 7
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
     if figure is None:
@@ -41,17 +52,6 @@ class PlotStyler():
   def attach(self):
     plt.figure(self.fig_id)
 
-  def set_default_styling(self, directory=None):
-    self.directory = directory
-    matplotlib.rcParams["savefig.directory"] = directory
-    # matplotlib.rcParams['figure.figsize'] = 20, 12
-    # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 16
-    matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 20}
-    matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 4
-    plt.set_cmap('tab20')
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None,
            linestyle=None,
@@ -90,7 +90,7 @@ class PlotStyler():
     return
 
   def save_fig(self, filename):
-    self.fig.savefig(self.directory + filename, dpi=self.dpi)
+    self.fig.savefig(self.directory + filename, dpi=self.dpi, bbox_inches='tight')
     return
 
   def add_legend(self, labels, loc=0, subplot_index=0):
@@ -109,3 +109,7 @@ class PlotStyler():
       plt.setp(self.axes, sharex=sharex)
     if sharey is not None:
       plt.setp(self.axes, sharex=sharey)
+
+  def tight_layout(self):
+    self.axes[0].autoscale(enable=True, axis='y', tight=True)
+    self.axes[0].autoscale(enable=True, axis='x', tight=True)

@@ -20,6 +20,24 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_deadbeat_footstep_controller",
+    srcs = ["alip_deadbeat_footstep_controller.cc"],
+    hdrs = ["alip_deadbeat_footstep_controller.h"],
+    deps = [
+        ":alip_minlp",
+        ":alip_minlp_footstep_controller",
+        ":alip_utils",
+        "//common:eigen_utils",
+        "//geometry:convex_foothold_set",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//systems/filters:s2s_kalman_filter",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "alip_minlp",
     srcs = ["alip_minlp.cc"],
     hdrs = ["alip_minlp.h"],

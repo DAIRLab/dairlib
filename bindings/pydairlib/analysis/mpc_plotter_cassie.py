@@ -47,7 +47,7 @@ def main():
         plot_config.start_time,
         plot_config.end_time,
         mpc_plots.mpc_processing_callback,
-        "ALIP_MINLP_DEBUG", "FOOTSTEP_TARGET"
+        "ALIP_MINLP_DEBUG", "FOOTSTEP_TARGET", "FSM"
     )
 
     if plot_config.make_animation:

@@ -67,7 +67,14 @@ class OscTrackingData {
   }
 
   // Set whether to use the impact invariant projection
+  void SetNoDerivativeFeedback(bool no_derivative_feedback) {
+    no_derivative_feedback_ = no_derivative_feedback;
+  }
+
+  // Get whether to use the impact invariant projection
   bool GetImpactInvariantProjection() { return impact_invariant_projection_; }
+  // Get whether to use no derivative feedback near impacts
+  bool GetNoDerivativeFeedback() { return no_derivative_feedback_; }
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }
@@ -120,6 +127,7 @@ class OscTrackingData {
   // Flags
   bool use_springs_in_eval_ = true;
   bool impact_invariant_projection_ = false;
+  bool no_derivative_feedback_ = false;
 
   double time_through_trajectory_ = 0;
 

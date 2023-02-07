@@ -523,7 +523,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     } else {
       static const drake::logging::Warn log_once(const_cast<char*>(
           (std::to_string(fsm_state) +
-           " is not a valid finite state machine state in OSC.")
+           " is not a valid finite state machine state in OSC. This can happen "
+           "if there are modes with no active contacts.")
               .c_str()));
     }
   }
@@ -564,7 +565,7 @@ VectorXd OperationalSpaceControl::SolveQp(
                                     t_since_last_state_switch, fsm_state,
                                     next_fsm_state, M);
     // Need to call Update before this to get the updated jacobian
-    v_proj = alpha * M_Jt_ * ii_lambda_sol_;
+    v_proj = alpha * M_Jt_ * ii_lambda_sol_ + 1e-13 * VectorXd::Ones(n_v_);
   }
 
   // Get J and JdotV for holonomic constraint

@@ -217,10 +217,11 @@ int DoMain(int argc, char* argv[]) {
   // Contact information for OSC
   osc->SetContactFriction(osc_gains.mu);
 
-  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
+      plant.GetBodyByName("pelvis"));
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, *pelvis_view_frame, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant, left_toe.first, left_toe.second, *pelvis_view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
       plant, left_heel.first, left_heel.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
@@ -440,28 +441,10 @@ int DoMain(int argc, char* argv[]) {
       foot_traj_weight_trajectory);
   right_foot_rel_tracking_data->SetTimeVaryingWeights(
       foot_traj_weight_trajectory);
-  left_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(foot_traj_gain_trajectory);
-  right_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(foot_traj_gain_trajectory);
-
-  //  left_foot_rel_tracking_data->DisableFeedforwardAccel({2});
-  //  right_foot_rel_tracking_data->DisableFeedforwardAccel({2});
-  //  pelvis_trans_rel_tracking_data->DisableFeedforwardAccel({2});
-  //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
-  //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({2});
-  //  left_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
-  //  right_foot_yz_rel_tracking_data->DisableFeedforwardAccel({0, 1, 2});
-
-  left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
-  right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
-  left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
-  right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
-  pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
-
-  osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
-  osc->AddTrackingData(std::move(left_foot_rel_tracking_data));
-  osc->AddTrackingData(std::move(right_foot_rel_tracking_data));
-  //  osc->AddTrackingData(std::move(left_foot_yz_rel_tracking_data));
-  //  osc->AddTrackingData(std::move(right_foot_yz_rel_tracking_data));
+  left_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(
+      foot_traj_gain_trajectory);
+  right_foot_rel_tracking_data->SetTimeVaryingPDGainMultiplier(
+      foot_traj_gain_trajectory);
 
   auto heading_traj_generator =
       builder.AddSystem<cassie::osc::HeadingTrajGenerator>(plant,
@@ -483,8 +466,6 @@ int DoMain(int argc, char* argv[]) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});
   }
-  pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
-  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
@@ -517,10 +498,6 @@ int DoMain(int argc, char* argv[]) {
       RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right", "toe_rightdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
       RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right", "toe_rightdot");
-  left_toe_angle_tracking_data->SetImpactInvariantProjection(true);
-  right_toe_angle_tracking_data->SetImpactInvariantProjection(true);
-  osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
-  osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
 
   // Swing hip yaw joint tracking
   auto left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
@@ -533,16 +510,40 @@ int DoMain(int argc, char* argv[]) {
                                               "hip_yaw_leftdot");
   right_hip_yaw_tracking_data->AddJointToTrack("hip_yaw_right",
                                                "hip_yaw_rightdot");
-  left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
-  right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+
+  if (osc_gains.no_derivative_feedback) {
+    left_foot_rel_tracking_data->SetNoDerivativeFeedback(true);
+    right_foot_rel_tracking_data->SetNoDerivativeFeedback(true);
+    left_foot_yz_rel_tracking_data->SetNoDerivativeFeedback(true);
+    right_foot_yz_rel_tracking_data->SetNoDerivativeFeedback(true);
+    pelvis_trans_rel_tracking_data->SetNoDerivativeFeedback(true);
+    left_hip_yaw_tracking_data->SetNoDerivativeFeedback(true);
+    right_hip_yaw_tracking_data->SetNoDerivativeFeedback(true);
+    pelvis_rot_tracking_data->SetNoDerivativeFeedback(true);
+    left_toe_angle_tracking_data->SetNoDerivativeFeedback(true);
+    right_toe_angle_tracking_data->SetNoDerivativeFeedback(true);
+  } else {
+    left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
+    right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
+    left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
+    right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
+    pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
+    left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+    right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
+    pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
+    left_toe_angle_tracking_data->SetImpactInvariantProjection(true);
+    right_toe_angle_tracking_data->SetImpactInvariantProjection(true);
+  }
+  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
+  osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
+  osc->AddTrackingData(std::move(left_foot_rel_tracking_data));
+  osc->AddTrackingData(std::move(right_foot_rel_tracking_data));
+  osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
+  osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
   osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
-//  auto controller_frequency_regulator =
-//      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-//          1 / gains.controller_frequency,
-//          osc->get_output_port_osc_command().size());
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem

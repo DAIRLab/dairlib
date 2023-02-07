@@ -26,11 +26,11 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/cassie_out_to_radio.h"
 #include "systems/controllers/controller_failure_aggregator.h"
+#include "systems/controllers/osc/acom_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
-#include "systems/controllers/osc/acom_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -71,11 +71,11 @@ using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_run::FootTrajGenerator;
 using multibody::FixedJointEvaluator;
 using multibody::WorldYawViewFrame;
+using systems::controllers::AcomTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::AcomTrackingData;
 
 namespace examples {
 
@@ -219,10 +219,11 @@ int DoMain(int argc, char* argv[]) {
   // Contact information for OSC
   osc->SetContactFriction(osc_gains.mu);
 
-  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
+      plant.GetBodyByName("pelvis"));
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, *pelvis_view_frame, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
+      plant, left_toe.first, left_toe.second, *pelvis_view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
       plant, left_heel.first, left_heel.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
@@ -470,8 +471,8 @@ int DoMain(int argc, char* argv[]) {
                                                            plant_context.get());
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_rot_tracking_data;
   std::unique_ptr<AcomTrackingData> acom_tracking_data;
-  if (osc_gains.use_acom){
-     acom_tracking_data = std::make_unique<AcomTrackingData>(
+  if (osc_gains.use_acom) {
+    acom_tracking_data = std::make_unique<AcomTrackingData>(
         "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
         osc_gains.W_pelvis_rot, plant, plant);
     acom_tracking_data->AddStateToTrack(
@@ -506,11 +507,20 @@ int DoMain(int argc, char* argv[]) {
 //      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
   if (osc_gains.rot_filter_tau > 0) {
-    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                               {0, 1, 2});
+    if (osc_gains.use_acom) {
+      acom_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau, {0, 1, 2});
+    } else {
+      pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
+                                                 {0, 1, 2});
+    }
   }
-  pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
-  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
+
+  if (osc_gains.use_acom) {
+    osc->AddTrackingData(std::move(acom_tracking_data));
+  } else {
+    pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
+    osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
+  }
 
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
@@ -565,10 +575,10 @@ int DoMain(int argc, char* argv[]) {
                             VectorXd::Zero(1));
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
-//  auto controller_frequency_regulator =
-//      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-//          1 / gains.controller_frequency,
-//          osc->get_output_port_osc_command().size());
+  //  auto controller_frequency_regulator =
+  //      builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+  //          1 / gains.controller_frequency,
+  //          osc->get_output_port_osc_command().size());
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem

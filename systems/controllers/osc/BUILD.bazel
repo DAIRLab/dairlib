@@ -105,9 +105,19 @@ cc_library(
     srcs = ["acom_tracking_data.cc"],
     hdrs = ["acom_tracking_data.h"],
     deps = [
+        ":cassie_acom_func",
         ":options_tracking_data",
         "//multibody:utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "cassie_acom_func",
+    srcs = ["cassie_acom_func.cc"],
+    hdrs = ["cassie_acom_func.h"],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

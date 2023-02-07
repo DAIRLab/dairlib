@@ -6,6 +6,18 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
+template <typename T>
+drake::MatrixX<T> E_from_Quat(const drake::VectorX<T>& Q);
+template <typename T>
+drake::MatrixX<T> R_from_Quat(const drake::VectorX<T>& Q);
+template <typename T>
+drake::VectorX<T> EvalQBaseAcom(const drake::VectorX<T>& q);
+template <typename T>
+drake::MatrixX<T> EvalJOmegaBaseAcomEwrtAcom(const drake::VectorX<T>& q);
+template <typename T>
+drake::MatrixX<T> EvalJOmegaWorldAcomEwrtWorld(const drake::VectorX<T>& q);
+
+
 /// AcomTrackingData is a variation of RotTaskSpaceTrackingData that tracks the
 /// angular center of mass instead of the orientation of a body. The desired
 /// position must be expressed in quaternion (a 4d vector).

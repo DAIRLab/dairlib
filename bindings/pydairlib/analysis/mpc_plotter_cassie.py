@@ -19,6 +19,7 @@ mpc_channels = {
     "FOOTSTEP_TARGET": dairlib.lcmt_footstep_target
 }
 
+
 def init_ps():
     ps = PlotStyler()
     ps.set_default_styling()
@@ -38,7 +39,7 @@ def main():
         filename_mpc = filename
     log = lcm.EventLog(filename, "r")
     log_mpc = lcm.EventLog(filename_mpc, "r")
-    # plotter_main(plot_config.cassie_plot_config, log)
+    plotter_main(plot_config.cassie_plot_config, log)
 
     mpc_debug, footstep_targets = get_log_data(
         log_mpc,
@@ -49,14 +50,16 @@ def main():
         "ALIP_MINLP_DEBUG", "FOOTSTEP_TARGET"
     )
 
-    # ps = mpc_plots.plot_mpc_state_traj(
-    #     mpc_debug.mpc_trajs["solution"].xxs[mpc_debug.t_mpc[5]])
-    #
-    # _ = mpc_plots.plot_mpc_initial_state(mpc_debug)
-    #
-    # _ = mpc_plots.plot_foot_targets(mpc_debug, 1)
+    if plot_config.make_animation:
+        mpc_plots.make_solution_animation(mpc_debug)
+        quit()
 
-    mpc_plots.make_solution_animation(mpc_debug)
+    ps = mpc_plots.plot_mpc_state_traj(
+        mpc_debug.mpc_trajs["solution"].xxs[mpc_debug.t_mpc[5]])
+
+    _ = mpc_plots.plot_mpc_state_prediction(mpc_debug)
+
+    _ = mpc_plots.plot_foot_targets(mpc_debug, 1)
 
     plt.show()
 

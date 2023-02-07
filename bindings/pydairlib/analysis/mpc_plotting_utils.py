@@ -59,7 +59,7 @@ def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     ax.plot(-p0[1], p0[0], color='black', marker='X', markersize=20)
 
 
-def mpc_processing_callback(data, mpc_channel, footstep_channel):
+def mpc_processing_callback(data, mpc_channel, footstep_channel, fsm_channel):
     mpc_debug = MpcDebug()
     for msg in data[mpc_channel]:
         mpc_debug.append(msg)
@@ -106,6 +106,24 @@ def plot_mpc_initial_state(mpc_debug, ps=None):
     for i, t in enumerate(mpc_debug.t_mpc):
         xx[i] = mpc_debug.x0[t]
     labels = ['x', 'y', 'L_x', 'L_y']
+    data = {
+        't_mpc': mpc_debug.t_mpc,
+        'xx': xx
+    }
+    plotting_utils.make_plot_of_entire_series(
+        data, 't_mpc', {'xx': labels},
+        {'xlabel': 'Time (s)', 'ylabel': 'x0', 'title': 'MPC Initial States'},
+        ps
+    )
+    return ps
+
+
+def plot_mpc_state_prediction(mpc_debug, ps=None):
+    ps = plot_mpc_initial_state(mpc_debug, ps)
+    xx = np.zeros((len(mpc_debug.t_mpc), 4))
+    for i, t in enumerate(mpc_debug.t_mpc):
+        xx[i] = mpc_debug.mpc_trajs["solution"].xxs[t][0][-1]
+    labels = ['x-predicted', 'y-predicted', 'L_x-predicted', 'L_y-predicted']
     data = {
         't_mpc': mpc_debug.t_mpc,
         'xx': xx

@@ -24,6 +24,7 @@ class PlotStyler():
     matplotlib.rcParams['figure.figsize'] = 8, 4
     self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
+    self.legend_labels = []
 
     return
 
@@ -92,7 +93,8 @@ class PlotStyler():
   def add_legend(self, labels, loc=0):
     plt.figure(self.fig_id)
     ax = plt.gca()
-    legend = ax.legend(labels, loc=loc)
+    self.legend_labels += labels
+    legend = ax.legend(self.legend_labels, loc=loc)
     ax.add_artist(legend)
     return
 

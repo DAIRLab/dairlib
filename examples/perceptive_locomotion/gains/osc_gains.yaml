@@ -37,8 +37,8 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.15
-final_foot_height: 0.01
+mid_foot_height: 0.18
+final_foot_height: 0.05
 final_foot_velocity_z: 0.5
 
 # LIPM trajectory
@@ -52,8 +52,8 @@ w_soft_constraint: 8000
 w_input_reg: 0.0000001
 
 w_swing_toe: 1
-swing_toe_kp: 500
-swing_toe_kd: 4
+swing_toe_kp: 1500
+swing_toe_kd: 10
 
 w_hip_yaw: 2
 hip_yaw_kp: 40
@@ -70,7 +70,7 @@ CoMKp:
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     1]
+      0,    0,     2.5]
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
@@ -103,7 +103,7 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 120,  0,     0,
+  [ 150,  0,     0,
     0,   170,    0,
     0,    0,   200]
 SwingFootKd:

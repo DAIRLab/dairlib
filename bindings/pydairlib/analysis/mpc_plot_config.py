@@ -16,3 +16,4 @@ class MpcPlotConfig:
             CassiePlotConfig(data["cassie_plot_config_filename"])
         self.start_time = data["start_time"]
         self.end_time = data["end_time"]
+        self.make_animation = data["make_animation"]

@@ -226,16 +226,17 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     // split this assignment into 2 lines to avoid Eigen compiler error :(
     Vector2d u = (p_b - p_next_in_ds).head<2>();
     u = fsm_switch ? u : Vector2d::Zero();
-
     filter.Update(filter_data, u, x, t);
     x = filter.x();
   }
 
+  double time_left_in_this_mode = t_next_impact - t;
   if (t - t_prev_impact < double_stance_duration_) {
     double tds = double_stance_duration_ - (t - t_prev_impact);
     x = alip_utils::CalcReset(
         trajopt_.H(), trajopt_.m(), tds, x, p_b, p_next_in_ds);
     p_b = p_next_in_ds;
+    time_left_in_this_mode = single_stance_duration_;
   }
   VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
   init_alip_state_and_stance_pos.head<4>() = x;
@@ -251,7 +252,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   trajopt_.UpdateTrackingCost(xd);
   trajopt_.UpdateFootholds(
       foothold_set.GetSubsetCloseToPoint(p_b, 2.0).footholds());
-  trajopt_.UpdateNominalStanceTime(t_next_impact - t, single_stance_duration_);
+  trajopt_.UpdateNominalStanceTime(time_left_in_this_mode, single_stance_duration_);
 
   if (committed) {
     trajopt_.ActivateInitialTimeEqualityConstraint(t_next_impact - t);

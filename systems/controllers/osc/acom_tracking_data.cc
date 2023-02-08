@@ -304,16 +304,33 @@ void AcomTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
 
 void AcomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
                                const Context<double>& context_wo_spr) {
+//  auto start = std::chrono::high_resolution_clock::now();
+
   VectorX<double> q = x_wo_spr.template head<23>();
   MatrixXd J_acom = EvalJOmegaWorldAcomEwrtWorld(q);
   J_ = J_acom;
 //  cout << "J_ = \n" << J_ << endl;
+
+//  auto finish = std::chrono::high_resolution_clock::now();
+//  std::chrono::duration<double> elapsed = finish - start;
+//  cout << "J eval time:" << elapsed.count() << endl;
+
+// <10us most of the time. It can hit 60us (but very rarely)
 }
 
 void AcomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                    const Context<double>& context_wo_spr) {
+//  auto start = std::chrono::high_resolution_clock::now();
+
+  //JdotV_ = Vector3d::Zero();
   JdotV_ = EvalJdotVOmegaWorldAcomEwrtWorld(x_wo_spr);
 //  cout << "JdotV_ = \n" << JdotV_.transpose() << endl;
+
+//  auto finish = std::chrono::high_resolution_clock::now();
+//  std::chrono::duration<double> elapsed = finish - start;
+//  cout << "JdotV eval time:" << elapsed.count() << endl;
+
+// evaluation time is ~3ms using autodiff.
 }
 
 void AcomTrackingData::UpdateYddotDes(double, double) {

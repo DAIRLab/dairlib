@@ -21,7 +21,7 @@ class PlotStyler():
     self.orange = '#FE7F0E'
     # self.directory = None
     self.dpi = 200
-    self.directory = '/home/yangwill/Pictures/plot_styler/'
+    self.directory = '/home/yuming/Pictures/plot_styler/'
     matplotlib.rcParams['figure.figsize'] = 6, 4
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 

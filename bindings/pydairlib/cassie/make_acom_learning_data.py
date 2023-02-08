@@ -24,7 +24,6 @@ def make_plant_and_context():
     plant.Finalize()
     return plant, plant.CreateDefaultContext()
 
-
 class PlantHarness:
     def __init__(self):
         self.plant, self.context = make_plant_and_context()
@@ -37,6 +36,31 @@ class PlantHarness:
         state_names = CreateStateNameVectorFromMap(self.plant)
         self.pos_names = state_names[:self.nq]
 
+        # mirroring
+        self.state_name_list = CreateStateNameVectorFromMap(self.plant)
+        self.swapped_state_names = []
+        for name in self.state_name_list:
+            if 'right' in name:
+                self.swapped_state_names.append(name.replace('right', 'left'))
+            elif 'left' in name:
+                self.swapped_state_names.append(name.replace('left', 'right'))
+            else:
+                self.swapped_state_names.append(name)
+
+    # Mirroring
+    def remap_joints_left_to_right(self, q):
+        qnew = np.zeros((self.nq,))
+        i = 0
+        for name in self.swapped_state_names:
+            # invert the position of the hip roll/yaw joints
+            m = 1
+            if 'hip_roll' in name or 'hip_yaw' in name:
+                m = -1
+            if i < self.nq:
+                qnew[self.pos_map[name]] = m * q[i]
+            i += 1
+        return qnew
+
     # Set the right to be a mirror of the left (arbitrary choice)
     def symmetrize_in_place(self, q):
         for name in self.pos_names:
@@ -45,7 +69,7 @@ class PlantHarness:
                 q[self.pos_map[name.replace('left', 'right')]] = \
                     s * q[self.pos_map[name]]
 
-    def make_random_pose(self, symmetric: bool = True) -> np.ndarray:
+    def make_random_pose(self, symmetric: bool = False) -> np.ndarray:
         qj = np.random.uniform(
             low=self.plant.GetPositionLowerLimits().ravel()[7:],
             high=self.plant.GetPositionUpperLimits().ravel()[7:]
@@ -90,6 +114,13 @@ def make_dataset(filepath: str, N: int) -> None:
         np.savetxt(fname_q, q, delimiter=',')
         np.savetxt(fname_A, A, delimiter=',')
 
+        q_mirror = plant.remap_joints_left_to_right(q)
+        A = plant.get_centroidal_momentum_matrix(q_mirror)
+        fname_q = os.path.join(filepath, f'{i+N}_position_vector.csv')
+        fname_A = os.path.join(filepath, f'{i+N}_connection_matrix.csv')
+        np.savetxt(fname_q, q_mirror, delimiter=',')
+        np.savetxt(fname_A, A, delimiter=',')
+
 
 def test():
     plant = PlantHarness()
@@ -101,9 +132,11 @@ def test():
 
 
 def main():
-    fname = sys.argv[1]
-    n = sys.argv[2]
-    make_dataset(fname, n)
+    # fname = sys.argv[1]
+    # n = sys.argv[2]
+    # make_dataset(fname, n)
+    # make_dataset("~/Downloads/test", 1000)
+    make_dataset("/home/yuming/Downloads/test", 1000)
 
 
 if __name__ == "__main__":

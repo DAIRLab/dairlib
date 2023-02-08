@@ -54,7 +54,7 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
+DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");

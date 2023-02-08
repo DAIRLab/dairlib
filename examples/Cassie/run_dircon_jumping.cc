@@ -142,7 +142,7 @@ struct DirconJumpingParameters {
   double constr_viol_tol;
   double compl_inf_tol;
   double acceptable_tol;
-  double acceptable_iter;
+  int acceptable_iter;
   double cost_scaling;
   bool use_ipopt;
   int ipopt_iter;
@@ -690,13 +690,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
     auto left_foot_x_box_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_left", pt_front_contact, Eigen::RowVector3d(1, 0, 0),
-            0.3 * (gait_params.distance - eps) * VectorXd::Ones(1),
-            0.3 * (gait_params.distance + eps) * VectorXd::Ones(1));
+            0.2 * (gait_params.distance - eps) * VectorXd::Ones(1),
+            0.2 * (gait_params.distance + eps) * VectorXd::Ones(1));
     auto right_foot_x_box_constraint =
         std::make_shared<PointPositionConstraint<double>>(
             plant, "toe_right", pt_front_contact, Eigen::RowVector3d(1, 0, 0),
-            0.3 * (gait_params.distance - eps) * VectorXd::Ones(1),
-            0.3 * (gait_params.distance + eps) * VectorXd::Ones(1));
+            0.2 * (gait_params.distance - eps) * VectorXd::Ones(1),
+            0.2 * (gait_params.distance + eps) * VectorXd::Ones(1));
     prog->AddConstraint(left_foot_x_box_constraint, x_top.head(n_q));
     prog->AddConstraint(right_foot_x_box_constraint, x_top.head(n_q));
     auto left_foot_z_box_constraint =

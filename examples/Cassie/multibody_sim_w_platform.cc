@@ -73,7 +73,7 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(visualize, true, "Set to true to visualize the platform");
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
-DEFINE_bool(use_traj_state, false,
+DEFINE_bool(use_traj_state, true,
               "Whether to intialize the sim from a specific state");
 DEFINE_string(contact_solver, "SAP",
               "Contact solver to use. Either TAMSI or SAP.");
@@ -211,6 +211,9 @@ int do_main(int argc, char* argv[]) {
   Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
 
   if (FLAGS_use_traj_state){
+    if(FLAGS_platform_x < 0){
+      x_traj_init(6) += FLAGS_platform_height;
+    }
     plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
   }else{
     Eigen::VectorXd q_init, u_init, lambda_init;

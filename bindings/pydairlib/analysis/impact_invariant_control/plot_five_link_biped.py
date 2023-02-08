@@ -91,7 +91,7 @@ def main():
     nc = 2
     n_samples = 1000
     window_length = 0.05
-    tau = 0.0025
+    tau = 0.002
     selected_joint_idxs = slice(6,7)
     # selected_joint_idxs = slice(0, 7)
 
@@ -160,6 +160,8 @@ def main():
                     end_idx - start_idx)
     print(start_idx)
     print(end_idx)
+    # t_proj = np.array(
+    #     [t_impact[0] - 1.5*window_length, t_impact[0] + 1.5*window_length])
     t_proj = np.array(
         [t_impact[0] - window_length, t_impact[0] + window_length])
 
@@ -191,13 +193,14 @@ def main():
                                                             world)
         TV_J = M_inv @ J_r.T
         TV_J_space = null_space(TV_J.T).T
-
-        if (t[i] < transition_time):
-            alpha = blend_sigmoid(t[i] - transition_time, tau,
-                                  0.5 * window_length)
-        else:
-            alpha = blend_sigmoid(transition_time - t[i], tau,
-                                  0.5 * window_length)
+        alpha = 0
+        if (np.abs(t[i] - transition_time) < 1.5 * window_length):
+          if (t[i] < transition_time):
+              alpha = blend_sigmoid(t[i] - transition_time, tau,
+                                    window_length)
+          else:
+              alpha = blend_sigmoid(transition_time - t[i], tau,
+                                    window_length)
         alphas[i] = alpha
         vel_time_varying_proj[i] = TV_J_space.T @ TV_J_space @ vel[i]
         # vel_correction[i] = transform @ (J_r @ (vel[i] - vel_actual[i]))
@@ -215,7 +218,7 @@ def main():
                       xlabel='time (s)', ylabel='velocity (m/s)', grid=False)
     gen_vel_plot.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
     ylim = gen_vel_plot.fig.gca().get_ylim()
-    gen_vel_plot.save_fig('gen_vel_plot.png')
+    # gen_vel_plot.save_fig('gen_vel_plot.png')
     # ps.save_fig('generalized_velocities_around_impact.png')
 
     proj_vel_plot = plot_styler.PlotStyler()
@@ -225,14 +228,14 @@ def main():
     proj_vel_plot.plot(t, vel_proj_actual,
                        title='Constant Impact-Invariant Projection',
                        xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
-    proj_vel_plot.save_fig('proj_vel_plot.png')
+    # proj_vel_plot.save_fig('proj_vel_plot.png')
 
     corrected_vel_plot = plot_styler.PlotStyler()
     corrected_vel_plot.plot(t, vel_corrected,
                             title='Impact-Invariant Correction',
                             xlabel='time (s)', ylabel='velocity (m/s)',
                             ylim=ylim)
-    corrected_vel_plot.save_fig('corrected_vel_plot.png')
+    # corrected_vel_plot.save_fig('corrected_vel_plot.png')
 
     blended_vel_plot = plot_styler.PlotStyler()
     ax = blended_vel_plot.fig.axes[0]
@@ -244,7 +247,7 @@ def main():
                           xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=blended_vel_plot.grey,
                     alpha=0.2)
-    blended_vel_plot.save_fig('blended_vel_plot.png')
+    # blended_vel_plot.save_fig('blended_vel_plot.png')
 
 
 
@@ -262,7 +265,7 @@ def main():
     # ax.spines['bottom'].set_visible(False)
     # ax.spines['left'].set_visible(False)
     ylim = gen_vel_error.fig.gca().get_ylim()
-    gen_vel_error.save_fig('gen_vel_error.png')
+    # gen_vel_error.save_fig('gen_vel_error.png')
 
     projected_vel_error = plot_styler.PlotStyler()
     ax = projected_vel_error.fig.axes[0]
@@ -271,7 +274,7 @@ def main():
                                 xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=projected_vel_error.grey,
                     alpha=0.2)
-    projected_vel_error.save_fig('projected_vel_error.png')
+    # projected_vel_error.save_fig('projected_vel_error.png')
 
     corrected_vel_error = plot_styler.PlotStyler()
     ax = corrected_vel_error.fig.axes[0]
@@ -280,14 +283,14 @@ def main():
                           xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=corrected_vel_error.grey,
                     alpha=0.2)
-    corrected_vel_error.save_fig('corrected_vel_error.png')
+    # corrected_vel_error.save_fig('corrected_vel_error.png')
 
     blending_function_plot = plot_styler.PlotStyler()
     ax = blending_function_plot.fig.axes[0]
     blending_function_plot.plot(t, alphas, title="Blending Function")
     ax.fill_between(t_proj, ax.get_ylim()[0], ax.get_ylim()[1],
                     color=blending_function_plot.grey, alpha=0.2)
-    blending_function_plot.save_fig('blending_function_plot.png')
+    # blending_function_plot.save_fig('blending_function_plot.png')
 
     plt.show()
 

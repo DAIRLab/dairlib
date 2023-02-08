@@ -67,9 +67,9 @@ def main():
 
     done = False
     max_speed = 1.0
-    ramp_up = np.arange(0, max_speed, 0.05)
+    ramp_up = np.arange(0, max_speed, 0.01)
     stay = max_speed * np.ones(125)
-    ramp_down = np.flip(np.arange(0, max_speed, 0.02))
+    ramp_down = np.flip(np.arange(0, max_speed, 0.01))
     speeds = np.hstack((ramp_up, stay, ramp_down))
     i = 0
     while not done:

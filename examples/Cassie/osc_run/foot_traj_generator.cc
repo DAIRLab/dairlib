@@ -155,8 +155,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   const auto& mode_lengths =
       this->EvalVectorInput(context, contact_scheduler_port_)->get_value();
 
-//  double pelvis_t0 = mode_lengths[0];
-//  double pelvis_tf = mode_lengths[1];
+  double pelvis_t0 = mode_lengths[0];
+  double pelvis_tf = mode_lengths[1];
   double left_t0 = mode_lengths[2];
   double left_tf = mode_lengths[3];
   double right_t0 = mode_lengths[4];
@@ -201,6 +201,23 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
 
   VectorXd pelvis_vel = v.segment(3, 3);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
+
+  std::vector<double> T_waypoints;
+
+  double x_mid_point_ratio = 0.8;
+  double t_mid_point_ratio = 0.6;
+
+  if (is_left_foot_) {
+    T_waypoints = {left_t0, left_t0 + t_mid_point_ratio * (left_tf - left_t0),
+                   left_tf};
+  } else {
+    T_waypoints = {right_t0,
+                   right_t0 + t_mid_point_ratio * (right_tf - right_t0),
+                   right_tf};
+  }
+
+  // TODO(yangwill): Footsteps are planned with constant stance duration T_s of
+  // 0.3s
   VectorXd foot_end_pos_des =
       0.5 * (0.3) * rot.transpose() * pelvis_vel + Kd_ * (pelvis_vel_err);
 
@@ -211,20 +228,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   }
   foot_end_pos_des(0) += sagital_radio_tuning * sagital_offset_;
   foot_end_pos_des(2) = -rest_length_ - rest_length_offset_;
-
-  std::vector<double> T_waypoints;
-  std::vector<double> T_waypoints_0;
-  std::vector<double> T_waypoints_1;
-  std::vector<double> T_waypoints_2;
-
-  double x_mid_point_ratio = 0.8;
-  double t_mid_point_ratio = 0.6;
-
-  if (is_left_foot_) {
-    T_waypoints = {left_t0, left_t0 + t_mid_point_ratio * (left_tf - left_t0), left_tf};
-  } else {
-    T_waypoints = {right_t0, right_t0 + t_mid_point_ratio * (right_tf - right_t0), right_tf};
-  }
 
   auto hip_pos = context.get_discrete_state(initial_hip_pos_idx_).get_value();
   std::vector<MatrixXd> Y(T_waypoints.size(), VectorXd::Zero(3));

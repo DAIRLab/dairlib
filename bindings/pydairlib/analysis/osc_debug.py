@@ -4,11 +4,11 @@ from math import nan
 
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
-    def __init__(self, gap_threshold=0.01):
+    def __init__(self, gap_threshold=0.01, name=''):
         self.t_thresh = gap_threshold
         self.t = []
         self.y_dim = 0
-        self.name = ""
+        self.name = name
         self.is_active = []
         self.y = []
         self.y_des = []

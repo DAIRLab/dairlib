@@ -1,3 +1,5 @@
+controller_frequency: 1000
+
 # OSC gains
 w_input: 0.0000
 w_input_reg: 0.000001

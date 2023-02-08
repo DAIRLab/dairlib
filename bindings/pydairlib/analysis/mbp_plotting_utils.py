@@ -161,7 +161,7 @@ def process_osc_channel(data):
         for tracking_data in msg.tracking_data:
             if tracking_data.name not in osc_debug_tracking_datas:
                 osc_debug_tracking_datas[tracking_data.name] = \
-                    lcmt_osc_tracking_data_t()
+                    lcmt_osc_tracking_data_t(name=tracking_data.name)
             osc_debug_tracking_datas[tracking_data.name].append(
                 tracking_data, msg.utime / 1e6)
 
@@ -419,7 +419,7 @@ def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
     data_dict = {'t': robot_output['t_x']}
     data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
         robot_output, plant, context,
-        plant.GetBodyByName(fb_frame_name).body_frame())
+        plant.GetBodyByName(fb_frame_name).body_frame())[:, 0]
     legend_entries = {'base_vel': ['forward', 'lateral', 'vertical']}
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
@@ -492,6 +492,9 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['y_des'] = tracking_data.y_des[:, dim]
         data['y'] = tracking_data.y[:, dim]
         data['error_y'] = tracking_data.error_y[:, dim]
+        print(tracking_data.name + str(dim))
+        # print('mean error: ' + str(np.nanmean(np.sqrt(tracking_data.error_y[:, :].flatten()**2))))
+        print('mean error: ' + str(np.nanmax(np.sqrt(tracking_data.error_y[:, dim].flatten()**2))))
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]
@@ -503,6 +506,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
 
     data['t'] = tracking_data.t
+
     return plot_general_osc_tracking_data(traj, deriv, dim, data, time_slice)
 
 def plot_osc_tracking_data_in_space(osc_debug, traj, dims, deriv, time_slice):

@@ -26,7 +26,6 @@ def PlotCoMTrajSolution(trajopt):
     plt.ylim([-0.5, pp[-1][0] + xx[-1][-1][0]])
 
 def PlotDesired(xx):
-    import pdb; pdb.set_trace()
     xy_traj = np.hstack(
         [
             np.hstack(
@@ -51,7 +50,7 @@ def PlotInputSolution(trajopt):
 
 
 def main():
-    trajopt = AlipMINLP(32, 0.9)
+    trajopt = AlipMINLP(32, 0.9, 10, 3)
     trajopt.SetDoubleSupportTime(0.05)
 
     footholds = []
@@ -70,13 +69,10 @@ def main():
                 )
         footholds.append(foothold)
     trajopt.AddFootholds(footholds)
-    nk = 10
-    trajopt.AddMode(nk)
-    trajopt.AddMode(nk)
-    trajopt.AddMode(nk)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([[0.1], [0]]), 0.35, 0.35, nk, Stance.kLeft)
+    xd = trajopt.MakeXdesTrajForVdes(np.array([[0.2], [1.0]]), 0.35, 0.35, 10, Stance.kLeft)
     PlotDesired(xd)
     plt.show()
+
     import pdb; pdb.set_trace()
     trajopt.AddTrackingCost(xd, 1*np.eye(4), 0*np.eye(4))
     trajopt.UpdateNominalStanceTime(0.35, 0.35)
@@ -89,7 +85,7 @@ def main():
     # trajopt.ActivateInitialTimeConstraint(0.35)
     trajopt.CalcOptimalFootstepPlan(xd[0][:4], np.array(p0), False)
 
-    PlotDesired(trajopt)
+    # PlotDesired(trajopt)
     # PlotCoMTrajSolution(trajopt)
 
     import pdb; pdb.set_trace()

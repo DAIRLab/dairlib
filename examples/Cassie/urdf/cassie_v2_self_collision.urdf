@@ -677,19 +677,19 @@
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.01"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.01"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>
@@ -732,19 +732,19 @@
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.01"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="-0.0457 .112 0" rpy="0 0 0"/>
         </collision>
         <visual>
             <geometry>
-                <sphere radius="0.01"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </visual>
         <collision>
             <geometry>
-                <sphere radius="0.0"/>
+                <sphere radius="0.001"/>
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>

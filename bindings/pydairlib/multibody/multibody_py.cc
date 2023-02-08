@@ -23,7 +23,8 @@ PYBIND11_MODULE(multibody, m) {
       .def(py::init<std::string, int, std::string>())
       .def(py::init<std::string, int, double, std::string>())
       .def(py::init<std::string, int, Eigen::VectorXd, std::string>())
-      .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
+      .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"))
+      .def("GetMeshcat", &MultiposeVisualizer::GetMeshcat);
 
   m.def("ConnectTrajectoryVisualizer",
         &dairlib::multibody::ConnectTrajectoryVisualizer, py::arg("plant"),

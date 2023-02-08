@@ -25,7 +25,8 @@ def main():
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
 
-    plot_styler.PlotStyler.set_default_styling()
+    if plot_config.use_default_styling:
+        plot_styler.PlotStyler.set_default_styling()
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
@@ -148,7 +149,7 @@ def main():
                                                             deriv, t_osc_slice)
                     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
                     # plot.save_fig(traj_name + '_' + deriv + '_' + str(dim)  + '.png')
-                plot = mbp_plots.plot_osc_tracking_data_in_space(osc_debug, traj_name, config['dims'], deriv, t_osc_slice)
+                # plot = mbp_plots.plot_osc_tracking_data_in_space(osc_debug, traj_name, config['dims'], deriv, t_osc_slice)
                 # plot.save_fig('swing_foot_target_trajectory.png')
 
     ''' Plot Foot Positions '''

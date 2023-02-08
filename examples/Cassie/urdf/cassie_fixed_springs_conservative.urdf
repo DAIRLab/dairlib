@@ -791,7 +791,7 @@
         <parent link="tarsus_left" />
         <child link="toe_left" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.7" upper="-0.0" effort="40"/>
+        <limit lower="-2.7" upper="-0.7" effort="40"/>
         <dynamics damping="1" />
     </joint>
 
@@ -800,7 +800,7 @@
         <parent link="tarsus_right" />
         <child link="toe_right" />
         <axis xyz="0 0 1" />
-        <limit lower="-2.7" upper="-0.0" effort="40"/>
+        <limit lower="-2.7" upper="-0.7" effort="40"/>
         <dynamics damping="1" />
     </joint>
 

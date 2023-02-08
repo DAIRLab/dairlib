@@ -217,10 +217,13 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   std::vector<double> T_waypoints_1;
   std::vector<double> T_waypoints_2;
 
+  double x_mid_point_ratio = 0.8;
+  double t_mid_point_ratio = 0.6;
+
   if (is_left_foot_) {
-    T_waypoints = {left_t0, left_t0 + 0.6 * (left_tf - left_t0), left_tf};
+    T_waypoints = {left_t0, left_t0 + t_mid_point_ratio * (left_tf - left_t0), left_tf};
   } else {
-    T_waypoints = {right_t0, right_t0 + 0.6 * (right_tf - right_t0), right_tf};
+    T_waypoints = {right_t0, right_t0 + t_mid_point_ratio * (right_tf - right_t0), right_tf};
   }
 
   auto hip_pos = context.get_discrete_state(initial_hip_pos_idx_).get_value();
@@ -231,7 +234,7 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     Y[0](2) = -rest_length_;
   }
   //  Y[0](2) -= rest_length_offset_;
-  Y[1] = start_pos + 0.8 * (foot_end_pos_des - start_pos);
+  Y[1] = start_pos + x_mid_point_ratio * (foot_end_pos_des - start_pos);
   Y[1](2) += mid_foot_height_;
   Y[2] = foot_end_pos_des;
 

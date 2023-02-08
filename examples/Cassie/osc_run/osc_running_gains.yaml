@@ -9,7 +9,7 @@ w_lambda: 0.1
 w_input_accel: 0.1
 w_joint_limit: 0
 impact_threshold: 0.050
-impact_tau: 0.005
+impact_tau: 0.002
 weight_scaling: 1.0
 mu: 0.6
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
@@ -53,12 +53,12 @@ swing_toe_kd: 10
 
 w_hip_yaw: 2.5
 hip_yaw_kp: 100
-hip_yaw_kd: 5
+hip_yaw_kd: 7
 # Foot placement parameters
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.00
 footstep_lateral_offset: 0.04 # drake
-mid_foot_height: 0.2
+mid_foot_height: 0.3
 FootstepKd:
   [ 0.01,     0,  0,
     0,     0.3, 0,

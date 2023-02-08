@@ -2,7 +2,7 @@ import sys
 import matplotlib.pyplot as plt
 from pydairlib.lcm import lcm_trajectory
 from pydairlib.common import FindResourceOrThrow
-from pydrake.trajectories import PiecewisePolynomial
+from pydrake.all import PiecewisePolynomial, Box, RigidTransform
 import numpy as np
 
 from pydrake.all import (DiagramBuilder, AddMultibodyPlantSceneGraph, Simulator,
@@ -95,11 +95,20 @@ def main():
     for i in range(params.num_poses):
       poses[i] = optimal_traj.value(
         t_vec[int(i * len(t_vec) / params.num_poses)])[:, 0]
+      # poses[i, 6] += 0.5
     alpha_scale = np.linspace(0.2, 1.0, params.num_poses)
     visualizer = MultiposeVisualizer(FindResourceOrThrow(
       vis_urdf),
       params.num_poses, np.square(alpha_scale), "")
+    # translation = np.array([-0.25, 0, 0.25])
+    translation = np.array([0.5, 0, 0.25])
+    origin = RigidTransform(translation)
+    box = Box(0.5, 1.0, 0.5)
+    visualizer.GetMeshcat().SetObject("box", box)
+    visualizer.GetMeshcat().SetTransform("box", origin)
     visualizer.DrawPoses(poses.T)
+    while(True):
+      continue
 
 
 if __name__ == "__main__":

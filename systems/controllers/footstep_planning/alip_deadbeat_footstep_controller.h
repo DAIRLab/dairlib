@@ -54,9 +54,6 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   const {
     return this->get_output_port(footstep_target_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_mpc_debug() const {
-    return this->get_output_port(mpc_debug_output_port_);
-  }
 
  private:
 
@@ -74,8 +71,15 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
                               drake::systems::BasicVector<double>* p_W) const;
 
-  void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
-                         lcmt_mpc_debug* mpc_debug) const;
+  void CalcFootStepAndStanceFootHeight(
+      const Eigen::Vector3d& stance_foot_pos_yaw_frame,
+      const Eigen::Vector3d& com_pos_yaw_frame,
+      const Eigen::Vector3d& L_yaw_frame,
+      const Eigen::Vector2d& vdes_xy,
+      const double curr_time,
+      const double end_time_of_this_interval,
+      int fsm_state,
+      Eigen::Vector2d* x_fs) const;
 
   // FSM helper functions
   int curr_fsm(int fsm_idx) const {
@@ -99,15 +103,12 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   drake::systems::OutputPortIndex next_impact_time_output_port_;
   drake::systems::OutputPortIndex prev_impact_time_output_port_;
   drake::systems::OutputPortIndex footstep_target_output_port_;
-  drake::systems::OutputPortIndex mpc_debug_output_port_;
 
   // controller states
   drake::systems::DiscreteStateIndex fsm_state_idx_;
   drake::systems::DiscreteStateIndex next_impact_time_state_idx_;
   drake::systems::DiscreteStateIndex prev_impact_time_state_idx_;
-
-  // abstract states
-  drake::systems::AbstractStateIndex alip_filter_idx_;
+  drake::systems::DiscreteStateIndex footstep_target_state_idx_;
 
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -116,6 +117,7 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   int nq_;
   int nv_;
   int nu_;
+  const double m_;
 
   // finite state machine management
   std::vector<int> left_right_stance_fsm_states_;

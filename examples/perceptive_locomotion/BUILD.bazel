@@ -39,6 +39,42 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_alip_deadbeat_controller",
+    srcs = ["run_alip_deadbeat_controller.cc"],
+    local_defines = select(
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+        },
+    ),
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//examples/perceptive_locomotion/gains:alip_minlp_gains",
+        "//geometry:convex_foothold",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:alip_deadbeat_footstep_controller",
+        "//systems/controllers/footstep_planning:flat_terrain_foothold_source",
+        "//systems/controllers/footstep_planning:footstep_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:fsm_lcm_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ] + select(
+        {
+            "//tools/workspace/ros:dair_ros_on": [
+                "//geometry:convex_foothold_receiver",
+                "//systems/ros:dairlib_ros",
+            ],
+            "//tools/workspace/ros:dair_ros_off": [],
+        },
+    ),
+)
+
+cc_binary(
     name = "run_osc_for_alip_minlp_controller",
     srcs = ["run_osc_for_alip_minlp_controller.cc"],
     deps = [

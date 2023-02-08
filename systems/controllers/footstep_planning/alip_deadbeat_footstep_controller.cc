@@ -42,7 +42,8 @@ AlipDeadbeatFootstepController::AlipDeadbeatFootstepController(
     post_left_right_fsm_states_(post_left_right_fsm_states),
     double_stance_duration_(double_stance_duration),
     single_stance_duration_(left_right_stance_durations.front()),
-    gains_(gains) {
+    gains_(gains),
+    m_(plant.CalcTotalMass(*plant_context)){
 
   // just alternating single stance phases for now.
   DRAKE_DEMAND(left_right_stance_fsm_states_.size() == 2);
@@ -64,15 +65,7 @@ AlipDeadbeatFootstepController::AlipDeadbeatFootstepController(
   fsm_state_idx_ = DeclareDiscreteState(1);
   next_impact_time_state_idx_ = DeclareDiscreteState(1);
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
-  initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
-
-  if (gains_.filter_alip_state) {
-    auto filter = S2SKalmanFilter(gains_.filter_data);
-    std::pair<S2SKalmanFilter, S2SKalmanFilterData> model_filter =
-        {filter, gains_.filter_data};
-    alip_filter_idx_ = DeclareAbstractState(drake::Value<
-        std::pair<S2SKalmanFilter, S2SKalmanFilterData>>(model_filter));
-  }
+  footstep_target_state_idx_ = DeclareDiscreteState(3);
 
   // State Update
   this->DeclarePerStepUnrestrictedUpdateEvent(
@@ -129,8 +122,6 @@ drake::systems::EventStatus AlipDeadbeatFootstepController::UnrestrictedUpdate(
   // initialize local variables
   int fsm_idx = static_cast<int>(
       state->get_discrete_state(fsm_state_idx_).get_value()(0));
-
-  bool fsm_switch = false;
   Vector3d CoM_w = Vector3d::Zero();
   Vector3d p_w = Vector3d::Zero();
   Vector3d p_next_in_ds = Vector3d::Zero();
@@ -144,15 +135,12 @@ drake::systems::EventStatus AlipDeadbeatFootstepController::UnrestrictedUpdate(
 
   // Check if it's time to switch the fsm or commit to the current footstep
   if (t >= t_next_impact) {
-    fsm_switch = true;
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     t_prev_impact = t;
     t_next_impact = t + double_stance_duration_ + single_stance_duration_;
   }
-
-  const int fsm_state = curr_fsm(fsm_idx);
-  Stance stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? Stance::kLeft : Stance::kRight;
+  int fsm_state = curr_fsm(fsm_idx);
 
   double ds_fraction = std::clamp(
       (t - t_prev_impact) / double_stance_duration_, 0.0, 1.0);
@@ -179,19 +167,16 @@ drake::systems::EventStatus AlipDeadbeatFootstepController::UnrestrictedUpdate(
   Vector3d L_b = ReExpressWorldVector3InBodyYawFrame<double>(
       plant_, *context_, "pelvis", L);
 
+  Vector2d footstep_target = Vector2d::Zero();
 
-  Vector4d x = Vector4d::Zero();
-  x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
-  x.tail<2>() = L_b.head<2>();
+  CalcFootStepAndStanceFootHeight(
+      p_b, CoM_b, L_b, vdes, t, t_next_impact, fsm_state, &footstep_target);
 
-  ConvexFoothold workspace;
-  Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
-
-  workspace.AddFace( Vector3d::UnitY(),  com_xy + 10 * Vector3d::UnitY());
-  workspace.AddFace(-Vector3d::UnitY(), com_xy -10 * Vector3d::UnitY());
-  workspace.AddFace(Vector3d::UnitX(), com_xy + 10 * Vector3d::UnitX());
-  workspace.AddFace(-Vector3d::UnitX(), com_xy - 10 * Vector3d::UnitX());
-
+  auto target = state->get_mutable_discrete_state(
+      footstep_target_state_idx_).get_mutable_value();
+  target.head<2>() = footstep_target;
+  target(2) =
+      foothold_set.footholds().front().GetEqualityConstraintMatrices().second(0);
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
@@ -202,12 +187,74 @@ drake::systems::EventStatus AlipDeadbeatFootstepController::UnrestrictedUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void AlipDeadbeatFootstepController::CopyNextFootstepOutput(
-    const Context<double> &context, BasicVector<double> *p_B_FC) const {
-  // TODO: Make footstep discrete state
+
+void AlipDeadbeatFootstepController::CalcFootStepAndStanceFootHeight(
+    const Vector3d& stance_foot_pos_yaw_frame,
+    const Vector3d& com_pos_yaw_frame,
+    const Vector3d& L_yaw_frame,
+    const Vector2d& vdes_xy,
+    const double curr_time,
+    const double end_time_of_this_interval,
+    int fsm_state,
+    Vector2d* x_fs) const {
+
+  double H = com_pos_yaw_frame(2) - stance_foot_pos_yaw_frame(2);
+  double omega = sqrt(9.81 / H);
+  double T = single_stance_duration_ + double_stance_duration_;
+  double L_x_n = m_ * H * (gains_.stance_width / 2) *
+      (omega * sinh(omega * T) / (1 + cosh(omega * T)));
+  double L_y_des = vdes_xy(0) * H * m_;
+  double L_x_offset = -vdes_xy(1) * H * m_;
+
+  Vector4d x_alip = Vector4d::Zero();
+  x_alip.head<2>() = (com_pos_yaw_frame - stance_foot_pos_yaw_frame).head<2>();
+  x_alip.tail<2>() = L_yaw_frame.head<2>();
+  Vector4d alip_pred =
+      alip_utils::CalcAd(H, m_, end_time_of_this_interval - curr_time) * x_alip;
+
+  bool is_right_support = (fsm_state == left_right_stance_fsm_states_[1]);
+
+  Vector2d L_i = alip_pred.tail<2>();
+  Vector2d L_f = is_right_support ?
+                 Vector2d(L_x_offset + L_x_n, L_y_des) :
+                 Vector2d(L_x_offset - L_x_n, L_y_des);
+  double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
+      (m_ * H * omega * sinh(omega*T));
+  double p_y_ft_to_com = -( L_f(0) - cosh(omega*T) * L_i(0) ) /
+      (m_ * H * omega * sinh(omega*T));
+  *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
+
+  /// Imposing guards
+  Vector2d stance_foot_wrt_com_in_local_frame =
+      multibody::ReExpressWorldVector2InBodyYawFrame<double>(
+          plant_, *context_,"pelvis",
+          (stance_foot_pos_yaw_frame - com_pos_yaw_frame).head<2>());
+
+  if (is_right_support) {
+    double line_pos =
+        std::max(0.05, stance_foot_wrt_com_in_local_frame(1));
+    (*x_fs)(1) = std::max(line_pos, (*x_fs)(1));
+  } else {
+    double line_pos =
+        std::min(-0.05, stance_foot_wrt_com_in_local_frame(1));
+    (*x_fs)(1) = std::min(line_pos, (*x_fs)(1));
+  }
+
+  // Cap by the step length
+  double dist = x_fs->norm();
+  if (dist > 0.55) {
+    (*x_fs) = (*x_fs) * 0.55 / dist;
+  }
 }
 
-void AlipMINLPFootstepController::CopyFsmOutput(
+
+void AlipDeadbeatFootstepController::CopyNextFootstepOutput(
+    const Context<double> &context, BasicVector<double> *p_B_FC) const {
+  p_B_FC->set_value(
+      context.get_discrete_state(footstep_target_state_idx_).get_value());
+}
+
+void AlipDeadbeatFootstepController::CopyFsmOutput(
     const Context<double> &context, BasicVector<double> *fsm) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
@@ -223,7 +270,7 @@ void AlipMINLPFootstepController::CopyFsmOutput(
   }
 }
 
-void AlipMINLPFootstepController::CopyPrevImpactTimeOutput(
+void AlipDeadbeatFootstepController::CopyPrevImpactTimeOutput(
     const Context<double> &context, BasicVector<double> *t) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);

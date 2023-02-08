@@ -132,11 +132,17 @@ def test():
 
 
 def main():
-    # fname = sys.argv[1]
-    # n = sys.argv[2]
-    # make_dataset(fname, n)
+    fname = sys.argv[1]
+    n = int(sys.argv[2])
+    make_dataset(fname, n)
     # make_dataset("~/Downloads/test", 1000)
-    make_dataset("/home/yuming/Downloads/test", 1000)
+    # make_dataset("/home/yuming/Downloads/test", 1000)
+
+
+def print_names():
+    plant = PlantHarness()
+    for name in plant.pos_names:
+        print(name)
 
 
 if __name__ == "__main__":

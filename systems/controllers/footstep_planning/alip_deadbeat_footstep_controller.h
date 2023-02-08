@@ -77,13 +77,6 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
                          lcmt_mpc_debug* mpc_debug) const;
 
-  // Lcm helper functions
-  void CopyMpcSolutionToLcm(const std::vector<Eigen::Vector3d>& pp,
-                            const std::vector<Eigen::VectorXd>& xx,
-                            const std::vector<Eigen::VectorXd>& uu,
-                            const Eigen::VectorXd& tt,
-                            lcmt_mpc_solution* solution) const;
-
   // FSM helper functions
   int curr_fsm(int fsm_idx) const {
     return left_right_stance_fsm_states_.at(fsm_idx);
@@ -112,7 +105,6 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   drake::systems::DiscreteStateIndex fsm_state_idx_;
   drake::systems::DiscreteStateIndex next_impact_time_state_idx_;
   drake::systems::DiscreteStateIndex prev_impact_time_state_idx_;
-  drake::systems::DiscreteStateIndex initial_conditions_state_idx_;
 
   // abstract states
   drake::systems::AbstractStateIndex alip_filter_idx_;
@@ -124,9 +116,6 @@ class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double>
   int nq_;
   int nv_;
   int nu_;
-
-  // mpc object
-  mutable AlipMINLP trajopt_;
 
   // finite state machine management
   std::vector<int> left_right_stance_fsm_states_;

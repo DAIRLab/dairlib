@@ -69,7 +69,7 @@ def main():
                 )
         footholds.append(foothold)
     trajopt.AddFootholds(footholds)
-    xd = trajopt.MakeXdesTrajForVdes(np.array([[0.2], [1.0]]), 0.35, 0.35, 10, Stance.kLeft)
+    xd = trajopt.MakeXdesTrajForVdes(np.array([[0.2], [0.0]]), 0.35, 0.35, 10, Stance.kLeft)
     PlotDesired(xd)
     plt.show()
 

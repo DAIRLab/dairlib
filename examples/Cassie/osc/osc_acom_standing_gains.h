@@ -41,10 +41,17 @@ struct OSCStandingGains : OSCGains {
   MatrixXd K_d_hip_yaw;
   MatrixXd W_hip_yaw;
 
+  bool AcomSelectionX;
+  bool AcomSelectionY;
+  bool AcomSelectionZ;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
     a->Visit(DRAKE_NVP(weight_scaling));
+    a->Visit(DRAKE_NVP(AcomSelectionX));
+    a->Visit(DRAKE_NVP(AcomSelectionY));
+    a->Visit(DRAKE_NVP(AcomSelectionZ));
     a->Visit(DRAKE_NVP(rows));
     a->Visit(DRAKE_NVP(cols));
     a->Visit(DRAKE_NVP(PelvisW));
@@ -94,7 +101,6 @@ struct OSCStandingGains : OSCGains {
     K_p_hip_yaw = HipYawKp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = HipYawKd * MatrixXd::Identity(1, 1);
     W_hip_yaw = HipYawW * MatrixXd::Identity(1, 1);
-
 
     w_accel *= weight_scaling;
     w_input *= weight_scaling;

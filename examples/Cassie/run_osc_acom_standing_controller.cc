@@ -256,9 +256,27 @@ int DoMain(int argc, char* argv[]) {
         osc_gains.center_of_mass_filter_tau, {0, 1, 2});
   }
   pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
+  Eigen::MatrixXd W_pelvis_rot = osc_gains.W_pelvis_rot;
+  Eigen::MatrixXd W_acom = osc_gains.W_acom;
+  if (osc_gains.AcomSelectionX) {
+    W_pelvis_rot(0,0) = 0;
+  } else {
+    W_acom(0,0) = 0;
+  }
+  if (osc_gains.AcomSelectionY) {
+    W_pelvis_rot(1,1) = 0;
+  } else {
+    W_acom(1,1) = 0;
+  }
+  if (osc_gains.AcomSelectionZ) {
+    W_pelvis_rot(2,2) = 0;
+  } else {
+    W_acom(2,2) = 0;
+  }
+
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-      osc_gains.W_pelvis_rot, plant, plant);
+      W_pelvis_rot, plant, plant);
   pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
   if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
@@ -266,7 +284,7 @@ int DoMain(int argc, char* argv[]) {
   }
   auto acom_tracking_data = std::make_unique<AcomTrackingData>(
       "acom_traj", osc_gains.K_p_acom, osc_gains.K_d_acom,
-      osc_gains.W_acom, plant, plant);
+      W_acom, plant, plant);
   if (osc_gains.rot_filter_tau > 0) {
     acom_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});

@@ -65,9 +65,9 @@ PelvisRotKd:
     0,   10,  0,
     0,    0,  10 ]
 AcomW:
-  [ 0,  0,   0,
-    0,  0,   0,
-    0,    0,  0 ]
+  [ 5,  0,   0,
+    0,  5,   0,
+    0,    0,  1 ]
 AcomKp:
   [ 25,   0,   0,
     0,  75,   0,
@@ -77,4 +77,7 @@ AcomKd:
     0,   10,  0,
     0,    0,  10 ]
 
+AcomSelectionX: false
+AcomSelectionY: false
+AcomSelectionZ: false
 

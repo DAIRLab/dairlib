@@ -123,7 +123,7 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
       gait_params.stance_width * s + gait_params.desired_velocity(1) *
       (gait_params.single_stance_duration + gait_params.double_stance_duration)
   );
-  const Vector2d u1 = u0 - (s * gait_params.stance_width * Vector2d::UnitY());
+  const Vector2d u1 = u0 - 2 * (s * gait_params.stance_width * Vector2d::UnitY());
 
   const Matrix4d Ad = CalcAd(
       gait_params.height,

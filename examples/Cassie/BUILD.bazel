@@ -429,6 +429,29 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_osc_acom_standing_controller",
+    srcs = ["run_osc_acom_standing_controller.cc"],
+    deps = [
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/controllers/osc:osc_gains",
+        "//systems/controllers/osc:osc_tracking_datas",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+
+cc_binary(
     name = "run_osc_standing_controller",
     srcs = ["run_osc_standing_controller.cc"],
     deps = [

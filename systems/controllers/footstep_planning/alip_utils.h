@@ -9,6 +9,7 @@ namespace dairlib::systems::controllers::alip_utils {
 // a nominal footstep during that stance period
 // (So during left stance, the next footstep will be in the -y direction)
 enum class Stance { kLeft = -1, kRight = 1 };
+enum class ResetDiscretization{ kZOH, kFOH };
 
 struct AlipGaitParams {
   double height;
@@ -94,7 +95,9 @@ void CalcAlipState(const drake::multibody::MultibodyPlant<double>& plant,
 /// \param m mass of the ALIP
 /// \param Tds double stance time
 /// \return A as described above
-Eigen::Matrix<double, 4, 8> CalcResetMap(double com_z, double m, double Tds);
+Eigen::Matrix<double, 4, 8> CalcResetMap(
+    double com_z, double m, double Tds,
+    ResetDiscretization discretization = ResetDiscretization::kFOH);
 
 /// Applies the reset map described in CalcResetMap to the pre-impact
 /// ALIP state x

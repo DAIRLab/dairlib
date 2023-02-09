@@ -47,7 +47,8 @@ void CalcAlipState(const MultibodyPlant<double>& plant, Context<double>* context
   *stance_pos_p = stance_foot_pos;
 }
 
-Matrix<double, 4, 8> CalcResetMap(double com_z, double m, double Tds) {
+Matrix<double, 4, 8> CalcResetMap(
+    double com_z, double m, double Tds, ResetDiscretization discretization) {
   MatrixXd A = CalcA(com_z, m);
   Matrix4d Ad = CalcAd(com_z, m, Tds);
   Matrix4d Adinv = Ad.inverse();
@@ -56,8 +57,13 @@ Matrix<double, 4, 8> CalcResetMap(double com_z, double m, double Tds) {
   Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
   B(2,1) = m * 9.81;
   B(3,0) = -m * 9.81;
-  Matrix<double, 4, 2> Bd =
-      Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
+
+  Matrix<double, 4, 2> Bd = Matrix<double, 4, 2>::Zero();
+  if (discretization == ResetDiscretization::kFOH) {
+    Bd = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
+  } else {
+    Bd = Ainv * (Ad - I) * B;
+  }
   Matrix<double, 4, 2> Bs = Matrix<double, 4, 2>::Zero();
   Bs.topRows(2) = -Eigen::Matrix2d::Identity();
 

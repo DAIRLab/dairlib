@@ -97,7 +97,7 @@ void CalcAlipState(const drake::multibody::MultibodyPlant<double>& plant,
 /// \return A as described above
 Eigen::Matrix<double, 4, 8> CalcResetMap(
     double com_z, double m, double Tds,
-    ResetDiscretization discretization = ResetDiscretization::kFOH);
+    ResetDiscretization discretization = ResetDiscretization::kZOH);
 
 /// Applies the reset map described in CalcResetMap to the pre-impact
 /// ALIP state x

@@ -499,7 +499,7 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   double midpoint = 0.045;
 
-//  bounding box constraints on all decision  variables
+  //  bounding box constraints on all decision  variables
   for (int i = 0; i < mode_lengths.size(); ++i) {
     for (int j = 0; j < mode_lengths[i]; ++i) {
       //      auto state_vars_ij = trajopt->state_vars(i, j);
@@ -533,9 +533,10 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   prog->AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("hip_yaw_left")));
   prog->AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("hip_yaw_right")));
 
-//  prog->AddBoundingBoxConstraint(0.00, 0.1, x_0(pos_map.at("hip_roll_left")));
-//  prog->AddBoundingBoxConstraint(-0.1, -0.00,
-//                                 x_0(pos_map.at("hip_roll_right")));
+  //  prog->AddBoundingBoxConstraint(0.00, 0.1,
+  //  x_0(pos_map.at("hip_roll_left"))); prog->AddBoundingBoxConstraint(-0.1,
+  //  -0.00,
+  //                                 x_0(pos_map.at("hip_roll_right")));
 
   // hip yaw and roll constraints
   prog->AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("hip_yaw_left")));
@@ -546,15 +547,16 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   //  prog->AddBoundingBoxConstraint(-2.2, -1.6, x_f(pos_map.at("toe_left")));
   //  prog->AddBoundingBoxConstraint(-2.2, -1.6, x_f(pos_map.at("toe_right")));
 
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_left")) >= -2.1);
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_right")) >= -2.1);
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_left")) <= -1.1);
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_right")) <= -1.1);
-//
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_left")) >= -2.2);
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_right")) >= -2.2);
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_left")) <= -1.6);
-//  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_right")) <= -1.6);
+  //  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_left")) >= -2.1);
+  //  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_right")) >=
+  //  -2.1); trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_left")) <=
+  //  -1.1); trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("knee_right"))
+  //  <= -1.1);
+  //
+  //  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_left")) >= -2.2);
+  //  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_right")) >= -2.2);
+  //  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_left")) <= -1.6);
+  //  trajopt->AddConstraintToAllKnotPoints(x(pos_map.at("toe_right")) <= -1.6);
 
   // Jumping height constraints
   prog->AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
@@ -614,7 +616,6 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
     }
   }
   l_r_pairs.pop_back();
-
 
   // joint limits
   std::cout << "Joint limit constraints: " << std::endl;
@@ -767,20 +768,20 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Only add constraints of lambdas for stance modes
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
-  //  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
-  //    auto lambda = trajopt->force_vars(0, index);
-  //    prog->AddLinearConstraint(lambda(2) >= 60);
-  //    prog->AddLinearConstraint(lambda(5) >= 60);
-  //    prog->AddLinearConstraint(lambda(8) >= 60);
-  //    prog->AddLinearConstraint(lambda(11) >= 60);
-  //  }
+  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
+    auto lambda = trajopt->force_vars(0, index);
+    prog->AddLinearConstraint(lambda(2) >= 60);
+    prog->AddLinearConstraint(lambda(5) >= 60);
+    prog->AddLinearConstraint(lambda(8) >= 60);
+    prog->AddLinearConstraint(lambda(11) >= 60);
+  }
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
-    prog->AddLinearConstraint(lambda(2) <= 350);
-    prog->AddLinearConstraint(lambda(5) <= 350);
-    prog->AddLinearConstraint(lambda(8) <= 350);
-    prog->AddLinearConstraint(lambda(11) <= 350);
+    prog->AddLinearConstraint(lambda(2) <= 300);
+    prog->AddLinearConstraint(lambda(5) <= 300);
+    prog->AddLinearConstraint(lambda(8) <= 300);
+    prog->AddLinearConstraint(lambda(11) <= 300);
     prog->AddLinearConstraint(lambda(2) >= 50);
     prog->AddLinearConstraint(lambda(5) >= 50);
     prog->AddLinearConstraint(lambda(8) >= 50);
@@ -914,30 +915,31 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
                           Q_right * (x.segment(13, 3) - q_f_target_right));
   trajopt->AddRunningCost(u.transpose() * R * u);
 
-//  vector<int> mode_lengths = {gait_params.knot_points, gait_params.knot_points,
-//                              gait_params.knot_points};
-//  MatrixXd W = 1e-1 * MatrixXd::Identity(n_v, n_v);
-//  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 1e2;
-//  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 1e2;
-//  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 5e1;
-//  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 5e1;
-//  W(vel_map["hip_yaw_leftdot"], vel_map["hip_yaw_leftdot"]) *= 1e2;
-//  W(vel_map["hip_yaw_rightdot"], vel_map["hip_yaw_rightdot"]) *= 1e2;
-//  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
-//  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
-//  W *= 2.0 * gait_params.cost_scaling;
-//  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
-//  for (int mode : {0, 1, 2}) {
-//    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
-//        W, plant, &constraints->mode(mode).evaluators()));
-//    for (int index = 0; index < mode_lengths[mode]; index++) {
-//      // Assumes mode_lengths are the same across modes
-//      auto x_i = trajopt->state_vars(mode, index);
-//      auto u_i = trajopt->input_vars(mode, index);
-//      auto l_i = trajopt->force_vars(mode, index);
-//      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
-//    }
-//  }
+  //  vector<int> mode_lengths = {gait_params.knot_points,
+  //  gait_params.knot_points,
+  //                              gait_params.knot_points};
+  //  MatrixXd W = 1e-1 * MatrixXd::Identity(n_v, n_v);
+  //  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 1e2;
+  //  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 1e2;
+  //  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 5e1;
+  //  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 5e1;
+  //  W(vel_map["hip_yaw_leftdot"], vel_map["hip_yaw_leftdot"]) *= 1e2;
+  //  W(vel_map["hip_yaw_rightdot"], vel_map["hip_yaw_rightdot"]) *= 1e2;
+  //  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
+  //  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
+  //  W *= 2.0 * gait_params.cost_scaling;
+  //  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
+  //  for (int mode : {0, 1, 2}) {
+  //    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
+  //        W, plant, &constraints->mode(mode).evaluators()));
+  //    for (int index = 0; index < mode_lengths[mode]; index++) {
+  //      // Assumes mode_lengths are the same across modes
+  //      auto x_i = trajopt->state_vars(mode, index);
+  //      auto u_i = trajopt->input_vars(mode, index);
+  //      auto l_i = trajopt->force_vars(mode, index);
+  //      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
+  //    }
+  //  }
 }
 
 void SetInitialGuessFromDirconTrajectory(Dircon<double>& trajopt,

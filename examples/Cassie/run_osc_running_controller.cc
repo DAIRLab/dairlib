@@ -242,10 +242,7 @@ int DoMain(int argc, char* argv[]) {
                                &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
-  auto left_loop = LeftLoopClosureEvaluator(plant);
-  auto right_loop = RightLoopClosureEvaluator(plant);
-  evaluators.add_evaluator(&left_loop);
-  evaluators.add_evaluator(&right_loop);
+
 
   // Fix the springs in the dynamics
   auto pos_idx_map = multibody::MakeNameToPositionsMap(plant);
@@ -266,6 +263,11 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
+
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
   //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
   //  &left_fixed_knee_spring);
   //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,

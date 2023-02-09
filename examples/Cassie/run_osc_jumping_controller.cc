@@ -298,15 +298,14 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
   // Cost
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-
-  // Soft constraint on contacts
-  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
-
-  // Soft constraint on contacts
   osc->SetInputSmoothingCostWeights(1e-3 * gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+  osc->SetLambdaContactRegularizationWeight(
+      gains.w_lambda * gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
       gains.W_lambda_h_regularization);
+  // Soft constraint on contacts
+  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
 
   // Contact information for OSC
   osc->SetContactFriction(gains.mu);
@@ -332,11 +331,8 @@ int DoMain(int argc, char* argv[]) {
     osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
   }
 
+
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
-  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
-  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
-  evaluators.add_evaluator(&left_loop);
-  evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
   auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
@@ -357,6 +353,11 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
+
+  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
+  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
 
   osc->AddKinematicConstraint(&evaluators);
 

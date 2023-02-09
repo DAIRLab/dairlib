@@ -4,9 +4,10 @@ channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "OSC_JUMPING"
 channel_osc: "OSC_DEBUG_JUMPING"
 use_archived_lcmtypes: false
+use_default_styling: false
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 20
+start_time: 7
 duration: 5
 
 # Plant properties
@@ -34,12 +35,12 @@ foot_positions_to_plot: [ 'right', 'left' ]
 #foot_positions_to_plot: []
 foot_xyz_to_plot: { 'right': [2], 'left': [2] }
 #foot_xyz_to_plot: { }
-pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
+pt_on_foot_to_plot: 'front'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
 plot_qp_costs: true
 plot_qp_solve_time: false
-plot_qp_solutions: false
+plot_qp_solutions: true
 plot_tracking_costs: true
 plot_active_tracking_datas: true
 tracking_datas_to_plot: {
@@ -47,7 +48,7 @@ tracking_datas_to_plot: {
   #  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['vel']}
   #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['vel']}
   #  right_ft_traj: {'dims': [2], 'derivs': ['pos'] },
-  left_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel']},
+#  left_ft_traj: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel']},
   #  right_ft_z_traj: {'dims': [2], 'derivs': ['pos']}
   #  left_toe_angle_traj: {'dims': [0], 'derivs': ['vel']}
   #  right_toe_angle_traj: {'dims': [0], 'derivs': ['accel']}

@@ -11,11 +11,11 @@ from pydairlib.common import plot_styler
 
 
 def main():
-    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_standing_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
-    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -94,8 +94,9 @@ def main():
     if plot_config.plot_floating_base_velocity_body_frame:
         plot = mbp_plots.plot_floating_base_body_frame_velocities(
             robot_output, t_x_slice, plant, context, "pelvis")
-        # plot.tight_layout()
-        # plot.save_fig('running_speed_plot.png')
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.tight_layout()
+        # plot.save_fig('running_speed_plot_kd0.png')
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:
@@ -149,6 +150,10 @@ def main():
                                                             deriv, t_osc_slice)
                     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
                     # plot.save_fig(traj_name + '_' + deriv + '_' + str(dim)  + '.png')
+                    tracking_data = osc_debug['osc_debug_tracking_datas'][traj_name]
+                    # print(tracking_data.name + str(dim))
+                    # print('mean error: ' + str(np.nanmax(np.sqrt(tracking_data.error_y[:, dim].flatten()**2))))
+                    # print('mean error at end of tracking: ' + str(np.mean(np.sqrt(tracking_data.error_y[:, dim][np.append(np.isnan(tracking_data.error_y[:, dim][1:]), False)]**2))))
                 # plot = mbp_plots.plot_osc_tracking_data_in_space(osc_debug, traj_name, config['dims'], deriv, t_osc_slice)
                 # plot.save_fig('swing_foot_target_trajectory.png')
 

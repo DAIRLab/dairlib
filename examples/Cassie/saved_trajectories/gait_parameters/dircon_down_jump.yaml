@@ -13,7 +13,7 @@ actuator_limit: 1.0
 input_delta: 75
 
 snopt_scale_option: 0
-tol: 1e-4
+tol: 1e-5
 dual_inf_tol: 1e-4
 constr_viol_tol: 1e-4
 compl_inf_tol: 1e-4
@@ -24,8 +24,8 @@ use_ipopt: false
 ipopt_iter: 100
 
 data_directory: examples/Cassie/saved_trajectories/
-load_filename: down_jump_2
-save_filename: down_jump
+load_filename: down_jump_4
+save_filename: down_jump_4
 use_springs: false
 convert_to_springs: false
 same_knotpoints: true

@@ -492,9 +492,6 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['y_des'] = tracking_data.y_des[:, dim]
         data['y'] = tracking_data.y[:, dim]
         data['error_y'] = tracking_data.error_y[:, dim]
-        print(tracking_data.name + str(dim))
-        # print('mean error: ' + str(np.nanmean(np.sqrt(tracking_data.error_y[:, :].flatten()**2))))
-        print('mean error: ' + str(np.nanmax(np.sqrt(tracking_data.error_y[:, dim].flatten()**2))))
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]

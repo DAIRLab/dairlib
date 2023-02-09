@@ -100,6 +100,7 @@ class DrakeCassieGym():
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_context()))
         u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
+        print(u)
         self.cassie_state = CassieEnvState(self.current_time, x, u, action)
         reward = self.reward_func.compute_reward(self.sim_dt, self.cassie_state, self.prev_cassie_state)
         self.terminated = self.check_termination()

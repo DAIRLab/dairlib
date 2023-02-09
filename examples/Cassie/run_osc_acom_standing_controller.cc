@@ -285,6 +285,7 @@ int DoMain(int argc, char* argv[]) {
   auto acom_tracking_data = std::make_unique<AcomTrackingData>(
       "acom_traj", osc_gains.K_p_acom, osc_gains.K_d_acom,
       W_acom, plant, plant);
+  acom_tracking_data->AddStateToTrack(-1);
   if (osc_gains.rot_filter_tau > 0) {
     acom_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});
@@ -321,7 +322,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc standing controller"));
+  owned_diagram->set_name(("osc acom standing controller"));
 
   // Build lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

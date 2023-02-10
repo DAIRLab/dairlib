@@ -1,16 +1,17 @@
 This documentation explains the different parts of the JSON file needed for the
 visualization of data during a simulation:
 
-"model_file": This is the directory containing the file for the robot/plant
+
+* "model_file": This is the directory containing the file for the robot/plant
               description (like an urdf file).
 
-"weld_body": This is whether the user wants "WeldFrames()" to be called on the
+* "weld_body": This is whether the user wants "WeldFrames()" to be called on the
              robot/plant. If this property does not exist then the "WeldFrames()"
              function will not be called
 
-"channel_name": Name of the LCM channel containing state information as lcmt_robot_output
+* "channel_name": Name of the LCM channel containing state information as lcmt_robot_output
 
-"data": This will be a list of all the different shapes/objects that
+* "data": This will be a list of all the different shapes/objects that
         the user wants to be displayed. Each shape is a separate JSON object
         consisting of a name and an info JSON. The info consists of 2 pieces of
         information: 1) the source data, which has information about how to draw
@@ -88,7 +89,7 @@ visualization of data during a simulation:
 
         "category":"com"
 
-        The 3 types of shapes that can be drawn will have the following type
+     The 3 types of shapes that can be drawn will have the following type
         data:
 
         1) A trace line:
@@ -122,3 +123,4 @@ visualization of data during a simulation:
 
         Note that the axes will be color coded with red being the x-axis, green
         the y-axis, and blue the z-axis.
+

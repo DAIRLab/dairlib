@@ -768,20 +768,20 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Only add constraints of lambdas for stance modes
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
-  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
-    auto lambda = trajopt->force_vars(0, index);
-    prog->AddLinearConstraint(lambda(2) >= 60);
-    prog->AddLinearConstraint(lambda(5) >= 60);
-    prog->AddLinearConstraint(lambda(8) >= 60);
-    prog->AddLinearConstraint(lambda(11) >= 60);
-  }
+//  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
+//    auto lambda = trajopt->force_vars(0, index);
+//    prog->AddLinearConstraint(lambda(2) >= 60);
+//    prog->AddLinearConstraint(lambda(5) >= 60);
+//    prog->AddLinearConstraint(lambda(8) >= 60);
+//    prog->AddLinearConstraint(lambda(11) >= 60);
+//  }
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
-    prog->AddLinearConstraint(lambda(2) <= 300);
-    prog->AddLinearConstraint(lambda(5) <= 300);
-    prog->AddLinearConstraint(lambda(8) <= 300);
-    prog->AddLinearConstraint(lambda(11) <= 300);
+    prog->AddLinearConstraint(lambda(2) <= 100);
+    prog->AddLinearConstraint(lambda(5) <= 100);
+    prog->AddLinearConstraint(lambda(8) <= 100);
+    prog->AddLinearConstraint(lambda(11) <= 100);
     prog->AddLinearConstraint(lambda(2) >= 50);
     prog->AddLinearConstraint(lambda(5) >= 50);
     prog->AddLinearConstraint(lambda(8) >= 50);

@@ -163,14 +163,16 @@ def main():
         foot_frames = []
         dims = {}
         pts = {}
-        for pos in plot_config.foot_positions_to_plot:
-            foot_frames.append('toe_' + pos)
-            dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
-            pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
+        plot = None
+        for pt_on_foot_to_plot in plot_config.pt_on_foot_to_plot:
+            for pos in plot_config.foot_positions_to_plot:
+                foot_frames.append('toe_' + pos)
+                dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
+                pts['toe_' + pos] = pts_map[pt_on_foot_to_plot]
 
-        plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
-                                               foot_frames, pts, dims)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+            plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
+                                                   foot_frames, pts, dims, plot)
+            mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_qp_solve_time:
         plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)

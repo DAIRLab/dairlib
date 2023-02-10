@@ -7,8 +7,8 @@ use_archived_lcmtypes: false
 use_default_styling: false
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 7
-duration: 5
+start_time: 15
+duration: 10
 
 # Plant properties
 use_springs: true
@@ -35,7 +35,7 @@ foot_positions_to_plot: [ 'right', 'left' ]
 #foot_positions_to_plot: []
 foot_xyz_to_plot: { 'right': [2], 'left': [2] }
 #foot_xyz_to_plot: { }
-pt_on_foot_to_plot: 'front'  # takes value 'front', 'mid', or 'rear'
+pt_on_foot_to_plot: ['front', 'rear']  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
 plot_qp_costs: true
@@ -44,7 +44,7 @@ plot_qp_solutions: true
 plot_tracking_costs: true
 plot_active_tracking_datas: true
 tracking_datas_to_plot: {
-  pelvis_trans_traj: { 'dims': [ 0, 2 ], 'derivs': ['pos', 'vel'] },
+  pelvis_trans_traj: { 'dims': [ 0, 2 ], 'derivs': ['pos', 'vel', 'accel'] },
   #  pelvis_rot_traj: {'dims': [0, 1], 'derivs': ['vel']}
   #  hip_yaw_left_traj: {'dims': [0], 'derivs': ['vel']}
   #  right_ft_traj: {'dims': [2], 'derivs': ['pos'] },

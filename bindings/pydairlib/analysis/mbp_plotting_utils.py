@@ -388,7 +388,10 @@ def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
-                          pts, dims):
+                          pts, dims, ps=None):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
+
     dim_map = ['_x', '_y', '_z']
     data_dict = {'t': robot_output['t_x']}
     legend_entries = {}
@@ -399,7 +402,7 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
                                                       plant, context, frame, pt)
         legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
 
-    ps = plot_styler.PlotStyler()
+
     plotting_utils.make_plot(
         data_dict,
         't',

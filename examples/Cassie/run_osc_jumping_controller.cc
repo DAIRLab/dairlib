@@ -227,7 +227,7 @@ int DoMain(int argc, char* argv[]) {
   // Offset the output trajectories to account for the starting global position
   // of the robot
   Vector3d support_center_offset;
-  support_center_offset << osc_gains.x_offset, 0.0, 0.0;
+  support_center_offset << osc_gains.crouch_x_offset, 0.0, 0.0;
   std::vector<double> breaks = pelvis_trans_traj.get_segment_times();
   VectorXd breaks_vector = Eigen::Map<VectorXd>(breaks.data(), breaks.size());
   MatrixXd offset_points = support_center_offset.replicate(1, breaks.size());
@@ -294,6 +294,8 @@ int DoMain(int argc, char* argv[]) {
   } else {
     std::cerr << "Unknown simulator type!" << std::endl;
   }
+
+  pelvis_trans_traj_generator->SetLandingOffset(osc_gains.land_x_offset);
 
   /**** OSC setup ****/
   // Cost

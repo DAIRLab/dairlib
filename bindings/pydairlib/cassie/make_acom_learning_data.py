@@ -101,6 +101,18 @@ class PlantHarness:
             ExtractGradient(H.rotational()),
             ExtractGradient(H.translational())
         ))
+
+        unit_test = True
+        if unit_test:
+            H_from_Av = A @ ExtractValue(v)
+            H_from_drake = np.vstack((
+                ExtractValue(H.rotational()),
+                ExtractValue(H.translational())
+            ))
+            if np.linalg.norm(H_from_Av - H_from_drake) > 1e-12:
+                print("np.linalg.norm(H_from_Av - H_from_drake) = ", np.linalg.norm(H_from_Av - H_from_drake))
+                raise ValueError("Error too big")
+
         return A
 
 

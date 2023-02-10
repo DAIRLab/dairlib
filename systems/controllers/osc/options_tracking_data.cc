@@ -1,4 +1,5 @@
 #include "options_tracking_data.h"
+#include "common/eigen_utils.h"
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
 
@@ -21,7 +22,10 @@ OptionsTrackingData::OptionsTrackingData(
     const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
-                      plant_wo_spr) {}
+                      plant_wo_spr) {
+  yddot_cmd_lb_ = -100 * VectorXd::Ones(n_ydot_);
+  yddot_cmd_ub_ = 100 * VectorXd::Ones(n_ydot_);
+}
 
 void OptionsTrackingData::UpdateActual(
     const Eigen::VectorXd& x_w_spr,
@@ -118,6 +122,7 @@ void OptionsTrackingData::UpdateYddotCmd(double t,
 
   yddot_command_ = yddot_des_converted_ + p_gain_multiplier * K_p_ * error_y_ +
                    d_gain_multiplier * K_d_ * error_ydot_;
+  yddot_command_ = eigen_clamp(yddot_command_, yddot_cmd_lb_, yddot_cmd_ub_);
   UpdateW(t, t_since_state_switch);
 }
 
@@ -187,5 +192,12 @@ void OptionsTrackingData::SetTimerVaryingFeedForwardAccelMultiplier(
   DRAKE_DEMAND(ff_accel_multiplier_traj->start_time() == 0);
   ff_accel_multiplier_traj_ = ff_accel_multiplier_traj;
 }
+
+void OptionsTrackingData::SetCmdAccelerationBounds(Eigen::VectorXd& lb, Eigen::VectorXd& ub){
+  DRAKE_DEMAND(lb.size() == n_ydot_);
+  DRAKE_DEMAND(ub.size() == n_ydot_);
+  yddot_cmd_lb_ = lb;
+  yddot_cmd_ub_ = ub;
+};
 
 }  // namespace dairlib::systems::controllers

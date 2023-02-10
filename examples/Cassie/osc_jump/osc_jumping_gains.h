@@ -28,6 +28,8 @@ struct OSCJumpingGains : OSCGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
+  double min_pelvis_acc;
+  double max_pelvis_acc;
   double landing_delay;
   bool relative_feet;
 
@@ -63,6 +65,8 @@ struct OSCJumpingGains : OSCGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
+    a->Visit(DRAKE_NVP(min_pelvis_acc));
+    a->Visit(DRAKE_NVP(max_pelvis_acc));
     a->Visit(DRAKE_NVP(landing_delay));
     a->Visit(DRAKE_NVP(relative_feet));
 

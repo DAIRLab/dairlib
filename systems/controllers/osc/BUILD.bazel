@@ -56,6 +56,7 @@ cc_library(
     hdrs = ["options_tracking_data.h"],
     deps = [
         ":osc_tracking_data",
+        "//common:eigen_utils",
         "//multibody:utils",
         "//multibody:view_frame",
         "//systems/framework:vector",

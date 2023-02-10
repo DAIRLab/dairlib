@@ -374,6 +374,9 @@ int DoMain(int argc, char* argv[]) {
   }
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   pelvis_tracking_data->SetImpactInvariantProjection(true);
+  VectorXd pelvis_acc_lb = osc_gains.min_pelvis_acc * Vector3d::Ones();
+  VectorXd pelvis_acc_ub = osc_gains.max_pelvis_acc * Vector3d::Ones();
+  pelvis_tracking_data->SetCmdAccelerationBounds(pelvis_acc_lb, pelvis_acc_ub);
 
   auto left_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_ft_traj", osc_gains.K_p_flight_foot, osc_gains.K_d_flight_foot,

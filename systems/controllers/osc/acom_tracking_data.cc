@@ -249,7 +249,9 @@ void AcomTrackingData::UpdateY(const VectorXd& x_w_spr,
 
 void AcomTrackingData::UpdateYError() {
   // Hack -- set the desired value here.
-  Quaterniond y_des_quat(y_(0), 0, 0, y_(3));
+  Eigen::Vector4d y_des_quat_4d(y_(0), 0, 0, y_(3));
+  y_des_quat_4d.normalize();
+  Quaterniond y_des_quat(y_des_quat_4d(0), 0, 0, y_des_quat_4d(3));
 
   // Set desired pitch to non-zero
   // TODO: havne't checked if this is the right way of setting the desired orientation
@@ -309,7 +311,7 @@ void AcomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
   VectorX<double> q = x_wo_spr.template head<23>();
   MatrixXd J_acom = EvalJOmegaWorldAcomEwrtWorld(q);
   J_ = J_acom;
-//  cout << "J_ = \n" << J_ << endl;
+  cout << "J_ = \n" << J_ << endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();
 //  std::chrono::duration<double> elapsed = finish - start;
@@ -322,7 +324,7 @@ void AcomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
                                    const Context<double>& context_wo_spr) {
 //  auto start = std::chrono::high_resolution_clock::now();
 
-  //JdotV_ = Vector3d::Zero();
+//  JdotV_ = Vector3d::Zero();
   JdotV_ = EvalJdotVOmegaWorldAcomEwrtWorld(x_wo_spr);
 //  cout << "JdotV_ = \n" << JdotV_.transpose() << endl;
 

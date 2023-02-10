@@ -38,6 +38,8 @@ class PlantHarness:
 
         # mirroring
         self.state_name_list = CreateStateNameVectorFromMap(self.plant)
+        # for name in self.state_name_list:
+        #     print(name)
         self.swapped_state_names = []
         for name in self.state_name_list:
             if 'right' in name:

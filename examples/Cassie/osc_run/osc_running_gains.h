@@ -28,7 +28,6 @@ struct OSCRunningGains : OSCGains {
   double target_vel_filter_alpha;
   bool relative_feet;
   bool relative_pelvis;
-  bool use_acom;
   double rest_length;
   double rest_length_offset;
   double stance_duration;
@@ -44,6 +43,10 @@ struct OSCRunningGains : OSCGains {
   double rot_filter_tau;
   double w_input_accel;
   double w_joint_limit;
+
+  bool use_acom_x;
+  bool use_acom_y;
+  bool use_acom_z;
 
   // swing foot tracking
   std::vector<double> SwingFootW;
@@ -61,6 +64,10 @@ struct OSCRunningGains : OSCGains {
   std::vector<double> PelvisRotW;
   std::vector<double> PelvisRotKp;
   std::vector<double> PelvisRotKd;
+  // acom tracking
+  std::vector<double> AcomW;
+  std::vector<double> AcomKp;
+  std::vector<double> AcomKd;
   // pelvis orientation tracking
   std::vector<double> FootstepKd;
 
@@ -71,6 +78,9 @@ struct OSCRunningGains : OSCGains {
   MatrixXd W_pelvis_rot;
   MatrixXd K_p_pelvis_rot;
   MatrixXd K_d_pelvis_rot;
+  MatrixXd W_acom;
+  MatrixXd K_p_acom;
+  MatrixXd K_d_acom;
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
@@ -91,7 +101,6 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(weight_scaling));
     a->Visit(DRAKE_NVP(relative_feet));
     a->Visit(DRAKE_NVP(relative_pelvis));
-    a->Visit(DRAKE_NVP(use_acom));
     a->Visit(DRAKE_NVP(rest_length));
     a->Visit(DRAKE_NVP(rest_length_offset));
     a->Visit(DRAKE_NVP(stance_duration));
@@ -106,6 +115,9 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(w_input_accel));
     a->Visit(DRAKE_NVP(w_joint_limit));
 
+    a->Visit(DRAKE_NVP(use_acom_x));
+    a->Visit(DRAKE_NVP(use_acom_y));
+    a->Visit(DRAKE_NVP(use_acom_z));
 
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));
@@ -113,6 +125,9 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(PelvisRotW));
     a->Visit(DRAKE_NVP(PelvisRotKp));
     a->Visit(DRAKE_NVP(PelvisRotKd));
+    a->Visit(DRAKE_NVP(AcomW));
+    a->Visit(DRAKE_NVP(AcomKp));
+    a->Visit(DRAKE_NVP(AcomKd));
     a->Visit(DRAKE_NVP(FootstepKd));
     a->Visit(DRAKE_NVP(SwingFootW));
     a->Visit(DRAKE_NVP(SwingFootKp));
@@ -168,6 +183,15 @@ struct OSCRunningGains : OSCGains {
     K_d_pelvis_rot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->PelvisRotKd.data(), 3, 3);
+    W_acom = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AcomW.data(), 3, 3);
+    K_p_acom = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AcomKp.data(), 3, 3);
+    K_d_acom = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AcomKd.data(), 3, 3);
     K_d_footstep = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->FootstepKd.data(), 3, 3);
@@ -187,6 +211,7 @@ struct OSCRunningGains : OSCGains {
     w_joint_limit *= weight_scaling;
     W_pelvis *= weight_scaling;
     W_pelvis_rot *= weight_scaling;
+    W_acom *= weight_scaling;
     W_swing_foot *= weight_scaling;
     W_liftoff_swing_foot *= weight_scaling;
     W_swing_toe *= weight_scaling;

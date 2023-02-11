@@ -471,31 +471,45 @@ int DoMain(int argc, char* argv[]) {
                                                            plant_context.get());
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_rot_tracking_data;
   std::unique_ptr<AcomTrackingData> acom_tracking_data;
-  if (osc_gains.use_acom) {
-    acom_tracking_data = std::make_unique<AcomTrackingData>(
-        "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-        osc_gains.W_pelvis_rot, plant, plant);
-    acom_tracking_data->AddStateToTrack(
-        RUNNING_FSM_STATE::LEFT_STANCE);
-    acom_tracking_data->AddStateToTrack(
-        RUNNING_FSM_STATE::RIGHT_STANCE);
-    acom_tracking_data->AddStateToTrack(
-        RUNNING_FSM_STATE::RIGHT_FLIGHT);
-    acom_tracking_data->AddStateToTrack(
-        RUNNING_FSM_STATE::LEFT_FLIGHT);
-  }else{
-    pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
-        "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-        osc_gains.W_pelvis_rot, plant, plant);
-    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-        RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
-    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-        RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
-    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-        RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
-    pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-        RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+  MatrixXd W_acom = osc_gains.W_acom;
+  MatrixXd W_pelvis_rot = osc_gains.W_pelvis_rot;
+  if (osc_gains.use_acom_x) {
+    W_pelvis_rot(0, 0) = 0;
+  } else {
+    W_acom(0, 0) = 0;
   }
+  if (osc_gains.use_acom_y) {
+    W_pelvis_rot(1, 1) = 0;
+  } else {
+    W_acom(1, 1) = 0;
+  }
+  if (osc_gains.use_acom_z) {
+    W_pelvis_rot(2, 2) = 0;
+  } else {
+    W_acom(2, 2) = 0;
+  }
+  acom_tracking_data = std::make_unique<AcomTrackingData>(
+      "acom_traj", osc_gains.K_p_acom, osc_gains.K_d_acom, W_acom, plant,
+      plant);
+  acom_tracking_data->AddStateToTrack(
+      RUNNING_FSM_STATE::LEFT_STANCE);
+  acom_tracking_data->AddStateToTrack(
+      RUNNING_FSM_STATE::RIGHT_STANCE);
+  acom_tracking_data->AddStateToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT);
+  acom_tracking_data->AddStateToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT);
+  pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
+      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+      W_pelvis_rot, plant, plant);
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
+      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
 //  pelvis_rot_tracking_data->AddStateAndFrameToTrack(
 //      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
@@ -507,20 +521,14 @@ int DoMain(int argc, char* argv[]) {
 //      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
 
   if (osc_gains.rot_filter_tau > 0) {
-    if (osc_gains.use_acom) {
-      acom_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau, {0, 1, 2});
-    } else {
-      pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                                 {0, 1, 2});
-    }
+    acom_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau, {0, 1, 2});
+    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
+                                               {0, 1, 2});
   }
 
-  if (osc_gains.use_acom) {
-    osc->AddTrackingData(std::move(acom_tracking_data));
-  } else {
-    pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
-    osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
-  }
+  osc->AddTrackingData(std::move(acom_tracking_data));
+  pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
+  osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
   // Swing toe joint trajectory
   vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
@@ -651,6 +659,8 @@ int DoMain(int argc, char* argv[]) {
                   heading_traj_generator->get_yaw_input_port());
   builder.Connect(heading_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_rot_traj"));
+  builder.Connect(heading_traj_generator->get_output_port(0),
+                  osc->get_input_port_tracking_data("acom_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),

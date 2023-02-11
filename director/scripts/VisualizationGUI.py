@@ -454,7 +454,7 @@ class VisualizationGui(QWidget):
                 rigTrans = self.plant.EvalBodyPoseInWorld(self.context, self.plant.GetBodyByName(currShape.frame))
                 rot_matrix = rigTrans.rotation().matrix().transpose()
             else:
-                rot_matrix = rotation_matrix
+                rot_matrix = rotation_matrix.transpose()
 
             colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 

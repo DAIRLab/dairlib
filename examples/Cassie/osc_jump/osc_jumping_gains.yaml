@@ -18,7 +18,7 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 w_input_reg: 0.01
 w_soft_constraint: 1000
-crouch_x_offset: 0.043
+crouch_x_offset: 0.01
 land_x_offset: 0.04
 relative_feet: true
 
@@ -36,8 +36,8 @@ min_pelvis_acc: -5
 max_pelvis_acc: 25
 impact_threshold: 0.000
 impact_tau: 0.005
-#landing_delay: -0.035
-landing_delay: -0.0
+landing_delay: 0.15
+#landing_delay: 0.
 
 CoMW:
   [20,    0,    0,

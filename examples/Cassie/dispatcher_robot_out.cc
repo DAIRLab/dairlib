@@ -204,8 +204,9 @@ int do_main(int argc, char* argv[]) {
   // Create state estimator
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
-      &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_contact_force_threshold);
+      &right_contact_evaluator, FLAGS_joint_offset_yaml,
+      FLAGS_test_with_ground_truth_state, FLAGS_print_ekf_info,
+      FLAGS_test_mode, FLAGS_contact_force_threshold);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

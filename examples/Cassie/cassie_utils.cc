@@ -1,8 +1,10 @@
 #include "examples/Cassie/cassie_utils.h"
 
 #include "common/find_resource.h"
+#include "multibody/multibody_utils.h"
 #include "examples/Cassie/systems/cassie_encoder.h"
 
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/parsing/parser.h"
@@ -99,6 +101,22 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
   return multibody::DistanceEvaluator<T>(
       plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
       rod_on_thigh.second, kCassieAchillesLength);
+}
+
+VectorXd LoadJointPositionOffsetsFromYaml(const MultibodyPlant<double>& plant,
+                                          const std::string& filename) {
+  VectorXd q_offset = VectorXd::Zero(plant.num_positions());
+  if (filename.empty()) {
+    return q_offset;
+  }
+  const auto pos_map = multibody::MakeNameToPositionsMap(plant);
+  const auto archive = drake::yaml::LoadYamlFile<
+      std::map<std::string, double>>(FindResourceOrThrow(filename));
+  for (const auto& entry : archive) {
+    DRAKE_DEMAND(pos_map.count(entry.first) > 0);
+    q_offset(pos_map.at(entry.first)) = entry.second;
+  }
+  return q_offset;
 }
 
 /// Add a fixed base cassie to the given multibody plant and scene graph

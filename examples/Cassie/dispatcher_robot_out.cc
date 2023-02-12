@@ -61,6 +61,7 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(contact_force_threshold, 60,
               "Contact force threshold. Set to 140 for walking");
+DEFINE_string(joint_offset_yaml, "", "yaml with joint offset values");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,

@@ -6,17 +6,17 @@ import time
 import dairlib.lcmt_robot_output
 
 
-class InputSupervisorVisualizer(object):
+class OscVisualizer(object):
 
     def __init__(self):
-        self._name = "Input Supervisor Visualizer"
+        self._name = "OSC Visualizer"
         self._real_time = []
         self._msg_time = []
         self._subscriber = None
         self._current_channel_ = ""
 
         self.text_box = vis.TextItem('safety_info', 'safety_info', view)
-        self.text_box.setProperty('Position', [10, 650])
+        self.text_box.setProperty('Position', [10, 600])
         self.text_box.setProperty('Font Size', 24)
         self.text_box.setProperty('Bold', True)
 
@@ -26,11 +26,11 @@ class InputSupervisorVisualizer(object):
         if (self._subscriber is not None):
             return
 
-        channel = "INPUT_SUPERVISOR_STATUS"
+        channel = "OSC_DEBUG_RUNNING"
 
         self._subscriber = lcmUtils.addSubscriber(
             channel,
-            messageClass=dairlib.lcmt_input_supervisor_status,
+            messageClass=dairlib.lcmt_osc_output,
             callback=self.handle_message)
 
     def remove_subscriber(self):
@@ -51,17 +51,14 @@ class InputSupervisorVisualizer(object):
             self.remove_subscriber()
 
     def handle_message(self, msg):
-        shutdown = msg.shutdown
+        fsm = msg.fsm_state
 
-        status_list = ["active channel: " + msg.active_channel, "shutdown: %i" % shutdown]
-        for error_flag_idx in range(msg.num_status):
-            status_list.append(msg.status_names[error_flag_idx] + ': ' + str(msg.status_states[error_flag_idx]))
+        msg_list = ["fsm state: " + str(fsm)]
 
-        # vis.updateText("\n".join(status_list), 'safety_info')
-        self.text_box.setProperty('Text', "\n".join(status_list))
+        self.text_box.setProperty('Text', "\n".join(msg_list))
 
 def init_visualizer():
-    viz = InputSupervisorVisualizer()
+    viz = OscVisualizer()
     # vis.addText('supervisor_text')
 
     # Adds to the "Tools" menu.

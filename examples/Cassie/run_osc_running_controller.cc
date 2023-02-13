@@ -495,10 +495,10 @@ int DoMain(int argc, char* argv[]) {
       RUNNING_FSM_STATE::LEFT_STANCE);
   acom_tracking_data->AddStateToTrack(
       RUNNING_FSM_STATE::RIGHT_STANCE);
-  acom_tracking_data->AddStateToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT);
-  acom_tracking_data->AddStateToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT);
+//  acom_tracking_data->AddStateToTrack(
+//      RUNNING_FSM_STATE::RIGHT_FLIGHT);
+//  acom_tracking_data->AddStateToTrack(
+//      RUNNING_FSM_STATE::LEFT_FLIGHT);
   pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       W_pelvis_rot, plant, plant);

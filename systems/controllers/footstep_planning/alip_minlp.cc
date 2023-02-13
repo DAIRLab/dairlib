@@ -403,6 +403,7 @@ vector<VectorXd> AlipMINLP::MakeXdesTrajForVdes(
   params.double_stance_duration = Tds_;
   params.stance_width = step_width;
   params.desired_velocity = vdes;
+  params.reset_discretization_method = reset_discretization_;
   params.intial_stance_foot = stance;
   return alip_utils::MakePeriodicAlipGaitTrajectory(params, nmodes(), nk);
 }
@@ -456,7 +457,8 @@ void AlipMINLP::UpdateFootholdConstraints(vector<int> foothold_idxs) {
 }
 
 void AlipMINLP::CalcResetMap(Eigen::Matrix<double, 4, 12> *Aeq) const {
-  Matrix<double, 4, 8> A = alip_utils::CalcResetMap(H_, m_, Tds_);
+  Matrix<double, 4, 8> A =
+      alip_utils::CalcResetMap(H_, m_, Tds_, reset_discretization_);
   Aeq->topLeftCorner<4, 4>() = A.topLeftCorner<4, 4>();
   Aeq->topRightCorner<4, 4>() = A.topRightCorner<4, 4>();
   Aeq->block<4, 4>(0, 4) = -Matrix4d::Identity();

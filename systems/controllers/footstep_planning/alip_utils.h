@@ -19,6 +19,7 @@ struct AlipGaitParams {
   double stance_width;
   Eigen::Vector2d desired_velocity;
   Stance intial_stance_foot;
+  ResetDiscretization reset_discretization_method;
   friend std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data);
 };
 
@@ -32,7 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data) {
         "\nStance Width: " << data.stance_width <<
         "\nVdes: " << data.desired_velocity.transpose() <<
         "\nInitial stance foot: " <<
-        (data.intial_stance_foot == Stance::kLeft? "kLeft" : "kRight") << "\n";
+        (data.intial_stance_foot == Stance::kLeft? "kLeft" : "kRight") <<
+        "\nReset Discretization method: " <<
+        (data.reset_discretization_method == ResetDiscretization::kZOH ?
+         "kZOH" : "kFOH") << "\n";
+
   return os;
 }
 
@@ -103,7 +108,8 @@ Eigen::Matrix<double, 4, 8> CalcResetMap(
 /// ALIP state x
 Eigen::Vector4d CalcReset(double com_z, double m, double Tds,
                           const Eigen::Vector4d& x, const Eigen::Vector3d& p0,
-                          const Eigen::Vector3d& p1);
+                          const Eigen::Vector3d& p1,
+                          ResetDiscretization reset_discretization);
 
 Eigen::Matrix4d CalcA(double com_z, double m);
 Eigen::Matrix4d CalcAd(double com_z, double m, double t);

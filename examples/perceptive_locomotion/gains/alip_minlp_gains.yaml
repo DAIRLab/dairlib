@@ -19,6 +19,7 @@ q:
    0, 0, 0, 0,
    0, 0, 0, 0]
 r: [100.0]
+reset_discretization_method: 'ZOH'
 filter_alip_state: false
 qfilt: [.001, .001, .01, .01]
 rfilt: [.0001, .0001, .01, .01]

@@ -54,6 +54,8 @@ def main():
         mpc_plots.make_solution_animation(mpc_debug)
         quit()
 
+    _ = mpc_plots.plot_mpc_timing(mpc_debug)
+    
     ps = mpc_plots.plot_mpc_state_traj(
         mpc_debug.mpc_trajs["solution"].xxs[mpc_debug.t_mpc[5]])
 

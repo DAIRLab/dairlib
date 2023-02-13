@@ -24,6 +24,7 @@ struct AlipMINLPGains {
   double stance_width;
   int nmodes;
   int knots_per_mode;
+  alip_utils::ResetDiscretization reset_discretization_method;
   bool filter_alip_state;
   Eigen::Matrix4d Q;
   Eigen::Matrix4d Qf;

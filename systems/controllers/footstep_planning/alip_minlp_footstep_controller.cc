@@ -44,6 +44,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
           plant.CalcTotalMass(*plant_context),
           gains.hdes,
           gains.knots_per_mode,
+          gains.reset_discretization_method,
           gains.nmodes)
         ),
     left_right_stance_fsm_states_(left_right_stance_fsm_states),
@@ -211,7 +212,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   Vector3d L_b = ReExpressWorldVector3InBodyYawFrame<double>(
       plant_, *context_, "pelvis", L);
 
-
   Vector4d x = Vector4d::Zero();
   x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
   x.tail<2>() = L_b.head<2>();
@@ -234,7 +234,8 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   if (t - t_prev_impact < double_stance_duration_) {
     double tds = double_stance_duration_ - (t - t_prev_impact);
     x = alip_utils::CalcReset(
-        trajopt_.H(), trajopt_.m(), tds, x, p_b, p_next_in_ds);
+        trajopt_.H(), trajopt_.m(), tds, x, p_b, p_next_in_ds,
+        gains_.reset_discretization_method);
     p_b = p_next_in_ds;
     time_left_in_this_mode = single_stance_duration_;
   }

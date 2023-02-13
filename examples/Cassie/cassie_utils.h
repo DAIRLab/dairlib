@@ -56,17 +56,6 @@ template <typename T>
 multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
     const drake::multibody::MultibodyPlant<T>& plant);
 
-/// Given the filename of a yaml of joint position offsets labeled by name, i.e.
-/// {'toe_left': 0.02, 'knee_right': .0115}, constructs the vector q_offset,
-/// such that the corrected position vector is given by q + q_offset.
-/// Any subset of joints can be given, so long as each joint appears at
-/// most once.
-/// @param filename the filename of the yaml to load. returns zero if empty
-/// @param plant the plant for which the offsets are to be applied
-Eigen::VectorXd LoadJointPositionOffsetsFromYaml(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const std::string& filename);
-
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions

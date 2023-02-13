@@ -62,7 +62,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator,
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
-      std::string joint_offset_yaml = "",
+      std::map<std::string, double> joint_offset_map = {},
       bool test_with_ground_truth_state = false,
       bool print_info_to_terminal = false, int hardware_test_mode = -1,
       double contact_force_threshold = 60);

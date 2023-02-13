@@ -17,6 +17,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/snopt_solver.h"
@@ -202,9 +203,15 @@ int do_main(int argc, char* argv[]) {
   right_contact_evaluator.add_evaluator(&right_heel_evaluator);
 
   // Create state estimator
+  const auto joint_offset_map =
+      (FLAGS_joint_offset_yaml.empty()) ?
+      drake::yaml::LoadYamlFile<std::map<std::string, double>>(
+          FindResourceOrThrow(FLAGS_joint_offset_yaml)) :
+      std::map<std::string, double>{};
+
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
-      &right_contact_evaluator, FLAGS_joint_offset_yaml,
+      &right_contact_evaluator, joint_offset_map,
       FLAGS_test_with_ground_truth_state, FLAGS_print_ekf_info,
       FLAGS_test_mode, FLAGS_contact_force_threshold);
 

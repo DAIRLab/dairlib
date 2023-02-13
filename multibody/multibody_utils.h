@@ -156,6 +156,19 @@ Eigen::Vector2d ReExpressWorldVector2InBodyYawFrame(
     const Eigen::Vector2d& vec);
 
 
+/// Given a map of join position offsets labeled by name, i.e.
+/// {'toe_left': 0.02, 'knee_right': .0115}, constructs the vector q_offset,
+/// such that the corrected position vector is given by q + q_offset.
+/// Any subset of joints can be given, so long as each joint appears at
+/// most once. An empty map will return a vector of zeros of length
+/// plant.num_positions()
+/// @joint_offset_map the map of joint offsets
+/// @param plant the plant for which the offsets are to be applied
+Eigen::VectorXd MakeJointPositionOffsetFromMap(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::map<std::string, double>& joint_offset_map);
+
+
 /// Computes the matrix for mapping global roll-pitch-yaw angular velocity to
 /// quaternion derivatives
 /// Ref: equation 16 of https://arxiv.org/pdf/0811.2889.pdf

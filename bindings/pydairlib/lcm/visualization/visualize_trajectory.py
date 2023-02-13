@@ -18,8 +18,8 @@ from visualize_params import DirconVisualizationParams
 
 
 def main():
-  # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/long_jump.yaml'
-  visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/box_jump.yaml'
+  visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/long_jump.yaml'
+  # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/box_jump.yaml'
   # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/down_jump.yaml'
   # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/jump.yaml'
   params = DirconVisualizationParams(visualization_config_file)

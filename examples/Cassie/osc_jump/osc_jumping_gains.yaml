@@ -18,8 +18,8 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 w_input_reg: 0.01
 w_soft_constraint: 1000
-crouch_x_offset: 0.01
-land_x_offset: 0.04
+crouch_x_offset: 0.04
+land_x_offset: 0.00
 relative_feet: true
 
 mu: 0.6
@@ -32,11 +32,11 @@ w_hip_yaw: 2.5
 hip_yaw_kp: 100
 hip_yaw_kd: 5
 
-min_pelvis_acc: -5
-max_pelvis_acc: 25
+min_pelvis_acc: -7
+max_pelvis_acc: 10000
 impact_threshold: 0.000
 impact_tau: 0.005
-landing_delay: 0.15
+landing_delay: 0.0
 #landing_delay: 0.
 
 CoMW:
@@ -44,7 +44,7 @@ CoMW:
    0,     2,    0,
    0,     0,   20]
 CoMKp:
-  [40,   0,    0,
+  [50,   0,    0,
    0,   50,    0,
    0,    0,  40]
 CoMKd:
@@ -70,7 +70,7 @@ FlightFootW:
 FlightFootKp:
   [125,   0,    0,
    0,   50,    0,
-   0,     0,  100]
+   0,     0,  200]
 FlightFootKd:
   [2.5,   0,    0,
    0,   2.5,     0,

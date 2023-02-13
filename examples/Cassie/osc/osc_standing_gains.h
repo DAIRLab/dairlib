@@ -9,8 +9,6 @@ using Eigen::MatrixXd;
 
 struct OSCStandingGains : OSCGains {
   double weight_scaling;
-  int rows;
-  int cols;
   double HipYawKp;
   double HipYawKd;
   double HipYawW;
@@ -39,8 +37,6 @@ struct OSCStandingGains : OSCGains {
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
     a->Visit(DRAKE_NVP(weight_scaling));
-    a->Visit(DRAKE_NVP(rows));
-    a->Visit(DRAKE_NVP(cols));
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));
     a->Visit(DRAKE_NVP(PelvisKd));

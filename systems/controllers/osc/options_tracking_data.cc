@@ -23,8 +23,8 @@ OptionsTrackingData::OptionsTrackingData(
     const MultibodyPlant<double>& plant_wo_spr)
     : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr) {
-  yddot_cmd_lb_ = -100 * VectorXd::Ones(n_ydot_);
-  yddot_cmd_ub_ = 100 * VectorXd::Ones(n_ydot_);
+  yddot_cmd_lb_ = std::numeric_limits<double>::lowest() * VectorXd::Ones(n_ydot_);
+  yddot_cmd_ub_ = std::numeric_limits<double>::max() * VectorXd::Ones(n_ydot_);
 }
 
 void OptionsTrackingData::UpdateActual(

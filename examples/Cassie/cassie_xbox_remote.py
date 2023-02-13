@@ -65,8 +65,15 @@ def main():
     joystick = pygame.joystick.Joystick(0)
     joystick.init()
 
+    automatic_rampup = True
+    c = 5
     done = False
-
+    max_speed = 1.9   # 1.5 for roll only
+    ramp_up = np.arange(0, max_speed, 0.01 / c)
+    stay = max_speed * np.ones(125 * c)
+    ramp_down = np.flip(np.arange(0, max_speed, 0.01 / c))
+    speeds = np.hstack((ramp_up, stay, ramp_down))
+    i = 0
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -107,7 +114,10 @@ def main():
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        radio_msg.channel[0] = -joystick.get_axis(1)
+        if automatic_rampup:
+            radio_msg.channel[0] = speeds[i]
+            print(speeds[i])
+
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)
@@ -122,6 +132,7 @@ def main():
 
         # Limit to 20 frames per second
         clock.tick(20)
+        i += 1
 
     pygame.quit()
 

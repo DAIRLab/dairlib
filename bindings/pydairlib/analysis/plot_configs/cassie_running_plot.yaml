@@ -8,8 +8,10 @@ channel_osc: "OSC_DEBUG_STANDING"
 use_archived_lcmtypes: false
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 2.2
-duration: 6
+#start_time: 15
+#duration: 25
+start_time: 0
+duration: 60
 
 # Plant properties
 use_springs: true
@@ -43,14 +45,14 @@ pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
 plot_qp_costs: false
 plot_qp_solve_time: false
 plot_qp_solutions: false
-plot_tracking_costs: true
-plot_active_tracking_datas: true
+plot_tracking_costs: false
+plot_active_tracking_datas: false
 tracking_datas_to_plot: {
   #  pelvis_trans_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'accel' ] },
   #  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'vel', 'accel'] },
 #  pelvis_rot_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos' ] },
 #  acom_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
-  acom_traj: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
+#  acom_traj: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
   #  hip_yaw_left_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
   #  hip_yaw_right_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
   #  right_ft_traj: { 'dims': [0, 1, 2], 'derivs': [ 'pos' ] },

@@ -4,7 +4,7 @@
   "data": [
             {"name": "acom_frame",
               "source_data" : {"category":"lcm",
-                "abstract_channel" : "OSC_DEBUG_STANDING",
+                "abstract_channel" : "OSC_DEBUG_RUNNING",
                 "abstract_type" : "dairlib.lcmt_osc_output",
                 "abstract_field" : "tracking_data[%d].y",
                 "index_field": "tracking_data_names",

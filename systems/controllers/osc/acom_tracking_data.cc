@@ -29,6 +29,8 @@ using drake::math::InitializeAutoDiff;
 
 namespace dairlib::systems::controllers {
 
+double pitch = -0.18; //-0.2;
+
 Eigen::MatrixXd MapWToQuatDot(const Eigen::Vector4d& Q) {
   // clang-format off
   Eigen::MatrixXd ret(4,3);
@@ -99,6 +101,16 @@ drake::VectorX<double> EvalQBaseAcom(const drake::VectorX<double>& q) {
   Q(3) = getQz(q);
   // Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
   Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
+
+  // Hack -- set offset here
+  Quaterniond y_offset(cos(pitch / 2), 0 * sin(pitch / 2),
+                          1 * sin(pitch / 2), 0 * sin(pitch / 2));
+  Quaterniond y_current(Q(0),Q(1),Q(2),Q(3));
+  y_current = y_current * y_offset;
+  y_current.normalize();
+  Q << y_current.w(), y_current.vec();
+  // End of Hack
+
   return Q;
 };
 drake::VectorX<AutoDiffXd> EvalQBaseAcom(const drake::VectorX<AutoDiffXd>& q) {
@@ -116,6 +128,16 @@ drake::VectorX<AutoDiffXd> EvalQBaseAcom(const drake::VectorX<AutoDiffXd>& q) {
   Q(0).derivatives() = x.derivatives() / (2 * Q(0).value());
 
   // cout << "ExtractGradient(Q) = \n" << ExtractGradient(Q) << endl;
+
+  // Hack -- set offset here
+  Quaterniond y_offset(cos(pitch / 2), 0 * sin(pitch / 2),
+                       1 * sin(pitch / 2), 0 * sin(pitch / 2));
+  Quaterniond y_current(Q(0).value(),Q(1).value(),Q(2).value(),Q(3).value());
+  y_current = y_current * y_offset;
+  y_current.normalize();
+  Q << y_current.w(), y_current.vec();
+  // End of Hack
+
   return Q;
 };
 
@@ -248,7 +270,7 @@ void AcomTrackingData::UpdateY(const VectorXd& x_w_spr,
 }
 
 void AcomTrackingData::UpdateYError() {
-  // Hack -- set the desired value here.
+  /*// Hack -- set the desired value here.
   Eigen::Vector4d y_des_quat_4d(y_(0), 0, 0, y_(3));
   y_des_quat_4d.normalize();
   Quaterniond y_des_quat(y_des_quat_4d(0), 0, 0, y_des_quat_4d(3));
@@ -262,7 +284,7 @@ void AcomTrackingData::UpdateYError() {
 
   y_des_quat.normalize();
   y_des_ << y_des_quat.w(), y_des_quat.vec();
-  // End of Hack
+  // End of Hack*/
 
   DRAKE_DEMAND(y_des_.size() == 4);
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
@@ -311,7 +333,7 @@ void AcomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
   VectorX<double> q = x_wo_spr.template head<23>();
   MatrixXd J_acom = EvalJOmegaWorldAcomEwrtWorld(q);
   J_ = J_acom;
-  cout << "J_ = \n" << J_ << endl;
+  //cout << "J_ = \n" << J_ << endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();
 //  std::chrono::duration<double> elapsed = finish - start;

@@ -166,8 +166,86 @@ def main():
     # if plot_config.plot_active_tracking_datas:
     #     plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
     #     plot.save_fig('active_tracking_datas.png')
+
+    # import pdb;pdb.set_trace()
+
+    ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context)
+
+
+
+
     plt.show()
 
+
+
+def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context):
+    ### Total centroidal angular momentum
+    centroidal_angular_momentum = np.zeros((t_x.size, 3))
+    for i in range(t_x.size):
+        # import pdb;pdb.set_trace()
+        plant.SetPositionsAndVelocities(context, x[i])
+        com = plant.CalcCenterOfMassPositionInWorld(context)
+
+        h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
+        centroidal_angular_momentum[i] = h_WC_eval.rotational()
+
+    plt.figure("Centroidal angular momentum")
+    plt.plot(t_x, centroidal_angular_momentum[:,[0,2]])
+    plt.plot(t_osc_debug, 0.1 * fsm)
+    # plt.legend(["x", "y", "z", "fsm"])
+    plt.legend(["x", "z", "fsm"])
+
+    ### Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
+    # body_indices = plant.GetBodyIndices(model_instance)
+    # dictionary_centroidal_angular_momentum_per_body = {}
+    # for body_idx in body_indices:
+    #     # No contribution from the world body.
+    #     if body_idx == 0:
+    #         continue
+    #     # Ensure MultibodyPlant method contains a valid body_index.
+    #     if int(body_idx) >= plant.num_bodies():
+    #         raise ValueError("wrong index. Bug somewhere")
+    #
+    #     body = plant.get_body(body_idx)
+    #     print(body.name())
+    #
+    #     angular_momentum_per_body = np.zeros((t_x.size, 3))
+    #     for i in range(t_x.size):
+    #         plant.SetPositionsAndVelocities(context, x[i])
+    #         com = plant.CalcCenterOfMassPositionInWorld(context)
+    #
+    #         body_pose = plant.EvalBodyPoseInWorld(context, body)
+    #
+    #         R_AE = body_pose.rotation()
+    #         M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+    #         V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
+    #         L_WBo_W = M_BBo_W * V_WBo_W
+    #
+    #         # SpatialMomentumInWorldAboutWo
+    #         p_WoBo_W = body_pose.translation()
+    #         L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
+    #
+    #         # SpatialMomentumInWorldAboutCOM
+    #         L_WS_W = L_WS_W.Shift(com)
+    #
+    #         angular_momentum_per_body[i] = L_WS_W.rotational()
+    #     dictionary_centroidal_angular_momentum_per_body[body.name()] = angular_momentum_per_body
+    #
+    # dim = 0
+    # plt.figure("Centroidal angular momentum per body")
+    # plt.plot(t_osc_debug, 0.1 * fsm, 'k')
+    # legend_list = ["fsm"]
+    # i = 0
+    # linestyle = '-'
+    # for key in dictionary_centroidal_angular_momentum_per_body:
+    #     plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body[key][:,dim], linestyle)
+    #     legend_list += [key]
+    #     if i == 9:
+    #         linestyle = '--'
+    #     if i == 19:
+    #         linestyle = '-.'
+    #     i+=1
+    # plt.legend(legend_list)
 
 if __name__ == '__main__':
     main()

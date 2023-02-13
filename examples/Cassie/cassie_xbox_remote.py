@@ -66,9 +66,9 @@ def main():
     joystick.init()
 
     automatic_rampup = True
-    c = 5
+    c = 2
     done = False
-    max_speed = 1.9   # 1.5 for roll only
+    max_speed = 2.5   # 1.5 for roll only
     ramp_up = np.arange(0, max_speed, 0.01 / c)
     stay = max_speed * np.ones(125 * c)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01 / c))
@@ -114,7 +114,7 @@ def main():
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        if automatic_rampup:
+        if automatic_rampup and (i < speeds.size):
             radio_msg.channel[0] = speeds[i]
             print(speeds[i])
 

@@ -30,6 +30,7 @@ using drake::math::InitializeAutoDiff;
 namespace dairlib::systems::controllers {
 
 double pitch = -0.18; //-0.2;
+bool turn_on_view_frame = false;
 
 Eigen::MatrixXd MapWToQuatDot(const Eigen::Vector4d& Q) {
   // clang-format off
@@ -297,7 +298,9 @@ void AcomTrackingData::UpdateYError() {
   double theta = 2 * acos(relative_quat.w());
   Vector3d rot_axis = relative_quat.vec().normalized();
   error_y_ = theta * rot_axis;
-//  cout << "error_y_ = \n" << error_y_.transpose() << endl;
+
+  if (turn_on_view_frame) error_y_ = view_frame_rot_T_ * error_y_;
+  //  cout << "error_y_ = \n" << error_y_.transpose() << endl;
 }
 
 void AcomTrackingData::UpdateYdot(const VectorXd& x_w_spr,
@@ -312,14 +315,15 @@ void AcomTrackingData::UpdateYdot(const VectorXd& x_w_spr,
 
 void AcomTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   //  ydot_des_.setZero();
-  //  // Transform qdot to w
-  //  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  //  Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
-  //                          ydot_des_(3));
-  //  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
+  // Transform qdot to w
+  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
+  Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
+                          ydot_des_(3));
+  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
 
-  Vector3d w_des_ = Vector3d::Zero();
+  //  Vector3d w_des_ = Vector3d::Zero();
   error_ydot_ = w_des_ - ydot_ - GetJ() * v_proj;
+  if (turn_on_view_frame) error_ydot_ = view_frame_rot_T_ * error_ydot_;
 
   ydot_des_ =
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
@@ -333,6 +337,7 @@ void AcomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
   VectorX<double> q = x_wo_spr.template head<23>();
   MatrixXd J_acom = EvalJOmegaWorldAcomEwrtWorld(q);
   J_ = J_acom;
+  if (turn_on_view_frame) J_ = view_frame_rot_T_ * J_;
   //cout << "J_ = \n" << J_ << endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();
@@ -348,6 +353,7 @@ void AcomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
 
 //  JdotV_ = Vector3d::Zero();
   JdotV_ = EvalJdotVOmegaWorldAcomEwrtWorld(x_wo_spr);
+  if (turn_on_view_frame) JdotV_ = view_frame_rot_T_ * JdotV_;
 //  cout << "JdotV_ = \n" << JdotV_.transpose() << endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();

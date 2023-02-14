@@ -1,11 +1,12 @@
+#include <complex>
 #include "output_vector_filter.h"
-
 #include "systems/framework/output_vector.h"
 
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 
 namespace dairlib::systems {
 
@@ -83,4 +84,92 @@ void OutputVectorFilter::CopyFilterValues(
     }
   }
 }
+
+namespace filtering_utils{
+CascadedFilter butter(int order, double w_c) {
+  DRAKE_DEMAND(order % 2 == 0);
+  DRAKE_DEMAND(order > 0);
+  DRAKE_DEMAND( 0 < w_c && w_c < 1);
+  std::vector<FilterSection> sections;
+
+  // sequentially generate second order
+  // filter sections using evenly spaced complex conjugate pairs
+  for (int k = 0; k < order / 2; k++) {
+    FilterSection section;
+    double theta = M_PI * static_cast<double>(k + 1) / static_cast<double>(order + 1);
+    std::complex<double> p_i(-sin(theta), cos(theta));
+    p_i *= w_c;
+    auto p_i_z = exp(p_i);
+    section.b_ = Vector3d::UnitZ();
+    section.a_(0) = 1;
+    section.a_(1) = 2 * p_i_z.real();
+    section.a_(2) = norm(p_i_z);
+    section.a_(2) *= section.a_(2);
+    sections.push_back(section);
+  }
+  return {sections};
+}
+}
+
+OutputVectorButterworthFilter::OutputVectorButterworthFilter(
+    const drake::multibody::MultibodyPlant<double> &plant,
+    int order,
+    double sampling_frequency,
+    const std::vector<double> &f_c,
+    std::optional<std::vector<int>> filter_idxs) {
+
+  int ny = plant.num_positions() + plant.num_velocities() +
+      plant.num_actuators() + 3;
+  int ny_filt = (filter_idxs.has_value()) ? filter_idxs.value().size() : ny;
+
+  std::vector<int> filter_idxs_local(ny);
+  if (filter_idxs.has_value()) {
+    filter_idxs_local = filter_idxs.value();
+  } else {
+    std::iota(filter_idxs_local.begin(), filter_idxs_local.end(), 0);
+  }
+  filter_idxs_ = filter_idxs_local;
+
+  DRAKE_DEMAND(f_c.size() == ny_filt);
+  for (int i = 0; i < ny_filt; i++) {
+    index_to_filter_map_[filter_idxs_local.at(i)] =
+        filtering_utils::butter(order, sampling_frequency, f_c.at(i));
+  }
+
+  OutputVector<double> model_vector(
+      plant.num_positions(),
+      plant.num_velocities(), plant.num_actuators());
+
+  this->DeclareVectorInputPort("x", model_vector);
+  this->DeclareVectorOutputPort("y", model_vector,
+                                &OutputVectorButterworthFilter::CopyFilterValues);
+  this->DeclarePerStepUnrestrictedUpdateEvent(
+      &OutputVectorButterworthFilter::UnrestrictedUpdate);
+  std::vector<filtering_utils::FilterState> state_value;
+  for (int i = 0; i < ny_filt; i++) {
+    state_value.push_back(
+        index_to_filter_map_.at(filter_idxs_local.at(i)).make_state()
+    );
+  }
+  filter_state_idx_ = DeclareAbstractState(
+      drake::Value<std::vector<filtering_utils::FilterState>>(state_value)
+  );
+}
+
+drake::systems::EventStatus OutputVectorButterworthFilter::UnrestrictedUpdate(
+    const drake::systems::Context<double> &context,
+    drake::systems::State<double> *state) const {
+  const OutputVector<double>* x =
+      (OutputVector<double>*)EvalVectorInput(context, 0);
+  auto filter_state =
+      state->get_mutable_abstract_state<
+          std::vector<filtering_utils::FilterState>>(filter_state_idx_);
+
+  for (int i = 0; i < filter_idxs_.size(); i++) {
+    int idx = filter_idxs_.at(i);
+    index_to_filter_map_.at(idx).UpdateFilter(x->GetAtIndex(idx), filter_state.at(i));
+  }
+  return drake::systems::EventStatus::Succeeded();
+}
+
 }  // namespace dairlib::systems

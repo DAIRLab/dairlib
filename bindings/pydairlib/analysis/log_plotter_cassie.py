@@ -7,7 +7,7 @@ from bindings.pydairlib.lcm.process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
 import cassie_plotting_utils as cassie_plots
 import pydairlib.analysis.mbp_plotting_utils as mbp_plots
-
+from bindings.pydairlib.common import plot_styler
 
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
@@ -88,8 +88,9 @@ def main():
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     if plot_config.plot_floating_base_velocity_body_frame:
-        mbp_plots.plot_floating_base_body_frame_velocities(
+        plot = mbp_plots.plot_floating_base_body_frame_velocities(
             robot_output, t_x_slice, plant, context, "pelvis")
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:
@@ -169,13 +170,25 @@ def main():
 
     # import pdb;pdb.set_trace()
 
-    ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context)
+    fig = ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context)
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    plt.legend(["x", "y", "z"])
 
-
-
+    # fig = PlotCommandedAndActualTorques(robot_output, robot_input, osc_debug)
+    # plot = plot_styler.PlotStyler(fig)
+    # mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    #
 
     plt.show()
 
+
+# def PlotCommandedAndActualTorques(robot_output, robot_input, osc_debug):
+#     fig = plt.figure("torques")
+#     plt.plot(robot_output['t_x'], robot_output['u'])
+#     plt.gca().set_prop_cycle(None)
+#     plt.plot(robot_input['t_u'], robot_input['u'])
+#     return fig
 
 
 def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context):
@@ -189,11 +202,14 @@ def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, con
         h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
         centroidal_angular_momentum[i] = h_WC_eval.rotational()
 
-    plt.figure("Centroidal angular momentum")
-    plt.plot(t_x, centroidal_angular_momentum[:,[0,2]])
-    plt.plot(t_osc_debug, 0.1 * fsm)
+    fig = plt.figure("Centroidal angular momentum")
+    plt.plot(t_x, centroidal_angular_momentum[:,[0,1,2]])
+    # plt.plot(t_osc_debug, 0.1 * fsm)
     # plt.legend(["x", "y", "z", "fsm"])
-    plt.legend(["x", "z", "fsm"])
+    plt.legend(["x", "y", "z"])
+    # plt.legend(["x", "z", "fsm"])
+
+    return fig
 
     ### Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
     # body_indices = plant.GetBodyIndices(model_instance)

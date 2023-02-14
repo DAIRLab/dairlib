@@ -200,6 +200,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
                              &pelvis_pos);
 
   VectorXd pelvis_vel = v.segment(3, 3);
+  // Use center of mass vel instead of pelvis vel
+  //  VectorXd pelvis_vel = plant_.CalcCenterOfMassTranslationalVelocityInWorld(*context_);
   VectorXd pelvis_vel_err = rot.transpose() * pelvis_vel - desired_pelvis_vel;
   VectorXd foot_end_pos_des =
       0.5 * (0.3) * rot.transpose() * pelvis_vel + Kd_ * (pelvis_vel_err);
@@ -235,16 +237,17 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   Y[1](2) += mid_foot_height_;
   Y[2] = foot_end_pos_des;
 
+  double half_plane_guard_offset = 0.04;
   // corrections
   if (is_left_foot_) {
     //    Y[1](1) -= lateral_offset_;
-    Y[1](1) = std::clamp(Y[1](1), lateral_offset_, 0.2);
-    Y[2](1) = std::clamp(Y[2](1), lateral_offset_, 0.2);
+    Y[1](1) = std::clamp(Y[1](1), half_plane_guard_offset, 0.2);
+    Y[2](1) = std::clamp(Y[2](1), half_plane_guard_offset, 0.2);
 
   } else {
     //    Y[1](1) += lateral_offset_;
-    Y[1](1) = std::clamp(Y[1](1), -0.2, -lateral_offset_);
-    Y[2](1) = std::clamp(Y[2](1), -0.2, -lateral_offset_);
+    Y[1](1) = std::clamp(Y[1](1), -0.2, -half_plane_guard_offset);
+    Y[2](1) = std::clamp(Y[2](1), -0.2, -half_plane_guard_offset);
   }
   Y[1](0) = std::clamp(Y[1](0), -0.4, 0.4);
   Y[2](0) = std::clamp(Y[2](0), -0.4, 0.4);

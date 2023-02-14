@@ -198,7 +198,7 @@ hip_yaw_kd: 7
 # Foot placement parameters
 #footstep_offset: -0.05
 footstep_sagital_offset: -0.00
-footstep_lateral_offset: 0.04 # drake
+footstep_lateral_offset: 0.0 # drake
 mid_foot_height: 0.3
 FootstepKd:
   [ 0.012,     0,  0,
@@ -258,7 +258,7 @@ SwingFootW:
    0,    0,   10]
 SwingFootKp:
   [145,   0,    0,
-   0,    75,    0,
+   0,    150,    0,
    0,     0,  200]
 SwingFootKd:
   [5.,   0,   0,

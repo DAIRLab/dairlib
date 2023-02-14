@@ -290,6 +290,9 @@ int DoMain(int argc, char* argv[]) {
     acom_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {0, 1, 2});
   }
+  // To test the standing controller with various initial Cassie yaw, we need to
+  // modify the disired yaw to local frame.
+  // acom_tracking_data->SetViewFrame(pelvis_view_frame);
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
   osc->AddTrackingData(std::move(acom_tracking_data));

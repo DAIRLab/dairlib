@@ -212,6 +212,8 @@ DEFINE_string(contact_solver, "SAP",
     CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
                                     &lambda_init);
   }
+//  double theta = 80 / 180.0 * M_PI;
+//  q_init.head<4>() << cos(theta / 2), 0, 0, sin(theta / 2);
   plant.SetPositions(&plant_context, q_init);
   plant.SetVelocities(&plant_context, VectorXd::Zero(plant.num_velocities()));
   diagram_context->SetTime(FLAGS_start_time);

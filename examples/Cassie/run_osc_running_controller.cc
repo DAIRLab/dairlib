@@ -526,6 +526,9 @@ int DoMain(int argc, char* argv[]) {
                                                {0, 1, 2});
   }
 
+  acom_tracking_data->SetViewFrame(pelvis_view_frame);
+  pelvis_rot_tracking_data->SetViewFrame(pelvis_view_frame);
+
   osc->AddTrackingData(std::move(acom_tracking_data));
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));

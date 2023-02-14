@@ -30,7 +30,6 @@ using drake::math::InitializeAutoDiff;
 namespace dairlib::systems::controllers {
 
 double pitch = -0.18; //-0.2;
-bool turn_on_view_frame = false;
 
 Eigen::MatrixXd MapWToQuatDot(const Eigen::Vector4d& Q) {
   // clang-format off
@@ -243,7 +242,9 @@ AcomTrackingData::AcomTrackingData(const string& name, const MatrixXd& K_p,
                                    const MultibodyPlant<double>& plant_w_spr,
                                    const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
-                          plant_w_spr, plant_wo_spr) {}
+                          plant_w_spr, plant_wo_spr) {
+  is_rotational_tracking_data_ = true;
+}
 
 // void AcomTrackingData::AddFrameToTrack(
 //    const std::string& body_name, const Eigen::Isometry3d& frame_pose) {
@@ -271,21 +272,21 @@ void AcomTrackingData::UpdateY(const VectorXd& x_w_spr,
 }
 
 void AcomTrackingData::UpdateYError() {
-  /*// Hack -- set the desired value here.
+  // Hack -- set the desired value here.
   Eigen::Vector4d y_des_quat_4d(y_(0), 0, 0, y_(3));
   y_des_quat_4d.normalize();
   Quaterniond y_des_quat(y_des_quat_4d(0), 0, 0, y_des_quat_4d(3));
 
-  // Set desired pitch to non-zero
-  // TODO: havne't checked if this is the right way of setting the desired orientation
-  double pitch = 0.2;
-  Quaterniond y_des_delta(cos(pitch / 2), 0 * sin(pitch / 2),
-                          1 * sin(pitch / 2), 0 * sin(pitch / 2));
-  y_des_quat = y_des_delta * y_des_quat;
+//  // Set desired pitch to non-zero
+//  // TODO: havne't checked if this is the right way of setting the desired orientation
+//  double pitch = 0.2;
+//  Quaterniond y_des_delta(cos(pitch / 2), 0 * sin(pitch / 2),
+//                          1 * sin(pitch / 2), 0 * sin(pitch / 2));
+//  y_des_quat = y_des_delta * y_des_quat;
 
   y_des_quat.normalize();
   y_des_ << y_des_quat.w(), y_des_quat.vec();
-  // End of Hack*/
+  // End of Hack
 
   DRAKE_DEMAND(y_des_.size() == 4);
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
@@ -299,8 +300,9 @@ void AcomTrackingData::UpdateYError() {
   Vector3d rot_axis = relative_quat.vec().normalized();
   error_y_ = theta * rot_axis;
 
-  if (turn_on_view_frame) error_y_ = view_frame_rot_T_ * error_y_;
-  //  cout << "error_y_ = \n" << error_y_.transpose() << endl;
+  if (with_view_frame_) error_y_ = view_frame_rot_T_ * error_y_;
+
+//    cout << "error_y_ = \n" << error_y_.transpose() << endl;
 }
 
 void AcomTrackingData::UpdateYdot(const VectorXd& x_w_spr,
@@ -323,7 +325,7 @@ void AcomTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
 
   //  Vector3d w_des_ = Vector3d::Zero();
   error_ydot_ = w_des_ - ydot_ - GetJ() * v_proj;
-  if (turn_on_view_frame) error_ydot_ = view_frame_rot_T_ * error_ydot_;
+  if (with_view_frame_) error_ydot_ = view_frame_rot_T_ * error_ydot_;
 
   ydot_des_ =
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
@@ -337,7 +339,6 @@ void AcomTrackingData::UpdateJ(const VectorXd& x_wo_spr,
   VectorX<double> q = x_wo_spr.template head<23>();
   MatrixXd J_acom = EvalJOmegaWorldAcomEwrtWorld(q);
   J_ = J_acom;
-  if (turn_on_view_frame) J_ = view_frame_rot_T_ * J_;
   //cout << "J_ = \n" << J_ << endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();
@@ -353,7 +354,6 @@ void AcomTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
 
 //  JdotV_ = Vector3d::Zero();
   JdotV_ = EvalJdotVOmegaWorldAcomEwrtWorld(x_wo_spr);
-  if (turn_on_view_frame) JdotV_ = view_frame_rot_T_ * JdotV_;
 //  cout << "JdotV_ = \n" << JdotV_.transpose() << endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();

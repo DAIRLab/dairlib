@@ -17,4 +17,19 @@ class FloatingBaseVelocityFilter : public OutputVectorFilter {
                                             plant.num_positions() + 4,
                                             plant.num_positions() + 5}){};
 };
+
+
+class FloatingBaseVelocityButterworthFilter : public OutputVectorButterworthFilter {
+ public:
+  FloatingBaseVelocityButterworthFilter(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      int order,
+      double f_s,
+      const std::vector<double>& f_c)
+      : OutputVectorButterworthFilter(plant, order, f_s, f_c,
+                           std::vector<int>{plant.num_positions() + 3,
+                                            plant.num_positions() + 4,
+                                            plant.num_positions() + 5}){};
+};
+
 }  // namespace dairlib::systems

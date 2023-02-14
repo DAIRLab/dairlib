@@ -1,10 +1,12 @@
 #include <complex>
+#include <iostream>
 #include "output_vector_filter.h"
 #include "systems/framework/output_vector.h"
 
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using Eigen::MatrixXd;
+using Eigen::Matrix2d;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
@@ -90,24 +92,41 @@ CascadedFilter butter(int order, double w_c) {
   DRAKE_DEMAND(order % 2 == 0);
   DRAKE_DEMAND(order > 0);
   DRAKE_DEMAND( 0 < w_c && w_c < 1);
-  std::vector<FilterSection> sections;
+  std::vector<Matrix2d> A;
+  std::vector<Matrix2d> B;
 
   // sequentially generate second order
   // filter sections using evenly spaced complex conjugate pairs
   for (int k = 0; k < order / 2; k++) {
-    FilterSection section;
     double theta = M_PI * static_cast<double>(k + 1) / static_cast<double>(order + 1);
     std::complex<double> p_i(-sin(theta), cos(theta));
     p_i *= w_c;
     auto p_i_z = exp(p_i);
-    section.b_ = Vector3d::UnitZ();
-    section.a_(0) = 1;
-    section.a_(1) = 2 * p_i_z.real();
-    section.a_(2) = norm(p_i_z);
-    section.a_(2) *= section.a_(2);
-    sections.push_back(section);
+    std::cout << "pole: " << p_i_z << std::endl;
+    std::cout << "pole norm: " << norm(p_i_z) << std::endl;
+    double a1 = 2 * p_i_z.real();
+    double a2 = norm(p_i_z) * norm(p_i_z);
+    Matrix2d a;
+    Matrix2d b = Matrix2d::Zero();
+    b(1, 1) = 1 + a1 + a2;
+    a << 0, 1, -a2, -a1;
+    A.push_back(a);
+    B.push_back(b);
   }
-  return {sections};
+  MatrixXd BigA = MatrixXd::Zero(order, order);
+  VectorXd BigB = VectorXd::Zero(order);
+  BigA.topLeftCorner<2,2>() = A.front();
+  BigB.head<2>() = B.front().rightCols<1>();
+  for (int i = 1; i < order / 2; i++) {
+    BigB.segment<2>(2*i) = B.at(i) * BigB.segment<2>(2*(i-1));
+    BigA.middleRows<2>(2*i) = BigA.middleRows<2>(2*(i-1));
+    BigA.block<2, 2>(2*i, 2*i) = A.at(i);
+    for (int j = 0; j < i; j++) {
+      BigA.block<2, 2>(2*i, 2*j) = B.at(i) * BigA.block<2, 2>(2*i, 2*j);
+    }
+  }
+  std::cout << "A: \n" << BigA << "\nB:\n" << BigB << std::endl;
+  return {BigA, BigB};
 }
 }
 
@@ -116,7 +135,7 @@ OutputVectorButterworthFilter::OutputVectorButterworthFilter(
     int order,
     double sampling_frequency,
     const std::vector<double> &f_c,
-    std::optional<std::vector<int>> filter_idxs) {
+    std::optional<std::vector<int>> filter_idxs) : order_(order){
 
   int ny = plant.num_positions() + plant.num_velocities() +
       plant.num_actuators() + 3;
@@ -145,15 +164,8 @@ OutputVectorButterworthFilter::OutputVectorButterworthFilter(
                                 &OutputVectorButterworthFilter::CopyFilterValues);
   this->DeclarePerStepUnrestrictedUpdateEvent(
       &OutputVectorButterworthFilter::UnrestrictedUpdate);
-  std::vector<filtering_utils::FilterState> state_value;
-  for (int i = 0; i < ny_filt; i++) {
-    state_value.push_back(
-        index_to_filter_map_.at(filter_idxs_local.at(i)).make_state()
-    );
-  }
-  filter_state_idx_ = DeclareAbstractState(
-      drake::Value<std::vector<filtering_utils::FilterState>>(state_value)
-  );
+
+  filter_state_idx_ = DeclareDiscreteState(ny_filt * order);
 }
 
 drake::systems::EventStatus OutputVectorButterworthFilter::UnrestrictedUpdate(
@@ -162,14 +174,33 @@ drake::systems::EventStatus OutputVectorButterworthFilter::UnrestrictedUpdate(
   const OutputVector<double>* x =
       (OutputVector<double>*)EvalVectorInput(context, 0);
   auto filter_state =
-      state->get_mutable_abstract_state<
-          std::vector<filtering_utils::FilterState>>(filter_state_idx_);
+      state->get_mutable_discrete_state(filter_state_idx_).get_mutable_value();
 
   for (int i = 0; i < filter_idxs_.size(); i++) {
     int idx = filter_idxs_.at(i);
-    index_to_filter_map_.at(idx).UpdateFilter(x->GetAtIndex(idx), filter_state.at(i));
+    filter_state.segment(i * order_, order_) =
+        index_to_filter_map_.at(idx).UpdateFilter(
+          filter_state.segment(i * order_, order_), x->GetAtIndex(idx));
   }
+  std::cout << "update: " << filter_state.transpose() << std::endl;
   return drake::systems::EventStatus::Succeeded();
+}
+
+
+void OutputVectorButterworthFilter::CopyFilterValues(
+    const drake::systems::Context<double>& context,
+    dairlib::systems::OutputVector<double>* y) const {
+  // Copy over y from the input port
+  auto y_curr = (OutputVector<double>*)EvalVectorInput(context, 0);
+  y->SetDataVector(y_curr->get_data());
+  y->set_timestamp(y_curr->get_timestamp());
+  const auto& y_filt = context.get_discrete_state(filter_state_idx_).get_value();
+  std::cout << "copy: " << y_filt.transpose() << std::endl;
+  for (int i = 0; i < filter_idxs_.size(); i++) {
+      y->get_mutable_value()[filter_idxs_.at(i)] =
+          filtering_utils::CascadedFilter::GetFilterOutput(
+              y_filt.segment(i*order_, order_));
+  }
 }
 
 }  // namespace dairlib::systems

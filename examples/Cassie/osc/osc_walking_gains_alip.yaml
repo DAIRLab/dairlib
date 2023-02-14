@@ -7,7 +7,7 @@ vel_scale_trans_sagital: 0.8
 vel_scale_trans_lateral: -0.4
 
 # Filter settings
-pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
+pelvis_xyz_vel_filter_tau: [100, 100, 100]
 
 # High level command gains (without radio)
 global_target_position_x: 0

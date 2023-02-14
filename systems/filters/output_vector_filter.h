@@ -46,53 +46,22 @@ class OutputVectorFilter : public LeafSystem<double> {
 };
 
 namespace filtering_utils {
-/// Struct storing the transfer function of a second order discrete LTI filter
-/// H(z) = b_[0]z^{-2} + b_[1]z^{-1} + b[2]
-///        --------------------------------
-///        a_[0]z^{-2} + a_[1]z^{-1} + a[2]
-struct FilterSection {
-  Eigen::Vector3d a_;
-  Eigen::Vector3d b_;
-
-  /// Apply the second order filter with the last element of x and y being the
-  /// most recent input/output
-  void ApplyFilter(Eigen::Vector3d &y, const Eigen::Vector3d &x) const {
-    double bx = b_.dot(x);
-    y(0) = y(1);
-    y(1) = y(2);
-    y(2) = (1 / a_(2)) * bx - a_.head<2>().dot(y.head<2>());
-  }
-  static void AddMeasurement(Eigen::Vector3d &x, double u) {
-    x(0) = x(1);
-    x(1) = x(2);
-    x(2) = u;
-  }
-};
-
-typedef std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> FilterState;
 
 struct CascadedFilter {
-  std::vector<FilterSection> sections;
-  FilterState make_state() {
-    return {sections.size(),
-            {Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()}};
+  Eigen::MatrixXd A_;
+  Eigen::VectorXd B_;
+  Eigen::VectorXd UpdateFilter(const Eigen::VectorXd& x, double u) const {
+    return A_ * x + B_ * u;
   };
-  double UpdateFilter(double x, FilterState &state) const {
-    FilterSection::AddMeasurement(state.front().second, x);
-    sections.front().ApplyFilter(state.front().first, state.front().second);
-    for (int i = 1; i < sections.size(); i++) {
-      FilterSection::AddMeasurement(
-          state.at(i).second, state.at(i - 1).first(2));
-      sections.at(i).ApplyFilter(state.at(i).first, state.at(i).second);
-    }
-    return state.back().first(2);
+  static double GetFilterOutput(const Eigen::VectorXd& x) {
+    return x.tail(1)(0);
   }
 };
 
 CascadedFilter butter(int order, double w_c);
 inline CascadedFilter butter(int order, double f_s, double f_c) {
   DRAKE_DEMAND(f_s > f_c);
-  return butter(order, f_c / f_s);
+  return butter(order, 0.5 * f_c / f_s);
 }
 }
 
@@ -106,7 +75,8 @@ class OutputVectorButterworthFilter : public LeafSystem<double> {
       std::optional<std::vector<int>> filter_idxs);
 
  private:
-  drake::systems::AbstractStateIndex filter_state_idx_;
+  const int order_;
+  drake::systems::DiscreteStateIndex filter_state_idx_;
   std::vector<int> filter_idxs_;
   std::unordered_map<int, filtering_utils::CascadedFilter> index_to_filter_map_;
   void CopyFilterValues(const drake::systems::Context<double>& context,

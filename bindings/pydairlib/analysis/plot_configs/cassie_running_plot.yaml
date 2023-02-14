@@ -20,7 +20,7 @@ use_floating_base: true
 # Desired RobotOutput plots
 plot_floating_base_positions: true
 plot_floating_base_velocities: true
-plot_floating_base_velocity_body_frame: false
+plot_floating_base_velocity_body_frame: true
 plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: true
@@ -28,7 +28,8 @@ plot_commanded_efforts: true
 plot_contact_forces: false
 special_positions_to_plot: [ 'knee_joint_left', 'knee_joint_right', 'ankle_spring_joint_left', 'ankle_spring_joint_right' ]
 #special_positions_to_plot: [ 'hip_pitch_left', 'hip_pitch_right', 'hip_roll_left', 'hip_roll_right' ]
-special_velocities_to_plot: [ 'hip_roll_leftdot', 'hip_roll_rightdot' ]
+#special_velocities_to_plot: [ 'hip_roll_leftdot', 'hip_roll_rightdot' ]
+special_velocities_to_plot: [ 'knee_leftdot', 'knee_rightdot' ]
 special_efforts_to_plot: [ ]
 
 # Finite State Machine Names
@@ -42,20 +43,21 @@ foot_xyz_to_plot: { 'right': [ 2 ], 'left': [ 2 ] }
 pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: false
+plot_qp_costs: true
 plot_qp_solve_time: false
 plot_qp_solutions: false
-plot_tracking_costs: false
+plot_tracking_costs: true
 plot_active_tracking_datas: false
 tracking_datas_to_plot: {
   #  pelvis_trans_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'accel' ] },
-  #  pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'vel', 'accel'] },
+#    pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel'] },
 #  pelvis_rot_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos' ] },
 #  acom_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
 #  acom_traj: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
   #  hip_yaw_left_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
   #  hip_yaw_right_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
-  #  right_ft_traj: { 'dims': [0, 1, 2], 'derivs': [ 'pos' ] },
+#  right_ft_traj: { 'dims': [0, 1, 2], 'derivs': [ 'pos' ] },
+  right_ft_traj: { 'dims': [1], 'derivs': [ 'pos' ] },
 #  left_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'vel'] },
   #  left_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },
   #  right_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },

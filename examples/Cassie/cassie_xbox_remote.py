@@ -68,9 +68,18 @@ def main():
     automatic_rampup = True
     c = 2
     done = False
-    max_speed = 2.5   # 1.5 for roll only
-    ramp_up = np.arange(0, max_speed, 0.01 / c)
-    stay = max_speed * np.ones(125 * c)
+    # With new running gains (20230213):
+    #   acom: max_speed can be >= 2.8
+    #   pelvis: max_speed can be >= 2.1 or 2.2
+    # With newer running gains (20230214):
+    #   acom: max_speed can be >= 2.5
+    #   pelvis: max_speed can be >= 1.9
+    # With newer running gains (20230214) and "0 lateral offset + half plane gaurd for footsteps):
+    #   acom: max_speed can be >= 2.7
+    #   pelvis: max_speed can be >= 2.2
+    max_speed = 2.7 #2.5   # 1.5 for roll only
+    ramp_up = np.arange(1.8, max_speed, 0.01 / c)
+    stay = max_speed * np.ones(350 * c)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01 / c))
     speeds = np.hstack((ramp_up, stay, ramp_down))
     i = 0

@@ -65,7 +65,7 @@ def main():
     joystick = pygame.joystick.Joystick(0)
     joystick.init()
 
-    automatic_rampup = True
+    automatic_rampup = False
     c = 2
     done = False
     # With new running gains (20230213):
@@ -80,11 +80,17 @@ def main():
     # With newer running gains (20230214)  and  "0 lateral offset + half plane gaurd for footsteps"  and local rotation OSC tracking gains (view frame):
     #   acom: max_speed can be >= 2.7
     #   pelvis: max_speed can be >= 2.4
-    max_speed = 2.85 #2.5   # 1.5 for roll only
+    max_speed = 2.2 #2.5   # 1.5 for roll only
     ramp_up = np.arange(1.8, max_speed, 0.01 / c)
     stay = max_speed * np.ones(350 * c)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01 / c))
     speeds = np.hstack((ramp_up, stay, ramp_down))
+
+    automatic_yaw_rampup = True
+    max_speed = 0.5
+    yaw_speeds = np.hstack((np.zeros(100 * c), np.arange(0, max_speed, 0.01 / c), max_speed * np.ones(100000)))
+
+
     i = 0
     while not done:
         # DRAWING STEP
@@ -128,11 +134,22 @@ def main():
         radio_msg = dairlib.lcmt_radio_out()
         if automatic_rampup and (i < speeds.size):
             radio_msg.channel[0] = speeds[i]
-            print(speeds[i])
+            print(speeds[i], end=", ")
+        else:
+            radio_msg.channel[0] = -2.2*joystick.get_axis(1)
+            radio_msg.channel[0] = 1.5
 
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
+
         radio_msg.channel[3] = joystick.get_axis(3)
+        if automatic_yaw_rampup and (i < yaw_speeds.size):
+            radio_msg.channel[3] = -yaw_speeds[i]
+            print(yaw_speeds[i], end="")
+
+        if automatic_yaw_rampup or automatic_rampup:
+            print("")
+
         radio_msg.channel[4] = radio_channel_4_pos
         radio_msg.channel[5] = radio_channel_5_pos
         radio_msg.channel[6] = radio_channel_6_pos

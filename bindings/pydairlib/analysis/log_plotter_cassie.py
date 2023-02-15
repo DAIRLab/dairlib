@@ -180,6 +180,9 @@ def main():
     # mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
     #
 
+    ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
+    ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config)
+
     plt.show()
 
 
@@ -189,6 +192,56 @@ def main():
 #     plt.gca().set_prop_cycle(None)
 #     plt.plot(robot_input['t_u'], robot_input['u'])
 #     return fig
+
+def ComputeAndPlotACoMRate(x, t_x, osc_debug, t_osc_debug, plant, plot_config):
+    ### ACoM rate (angle axis)
+    acom_omega = np.zeros((t_osc_debug.size, 3))
+    acom_omega = osc_debug['osc_debug_tracking_datas']['acom_traj'].ydot
+
+    ### pelvis rate (angle axis)
+    nq = plant.num_positions()
+    pelvis_omega = x[:,nq:nq+3]
+
+    ### Plot rate
+    fig = plt.figure("Angular Center of Mass Rate")
+    plt.plot(t_osc_debug, acom_omega[:,[0,1,2]], "--")
+    plt.gca().set_prop_cycle(None)
+    plt.plot(t_x, pelvis_omega[:,[0,1,2]])
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    plt.legend(["ACoM x", "ACoM y", "ACoM z", "pelvis x", "pelvis y", "pelvis z"])
+
+
+
+def ComputeAndPlotACoM(x, t_x, osc_debug, t_osc_debug, plot_config):
+    from scipy.spatial.transform import Rotation as R
+
+    ### Compute ACoM RPY
+    acom_quaternion = np.zeros((t_osc_debug.size, 4))
+    acom_quaternion = osc_debug['osc_debug_tracking_datas']['acom_traj'].y
+    acom_rpy = np.zeros((t_osc_debug.size, 3))
+    for i in range(t_osc_debug.size):
+        y = acom_quaternion[i]
+        r = R.from_quat([y[1], y[2], y[3], y[0]])
+        acom_rpy[i] = r.as_euler('xyz', degrees=False)
+
+    ### Compute pelvis RPY
+    pelvis_quaternion = x[:,0:4]
+    pelvis_rpy = np.zeros((t_x.size, 3))
+    for i in range(t_x.size):
+        y = pelvis_quaternion[i]
+        r = R.from_quat([y[1], y[2], y[3], y[0]])
+        pelvis_rpy[i] = r.as_euler('xyz', degrees=False)
+
+    ### Plot RPY
+    fig = plt.figure("Angular Center of Mass")
+    plt.plot(t_osc_debug, acom_rpy[:,[0,1,2]], "--")
+    plt.gca().set_prop_cycle(None)
+    plt.plot(t_x, pelvis_rpy[:,[0,1,2]])
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    plt.legend(["ACoM x", "ACoM y", "ACoM z", "pelvis x", "pelvis y", "pelvis z"])
+
 
 
 def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context):

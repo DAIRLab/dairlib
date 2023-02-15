@@ -1,10 +1,20 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "filter_utils",
+    srcs = ["filter_utils.cc"],
+    hdrs = ["filter_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "output_vector_filter",
     srcs = ["output_vector_filter.cc"],
     hdrs = ["output_vector_filter.h"],
     deps = [
+        ":filter_utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

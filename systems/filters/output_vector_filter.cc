@@ -1,5 +1,5 @@
-#include <complex>
 #include <iostream>
+#include "filter_utils.h"
 #include "output_vector_filter.h"
 #include "systems/framework/output_vector.h"
 
@@ -87,47 +87,6 @@ void OutputVectorFilter::CopyFilterValues(
   }
 }
 
-namespace filtering_utils{
-CascadedFilter butter(int order, double w_c) {
-  DRAKE_DEMAND(order % 2 == 0);
-  DRAKE_DEMAND(order > 0);
-  DRAKE_DEMAND( 0 < w_c && w_c < 1);
-  std::vector<Matrix2d> A;
-  std::vector<Matrix2d> B;
-
-  // sequentially generate second order
-  // filter sections using evenly spaced complex conjugate pairs
-  double dtheta = M_PI  / order;
-  double start = M_PI_2 + dtheta / 2;
-  for (int k = 0; k < order / 2; k++) {
-    std::complex<double> p_i(cos(start + dtheta * k),
-                             sin(start + dtheta * k));
-    p_i *= w_c;
-    auto p_i_z = exp(p_i);
-    double a1 = -2 * p_i_z.real();
-    double a2 = norm(p_i_z);
-    Matrix2d a;
-    Matrix2d b = Matrix2d::Zero();
-    b(1, 1) = 1 + a1 + a2;
-    a << 0, 1, -a2, -a1;
-    A.push_back(a);
-    B.push_back(b);
-  }
-  MatrixXd BigA = MatrixXd::Zero(order, order);
-  VectorXd BigB = VectorXd::Zero(order);
-  BigA.topLeftCorner<2,2>() = A.front();
-  BigB.head<2>() = B.front().rightCols<1>();
-  for (int i = 1; i < order / 2; i++) {
-    BigB.segment<2>(2*i) = B.at(i) * BigB.segment<2>(2*(i-1));
-    BigA.middleRows<2>(2*i) = BigA.middleRows<2>(2*(i-1));
-    BigA.block<2, 2>(2*i, 2*i) = A.at(i);
-    for (int j = 0; j < i; j++) {
-      BigA.block<2, 2>(2*i, 2*j) = B.at(i) * BigA.block<2, 2>(2*i, 2*j);
-    }
-  }
-  return {BigA, BigB};
-}
-}
 
 OutputVectorButterworthFilter::OutputVectorButterworthFilter(
     const drake::multibody::MultibodyPlant<double> &plant,
@@ -151,7 +110,7 @@ OutputVectorButterworthFilter::OutputVectorButterworthFilter(
   DRAKE_DEMAND(f_c.size() == ny_filt);
   for (int i = 0; i < ny_filt; i++) {
     index_to_filter_map_[filter_idxs_local.at(i)] =
-        filtering_utils::butter(order, sampling_frequency, f_c.at(i));
+        filter_utils::butter(order, sampling_frequency, f_c.at(i));
   }
 
   OutputVector<double> model_vector(
@@ -195,7 +154,7 @@ void OutputVectorButterworthFilter::CopyFilterValues(
   const auto& y_filt = context.get_discrete_state(filter_state_idx_).get_value();
   for (int i = 0; i < filter_idxs_.size(); i++) {
       y->get_mutable_value()[filter_idxs_.at(i)] =
-          filtering_utils::CascadedFilter::GetFilterOutput(
+          filter_utils::StateSpaceButterworthFilter::GetFilterOutput(
               y_filt.segment(i*order_, order_));
   }
 }

@@ -1,7 +1,6 @@
 #pragma once
-
+#include "filter_utils.h"
 #include "systems/framework/output_vector.h"
-
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -45,26 +44,6 @@ class OutputVectorFilter : public LeafSystem<double> {
   int prev_time_idx_;
 };
 
-namespace filtering_utils {
-
-struct CascadedFilter {
-  Eigen::MatrixXd A_;
-  Eigen::VectorXd B_;
-  Eigen::VectorXd UpdateFilter(const Eigen::VectorXd& x, double u) const {
-    return A_ * x + B_ * u;
-  };
-  static double GetFilterOutput(const Eigen::VectorXd& x) {
-    return x.tail(1)(0);
-  }
-};
-
-CascadedFilter butter(int order, double w_c);
-inline CascadedFilter butter(int order, double f_s, double f_c) {
-  DRAKE_DEMAND(f_s > f_c);
-  return butter(order, 0.5 * f_c / f_s);
-}
-}
-
 class OutputVectorButterworthFilter : public LeafSystem<double> {
  public:
   OutputVectorButterworthFilter(
@@ -78,7 +57,7 @@ class OutputVectorButterworthFilter : public LeafSystem<double> {
   const int order_;
   drake::systems::DiscreteStateIndex filter_state_idx_;
   std::vector<int> filter_idxs_;
-  std::unordered_map<int, filtering_utils::CascadedFilter> index_to_filter_map_;
+  std::unordered_map<int, filter_utils::StateSpaceButterworthFilter> index_to_filter_map_;
   void CopyFilterValues(const drake::systems::Context<double>& context,
                         OutputVector<double>* y) const;
 

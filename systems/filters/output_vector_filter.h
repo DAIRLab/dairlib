@@ -1,7 +1,6 @@
 #pragma once
-
+#include "filter_utils.h"
 #include "systems/framework/output_vector.h"
-
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -43,5 +42,28 @@ class OutputVectorFilter : public LeafSystem<double> {
   const std::vector<double>& tau_;
   int prev_val_idx_;
   int prev_time_idx_;
+};
+
+class OutputVectorButterworthFilter : public LeafSystem<double> {
+ public:
+  OutputVectorButterworthFilter(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      int order,
+      double sampling_frequency,
+      const std::vector<double>& w_c,
+      std::optional<std::vector<int>> filter_idxs);
+
+ private:
+  const int order_;
+  drake::systems::DiscreteStateIndex filter_state_idx_;
+  std::vector<int> filter_idxs_;
+  std::unordered_map<int, filter_utils::StateSpaceButterworthFilter> index_to_filter_map_;
+  void CopyFilterValues(const drake::systems::Context<double>& context,
+                        OutputVector<double>* y) const;
+
+  drake::systems::EventStatus UnrestrictedUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::State<double>* state) const;
+
 };
 }  // namespace dairlib::systems

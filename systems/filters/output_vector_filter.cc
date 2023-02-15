@@ -1,11 +1,14 @@
+#include <iostream>
+#include "filter_utils.h"
 #include "output_vector_filter.h"
-
 #include "systems/framework/output_vector.h"
 
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 using Eigen::MatrixXd;
+using Eigen::Matrix2d;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 
 namespace dairlib::systems {
 
@@ -83,4 +86,77 @@ void OutputVectorFilter::CopyFilterValues(
     }
   }
 }
+
+
+OutputVectorButterworthFilter::OutputVectorButterworthFilter(
+    const drake::multibody::MultibodyPlant<double> &plant,
+    int order,
+    double sampling_frequency,
+    const std::vector<double> &f_c,
+    std::optional<std::vector<int>> filter_idxs) : order_(order){
+
+  int ny = plant.num_positions() + plant.num_velocities() +
+      plant.num_actuators() + 3;
+  int ny_filt = (filter_idxs.has_value()) ? filter_idxs.value().size() : ny;
+
+  std::vector<int> filter_idxs_local(ny);
+  if (filter_idxs.has_value()) {
+    filter_idxs_local = filter_idxs.value();
+  } else {
+    std::iota(filter_idxs_local.begin(), filter_idxs_local.end(), 0);
+  }
+  filter_idxs_ = filter_idxs_local;
+
+  DRAKE_DEMAND(f_c.size() == ny_filt);
+  for (int i = 0; i < ny_filt; i++) {
+    index_to_filter_map_[filter_idxs_local.at(i)] =
+        filter_utils::butter(order, sampling_frequency, f_c.at(i));
+  }
+
+  OutputVector<double> model_vector(
+      plant.num_positions(),
+      plant.num_velocities(), plant.num_actuators());
+
+  this->DeclareVectorInputPort("x", model_vector);
+  this->DeclareVectorOutputPort("y", model_vector,
+                                &OutputVectorButterworthFilter::CopyFilterValues);
+  this->DeclarePerStepUnrestrictedUpdateEvent(
+      &OutputVectorButterworthFilter::UnrestrictedUpdate);
+
+  filter_state_idx_ = DeclareDiscreteState(ny_filt * order);
+}
+
+drake::systems::EventStatus OutputVectorButterworthFilter::UnrestrictedUpdate(
+    const drake::systems::Context<double> &context,
+    drake::systems::State<double> *state) const {
+  const OutputVector<double>* x =
+      (OutputVector<double>*)EvalVectorInput(context, 0);
+  auto filter_state =
+      state->get_mutable_discrete_state(filter_state_idx_).get_mutable_value();
+
+  for (int i = 0; i < filter_idxs_.size(); i++) {
+    int idx = filter_idxs_.at(i);
+    filter_state.segment(i * order_, order_) =
+        index_to_filter_map_.at(idx).UpdateFilter(
+          filter_state.segment(i * order_, order_), x->GetAtIndex(idx));
+  }
+  return drake::systems::EventStatus::Succeeded();
+}
+
+
+void OutputVectorButterworthFilter::CopyFilterValues(
+    const drake::systems::Context<double>& context,
+    dairlib::systems::OutputVector<double>* y) const {
+  // Copy over y from the input port
+  auto y_curr = (OutputVector<double>*)EvalVectorInput(context, 0);
+  y->SetDataVector(y_curr->get_data());
+  y->set_timestamp(y_curr->get_timestamp());
+  const auto& y_filt = context.get_discrete_state(filter_state_idx_).get_value();
+  for (int i = 0; i < filter_idxs_.size(); i++) {
+      y->get_mutable_value()[filter_idxs_.at(i)] =
+          filter_utils::StateSpaceButterworthFilter::GetFilterOutput(
+              y_filt.segment(i*order_, order_));
+  }
+}
+
 }  // namespace dairlib::systems

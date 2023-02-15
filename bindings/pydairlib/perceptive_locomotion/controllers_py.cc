@@ -14,6 +14,7 @@ namespace pydairlib{
 
 using systems::controllers::AlipMINLP;
 using systems::controllers::alip_utils::Stance;
+using systems::controllers::alip_utils::ResetDiscretization;
 
 PYBIND11_MODULE(controllers, m) {
   m.doc() = "Binding generic controllers";
@@ -23,12 +24,16 @@ PYBIND11_MODULE(controllers, m) {
   py::enum_<Stance>(m, "Stance")
       .value("kLeft", Stance::kLeft)
       .value("kRight", Stance::kRight);
+  py::enum_<ResetDiscretization>(m, "ResetDiscretization")
+      .value("kZOH", ResetDiscretization::kZOH)
+      .value("kFOH", ResetDiscretization::kFOH);
 
   py::class_<AlipMINLP>(
       m, "AlipMINLP")
       .def(
-          py::init<double, double, int, int>(),
-          py::arg("m"), py::arg("H"), py::arg("nk"), py::arg("nmodes"))
+          py::init<double, double, int, ResetDiscretization, int>(),
+          py::arg("m"), py::arg("H"), py::arg("nk"),
+          py::arg("reset_discretization_method"), py::arg("nmodes"))
       .def("AddFootholds", &AlipMINLP::AddFootholds)
       .def("AddMode", &AlipMINLP::AddMode)
       .def("AddInputCost", &AlipMINLP::AddInputCost)

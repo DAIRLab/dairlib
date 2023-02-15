@@ -20,6 +20,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems/filters:floating_base_velocity_filter",
         "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
         "//systems/controllers/footstep_planning:flat_terrain_foothold_source",
         "//systems/controllers/footstep_planning:footstep_lcm_systems",

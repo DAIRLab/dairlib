@@ -34,7 +34,7 @@ int do_main(int argc, char* argv[]) {
     }
     footholds.push_back(foothold);
   }
-  auto trajopt = AlipMINLP(32, 0.85, 10, 3);
+  auto trajopt = AlipMINLP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
   trajopt.AddFootholds(footholds);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());

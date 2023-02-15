@@ -75,8 +75,9 @@ Matrix<double, 4, 8> CalcResetMap(
 }
 
 Vector4d CalcReset(double com_z, double m, double Tds,
-                   const Vector4d& x, const Vector3d& p0, const Vector3d& p1) {
-  Matrix<double, 4, 8> A = CalcResetMap(com_z, m, Tds);
+                   const Vector4d& x, const Vector3d& p0, const Vector3d& p1,
+                   ResetDiscretization reset_discretization) {
+  Matrix<double, 4, 8> A = CalcResetMap(com_z, m, Tds, reset_discretization);
   Vector4d xp =
       A.leftCols<4>() * x +
       A.block<4,2>(0,4) * p0.head<2>() + A.rightCols<2>() * p1.head<2>();
@@ -105,7 +106,7 @@ Matrix4d CalcAd(double com_z, double m, double t) {
   double omega = sqrt(g / com_z);
   double d = 1.0 / (m * g);
   double a = sinh(t * omega);
-  Matrix4d Ad = cosh(omega * t) * Vector4d::Ones().asDiagonal();
+  Matrix4d Ad = cosh(omega * t) * Matrix4d::Identity();
   Ad(0,3) = a * omega * d;
   Ad(1,2) = -a * omega * d;
   Ad(2,1) = -a / (omega * d);
@@ -139,7 +140,8 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
   const Matrix<double, 4, 8> Ar = CalcResetMap(
       gait_params.height,
       gait_params.mass,
-      gait_params.double_stance_duration
+      gait_params.double_stance_duration,
+      gait_params.reset_discretization_method
   );
 
   const Matrix4d A = Ar.leftCols<4>() * Ad;

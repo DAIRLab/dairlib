@@ -5,6 +5,7 @@
 
 using Eigen::MatrixXd;
 using Eigen::Matrix4d;
+using dairlib::systems::controllers::alip_utils::ResetDiscretization;
 
 struct AlipMINLPGainsImport {
   double t_commit;
@@ -20,6 +21,9 @@ struct AlipMINLPGainsImport {
   std::vector<double> qf;
   std::vector<double> q;
   std::vector<double> r;
+  int pelvis_vel_butter_order;
+  std::vector<double> pelvis_vel_butter_wc;
+  std::string reset_discretization_method;
   bool filter_alip_state;
   std::vector<double> qfilt;
   std::vector<double> rfilt;
@@ -49,6 +53,9 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(filter_alip_state));
     a->Visit(DRAKE_NVP(qfilt));
     a->Visit(DRAKE_NVP(rfilt));
+    a->Visit(DRAKE_NVP(reset_discretization_method));
+    a->Visit(DRAKE_NVP(pelvis_vel_butter_order));
+    a->Visit(DRAKE_NVP(pelvis_vel_butter_wc));
 
     Qf = Eigen::Map<
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->qf.data());
@@ -59,6 +66,11 @@ struct AlipMINLPGainsImport {
     Qfilt_diagonal = Eigen::Vector4d::Map(this->qfilt.data());
     Rfilt_diagonal = Eigen::Vector4d::Map(this->rfilt.data());
 
+    DRAKE_DEMAND(reset_discretization_method == "ZOH" ||
+                 reset_discretization_method == "FOH");
+    const auto reset_disc = (reset_discretization_method == "ZOH") ?
+        ResetDiscretization::kZOH : ResetDiscretization::kFOH;
+
     this->gains = dairlib::systems::controllers::AlipMINLPGains {
         this->t_commit,
         this->t_min,
@@ -68,6 +80,7 @@ struct AlipMINLPGainsImport {
         this->stance_width,
         this->nmodes,
         this->knots_per_mode,
+        reset_disc,
         this->filter_alip_state,
         this->Q,
         this->Qf,

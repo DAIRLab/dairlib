@@ -145,15 +145,15 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
   auto pelvis_filt =
-      builder.AddSystem<systems::FloatingBaseVelocityFilter>(
-          plant_w_spr, gains.pelvis_xyz_vel_filter_tau);
+      builder.AddSystem<systems::FloatingBaseVelocityButterworthFilter>(
+          plant_w_spr, 4, 2000, gains.pelvis_xyz_vel_filter_tau);
   builder.Connect(*state_receiver, *pelvis_filt);
 
   if (FLAGS_publish_filtered_state) {
     auto [filtered_state_scope, filtered_state_sender]=
     // AddToBuilder will add the systems to the diagram and connect their ports
     LcmScopeSystem::AddToBuilder(
-        &builder, &lcm_local,pelvis_filt->get_output_port(),
+        &builder, &lcm_local, pelvis_filt->get_output_port(),
         "CASSIE_STATE_FB_FILTERED", 0);
   }
 

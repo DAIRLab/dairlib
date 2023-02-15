@@ -107,9 +107,16 @@ class AlipMINLP {
   }
 
   /// Constructor takes a nominal robot mass and walking height
-  AlipMINLP(double m, double H, int nknots) : m_(m), H_(H), nknots_(nknots) {};
+  AlipMINLP(double m,
+            double H,
+            int nknots,
+            alip_utils::ResetDiscretization reset_discretization)
+      : m_(m), H_(H), nknots_(nknots),
+        reset_discretization_(reset_discretization){};
 
-  AlipMINLP(double m, double H, int nk, int nmodes) : AlipMINLP(m, H, nk) {
+  AlipMINLP(double m, double H, int nk,
+            alip_utils::ResetDiscretization reset_discretization, int nmodes)
+            : AlipMINLP(m, H, nk, reset_discretization) {
     for (int i = 0; i < nmodes; i ++) {
       AddMode();
     }
@@ -211,6 +218,7 @@ class AlipMINLP {
   double m_;
   double H_;
   const int nknots_;  // knots per mode
+  const alip_utils::ResetDiscretization reset_discretization_;
   const int np_ = 3;
   const int nx_ = 4;
   const int nu_ = 1;

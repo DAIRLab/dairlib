@@ -14,6 +14,7 @@
 #include "multibody/stepping_stone_utils.h"
 
 #include "solvers/osqp_solver_options.h"
+#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
@@ -96,6 +97,9 @@ DEFINE_bool(plan_offboard, false,
             "Sets the planner lcm TTL to be 1. "
             "Set to true to run planner on cassie-laptop");
 
+DEFINE_bool(publish_filtered_state, false,
+            "whether to publish the low pass filtered state");
+
 DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
 
 
@@ -174,6 +178,12 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(
           "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
       ));
+
+  auto pelvis_filt =
+      builder.AddSystem<systems::FloatingBaseVelocityButterworthFilter>(
+          plant_w_spr, gains_mpc.pelvis_vel_butter_order,
+          200, gains_mpc.pelvis_vel_butter_wc);
+
   auto foot_placement_controller =
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
@@ -191,7 +201,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::CassieOutToRadio>();
 
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.5);
+      plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.0);
 
   auto footstep_sender = builder.AddSystem<FootstepSender>();
 
@@ -247,11 +257,12 @@ int DoMain(int argc, char* argv[]) {
 
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(*state_receiver, *pelvis_filt);
+  builder.Connect(pelvis_filt->get_output_port(0),
                   high_level_command->get_state_input_port());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(pelvis_filt->get_output_port(0),
                   foot_placement_controller->get_input_port_state());
-  builder.Connect(state_receiver->get_output_port(0),
+  builder.Connect(pelvis_filt->get_output_port(0),
                   fsm_sender->get_input_port_state());
 
   // planner ports

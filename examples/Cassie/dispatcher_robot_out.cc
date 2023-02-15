@@ -18,6 +18,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/choose_best_solver.h"
 #include "drake/solvers/snopt_solver.h"
@@ -69,6 +70,7 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(contact_force_threshold, 60,
               "Contact force threshold. Set to 140 for walking");
+DEFINE_string(joint_offset_yaml, "", "yaml with joint offset values");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -220,10 +222,17 @@ int do_main(int argc, char* argv[]) {
   right_contact_evaluator.add_evaluator(&right_heel_evaluator);
 
   // Create state estimator
+  const auto joint_offset_map =
+      (FLAGS_joint_offset_yaml.empty()) ?
+      std::map<std::string, double>{} :
+      drake::yaml::LoadYamlFile<std::map<std::string, double>>(
+          FindResourceOrThrow(FLAGS_joint_offset_yaml));
+
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
-      &right_contact_evaluator, FLAGS_test_with_ground_truth_state,
-      FLAGS_print_ekf_info, FLAGS_test_mode, FLAGS_contact_force_threshold);
+      &right_contact_evaluator, joint_offset_map,
+      FLAGS_test_with_ground_truth_state, FLAGS_print_ekf_info,
+      FLAGS_test_mode, FLAGS_contact_force_threshold);
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

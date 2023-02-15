@@ -419,8 +419,9 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   // Solve fourbar linkage for heel spring positions
   double left_heel_spring = 0;
   double right_heel_spring = 0;
-  VectorXd q = output->GetMutablePositions();
-  q += joint_offsets_;
+  VectorXd q = output->GetPositions() + joint_offsets_;
+  output->SetPositions(q);
+
   if (is_floating_base_) {
     // Floating-base state doesn't affect the spring values
     // We assign the floating base of q in case output's floating base is

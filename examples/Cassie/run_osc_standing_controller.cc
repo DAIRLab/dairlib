@@ -220,18 +220,14 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant.num_velocities();
 
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
-                                    osc_gains.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(gains.w_input_reg *
+      gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-  osc->SetLambdaContactRegularizationWeight(gains.w_lambda *
-                                            gains.W_lambda_c_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-                                              gains.W_lambda_h_regularization);
-  // Soft constraint on contacts
-  osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
+  osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
+      gains.W_lambda_h_regularization);
+  osc->SetJointLimitWeight(1.0);
 
-  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
-      plant.GetBodyByName("pelvis"));
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "pelvis_trans_traj", MatrixXd::Zero(3, 3), MatrixXd::Zero(3, 3),
       MatrixXd::Zero(3, 3), plant, plant);
@@ -279,8 +275,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
   builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-  builder.Connect(osc->get_output_port_osc_debug(),
-                  osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),

@@ -3,14 +3,14 @@ fixed_spring_urdf: examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf
 
 knot_points:  8
 delta_height:  0.0
-start_height: 0.8
+start_height: 0.85
 distance:  0.7
 min_stance_duration:  0.2
 max_stance_duration:  1.0
 min_flight_duration:  0.1
 max_flight_duration:  1.0
 actuator_limit: 1.0
-input_delta: 75
+input_delta: 80
 
 snopt_scale_option: 0
 tol: 1e-4
@@ -25,7 +25,7 @@ ipopt_iter: 100
 
 data_directory: examples/Cassie/saved_trajectories/
 load_filename: long_jump_conservative_1
-save_filename: long_jump_conservative_2
+save_filename: long_jump_conservative
 use_springs: false
 convert_to_springs: false
 same_knotpoints: true

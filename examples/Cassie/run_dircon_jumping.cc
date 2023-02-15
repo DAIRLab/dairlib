@@ -659,11 +659,11 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto left_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          0.1 * VectorXd::Ones(1), 0.2 * VectorXd::Ones(1));
+          0.1 * VectorXd::Ones(1), 0.15 * VectorXd::Ones(1));
   auto right_foot_y_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_right", Vector3d::Zero(), Eigen::RowVector3d(0, 1, 0),
-          -0.2 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
+          -0.15 * VectorXd::Ones(1), -0.1 * VectorXd::Ones(1));
   auto left_foot_z_ground_constraint =
       std::make_shared<PointPositionConstraint<double>>(
           plant, "toe_left", pt_front_contact, Eigen::RowVector3d(0, 0, 1),
@@ -778,10 +778,10 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
-    prog->AddLinearConstraint(lambda(2) <= 100);
-    prog->AddLinearConstraint(lambda(5) <= 100);
-    prog->AddLinearConstraint(lambda(8) <= 100);
-    prog->AddLinearConstraint(lambda(11) <= 100);
+    prog->AddLinearConstraint(lambda(2) <= 325);
+    prog->AddLinearConstraint(lambda(5) <= 325);
+    prog->AddLinearConstraint(lambda(8) <= 325);
+    prog->AddLinearConstraint(lambda(11) <= 325);
     prog->AddLinearConstraint(lambda(2) >= 50);
     prog->AddLinearConstraint(lambda(5) >= 50);
     prog->AddLinearConstraint(lambda(8) >= 50);

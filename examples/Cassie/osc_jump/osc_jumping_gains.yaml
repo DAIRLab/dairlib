@@ -34,7 +34,7 @@ hip_yaw_kd: 5
 
 min_pelvis_acc: -7
 max_pelvis_acc: 10000
-impact_threshold: 0.000
+impact_threshold: 0.050
 impact_tau: 0.005
 landing_delay: 0.0
 #landing_delay: 0.

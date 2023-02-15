@@ -6,24 +6,27 @@
 # -Kp * x + Kd * sqrt(g/l) * x = g/l * x
 # Kp = sqrt(g/l) * Kd - g/l
 controller_frequency: 1000
-w_input: 0.000001
-w_lambda: 0.1
-w_accel: 0.0001
-W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
-          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
-          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
-W_input_reg: [0.5, 0.9, 0.5, 0.1, 0.1,
-              0.5, 0.9, 0.5, 0.1, 0.1]
-# left toe, left heel, right toe, right heel: x y z
-W_lambda_c_reg: [1, 0.001, 0.01,
-                 1, 0.001, 0.01,
-                 1, 0.1, 0.01,
-                 1, 0.1, 0.01]
-# left_knee_spring, right_knee_spring, left_ankle_spring, right_ankle_spring, left_loop, right_loop
-W_lambda_h_reg: [0.01, 0.01, 0.01,
-                 0.01, 0.02, 0.02]
+
+w_input: 0.0
+w_accel: 0.000
+w_lambda: 0.000000
+#W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+#           1, 1, 1, 1, 0.01, 0.001,
+#           1, 1, 1, 1, 0.01, 0.001 ]
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
+           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001 ]
+W_input_reg: [ 1, 0.9, 0.6, 0.3, 5,
+               1, 0.9, 0.5, 0.1, 5 ]
+W_lambda_c_reg: [ 1, 0.001, 0.01,
+                  1, 0.001, 0.01,
+                  1, 0.1, 0.01,
+                  1, 0.1, 0.01 ]
+#W_lambda_h_reg: [ 0.02, 0.02 ]
+W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                  0.001, 0.002, 0.002 ]
 w_soft_constraint: 0
-w_input_reg: 0.01
+w_input_reg: 0.00
 impact_threshold: 0.00
 center_of_mass_filter_tau: 0.0001
 rot_filter_tau: 0.001

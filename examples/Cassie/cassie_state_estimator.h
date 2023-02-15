@@ -62,8 +62,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator,
       const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
       const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
+      std::map<std::string, double> joint_offset_map = {},
       bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1, double contact_force_threshold = 60);
+      bool print_info_to_terminal = false, int hardware_test_mode = -1,
+      double contact_force_threshold = 60);
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
@@ -199,6 +201,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // IMU location wrt pelvis
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);
   Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);
+  // calibration offsets
+  const Eigen::VectorXd joint_offsets_;
 
   // EKF encoder noise
   Eigen::Matrix<double, 16, 16> cov_w_;

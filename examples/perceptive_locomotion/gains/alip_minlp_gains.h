@@ -21,6 +21,8 @@ struct AlipMINLPGainsImport {
   std::vector<double> qf;
   std::vector<double> q;
   std::vector<double> r;
+  int pelvis_vel_butter_order;
+  std::vector<double> pelvis_vel_butter_wc;
   std::string reset_discretization_method;
   bool filter_alip_state;
   std::vector<double> qfilt;
@@ -52,6 +54,8 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(qfilt));
     a->Visit(DRAKE_NVP(rfilt));
     a->Visit(DRAKE_NVP(reset_discretization_method));
+    a->Visit(DRAKE_NVP(pelvis_vel_butter_order));
+    a->Visit(DRAKE_NVP(pelvis_vel_butter_wc));
 
     Qf = Eigen::Map<
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->qf.data());

@@ -45,6 +45,7 @@ StateSpaceButterworthFilter butter(int order, double w_c) {
       BigA.block<2, 2>(2 * i, 2 * j) = B.at(i) * BigA.block<2, 2>(2 * i, 2 * j);
     }
   }
+  StateSpaceButterworthFilter::ValidateA(BigA);
   return {BigA, BigB};
 }
 }

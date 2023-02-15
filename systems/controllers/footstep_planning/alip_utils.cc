@@ -106,7 +106,7 @@ Matrix4d CalcAd(double com_z, double m, double t) {
   double omega = sqrt(g / com_z);
   double d = 1.0 / (m * g);
   double a = sinh(t * omega);
-  Matrix4d Ad = cosh(omega * t) * Vector4d::Ones().asDiagonal();
+  Matrix4d Ad = cosh(omega * t) * Matrix4d::Identity();
   Ad(0,3) = a * omega * d;
   Ad(1,2) = -a * omega * d;
   Ad(2,1) = -a / (omega * d);

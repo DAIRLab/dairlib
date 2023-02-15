@@ -3,6 +3,7 @@
 #include <complex>
 #include <vector>
 #include <Eigen/Core>
+#include <Eigen/Eigenvalues>
 #include "drake/common/drake_assert.h"
 
 namespace dairlib::systems::filter_utils {
@@ -18,6 +19,12 @@ struct StateSpaceButterworthFilter {
   };
   static double GetFilterOutput(const Eigen::VectorXd &x) {
     return x.tail(1)(0);
+  }
+  static void ValidateA(const Eigen::MatrixXd& A) {
+    Eigen::VectorXcd eig = A.eigenvalues();
+    for (int i = 0; i < eig.size(); i++) {
+      DRAKE_DEMAND(norm(eig(i)) < 1.0);
+    }
   }
 };
 

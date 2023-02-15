@@ -3,11 +3,13 @@ t_min: 0.24
 t_max: 0.5
 u_max: 0
 h_des: 0.83
-stance_width: 0.32
+stance_width: 0.25
 ss_time: 0.3
 ds_time: 0.1
 nmodes: 3
 knots_per_mode: 5
+pelvis_vel_butter_order: 6
+pelvis_vel_butter_wc: [100, 100, 100]
 qf:
   [100.0, 0, 0, 0,
    0, 100.0, 0, 0,
@@ -19,7 +21,7 @@ q:
    0, 0, 0, 0,
    0, 0, 0, 0]
 r: [100.0]
-reset_discretization_method: 'ZOH'
+reset_discretization_method: 'FOH'
 filter_alip_state: false
 qfilt: [.001, .001, .01, .01]
 rfilt: [.0001, .0001, .01, .01]

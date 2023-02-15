@@ -97,15 +97,15 @@ CascadedFilter butter(int order, double w_c) {
 
   // sequentially generate second order
   // filter sections using evenly spaced complex conjugate pairs
+  double dtheta = M_PI  / order;
+  double start = M_PI_2 + dtheta / 2;
   for (int k = 0; k < order / 2; k++) {
-    double theta = M_PI * static_cast<double>(k + 1) / static_cast<double>(order + 1);
-    std::complex<double> p_i(-sin(theta), cos(theta));
+    std::complex<double> p_i(cos(start + dtheta * k),
+                             sin(start + dtheta * k));
     p_i *= w_c;
     auto p_i_z = exp(p_i);
-    std::cout << "pole: " << p_i_z << std::endl;
-    std::cout << "pole norm: " << norm(p_i_z) << std::endl;
-    double a1 = 2 * p_i_z.real();
-    double a2 = norm(p_i_z) * norm(p_i_z);
+    double a1 = -2 * p_i_z.real();
+    double a2 = norm(p_i_z);
     Matrix2d a;
     Matrix2d b = Matrix2d::Zero();
     b(1, 1) = 1 + a1 + a2;
@@ -125,7 +125,6 @@ CascadedFilter butter(int order, double w_c) {
       BigA.block<2, 2>(2*i, 2*j) = B.at(i) * BigA.block<2, 2>(2*i, 2*j);
     }
   }
-  std::cout << "A: \n" << BigA << "\nB:\n" << BigB << std::endl;
   return {BigA, BigB};
 }
 }
@@ -182,7 +181,6 @@ drake::systems::EventStatus OutputVectorButterworthFilter::UnrestrictedUpdate(
         index_to_filter_map_.at(idx).UpdateFilter(
           filter_state.segment(i * order_, order_), x->GetAtIndex(idx));
   }
-  std::cout << "update: " << filter_state.transpose() << std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -195,7 +193,6 @@ void OutputVectorButterworthFilter::CopyFilterValues(
   y->SetDataVector(y_curr->get_data());
   y->set_timestamp(y_curr->get_timestamp());
   const auto& y_filt = context.get_discrete_state(filter_state_idx_).get_value();
-  std::cout << "copy: " << y_filt.transpose() << std::endl;
   for (int i = 0; i < filter_idxs_.size(); i++) {
       y->get_mutable_value()[filter_idxs_.at(i)] =
           filtering_utils::CascadedFilter::GetFilterOutput(

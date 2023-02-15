@@ -205,9 +205,9 @@ int do_main(int argc, char* argv[]) {
   // Create state estimator
   const auto joint_offset_map =
       (FLAGS_joint_offset_yaml.empty()) ?
+      std::map<std::string, double>{} :
       drake::yaml::LoadYamlFile<std::map<std::string, double>>(
-          FindResourceOrThrow(FLAGS_joint_offset_yaml)) :
-      std::map<std::string, double>{};
+          FindResourceOrThrow(FLAGS_joint_offset_yaml));
 
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,

@@ -27,16 +27,6 @@
             </material>
         </visual>
 
-<!--        <visual name="pelvis_collision">-->
-<!--            <geometry>-->
-<!--                <sphere radius="0.2"/>-->
-<!--            </geometry>-->
-<!--            <origin xyz="0.05 0 0" rpy="0 0 0" />-->
-<!--            <material name="">-->
-<!--                <color rgba="0.1 0.1 0.1 1.0" />-->
-<!--            </material>-->
-<!--        </visual>-->
-
         <collision>
             <geometry>
                 <sphere radius="0.2"/>
@@ -179,25 +169,6 @@
             </material>
         </visual>
 
-        <!--
-        <visual name="thigh_left_collision">
-          <origin xyz="0.04 0.0 -0.05" rpy="0 0 0"/>
-          <geometry>
-            <box size="0.15 0.1 0.02"/>
-          </geometry>
-          <material name="">
-            <color rgba="0.1 0.1 0.1 1.0"/>
-          </material>
-        </visual>
-
-        <collision>
-          <origin xyz="0.04 0 -0.05" rpy="0 0 0"/>
-          <geometry>
-            <box size="0.15 0.1 0.02"/>
-          </geometry>
-        </collision>
-        -->
-
     </link>
 
     <link name="thigh_right">
@@ -225,25 +196,6 @@
                 <color rgba="0.024 0.24 0.5 1.0" />
             </material>
         </visual>
-
-        <!-- Actually adding thigh collision seems to screw up something wrt the yaw?
-        <visual name="thigh_right_collision">
-          <origin xyz="0.04 0.0 0.05" rpy="0 0 0"/>
-          <geometry>
-            <box size="0.10 0.1 0.02"/>
-          </geometry>
-          <material name="">
-            <color rgba="0.1 0.1 0.1 1.0"/>
-          </material>
-        </visual>
-
-        <collision>
-          <origin xyz="0.04 0 0.05" rpy="0 0 0"/>
-          <geometry>
-            <box size="0.10 0.1 0.02"/>
-          </geometry>
-        </collision>
-        -->
 
     </link>
 
@@ -328,16 +280,6 @@
           </material>
         </visual>
 
-<!--        <visual name="shin_left_collision">-->
-<!--            <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>-->
-<!--            <geometry>-->
-<!--                <cylinder radius="0.025" length="0.4"/>-->
-<!--            </geometry>-->
-<!--            <material name="">-->
-<!--                <color rgba="0.1 0.1 0.1 1.0"/>-->
-<!--            </material>-->
-<!--        </visual>-->
-
         <collision>
             <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>
             <geometry>
@@ -373,16 +315,6 @@
             <color rgba="0.024 0.24 0.5 1.0" />
           </material>
         </visual>
-
-<!--        <visual name="shin_right_collision">-->
-<!--            <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>-->
-<!--            <geometry>-->
-<!--                <cylinder radius="0.025" length="0.4"/>-->
-<!--            </geometry>-->
-<!--            <material name="">-->
-<!--                <color rgba="0.1 0.1 0.1 1.0"/>-->
-<!--            </material>-->
-<!--        </visual>-->
 
         <collision>
             <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>
@@ -474,16 +406,6 @@
           </material>
         </visual>
 
-<!--        <visual name="tarsus_left_collision">-->
-<!--            <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>-->
-<!--            <geometry>-->
-<!--                <cylinder radius="0.025" length="0.4"/>-->
-<!--            </geometry>-->
-<!--            <material name="">-->
-<!--                <color rgba="0.1 0.1 0.1 1.0"/>-->
-<!--            </material>-->
-<!--        </visual>-->
-
         <collision>
             <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>
             <geometry>
@@ -518,16 +440,6 @@
             <color rgba="0.024 0.24 0.5 1.0" />
           </material>
         </visual>
-
-<!--        <visual name="tarsus_right_collision">-->
-<!--            <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>-->
-<!--            <geometry>-->
-<!--                <cylinder radius="0.025" length="0.4"/>-->
-<!--            </geometry>-->
-<!--            <material name="">-->
-<!--                <color rgba="0.1 0.1 0.1 1.0"/>-->
-<!--            </material>-->
-<!--        </visual>-->
 
         <collision>
             <origin xyz="0.2 0.0 0.0" rpy="0 1.57 0"/>
@@ -649,18 +561,6 @@
           </material>
         </visual>
 
-        <!-- <mesh filename="meshes/toe.obj" /> -->
-
-<!--        <visual name="toe_left_collision">-->
-<!--            <geometry>-->
-<!--                <box size="0.1 0.03 0.03"/>-->
-<!--            </geometry>-->
-<!--            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -0.7"/>-->
-<!--            <material>-->
-<!--                <color rgba="0.1 0.1 0.1 1.0"/>-->
-<!--            </material>-->
-<!--        </visual>-->
-
         <collision>
             <geometry>
                 <box size="0.1 0.03 0.03"/>
@@ -722,7 +622,6 @@
           </material>
         </visual>
 
-        <!-- <mesh filename="meshes/toe-r.obj" /> -->
         <!-- Toe spheres -->
         <visual>
             <geometry>
@@ -748,16 +647,6 @@
             </geometry>
             <origin xyz="0.088 0 0" rpy="0 0 0"/>
         </collision>
-
-<!--        <visual name="toe_right_collision">-->
-<!--            <geometry>-->
-<!--                <box size="0.1 0.03 0.03"/>-->
-<!--            </geometry>-->
-<!--            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -0.7"/>-->
-<!--            <material>-->
-<!--                <color rgba="0.1 0.1 0.1 1.0"/>-->
-<!--            </material>-->
-<!--        </visual>-->
 
         <collision>
             <geometry>

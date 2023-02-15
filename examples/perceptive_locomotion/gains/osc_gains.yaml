@@ -27,7 +27,7 @@ vel_max_lateral: 0  # 0.3
 target_pos_offset: 0  # -0.16
 
 # Finite state machine
-ss_time: 0.3
+ss_time: 0.35
 ds_time: 0.1
 
 # Distance of contact point from foot rear (0 is heel, 1 is toe)

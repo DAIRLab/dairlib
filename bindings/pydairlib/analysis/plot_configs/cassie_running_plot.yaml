@@ -43,7 +43,7 @@ foot_xyz_to_plot: { 'right': [ 2 ], 'left': [ 2 ] }
 pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: true
+plot_qp_costs: false
 plot_qp_solve_time: false
 plot_qp_solutions: false
 plot_tracking_costs: true
@@ -51,13 +51,16 @@ plot_active_tracking_datas: false
 tracking_datas_to_plot: {
   #  pelvis_trans_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'accel' ] },
 #    pelvis_trans_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel'] },
+    pelvis_rot_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel'] },
 #  pelvis_rot_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos' ] },
 #  acom_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
-#  acom_traj: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
+  #  acom_traj: { 'dims': [ 0 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
+#  acom_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos' ] },
+#    acom_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] },
   #  hip_yaw_left_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
   #  hip_yaw_right_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] },
 #  right_ft_traj: { 'dims': [0, 1, 2], 'derivs': [ 'pos' ] },
-  right_ft_traj: { 'dims': [1], 'derivs': [ 'pos' ] },
+#  right_ft_traj: { 'dims': [1], 'derivs': [ 'pos' ] },
 #  left_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'vel'] },
   #  left_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },
   #  right_ft_z_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] },

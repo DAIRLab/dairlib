@@ -2,6 +2,7 @@ import sys
 import lcm
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 from bindings.pydairlib.lcm.process_lcm_log import get_log_data
 from cassie_plot_config import CassiePlotConfig
@@ -181,7 +182,7 @@ def main():
     #
 
     ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
-    ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config)
+    ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config, True)
 
     plt.show()
 
@@ -193,29 +194,66 @@ def main():
 #     plt.plot(robot_input['t_u'], robot_input['u'])
 #     return fig
 
-def ComputeAndPlotACoMRate(x, t_x, osc_debug, t_osc_debug, plant, plot_config):
+
+
+# cutoff_freq is in Hz
+def ApplyLowPassFilter(x, t, cutoff_freq, start_from_zero=False):
+    x = np.copy(x)
+    if start_from_zero:
+        x[0] = np.zeros(x[0].size)
+
+    dt = np.diff(t)
+    x_filtered = x[0]
+    for i in range(len(dt)):
+        alpha = 2 * np.pi * dt[i] * cutoff_freq / (
+            2 * np.pi * dt[i] * cutoff_freq + 1)
+        x_filtered = alpha * x[i + 1] + (1 - alpha) * x_filtered
+        x[i + 1] = x_filtered
+    return x
+
+
+def ComputeAndPlotACoMRate(x, t_x, osc_debug, t_osc_debug, plant, plot_config, express_xy_in_local=False):
+    pelvis_quaternion = osc_debug['osc_debug_tracking_datas']['pelvis_rot_traj'].y
+
     ### ACoM rate (angle axis)
     acom_omega = np.zeros((t_osc_debug.size, 3))
     acom_omega = osc_debug['osc_debug_tracking_datas']['acom_traj'].ydot
 
     ### pelvis rate (angle axis)
-    nq = plant.num_positions()
-    pelvis_omega = x[:,nq:nq+3]
+    #nq = plant.num_positions()
+    #pelvis_omega = x[:,nq:nq+3]
+    pelvis_omega = osc_debug['osc_debug_tracking_datas']['pelvis_rot_traj'].ydot
+
+    ### Express the x y component in pelvis local frame
+    if express_xy_in_local:
+        for i in range(t_osc_debug.size):
+            y = pelvis_quaternion[i]
+            r = R.from_quat([y[1], y[2], y[3], y[0]])
+
+            acom_omega[i,0:2] = (r.as_matrix().T @ acom_omega[i])[0:2]
+            pelvis_omega[i,0:2] = (r.as_matrix().T @ pelvis_omega[i])[0:2]
+
+    ### Average yaw velocity
+    filterred_acom_yaw_rate = ApplyLowPassFilter(acom_omega[:,2], t_osc_debug, 0.1, True)
+    filterred_pelvis_yaw_rate = ApplyLowPassFilter(pelvis_omega[:,2], t_osc_debug, 0.1, True)
 
     ### Plot rate
-    fig = plt.figure("Angular Center of Mass Rate")
+    fig = plt.figure("Angular Velocity")
+    plt.title("Angular Velocity (ACoM vs floating base)")
+    plt.xlabel("time")
+    plt.ylabel("Angular Velocity (rad/s)")
     plt.plot(t_osc_debug, acom_omega[:,[0,1,2]], "--")
     plt.gca().set_prop_cycle(None)
-    plt.plot(t_x, pelvis_omega[:,[0,1,2]])
+    plt.plot(t_osc_debug, pelvis_omega[:,[0,1,2]])
+    plt.plot(t_osc_debug, filterred_acom_yaw_rate, "k--")
+    plt.plot(t_osc_debug, filterred_pelvis_yaw_rate, "k")
     plot = plot_styler.PlotStyler(fig)
     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-    plt.legend(["ACoM x", "ACoM y", "ACoM z", "pelvis x", "pelvis y", "pelvis z"])
+    plt.legend(["ACoM x", "ACoM y", "ACoM z", "pelvis x", "pelvis y", "pelvis z", "ave yaw rate"])
 
 
 
 def ComputeAndPlotACoM(x, t_x, osc_debug, t_osc_debug, plot_config):
-    from scipy.spatial.transform import Rotation as R
-
     ### Compute ACoM RPY
     acom_quaternion = np.zeros((t_osc_debug.size, 4))
     acom_quaternion = osc_debug['osc_debug_tracking_datas']['acom_traj'].y
@@ -235,12 +273,15 @@ def ComputeAndPlotACoM(x, t_x, osc_debug, t_osc_debug, plot_config):
 
     ### Plot RPY
     fig = plt.figure("Angular Center of Mass")
+    plt.title("ACoM vs floating base (RPY)")
+    plt.xlabel("time")
+    plt.ylabel("Angles (rad)")
     plt.plot(t_osc_debug, acom_rpy[:,[0,1,2]], "--")
     plt.gca().set_prop_cycle(None)
     plt.plot(t_x, pelvis_rpy[:,[0,1,2]])
     plot = plot_styler.PlotStyler(fig)
     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-    plt.legend(["ACoM x", "ACoM y", "ACoM z", "pelvis x", "pelvis y", "pelvis z"])
+    plt.legend(["ACoM roll", "ACoM pitch", "ACoM yaw", "pelvis roll", "pelvis pitch", "pelvis yaw"])
 
 
 

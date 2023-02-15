@@ -241,13 +241,13 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   // corrections
   if (is_left_foot_) {
     //    Y[1](1) -= lateral_offset_;
-    Y[1](1) = std::clamp(Y[1](1), half_plane_guard_offset, 0.2);
-    Y[2](1) = std::clamp(Y[2](1), half_plane_guard_offset, 0.2);
+    Y[1](1) = std::clamp(Y[1](1), half_plane_guard_offset, 0.4);
+    Y[2](1) = std::clamp(Y[2](1), half_plane_guard_offset, 0.4);
 
   } else {
     //    Y[1](1) += lateral_offset_;
-    Y[1](1) = std::clamp(Y[1](1), -0.2, -half_plane_guard_offset);
-    Y[2](1) = std::clamp(Y[2](1), -0.2, -half_plane_guard_offset);
+    Y[1](1) = std::clamp(Y[1](1), -0.4, -half_plane_guard_offset);
+    Y[2](1) = std::clamp(Y[2](1), -0.4, -half_plane_guard_offset);
   }
   Y[1](0) = std::clamp(Y[1](0), -0.4, 0.4);
   Y[2](0) = std::clamp(Y[2](0), -0.4, 0.4);

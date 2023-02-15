@@ -65,9 +65,8 @@ def main():
     joystick = pygame.joystick.Joystick(0)
     joystick.init()
 
-    automatic_rampup = False
+    automatic_rampup = True
     c = 2
-    done = False
     # With new running gains (20230213):
     #   acom: max_speed can be >= 2.8
     #   pelvis: max_speed can be >= 2.1 or 2.2
@@ -80,18 +79,24 @@ def main():
     # With newer running gains (20230214)  and  "0 lateral offset + half plane gaurd for footsteps"  and local rotation OSC tracking gains (view frame):
     #   acom: max_speed can be >= 2.7
     #   pelvis: max_speed can be >= 2.4
-    max_speed = 2.2 #2.5   # 1.5 for roll only
-    ramp_up = np.arange(1.8, max_speed, 0.01 / c)
-    stay = max_speed * np.ones(350 * c)
+    max_speed = 2
+    max_speed = 2.25
+    ramp_up = np.arange(1.5, max_speed, 0.01 / c)
+    # stay = max_speed * np.ones(350 * c)
+    stay = max_speed * np.ones(100000)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01 / c))
     speeds = np.hstack((ramp_up, stay, ramp_down))
 
+    # Note that this is scaled by parameter `vel_scale_rot`: -4 in yaml file
     automatic_yaw_rampup = True
     max_speed = 0.5
+    max_speed = 0.4
+    # max_speed = 0.05
     yaw_speeds = np.hstack((np.zeros(100 * c), np.arange(0, max_speed, 0.01 / c), max_speed * np.ones(100000)))
 
 
     i = 0
+    done = False
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands

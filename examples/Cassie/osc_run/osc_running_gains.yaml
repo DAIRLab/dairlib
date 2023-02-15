@@ -56,7 +56,7 @@
 ## Foot placement parameters
 ##footstep_offset: -0.05
 #footstep_sagital_offset: -0.00
-#footstep_lateral_offset: 0.05 # drake
+#footstep_lateral_offset: 0.00 # drake
 #mid_foot_height: 0.4
 #FootstepKd:
 #  [ 0.012,     0,  0,
@@ -277,7 +277,7 @@ LiftoffSwingFootKd:
     0,  0,   0,
     0,   0,  0]
 
-use_acom_x: true
+use_acom_x: false
 use_acom_y: false
 use_acom_z: true
 AcomW:

@@ -35,6 +35,7 @@ using drake::systems::LeafSystem;
 using drake::systems::UnrestrictedUpdateEvent;
 
 using multibody::KinematicEvaluatorSet;
+using multibody::MakeJointPositionOffsetFromMap;
 using systems::OutputVector;
 
 static const int SPACE_DIM = 3;
@@ -44,6 +45,7 @@ CassieStateEstimator::CassieStateEstimator(
     const KinematicEvaluatorSet<double>* fourbar_evaluator,
     const KinematicEvaluatorSet<double>* left_contact_evaluator,
     const KinematicEvaluatorSet<double>* right_contact_evaluator,
+    std::map<std::string, double> joint_offset_map,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
     int hardware_test_mode, double contact_force_threshold)
     : plant_(plant),
@@ -64,7 +66,8 @@ CassieStateEstimator::CassieStateEstimator(
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
       hardware_test_mode_(hardware_test_mode),
-      contact_force_threshold_(contact_force_threshold) {
+      contact_force_threshold_(contact_force_threshold),
+      joint_offsets_(MakeJointPositionOffsetFromMap(plant, joint_offset_map)){
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -417,6 +420,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   double left_heel_spring = 0;
   double right_heel_spring = 0;
   VectorXd q = output->GetMutablePositions();
+  q += joint_offsets_;
   if (is_floating_base_) {
     // Floating-base state doesn't affect the spring values
     // We assign the floating base of q in case output's floating base is

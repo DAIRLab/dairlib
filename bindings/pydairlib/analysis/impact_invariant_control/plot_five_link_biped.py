@@ -89,11 +89,11 @@ def main():
     nx = plant.num_positions() + plant.num_velocities()
     nu = plant.num_actuators()
     nc = 2
+    ny = 5
     n_samples = 1000
     window_length = 0.05
     tau = 0.002
-    selected_joint_idxs = slice(6,7)
-    # selected_joint_idxs = slice(0, 7)
+    selected_joint_idxs = slice(0, 7)
 
     # Map to 2d
     TXZ = np.array([[1, 0, 0], [0, 0, 1]])
@@ -123,22 +123,23 @@ def main():
                                                         pt_on_body, world,
                                                         world)
     M_Jt = M_inv @ J_r.T
-
-    # compute_control_law(M_Jt, np.ones(nv))
-
     P = null_space(M_Jt.T).T
 
     proj_ii = np.eye(nv) - M_Jt @ np.linalg.inv(M_Jt.T @ M_Jt) @ M_Jt.T
-    J_M_Jt = J_r @ M_inv @ J_r.T
-    proj_y_ii = np.eye(2) - J_M_Jt @ J_M_Jt @ np.linalg.inv(
+    J_y_stack = np.vstack((J_l, J_r, np.array([0, 0, 1, 0, 0, 0, 0])))
+    J_M_Jt = J_y_stack @ M_inv @ J_r.T
+    proj_y_ii = np.eye(5) - J_M_Jt @ np.linalg.inv(
         J_M_Jt.T @ J_M_Jt) @ J_M_Jt.T
+    P_y = null_space(J_M_Jt.T)
+    P_y = P_y @ P_y.T
 
     v_pre = x_pre[-nv:]
     v_post = x_post[-nv:]
     t_impact = dircon_traj.GetStateBreaks(0)[-1]
 
+    J_y = J_y_stack
     # J_y = np.zeros((4, 7))
-    J_y = np.eye((7))
+    # J_y = np.eye((7))
     # J_y[0, 0] = 1
     # J_y[0, 1] = 1
     # J_y[0, 2] = 1
@@ -160,16 +161,21 @@ def main():
                     end_idx - start_idx)
     print(start_idx)
     print(end_idx)
-    # t_proj = np.array(
-    #     [t_impact[0] - 1.5*window_length, t_impact[0] + 1.5*window_length])
     t_proj = np.array(
-        [t_impact[0] - window_length, t_impact[0] + window_length])
+        [t_impact[0] - 1.5*window_length, t_impact[0] + 1.5*window_length])
 
-    vel_proj = np.zeros((t.shape[0], nv))
+    vel_proj_desired = np.zeros((t.shape[0], nv))
     vel_proj_actual = np.zeros((t.shape[0], nv))
     vel_time_varying_proj = np.zeros((t.shape[0], nv))
-    vel = np.zeros((t.shape[0], nv))
+    vel_desired = np.zeros((t.shape[0], nv))
     vel_actual = np.zeros((t.shape[0], nv))
+    taskspace_vel_actual = np.zeros((t.shape[0], ny))
+    taskspace_vel_desired = np.zeros((t.shape[0], ny))
+    taskspace_vel_error = np.zeros((t.shape[0], ny))
+    taskspace_vel_actual_proj = np.zeros((t.shape[0], ny))
+    taskspace_vel_desired_proj = np.zeros((t.shape[0], ny))
+    taskspace_vel_error_proj = np.zeros((t.shape[0], ny))
+    taskspace_vel_error_osc = np.zeros((t.shape[0], ny))
     vel_corrected = np.zeros((t.shape[0], nv))
     vel_correction = np.zeros((t.shape[0], nv))
     vel_corrected_blend = np.zeros((t.shape[0], nv))
@@ -178,10 +184,16 @@ def main():
     # for i in range(0, end_idx - start_idx):
         # x = state_traj.value(t[i])
         x = state_traj.value(robot_output['t_x'][i + start_idx])
-        vel[i] = x[-nv:, 0]
+        vel_desired[i] = x[-nv:, 0]
         vel_actual[i] = robot_output['v'][i + start_idx]
-        vel_proj[i] = P.T @ P @ vel[i]
+        vel_proj_desired[i] = P.T @ P @ vel_desired[i]
         vel_proj_actual[i] = P.T @ P @ vel_actual[i]
+        taskspace_vel_actual[i] = J_y @ vel_actual[i]
+        taskspace_vel_desired[i] = J_y @ vel_desired[i]
+        taskspace_vel_error[i] = taskspace_vel_desired[i] - taskspace_vel_actual[i]
+        taskspace_vel_actual_proj[i] = P_y @ taskspace_vel_actual[i]
+        taskspace_vel_desired_proj[i] = P_y @ taskspace_vel_desired[i]
+        taskspace_vel_error_proj[i] = P_y @ taskspace_vel_error[i]
 
         plant.SetPositions(context, x[:nq])
         M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -202,19 +214,20 @@ def main():
               alpha = blend_sigmoid(transition_time - t[i], tau,
                                     window_length)
         alphas[i] = alpha
-        vel_time_varying_proj[i] = TV_J_space.T @ TV_J_space @ vel[i]
-        # vel_correction[i] = transform @ (J_r @ (vel[i] - vel_actual[i]))
-        vel_correction[i] = transform @ (J_y @ vel[i] - J_y @ vel_actual[i])
+        vel_time_varying_proj[i] = TV_J_space.T @ TV_J_space @ vel_desired[i]
+        # vel_correction[i] = transform @ (J_r @ (vel_desired[i] - vel_actual[i]))
+        vel_correction[i] = transform @ (J_y @ vel_desired[i] - J_y @ vel_actual[i])
         vel_corrected[i] = vel_actual[i] + vel_correction[i]
+        taskspace_vel_error_osc[i] = J_y @ (vel_desired[i] - vel_corrected[i])
         vel_corrected_blend[i] = vel_actual[i] + alpha * vel_correction[i]
     # t_plot = robot_output['t_x'][start_idx:end_idx]
 
     gen_vel_plot = plot_styler.PlotStyler()
-    gen_vel_plot.plot(t, vel[:, selected_joint_idxs],
+    gen_vel_plot.plot(t, vel_desired[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)')
     gen_vel_plot.plot(t, vel_actual[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)')
-    gen_vel_plot.plot(t, vel[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
+    gen_vel_plot.plot(t, vel_desired[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)', grid=False)
     gen_vel_plot.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
     ylim = gen_vel_plot.fig.gca().get_ylim()
@@ -222,7 +235,7 @@ def main():
     # ps.save_fig('generalized_velocities_around_impact.png')
 
     proj_vel_plot = plot_styler.PlotStyler()
-    proj_vel_plot.plot(t, vel_proj,
+    proj_vel_plot.plot(t, vel_proj_desired,
                        title='Constant Impact-Invariant Projection',
                        xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     proj_vel_plot.plot(t, vel_proj_actual,
@@ -253,11 +266,11 @@ def main():
 
     gen_vel_error = plot_styler.PlotStyler()
     ax = gen_vel_error.fig.axes[0]
-    gen_vel_error.plot(t, vel[:, selected_joint_idxs],
+    gen_vel_error.plot(t, vel_desired[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.blue)
     gen_vel_error.plot(t, vel_actual[:, selected_joint_idxs],
                       xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.red)
-    gen_vel_error.plot(t, vel[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
+    gen_vel_error.plot(t, vel_desired[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
                       xlabel='Time', ylabel='Velocity', grid=False, color=gen_vel_error.grey)
     gen_vel_error.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
     ax.set_yticklabels([])
@@ -269,7 +282,7 @@ def main():
 
     projected_vel_error = plot_styler.PlotStyler()
     ax = projected_vel_error.fig.axes[0]
-    projected_vel_error.plot(t, vel_proj[:, selected_joint_idxs] - vel_proj_actual[:, selected_joint_idxs],
+    projected_vel_error.plot(t, vel_proj_desired[:, selected_joint_idxs] - vel_proj_actual[:, selected_joint_idxs],
                                 title='Impact-Invariant Projection Error',
                                 xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=projected_vel_error.grey,
@@ -278,11 +291,25 @@ def main():
 
     corrected_vel_error = plot_styler.PlotStyler()
     ax = corrected_vel_error.fig.axes[0]
-    corrected_vel_error.plot(t, vel[:, selected_joint_idxs] - vel_corrected[:, selected_joint_idxs],
+    corrected_vel_error.plot(t, vel_desired[:, selected_joint_idxs] - vel_corrected[:, selected_joint_idxs],
                           title='Impact-Invariant Correction Error',
                           xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
     ax.fill_between(t_proj, ylim[0], ylim[1], color=corrected_vel_error.grey,
                     alpha=0.2)
+
+    taskspace_error_plot = plot_styler.PlotStyler()
+    ax = taskspace_error_plot.fig.axes[0]
+    taskspace_error_plot.plot(t, taskspace_vel_error,
+                             title='Task Space',
+                             xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.blue)
+    taskspace_error_plot.plot(t, taskspace_vel_error_proj,
+                             title='Task Space',
+                             xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.red)
+    taskspace_error_plot.plot(t, taskspace_vel_error_osc,
+                             title='Task Space',
+                             xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.grey)
+    # ax.fill_between(t_proj, ylim[0], ylim[1], color=corrected_vel_error.grey,
+    #                 alpha=0.2)
     # corrected_vel_error.save_fig('corrected_vel_error.png')
 
     blending_function_plot = plot_styler.PlotStyler()

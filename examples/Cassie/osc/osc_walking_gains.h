@@ -12,7 +12,6 @@ struct OSCWalkingGains {
   double w_accel;
   double w_soft_constraint;
   double w_input_reg;
-  double impact_threshold;
   bool relative_swing_ft;
   std::vector<double> pelvis_xyz_vel_filter_tau;
   std::vector<double> CoMW;
@@ -27,6 +26,10 @@ struct OSCWalkingGains {
   std::vector<double> SwingFootW;
   std::vector<double> SwingFootKp;
   std::vector<double> SwingFootKd;
+  // acom tracking
+  std::vector<double> AcomW;
+  std::vector<double> AcomKp;
+  std::vector<double> AcomKd;
   double w_swing_toe;
   double swing_toe_kp;
   double swing_toe_kd;
@@ -65,6 +68,10 @@ struct OSCWalkingGains {
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
 
+  bool use_acom_x;
+  bool use_acom_y;
+  bool use_acom_z;
+
   MatrixXd W_com;
   MatrixXd K_p_com;
   MatrixXd K_d_com;
@@ -83,11 +90,9 @@ struct OSCWalkingGains {
   MatrixXd W_hip_yaw;
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
-
-  std::vector<double> W_lambda_c_reg;
-  std::vector<double> W_lambda_h_reg;
-  MatrixXd W_lambda_c_regularization;
-  MatrixXd W_lambda_h_regularization;
+  MatrixXd W_acom;
+  MatrixXd K_p_acom;
+  MatrixXd K_d_acom;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -98,7 +103,6 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(relative_swing_ft));
-    a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(pelvis_xyz_vel_filter_tau));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
@@ -156,6 +160,13 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(vel_scale_trans_sagital));
     a->Visit(DRAKE_NVP(vel_scale_trans_lateral));
 
+    a->Visit(DRAKE_NVP(use_acom_x));
+    a->Visit(DRAKE_NVP(use_acom_y));
+    a->Visit(DRAKE_NVP(use_acom_z));
+    a->Visit(DRAKE_NVP(AcomW));
+    a->Visit(DRAKE_NVP(AcomKp));
+    a->Visit(DRAKE_NVP(AcomKd));
+
     W_com = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->CoMW.data(), this->rows, this->cols);
@@ -199,15 +210,14 @@ struct OSCWalkingGains {
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
 
-    a->Visit(DRAKE_NVP(W_lambda_c_reg));
-    a->Visit(DRAKE_NVP(W_lambda_h_reg));
-    Eigen::VectorXd w_lambda_c_regularization =
-        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-            this->W_lambda_c_reg.data(), this->W_lambda_c_reg.size());
-    Eigen::VectorXd w_lambda_h_regularization =
-        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-            this->W_lambda_h_reg.data(), this->W_lambda_h_reg.size());
-    W_lambda_c_regularization = w_lambda_c_regularization.asDiagonal();
-    W_lambda_h_regularization = w_lambda_h_regularization.asDiagonal();
+    W_acom = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AcomW.data(), 3, 3);
+    K_p_acom = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AcomKp.data(), 3, 3);
+    K_d_acom = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->AcomKd.data(), 3, 3);
   }
 };

@@ -129,3 +129,19 @@ SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
       0,    0,     1]
+
+use_acom_x: false
+use_acom_y: false
+use_acom_z: false
+AcomW:
+  [ 2,    0,     0,
+    0,    4,     0,
+    0,    0,     0.02]
+AcomKp:
+  [200,      0,    0,
+   0,    200,    0,
+   0,      0,    0]
+AcomKd:
+  [   10,     0,    0,
+      0,    10,    0,
+      0,     0,    10]

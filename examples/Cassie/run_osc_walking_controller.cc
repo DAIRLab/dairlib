@@ -22,6 +22,7 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/acom_tracking_data.h"
 #include "systems/controllers/swing_ft_traj_gen.h"
 #include "systems/controllers/time_based_fsm.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -58,6 +59,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::AcomTrackingData;
 
 using multibody::FixedJointEvaluator;
 
@@ -532,24 +534,56 @@ int DoMain(int argc, char* argv[]) {
   auto center_of_mass_traj = std::make_unique<ComTrackingData>(
       "lipm_traj", gains.K_p_com, gains.K_d_com, gains.W_com, plant_w_spr,
       plant_w_spr);
+  center_of_mass_traj->AddFiniteStateToTrack(-1);
   if (use_pelvis_for_lipm_tracking) {
     osc->AddTrackingData(std::move(pelvis_traj));
   } else {
     osc->AddTrackingData(std::move(center_of_mass_traj));
   }
+
+  MatrixXd W_acom = gains.W_acom;
+  MatrixXd W_pelvis_rot = gains.W_pelvis_balance;
+  W_pelvis_rot(2,2) = gains.W_pelvis_heading(2,2);
+  if (gains.use_acom_x) {
+    W_pelvis_rot(0, 0) = 0;
+  } else {
+    W_acom(0, 0) = 0;
+  }
+  if (gains.use_acom_y) {
+    W_pelvis_rot(1, 1) = 0;
+  } else {
+    W_acom(1, 1) = 0;
+  }
+  if (gains.use_acom_z) {
+    W_pelvis_rot(2, 2) = 0;
+  } else {
+    W_acom(2, 2) = 0;
+  }
+  cout << "W_pelvis_rot = \n" << W_pelvis_rot << endl;
+  cout << "W_acom = \n" << W_acom << endl;
+
   // Pelvis rotation tracking (pitch and roll)
   auto pelvis_balance_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
-      gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
+      W_pelvis_rot, plant_w_spr, plant_w_spr);
   pelvis_balance_traj->AddFrameToTrack("pelvis");
+  pelvis_balance_traj->SetViewFrame(pelvis_view_frame);
   osc->AddTrackingData(std::move(pelvis_balance_traj));
   // Pelvis rotation tracking (yaw)
   auto pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
-      gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
+      W_pelvis_rot, plant_w_spr, plant_w_spr);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
   osc->AddTrackingData(std::move(pelvis_heading_traj),
                        gains.period_of_no_heading_control);
+
+  std::unique_ptr<AcomTrackingData> acom_tracking_data =
+      std::make_unique<AcomTrackingData>("acom_traj", gains.K_p_acom,
+                                         gains.K_d_acom, W_acom, plant_w_spr,
+                                         plant_w_spr);
+  acom_tracking_data->SetViewFrame(pelvis_view_frame);
+  acom_tracking_data->AddStateToTrack(-1);
+  osc->AddTrackingData(std::move(acom_tracking_data));
 
   // Swing toe joint tracking
   auto swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
@@ -603,6 +637,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("pelvis_heading_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_balance_traj"));
+  builder.Connect(head_traj_gen->get_output_port(0),
+                  osc->get_input_port_tracking_data("acom_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),

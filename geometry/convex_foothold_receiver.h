@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geometry/convex_foothold.h"
+#include "geometry/convex_foothold_set.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "convex_plane_decomposition_msgs/PlanarTerrain.h"
 
@@ -13,7 +13,7 @@ class ConvexFootholdReceiver : public drake::systems::LeafSystem<double> {
 
  private:
   void CopyTerrain(const drake::systems::Context<double>& context,
-                   std::vector<ConvexFoothold>* footholds) const;
+                   ConvexFootholdSet* footholds) const;
 
 };
 }

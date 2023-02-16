@@ -21,7 +21,8 @@ class ConvexFootholdSet {
       const Eigen::Vector3d &query_pt, double threshold) const;
 
   const std::vector<ConvexFoothold>& footholds() { return set_; }
-
+  void clear() { set_.clear(); }
+  bool empty() {return set_.empty(); }
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   void append(const ConvexFoothold& f) { set_.push_back(f); }
   void CopyToLcm(lcmt_foothold_set* set) const;

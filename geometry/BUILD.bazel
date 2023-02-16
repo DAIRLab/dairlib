@@ -8,7 +8,7 @@ cc_library(
     hdrs = ["convex_foothold_receiver.h"],
     tags = ["ros"],
     deps = [
-        ":convex_foothold",
+        ":convex_foothold_set",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@ros-local",

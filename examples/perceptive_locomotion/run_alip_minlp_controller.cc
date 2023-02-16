@@ -1,5 +1,5 @@
 #include <iostream>
-
+#include <signal.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
@@ -29,6 +29,12 @@
 #ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_receiver.h"
 #include "systems/ros/ros_subscriber_system.h"
+
+void SigintHandler(int sig) {
+  ros::shutdown();
+  exit(0);
+}
+
 #endif
 
 #include "drake/common/yaml/yaml_io.h"
@@ -109,6 +115,7 @@ int DoMain(int argc, char* argv[]) {
 #ifdef DAIR_ROS_ON
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
+  signal(SIGINT, SigintHandler);
 #else
   if (FLAGS_use_perception) {
     throw std::runtime_error(
@@ -238,10 +245,15 @@ int DoMain(int argc, char* argv[]) {
           systems::RosSubscriberSystem<
               convex_plane_decomposition_msgs::PlanarTerrain>::Make(
                   FLAGS_foothold_topic, &node_handle));
+      std::cout << "subscribing to " << FLAGS_foothold_topic << std::endl;
+
       auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
+      ros::AsyncSpinner spinner(1);
+      spinner.start();
+      plane_subscriber->WaitForMessage(0);
 #endif
     } else {
       auto foothold_oracle =
@@ -304,9 +316,6 @@ int DoMain(int argc, char* argv[]) {
                     fsm_pub->get_input_port());
   }
 
-
-
-
   // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("AlipMINLP foot placement controller");
@@ -316,6 +325,7 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       false);
+
   loop.Simulate();
 
   return 0;

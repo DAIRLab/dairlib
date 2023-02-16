@@ -1,5 +1,5 @@
 #include <memory>
-
+#include <signal.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
@@ -34,6 +34,12 @@
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
 #include "systems/ros/multibody_plant_tf_broadcaster_system.h"
+
+void SigintHandler(int sig) {
+  ros::shutdown();
+  exit(0);
+}
+
 #endif
 
 namespace dairlib {
@@ -324,6 +330,7 @@ int do_main(int argc, char* argv[]) {
     DRAKE_ASSERT(FLAGS_ros_pub_period > 0);
     ros::init(argc, argv, "dispatcher_robot_out");
     ros::NodeHandle node_handle;
+    signal(SIGINT, SigintHandler);
 
     const auto& pose_sender = builder.AddSystem<systems::RobotStateToRosPose>(
             plant, plant_context.get(), "pelvis");

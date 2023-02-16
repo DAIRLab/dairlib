@@ -148,7 +148,6 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
       return;
     }
 
-
     *time = context.get_time();
 
     drake::systems::EventCollection<

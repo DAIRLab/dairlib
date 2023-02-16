@@ -79,6 +79,7 @@ class OptionsTrackingData : public OscTrackingData {
   std::shared_ptr<multibody::ViewFrame<double>> view_frame_;
   Eigen::Matrix3d view_frame_rot_T_;
   bool with_view_frame_ = false;
+  bool is_rotational_tracking_data_ = false;
 
  private:
   // This method is called from the parent class (OscTrackingData) due to C++

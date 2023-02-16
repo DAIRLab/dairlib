@@ -191,9 +191,9 @@ def main():
         taskspace_vel_actual[i] = J_y @ vel_actual[i]
         taskspace_vel_desired[i] = J_y @ vel_desired[i]
         taskspace_vel_error[i] = taskspace_vel_desired[i] - taskspace_vel_actual[i]
-        taskspace_vel_actual_proj[i] = P_y @ taskspace_vel_actual[i]
-        taskspace_vel_desired_proj[i] = P_y @ taskspace_vel_desired[i]
-        taskspace_vel_error_proj[i] = P_y @ taskspace_vel_error[i]
+        taskspace_vel_actual_proj[i] = proj_y_ii @ taskspace_vel_actual[i]
+        taskspace_vel_desired_proj[i] = proj_y_ii @ taskspace_vel_desired[i]
+        taskspace_vel_error_proj[i] = proj_y_ii @ taskspace_vel_error[i]
 
         plant.SetPositions(context, x[:nq])
         M = plant.CalcMassMatrixViaInverseDynamics(context)
@@ -299,15 +299,15 @@ def main():
 
     taskspace_error_plot = plot_styler.PlotStyler()
     ax = taskspace_error_plot.fig.axes[0]
-    taskspace_error_plot.plot(t, taskspace_vel_error,
+    taskspace_error_plot.plot(t, taskspace_vel_actual,
                              title='Task Space',
                              xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.blue)
-    taskspace_error_plot.plot(t, taskspace_vel_error_proj,
+    taskspace_error_plot.plot(t, taskspace_vel_actual_proj,
                              title='Task Space',
                              xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.red)
-    taskspace_error_plot.plot(t, taskspace_vel_error_osc,
-                             title='Task Space',
-                             xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.grey)
+    # taskspace_error_plot.plot(t, taskspace_vel_error_osc,
+    #                          title='Task Space',
+    #                          xlabel='time (s)', ylabel='velocity (m/s)', color=gen_vel_error.grey)
     # ax.fill_between(t_proj, ylim[0], ylim[1], color=corrected_vel_error.grey,
     #                 alpha=0.2)
     # corrected_vel_error.save_fig('corrected_vel_error.png')

@@ -22,7 +22,9 @@ RotTaskSpaceTrackingData::RotTaskSpaceTrackingData(
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kQuaternionDim, kSpaceDim, K_p, K_d, W,
-                          plant_w_spr, plant_wo_spr) {}
+                          plant_w_spr, plant_wo_spr) {
+  is_rotational_tracking_data_ = true;
+}
 
 
 void RotTaskSpaceTrackingData::AddFrameToTrack(
@@ -51,7 +53,7 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
       context_w_spr, plant_w_spr_.world_frame(),
       *body_frames_w_spr_[fsm_state_]);
   Quaterniond y_quat(transform_mat.rotation() *
-                     frame_poses_[fsm_state_].linear());
+      frame_poses_[fsm_state_].linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
   y_ = y_4d;
@@ -69,6 +71,7 @@ void RotTaskSpaceTrackingData::UpdateYError() {
   double theta = 2 * acos(relative_qaut.w());
   Vector3d rot_axis = relative_qaut.vec().normalized();
   error_y_ = theta * rot_axis;
+  if (with_view_frame_) error_y_ = view_frame_rot_T_ * error_y_;
 }
 
 void RotTaskSpaceTrackingData::UpdateYdot(
@@ -79,7 +82,7 @@ void RotTaskSpaceTrackingData::UpdateYdot(
       frame_poses_[fsm_state_].translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
-          x_w_spr.tail(plant_w_spr_.num_velocities());
+      x_w_spr.tail(plant_w_spr_.num_velocities());
 }
 
 void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
@@ -89,6 +92,7 @@ void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
                           ydot_des_(3));
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
   error_ydot_ = w_des_ - ydot_ - GetJ() * v_proj;
+  if (with_view_frame_) error_ydot_ = view_frame_rot_T_ * error_ydot_;
 
   ydot_des_ =
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
@@ -132,8 +136,8 @@ void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
 }
 
 void RotTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-    if (!body_frames_w_spr_.empty()) {
-      body_frames_w_spr_ = body_frames_wo_spr_;
-    }
+  if (!body_frames_w_spr_.empty()) {
+    body_frames_w_spr_ = body_frames_wo_spr_;
+  }
 }
 }  // namespace dairlib::systems::controllers

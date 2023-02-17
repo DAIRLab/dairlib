@@ -52,6 +52,6 @@ catkin config \
     --isolate-devel \
     --no-extend
 
-catkin build
+catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3
 
 cd $BASE_DIR

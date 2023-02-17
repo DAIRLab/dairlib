@@ -52,6 +52,14 @@ def main():
                                       plot_config.duration,
                                       mbp_plots.load_force_channels,  # processing callback
                                       'CASSIE_CONTACT_DRAKE')  # processing callback arguments
+        # See `process_contact_channel` in mbp_plotting_utils.py for details
+        # As of 20230217:
+        #   Both force and position are ewrt world frame.
+        #   The order is [left_back , left_front, right_back, right_front], under the assumption that the front contact's x position is larger than the rear's!
+        #   The reason is that we compare the world position of the contact point to determine which contact is front. This issue can be fixed if we transform it into body frame.
+        PlotContactForce(contact_output['t_lambda'], contact_output['lambda_c'], contact_output['p_lambda_c'], osc_debug, plot_config)
+        ComputeAndPlotContactMoment(contact_output['t_lambda'], contact_output['lambda_c'], contact_output['p_lambda_c'], osc_debug, plot_config)
+
 
     print('Finished processing log - making plots')
     # Define x time slice
@@ -210,6 +218,44 @@ def ApplyLowPassFilter(x, t, cutoff_freq, start_from_zero=False):
         x_filtered = alpha * x[i + 1] + (1 - alpha) * x_filtered
         x[i + 1] = x_filtered
     return x
+
+def PlotContactForce(t, forces, positions, osc_debug, plot_config):
+    fig = plt.figure("Contact forces")
+    plt.title("Contact forces")
+    plt.xlabel("time")
+    plt.ylabel("Contact forces (N)")
+    plt.plot(t, forces[0,:,:])
+    plt.plot(t, forces[1,:,:])
+    plt.gca().set_prop_cycle(None)
+    plt.plot(t, forces[2,:,:], "--")
+    plt.plot(t, forces[3,:,:], "--")
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    plt.legend(["left rear x", "left rear y", "left rear z", "left front x", "left front y", "left front z", "right rear x", "right rear y", "right rear z", "right front x", "right front y", "right front z"])
+
+def ComputeAndPlotContactMoment(t, forces, positions, osc_debug, plot_config):
+    moments = np.zeros((2, t.size, 3))
+
+    # left foot
+    for i in range(t.size):
+        cop = (positions[0,i,:] * forces[0,i,2] + positions[1,i,:] * forces[1,i,2]) / (forces[0,i,2] + forces[1,i,2])
+        moments[0,i,:] = np.cross(positions[0,i,:] - cop, forces[0,i,:]) + np.cross(positions[1,i,:] - cop, forces[1,i,:])
+    # right foot
+    for i in range(t.size):
+        cop = (positions[2,i,:] * forces[2,i,2] + positions[3,i,:] * forces[3,i,2]) / (forces[2,i,2] + forces[3,i,2])
+        moments[1,i,:] = np.cross(positions[2,i,:] - cop, forces[2,i,:]) + np.cross(positions[3,i,:] - cop, forces[3,i,:])
+
+    fig = plt.figure("Contact moment")
+    plt.title("Contact moment")
+    plt.xlabel("time")
+    plt.ylabel("Contact moment (Nm)")
+    plt.plot(t, moments[0,:,:])
+    plt.gca().set_prop_cycle(None)
+    plt.plot(t, moments[1,:,:], "--")
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    plt.legend(["left x", "left y", "left z", "right x", "right y", "right z"])
+
 
 
 def ComputeAndPlotACoMRate(x, t_x, osc_debug, t_osc_debug, plant, plot_config, express_xy_in_local=False):

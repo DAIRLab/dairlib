@@ -150,6 +150,11 @@ def plot_mpc_solve_time(mpc_debug):
     plt.ylabel('Solve time (s)')
 
 
+def plot_foothold_origin(mpc_debug, ps=None):
+    ps = plot_styler.PlotStyler() if ps is None else ps
+
+
+
 def plot_mpc_timing(mpc_debug):
     plt.figure()
     looptimes = np.ediff1d(mpc_debug.t_mpc)

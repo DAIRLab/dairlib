@@ -10,7 +10,7 @@ start_time: 0
 duration: -1
 
 # Plant properties
-use_springs: true
+use_springs: false
 use_floating_base: true
 
 # Desired RobotOutput plots

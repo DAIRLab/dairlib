@@ -38,6 +38,8 @@ ConvexFoothold MakeFootholdFromPlanarRegion(
 
   Eigen::Isometry3d X_WP;
   tf2::fromMsg(foothold.plane_parameters, X_WP);
+  // TODO (@Brian-Acosta) Debug this - height not updating with state drift
+  //  std::cout << "\n" << X_WP.linear() << "\n" << X_WP.translation() << "\n";
   auto converted_foothold = ConvexFoothold();
   converted_foothold.SetContactPlane(X_WP.linear().col(2), X_WP.translation());
 

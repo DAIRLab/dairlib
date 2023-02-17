@@ -26,9 +26,18 @@ def make_mbp_name_vectors(plant):
 def make_joint_order_permutation_matrix(names_in_old_order, names_in_new_order):
     n = len(names_in_new_order)
     perm = np.zeros((n, n), dtype=int)
+
+    # Allow names in old order to be a subset of names in new order
+    # to accomodate using a springless cassie model in the controller with
+    # minimal changes
+    names_pruned = []
+    for name in names_in_old_order:
+        if name in names_in_new_order:
+            names_pruned.append(name)
+
     for i, name in enumerate(names_in_new_order):
         try:
-            j = names_in_old_order.index(name)
+            j = names_pruned.index(name)
         except ValueError:
             print(f"Error: {name} not found in old joint ordering")
             raise
@@ -250,13 +259,14 @@ def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     return osc_data
 
 
-def load_default_channels(data, plant, state_channel, input_channel,
+def load_default_channels(data, plant, controller_plant,
+                          state_channel, input_channel,
                           osc_debug_channel):
     robot_output = process_state_channel(data[state_channel], plant)
     robot_input = process_effort_channel(data[input_channel], plant)
     osc_debug = process_osc_channel(data[osc_debug_channel])
     osc_debug = permute_osc_joint_ordering(
-        osc_debug, data[state_channel][0], plant)
+        osc_debug, data[state_channel][0], controller_plant)
 
     return robot_output, robot_input, osc_debug
 

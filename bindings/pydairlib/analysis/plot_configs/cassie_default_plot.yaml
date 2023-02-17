@@ -40,7 +40,11 @@ plot_tracking_costs: true
 plot_qp_solutions: true
 plot_qp_solve_time: true
 plot_active_tracking_datas: false
-tracking_datas_to_plot:
+tracking_datas_to_plot: {
 #  alip_com_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'vel' ] }
 #  swing_ft_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'accel' ] }
-  left_toe_angle_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] }
+#  left_toe_angle_traj: { 'dims': [ 0 ], 'derivs': [ 'accel' ] }
+
+    #    lipm_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'accel' ] },
+    lipm_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel'] },
+}

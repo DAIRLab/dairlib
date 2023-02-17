@@ -27,7 +27,7 @@ def main():
   parameter = "landing_delay"
   simulator = 'DRAKE'
   # trajectory_names = ['jump', 'box_jump', 'long_jump', 'down_jump']
-  trajectory_names = ['down_jump']
+  trajectory_names = ['long_jump']
   gains_path = ''
   trajectory_name = ''
   results_folder = ''
@@ -42,14 +42,18 @@ def main():
 
   landing_times = np.arange(0.000, 0.055, 0.005)
   # nominal_delay = 0.040 # box
-  # nominal_delay = 0.025 # long
-  nominal_delay = 0.065 # down
+  nominal_delay = 0.025 # long
+  # nominal_delay = 0.065 # down
   # nominal_delay = 0.000 # jump
+  # nominal_threshold = 0.000 # box
+  nominal_threshold = 0.000 # long
+  # nominal_threshold = 0.000 # down
+  # nominal_threshold = 0.000 # jump
   landing_times += nominal_delay - 0.5 * 0.05
   # impact_thresholds = np.arange(0.000, 0.100, 0.025)
   impact_thresholds = np.arange(0.000, 0.125, 0.025)
 
-  realtime_rate = 0.5
+  realtime_rate = 0.25
   publish_rate = 2000.0
 
   # Add an extra second to the runtime of the simulator process to account for start up and stopping time
@@ -139,7 +143,7 @@ def main():
         f = open(gains_path + gain_filename, 'r')
         filedata = f.read()
         f.close()
-        newdata = filedata.replace('impact_threshold: %.3f' % 0.025,
+        newdata = filedata.replace('impact_threshold: %.3f' % nominal_threshold,
                                    'impact_threshold: %.3f' % impact_threshold)
         newdata = newdata.replace('landing_delay: %.3f' % nominal_delay,
                                   'landing_delay: %.3f' % landing_time)
@@ -235,6 +239,6 @@ def plot_success():
   plt.show()
 
 if __name__ == "__main__":
-  # main()
+  main()
   # construct_success_plot()
-  plot_success()
+  # plot_success()

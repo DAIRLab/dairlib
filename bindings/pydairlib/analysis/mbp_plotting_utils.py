@@ -659,6 +659,16 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_
     n_tracking_datas = len(tracking_data_names)
     tracking_data_legend_elements = []
 
+    tracking_data_name_dict = {'pelvis_trans_traj': 'Pelvis Position',
+                               'left_ft_traj': 'Left Foot Position',
+                               'right_ft_traj': 'Right Foot Position',
+                               'pelvis_rot_tracking_data': 'Pelvis Orientation',
+                               'left_toe_angle_traj': 'Left Toe Joint Angle',
+                               'right_toe_angle_traj': 'Right Toe Joint Angle',
+                               'swing_hip_yaw_left_traj': 'Left Hip Yaw Angle',
+                               'swing_hip_yaw_right_traj': 'Right Hip Yaw Angle',
+                               }
+
     for i, tracking_data_name in enumerate(tracking_data_names):
         # tracking_data_name = tracking_data_names[i]
         tracking_data = osc_debug['osc_debug_tracking_datas'][
@@ -667,9 +677,9 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_
                         (i+0.75)/n_tracking_datas,
                         where=tracking_data.is_active.astype(bool)[
                               :fsm_time.shape[0]],
-                        color=ps.cmap(2 * i), alpha=0.5)
+                        color=ps.cmap(2 * i), alpha=0.7)
         tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
-                                                   alpha=0.3, label=tracking_data_name))
+                                                   alpha=0.7, label=tracking_data_name_dict[tracking_data_name]))
 
     # uses default color map
     legend_elements = []
@@ -677,11 +687,17 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_
         ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
         if fsm_state_names:
             legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+    ps.tight_layout()
 
     if len(legend_elements) > 0:
         legend = ax.legend(handles=legend_elements, loc=4)
+        ax.add_artist(legend)
         legend = ax.legend(handles=tracking_data_legend_elements, loc=1)
-        # ax.add_artist(legend)
+        ax.add_artist(legend)
         ax.relim()
+    ax.set_yticklabels([])
+    ax.set_yticks([])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Tracking Objective')
 
     return ps

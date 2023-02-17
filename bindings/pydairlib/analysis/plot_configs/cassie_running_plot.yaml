@@ -4,25 +4,25 @@ channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "OSC_RUNNING"
 channel_osc: "OSC_DEBUG_RUNNING"
 use_archived_lcmtypes: false
-use_default_styling: false
+use_default_styling: true
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 6
+start_time: 0.76
 #duration: 0.47
-duration: 5
+duration: 1.58
 
 # Plant properties
 use_springs: true
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: true
-plot_floating_base_velocities: true
-plot_floating_base_velocity_body_frame: true
+plot_floating_base_positions: false
+plot_floating_base_velocities: false
+plot_floating_base_velocity_body_frame: false
 plot_joint_positions: false
 plot_joint_velocities: false
-plot_measured_efforts: true
-plot_commanded_efforts: true
+plot_measured_efforts: false
+plot_commanded_efforts: false
 plot_contact_forces: false
 special_positions_to_plot: [ 'knee_joint_left', 'knee_joint_right', 'ankle_spring_joint_left', 'ankle_spring_joint_right' ]
 #special_positions_to_plot: [ 'hip_pitch_left', 'hip_pitch_right', 'hip_roll_left', 'hip_roll_right' ]
@@ -37,13 +37,13 @@ foot_positions_to_plot: [ 'right', 'left' ]
 #foot_positions_to_plot: []
 foot_xyz_to_plot: { 'right': [ 2 ], 'left': [ 2 ] }
 #foot_xyz_to_plot: { }
-pt_on_foot_to_plot: 'rear'  # takes value 'front', 'mid', or 'rear'
+pt_on_foot_to_plot: ['rear']  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: true
-plot_qp_solve_time: true
-plot_qp_solutions: true
-plot_tracking_costs: true
+plot_qp_costs: false
+plot_qp_solve_time: false
+plot_qp_solutions: false
+plot_tracking_costs: false
 plot_active_tracking_datas: true
 tracking_datas_to_plot: {
   #  pelvis_trans_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'accel' ] },

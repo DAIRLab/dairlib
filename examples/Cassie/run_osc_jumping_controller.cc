@@ -254,7 +254,7 @@ int DoMain(int argc, char* argv[]) {
       r_hip_trajectory, osc_gains.relative_feet, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<BasicTrajectoryPassthrough>(
-          pelvis_rot_trajectory, "pelvis_rot_tracking_data", FLAGS_delay_time);
+          pelvis_rot_trajectory, "pelvis_rot_traj", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
       gains.impact_threshold, (osc_jump::JUMPING_FSM_STATE)FLAGS_init_fsm_state);
@@ -368,7 +368,7 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_trans_traj", osc_gains.K_p_com, osc_gains.K_d_com,
       osc_gains.W_com, plant_w_spr, plant_w_spr);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_rot_tracking_data", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
+      "pelvis_rot_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
       osc_gains.W_pelvis, plant_w_spr, plant_w_spr);
   for (auto mode : stance_modes) {
     pelvis_tracking_data->AddStateAndPointToTrack(mode, "pelvis");
@@ -376,7 +376,8 @@ int DoMain(int argc, char* argv[]) {
   }
   pelvis_rot_tracking_data->SetImpactInvariantProjection(true);
   pelvis_tracking_data->SetImpactInvariantProjection(true);
-  VectorXd pelvis_acc_lb = osc_gains.min_pelvis_acc * Vector3d::Ones();
+  VectorXd pelvis_acc_lb = Vector3d::Ones();
+  pelvis_acc_lb << -10000, -10000, osc_gains.min_pelvis_acc;
   VectorXd pelvis_acc_ub = osc_gains.max_pelvis_acc * Vector3d::Ones();
   pelvis_tracking_data->SetCmdAccelerationBounds(pelvis_acc_lb, pelvis_acc_ub);
 
@@ -414,10 +415,10 @@ int DoMain(int argc, char* argv[]) {
 
   // Flight phase hip yaw tracking
   auto left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
-      "swing_hip_yaw_left_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
+      "hip_yaw_left_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
       osc_gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   auto right_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
-      "swing_hip_yaw_right_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
+      "hip_yaw_right_traj", osc_gains.K_p_hip_yaw, osc_gains.K_d_hip_yaw,
       osc_gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   left_hip_yaw_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "hip_yaw_left", "hip_yaw_leftdot");
@@ -504,7 +505,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("right_toe_angle_traj"));
   builder.Connect(
       pelvis_rot_traj_generator->get_output_port(0),
-      osc->get_input_port_tracking_data("pelvis_rot_tracking_data"));
+      osc->get_input_port_tracking_data("pelvis_rot_traj"));
 
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),

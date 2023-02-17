@@ -178,9 +178,9 @@ def main():
         plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
-    # if plot_config.plot_active_tracking_datas:
-    #     plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-    #     plot.save_fig('active_tracking_datas.png')
+    if plot_config.plot_active_tracking_datas:
+        plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.save_fig('active_tracking_datas.png')
     plt.show()
 
 

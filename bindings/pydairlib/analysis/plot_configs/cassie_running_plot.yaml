@@ -2,8 +2,8 @@
 #channel_x: "CASSIE_STATE_DISPATCHER"
 channel_x: "CASSIE_STATE_SIMULATION"
 channel_u: "OSC_RUNNING"
-#channel_u: "OSC_STANDING" #"OSC_RUNNING"
 channel_osc: "OSC_DEBUG_RUNNING"
+#channel_u: "OSC_STANDING"
 #channel_osc: "OSC_DEBUG_STANDING"
 use_archived_lcmtypes: false
 
@@ -25,7 +25,7 @@ plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: true
 plot_commanded_efforts: true
-plot_contact_forces: false
+plot_contact_forces: true
 special_positions_to_plot: [ 'knee_joint_left', 'knee_joint_right', 'ankle_spring_joint_left', 'ankle_spring_joint_right' ]
 #special_positions_to_plot: [ 'hip_pitch_left', 'hip_pitch_right', 'hip_roll_left', 'hip_roll_right' ]
 #special_velocities_to_plot: [ 'hip_roll_leftdot', 'hip_roll_rightdot' ]

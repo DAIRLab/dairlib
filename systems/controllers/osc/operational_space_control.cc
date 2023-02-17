@@ -1122,7 +1122,7 @@ void OperationalSpaceControl::CheckTracking(
   if (soft_constraint_cost_ != nullptr) {
     soft_constraint_cost_->Eval(*epsilon_sol_, &y_soft_constraint_cost);
   }
-  if (y_soft_constraint_cost[0] > 2e6 || isnan(y_soft_constraint_cost[0])) {
+  if (y_soft_constraint_cost[0] > 1e5 || isnan(y_soft_constraint_cost[0])) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

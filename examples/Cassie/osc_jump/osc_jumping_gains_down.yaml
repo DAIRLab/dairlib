@@ -18,37 +18,37 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 w_input_reg: 0.01
 w_soft_constraint: 1000
-crouch_x_offset: 0.00
+crouch_x_offset: -0.015
 land_x_offset: 0.00
 relative_feet: true
 
 mu: 0.6
 
 w_swing_toe: 0.01
-swing_toe_kp: 1500
+swing_toe_kp: 2500
 swing_toe_kd: 10
 
-w_hip_yaw: 2.5
+w_hip_yaw: 100
 hip_yaw_kp: 100
-hip_yaw_kd: 5
+hip_yaw_kd: 10
 
-min_pelvis_acc: -25
-max_pelvis_acc: 100
-impact_threshold: 0.000
+min_pelvis_acc: -5
+max_pelvis_acc: 10000
+impact_threshold: 0.025
 impact_tau: 0.005
-landing_delay: 0.000
-#landing_delay: -0.0
+landing_delay: 0.065
+#landing_delay: 0.
 
 CoMW:
   [20,    0,    0,
-   0,     2,    0,
+   0,    20,    0,
    0,     0,   20]
 CoMKp:
-  [40,   0,    0,
-   0,   50,    0,
-   0,    0,  40]
+  [100,   0,    0,
+   0,   100,    0,
+   0,    0,  100]
 CoMKd:
-  [ 7.5,    0,   0,
+  [ 15,    0,   0,
     0,    5,   0,
     0,    0,   5]
 PelvisRotW:
@@ -56,8 +56,8 @@ PelvisRotW:
    0,  5,   0,
    0,   0,  1]
 PelvisRotKp:
-  [150.,   0,   0,
-   0,  200.,   0,
+  [400.,   0,   0,
+   0,  400.,   0,
    0,    0,  0.]
 PelvisRotKd:
   [10,   0,  0,
@@ -68,11 +68,11 @@ FlightFootW:
    0,   100,    0,
    0,    0,   10]
 FlightFootKp:
-  [125,   0,    0,
-   0,   50,    0,
-   0,     0,  150]
+  [250,   0,    0,
+   0,   250,    0,
+   0,     0,  250]
 FlightFootKd:
-  [2.5,   0,    0,
-   0,   2.5,     0,
-   0,   0,    0]
+  [10,   0,    0,
+   0,   10,     0,
+   0,   0,    10]
 

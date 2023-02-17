@@ -24,8 +24,8 @@ use_ipopt: false
 ipopt_iter: 100
 
 data_directory: examples/Cassie/saved_trajectories/
-load_filename: long_jump_conservative_1
-save_filename: long_jump_conservative
+load_filename: long_jump_conservative
+save_filename: long_jump
 use_springs: false
 convert_to_springs: false
 same_knotpoints: true

@@ -54,20 +54,20 @@ ConvexFoothold MakeFootholdFromPlanarRegion(
 
 ConvexFootholdReceiver::ConvexFootholdReceiver() {
   PlanarTerrain terrain_msg;
-  DeclareAbstractInputPort("PlanarTerrainRosMsg", drake::Value<PlanarTerrain>(terrain_msg));
-  DeclareAbstractOutputPort("foolholds", &ConvexFootholdReceiver::CopyTerrain);
+  DeclareAbstractInputPort(
+      "PlanarTerrainRosMsg", drake::Value<PlanarTerrain>(terrain_msg));
+  DeclareAbstractOutputPort(
+      "foolholds", &ConvexFootholdReceiver::CopyTerrain);
 }
 
 void ConvexFootholdReceiver::CopyTerrain(
     const drake::systems::Context<double> &context,
-    std::vector<ConvexFoothold> *footholds) const {
+    ConvexFootholdSet* footholds) const {
   footholds->clear();
-
   const auto& planes =
       EvalAbstractInput(context, 0)->get_value<PlanarTerrain>();
-
   for (const auto& planar_region : planes.planarRegions) {
-    footholds->push_back(MakeFootholdFromPlanarRegion(planar_region));
+    footholds->append(MakeFootholdFromPlanarRegion(planar_region));
   }
 }
 

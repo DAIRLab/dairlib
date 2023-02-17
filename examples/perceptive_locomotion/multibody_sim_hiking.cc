@@ -1,4 +1,5 @@
 #include <memory>
+#include <signal.h>
 
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
@@ -21,6 +22,13 @@
 #include "systems/ros/robot_state_to_ros_pose.h"
 #include "systems/ros/multibody_plant_tf_broadcaster_system.h"
 #include "systems/cameras/drake_to_ros_pointcloud.h"
+
+void SigintHandler(int sig) {
+  ros::shutdown();
+  exit(0);
+}
+
+
 #endif
 
 #include "drake/lcm/drake_lcm.h"
@@ -191,6 +199,8 @@ int do_main(int argc, char* argv[]) {
 #ifdef DAIR_ROS_ON
   ros::init(argc, argv, "cassie_hiking_simulaton");
   ros::NodeHandle node_handle;
+  signal(SIGINT, SigintHandler);
+
   if (FLAGS_publish_ros_pose) {
     const auto& cov_source =
         builder.AddSystem<drake::systems::ConstantVectorSource>(VectorXd::Zero(36));

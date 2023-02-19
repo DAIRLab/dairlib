@@ -173,6 +173,7 @@ def main():
             plot = mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
                                                    foot_frames, pts, dims, plot)
             mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        plot.save_fig('foot_contact_vertical_position.png')
 
     if plot_config.plot_qp_solve_time:
         plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)

@@ -43,7 +43,7 @@ def main():
   landing_times = np.arange(0.000, 0.055, 0.005)
   # nominal_delay = 0.040 # box
   nominal_delay = 0.040 # long
-  # nominal_delay = 0.065 # down
+  # nominal_delay = 0.055 # down
   # nominal_delay = 0.000 # jump
   # nominal_threshold = 0.000 # box
   nominal_threshold = 0.000 # long
@@ -51,7 +51,7 @@ def main():
   # nominal_threshold = 0.000 # jump
   landing_times += nominal_delay - 0.5 * 0.05
   # impact_thresholds = np.arange(0.000, 0.100, 0.025)
-  impact_thresholds = np.arange(0.000, 0.125, 0.025)
+  impact_thresholds = np.arange(0.000, 0.110, 0.010)
 
   realtime_rate = 0.25
   publish_rate = 2000.0
@@ -175,15 +175,15 @@ def main():
 
 def construct_success_plot():
   results_folder = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/"
-  all_logs = sorted(glob.glob(results_folder + 'long_jump_0/' + 'lcmlog-*'))
+  all_logs = sorted(glob.glob(results_folder + 'down_jump_4/' + 'lcmlog-*'))
 
   landing_times = np.arange(0.000, 0.055, 0.005)
   # nominal_delay = 0.040 # box
-  nominal_delay = 0.025 # long
-  # nominal_delay = 0.065 # down
+  # nominal_delay = 0.025 # long
+  nominal_delay = 0.055 # down
   # nominal_delay = 0.000 # jump
   landing_times += nominal_delay - 0.5 * 0.05
-  impact_thresholds = np.arange(0.000, 0.125, 0.025)
+  impact_thresholds = np.arange(0.000, 0.110, 0.010)
   success = np.zeros((landing_times.shape[0], impact_thresholds.shape[0]))
   # xx, yy = np.meshgrid(landing_times, impact_thresholds)
   for log_filename in all_logs:
@@ -205,22 +205,25 @@ def construct_success_plot():
                    'OSC_DEBUG_JUMPING')
     land_idx = int(np.round((float(landing_time) - (nominal_delay - 0.025)) / 0.005))
     print(landing_time)
+    impact_idx = int(np.round(float(impact_threshold)/0.010))
     print(land_idx)
-    impact_idx = int(np.round(float(impact_threshold)/0.02500))
+    print(impact_idx)
     success[land_idx, impact_idx] = not np.any(robot_output['q'][:, 6] < 0.4)
-  np.save('long_jump_0_success', success)
+  np.save('down_jump_4_success', success)
   plt.imshow(success)
   plt.show()
 
 def plot_success():
   landing_times = np.linspace(0.000, 0.050, 11)
   landing_times -= 0.025
-  impact_thresholds = np.linspace(0.000, 0.100, 5)
-  success = np.load('long_jump_0_success.npy')
+  impact_thresholds = np.linspace(0.000, 0.100, 11)
+  # success = np.load('long_jump_0_success.npy')
+  success = np.load('down_jump_0_success.npy')
   total_success = np.zeros(success.shape)
   total_success += success
   for i in range(1, 5):
-    success = np.load('long_jump_' + str(i) + '_success.npy')
+    # success = np.load('long_jump_' + str(i) + '_success.npy')
+    success = np.load('down_jump_' + str(i) + '_success.npy')
     total_success += success
 
   # plt.imshow(success, cmap='tab20')
@@ -243,7 +246,8 @@ def plot_success():
 
   # legend_elements = [Patch(facecolor=ps.grey, alpha=0.7, label='Fail'), Patch(facecolor=ps.blue, alpha=0.7, label='Success')]
   # legend = ax.legend(handles=legend_elements, loc=1)
-  plt.savefig('long_jump_success.png', dpi=240)
+  # plt.savefig('long_jump_success.png', dpi=240)
+  plt.savefig('down_jump_success.png', dpi=240)
   plt.show()
 
 if __name__ == "__main__":

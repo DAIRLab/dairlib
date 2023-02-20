@@ -62,6 +62,8 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::multibody::Frame;
+using drake::multibody::SpatialInertia;
+using drake::multibody::RotationalInertia;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::lcm::LcmPublisherSystem;
@@ -121,6 +123,12 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
+DEFINE_bool(use_spring_model, false,
+            "whether to use the cassie spring model in the controller");
+
+DEFINE_bool(add_camera_inertia, true,
+            "whether to add the camera assembly to the robot model");
+
 //DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 int DoMain(int argc, char* argv[]) {
@@ -131,17 +139,41 @@ int DoMain(int argc, char* argv[]) {
   auto gains_mpc =
       drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
 
+  const std::string urdf_w_spr = "examples/Cassie/urdf/cassie_v2.urdf";
+  const std::string urdf_wo_spr = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  plant_w_spr.set_name("plant_w_spr");
   drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
+  plant_w_spr.set_name("plant_w_spr");
   plant_wo_spr.set_name("plant_wo_spr");
-  AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true /*spring model*/, false /*loop closure*/);
-  AddCassieMultibody(&plant_wo_spr, nullptr, true,
-                     "examples/Cassie/urdf/cassie_fixed_springs.urdf",
-                     false, false);
+
+  auto instance_w_spr =
+      AddCassieMultibody(&plant_w_spr, nullptr, true, urdf_w_spr, true, false);
+
+  drake::multibody::ModelInstanceIndex instance_wo_spr;
+  if (FLAGS_use_spring_model) {
+    instance_wo_spr = AddCassieMultibody(&plant_wo_spr, nullptr, true, urdf_w_spr, true, false);
+  } else {
+    instance_wo_spr = AddCassieMultibody(&plant_wo_spr, nullptr, true, urdf_wo_spr, false, false);
+  }
+  if (FLAGS_add_camera_inertia) {
+    auto camera_inertia_about_com =
+        RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
+            0.04, 0.04, 0.04, 0, 0, 0);
+    auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
+        1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
+    plant_w_spr.AddRigidBody("camera_inertia", instance_w_spr, camera_inertia);
+    plant_wo_spr.AddRigidBody("camera_inertia", instance_wo_spr, camera_inertia);
+    plant_w_spr.WeldFrames(
+        plant_w_spr.GetBodyByName("pelvis").body_frame(),
+        plant_w_spr.GetBodyByName("camera_inertia").body_frame()
+    );
+    plant_wo_spr.WeldFrames(
+        plant_wo_spr.GetBodyByName("pelvis").body_frame(),
+        plant_wo_spr.GetBodyByName("camera_inertia").body_frame()
+    );
+  }
   plant_w_spr.Finalize();
   plant_wo_spr.Finalize();
 
@@ -352,25 +384,32 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
-  // 2. fixed spring constraint
-//  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
-//  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
-//  auto left_fixed_knee_spring = FixedJointEvaluator<double>(
-//      plant_w_spr, pos_idx_map.at("knee_joint_left"),
-//      vel_idx_map.at("knee_joint_leftdot"), 0);
-//  auto right_fixed_knee_spring = FixedJointEvaluator<double>(
-//      plant_w_spr, pos_idx_map.at("knee_joint_right"),
-//      vel_idx_map.at("knee_joint_rightdot"), 0);
-//  auto left_fixed_ankle_spring = FixedJointEvaluator<double>(
-//      plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
-//      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-//  auto right_fixed_ankle_spring = FixedJointEvaluator<double>(
-//      plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
-//      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
-//  evaluators.add_evaluator(&left_fixed_knee_spring);
-//  evaluators.add_evaluator(&right_fixed_knee_spring);
-//  evaluators.add_evaluator(&left_fixed_ankle_spring);
-//  evaluators.add_evaluator(&right_fixed_ankle_spring);
+  // Make fixed spring constraint
+  auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_spr);
+  auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
+  std::unique_ptr<FixedJointEvaluator<double>> left_fixed_knee_spring;
+  std::unique_ptr<FixedJointEvaluator<double>> right_fixed_knee_spring;
+  std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
+  std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
+
+  if (FLAGS_use_spring_model) {
+    left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_wo_spr, pos_idx_map.at("knee_joint_left"),
+        vel_idx_map.at("knee_joint_leftdot"), 0);
+    right_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_wo_spr, pos_idx_map.at("knee_joint_right"),
+        vel_idx_map.at("knee_joint_rightdot"), 0);
+    left_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_wo_spr, pos_idx_map.at("ankle_spring_joint_left"),
+        vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+    right_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
+        plant_wo_spr, pos_idx_map.at("ankle_spring_joint_right"),
+        vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+    evaluators.add_evaluator(left_fixed_knee_spring.get());
+    evaluators.add_evaluator(right_fixed_knee_spring.get());
+    evaluators.add_evaluator(left_fixed_ankle_spring.get());
+    evaluators.add_evaluator(right_fixed_ankle_spring.get());
+  }
   osc->AddKinematicConstraint(&evaluators);
 
   // Soft constraint

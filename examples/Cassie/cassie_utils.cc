@@ -107,13 +107,14 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions
-void AddCassieMultibody(MultibodyPlant<double>* plant,
-                        SceneGraph<double>* scene_graph, bool floating_base,
-                        std::string filename, bool add_leaf_springs,
-                        bool add_loop_closure, bool add_reflected_inertia) {
+const drake::multibody::ModelInstanceIndex
+AddCassieMultibody(MultibodyPlant<double>* plant,
+                   SceneGraph<double>* scene_graph, bool floating_base,
+                  std::string filename, bool add_leaf_springs,
+                  bool add_loop_closure, bool add_reflected_inertia) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
-  parser.AddModelFromFile(full_name);
+  auto model_instance_idx = parser.AddModelFromFile(full_name);
 
   if (!floating_base) {
     plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
@@ -196,6 +197,7 @@ void AddCassieMultibody(MultibodyPlant<double>* plant,
       DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
     }
   }
+  return model_instance_idx;
 }
 
 const systems::SimCassieSensorAggregator& AddImuAndAggregator(

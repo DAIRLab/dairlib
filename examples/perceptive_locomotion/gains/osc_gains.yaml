@@ -27,7 +27,7 @@ vel_max_lateral: 0  # 0.3
 target_pos_offset: 0  # -0.16
 
 # Finite state machine
-ss_time: 0.35
+ss_time: 0.3
 ds_time: 0.1
 
 # Distance of contact point from foot rear (0 is heel, 1 is toe)
@@ -38,8 +38,8 @@ max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.16
-final_foot_height: 0.025
-final_foot_velocity_z: 0.25
+final_foot_height: 0.045
+final_foot_velocity_z: 0.3
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -70,7 +70,7 @@ CoMKp:
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     2.5]
+      0,    0,     6]
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,

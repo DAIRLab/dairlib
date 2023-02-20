@@ -36,3 +36,18 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_test(
+    name = "convex_foothold_test",
+    size = "small",
+    srcs = ["test/convex_foothold_test.cc"],
+    deps = [
+        ":convex_foothold",
+        ":convex_foothold_set",
+        ":convex_foothold_receiver",
+        "//lcmtypes:lcmt_robot",
+        "//common",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)

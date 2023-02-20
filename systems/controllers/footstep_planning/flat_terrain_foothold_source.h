@@ -20,9 +20,10 @@ class FlatTerrainFootholdSource : public drake::systems::LeafSystem<double> {
       std::vector<controllers::alip_utils::PointOnFramed> left_right_foot);
 
  private:
+  static constexpr double alpha_ = 0.1;
   void CalcFoothold(const drake::systems::Context<double>& context,
                       geometry::ConvexFootholdSet* footholds) const;
-
+  mutable double h_prev_ = 0;
   std::vector<controllers::alip_utils::PointOnFramed> left_right_foot_;
   const drake::multibody::MultibodyPlant<double>& plant_;
   mutable drake::systems::Context<double>* context_;

@@ -70,7 +70,7 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
 /// @param add_reflected_inertia Whether or not to add reflected inertia.
 ///        Rotor inertia and gear ratio values are constant values from the
 ///        model given by Agility Robotics
-void AddCassieMultibody(
+const drake::multibody::ModelInstanceIndex AddCassieMultibody(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     bool floating_base = true,

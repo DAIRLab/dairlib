@@ -61,6 +61,8 @@ using systems::controllers::FootstepSender;
 using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 
+using drake::multibody::SpatialInertia;
+using drake::multibody::RotationalInertia;
 using drake::multibody::Frame;
 using drake::systems::TriggerType;
 using drake::systems::DiagramBuilder;
@@ -106,6 +108,9 @@ DEFINE_bool(plan_offboard, false,
 DEFINE_bool(publish_filtered_state, false,
             "whether to publish the low pass filtered state");
 
+DEFINE_bool(add_camera_inertia, true,
+            "adds inertia from the realsense mount to the plant model");
+
 DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
 
 
@@ -116,6 +121,7 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
+  ros::AsyncSpinner spinner(1);
 #else
   if (FLAGS_use_perception) {
     throw std::runtime_error(
@@ -128,9 +134,26 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  AddCassieMultibody(&plant_w_spr, nullptr, true ,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true, false);
+  auto instance_w_spr = AddCassieMultibody(
+      &plant_w_spr,
+      nullptr,
+      true,
+      "examples/Cassie/urdf/cassie_v2.urdf",
+      true,
+      false
+  );
+  if (FLAGS_add_camera_inertia) {
+    auto camera_inertia_about_com =
+        RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
+            0.04, 0.04, 0.04, 0, 0, 0);
+    auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
+        1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
+    plant_w_spr.AddRigidBody("camera_inertia", instance_w_spr, camera_inertia);
+    plant_w_spr.WeldFrames(
+        plant_w_spr.GetBodyByName("pelvis").body_frame(),
+        plant_w_spr.GetBodyByName("camera_inertia").body_frame()
+    );
+  }
   plant_w_spr.Finalize();
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
 
@@ -251,9 +274,6 @@ int DoMain(int argc, char* argv[]) {
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
-      ros::AsyncSpinner spinner(1);
-      spinner.start();
-      plane_subscriber->WaitForMessage(0);
 #endif
     } else {
       auto foothold_oracle =
@@ -264,8 +284,6 @@ int DoMain(int argc, char* argv[]) {
                       foot_placement_controller->get_input_port_footholds());
   }
 }
-
-
 
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
@@ -326,8 +344,11 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       false);
 
-  loop.Simulate();
+#ifdef DAIR_ROS_ON
+  spinner.start();
+#endif
 
+  loop.Simulate();
   return 0;
 }
 

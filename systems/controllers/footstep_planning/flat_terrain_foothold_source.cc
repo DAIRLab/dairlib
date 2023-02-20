@@ -54,8 +54,8 @@ void FlatTerrainFootholdSource::CalcFoothold(
                              &right_pos);
 
   double h = std::min(left_pos(2), right_pos(2));
-  left_pos(2) = h;
-
+  h_prev_ = alpha_ * h + (1.0 - alpha_) * h_prev_;
+  left_pos(2) = h_prev_;
   ConvexFoothold f;
   f.SetContactPlane(Vector3d::UnitZ(), left_pos);
   f.AddFace(-Vector3d::UnitZ(), left_pos -Vector3d::UnitZ());

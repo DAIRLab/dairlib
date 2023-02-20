@@ -28,6 +28,8 @@ def plotter_main(plot_config, log):
 
     ''' Get the plant '''
     plant, context = cassie_plots.make_plant_and_context(
+        floating_base=use_floating_base, springs=True)
+    controller_plant, _ = cassie_plots.make_plant_and_context(
         floating_base=use_floating_base, springs=use_springs)
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
@@ -41,7 +43,7 @@ def plotter_main(plot_config, log):
                      plot_config.start_time,
                      plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback
-                     plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+                     plant, controller_plant, channel_x, channel_u, channel_osc)  # processing callback arguments
 
     if plot_config.plot_contact_forces:
         contact_output = get_log_data(log,  # log

@@ -175,43 +175,45 @@ def main():
 
 def construct_success_plot():
   results_folder = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/"
-  all_logs = sorted(glob.glob(results_folder + 'down_jump_4/' + 'lcmlog-*'))
-
   landing_times = np.arange(0.000, 0.055, 0.005)
   # nominal_delay = 0.040 # box
-  # nominal_delay = 0.025 # long
+  # nominal_delay = 0.040 # long
   nominal_delay = 0.055 # down
   # nominal_delay = 0.000 # jump
   landing_times += nominal_delay - 0.5 * 0.05
   impact_thresholds = np.arange(0.000, 0.110, 0.010)
-  success = np.zeros((landing_times.shape[0], impact_thresholds.shape[0]))
-  # xx, yy = np.meshgrid(landing_times, impact_thresholds)
-  for log_filename in all_logs:
-    landing_time = log_filename.split('_')[-3]
-    impact_threshold = log_filename.split('_')[-1]
-    default_channels = {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
-                        'OSC_JUMPING': dairlib.lcmt_robot_input,
-                        'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output}
-    callback = mbp_plots.load_default_channels
-    start_time = 4
-    duration = -1
-    plant, context = cassie_plots.make_plant_and_context(
-      floating_base=True, springs=True)
-    log = lcm.EventLog(log_filename, "r")
-    robot_output, robot_input, osc_debug = \
-      get_log_data(log, default_channels, start_time, duration, callback,
-                   plant,
-                   'CASSIE_STATE_SIMULATION', 'OSC_JUMPING',
-                   'OSC_DEBUG_JUMPING')
-    land_idx = int(np.round((float(landing_time) - (nominal_delay - 0.025)) / 0.005))
-    print(landing_time)
-    impact_idx = int(np.round(float(impact_threshold)/0.010))
-    print(land_idx)
-    print(impact_idx)
-    success[land_idx, impact_idx] = not np.any(robot_output['q'][:, 6] < 0.4)
-  np.save('down_jump_4_success', success)
-  plt.imshow(success)
-  plt.show()
+
+  start_time = 4
+  duration = -1
+  default_channels = {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
+                      'OSC_JUMPING': dairlib.lcmt_robot_input,
+                      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output}
+  callback = mbp_plots.load_default_channels
+  plant, context = cassie_plots.make_plant_and_context(
+    floating_base=True, springs=True)
+  for i in range(5):
+    all_logs = sorted(glob.glob(results_folder + 'down_jump_' + str(i) + '/lcmlog-*'))
+    success = np.zeros((landing_times.shape[0], impact_thresholds.shape[0]))
+    # xx, yy = np.meshgrid(landing_times, impact_thresholds)
+    for log_filename in all_logs:
+      landing_time = log_filename.split('_')[-3]
+      impact_threshold = log_filename.split('_')[-1]
+
+      log = lcm.EventLog(log_filename, "r")
+      robot_output, robot_input, osc_debug = \
+        get_log_data(log, default_channels, start_time, duration, callback,
+                     plant,
+                     'CASSIE_STATE_SIMULATION', 'OSC_JUMPING',
+                     'OSC_DEBUG_JUMPING')
+      land_idx = int(np.round((float(landing_time) - (nominal_delay - 0.025)) / 0.005))
+      print(landing_time)
+      impact_idx = int(np.round(float(impact_threshold)/0.010))
+      print(land_idx)
+      print(impact_idx)
+      success[land_idx, impact_idx] = not np.any(robot_output['q'][:, 6] < 0.4)
+    np.save('down_jump_' + str(i) + '_success', success)
+  # plt.imshow(success)
+  # plt.show()
 
 def plot_success():
   landing_times = np.linspace(0.000, 0.050, 11)
@@ -232,13 +234,14 @@ def plot_success():
   cmap = matplotlib.colors.ListedColormap([ps.grey, ps.blue])
   fig = plt.figure()
   # plt.imshow(total_success, cmap=cmap)
-  im = plt.imshow(total_success, cmap='Reds')
+  im = plt.imshow(total_success, cmap='Reds', interpolation='gaussian')
+  # im = plt.contour(total_success, cmap='Reds')
   plt.colorbar(im)
   plt.xlabel('Projection Window Duration (s)')
   plt.ylabel('Deviation from Nominal Transition Time (s)')
   ax = plt.gca()
   np.set_printoptions(precision=3)
-  ax.set_xticks(np.arange(0, 5, 1))
+  ax.set_xticks(np.arange(0, 11, 1))
   ax.set_yticks(np.arange(0, 11, 1))
   ax.set_xticklabels(np.around(impact_thresholds, 3).tolist())
   ax.set_yticklabels(np.around(landing_times, 3).tolist())
@@ -251,6 +254,6 @@ def plot_success():
   plt.show()
 
 if __name__ == "__main__":
-  main()
+  # main()
   # construct_success_plot()
-  # plot_success()
+  plot_success()

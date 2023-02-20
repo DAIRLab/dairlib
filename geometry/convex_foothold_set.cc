@@ -35,6 +35,7 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetCloseToPoint(
 
   drake::solvers::OsqpSolver solver;
   const auto result = solver.Solve(prog);
+  DRAKE_ASSERT(result.is_success());
 
   ConvexFootholdSet close;
   for (int i = 0; i < set_.size(); i++) {

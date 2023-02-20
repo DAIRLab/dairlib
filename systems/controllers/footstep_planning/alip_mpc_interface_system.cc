@@ -362,9 +362,6 @@ ComTrajInterfaceSystem::ConstructAlipComTraj(
   Y(2, 0) = start_height;
   Y(2, 1) = final_height;
 
-  Vector3d Y_dot_start = Vector3d::Zero();
-  Vector3d Y_dot_end = Vector3d::Zero();
-
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::FirstOrderHold(T_waypoint_com, Y);
 
@@ -426,8 +423,13 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
       robot_output->GetState(), mode_index, &CoM, &L, &stance_foot_pos);
 
   Vector4d x_alip = Vector4d::Zero();
-  x_alip.head(2) = CoM.head(2) - stance_foot_pos.head(2);
-  x_alip.tail(2) = L.head(2);
+  x_alip.head(2) = multibody::ReExpressWorldVector2InBodyYawFrame(
+      plant_, *context_, "pelvis", CoM.head(2) - stance_foot_pos.head(2));
+  x_alip.tail(2) = multibody::ReExpressWorldVector2InBodyYawFrame(
+      plant_, *context_, "pelvis", L.head(2));
+
+  stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
+      plant_, *context_, "pelvis", stance_foot_pos);
 
   // Assign traj
   auto exp_pp_traj =

@@ -179,18 +179,19 @@ def main():
 
     # import pdb;pdb.set_trace()
 
-    fig = ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context)
-    plot = plot_styler.PlotStyler(fig)
-    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
-    plt.legend(["x", "y", "z"])
-
     # fig = PlotCommandedAndActualTorques(robot_output, robot_input, osc_debug)
     # plot = plot_styler.PlotStyler(fig)
     # mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
     #
 
+
+    # ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config)
+    ComputeAndPlotCentroidalAngularMomentumForPaper(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config)
+
     ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
     ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config, True)
+
+    PlotTorqueSquare(robot_output, robot_input, osc_debug, plot_config)
 
     plt.show()
 
@@ -202,6 +203,17 @@ def main():
 #     plt.plot(robot_input['t_u'], robot_input['u'])
 #     return fig
 
+
+
+def PlotTorqueSquare(robot_output, robot_input, osc_debug, plot_config):
+    fig = plt.figure("torques")
+    torque_square = np.zeros(robot_input['t_u'].size)
+    for i in range(torque_square.size):
+        torque_square[i] = np.inner(robot_input['u'][i], robot_input['u'][i])
+    plt.plot(robot_input['t_u'], torque_square)
+    # plt.plot(robot_input['t_u'], robot_input['u'])
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
 
 # cutoff_freq is in Hz
@@ -331,7 +343,33 @@ def ComputeAndPlotACoM(x, t_x, osc_debug, t_osc_debug, plot_config):
 
 
 
-def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context):
+def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config):
+    ### Total centroidal angular momentum
+    centroidal_angular_momentum = np.zeros((t_x.size, 3))
+    for i in range(t_x.size):
+        # import pdb;pdb.set_trace()
+        plant.SetPositionsAndVelocities(context, x[i])
+        com = plant.CalcCenterOfMassPositionInWorld(context)
+
+        h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
+        centroidal_angular_momentum[i] = h_WC_eval.rotational()
+
+    fig = plt.figure("Centroidal angular momentum about z axis")
+    plt.title("Centroidal angular momentum about z axis")
+    plt.xlabel("time (s)")
+    plt.ylabel("($kg \cdot m^2 / s$)")
+    plt.xlim([6.24,7.44])
+    plt.ylim([-0.64,1.03])
+    plt.plot(t_x, centroidal_angular_momentum[:,[2]])
+    # plt.plot(t_osc_debug, 0.1 * fsm)
+    # plt.legend(["x", "y", "z", "fsm"])
+
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
+
+
+def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config):
     ### Total centroidal angular momentum
     centroidal_angular_momentum = np.zeros((t_x.size, 3))
     for i in range(t_x.size):
@@ -349,7 +387,9 @@ def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, con
     plt.legend(["x", "y", "z"])
     # plt.legend(["x", "z", "fsm"])
 
-    return fig
+    plot = plot_styler.PlotStyler(fig)
+    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+    plt.legend(["x", "y", "z"])
 
     ### Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
     # body_indices = plant.GetBodyIndices(model_instance)

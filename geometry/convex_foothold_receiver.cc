@@ -1,7 +1,7 @@
 #include "convex_foothold_receiver.h"
 #include "drake/geometry/optimization/vpolytope.h"
 #include "tf2_eigen/tf2_eigen.h"
-
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -31,15 +31,13 @@ ConvexFoothold MakeFootholdFromPlanarRegion(
   MatrixXd convex_hull = drake::geometry::optimization::VPolytope(verts)
       .GetMinimalRepresentation().vertices();
 
-  // Append the first vertex to the end of the list to make the H representation
-  // closed
+  // Append the first vertex to the end of the list to make the H
+  // representation closed
   convex_hull.conservativeResize(2, convex_hull.cols() + 1);
   convex_hull.col(convex_hull.cols() - 1) = convex_hull.col(0);
 
   Eigen::Isometry3d X_WP;
   tf2::fromMsg(foothold.plane_parameters, X_WP);
-  // TODO (@Brian-Acosta) Debug this - height not updating with state drift
-  //  std::cout << "\n" << X_WP.linear() << "\n" << X_WP.translation() << "\n";
   auto converted_foothold = ConvexFoothold();
   converted_foothold.SetContactPlane(X_WP.linear().col(2), X_WP.translation());
 
@@ -48,7 +46,7 @@ ConvexFoothold MakeFootholdFromPlanarRegion(
         X_WP.linear().leftCols(2) * convex_hull.col(i);
     Vector3d p2 = X_WP.translation() +
         X_WP.linear().leftCols(2) * convex_hull.col(i + 1);
-    converted_foothold.AddVertices(p1, p2);
+    converted_foothold.AddVertices(p2, p1);
   }
   return converted_foothold;
 }

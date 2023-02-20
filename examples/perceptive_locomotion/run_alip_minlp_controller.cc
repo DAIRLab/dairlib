@@ -116,6 +116,7 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
+  ros::AsyncSpinner spinner(1);
 #else
   if (FLAGS_use_perception) {
     throw std::runtime_error(
@@ -251,9 +252,6 @@ int DoMain(int argc, char* argv[]) {
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
-      ros::AsyncSpinner spinner(1);
-      spinner.start();
-      plane_subscriber->WaitForMessage(0);
 #endif
     } else {
       auto foothold_oracle =
@@ -264,8 +262,6 @@ int DoMain(int argc, char* argv[]) {
                       foot_placement_controller->get_input_port_footholds());
   }
 }
-
-
 
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
@@ -326,8 +322,11 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       false);
 
-  loop.Simulate();
+#ifdef DAIR_ROS_ON
+  spinner.start();
+#endif
 
+  loop.Simulate();
   return 0;
 }
 

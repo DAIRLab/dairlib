@@ -54,6 +54,8 @@ using systems::controllers::FootstepSender;
 using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 
+using drake::multibody::SpatialInertia;
+using drake::multibody::RotationalInertia;
 using drake::multibody::Frame;
 using drake::systems::TriggerType;
 using drake::systems::DiagramBuilder;
@@ -92,6 +94,9 @@ DEFINE_bool(spring_model, true, "");
 
 DEFINE_bool(use_perception, false, "get footholds from percption system");
 
+DEFINE_bool(add_camera_inertia, true,
+            "whether to add the camera inertia to the plant model");
+
 DEFINE_bool(plan_offboard, false,
             "Sets the planner lcm TTL to be 1. "
             "Set to true to run planner on cassie-laptop");
@@ -117,9 +122,26 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  AddCassieMultibody(&plant_w_spr, nullptr, true ,
-                     "examples/Cassie/urdf/cassie_v2.urdf",
-                     true, false);
+  auto instance_w_spr = AddCassieMultibody(
+      &plant_w_spr,
+      nullptr,
+      true,
+      "examples/Cassie/urdf/cassie_v2.urdf",
+      true,
+      false
+  );
+  if (FLAGS_add_camera_inertia) {
+    auto camera_inertia_about_com =
+        RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
+            0.04, 0.04, 0.04, 0, 0, 0);
+    auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
+        1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
+    plant_w_spr.AddRigidBody("camera_inertia", instance_w_spr, camera_inertia);
+    plant_w_spr.WeldFrames(
+        plant_w_spr.GetBodyByName("pelvis").body_frame(),
+        plant_w_spr.GetBodyByName("camera_inertia").body_frame()
+    );
+  }
   plant_w_spr.Finalize();
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
 

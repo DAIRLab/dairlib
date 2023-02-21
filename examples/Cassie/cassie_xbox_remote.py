@@ -143,6 +143,7 @@ def main():
         else:
             radio_msg.channel[0] = -2.2*joystick.get_axis(1)
             radio_msg.channel[0] = 1.5
+            # radio_msg.channel[0] = -joystick.get_axis(1)
 
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
@@ -160,6 +161,13 @@ def main():
         radio_msg.channel[6] = radio_channel_6_pos
 
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
+
+
+        ### Testing contact force with radio
+        # radio_msg.channel[3] = 0
+        # # radio_msg.channel[5] = 0.1 * joystick.get_axis(3)
+        # radio_msg.channel[2] = 0
+        # radio_msg.channel[4] = -joystick.get_axis(4)
 
 
         publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())

@@ -288,12 +288,14 @@ ComTrajInterfaceSystem::ComTrajInterfaceSystem(
     double desired_com_height,
     double t_ds,
     const std::vector<int> &unordered_fsm_states,
+    bool use_offset,
     const std::vector<PointOnFramed> contact_point_in_each_state) :
     plant_(plant),
     context_(context),
     desired_com_height_(desired_com_height),
     tds_(t_ds),
     fsm_states_(unordered_fsm_states),
+    use_offset_(use_offset),
     contact_point_in_each_state_(contact_point_in_each_state) {
 
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_point_in_each_state.size());
@@ -414,9 +416,12 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
   int mode_index = GetModeIdx(fsm_state);
 
   // read in next touchdown com z
-  double dz = (fsm_state > 1) ?
-      context.get_discrete_state(delta_z_idx_).get_value()(0) :
-      EvalVectorInput(context, delta_z_input_port_)->get_value()(0);
+  double dz = 0;
+  if (use_offset_) {
+    dz = (fsm_state > 1) ?
+         context.get_discrete_state(delta_z_idx_).get_value()(0) :
+         EvalVectorInput(context, delta_z_input_port_)->get_value()(0);
+  }
 
   Vector3d CoM, L, stance_foot_pos;
   CalcAlipState(

@@ -119,6 +119,7 @@ struct ComTrajInterfaceParams {
   double t_ds;
   std::vector<int> fsm_states;
   std::vector<alip_utils::PointOnFramed> contact_point_in_each_state;
+  bool use_offset = true;
 };
 
 /// This class creates predicted center of mass (COM) trajectory of a bipedal
@@ -149,6 +150,7 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
       double desired_com_height,
       double t_ds,
       const std::vector<int>& fsm_states,
+      bool use_offset,
       const std::vector<alip_utils::PointOnFramed> contact_point_in_each_state);
 
   ComTrajInterfaceSystem(const drake::multibody::MultibodyPlant<double>& plant,
@@ -158,6 +160,7 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
                         params.desired_com_height,
                         params.t_ds,
                         params.fsm_states,
+                        params.use_offset,
                         params.contact_point_in_each_state) {}
 
   // Input port getters
@@ -237,6 +240,7 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
 
+  const bool use_offset_;
   double desired_com_height_;
   double tds_;
 

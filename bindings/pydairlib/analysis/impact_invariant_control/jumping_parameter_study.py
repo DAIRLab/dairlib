@@ -27,12 +27,12 @@ def main():
   parameter = "landing_delay"
   simulator = 'DRAKE'
   # trajectory_names = ['jump', 'box_jump', 'long_jump', 'down_jump']
-  trajectory_names = ['long_jump']
+  trajectory_names = ['down_jump']
   gains_path = ''
   trajectory_name = ''
   results_folder = ''
-  delay_time = 2.0
-  traj_time = 4.0
+  delay_time = 1.0
+  traj_time = 3.0
   sim_time = 0
   start_time = 0
   if controller_type == 'jumping':
@@ -42,12 +42,12 @@ def main():
 
   landing_times = np.arange(0.000, 0.055, 0.005)
   # nominal_delay = 0.040 # box
-  nominal_delay = 0.040 # long
-  # nominal_delay = 0.055 # down
+  # nominal_delay = 0.030 # long
+  nominal_delay = 0.030 # down
   # nominal_delay = 0.000 # jump
   # nominal_threshold = 0.000 # box
-  nominal_threshold = 0.000 # long
-  # nominal_threshold = 0.000 # down
+  # nominal_threshold = 0.000 # long
+  nominal_threshold = 0.000 # down
   # nominal_threshold = 0.000 # jump
   landing_times += nominal_delay - 0.5 * 0.05
   # impact_thresholds = np.arange(0.000, 0.100, 0.025)
@@ -173,13 +173,90 @@ def main():
   parameter_file.close()
 
 
+def convert_logs_to_costs():
+  results_folder = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/"
+  data_directory = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/data/"
+
+  default_channels = {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
+                      'OSC_JUMPING': dairlib.lcmt_robot_input,
+                      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output}
+  callback = mbp_plots.load_default_channels
+  plant, context = cassie_plots.make_plant_and_context(
+    floating_base=True, springs=True)
+
+  nx = plant.num_positions() + plant.num_velocities()
+  nu = plant.num_actuators()
+
+  osc_traj0 = "pelvis_trans_traj"
+  osc_traj1 = "left_ft_traj"
+  osc_traj2 = "right_ft_traj"
+  osc_traj3 = "pelvis_rot_traj"
+
+  # nominal_delay = 0.040 # box
+  nominal_delay = 0.030 # long
+  # nominal_delay = 0.030 # down
+  # nominal_delay = 0.000 # jump
+
+  # For full jumping traj
+  t_samples = 7500
+  u_samples = 7500
+  start_time = 0
+  duration = -1
+  landing_times = np.arange(0.000, 0.055, 0.005)
+  impact_thresholds = np.arange(0.000, 0.110, 0.010)
+  success = np.zeros((landing_times.shape[0], impact_thresholds.shape[0]))
+
+  t_matrix = np.zeros((landing_times.shape[0], impact_thresholds.shape[0], t_samples))
+  # x_matrix = np.zeros((landing_times.shape[0], impact_thresholds.shape[0], t_samples, nx))
+  t_u_matrix = np.zeros((landing_times.shape[0], impact_thresholds.shape[0], u_samples))
+  u_matrix = np.zeros((landing_times.shape[0], impact_thresholds.shape[0], u_samples, nu))
+  t_osc_matrix = np.zeros((landing_times.shape[0], impact_thresholds.shape[0], u_samples))
+  tracking_cost = np.zeros((landing_times.shape[0], impact_thresholds.shape[0], u_samples))
+
+  trial_name = 'long_jump_4'
+  all_logs = sorted(glob.glob(results_folder + trial_name + '/lcmlog-*'))
+  success = np.zeros((landing_times.shape[0], impact_thresholds.shape[0]))
+  # xx, yy = np.meshgrid(landing_times, impact_thresholds)
+  for log_filename in all_logs:
+    landing_time = log_filename.split('_')[-3]
+    impact_threshold = log_filename.split('_')[-1]
+    land_idx = int(np.round((float(landing_time) - (nominal_delay - 0.025)) / 0.005))
+    impact_idx = int(np.round(float(impact_threshold)/0.010))
+    print(land_idx)
+    print(impact_idx)
+
+    log = lcm.EventLog(log_filename, "r")
+    robot_output, robot_input, osc_debug = \
+      get_log_data(log, default_channels, start_time, duration, callback,
+                   plant,
+                   'CASSIE_STATE_SIMULATION', 'OSC_JUMPING',
+                   'OSC_DEBUG_JUMPING')
+
+    t_matrix[land_idx, impact_idx, :] = robot_output['t_x'][:t_samples]
+    # x_matrix[land_idx, impact_idx, :, :] = robot_output['q'][:t_samples]
+    t_u_matrix[land_idx, impact_idx, :] = robot_input['t_u'][:u_samples]
+    u_matrix[land_idx, impact_idx, :, :] = robot_input['u'][:u_samples]
+    t_osc_matrix[land_idx, impact_idx, :] = osc_debug['t_osc'][:u_samples]
+    tracking_cost[land_idx, impact_idx, :] = osc_debug['tracking_cost'][osc_traj0][:u_samples]
+    tracking_cost[land_idx, impact_idx, :] += osc_debug['tracking_cost'][osc_traj1][:u_samples]
+    tracking_cost[land_idx, impact_idx, :] += osc_debug['tracking_cost'][osc_traj2][:u_samples]
+    tracking_cost[land_idx, impact_idx, :] += osc_debug['tracking_cost'][osc_traj3][:u_samples]
+
+  np.save(data_directory + trial_name + '/t_u', t_u_matrix)
+  np.save(data_directory + trial_name + '/u', u_matrix)
+  np.save(data_directory + trial_name + '/t_osc', t_osc_matrix)
+  np.save(data_directory + trial_name + '/tracking_cost', tracking_cost)
+  return
+
 def construct_success_plot():
   results_folder = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/"
   landing_times = np.arange(0.000, 0.055, 0.005)
   # nominal_delay = 0.040 # box
-  # nominal_delay = 0.040 # long
-  nominal_delay = 0.055 # down
+  # nominal_delay = 0.030 # long
+  nominal_delay = 0.030 # down
   # nominal_delay = 0.000 # jump
+  # trial_name = 'down_jump_'
+  trial_name = 'long_jump_'
   landing_times += nominal_delay - 0.5 * 0.05
   impact_thresholds = np.arange(0.000, 0.110, 0.010)
 
@@ -192,9 +269,8 @@ def construct_success_plot():
   plant, context = cassie_plots.make_plant_and_context(
     floating_base=True, springs=True)
   for i in range(5):
-    all_logs = sorted(glob.glob(results_folder + 'down_jump_' + str(i) + '/lcmlog-*'))
+    all_logs = sorted(glob.glob(results_folder + trial_name + str(i) + '/lcmlog-*'))
     success = np.zeros((landing_times.shape[0], impact_thresholds.shape[0]))
-    # xx, yy = np.meshgrid(landing_times, impact_thresholds)
     for log_filename in all_logs:
       landing_time = log_filename.split('_')[-3]
       impact_threshold = log_filename.split('_')[-1]
@@ -211,21 +287,20 @@ def construct_success_plot():
       print(land_idx)
       print(impact_idx)
       success[land_idx, impact_idx] = not np.any(robot_output['q'][:, 6] < 0.4)
-    np.save('down_jump_' + str(i) + '_success', success)
-  # plt.imshow(success)
-  # plt.show()
+    np.save(trial_name + str(i) + '_success', success)
 
 def plot_success():
+  trial_name = 'down_jump_'
   landing_times = np.linspace(0.000, 0.050, 11)
   landing_times -= 0.025
   impact_thresholds = np.linspace(0.000, 0.100, 11)
   # success = np.load('long_jump_0_success.npy')
-  success = np.load('down_jump_0_success.npy')
+  success = np.load(trial_name + '0_success.npy')
   total_success = np.zeros(success.shape)
   total_success += success
   for i in range(1, 5):
-    # success = np.load('long_jump_' + str(i) + '_success.npy')
-    success = np.load('down_jump_' + str(i) + '_success.npy')
+    success = np.load(trial_name + str(i) + '_success.npy')
+    # success = np.load('down_jump_' + str(i) + '_success.npy')
     total_success += success
 
   # plt.imshow(success, cmap='tab20')
@@ -234,7 +309,7 @@ def plot_success():
   cmap = matplotlib.colors.ListedColormap([ps.grey, ps.blue])
   fig = plt.figure()
   # plt.imshow(total_success, cmap=cmap)
-  im = plt.imshow(total_success, cmap='Reds', interpolation='gaussian')
+  im = plt.imshow(total_success, cmap='Reds')
   # im = plt.contour(total_success, cmap='Reds')
   plt.colorbar(im)
   plt.xlabel('Projection Window Duration (s)')
@@ -249,11 +324,59 @@ def plot_success():
 
   # legend_elements = [Patch(facecolor=ps.grey, alpha=0.7, label='Fail'), Patch(facecolor=ps.blue, alpha=0.7, label='Success')]
   # legend = ax.legend(handles=legend_elements, loc=1)
-  # plt.savefig('long_jump_success.png', dpi=240)
-  plt.savefig('down_jump_success.png', dpi=240)
+  plt.savefig(trial_name + 'success.png', dpi=240)
+  # plt.savefig('down_jump_success.png', dpi=240)
+  plt.show()
+
+def plot_costs():
+  landing_times = np.linspace(0.000, 0.050, 11)
+  landing_times -= 0.025
+  impact_thresholds = np.linspace(0.000, 0.100, 11)
+  results_folder = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/"
+  data_directory = "/media/yangwill/backups/home/yangwill/Documents/research/projects/cassie/sim/jumping/logs/2023/param_study/data/"
+  t_u_matrix = np.load(data_directory + 'long_jump_0' + '/t_u.npy')
+  u_cost = np.zeros((t_u_matrix.shape[0], t_u_matrix.shape[1]))
+  u_slice = slice(3000, 7000)
+  w_u = np.array([0.5, 0.9, 0.5, 0.1, 0.1, 0.5, 0.9, 0.5, 0.1, 0.1])
+  W_u = np.diag(w_u)
+  trial_name = 'down_jump_'
+  for num in range(5):
+    exp_name = trial_name + str(num)
+    success = np.load(exp_name + '_success.npy')
+    t_u_matrix = np.load(data_directory + exp_name + '/t_u.npy')
+    u_matrix = np.load(data_directory + exp_name + '/u.npy')
+    t_osc_matrix = np.load(data_directory + exp_name + '/t_osc.npy')
+    tracking_cost = np.load(data_directory + exp_name + '/tracking_cost.npy')
+    u_cost_exp = np.zeros((t_u_matrix.shape[0], t_u_matrix.shape[1]))
+    for i in range(t_u_matrix.shape[0]):
+      for j in range(t_u_matrix.shape[1]):
+        # for t in range(t_u_matrix.shape[2] - 1):
+        for t in range(3000, 7000):
+          # print((u_matrix[i, j, t, :].T @ u_matrix[i, j, t, :]))
+          u_cost_exp[i, j] += (t_u_matrix[i, j, t+1] - t_u_matrix[i, j, t]) * (u_matrix[i, j, t, :].T @ W_u @ u_matrix[i, j, t, :])
+    fail_bool = np.array(1 - success, dtype=bool)
+    u_cost_exp[u_cost_exp > 20000] = 20000
+    u_cost_exp[fail_bool] = 25000 * np.ones(u_cost.shape)[fail_bool]
+    u_cost += u_cost_exp
+  # u_cost[u_cost > 3] = 3
+  # u_cost[u_cost < 2.7] = 2.7
+  im = plt.imshow(8e-6 * u_cost)
+  plt.colorbar(im)
+  plt.xlabel('Projection Window Duration (s)')
+  plt.ylabel('Deviation from Nominal Transition Time (s)')
+  ax = plt.gca()
+  np.set_printoptions(precision=3)
+  ax.set_xticks(np.arange(0, 11, 1))
+  ax.set_yticks(np.arange(0, 11, 1))
+  ax.set_xticklabels(np.around(impact_thresholds, 3).tolist())
+  ax.set_yticklabels(np.around(landing_times, 3).tolist())
+  ax.grid(which="minor", color='k', linestyle='-', linewidth=2)
+  plt.savefig(trial_name + 'cost.png', dpi=240)
   plt.show()
 
 if __name__ == "__main__":
   # main()
   # construct_success_plot()
-  plot_success()
+  # convert_logs_to_costs()
+  # plot_success()
+  plot_costs()

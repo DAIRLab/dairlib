@@ -177,7 +177,7 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
       // Store the ground height of the stance foot
 
       // TODO(yangwill): calculate end of stance duration
-      double stance_scale = (rest_length_) / (pelvis_z);
+      double stance_scale = (pelvis_z)/ (rest_length_);
       stance_scale =
           std::clamp(stance_scale, 1 - stance_variance_, 1 + stance_variance_);
       double next_transition_time =

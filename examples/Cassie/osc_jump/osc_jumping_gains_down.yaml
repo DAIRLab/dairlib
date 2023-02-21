@@ -36,7 +36,7 @@ min_pelvis_acc: -3.5
 max_pelvis_acc: 10000
 impact_threshold: 0.000
 impact_tau: 0.005
-landing_delay: 0.055
+landing_delay: 0.030
 #landing_delay: 0.
 
 CoMW:

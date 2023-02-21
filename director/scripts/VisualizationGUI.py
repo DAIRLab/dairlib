@@ -75,6 +75,8 @@ class VisualizationGui(QWidget):
     self.shapes = {}
     self.plant = None
 
+    self.com_loc_hack = np.zeros(3)
+
   def readJSONFile(self):
     '''
     Function for reading the JSON input file and populating the JSON
@@ -283,7 +285,8 @@ class VisualizationGui(QWidget):
                                                     curr_shape.frame),
                                                   curr_shape.point,
                                                   self.plant.world_frame())
-        next_loc = pt_world.transpose()[0]
+        # next_loc = pt_world.transpose()[0]
+        next_loc = self.com_loc_hack
 
         self.drawShape(self.shapes[name], next_loc, msg,
                        rotation_matrix=rot_matrix)
@@ -370,6 +373,9 @@ class VisualizationGui(QWidget):
       #   efforts[j] = msg.effort[i]
       self.plant.SetPositions(self.context, self.msg.position)
       self.plant.SetVelocities(self.context, self.msg.velocity)
+
+      self.com_loc_hack = self.plant.CalcCenterOfMassPositionInWorld(
+        context=self.context)
 
       # iterate through each shape to draw it
       for name in self.shapes:

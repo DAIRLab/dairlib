@@ -1,9 +1,15 @@
 #include "alip_miqp.h"
 #include "solvers/optimization_utils.h"
+#include <iostream>
 
 namespace dairlib::systems::controllers {
 
 using Eigen::VectorXd;
+using Eigen::Vector4d;
+using Eigen::Vector3d;
+using Eigen::Vector2d;
+using Eigen::Matrix4d;
+
 using drake::solvers::GurobiSolver;
 using solvers::AddBigMInequalityConstraint;
 using solvers::AddBigMEqualityConstraint;
@@ -61,7 +67,43 @@ void AlipMIQP::SolveOCProblemAsIs() {
   if (result.is_success()) {
     solution_.first = result;
     solution_.second = ExtractDynamicsConstraintDual(result);
+  } else {
+    std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
   }
+}
+
+void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
+                                     const Eigen::Vector4d &x0) {
+  // Update state initial guess
+  vector<VectorXd> xg = xd_;
+
+  // Set the initial guess for the current mode based on limited time
+  VectorXd xx = VectorXd (nx_ * nknots_);
+  xx.head<4>() = x0;
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_ - 1));
+  for (int i = 1; i < nknots_; i++) {
+    GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i-1);
+  }
+  xg.front() = xx;
+
+  for (int n = 0; n < nmodes_; n++) {
+    for (int k = 0; k < nknots_ ; k++) {
+      prog_->SetInitialGuess(
+          GetStateAtKnot(xx_.at(n), k),
+          GetStateAtKnot(xg.at(n), k));
+    }
+  }
+  Vector3d ptemp = p0;
+  prog_->SetInitialGuess(pp_.front(), p0);
+  for(int n = 1; n < nmodes_; n++) {
+    Vector2d p1 = (xd_.at(n-1).tail<4>() - xd_.at(n).head<4>()).head<2>() + ptemp.head<2>();
+    prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
+    ptemp.head<2>() = p1;
+  }
+}
+
+void AlipMIQP::UpdateInitialGuess() {
+  UpdateInitialGuess(Vector3d::Zero(), Vector4d::Zero());
 }
 
 }

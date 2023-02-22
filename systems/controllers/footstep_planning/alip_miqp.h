@@ -4,7 +4,9 @@
 
 namespace dairlib::systems::controllers {
 
-class AlipMIQP : public AlipMPC {
+using drake::solvers::GurobiSolver;
+
+class AlipMIQP final : public AlipMPC {
  public:
   AlipMIQP(double m,
            double H,
@@ -24,9 +26,13 @@ class AlipMIQP : public AlipMPC {
     }
   }
 
+  double solve_time() const final {
+    return solution_.first.get_solver_details<GurobiSolver>().optimizer_time;
+  };
+
   void AddMode() final;
-  void Build(const drake::solvers::SolverOptions &solver_options);
-  void Build();
+  void Build(const drake::solvers::SolverOptions &solver_options) final;
+  void Build() final;
 
  private:
   void MakeFootholdConstraints(drake::solvers::MathematicalProgram& prog);

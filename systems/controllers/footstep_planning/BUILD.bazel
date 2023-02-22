@@ -7,7 +7,7 @@ cc_library(
     srcs = ["alip_minlp_footstep_controller.cc"],
     hdrs = ["alip_minlp_footstep_controller.h"],
     deps = [
-        ":alip_minlp",
+        ":alip_multiqp",
         ":alip_utils",
         "//common:eigen_utils",
         "//geometry:convex_foothold_set",
@@ -24,8 +24,8 @@ cc_library(
     srcs = ["alip_deadbeat_footstep_controller.cc"],
     hdrs = ["alip_deadbeat_footstep_controller.h"],
     deps = [
-        ":alip_minlp",
         ":alip_minlp_footstep_controller",
+        ":alip_multiqp",
         ":alip_utils",
         "//common:eigen_utils",
         "//geometry:convex_foothold_set",
@@ -38,7 +38,7 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_minlp",
+    name = "alip_multiqp",
     srcs = ["alip_multiqp.cc"],
     hdrs = ["alip_multiqp.h"],
     deps = [
@@ -51,7 +51,7 @@ cc_library(
     srcs = ["alip_miqp.cc"],
     hdrs = ["alip_miqp.h"],
     deps = [
-        ":alip_minlp",
+        ":alip_mpc",
     ],
 )
 

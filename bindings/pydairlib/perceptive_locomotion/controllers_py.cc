@@ -3,6 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "systems/controllers/footstep_planning/alip_miqp.h"
 #include "systems/controllers/footstep_planning/alip_multiqp.h"
 #include "systems/controllers/footstep_planning/alip_utils.h"
 #include "systems/controllers/minimum_snap_trajectory_generation.h"
@@ -29,7 +30,7 @@ PYBIND11_MODULE(controllers, m) {
       .value("kFOH", ResetDiscretization::kFOH);
 
   py::class_<AlipMultiQP>(
-      m, "AlipMINLP")
+      m, "AlipMultiQP")
       .def(
           py::init<double, double, int, ResetDiscretization, int>(),
           py::arg("m"), py::arg("H"), py::arg("nk"),

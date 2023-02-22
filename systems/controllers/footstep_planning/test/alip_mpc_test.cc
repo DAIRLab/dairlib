@@ -1,9 +1,10 @@
 #include "systems/controllers/footstep_planning/alip_multiqp.h"
+#include "systems/controllers/footstep_planning/alip_miqp.h"
 #include "common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "solvers/osqp_solver_options.h"
-
 #include <iostream>
+
 namespace dairlib::systems::controllers {
 
 using geometry::ConvexFoothold;
@@ -34,7 +35,7 @@ int do_main(int argc, char* argv[]) {
     }
     footholds.push_back(foothold);
   }
-  auto trajopt = AlipMultiQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
+  auto trajopt = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
   trajopt.AddFootholds(footholds);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
@@ -48,7 +49,7 @@ int do_main(int argc, char* argv[]) {
               "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
           ));
 
-  trajopt.Build(planner_solver_options.osqp_options);
+  trajopt.Build();
 
   auto start = std::chrono::high_resolution_clock::now();
   trajopt.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);

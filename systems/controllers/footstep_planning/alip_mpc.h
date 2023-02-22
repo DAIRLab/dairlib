@@ -235,7 +235,6 @@ class AlipMPC {
   void MakeTerminalCost();
   void MakeResetConstraints();
   void MakeDynamicsConstraints();
-  virtual void MakeFootholdConstraints() = 0;
   void MakeWorkspaceConstraints();
   void MakeInputBoundConstaints();
   void MakeNoCrossoverConstraint();

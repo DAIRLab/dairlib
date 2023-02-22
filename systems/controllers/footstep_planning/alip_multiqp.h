@@ -26,7 +26,7 @@ class AlipMultiQP final : public AlipMPC {
   };
 
   void AddMode() final;
-  void MakeFootholdConstraints() final;
+  void MakeFootholdConstraints();
   void Build(const drake::solvers::SolverOptions &solver_options) final;
   void Build() final;
 

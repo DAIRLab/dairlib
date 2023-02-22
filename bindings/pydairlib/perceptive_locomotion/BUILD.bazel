@@ -60,8 +60,9 @@ pybind_py_library(
     name = "controllers_py",
     cc_deps = [
         "//systems/controllers:minimum_snap_trajectory_generation",
-        "//systems/controllers/footstep_planning:alip_minlp",
         "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
+        "//systems/controllers/footstep_planning:alip_miqp",
+        "//systems/controllers/footstep_planning:alip_multiqp",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "controllers",

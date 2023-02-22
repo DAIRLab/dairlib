@@ -39,7 +39,8 @@ int do_main(int argc, char* argv[]) {
   trajopt.AddFootholds(footholds);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
-  trajopt.UpdateNominalStanceTime(0.35, 0.35);
+  trajopt.UpdateNominalStanceTime(0.3, 0.3);
+  trajopt.SetDoubleSupportTime(0.1);
   trajopt.SetInputLimit(1);
   trajopt.AddInputCost(10);
 

@@ -110,7 +110,7 @@ def get_tag_positions_on_board(params):
 # Extracts data from rosbags to assemble the data dictionary used by
 # find_camera_pose_by_constrained_optimization
 def extract_calibration_data(hardware_rosbag_path, calibration_params,
-                             time_offset=0.0):
+                             time_offset, cutoff_time):
 
     # Load the processed (distortion corrected) camera messages
     rosbag_hardware = rosbag.Bag(hardware_rosbag_path)
@@ -122,6 +122,9 @@ def extract_calibration_data(hardware_rosbag_path, calibration_params,
     _, camera_info, _ = next(
         rosbag_hardware.read_messages(topics=['camera/color/camera_info'])
     )
+    _, _, t = \
+        next(rosbag_hardware.read_messages(topics=["camera/color/image_rect"]))
+    start_time = t.to_sec()
 
     # Get the intrinsic matrix [fx 0 cx]
     #                          [0 fy cy]
@@ -140,6 +143,10 @@ def extract_calibration_data(hardware_rosbag_path, calibration_params,
     for topic, msg, t in \
         rosbag_hardware.read_messages(
             topics=["camera/color/image_rect"]):
+
+        if (t.to_sec() - start_time) > cutoff_time:
+            break
+
         valid_poses = get_valid_apriltag_poses(
             detector, msg, apriltag_intrinsics, calibration_params
         )
@@ -148,11 +155,6 @@ def extract_calibration_data(hardware_rosbag_path, calibration_params,
                 msg.header.stamp + rospy.Duration(time_offset)] = valid_poses
 
     rosbag_hardware.close()
-    # for time in timestamped_apriltag_poses.keys():
-    #     print(datetime.datetime.utcfromtimestamp(
-    #           time.to_sec()
-    #     ).strftime("%m/%d/%Y, %H:%M:%S"))
-
     # Get the pelvis transform for the timestamps with valid apriltag poses
     print("Getting pelvis pose data at apriltag pose timestamps...")
     timestamped_pelvis_poses = collect_transforms(
@@ -227,8 +229,9 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
         right_toe_front = X_WR.multiply(TOE_FRONT).ravel()
         left_toe_front = X_WL.multiply(np.array([-0.0457, 0.112, 0])).ravel()
 
-        board_origin_in_world = 0.5 * (right_toe_front + right_toe_rear) - \
-                                tag_positions[calibration_params.start_id]
+        board_origin_in_world = 0.25 * (
+                right_toe_front + right_toe_rear +
+                left_toe_front + left_toe_rear)
 
         board_x_in_world = (right_toe_front - right_toe_rear)
 
@@ -357,11 +360,13 @@ def write_bag_for_calibration_playback(poses, X_PC, bag_path):
 
 def main():
     hardware_fname = sys.argv[1]
-    time_offset = -11.5778
+    time_offset = -0.57
+    cutoff_time = 24
     poses, data = extract_calibration_data(
         hardware_fname,
         CalibrationParams(),
-        time_offset
+        time_offset,
+        cutoff_time
     )
     X_PC = find_camera_pose_by_constrained_optimization(data)
     X_CD = RigidTransform(RotationMatrix(), np.array([-0.059, 0, 0]))

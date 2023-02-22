@@ -1,4 +1,4 @@
-#include "systems/controllers/footstep_planning/alip_minlp.h"
+#include "systems/controllers/footstep_planning/alip_multiqp.h"
 #include "common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "solvers/osqp_solver_options.h"
@@ -34,7 +34,7 @@ int do_main(int argc, char* argv[]) {
     }
     footholds.push_back(foothold);
   }
-  auto trajopt = AlipMINLP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
+  auto trajopt = AlipMultiQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
   trajopt.AddFootholds(footholds);
   auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());

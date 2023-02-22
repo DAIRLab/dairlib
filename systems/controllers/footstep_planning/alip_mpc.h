@@ -82,6 +82,11 @@ class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
   Eigen::MatrixXd B_;
 };
 
+
+
+/// Base class to handle boilerplate for Alip MPC controllers
+/// Specific controllers should implement AddMode, Build, SolveOCProblemAsIs,
+/// UpdateInitialGuess, and any required helper functions
 class AlipMPC {
  public:
 
@@ -108,9 +113,9 @@ class AlipMPC {
 
   /// Constructor takes a nominal robot mass and walking height
   AlipMPC(double m,
-            double H,
-            int nknots,
-            alip_utils::ResetDiscretization reset_discretization)
+          double H,
+          int nknots,
+          alip_utils::ResetDiscretization reset_discretization)
       : m_(m), H_(H), nknots_(nknots),
         reset_discretization_(reset_discretization){};
 
@@ -191,7 +196,7 @@ class AlipMPC {
   };
 
   // misc getters and setters
-  double solve_time() const;
+  virtual double solve_time() const = 0;
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   double H() const {return H_;}
@@ -249,6 +254,9 @@ class AlipMPC {
   void UpdateTimingGradientStep();
   void UpdateDynamicsConstraints();
   void ClearFootholds() { footholds_.clear(); }
+  vector<Eigen::VectorXd>
+      ExtractDynamicsConstraintDual(
+          const drake::solvers::MathematicalProgramResult& sol);
 
   // program and decision variables
   drake::copyable_unique_ptr<MathematicalProgram>

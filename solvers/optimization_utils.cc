@@ -1,13 +1,14 @@
 #include "solvers/optimization_utils.h"
 #include <iostream>
 
-#include <iostream>
-
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using drake::solvers::Constraint;
 using drake::solvers::Binding;
 using drake::solvers::MathematicalProgram;
+using drake::solvers::LinearConstraint;
+using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::DecisionVariable;
 using drake::AutoDiffVecXd;
 using drake::math::InitializeAutoDiff;
 using drake::math::ExtractGradient;
@@ -171,6 +172,30 @@ int CountConstraintRows(const MathematicalProgram& prog) {
     n += binding.evaluator()->num_constraints();
   }
   return n;
+}
+
+
+std::vector<Binding<LinearConstraint>> AddBigMEqualityConstraint(
+    drake::solvers::MathematicalProgram& prog,
+    const MatrixXd& A, const VectorXd& b, double M,
+    const VectorXDecisionVariable& x, const DecisionVariable& z){
+  return {
+      AddBigMInequalityConstraint(prog, A, b, M, x, z),
+      AddBigMInequalityConstraint(prog, -A, -b, M, x, z)
+  };
+}
+
+Binding<LinearConstraint> AddBigMInequalityConstraint(
+    drake::solvers::MathematicalProgram& prog,
+    const MatrixXd& A, const VectorXd& b, double M,
+    const VectorXDecisionVariable& x, const DecisionVariable& z){
+  MatrixXd Ac = MatrixXd::Zero(A.rows(), A.cols() + 1);
+  Ac.leftCols(A.cols()) = A;
+  Ac.rightCols<1>() = M * VectorXd::Ones(A.rows());
+  VectorXd ub = b + M * VectorXd::Ones(b.size());
+  VectorXd lb =
+      -std::numeric_limits<double>::infinity() * VectorXd::Ones(b.size());
+  return prog.AddLinearConstraint(Ac, lb, ub, {x, drake::Vector1<DecisionVariable>(z)});
 }
 
 void print_constraint(

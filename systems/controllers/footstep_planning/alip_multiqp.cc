@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "alip_minlp.h"
+#include "alip_multiqp.h"
 #include "solvers/optimization_utils.h"
 
 #include "drake/math/autodiff.h"
@@ -45,7 +45,7 @@ using drake::solvers::LinearEqualityConstraint;
 
 using geometry::kMaxFootholdFaces;
 
-void AlipMINLP::SolveOCProblemAsIs() {
+void AlipMultiQP::SolveOCProblemAsIs() {
 //  profile_data prof;
 //  prof.start_ = std::chrono::steady_clock::now();
 
@@ -55,37 +55,18 @@ void AlipMINLP::SolveOCProblemAsIs() {
 
 //  prof.pre_solve_ = std::chrono::steady_clock::now() - prof.start_;
   if (mode_sequnces_.empty()) {
-    vector<VectorXd> dual_solutions;
     const auto sol = solver_.Solve(*prog_);
-    for (int n = 0; n < nmodes_; n++) {
-      VectorXd duals = VectorXd::Zero((nknots_ - 1) * nx_);
-      if (sol.is_success()) {
-        for (int k = 0; k < nknots_ - 1; k++) {
-          GetStateAtKnot(duals, k) =
-              sol.GetDualSolution<LinearEqualityConstraint>(
-                  dynamics_c_.at(n).at(k));
-        }
-      }
-      dual_solutions.push_back(duals);
-    }
+    auto dual_solutions = sol.is_success() ?
+        ExtractDynamicsConstraintDual(sol) :
+        vector<VectorXd>(nmodes_,VectorXd::Zero((nknots_ - 1) * nx_));
     solutions.push_back({sol, dual_solutions}); // NOLINT
   } else {
     for (auto& seq: mode_sequnces_) {
       UpdateFootholdConstraints(seq);
-      vector<VectorXd> dual_solutions;
       const auto sol = solver_.Solve(*prog_);
-//      prof.solves_.push_back( std::chrono::steady_clock::now() - prof.start_);
-      for (int n = 0; n < nmodes_; n++) {
-        VectorXd duals = VectorXd::Zero((nknots_ - 1) * nx_);
-        if (sol.is_success()) {
-          for (int k = 0; k < nknots_ - 1; k++) {
-            GetStateAtKnot(duals, k) =
-                sol.GetDualSolution<LinearEqualityConstraint>(
-                    dynamics_c_.at(n).at(k));
-          }
-        }
-        dual_solutions.push_back(duals);
-      }
+      auto dual_solutions = sol.is_success() ?
+          ExtractDynamicsConstraintDual(sol) :
+          vector<VectorXd>(nmodes_,VectorXd::Zero((nknots_ - 1) * nx_));
       solutions.push_back({sol, dual_solutions}); // NOLINT
     }
   }
@@ -114,12 +95,12 @@ void AlipMINLP::SolveOCProblemAsIs() {
 //  std::cout << prof;
 }
 
-void AlipMINLP::Build(const drake::solvers::SolverOptions& options) {
+void AlipMultiQP::Build(const drake::solvers::SolverOptions& options) {
   prog_->SetSolverOptions(options);
   Build();
 }
 
-void AlipMINLP::Build() {
+void AlipMultiQP::Build() {
   DRAKE_ASSERT(td_.size() == nmodes_);
   tt_ = VectorXd::Zero(nmodes_);
   for (int i = 0; i < nmodes_; i++) {
@@ -137,7 +118,7 @@ void AlipMINLP::Build() {
   built_ = true;
 }
 
-void AlipMINLP::AddMode() {
+void AlipMultiQP::AddMode() {
   std::string nm = to_string(nmodes_);
   pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + nm));
   xx_.push_back(prog_->NewContinuousVariables(nx_ * nknots_, "xx_" + nm));
@@ -145,7 +126,7 @@ void AlipMINLP::AddMode() {
   nmodes_ += 1;
 }
 
-void AlipMINLP::MakeFootholdConstraints() {
+void AlipMultiQP::MakeFootholdConstraints() {
   for (int n = 0; n < nmodes_; n++) {
     footstep_c_.push_back(
         {
@@ -163,7 +144,7 @@ void AlipMINLP::MakeFootholdConstraints() {
   }
 }
 
-void AlipMINLP::UpdateIndividualFootholdConstraint(
+void AlipMultiQP::UpdateIndividualFootholdConstraint(
     int idx_mode, int idx_foothold) {
   const auto& [A, b] = footholds_.at(idx_foothold).GetConstraintMatrices();
   const auto& [A_eq, b_eq] = footholds_.at(idx_foothold).GetEqualityConstraintMatrices();
@@ -182,15 +163,15 @@ void AlipMINLP::UpdateIndividualFootholdConstraint(
   footstep_c_.at(idx_mode).second.evaluator()->UpdateCoefficients(A_eq, b_eq);
 }
 
-void AlipMINLP::UpdateFootholdConstraints(vector<int> foothold_idxs) {
+void AlipMultiQP::UpdateFootholdConstraints(vector<int> foothold_idxs) {
   DRAKE_ASSERT(foothold_idxs.size() == nmodes_);
   for (int i = 0; i < foothold_idxs.size(); i++) {
     UpdateIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
   }
 }
 
-void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
-                                   const Eigen::Vector4d &x0) {
+void AlipMultiQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
+                                     const Eigen::Vector4d &x0) {
   // Update state initial guess
   vector<VectorXd> xg = xd_;
 
@@ -219,7 +200,7 @@ void AlipMINLP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   }
 }
 
-void AlipMINLP::UpdateInitialGuess() {
+void AlipMultiQP::UpdateInitialGuess() {
   DRAKE_DEMAND(
       solution_.first.is_success() ||
       solution_.first.get_solution_result() ==

@@ -59,6 +59,39 @@ double SecondOrderCost(const drake::solvers::MathematicalProgram& prog,
 /// the dimension of f(x)
 int CountConstraintRows(const drake::solvers::MathematicalProgram& prog);
 
+
+/// A utility for mixed integer programming,
+/// Adds the big M formulation of the constraint (z == 1) implies Ax <= b,
+/// transforming it to Ax <= b + M * (1 - z)
+/// @param prog The MathematicalProgram
+/// @param A the constraint matrix
+/// @param b the constraint upper bound
+/// @param M the big-M parameter
+/// @param x continuous variable
+/// @param z integer variable
+drake::solvers::Binding<drake::solvers::LinearConstraint>
+AddBigMInequalityConstraint(drake::solvers::MathematicalProgram& prog,
+    const Eigen::MatrixXd& A, const Eigen::VectorXd& b,
+    double M,
+    const drake::solvers::VectorXDecisionVariable& x,
+    const drake::solvers::DecisionVariable& z);
+
+/// A utility for mixed integer programming,
+/// Adds the big M formulation of the constraint (z == 1) implies Ax == b,
+/// transforming it to Ax <= b + M * (1 - z) and Ax >= b - M * (1 - z)
+/// @param prog The MathematicalProgram
+/// @param A the constraint matrix
+/// @param b the constraint value
+/// @param M the big-M parameter
+/// @param x continuous variable
+/// @param z integer variable
+std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
+AddBigMEqualityConstraint(drake::solvers::MathematicalProgram& prog,
+                            const Eigen::MatrixXd& A, const Eigen::VectorXd& b,
+                            double M,
+                            const drake::solvers::VectorXDecisionVariable& x,
+                            const drake::solvers::DecisionVariable& z);
+
 /// Convenience functions to print out constraint matrices
 void print_constraint(
     const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& constraint);

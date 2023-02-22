@@ -2,12 +2,7 @@
 #include <iostream>
 
 #include "alip_mpc.h"
-#include "solvers/optimization_utils.h"
-
-#include "drake/math/autodiff.h"
-#include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/solve.h"
-#include "drake/solvers/osqp_solver.h"
 
 namespace dairlib::systems::controllers{
 
@@ -33,7 +28,6 @@ using drake::math::InitializeAutoDiff;
 
 using drake::solvers::Solve;
 using drake::solvers::Binding;
-using drake::solvers::OsqpSolver;
 using drake::solvers::QuadraticCost;
 using drake::solvers::DecisionVariable;
 using drake::solvers::LinearConstraint;
@@ -50,7 +44,6 @@ AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
     NonlinearConstraint<AutoDiffXd>(
         4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
     m_(m), H_(H), n_(n-1) {
-
   A_ = alip_utils::CalcA(H_, m_);
   A_inv_ = A_.inverse();
   B_ = Vector4d::UnitW();
@@ -81,7 +74,6 @@ void AlipDynamicsConstraint::EvaluateConstraint(
 Matrix4d AlipDynamicsConstraint::Ad(double t) {
   return alip_utils::CalcAd(H_, m_, t / n_);
 }
-
 void AlipMPC::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
                                       const Eigen::Vector3d &p,
                                       bool warmstart) {
@@ -124,6 +116,20 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
   MakeTerminalCost();
 }
 
+vector<VectorXd> AlipMPC::ExtractDynamicsConstraintDual(
+    const drake::solvers::MathematicalProgramResult& sol) {
+  DRAKE_ASSERT(sol.is_success());
+  vector<VectorXd> dual_solutions;
+  for (int n = 0; n < nmodes_; n++) {
+    VectorXd duals = VectorXd::Zero((nknots_ - 1) * nx_);
+    for (int k = 0; k < nknots_ - 1; k++) {
+      GetStateAtKnot(duals, k) = sol.GetDualSolution<LinearEqualityConstraint>(
+          dynamics_c_.at(n).at(k));
+    }
+    dual_solutions.push_back(duals);
+  }
+}
+
 void AlipMPC::AddInputCost(double R) {
   for (int i = 0; i < nmodes_; i++){
     int n = nknots_ - 1;
@@ -136,7 +142,6 @@ void AlipMPC::AddInputCost(double R) {
   }
   R_ = R;
 }
-
 
 void AlipMPC::MakeTerminalCost(){
   terminal_cost_ = prog_->AddQuadraticCost(
@@ -437,10 +442,6 @@ void AlipMPC::UpdateDynamicsConstraints() {
 vector<vector<int>> AlipMPC::GetPossibleModeSequences() {
   return alip_utils::cartesian_product(footholds_.size(), nmodes_ - 1);
 }
-
-double AlipMPC::solve_time() const {
-  return solution_.first.get_solver_details<OsqpSolver>().run_time;
-};
 
 vector<Vector3d> AlipMPC::GetFootstepSolution() const {
   vector<Vector3d> pp;

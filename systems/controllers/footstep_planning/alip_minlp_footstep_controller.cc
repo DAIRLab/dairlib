@@ -40,7 +40,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     plant_(plant),
     context_(plant_context),
     trajopt_(
-        AlipMINLP(
+        AlipMultiQP(
           plant.CalcTotalMass(*plant_context),
           gains.hdes,
           gains.knots_per_mode,
@@ -387,12 +387,12 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
     solution->uu.push_back(vector<vector<double>>{});
     for (int k = 0; k < gains_.knots_per_mode; k++) {
       solution->xx.back().push_back(CopyVectorXdToStdVector(
-          AlipMINLP::GetStateAtKnot(xx.at(n), k)
+          AlipMultiQP::GetStateAtKnot(xx.at(n), k)
       ));
     }
     for(int k = 0; k < gains_.knots_per_mode - 1; k++) {
       solution->uu.back().push_back(CopyVectorXdToStdVector(
-          AlipMINLP::GetInputAtKnot(uu.at(n), k)
+          AlipMultiQP::GetInputAtKnot(uu.at(n), k)
       ));
     }
   }

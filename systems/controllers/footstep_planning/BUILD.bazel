@@ -39,16 +39,19 @@ cc_library(
 
 cc_library(
     name = "alip_minlp",
-    srcs = ["alip_minlp.cc"],
-    hdrs = ["alip_minlp.h"],
+    srcs = ["alip_multiqp.cc"],
+    hdrs = ["alip_multiqp.h"],
     deps = [
         ":alip_mpc",
-        ":alip_utils",
-        "//geometry:convex_foothold",
-        "//solvers:constraints",
-        "//solvers:fast_osqp_solver",
-        "//solvers:optimization_utils",
-        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "alip_miqp",
+    srcs = ["alip_miqp.cc"],
+    hdrs = ["alip_miqp.h"],
+    deps = [
+        ":alip_minlp",
     ],
 )
 

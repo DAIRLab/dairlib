@@ -3,6 +3,15 @@
 
 package(default_visibility = ["//visibility:public"])
 
+cc_binary(
+    name = "mixed_integer_test",
+    srcs = ["test/mixed_integer_test.cc"],
+    deps = [
+        ":optimization_utils",
+        "@drake//:drake_shared_library",
+    ]
+)
+
 cc_library(
     name = "constraints",
     deps = [

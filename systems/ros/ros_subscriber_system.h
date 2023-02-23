@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "drake/common/text_logging"
+#include "drake/common/text_logging.h"
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -182,7 +182,7 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
 
   // Callback entry point from ROS into this class.
   void HandleMessage(const RosMessage& message) {
-    drake::log->info("Receiving ROS {} message", topic_);
+    drake::log()->info("Receiving ROS {} message", topic_);
     std::lock_guard<std::mutex> lock(received_message_mutex_);
     received_message_ = message;
     received_message_count_++;

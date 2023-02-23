@@ -1,5 +1,5 @@
 # LCM channels to read data from
-channel_x: "CASSIE_STATE_SIMULATION"
+channel_x: "CASSIE_STATE_DISPATCHER"
 channel_u: "OSC_WALKING"
 channel_osc: "OSC_DEBUG_WALKING"
 use_archived_lcmtypes: false
@@ -14,13 +14,13 @@ use_springs: true
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: false
-plot_floating_base_velocities: false
+plot_floating_base_positions: true
+plot_floating_base_velocities: true
 plot_floating_base_velocity_body_frame: false
 plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: true
-plot_commanded_efforts: false
+plot_commanded_efforts: true
 plot_contact_forces: false
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]

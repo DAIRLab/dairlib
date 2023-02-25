@@ -187,16 +187,23 @@ def main():
 
 
     # ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config)
-    ComputeAndPlotCentroidalAngularMomentumForPaper(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config)
+
+    selected_bodies = ["pelvis","yaw_left","yaw_right","hip_left","hip_right"]
+    angular_momentum_about_local_com_of_selected_bodies, _ = ComputeAndPlotAngularMomentumAboutTheSelectedBodiesCoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance, selected_bodies)
+    dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation = ComputeAndPlotCentroidalAngularMomentumOfEachBody(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance)
+    ComputeAndPlotCentroidalAngularMomentumForPaper(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation, angular_momentum_about_local_com_of_selected_bodies)
     # 0.72-(-0.36)
     # 0.94-(-0.53)
 
-    ComputeAndPlotCentroidalAngularMomentumOfEachBody(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance)
 
-    # ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
-    # ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config, True)
+    ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
+    ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config, True)
     #
     # PlotTorqueSquare(robot_output, robot_input, osc_debug, plot_config)
+
+
+    # InvestigatePelvisMotionRtCoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance)
+
 
     plt.show()
 
@@ -348,7 +355,8 @@ def ComputeAndPlotACoM(x, t_x, osc_debug, t_osc_debug, plot_config):
 
 
 
-def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config):
+def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config,
+        dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation, angular_momentum_about_local_com_of_selected_bodies):
     ### Total centroidal angular momentum
     centroidal_angular_momentum = np.zeros((t_x.size, 3))
     for i in range(t_x.size):
@@ -359,6 +367,17 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, pl
         h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
         centroidal_angular_momentum[i] = h_WC_eval.rotational()
 
+    # Testing -- testing if the CAM per body calculation is correct (Ans: it is)
+    # cam_sum = np.zeros((t_x.size,3))
+    # for key in dictionary_centroidal_angular_momentum_per_body:
+    #     cam_sum = cam_sum + dictionary_centroidal_angular_momentum_per_body[key]
+
+    # Testing -- compute the CAM of the whole pelvis body including the yaw and hip
+    whole_pelvis_body_dict = ["pelvis","yaw_left","yaw_right","hip_left","hip_right"]
+    centroidal_angular_momentum_whole_pelvis_body = np.zeros((t_x.size, 3))
+    for key in whole_pelvis_body_dict:
+        centroidal_angular_momentum_whole_pelvis_body = centroidal_angular_momentum_whole_pelvis_body + dictionary_centroidal_angular_momentum_per_body[key]
+
     fig = plt.figure("Centroidal angular momentum about z axis")
     plt.title("Centroidal angular momentum about z axis")
     plt.xlabel("time (s)")
@@ -366,12 +385,24 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, pl
     plt.xlim([6.24,7.44])
     plt.ylim([-0.64,1.03])
     plt.plot(t_x, centroidal_angular_momentum[:,[2]])
+    # plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body["pelvis"][:,[2]])
+    # plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body_from_rotation["pelvis"][:,[2]])
+    plt.plot(t_x, angular_momentum_about_local_com_of_selected_bodies[:,[2]])
+    # plt.plot(t_x, centroidal_angular_momentum_whole_pelvis_body[:,[0]])
+    # plt.plot(t_x, centroidal_angular_momentum_whole_pelvis_body[:,[1]])
+    # plt.plot(t_x, centroidal_angular_momentum_whole_pelvis_body[:,[2]])
+    # plt.plot(t_x, cam_sum[:,[2]])
     # plt.plot(t_osc_debug, 0.1 * fsm)
     # plt.legend(["x", "y", "z", "fsm"])
 
     plot = plot_styler.PlotStyler(fig)
     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
+    # plt.legend(["total", "pelvis (rt com)", "pelvis"])
+    # plt.legend(["total", "x", "y", "z"])
+    # plt.legend(["total", "whole pelvis (rt com)"])
+    plt.legend(["total", "whole pelvis"])
+    # plt.legend(["total", "pelvis"])
 
 
 def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config):
@@ -401,6 +432,7 @@ def ComputeAndPlotCentroidalAngularMomentumOfEachBody(x, t_x, t_osc_debug, fsm, 
     ## Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
     body_indices = plant.GetBodyIndices(model_instance)
     dictionary_centroidal_angular_momentum_per_body = {}
+    dictionary_centroidal_angular_momentum_per_body_from_rotation = {}
     for body_idx in body_indices:
         # No contribution from the world body.
         if body_idx == 0:
@@ -413,6 +445,7 @@ def ComputeAndPlotCentroidalAngularMomentumOfEachBody(x, t_x, t_osc_debug, fsm, 
         print(body.name())
 
         angular_momentum_per_body = np.zeros((t_x.size, 3))
+        angular_momentum_per_body_from_rotation = np.zeros((t_x.size, 3))
         for i in range(t_x.size):
             plant.SetPositionsAndVelocities(context, x[i])
             com = plant.CalcCenterOfMassPositionInWorld(context)
@@ -424,6 +457,13 @@ def ComputeAndPlotCentroidalAngularMomentumOfEachBody(x, t_x, t_osc_debug, fsm, 
             V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
             L_WBo_W = M_BBo_W * V_WBo_W
 
+            # Testing
+            p_BoBc_W = R_AE.matrix() @ body.default_com()
+            L_BcBc_W = L_WBo_W.Shift(p_BoBc_W)
+
+            # if t_x[i] > 6.7:
+            #     import pdb;pdb.set_trace()
+
             # SpatialMomentumInWorldAboutWo
             p_WoBo_W = body_pose.translation()
             L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
@@ -432,7 +472,11 @@ def ComputeAndPlotCentroidalAngularMomentumOfEachBody(x, t_x, t_osc_debug, fsm, 
             L_WS_W = L_WS_W.Shift(com)
 
             angular_momentum_per_body[i] = L_WS_W.rotational()
+            # angular_momentum_per_body_from_rotation[i] = L_WBo_W.rotational()
+            angular_momentum_per_body_from_rotation[i] = L_BcBc_W.rotational()
+            # import pdb;pdb.set_trace()
         dictionary_centroidal_angular_momentum_per_body[body.name()] = angular_momentum_per_body
+        dictionary_centroidal_angular_momentum_per_body_from_rotation[body.name()] = angular_momentum_per_body_from_rotation
 
     dim = 2   # 0 corresponds to x
     plt.figure("Centroidal angular momentum per body")
@@ -449,6 +493,186 @@ def ComputeAndPlotCentroidalAngularMomentumOfEachBody(x, t_x, t_osc_debug, fsm, 
             linestyle = '-.'
         i+=1
     plt.legend(legend_list)
+
+    return dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation
+
+
+def ComputeAndPlotAngularMomentumAboutTheSelectedBodiesCoM(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config, model_instance, body_names):
+    ### Get CoMs
+    CoMs_per_body = {}
+    mass_per_body = {}
+    for name in body_names:
+        body = plant.GetBodyByName(name)
+
+        coms_per_body = np.zeros((t_x.size, 3))
+        for i in range(t_x.size):
+            plant.SetPositionsAndVelocities(context, x[i])
+
+            body_pose = plant.EvalBodyPoseInWorld(context, body)
+            R_AE = body_pose.rotation()
+            p_WoBo_W = body_pose.translation()
+            p_BoBc_W = R_AE.matrix() @ body.default_com()
+
+            coms_per_body[i] = p_WoBo_W + p_BoBc_W
+
+        CoMs_per_body[body.name()] = coms_per_body
+        mass_per_body[body.name()] = body.default_mass()
+
+    M = 0
+    for name in body_names:
+        body = plant.GetBodyByName(name)
+        M += mass_per_body[body.name()]
+    CoMs = np.zeros((t_x.size, 3))
+    for name in body_names:
+        body = plant.GetBodyByName(name)
+        CoMs += mass_per_body[body.name()] * CoMs_per_body[body.name()]
+    CoMs /= M
+
+    ### Get AM
+    angular_momentum_about_local_com_of_selected_bodies = np.zeros((t_x.size, 3))
+    angular_momentum_about_local_com_of_selected_bodies_per_body = {}
+    for name in body_names:
+        body = plant.GetBodyByName(name)
+
+        angular_momentum_about_local_com_per_body = np.zeros((t_x.size, 3))
+        for i in range(t_x.size):
+            plant.SetPositionsAndVelocities(context, x[i])
+
+            body_pose = plant.EvalBodyPoseInWorld(context, body)
+
+            R_AE = body_pose.rotation()
+            M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+            V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
+            L_WBo_W = M_BBo_W * V_WBo_W
+
+            # Testing
+            # p_BoBc_W = R_AE.matrix() @ body.default_com()
+            # L_BcBc_W = L_WBo_W.Shift(p_BoBc_W)
+
+            # if t_x[i] > 6.7:
+            #     import pdb;pdb.set_trace()
+
+            # SpatialMomentumInWorldAboutWo
+            p_WoBo_W = body_pose.translation()
+            L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
+
+            # SpatialMomentumInWorldAboutCOM
+            L_WS_W = L_WS_W.Shift(CoMs[i])
+
+            angular_momentum_about_local_com_per_body[i] = L_WS_W.rotational()
+            # import pdb;pdb.set_trace()
+        angular_momentum_about_local_com_of_selected_bodies += angular_momentum_about_local_com_per_body
+        angular_momentum_about_local_com_of_selected_bodies_per_body[body.name()] = angular_momentum_about_local_com_per_body
+
+    dim = 2   # 0 corresponds to x
+    plt.figure("angular momentum per body about the COM of selected bodies")
+    plt.plot(t_osc_debug, 0.1 * fsm, 'k')
+    legend_list = ["fsm"]
+    i = 0
+    linestyle = '-'
+    for key in angular_momentum_about_local_com_of_selected_bodies_per_body:
+        plt.plot(t_x, angular_momentum_about_local_com_of_selected_bodies_per_body[key][:,dim], linestyle)
+        legend_list += [key]
+        if i == 9:
+            linestyle = '--'
+        if i == 19:
+            linestyle = '-.'
+        i+=1
+    plt.plot(t_x, angular_momentum_about_local_com_of_selected_bodies[:,dim], linestyle)
+    legend_list += ["all"]
+    plt.legend(legend_list)
+
+    return angular_momentum_about_local_com_of_selected_bodies, angular_momentum_about_local_com_of_selected_bodies_per_body
+
+
+
+
+def InvestigatePelvisMotionRtCoM(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config, model_instance):
+    ## Individual momentum (reference: CalcSpatialMomentumInWorldAboutPoint)
+    body_indices = plant.GetBodyIndices(model_instance)
+
+    body = plant.GetBodyByName("pelvis")
+    angular_momentum_per_body = np.zeros((t_x.size, 3))
+    angular_momentum_per_body_from_rotation = np.zeros((t_x.size, 3))
+    coms = np.zeros((t_x.size, 3))
+    pelvis_rotations = np.zeros((t_x.size, 3, 3))
+    pelvis_positions = np.zeros((t_x.size, 3))
+    com_pos_max = -100000 * np.ones([2,1])
+    com_pos_min = 100000 * np.ones([2,1])
+    for i in range(t_x.size):
+        plant.SetPositionsAndVelocities(context, x[i])
+        com = plant.CalcCenterOfMassPositionInWorld(context)
+
+        body_pose = plant.EvalBodyPoseInWorld(context, body)
+
+        R_AE = body_pose.rotation()
+        M_BBo_W = body.default_spatial_inertia().ReExpress(R_AE)
+        V_WBo_W = plant.EvalBodySpatialVelocityInWorld(context, body)
+        L_WBo_W = M_BBo_W * V_WBo_W
+
+        # SpatialMomentumInWorldAboutWo
+        p_WoBo_W = body_pose.translation()
+        L_WS_W = L_WBo_W.Shift(-p_WoBo_W)
+
+        # SpatialMomentumInWorldAboutCOM
+        L_WS_W = L_WS_W.Shift(com)
+
+        angular_momentum_per_body[i] = L_WS_W.rotational()
+        angular_momentum_per_body_from_rotation[i] = L_WBo_W.rotational()
+
+        coms[i] = com
+        pelvis_rotations[i] = R_AE.matrix()
+        pelvis_positions[i] = p_WoBo_W
+
+        com_pos_max = np.max(np.hstack([com[0:2].reshape(2,1),com_pos_max]), 1).reshape(2,1)
+        com_pos_min = np.min(np.hstack([com[0:2].reshape(2,1),com_pos_min]), 1).reshape(2,1)
+    x_limit = [com_pos_min[0] - 1, com_pos_max[0]+1]
+    y_limit = [com_pos_min[1] - 1, com_pos_max[1]+1]
+
+    # Animate
+    first_time = True
+    for i in range(0, t_x.size, 10):
+        if first_time:
+            plt.figure("Feet and CoM positions", figsize=(6.4, 4.8))
+            first_time = False
+        plt.title("current time = %.3f" % t_x[i])
+
+        plt.plot(coms[i,0],coms[i,1], 'ko')
+
+        # Draw pelvis orientation
+        rot = pelvis_rotations[i]
+        # rot = pelvis_rotations[i].T
+        pelvis_x_axis = rot[0:2,0]
+        pelvis_y_axis = rot[0:2,1]
+        # import pdb;pdb.set_trace()
+        plt.arrow(x=pelvis_positions[i,0], y=pelvis_positions[i,1], dx=pelvis_x_axis[0]/5, dy=pelvis_x_axis[1]/5, width=.01)
+        plt.arrow(x=pelvis_positions[i,0], y=pelvis_positions[i,1], dx=pelvis_y_axis[0]/5, dy=pelvis_y_axis[1]/5, width=.01)
+
+        # Labels and stuffs
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        if len(x_limit) > 0:
+            plt.xlim(x_limit)
+            plt.ylim(y_limit)
+        # else:
+        #     lb = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+        #     ub = np.min(np.hstack([global_feet_pos, global_com_pos]), 1)
+        #     plt.xlim([lb[0] - 1, lb[1] + 1])
+        #     plt.ylim([ub[0] - 1, ub[1] + 1])
+        # Manually overwrite
+        # plt.xlim([-0.2, 3])
+        # plt.ylim([-1, 1])
+
+        ax = plt.gca()
+        ax.set_aspect('equal', adjustable='box')
+
+
+        plt.draw()
+        plt.pause(0.01)
+        # plt.pause(0.1)
+        # plt.pause(0.3)
+        plt.clf()
+
 
 if __name__ == '__main__':
     main()

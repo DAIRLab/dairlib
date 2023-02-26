@@ -153,7 +153,7 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
 
 std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
     const AlipGaitParams& gait_params, int nmodes, int knots_per_mode) {
-
+  DRAKE_DEMAND(gait_params.double_stance_duration > 0);
   vector<VectorXd> gait = vector<VectorXd>(
       nmodes, VectorXd::Zero(4 * knots_per_mode));
   auto [x0, x1] = MakePeriodicAlipGait(gait_params);
@@ -174,7 +174,7 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
     }
   }
 
-//
+
 //  for (const auto& x : gait) {
 //    if (x.hasNaN()) {
 //      std::cout << "Invalid gait generated for " << gait_params;

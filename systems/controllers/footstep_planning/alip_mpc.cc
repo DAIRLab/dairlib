@@ -128,6 +128,7 @@ vector<VectorXd> AlipMPC::ExtractDynamicsConstraintDual(
     }
     dual_solutions.push_back(duals);
   }
+  return dual_solutions;
 }
 
 void AlipMPC::AddInputCost(double R) {

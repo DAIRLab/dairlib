@@ -36,13 +36,14 @@ int do_main(int argc, char* argv[]) {
     footholds.push_back(foothold);
   }
   auto trajopt = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
+  trajopt.SetDoubleSupportTime(0.1);
+  auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.3, 0.3, 10);
   trajopt.AddFootholds(footholds);
-  auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.1, 0.35, 10);
   trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
   trajopt.UpdateNominalStanceTime(0.3, 0.3);
-  trajopt.SetDoubleSupportTime(0.1);
   trajopt.SetInputLimit(1);
   trajopt.AddInputCost(10);
+
 
   const auto& planner_solver_options =
       drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(

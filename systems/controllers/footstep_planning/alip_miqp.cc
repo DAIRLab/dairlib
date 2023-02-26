@@ -1,6 +1,7 @@
 #include "alip_miqp.h"
 #include "solvers/optimization_utils.h"
 #include "drake/solvers/solve.h"
+#include "drake/solvers/branch_and_bound.h"
 #include <iostream>
 
 namespace dairlib::systems::controllers {
@@ -64,13 +65,16 @@ void AlipMIQP::MakeFootholdConstraints(MathematicalProgram& prog) {
 void AlipMIQP::SolveOCProblemAsIs() {
 //  drake::copyable_unique_ptr<MathematicalProgram> prog_tmp(prog_);
   MakeFootholdConstraints(*prog_);
-  const auto& result = drake::solvers::Solve(*prog_);
-  if (result.is_success()) {
-    solution_.first = result;
-    solution_.second = ExtractDynamicsConstraintDual(result);
-  } else {
-    std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
-  }
+  auto bnb = drake::solvers::MixedIntegerBranchAndBound(*prog_,
+                                                        drake::solvers::OsqpSolver::id());
+  const auto& result =  bnb.Solve();
+  std::cout << result << "\n";
+//  if (result.is_success()) {
+//    solution_.first = result;
+//    solution_.second = ExtractDynamicsConstraintDual(result);
+//  } else {
+//    std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
+//  }
 }
 
 void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,

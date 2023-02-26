@@ -15,36 +15,43 @@ using Eigen::VectorXd;
 using Eigen::Matrix4d;
 using Eigen::MatrixXd;
 
-int do_main(int argc, char* argv[]) {
-  std::vector<ConvexFoothold> footholds;
 
-  Vector3d p0 = Vector3d::Zero();
-  std::vector<Vector3d> origins = {
-      p0,
-      Vector3d(0.4, 0, 0),
-      Vector3d(1, 1, 1),
-      Vector3d(0.5, 0.1, 0),
-      Vector3d(0.5, 0.1, 0),
-      Vector3d(0.75, -0.1, 0),
-      Vector3d(0.3, 0.1, 1.3),
-      Vector3d(0.75, -0.1, 0)
-  };
-  for (auto& o: origins) {
+struct mpc_profiling_data {
+  double multiqp_runtime;
+  double miqp_runtime;
+};
+
+std::vector<ConvexFoothold> GetRandomFootholds(int n, double r) {
+  std::vector<ConvexFoothold> footholds;
+  for (int i = 0; i < n; i++) {
+    Vector3d origin = Vector3d::Random();
+    Vector3d normal = Vector3d::Random();
+    normal(2) = 1;
+    normal(0) *= std::min(1.0,  0.2 / abs(normal(0)));
+    normal(1) *= std::min(1.0,  0.2 / abs(normal(1)));
+    origin(2) *= std::min(1.0,  0.5 / abs(origin(2)));
+    normal.normalize();
     auto foothold = ConvexFoothold();
-    foothold.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero());
-    for (auto& i : {-1.0, 1.0}){
-      for (auto& j: {-1.0, 1.0}) {
-        foothold.AddFace(Vector3d(i, j, 0), o + Vector3d(0.1 * i, 0.1 * j, 0));
+    foothold.SetContactPlane(normal, origin);
+    for (auto& j : {-1.0, 1.0}){
+      for (auto& k: {-1.0, 1.0}) {
+        foothold.AddFace(Vector3d(j, k, 0),
+                         origin + Vector3d(r * j, r * k, 0));
       }
     }
     footholds.push_back(foothold);
   }
+  return footholds;
+}
+
+mpc_profiling_data TestRandomFootholds(int n, double r) {
   auto trajopt_miqp = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
   auto trajopt_multiqp = AlipMultiQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
   std::vector<AlipMPC*> trajopts = {&trajopt_miqp, &trajopt_multiqp};
   trajopt_miqp.SetDoubleSupportTime(0.1);
   trajopt_multiqp.SetDoubleSupportTime(0.1);
   auto xd = trajopt_miqp.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.3, 0.3, 10);
+  auto footholds = GetRandomFootholds(n, r);
   for (const auto trajopt: trajopts) {
     trajopt->AddFootholds(footholds);
     trajopt->AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
@@ -54,18 +61,25 @@ int do_main(int argc, char* argv[]) {
     trajopt->Build();
   }
 
+  mpc_profiling_data times{0, 0};
+  auto p0 = Vector3d::Zero();
   auto start = std::chrono::high_resolution_clock::now();
   trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "MIQP solve time: " << elapsed.count() << std::endl;
+  times.miqp_runtime = elapsed.count();
 
   start = std::chrono::high_resolution_clock::now();
   trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
-  std::cout << "MultiQP solve time: " << elapsed.count() << std::endl;
-  return 0;
+  times.multiqp_runtime = elapsed.count();
+  return times;
+}
+
+int do_main(int argc, char* argv[]) {
+  auto times = TestRandomFootholds(5, 0.2);
+  std::cout << "MIQP: " << times.miqp_runtime << "\nmultiqp: " << times.multiqp_runtime << std::endl;
 }
 
 }

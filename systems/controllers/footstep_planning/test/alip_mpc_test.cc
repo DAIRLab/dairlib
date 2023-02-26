@@ -22,48 +22,49 @@ int do_main(int argc, char* argv[]) {
   std::vector<Vector3d> origins = {
       p0,
       Vector3d(0.4, 0, 0),
+      Vector3d(1, 1, 1),
       Vector3d(0.5, 0.1, 0),
-//      Vector3d(0.75, -0.1, 0)
+      Vector3d(0.5, 0.1, 0),
+      Vector3d(0.75, -0.1, 0),
+      Vector3d(0.3, 0.1, 1.3),
+      Vector3d(0.75, -0.1, 0)
   };
   for (auto& o: origins) {
     auto foothold = ConvexFoothold();
     foothold.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero());
     for (auto& i : {-1.0, 1.0}){
       for (auto& j: {-1.0, 1.0}) {
-        foothold.AddFace(Vector3d(i, j, 0), o + Vector3d(0.5 * i, 0.5 * j, 0));
+        foothold.AddFace(Vector3d(i, j, 0), o + Vector3d(0.1 * i, 0.1 * j, 0));
       }
     }
     footholds.push_back(foothold);
   }
-  auto trajopt = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
-  trajopt.SetDoubleSupportTime(0.1);
-  auto xd = trajopt.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.3, 0.3, 10);
-  trajopt.AddFootholds(footholds);
-  trajopt.AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
-  trajopt.UpdateNominalStanceTime(0.3, 0.3);
-  trajopt.SetInputLimit(1);
-  trajopt.AddInputCost(10);
-
-
-  const auto& planner_solver_options =
-      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
-          FindResourceOrThrow(
-              "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
-          ));
-
-  trajopt.Build();
+  auto trajopt_miqp = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
+  auto trajopt_multiqp = AlipMultiQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
+  std::vector<AlipMPC*> trajopts = {&trajopt_miqp, &trajopt_multiqp};
+  trajopt_miqp.SetDoubleSupportTime(0.1);
+  trajopt_multiqp.SetDoubleSupportTime(0.1);
+  auto xd = trajopt_miqp.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.3, 0.3, 10);
+  for (const auto trajopt: trajopts) {
+    trajopt->AddFootholds(footholds);
+    trajopt->AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
+    trajopt->UpdateNominalStanceTime(0.3, 0.3);
+    trajopt->SetInputLimit(1);
+    trajopt->AddInputCost(10);
+    trajopt->Build();
+  }
 
   auto start = std::chrono::high_resolution_clock::now();
-  trajopt.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
+  trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "solve time: " << elapsed.count() << std::endl;
+  std::cout << "MIQP solve time: " << elapsed.count() << std::endl;
 
   start = std::chrono::high_resolution_clock::now();
-  trajopt.CalcOptimalFootstepPlan(xd.front().head<4>(), p0, true);
+  trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
   finish = std::chrono::high_resolution_clock::now();
   elapsed = finish - start;
-  std::cout << "solve time: " << elapsed.count() << std::endl;
+  std::cout << "MultiQP solve time: " << elapsed.count() << std::endl;
   return 0;
 }
 

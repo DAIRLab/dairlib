@@ -49,6 +49,7 @@ void CalcAlipState(const MultibodyPlant<double>& plant, Context<double>* context
 
 Matrix<double, 4, 8> CalcResetMap(
     double com_z, double m, double Tds, ResetDiscretization discretization) {
+  DRAKE_DEMAND(Tds > 0);
   MatrixXd A = CalcA(com_z, m);
   Matrix4d Ad = CalcAd(com_z, m, Tds);
   Matrix4d Adinv = Ad.inverse();

@@ -65,8 +65,8 @@ void AlipMIQP::MakeFootholdConstraints(MathematicalProgram& prog) {
 void AlipMIQP::SolveOCProblemAsIs() {
 //  drake::copyable_unique_ptr<MathematicalProgram> prog_tmp(prog_);
   MakeFootholdConstraints(*prog_);
-  auto bnb = drake::solvers::MixedIntegerBranchAndBound(*prog_,
-                                                        drake::solvers::OsqpSolver::id());
+  auto bnb = drake::solvers::MixedIntegerBranchAndBound(
+      *prog_, drake::solvers::OsqpSolver::id());
   const auto& result =  bnb.Solve();
   std::cout << result << "\n";
 //  if (result.is_success()) {

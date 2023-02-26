@@ -188,21 +188,38 @@ def main():
 
     # ComputeAndPlotCentroidalAngularMomentum(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config)
 
-    selected_bodies = ["pelvis","yaw_left","yaw_right","hip_left","hip_right"]
-    angular_momentum_about_local_com_of_selected_bodies, _ = ComputeAndPlotAngularMomentumAboutTheSelectedBodiesCoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance, selected_bodies)
-    dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation = ComputeAndPlotCentroidalAngularMomentumOfEachBody(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance)
-    ComputeAndPlotCentroidalAngularMomentumForPaper(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation, angular_momentum_about_local_com_of_selected_bodies)
+    # selected_bodies = ["pelvis","yaw_left","yaw_right","hip_left","hip_right"]
+    # selected_bodies = ["pelvis","yaw_left","yaw_right","hip_left","hip_right","thigh_left","thigh_right"]
+    # angular_momentum_about_local_com_of_selected_bodies, _ = ComputeAndPlotAngularMomentumAboutTheSelectedBodiesCoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance, selected_bodies)
+
+    # dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation = ComputeAndPlotCentroidalAngularMomentumOfEachBody(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance)
+
+    # ComputeAndPlotCentroidalAngularMomentumForPaper(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation, angular_momentum_about_local_com_of_selected_bodies)
     # 0.72-(-0.36)
     # 0.94-(-0.53)
 
 
-    ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
-    ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config, True)
+    # ComputeAndPlotACoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plot_config)
+    # ComputeAndPlotACoMRate(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug, osc_debug['t_osc'], plant, plot_config, True)
     #
     # PlotTorqueSquare(robot_output, robot_input, osc_debug, plot_config)
 
 
     # InvestigatePelvisMotionRtCoM(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], osc_debug['t_osc'], osc_debug['fsm'], plant, context,osc_debug,plot_config, model_instance)
+
+    compare_two_logs = True
+    if compare_two_logs:
+        filename = "/home/yuming/Desktop/temp/0217/lcmlog-2023-02-16.01"
+        log = lcm.EventLog(filename, "r")
+        robot_output2, robot_input2, osc_debug2 = \
+            get_log_data(log,  # log
+                default_channels,  # lcm channels
+                plot_config.start_time,
+                plot_config.duration,
+                mbp_plots.load_default_channels,  # processing callback
+                plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+
+        ComputeAndPlotCentroidalAngularMomentumForPaper2(np.hstack([robot_output['q'], robot_output['v']]), robot_output['t_x'], np.hstack([robot_output2['q'], robot_output2['v']]), robot_output2['t_x'], plant, context,osc_debug,plot_config)
 
 
     plt.show()
@@ -358,14 +375,7 @@ def ComputeAndPlotACoM(x, t_x, osc_debug, t_osc_debug, plot_config):
 def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config,
         dictionary_centroidal_angular_momentum_per_body, dictionary_centroidal_angular_momentum_per_body_from_rotation, angular_momentum_about_local_com_of_selected_bodies):
     ### Total centroidal angular momentum
-    centroidal_angular_momentum = np.zeros((t_x.size, 3))
-    for i in range(t_x.size):
-        # import pdb;pdb.set_trace()
-        plant.SetPositionsAndVelocities(context, x[i])
-        com = plant.CalcCenterOfMassPositionInWorld(context)
-
-        h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
-        centroidal_angular_momentum[i] = h_WC_eval.rotational()
+    centroidal_angular_momentum = ComputeCentroidalAngularMomentum(x, t_x, plant, context)
 
     # Testing -- testing if the CAM per body calculation is correct (Ans: it is)
     # cam_sum = np.zeros((t_x.size,3))
@@ -374,6 +384,7 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, pl
 
     # Testing -- compute the CAM of the whole pelvis body including the yaw and hip
     whole_pelvis_body_dict = ["pelvis","yaw_left","yaw_right","hip_left","hip_right"]
+    whole_pelvis_body_dict = ["pelvis","yaw_left","yaw_right","hip_left","hip_right","thigh_left","thigh_right"]
     centroidal_angular_momentum_whole_pelvis_body = np.zeros((t_x.size, 3))
     for key in whole_pelvis_body_dict:
         centroidal_angular_momentum_whole_pelvis_body = centroidal_angular_momentum_whole_pelvis_body + dictionary_centroidal_angular_momentum_per_body[key]
@@ -387,7 +398,7 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, pl
     plt.plot(t_x, centroidal_angular_momentum[:,[2]])
     # plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body["pelvis"][:,[2]])
     # plt.plot(t_x, dictionary_centroidal_angular_momentum_per_body_from_rotation["pelvis"][:,[2]])
-    plt.plot(t_x, angular_momentum_about_local_com_of_selected_bodies[:,[2]])
+    # plt.plot(t_x, angular_momentum_about_local_com_of_selected_bodies[:,[2]])
     # plt.plot(t_x, centroidal_angular_momentum_whole_pelvis_body[:,[0]])
     # plt.plot(t_x, centroidal_angular_momentum_whole_pelvis_body[:,[1]])
     # plt.plot(t_x, centroidal_angular_momentum_whole_pelvis_body[:,[2]])
@@ -401,20 +412,37 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper(x, t_x, t_osc_debug, fsm, pl
     # plt.legend(["total", "pelvis (rt com)", "pelvis"])
     # plt.legend(["total", "x", "y", "z"])
     # plt.legend(["total", "whole pelvis (rt com)"])
-    plt.legend(["total", "whole pelvis"])
+    # plt.legend(["total", "whole pelvis"])
     # plt.legend(["total", "pelvis"])
+
+
+def ComputeAndPlotCentroidalAngularMomentumForPaper2(x, t_x, x2, t_x2, plant, context,osc_debug, plot_config):
+    ### Total centroidal angular momentum
+    centroidal_angular_momentum = ComputeCentroidalAngularMomentum(x, t_x, plant, context)
+    centroidal_angular_momentum2 = ComputeCentroidalAngularMomentum(x2, t_x2, plant, context)
+
+    plt.rcParams.update({'font.size': 13})
+    fig = plt.figure("Centroidal angular momentum about z axis")
+    plt.plot(t_x, centroidal_angular_momentum[:,[2]], color="#990000", linewidth=2)
+    plt.plot(t_x2, centroidal_angular_momentum2[:,[2]], color="#0000D1", linewidth=2)
+    # plt.title("Centroidal angular momentum about z axis")
+    plt.xlabel("time (s)")
+    plt.ylabel("($kg \cdot m^2 / s$)")
+    plt.xlim([6.24,7.44])
+    plt.ylim([-0.64,1.03])
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.gcf().subplots_adjust(left=0.17)
+    # plt.gcf().subplots_adjust(bottom=0.1)
+    # plt.gcf().subplots_adjust(left=0.1)
+
+    plt.legend(["ACoM", "pelvis"], loc='lower right')
+    # plt.legend(["Pelvis", "ACoM"], loc='lower right')
+    plt.grid()
 
 
 def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config):
     ### Total centroidal angular momentum
-    centroidal_angular_momentum = np.zeros((t_x.size, 3))
-    for i in range(t_x.size):
-        # import pdb;pdb.set_trace()
-        plant.SetPositionsAndVelocities(context, x[i])
-        com = plant.CalcCenterOfMassPositionInWorld(context)
-
-        h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
-        centroidal_angular_momentum[i] = h_WC_eval.rotational()
+    centroidal_angular_momentum = ComputeCentroidalAngularMomentum(x, t_x, plant, context)
 
     fig = plt.figure("Centroidal angular momentum")
     plt.plot(t_x, centroidal_angular_momentum[:,[0,1,2]])
@@ -426,6 +454,19 @@ def ComputeAndPlotCentroidalAngularMomentum(x, t_x, t_osc_debug, fsm, plant, con
     plot = plot_styler.PlotStyler(fig)
     mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
     plt.legend(["x", "y", "z"])
+
+
+def ComputeCentroidalAngularMomentum(x, t_x, plant, context):
+    ### Total centroidal angular momentum
+    centroidal_angular_momentum = np.zeros((t_x.size, 3))
+    for i in range(t_x.size):
+        # import pdb;pdb.set_trace()
+        plant.SetPositionsAndVelocities(context, x[i])
+        com = plant.CalcCenterOfMassPositionInWorld(context)
+
+        h_WC_eval = plant.CalcSpatialMomentumInWorldAboutPoint(context, com)
+        centroidal_angular_momentum[i] = h_WC_eval.rotational()
+    return centroidal_angular_momentum
 
 
 def ComputeAndPlotCentroidalAngularMomentumOfEachBody(x, t_x, t_osc_debug, fsm, plant, context,osc_debug,plot_config, model_instance):

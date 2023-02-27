@@ -68,7 +68,7 @@ void AlipMIQP::SolveOCProblemAsIs() {
   auto bnb = drake::solvers::MixedIntegerBranchAndBound(
       *prog_, drake::solvers::OsqpSolver::id());
   const auto& result =  bnb.Solve();
-  std::cout << result << "\n";
+//  std::cout << result << "\n";
 //  if (result.is_success()) {
 //    solution_.first = result;
 //    solution_.second = ExtractDynamicsConstraintDual(result);

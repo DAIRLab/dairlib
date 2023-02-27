@@ -78,8 +78,12 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
 }
 
 int do_main(int argc, char* argv[]) {
-  auto times = TestRandomFootholds(5, 0.2);
-  std::cout << "MIQP: " << times.miqp_runtime << "\nmultiqp: " << times.multiqp_runtime << std::endl;
+  std::cout << "N, MIQP,  multiqp: " << std::endl;
+  for (int i = 1; i < 15; i++) {
+    auto times = TestRandomFootholds(i, 0.2);
+    std::cout << i << ", " << times.miqp_runtime <<
+              ", " << times.multiqp_runtime << std::endl;
+  }
   return 0;
 }
 

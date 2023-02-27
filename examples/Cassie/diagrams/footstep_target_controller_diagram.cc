@@ -218,8 +218,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
       plant, plant_context.get());
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant, plant_context.get(), gains.lipm_height,
-      unordered_fsm_states, contact_points_in_each_state,
-      gains.Q_alip_kalman_filter.asDiagonal(),
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
       gains.R_alip_kalman_filter.asDiagonal(), false, true);
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
@@ -233,10 +233,6 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
           plant, plant_context.get(), left_right_support_fsm_states,
           left_right_foot,gains.mid_foot_height, gains.final_foot_height,
           gains.final_foot_velocity_z, false);
-  auto stance_duration_adder = builder.AddSystem<drake::systems::Adder<double>>(2,1);
-  auto stance_duration =
-      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(
-          left_support_duration * VectorXd::Ones(1));
   auto left_toe_angle_traj_gen =
       builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
           plant, plant_context.get(), pos_map["toe_left"],
@@ -438,10 +434,8 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   hip_yaw_traj_gen->get_radio_input_port());
 
   // Connect footstep planning pipeline
-  builder.Connect(stance_duration_adder->get_output_port(),
-                  alip_traj_generator->get_input_port_next_fsm_switch_time());
-  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
-                  alip_traj_generator->get_input_port_fsm_switch_time());
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  alip_traj_generator->get_input_port_touchdown_time());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   swing_ft_traj_generator->get_input_port_fsm_switch_time());
   builder.Connect(high_level_command->get_yaw_output_port(),
@@ -452,12 +446,7 @@ FootstepTargetControllerDiagram::FootstepTargetControllerDiagram(
                   footstep_planner->get_input_port_vdes());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   footstep_planner->get_input_port_fsm_switch_time());
-  builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
-                  stance_duration_adder->get_input_port(0));
-  builder.Connect(stance_duration->get_output_port(),
-                  stance_duration_adder->get_input_port(1));
-  builder.Connect(stance_duration_adder->get_output_port(),
-                  swing_ft_traj_generator->get_input_port_next_fsm_switch_time());
+
 
   builder.Connect(alip_traj_generator->get_output_port_com(),
                   osc->get_input_port_tracking_data("alip_com_traj"));

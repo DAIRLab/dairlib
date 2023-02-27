@@ -125,6 +125,7 @@ class AlipWalkingControllerDiagram final
   std::vector<int> single_support_states;
   std::vector<int> double_support_states;
   std::vector<int> unordered_fsm_states;
+  std::vector<double> unordered_state_durations;
   std::vector<std::vector<std::pair<const Vector3d, const Frame<double>&>>>
       contact_points_in_each_state;
   std::unique_ptr<drake::systems::Context<double>> plant_context;

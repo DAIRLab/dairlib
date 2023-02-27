@@ -144,6 +144,9 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
     unordered_fsm_states = {left_stance_state, right_stance_state,
                             post_left_double_support_state,
                             post_right_double_support_state};
+    unordered_state_durations = {left_support_duration, right_support_duration,
+                                 double_support_duration,
+                                 double_support_duration};
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
     contact_points_in_each_state.push_back({left_toe_mid});
@@ -153,6 +156,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
     fsm_states = {left_stance_state, right_stance_state};
     state_durations = {left_support_duration, right_support_duration};
     unordered_fsm_states = {left_stance_state, right_stance_state};
+    unordered_state_durations = {left_support_duration, right_support_duration};
     contact_points_in_each_state.push_back({left_toe_mid});
     contact_points_in_each_state.push_back({right_toe_mid});
   }
@@ -210,9 +214,8 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
       plant, plant_context.get());
   auto alip_traj_generator = builder.AddSystem<systems::ALIPTrajGenerator>(
       plant, plant_context.get(), gains.lipm_height,
-      unordered_fsm_states,
-      contact_points_in_each_state,
-      gains.Q_alip_kalman_filter.asDiagonal(),
+      unordered_fsm_states, unordered_state_durations,
+      contact_points_in_each_state, gains.Q_alip_kalman_filter.asDiagonal(),
       gains.R_alip_kalman_filter.asDiagonal(), false);
   auto footstep_planner =
       builder.AddSystem<systems::AlipFootstepPlanner>(
@@ -438,8 +441,8 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                   hip_yaw_traj_gen->get_radio_input_port());
 
   // Connect footstep planning pipeline
-  builder.Connect(stance_duration_adder->get_output_port(),
-                  alip_traj_generator->get_input_port_next_fsm_switch_time());
+  builder.Connect(touchdown_event_time->get_output_port_event_time(),
+                  alip_traj_generator->get_input_port_touchdown_time());
   builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   footstep_planner->get_input_port_alip_state());
   builder.Connect(high_level_command->get_xy_output_port(),

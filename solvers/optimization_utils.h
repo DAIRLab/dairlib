@@ -59,6 +59,16 @@ double SecondOrderCost(const drake::solvers::MathematicalProgram& prog,
 /// the dimension of f(x)
 int CountConstraintRows(const drake::solvers::MathematicalProgram& prog);
 
+std::tuple<Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXd>
+GetBigMFormulation(const Eigen::MatrixXd& A, const Eigen::MatrixXd& b, double M);
+
+
+drake::solvers::Binding<drake::solvers::LinearConstraint>
+AddBigMInequalityConstraint(drake::solvers::MathematicalProgram& prog,
+    const Eigen::MatrixXd& A, const Eigen::VectorXd& b,
+    double M,
+    const drake::solvers::VectorXDecisionVariable& x,
+    const drake::solvers::DecisionVariable& z);
 
 /// A utility for mixed integer programming,
 /// Adds the big M formulation of the constraint (z == 1) implies Ax <= b,
@@ -69,28 +79,64 @@ int CountConstraintRows(const drake::solvers::MathematicalProgram& prog);
 /// @param M the big-M parameter
 /// @param x continuous variable
 /// @param z integer variable
-drake::solvers::Binding<drake::solvers::LinearConstraint>
-AddBigMInequalityConstraint(drake::solvers::MathematicalProgram& prog,
-    const Eigen::MatrixXd& A, const Eigen::VectorXd& b,
-    double M,
-    const drake::solvers::VectorXDecisionVariable& x,
-    const drake::solvers::DecisionVariable& z);
+class LinearBigMConstraint {
+ public:
+  LinearBigMConstraint(drake::solvers::MathematicalProgram& prog,
+                       const Eigen::MatrixXd& A, const Eigen::VectorXd& b,
+                       double M,
+                       const drake::solvers::VectorXDecisionVariable& x,
+                       const drake::solvers::DecisionVariable& z) :
+      M_(M), constraint_(AddBigMInequalityConstraint(prog, A, b, M, x, z)),
+      z_(z), x_(x){};
 
-/// A utility for mixed integer programming,
-/// Adds the big M formulation of the constraint (z == 1) implies Ax == b,
-/// transforming it to Ax <= b + M * (1 - z) and Ax >= b - M * (1 - z)
-/// @param prog The MathematicalProgram
-/// @param A the constraint matrix
-/// @param b the constraint value
-/// @param M the big-M parameter
-/// @param x continuous variable
-/// @param z integer variable
-std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-AddBigMEqualityConstraint(drake::solvers::MathematicalProgram& prog,
-                            const Eigen::MatrixXd& A, const Eigen::VectorXd& b,
-                            double M,
-                            const drake::solvers::VectorXDecisionVariable& x,
-                            const drake::solvers::DecisionVariable& z);
+  void update(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
+    auto [Ac, lb, ub] = GetBigMFormulation(A, b, M_);
+    constraint_.evaluator()->UpdateCoefficients(Ac, lb, ub);
+  }
+  void deactivate() {
+    constraint_.evaluator()->UpdateCoefficients(
+        Eigen::RowVectorXd::Zero(x_.size() + 1),
+        drake::Vector1d::Constant(1, -std::numeric_limits<double>::infinity()),
+        drake::Vector1d::Constant(1, std::numeric_limits<double>::infinity()));
+  }
+  void deactivate(drake::solvers::MathematicalProgram& prog) {
+    deactivate();
+    prog.SetInitialGuess(x_, Eigen::VectorXd::Zero(x_.rows()));
+    prog.SetInitialGuess(z_, 0);
+  }
+ private:
+  drake::solvers::Binding<drake::solvers::LinearConstraint> constraint_;
+  const double M_;
+  const drake::solvers::DecisionVariable& z_;
+  const drake::solvers::VectorXDecisionVariable& x_;
+};
+
+class LinearBigMEqualityConstraint {
+ public:
+  LinearBigMEqualityConstraint(
+      drake::solvers::MathematicalProgram& prog,
+      const Eigen::MatrixXd& A, const Eigen::VectorXd& b, double M,
+      const drake::solvers::VectorXDecisionVariable& x,
+      const drake::solvers::DecisionVariable& z) :
+      upper_(prog, A, b, M, x, z),
+      lower_(prog, -A, -b, M, x, z){};
+
+  void update(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
+    upper_.update(A, b);
+    lower_.update(-A, -b);
+  }
+  void deactivate() {
+    upper_.deactivate();
+    lower_.deactivate();
+  }
+  void deactivate(drake::solvers::MathematicalProgram& prog) {
+    upper_.deactivate(prog);
+    lower_.deactivate(prog);
+  }
+ private:
+  LinearBigMConstraint upper_;
+  LinearBigMConstraint lower_;
+};
 
 /// Convenience functions to print out constraint matrices
 void print_constraint(

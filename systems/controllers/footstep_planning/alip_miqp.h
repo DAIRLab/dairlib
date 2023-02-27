@@ -1,10 +1,12 @@
 #pragma once
 #include "alip_mpc.h"
 #include "drake/solvers/gurobi_solver.h"
+#include "solvers/optimization_utils.h"
 
 namespace dairlib::systems::controllers {
 
 using drake::solvers::GurobiSolver;
+using drake::solvers::VectorXDecisionVariable;
 
 class AlipMIQP final : public AlipMPC {
  public:
@@ -12,9 +14,7 @@ class AlipMIQP final : public AlipMPC {
            double H,
            int nknots,
            alip_utils::ResetDiscretization reset_discretization) :
-           AlipMPC(m, H, nknots, reset_discretization){
-//    DRAKE_DEMAND(drake::solvers::GurobiSolver::is_enabled());
-  }
+           AlipMPC(m, H, nknots, reset_discretization){}
 
  AlipMIQP(double m,
           double H,
@@ -31,7 +31,12 @@ class AlipMIQP final : public AlipMPC {
   void Build() final;
 
  private:
-  void MakeFootholdConstraints(drake::solvers::MathematicalProgram& prog);
+  static constexpr int kMaxFootholds = 20;
+  std::vector<VectorXDecisionVariable> zz_{};
+  std::vector<std::vector<solvers::LinearBigMConstraint>> foothold_constraints_;
+  std::vector<std::vector<solvers::LinearBigMEqualityConstraint>> foothold_equalityConstraints_;
+  void MakeFootholdConstraints();
+  void UpdateFootholdConstraints();
   void SolveOCProblemAsIs() final;
   void UpdateInitialGuess() final;
   void UpdateInitialGuess(

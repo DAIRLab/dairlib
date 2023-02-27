@@ -7,6 +7,7 @@ cc_library(
     srcs = ["alip_minlp_footstep_controller.cc"],
     hdrs = ["alip_minlp_footstep_controller.h"],
     deps = [
+        ":alip_miqp",
         ":alip_multiqp",
         ":alip_utils",
         "//common:eigen_utils",

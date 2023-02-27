@@ -13,14 +13,15 @@ using Eigen::Vector2d;
 using Eigen::Matrix4d;
 
 using drake::solvers::GurobiSolver;
-using solvers::AddBigMInequalityConstraint;
-using solvers::AddBigMEqualityConstraint;
+using solvers::LinearBigMConstraint;
+using solvers::LinearBigMEqualityConstraint;
 
 void AlipMIQP::AddMode() {
   std::string nm = std::to_string(nmodes_);
   pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + nm));
   xx_.push_back(prog_->NewContinuousVariables(nx_ * nknots_, "xx_" + nm));
   uu_.push_back(prog_->NewContinuousVariables(nu_ * (nknots_ - 1), "uu_" + nm));
+  zz_.push_back(prog_->NewContinuousVariables(kMaxFootholds, "zz_" + nm));
   nmodes_ += 1;
 }
 
@@ -46,28 +47,26 @@ void AlipMIQP::Build() {
   built_ = true;
 }
 
-void AlipMIQP::MakeFootholdConstraints(MathematicalProgram& prog) {
+void AlipMIQP::MakeFootholdConstraints() {
   constexpr double bigM = 4.0;
   for (int j = 1; j < nmodes_; j++) {
-    auto z = prog.NewBinaryVariables(footholds_.size(),
-                                     "foothold_selection_" + std::to_string(j));
-    prog.AddLinearEqualityConstraint(
-        Eigen::RowVectorXd::Ones(z.size()), drake::Vector1d::Ones(), z);
+    auto z = zz_.at(j);
     for (int i = 0; i < footholds_.size(); i++) {
       const auto&[A, b] = footholds_.at(i).GetConstraintMatrices();
       const auto&[A_eq, b_eq] = footholds_.at(i).GetEqualityConstraintMatrices();
-      AddBigMEqualityConstraint(prog, A_eq, b_eq, bigM, pp_.at(j), z(i));
-      AddBigMInequalityConstraint(prog, A, b, bigM, pp_.at(j), z(i));
     }
   }
 }
 
+void AlipMIQP::UpdateFootholdConstraints() {
+  bool is_implemented = false;
+  DRAKE_ASSERT(is_implemented);
+}
+
 void AlipMIQP::SolveOCProblemAsIs() {
   solve_time_.start_ = std::chrono::steady_clock::now();
-  drake::copyable_unique_ptr<MathematicalProgram> prog_tmp(prog_);
-  MakeFootholdConstraints(*prog_tmp);
-  const auto& result =  solver_.Solve(*prog_tmp);
-//  std::cout << result << "\n";
+  UpdateFootholdConstraints();
+  const auto& result =  solver_.Solve(*prog_);
   if (result.is_success()) {
     solution_.first = result;
     solution_.second = ExtractDynamicsConstraintDual(result);
@@ -79,7 +78,7 @@ void AlipMIQP::SolveOCProblemAsIs() {
 }
 
 void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
-                                     const Eigen::Vector4d &x0) {
+                                  const Eigen::Vector4d &x0) {
   // Update state initial guess
   vector<VectorXd> xg = xd_;
 

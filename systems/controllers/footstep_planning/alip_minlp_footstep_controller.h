@@ -5,6 +5,7 @@
 
 #include "alip_utils.h"
 #include "alip_multiqp.h"
+#include "alip_miqp.h"
 #include "geometry/convex_foothold_set.h"
 #include "systems/filters/s2s_kalman_filter.h"
 
@@ -143,7 +144,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   int nu_;
 
   // mpc object
-  mutable AlipMultiQP trajopt_;
+  mutable AlipMIQP trajopt_;
 
   // finite state machine management
   std::vector<int> left_right_stance_fsm_states_;

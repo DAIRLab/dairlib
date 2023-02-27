@@ -174,28 +174,34 @@ int CountConstraintRows(const MathematicalProgram& prog) {
   return n;
 }
 
-
-std::vector<Binding<LinearConstraint>> AddBigMEqualityConstraint(
-    drake::solvers::MathematicalProgram& prog,
-    const MatrixXd& A, const VectorXd& b, double M,
-    const VectorXDecisionVariable& x, const DecisionVariable& z){
-  return {
-      AddBigMInequalityConstraint(prog, A, b, M, x, z),
-      AddBigMInequalityConstraint(prog, -A, -b, M, x, z)
-  };
-}
-
-Binding<LinearConstraint> AddBigMInequalityConstraint(
-    drake::solvers::MathematicalProgram& prog,
-    const MatrixXd& A, const VectorXd& b, double M,
-    const VectorXDecisionVariable& x, const DecisionVariable& z){
+std::tuple<MatrixXd, VectorXd, VectorXd>
+GetBigMFormulation(const MatrixXd& A, const MatrixXd& b, double M) {
   MatrixXd Ac = MatrixXd::Zero(A.rows(), A.cols() + 1);
   Ac.leftCols(A.cols()) = A;
   Ac.rightCols<1>() = M * VectorXd::Ones(A.rows());
   VectorXd ub = b + M * VectorXd::Ones(b.size());
   VectorXd lb =
       -std::numeric_limits<double>::infinity() * VectorXd::Ones(b.size());
+  return std::tie(Ac, lb, ub);
+}
+
+Binding<LinearConstraint> AddBigMInequalityConstraint(
+    drake::solvers::MathematicalProgram& prog,
+    const MatrixXd& A, const VectorXd& b, double M,
+    const VectorXDecisionVariable& x, const DecisionVariable& z){
+  auto [Ac, lb, ub] = GetBigMFormulation(A, b, M);
   return prog.AddLinearConstraint(Ac, lb, ub, {x, drake::Vector1<DecisionVariable>(z)});
+}
+
+void UpdateBigMInequalityConstraint(Binding<LinearConstraint>& binding,
+                                    const MatrixXd& A, const MatrixXd& b,
+                                    double M) {
+  MatrixXd Ac = MatrixXd::Zero(A.rows(), A.cols() + 1);
+  Ac.leftCols(A.cols()) = A;
+  Ac.rightCols<1>() = M * VectorXd::Ones(A.rows());
+  VectorXd ub = b + M * VectorXd::Ones(b.size());
+  VectorXd lb = VectorXd::Constant(b.size(), -std::numeric_limits<double>::infinity());
+  binding.evaluator()->UpdateCoefficients(Ac, lb, ub);
 }
 
 void print_constraint(

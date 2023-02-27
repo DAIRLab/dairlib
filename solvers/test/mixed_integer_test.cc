@@ -22,8 +22,8 @@ void test_mip_equality() {
   MathematicalProgram prog;
   auto x = prog.NewContinuousVariables(2);
   auto z = prog.NewBinaryVariables(2);
-  AddBigMEqualityConstraint(prog, a1, b, 5.0, x, z(0));
-  AddBigMEqualityConstraint(prog, a2, b, 5.0, x, z(1));
+  auto junk1 = LinearBigMEqualityConstraint(prog, a1, b, 5.0, x, z(0));
+  auto junk2 = LinearBigMEqualityConstraint(prog, a2, b, 5.0, x, z(1));
   prog.AddLinearEqualityConstraint(RowVector2d::Ones(), Vector1d::Ones(), z);
   prog.AddQuadraticErrorCost(Eigen::Matrix2d::Identity(), Vector2d(0.5, 0.75), x);
 
@@ -62,10 +62,10 @@ void test_mip_inequality() {
   MathematicalProgram prog;
   auto x = prog.NewContinuousVariables(2);
   auto z = prog.NewBinaryVariables(4);
-  AddBigMEqualityConstraint(prog, a1, b, 5.0, x, z(0));
-  AddBigMEqualityConstraint(prog, a2, b, 5.0, x, z(1));
-  AddBigMInequalityConstraint(prog, A, b0, 20, x, z(2));
-  AddBigMInequalityConstraint(prog, A, b1, 20, x, z(3));
+  auto junk1 = LinearBigMEqualityConstraint(prog, a1, b, 5.0, x, z(0));
+  auto junk2 = LinearBigMEqualityConstraint(prog, a2, b, 5.0, x, z(1));
+  auto junk3 = LinearBigMConstraint(prog, A, b0, 20, x, z(2));
+  auto junk4 = LinearBigMConstraint(prog, A, b1, 20, x, z(3));
 
   prog.AddLinearEqualityConstraint(RowVector2d::Ones(), Vector1d::Ones(), z.head<2>());
   prog.AddLinearEqualityConstraint(RowVector2d::Ones(), Vector1d::Ones(), z.tail<2>());

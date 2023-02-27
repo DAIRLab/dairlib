@@ -40,7 +40,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
     plant_(plant),
     context_(plant_context),
     trajopt_(
-        AlipMultiQP(
+        AlipMIQP(
           plant.CalcTotalMass(*plant_context),
           gains.hdes,
           gains.knots_per_mode,

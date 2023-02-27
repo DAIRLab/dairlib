@@ -226,9 +226,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
   //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
   const double knee_spring_threshold_ctrl_ = -0.015;
-  const double knee_spring_threshold_ekf_ = -0.015;
+  const double knee_spring_threshold_ekf_ = -0.035;
   const double heel_spring_threshold_ctrl_ = -0.01;
-  const double heel_spring_threshold_ekf_ = -0.01;
+  const double heel_spring_threshold_ekf_ = -0.03;
   const double w_soft_constraint_ = 100;  // Soft constraint cost
   const double contact_force_threshold_;  // Soft constraint cost
 

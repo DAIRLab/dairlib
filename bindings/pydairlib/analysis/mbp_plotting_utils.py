@@ -93,6 +93,13 @@ def process_state_channel(state_data, plant):
 def process_imu_channel(robot_out_data):
     t_imu = []
     imu = []
+    for msg in robot_out_data:
+        t_imu.append(msg.utime / 1e6)
+        imu.append(msg.imu_accel)
+    return {
+        't_imu': t_imu,
+        'imu_accel' : np.array(imu)
+    }
 
 
 def process_effort_channel(data, plant):
@@ -272,13 +279,28 @@ def load_default_channels(data, plant, controller_plant,
     osc_debug = process_osc_channel(data[osc_debug_channel])
     osc_debug = permute_osc_joint_ordering(
         osc_debug, data[state_channel][0], controller_plant)
+    imu = process_imu_channel(data[state_channel])
 
-    return robot_output, robot_input, osc_debug
+    return robot_output, robot_input, osc_debug, imu
 
 
 def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
+
+
+def plot_imu_accel(imu_accel, ps=None):
+    ps = plot_styler.PlotStyler() if ps is None else ps
+    plotting_utils.make_plot_of_entire_series(
+        imu_accel,
+        't_imu',
+        {'imu_accel': ['ax', 'ay', 'az']},
+        {'xlabel': 'Time',
+         'ylabel': 'IMU Acceleration',
+         'title': 'IMU Acceleration in the IMU frame'},
+        ps
+    )
+    return ps
 
 
 def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=None, title=None):

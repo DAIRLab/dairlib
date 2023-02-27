@@ -520,6 +520,14 @@ void CassieStateEstimator::EstimateContactForEkf(
   bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
                                right_heel_spring < heel_spring_threshold_ekf_);
 
+  // conflicting contact measurements can cause the state estimator to jump
+  // due to kinematic differences, backlash, etc, so we only want to trust
+  // one at a time
+  if (left_contact_spring && right_contact_spring) {
+    left_contact_spring = left_knee_spring < right_knee_spring;
+    right_contact_spring = !left_contact_spring;
+  }
+
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
     *left_contact = 1;

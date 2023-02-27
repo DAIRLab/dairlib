@@ -194,6 +194,10 @@ class AlipMPC {
     return std::chrono::duration<double>(solve_time_.finish_ - solve_time_.start_).count();
   };
 
+  double optimizer_time() const {
+    return solve_time_.solve_time_;
+  }
+
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   double H() const {return H_;}

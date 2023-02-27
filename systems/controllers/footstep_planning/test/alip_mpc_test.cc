@@ -15,10 +15,11 @@ using Eigen::VectorXd;
 using Eigen::Matrix4d;
 using Eigen::MatrixXd;
 
-
 struct mpc_profiling_data {
   double multiqp_runtime;
+  double multiqp_solve_time;
   double miqp_runtime;
+  double miqp_solve_time;
 };
 
 std::vector<ConvexFoothold> GetRandomFootholds(int n, double r) {
@@ -60,29 +61,41 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
     trajopt->AddInputCost(10);
     trajopt->Build();
   }
-
-  mpc_profiling_data times{0, 0};
+  mpc_profiling_data times{0, 0, 0, 0};
   auto p0 = Vector3d::Zero();
-  auto start = std::chrono::high_resolution_clock::now();
   trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  times.miqp_runtime = elapsed.count();
-
-  start = std::chrono::high_resolution_clock::now();
   trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
-  finish = std::chrono::high_resolution_clock::now();
-  elapsed = finish - start;
-  times.multiqp_runtime = elapsed.count();
+  times.miqp_runtime = trajopt_miqp.solve_time();
+  times.miqp_solve_time = trajopt_miqp.optimizer_time();
+  times.multiqp_runtime = trajopt_multiqp.solve_time();
+  times.multiqp_solve_time = trajopt_multiqp.optimizer_time();
   return times;
 }
 
+std::vector<mpc_profiling_data> TestRandomFootholds(int n, double r, int trials) {
+  std::vector<mpc_profiling_data> data(trials, {0,0,0,0});
+  for (int i = 0; i < trials; i++) {
+    data.at(i) = TestRandomFootholds(n, r);
+  }
+  return data;
+}
+
 int do_main(int argc, char* argv[]) {
-  std::cout << "N, MIQP,  multiqp: " << std::endl;
-  for (int i = 1; i < 20; i++) {
-    auto times = TestRandomFootholds(i, 0.5);
-    std::cout << i << ", " << times.miqp_runtime <<
-              ", " << times.multiqp_runtime << std::endl;
+  std::map<int, std::vector<mpc_profiling_data>> profile_data{};
+
+  const int max_n = 10;
+  for (int i = 1; i < max_n; i++) {
+    profile_data[i] = TestRandomFootholds(i, 0.5, 20);
+    std::cout << "\n\nTesting " << i + 1 << " footholds\n\n";
+  }
+
+  for (int i = 1; i < max_n; i++) {
+    for (const auto& data : profile_data.at(i)) {
+      std::cout << i << ", " << data.multiqp_solve_time << ", "
+                << data.multiqp_runtime << ", "
+                << data.miqp_solve_time << ", "
+                << data.miqp_runtime << std::endl;
+    }
   }
   return 0;
 }

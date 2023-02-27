@@ -47,7 +47,7 @@ void AlipMIQP::Build() {
 }
 
 void AlipMIQP::MakeFootholdConstraints(MathematicalProgram& prog) {
-  double bigM = 2.0;
+  constexpr double bigM = 4.0;
   for (int j = 1; j < nmodes_; j++) {
     auto z = prog.NewBinaryVariables(footholds_.size(),
                                      "foothold_selection_" + std::to_string(j));
@@ -63,6 +63,7 @@ void AlipMIQP::MakeFootholdConstraints(MathematicalProgram& prog) {
 }
 
 void AlipMIQP::SolveOCProblemAsIs() {
+  solve_time_.start_ = std::chrono::steady_clock::now();
   drake::copyable_unique_ptr<MathematicalProgram> prog_tmp(prog_);
   MakeFootholdConstraints(*prog_tmp);
   const auto& result =  solver_.Solve(*prog_tmp);
@@ -73,6 +74,8 @@ void AlipMIQP::SolveOCProblemAsIs() {
   } else {
     std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
   }
+  solve_time_.finish_ = std::chrono::steady_clock::now();
+  solve_time_.solve_time_ = result.get_solver_details<GurobiSolver>().optimizer_time;
 }
 
 void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,

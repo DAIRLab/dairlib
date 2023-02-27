@@ -119,14 +119,20 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
 vector<VectorXd> AlipMPC::ExtractDynamicsConstraintDual(
     const drake::solvers::MathematicalProgramResult& sol) {
   DRAKE_ASSERT(sol.is_success());
-  vector<VectorXd> dual_solutions;
+  vector<VectorXd> dual_solutions(nmodes_, VectorXd::Zero((nknots_ - 1) * nx_));
+
+  // Dual solution isn't well-defined for an MIQP.
+  // If not using OSQP, we probably have integer variables, so just return zeros
+  if (sol.get_solver_id() != drake::solvers::OsqpSolver::id()) {
+    return dual_solutions;
+  }
+
   for (int n = 0; n < nmodes_; n++) {
-    VectorXd duals = VectorXd::Zero((nknots_ - 1) * nx_);
+    auto& duals = dual_solutions.at(n);
     for (int k = 0; k < nknots_ - 1; k++) {
       GetStateAtKnot(duals, k) = sol.GetDualSolution<LinearEqualityConstraint>(
           dynamics_c_.at(n).at(k));
     }
-    dual_solutions.push_back(duals);
   }
   return dual_solutions;
 }

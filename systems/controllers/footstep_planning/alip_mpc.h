@@ -33,19 +33,13 @@ using std::vector;
 
 struct profile_data {
   std::chrono::time_point<std::chrono::steady_clock> start_;
-  std::chrono::duration<double> pre_solve_;
-  std::vector<std::chrono::duration<double>> solves_;
-  std::chrono::duration<double> post_solves_;
-  std::chrono::duration<double> finish_;
+  std::chrono::time_point<std::chrono::steady_clock> finish_;
+  double solve_time_ = 0;
   friend std::ostream& operator<<(std::ostream& os, const profile_data& data);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const profile_data& data) {
-  os << data.pre_solve_.count() << ", ";
-  for (const auto& t : data.solves_) {
-    os << t.count() << ", ";
-  }
-  os << data.post_solves_.count() << ", " << data.finish_.count() << "\n";
+  os << "total: " << (data.finish_ - data.start_).count() << ", solver: " << data.solve_time_;
   return os;
 }
 
@@ -196,7 +190,10 @@ class AlipMPC {
   };
 
   // misc getters and setters
-  virtual double solve_time() const = 0;
+  double solve_time() const {
+    return std::chrono::duration<double>(solve_time_.finish_ - solve_time_.start_).count();
+  };
+
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
   double H() const {return H_;}
@@ -230,6 +227,7 @@ class AlipMPC {
   vector<Eigen::VectorXd> xd_;
   vector<vector<int>> mode_sequnces_{};
   vector<geometry::ConvexFoothold> footholds_;
+  profile_data solve_time_;
 
   // problem setup methods
   void MakeTerminalCost();

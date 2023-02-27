@@ -46,9 +46,9 @@ using drake::solvers::LinearEqualityConstraint;
 using geometry::kMaxFootholdFaces;
 
 void AlipMultiQP::SolveOCProblemAsIs() {
-//  profile_data prof;
-//  prof.start_ = std::chrono::steady_clock::now();
 
+  solve_time_.start_ = std::chrono::steady_clock::now();
+  solve_time_.solve_time_ = 0;
   mode_sequnces_ = GetPossibleModeSequences();
   vector<pair<MathematicalProgramResult, vector<VectorXd>>> solutions;
 
@@ -60,6 +60,7 @@ void AlipMultiQP::SolveOCProblemAsIs() {
         ExtractDynamicsConstraintDual(sol) :
         vector<VectorXd>(nmodes_,VectorXd::Zero((nknots_ - 1) * nx_));
     solutions.push_back({sol, dual_solutions}); // NOLINT
+    solve_time_.solve_time_ = sol.get_solver_details<OsqpSolver>().solve_time;
   } else {
     for (auto& seq: mode_sequnces_) {
       UpdateFootholdConstraints(seq);
@@ -68,6 +69,7 @@ void AlipMultiQP::SolveOCProblemAsIs() {
           ExtractDynamicsConstraintDual(sol) :
           vector<VectorXd>(nmodes_,VectorXd::Zero((nknots_ - 1) * nx_));
       solutions.push_back({sol, dual_solutions}); // NOLINT
+      solve_time_.solve_time_ += sol.get_solver_details<OsqpSolver>().solve_time;
     }
   }
 
@@ -91,8 +93,7 @@ void AlipMultiQP::SolveOCProblemAsIs() {
     const auto& constraints = prog_->GetAllConstraints();
     solvers::print_constraint(constraints);
   }
-//  prof.finish_ =  std::chrono::steady_clock::now() - prof.start_;
-//  std::cout << prof;
+  solve_time_.finish_ =  std::chrono::steady_clock::now();
 }
 
 void AlipMultiQP::Build(const drake::solvers::SolverOptions& options) {

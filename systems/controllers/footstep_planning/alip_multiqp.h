@@ -21,10 +21,6 @@ class AlipMultiQP final : public AlipMPC {
     }
   }
 
-  double solve_time() const final {
-    return solution_.first.get_solver_details<OsqpSolver>().run_time;
-  };
-
   void AddMode() final;
   void MakeFootholdConstraints();
   void Build(const drake::solvers::SolverOptions &solver_options) final;

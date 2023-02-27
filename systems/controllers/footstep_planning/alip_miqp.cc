@@ -63,18 +63,16 @@ void AlipMIQP::MakeFootholdConstraints(MathematicalProgram& prog) {
 }
 
 void AlipMIQP::SolveOCProblemAsIs() {
-//  drake::copyable_unique_ptr<MathematicalProgram> prog_tmp(prog_);
-  MakeFootholdConstraints(*prog_);
-  auto bnb = drake::solvers::MixedIntegerBranchAndBound(
-      *prog_, drake::solvers::OsqpSolver::id());
-  const auto& result =  bnb.Solve();
+  drake::copyable_unique_ptr<MathematicalProgram> prog_tmp(prog_);
+  MakeFootholdConstraints(*prog_tmp);
+  const auto& result =  solver_.Solve(*prog_tmp);
 //  std::cout << result << "\n";
-//  if (result.is_success()) {
-//    solution_.first = result;
-//    solution_.second = ExtractDynamicsConstraintDual(result);
-//  } else {
-//    std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
-//  }
+  if (result.is_success()) {
+    solution_.first = result;
+    solution_.second = ExtractDynamicsConstraintDual(result);
+  } else {
+    std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
+  }
 }
 
 void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,

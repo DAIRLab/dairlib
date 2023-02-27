@@ -26,10 +26,6 @@ class AlipMIQP final : public AlipMPC {
     }
   }
 
-  double solve_time() const final {
-    return solution_.first.get_solver_details<GurobiSolver>().optimizer_time;
-  };
-
   void AddMode() final;
   void Build(const drake::solvers::SolverOptions &solver_options) final;
   void Build() final;

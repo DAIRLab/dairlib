@@ -90,6 +90,11 @@ def process_state_channel(state_data, plant):
             'u': np.array(u)}
 
 
+def process_imu_channel(robot_out_data):
+    t_imu = []
+    imu = []
+
+
 def process_effort_channel(data, plant):
     u = []
     t = []

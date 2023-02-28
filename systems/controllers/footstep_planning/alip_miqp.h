@@ -34,7 +34,7 @@ class AlipMIQP final : public AlipMPC {
   static constexpr int kMaxFootholds = 20;
   std::vector<VectorXDecisionVariable> zz_{};
   std::vector<std::vector<solvers::LinearBigMConstraint>> foothold_constraints_;
-  std::vector<std::vector<solvers::LinearBigMEqualityConstraint>> foothold_equalityConstraints_;
+  std::vector<std::vector<solvers::LinearBigMEqualityConstraint>> foothold_equality_constraints_;
   void MakeFootholdConstraints();
   void UpdateFootholdConstraints();
   void SolveOCProblemAsIs() final;

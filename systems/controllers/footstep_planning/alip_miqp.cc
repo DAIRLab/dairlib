@@ -11,6 +11,7 @@ using Eigen::Vector4d;
 using Eigen::Vector3d;
 using Eigen::Vector2d;
 using Eigen::Matrix4d;
+using Eigen::RowVector3d;
 
 using drake::solvers::GurobiSolver;
 using solvers::LinearBigMConstraint;
@@ -21,7 +22,6 @@ void AlipMIQP::AddMode() {
   pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + nm));
   xx_.push_back(prog_->NewContinuousVariables(nx_ * nknots_, "xx_" + nm));
   uu_.push_back(prog_->NewContinuousVariables(nu_ * (nknots_ - 1), "uu_" + nm));
-  zz_.push_back(prog_->NewContinuousVariables(kMaxFootholds, "zz_" + nm));
   nmodes_ += 1;
 }
 
@@ -36,6 +36,7 @@ void AlipMIQP::Build() {
   for (int i = 0; i < nmodes_; i++) {
     tt_(i) = td_.at(i);
   }
+  MakeFootholdConstraints();
   MakeNoCrossoverConstraint();
   MakeResetConstraints();
   MakeDynamicsConstraints();
@@ -50,17 +51,38 @@ void AlipMIQP::Build() {
 void AlipMIQP::MakeFootholdConstraints() {
   constexpr double bigM = 4.0;
   for (int j = 1; j < nmodes_; j++) {
-    auto z = zz_.at(j);
-    for (int i = 0; i < footholds_.size(); i++) {
-      const auto&[A, b] = footholds_.at(i).GetConstraintMatrices();
-      const auto&[A_eq, b_eq] = footholds_.at(i).GetEqualityConstraintMatrices();
+    auto z = prog_->NewContinuousVariables(kMaxFootholds, "zz_");
+    zz_.push_back(z);
+    vector<LinearBigMConstraint> tmp;
+    vector<LinearBigMEqualityConstraint> tmp_eq;
+    for (int i = 0; i < kMaxFootholds; i++) {
+      tmp.push_back(LinearBigMConstraint(
+          *prog_, RowVector3d::Zero(),VectorXd::Zero(1), bigM,
+       pp_.at(j-1), z(i)));
+      tmp_eq.push_back(LinearBigMEqualityConstraint(
+          *prog_, RowVector3d::Zero(), VectorXd::Zero(1), bigM,
+          pp_.at(j-1), z(i)));
     }
+    foothold_constraints_.push_back(tmp);
+    foothold_equality_constraints_.push_back(tmp_eq);
   }
 }
 
 void AlipMIQP::UpdateFootholdConstraints() {
-  bool is_implemented = false;
-  DRAKE_ASSERT(is_implemented);
+  for (int i = 0; i < footholds_.size(); i++) {
+    const auto& [Aeq, beq] = footholds_.at(i).GetEqualityConstraintMatrices();
+    const auto& [A, b] = footholds_.at(i).GetConstraintMatrices();
+    for (int j = 0; j < nmodes_ - 1; j++) {
+      foothold_equality_constraints_.at(j).at(i).update(Aeq, beq);
+      foothold_constraints_.at(j).at(i).update(A, b);
+    }
+  }
+  for (int i = footholds_.size(); i < kMaxFootholds; i++) {
+    for (int j = 0; j < nmodes_ - 1; j++) {
+      foothold_equality_constraints_.at(j).at(i).deactivate(*prog_);
+      foothold_constraints_.at(j).at(i).deactivate(*prog_);
+    }
+  }
 }
 
 void AlipMIQP::SolveOCProblemAsIs() {

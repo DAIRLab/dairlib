@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <fstream>
 #include <string>
-
-#include "drake/math/saturate.h"
 #include "drake/math/roll_pitch_yaw.h"
 #include "systems/controllers/control_utils.h"
 #include "multibody/multibody_utils.h"

@@ -9,7 +9,6 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
 
-#include "drake/math/saturate.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/bspline_trajectory.h"
 #include "drake/common/trajectories/path_parameterized_trajectory.h"

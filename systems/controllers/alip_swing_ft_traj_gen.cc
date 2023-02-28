@@ -5,7 +5,6 @@
 #include <fstream>
 #include <string>
 
-#include "drake/math/saturate.h"
 #include "drake/math/roll_pitch_yaw.h"
 #include "systems/controllers/control_utils.h"
 #include "multibody/multibody_utils.h"
@@ -308,7 +307,7 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     // creating trajectory.
     // Ensure "current_time < end_time" to avoid error in
     // creating trajectory.
-    start_time_of_this_interval = drake::math::saturate(
+    start_time_of_this_interval = std::clamp(
         start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
         end_time_of_this_interval - 0.001);
 

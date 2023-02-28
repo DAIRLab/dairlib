@@ -1,5 +1,6 @@
 import subprocess
 import time
+from tqdm import *
 import lcm
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -290,7 +291,7 @@ def construct_success_plot():
     np.save(trial_name + str(i) + '_success', success)
 
 def plot_success():
-  trial_name = 'down_jump_'
+  trial_name = 'long_jump_'
   landing_times = np.linspace(0.000, 0.050, 11)
   landing_times -= 0.025
   impact_thresholds = np.linspace(0.000, 0.100, 11)
@@ -307,7 +308,7 @@ def plot_success():
   ps = plot_styler.PlotStyler()
   plot_styler.PlotStyler.set_default_styling()
   cmap = matplotlib.colors.ListedColormap([ps.grey, ps.blue])
-  fig = plt.figure()
+
   # plt.imshow(total_success, cmap=cmap)
   im = plt.imshow(total_success, cmap='Reds')
   # im = plt.contour(total_success, cmap='Reds')
@@ -339,8 +340,9 @@ def plot_costs():
   u_slice = slice(3000, 7000)
   w_u = np.array([0.5, 0.9, 0.5, 0.1, 0.1, 0.5, 0.9, 0.5, 0.1, 0.1])
   W_u = np.diag(w_u)
-  trial_name = 'down_jump_'
-  for num in range(5):
+  fails = np.zeros(u_cost.shape)
+  trial_name = 'long_jump_'
+  for num in trange(5):
     exp_name = trial_name + str(num)
     success = np.load(exp_name + '_success.npy')
     t_u_matrix = np.load(data_directory + exp_name + '/t_u.npy')
@@ -355,15 +357,28 @@ def plot_costs():
           # print((u_matrix[i, j, t, :].T @ u_matrix[i, j, t, :]))
           u_cost_exp[i, j] += (t_u_matrix[i, j, t+1] - t_u_matrix[i, j, t]) * (u_matrix[i, j, t, :].T @ W_u @ u_matrix[i, j, t, :])
     fail_bool = np.array(1 - success, dtype=bool)
-    u_cost_exp[u_cost_exp > 20000] = 20000
-    u_cost_exp[fail_bool] = 25000 * np.ones(u_cost.shape)[fail_bool]
+    fails += fail_bool
+    # u_cost_exp[u_cost_exp > 20000] = 20000
+    # u_cost_exp[fail_bool] = 25000 * np.ones(u_cost.shape)[fail_bool]
     u_cost += u_cost_exp
   # u_cost[u_cost > 3] = 3
   # u_cost[u_cost < 2.7] = 2.7
-  im = plt.imshow(8e-6 * u_cost)
-  plt.colorbar(im)
+
+  u_cost *= 8e-6 / .5801
+  # u_cost[u_cost > 1] = 1
+  u_cost[fails >= 2] = -1
+  u_cost_masked = np.ma.masked_where(u_cost == -1, u_cost)
+  cmap = plt.get_cmap('Blues')
+  cmap.set_bad(color='black')
+  im = plt.imshow(u_cost_masked, cmap=cmap)
+  ax = plt.gca()
+  legend_elements = [Patch(facecolor='black', alpha=1.0, label='Fail')]
+  legend = ax.legend(handles=legend_elements, loc=1)
+  cbar = plt.colorbar(im)
+  # im = plt.imshow(u_cost, cmap=cmap)
   plt.xlabel('Projection Window Duration (s)')
   plt.ylabel('Deviation from Nominal Transition Time (s)')
+  cbar.set_label('Normalized Controller Effort Cost')
   ax = plt.gca()
   np.set_printoptions(precision=3)
   ax.set_xticks(np.arange(0, 11, 1))

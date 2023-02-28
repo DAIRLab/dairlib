@@ -14,7 +14,7 @@ class PlotStyler():
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     matplotlib.rcParams['figure.figsize'] = 8, 6
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 16}
+    font = {'size': 20}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')

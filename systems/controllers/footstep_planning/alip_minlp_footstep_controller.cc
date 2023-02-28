@@ -87,6 +87,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   trajopt_.SetMaximumStanceTime(gains_.t_max);
   trajopt_.SetInputLimit(gains_.u_max);
   trajopt_.Build(trajopt_solver_options);
+  trajopt_.UpdateFootholds({ConvexFoothold::MakeFlatGround()});
   trajopt_.CalcOptimalFootstepPlan(
       -0.5 * gains_.stance_width * Vector4d::UnitY(),
       0.5 * gains_.stance_width * Vector3d::UnitY());

@@ -5,6 +5,8 @@
 
 namespace dairlib::systems::controllers {
 
+using drake::solvers::Binding;
+using drake::solvers::LinearEqualityConstraint;
 using drake::solvers::GurobiSolver;
 using drake::solvers::VectorXDecisionVariable;
 
@@ -30,9 +32,18 @@ class AlipMIQP final : public AlipMPC {
   void Build(const drake::solvers::SolverOptions &solver_options) final;
   void Build() final;
 
+  std::vector<Eigen::VectorXd> GetFootholdSelection() {
+    std::vector<Eigen::VectorXd> zz{};
+    for (const auto& z : zz_) {
+      zz.push_back(solution_.first.GetSolution(z));
+    }
+    return zz;
+  }
+
  private:
   static constexpr int kMaxFootholds = 20;
   std::vector<VectorXDecisionVariable> zz_{};
+  std::vector<Binding<LinearEqualityConstraint>> integer_sum_constraints_;
   std::vector<std::vector<solvers::LinearBigMConstraint>> foothold_constraints_;
   std::vector<std::vector<solvers::LinearBigMEqualityConstraint>> foothold_equality_constraints_;
   void MakeFootholdConstraints();
@@ -44,5 +55,4 @@ class AlipMIQP final : public AlipMPC {
   drake::solvers::GurobiSolver solver_{};
 
 };
-
 }

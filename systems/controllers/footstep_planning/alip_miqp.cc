@@ -12,6 +12,7 @@ using Eigen::Vector3d;
 using Eigen::Vector2d;
 using Eigen::Matrix4d;
 using Eigen::RowVector3d;
+using Eigen::RowVectorXd;
 
 using drake::solvers::GurobiSolver;
 using solvers::LinearBigMConstraint;
@@ -51,17 +52,32 @@ void AlipMIQP::Build() {
 void AlipMIQP::MakeFootholdConstraints() {
   constexpr double bigM = 4.0;
   for (int j = 1; j < nmodes_; j++) {
-    auto z = prog_->NewContinuousVariables(kMaxFootholds, "zz_");
-    zz_.push_back(z);
+    const std::string& js = std::to_string(j -1);
+    zz_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "zz" + js));
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
+    integer_sum_constraints_.push_back(
+        prog_->AddLinearEqualityConstraint(
+            RowVectorXd::Zero(kMaxFootholds),
+            VectorXd::Zero(1), zz_.at(j-1)
+        )
+    );
     for (int i = 0; i < kMaxFootholds; i++) {
+      const auto& z = zz_.at(j-1);
       tmp.push_back(LinearBigMConstraint(
-          *prog_, RowVector3d::Zero(),VectorXd::Zero(1), bigM,
-       pp_.at(j-1), z(i)));
+          *prog_,
+          RowVector3d::Zero(),
+          VectorXd::Zero(1),
+          bigM,
+          pp_.at(j),
+          z(i)));
       tmp_eq.push_back(LinearBigMEqualityConstraint(
-          *prog_, RowVector3d::Zero(), VectorXd::Zero(1), bigM,
-          pp_.at(j-1), z(i)));
+          *prog_,
+          RowVector3d::Zero(),
+          VectorXd::Zero(1),
+          bigM,
+          pp_.at(j),
+          z(i)));
     }
     foothold_constraints_.push_back(tmp);
     foothold_equality_constraints_.push_back(tmp_eq);
@@ -69,26 +85,33 @@ void AlipMIQP::MakeFootholdConstraints() {
 }
 
 void AlipMIQP::UpdateFootholdConstraints() {
-  for (int i = 0; i < footholds_.size(); i++) {
+  const int n = footholds_.size();
+  for (int i = 0; i < n; i++) {
     const auto& [Aeq, beq] = footholds_.at(i).GetEqualityConstraintMatrices();
     const auto& [A, b] = footholds_.at(i).GetConstraintMatrices();
     for (int j = 0; j < nmodes_ - 1; j++) {
-      foothold_equality_constraints_.at(j).at(i).update(Aeq, beq);
       foothold_constraints_.at(j).at(i).update(A, b);
+      foothold_equality_constraints_.at(j).at(i).update(Aeq, beq);
     }
   }
-  for (int i = footholds_.size(); i < kMaxFootholds; i++) {
+  for (int i = n; i < kMaxFootholds; i++) {
     for (int j = 0; j < nmodes_ - 1; j++) {
-      foothold_equality_constraints_.at(j).at(i).deactivate(*prog_);
       foothold_constraints_.at(j).at(i).deactivate(*prog_);
+      foothold_equality_constraints_.at(j).at(i).deactivate(*prog_);
     }
+  }
+  RowVectorXd int_sum = RowVectorXd::Zero(kMaxFootholds);
+  int_sum.block(0, 0, 1, n) = RowVectorXd::Ones(n);
+  for (int j = 0; j < nmodes_ - 1; j++) {
+    integer_sum_constraints_.at(j).evaluator()->UpdateCoefficients(
+        int_sum, VectorXd::Ones(1));
   }
 }
 
 void AlipMIQP::SolveOCProblemAsIs() {
   solve_time_.start_ = std::chrono::steady_clock::now();
   UpdateFootholdConstraints();
-  const auto& result =  solver_.Solve(*prog_);
+  auto result =  solver_.Solve(*prog_);
   if (result.is_success()) {
     solution_.first = result;
     solution_.second = ExtractDynamicsConstraintDual(result);

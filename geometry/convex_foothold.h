@@ -44,6 +44,16 @@ class ConvexFoothold {
   std::vector<Eigen::Vector3d> GetVertices();
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
 
+  static ConvexFoothold MakeFlatGround() {
+    ConvexFoothold foothold;
+    foothold.SetContactPlane(Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
+    foothold.AddFace(Eigen::Vector3d::UnitX(), 100 * Eigen::Vector3d::UnitX());
+    foothold.AddFace(-Eigen::Vector3d::UnitX(), -100 * Eigen::Vector3d::UnitX());
+    foothold.AddFace(Eigen::Vector3d::UnitY(), 100 * Eigen::Vector3d::UnitY());
+    foothold.AddFace(-Eigen::Vector3d::UnitY(), -100 * Eigen::Vector3d::UnitY());
+    return foothold;
+  }
+
  private:
   Eigen::Vector3d SolveForVertexSharedByFaces(int i, int j);
   void SortFacesByYawAngle();

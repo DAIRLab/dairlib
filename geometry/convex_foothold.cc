@@ -121,8 +121,8 @@ std::pair<Matrix3Xd, Matrix3Xi> ConvexFoothold::GetSurfaceMesh() {
   verts.rightCols(1) = centroid / N;
   Matrix3Xi idxs = Matrix3Xi::Zero(3, N);
   for (int i = 0; i < A_.rows(); i++) {
-    idxs(0, i) = i;
-    idxs(1, i) = N;
+    idxs(0, i) = N;
+    idxs(1, i) = i;
     idxs(2, i) = (i + 1) % N;
   }
   return {verts, idxs};

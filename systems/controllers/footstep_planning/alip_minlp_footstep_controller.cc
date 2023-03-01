@@ -322,7 +322,6 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
       drake::math::RotationMatrixd::MakeZRotation(atan2(R_WB_x(1), R_WB_x(0)));
   auto foothold_set =
       EvalAbstractInput(context, foothold_input_port_)->get_value<ConvexFootholdSet>();
-  foothold_set.ReExpressInNewFrame(Ryaw.matrix());
   foothold_set.CopyToLcm(&mpc_debug->footholds);
 
   int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);

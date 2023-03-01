@@ -33,13 +33,16 @@ drake::systems::EventStatus MeshcatFootholdVisualizer::UnrestrictedUpdate(
   for (int i = 0; i < foothold_set.size(); i++) {
     auto foothold = foothold_set.footholds().at(i);
     const auto [verts, faces] = foothold.GetSurfaceMesh();
-    meshcat_->SetTriangleMesh(make_path(i), verts, faces);
+    drake::geometry::Rgba rgb(1, 1, 1);
+    meshcat_->SetTriangleMesh(make_path(i), verts, faces, rgb);
   }
 
   int n_prev = state->get_discrete_state(n_footholds_idx_).get_value()(0);
   for (int i = foothold_set.size(); i < n_prev; i++) {
     meshcat_->Delete(make_path(i));
   }
+  state->get_mutable_discrete_state(n_footholds_idx_).set_value(
+      Eigen::VectorXd::Constant(1, foothold_set.size()));
   return drake::systems::EventStatus::Succeeded();
 }
 

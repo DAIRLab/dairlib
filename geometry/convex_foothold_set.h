@@ -26,8 +26,8 @@ class ConvexFootholdSet {
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   void append(const ConvexFoothold& f) { set_.push_back(f); }
   void CopyToLcm(lcmt_foothold_set* set) const;
+  static ConvexFootholdSet CopyFromLcm(const lcmt_foothold_set set);
   size_t size() const { return set_.size(); }
-
 
  private:
   std::vector<ConvexFoothold> set_;

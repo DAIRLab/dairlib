@@ -6,6 +6,7 @@ using Eigen::Vector3d;
 using Eigen::RowVector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 
 void ConvexFoothold::SetContactPlane(Eigen::Vector3d normal,
                                      Eigen::Vector3d pt) {
@@ -49,6 +50,62 @@ std::pair<MatrixXd, VectorXd> ConvexFoothold::GetConstraintMatrices() const {
 
 std::pair<MatrixXd, VectorXd> ConvexFoothold::GetEqualityConstraintMatrices() const {
   return {A_eq_, b_eq_};
+}
+
+Matrix3d ConvexFoothold::R_WF() const {
+  Vector3d b_z = A_eq_.transpose().normalized();
+  Vector3d b_x (b_z(2), 0, -b_z(0));
+  b_x.normalize();
+  Vector3d b_y = b_z.cross(b_x).normalized();
+  Matrix3d R_WF = Matrix3d::Zero();
+  R_WF.col(0) = b_x;
+  R_WF.col(1) = b_y;
+  R_WF.col(2) = b_z;
+  return R_WF;
+}
+
+namespace {
+
+bool yaw_greater(const RowVector3d& a, const RowVector3d& b, const Matrix3d& R){
+  const Vector3d arot = R * a.transpose();
+  const Vector3d brot = R * b.transpose();
+  return (atan2(arot(1), arot(0)) > atan2(brot(1), brot(2)));
+}
+}
+
+void ConvexFoothold::SortFacesByYawAngle() {
+  const Matrix3d R_FW = R_WF().transpose();
+  // Cheeky little insertion sort since these are small matrices
+  for (int i = 1; i < A_.rows(); i++) {
+    int j = i;
+    while (j > 0 && yaw_greater(A_.row(j-1), A_.row(j), R_FW)) {
+      RowVector3d tmp = A_.row(j);
+      A_.row(j).swap(A_.row(j-1));
+      b_.row(j).swap(b_.row(j-1));
+      j--;
+    }
+  }
+}
+
+Vector3d ConvexFoothold::SolveForVertexSharedByFaces(int i, int j) {
+  Matrix3d A = Matrix3d::Zero();
+  Vector3d b = Vector3d::Zero();
+  A.row(0) = A_eq_;
+  A.row(1) = A_.row(i);
+  A.row(2) = A_.row(j);
+  b(0) = b_eq_(0);
+  b(1) = b_(i);
+  b(2) = b_(j);
+  return A.inverse() * b;
+}
+
+Eigen::Matrix3Xd ConvexFoothold::GetVertices() {
+  SortFacesByYawAngle();
+  Eigen::Matrix3Xd verts = Eigen::Matrix3Xd::Zero(3, A_.rows());
+  for (int i = 1; i < A_.rows(); i++) {
+    verts.col(i) = SolveForVertexSharedByFaces(i, i-1);
+  }
+  verts.leftCols(1) = SolveForVertexSharedByFaces(0, A_.rows() -1);
 }
 
 }

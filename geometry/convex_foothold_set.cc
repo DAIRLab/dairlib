@@ -76,5 +76,22 @@ void ConvexFootholdSet::CopyToLcm(lcmt_foothold_set *set) const {
   }
 }
 
+ConvexFootholdSet ConvexFootholdSet::CopyFromLcm(lcmt_foothold_set set_lcm) {
+  ConvexFootholdSet set{};
+  for (const auto& foothold_lcm : set_lcm.footholds) {
+    ConvexFoothold foothold;
+    const Vector3d Aeq = Vector3d::Map(foothold_lcm.Aeq);
+    foothold.SetContactPlane(Aeq, foothold_lcm.beq);
+    for (int i = 0; i < foothold_lcm.nfaces; i++) {
+      foothold.AddHalfspace(
+          Vector3d::Map(foothold_lcm.A.at(i).data()),
+          VectorXd::Constant(1, foothold_lcm.b.at(i))
+      );
+    }
+    set.append(foothold);
+  }
+  return set;
+}
+
 }
 }

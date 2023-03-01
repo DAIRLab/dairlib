@@ -103,7 +103,7 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 150,  0,     0,
+  [ 140,  0,     0,
     0,   170,    0,
     0,    0,   200]
 SwingFootKd:

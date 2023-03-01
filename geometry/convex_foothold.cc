@@ -111,14 +111,21 @@ Matrix3Xd ConvexFoothold::GetVertices() {
 }
 
 std::pair<Matrix3Xd, Matrix3Xi> ConvexFoothold::GetSurfaceMesh() {
-  Matrix3Xd verts = Matrix3Xd::Zero(3, A_.rows() + 1);
-  verts.leftCols(A_.rows()) = GetVertices();
+  int N = A_.rows();
+  Matrix3Xd verts = Matrix3Xd::Zero(3, N + 1);
+  verts.leftCols(N) = GetVertices();
   Vector3d centroid = Vector3d::Zero();
-  for (int i = 0; i < A_.rows(); i++) {
+  for (int i = 0; i < N; i++) {
     centroid += verts.col(i);
   }
-  verts.rightCols(1) = centroid / A_.rows();
-  Matrix3Xi idxs = Matrix3Xi ::Zero(A_.rows());
+  verts.rightCols(1) = centroid / N;
+  Matrix3Xi idxs = Matrix3Xi::Zero(3, N);
+  for (int i = 0; i < A_.rows(); i++) {
+    idxs(0, i) = i;
+    idxs(1, i) = N;
+    idxs(2, i) = (i + 1) % N;
+  }
+  return {verts, idxs};
 }
 
 }

@@ -4,12 +4,14 @@ namespace dairlib::geometry{
 
 using Eigen::Vector3d;
 using Eigen::RowVector3d;
+using Eigen::Matrix3Xd;
+using Eigen::Matrix3Xi;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 
-void ConvexFoothold::SetContactPlane(Eigen::Vector3d normal,
-                                     Eigen::Vector3d pt) {
+void ConvexFoothold::SetContactPlane(const Vector3d& normal,
+                                     const Vector3d& pt) {
   A_eq_ = normal.transpose();
   b_eq_ = normal.dot(pt) * VectorXd::Ones(1);
 }
@@ -69,7 +71,7 @@ namespace {
 bool yaw_greater(const RowVector3d& a, const RowVector3d& b, const Matrix3d& R){
   const Vector3d arot = R * a.transpose();
   const Vector3d brot = R * b.transpose();
-  return (atan2(arot(1), arot(0)) > atan2(brot(1), brot(2)));
+  return (atan2(arot(1), arot(0)) > atan2(brot(1), brot(0)));
 }
 }
 
@@ -79,7 +81,6 @@ void ConvexFoothold::SortFacesByYawAngle() {
   for (int i = 1; i < A_.rows(); i++) {
     int j = i;
     while (j > 0 && yaw_greater(A_.row(j-1), A_.row(j), R_FW)) {
-      RowVector3d tmp = A_.row(j);
       A_.row(j).swap(A_.row(j-1));
       b_.row(j).swap(b_.row(j-1));
       j--;
@@ -99,13 +100,25 @@ Vector3d ConvexFoothold::SolveForVertexSharedByFaces(int i, int j) {
   return A.inverse() * b;
 }
 
-Eigen::Matrix3Xd ConvexFoothold::GetVertices() {
+Matrix3Xd ConvexFoothold::GetVertices() {
   SortFacesByYawAngle();
-  Eigen::Matrix3Xd verts = Eigen::Matrix3Xd::Zero(3, A_.rows());
+  Matrix3Xd verts = Matrix3Xd::Zero(3, A_.rows());
   for (int i = 1; i < A_.rows(); i++) {
     verts.col(i) = SolveForVertexSharedByFaces(i, i-1);
   }
   verts.leftCols(1) = SolveForVertexSharedByFaces(0, A_.rows() -1);
+  return verts;
+}
+
+std::pair<Matrix3Xd, Matrix3Xi> ConvexFoothold::GetSurfaceMesh() {
+  Matrix3Xd verts = Matrix3Xd::Zero(3, A_.rows() + 1);
+  verts.leftCols(A_.rows()) = GetVertices();
+  Vector3d centroid = Vector3d::Zero();
+  for (int i = 0; i < A_.rows(); i++) {
+    centroid += verts.col(i);
+  }
+  verts.rightCols(1) = centroid / A_.rows();
+  Matrix3Xi idxs = Matrix3Xi ::Zero(A_.rows());
 }
 
 }

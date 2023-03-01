@@ -43,11 +43,12 @@ cc_test(
     srcs = ["test/convex_foothold_test.cc"],
     deps = [
         ":convex_foothold",
-        ":convex_foothold_set",
         ":convex_foothold_receiver",
-        "//lcmtypes:lcmt_robot",
+        ":convex_foothold_set",
         "//common",
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
+        "@drake//common/test_utilities",
         "@gtest//:main",
     ],
 )

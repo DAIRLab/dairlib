@@ -20,7 +20,7 @@ class ConvexFoothold {
    * Set the contact plane by supplying a normal and a point on the
    * contact plane
    */
-  void SetContactPlane(Eigen::Vector3d normal, Eigen::Vector3d pt);
+  void SetContactPlane(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
 
   /*
    * Set the contact plane ax = b
@@ -70,9 +70,12 @@ class ConvexFoothold {
   Eigen::Matrix3d R_WF() const;
   std::pair<Eigen::Matrix3Xd, Eigen::Matrix3Xi> GetSurfaceMesh();
 
+  // only public for unit_testing
+  void SortFacesByYawAngle();
+
  private:
   Eigen::Vector3d SolveForVertexSharedByFaces(int i, int j);
-  void SortFacesByYawAngle();
+
   Eigen::RowVector3d A_eq_;
   Eigen::VectorXd b_eq_;
   Eigen::MatrixXd A_ = Eigen::MatrixXd::Zero(0,0);

@@ -19,7 +19,12 @@ using py_rvp = py::return_value_policy;
 
 py::class_<ConvexFoothold>(m, "ConvexFoothold")
     .def(py::init<>())
-    .def("SetContactPlane", &ConvexFoothold::SetContactPlane)
+    .def("SetContactPlane",
+         py::overload_cast<const Eigen::Vector3d&, const Eigen::Vector3d&>(
+         &ConvexFoothold::SetContactPlane))
+    .def("SetContactPlane",
+         py::overload_cast<const Eigen::Vector3d&, double>(
+         &ConvexFoothold::SetContactPlane))
     .def("AddHalfspace", &ConvexFoothold::AddHalfspace)
     .def("AddFace", &ConvexFoothold::AddFace)
     .def("GetConstraintMatrices", &ConvexFoothold::GetConstraintMatrices)

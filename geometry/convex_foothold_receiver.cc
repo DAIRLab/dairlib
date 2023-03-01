@@ -34,7 +34,7 @@ ConvexFoothold MakeFootholdFromPlanarRegion(
   // Append the first vertex to the end of the list to make the H
   // representation closed
   convex_hull.conservativeResize(2, convex_hull.cols() + 1);
-  convex_hull.col(convex_hull.cols() - 1) = convex_hull.col(0);
+  convex_hull.rightCols(1) = convex_hull.col(0);
 
   Eigen::Isometry3d X_WP;
   tf2::fromMsg(foothold.plane_parameters, X_WP);

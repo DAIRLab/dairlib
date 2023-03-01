@@ -145,3 +145,14 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_library(
+    name = "meshcat_foothold_visualizer",
+    srcs = ["meshcat_foothold_visualizer.cc"],
+    hdrs = ["meshcat_foothold_visualizer.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//geometry:convex_foothold_set",
+        "@drake//:drake_shared_library",
+    ],
+)

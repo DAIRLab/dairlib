@@ -1,0 +1,118 @@
+rows: 3
+cols: 3
+
+# High level command gains (with radio)
+vel_scale_rot: -1.5
+vel_scale_trans_sagital: 0.0
+vel_scale_trans_lateral: 0.0
+
+# Filter settings
+pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
+
+# High level command gains (without radio)
+global_target_position_x: 0
+global_target_position_y: 0
+yaw_deadband_blur: 5
+yaw_deadband_radius: 1000
+kp_yaw: 1
+kd_yaw: 0.2
+vel_max_yaw: 0.5
+
+kp_pos_sagital: 0  # 0.3
+kd_pos_sagital: 0  # 0.3
+vel_max_sagital: 0  # 0.5
+kp_pos_lateral: 0  # 0.3
+kd_pos_lateral: 0  # 0.3
+vel_max_lateral: 0  # 0.3
+target_pos_offset: 0  # -0.16
+
+# Finite state machine
+ss_time: 0.3
+ds_time: 0.1
+
+# Distance of contact point from foot rear (0 is heel, 1 is toe)
+contact_point_pos: 0.5
+
+# Swing foot trajectory
+max_CoM_to_footstep_dist: 0.55
+footstep_offset: 0.6
+center_line_offset: 0.04
+mid_foot_height: 0.16
+final_foot_height: 0.045
+final_foot_velocity_z: 0.3
+
+# LIPM trajectory
+lipm_height: 0.83
+
+# OSC gains
+mu: 0.8
+
+w_accel: 0.0
+w_soft_constraint: 8000
+w_input_reg: 0.0000001
+
+w_swing_toe: 1
+swing_toe_kp: 1500
+swing_toe_kd: 10
+
+w_hip_yaw: 2
+hip_yaw_kp: 40
+hip_yaw_kd: 2
+
+CoMW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    10]
+CoMKp:
+  [   0,   0,     0,
+      0,    0,    0,
+      0,    0,   100]
+CoMKd:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,     6]
+PelvisBalanceW:
+  [ 2,    0,     0,
+    0,    4,     0,
+    0,    0,     0]
+PelvisBalanceKp:
+  [200,    0,    0,
+   0,    200,    0,
+   0,      0,    0]
+PelvisBalanceKd:
+  [   10,     0,    0,
+      0,    10,    0,
+      0,     0,    0]
+
+PelvisHeadingW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,   0.02]
+PelvisHeadingKp:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   0]
+PelvisHeadingKd:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,    4]
+period_of_no_heading_control: 0.0
+
+SwingFootW:
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,    0,     2]
+SwingFootKp:
+  [ 150,  0,     0,
+    0,   170,    0,
+    0,    0,   200]
+SwingFootKd:
+  [2,    0,     0,
+   0,    2,     0,
+   0,    0,     1]
+
+AlipKalmanQ:
+  [.001, .001, .01, .01]
+
+AlipKalmanR:
+  [.0001, .0001, .01, .01]

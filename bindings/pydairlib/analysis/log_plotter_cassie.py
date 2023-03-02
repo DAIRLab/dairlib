@@ -427,7 +427,7 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper2(x, t_x, x2, t_x2, plant, co
     plt.plot(t_x2, centroidal_angular_momentum2[:,[2]], color="#0000D1", linewidth=2)
     # plt.title("Centroidal angular momentum about z axis")
     plt.xlabel("time (s)")
-    plt.ylabel("($kg \cdot m^2 / s$)")
+    plt.ylabel("angular momentum ($kg \cdot m^2 / s$)")
     plt.xlim([6.24,7.44])
     plt.ylim([-0.64,1.03])
     plt.gcf().subplots_adjust(bottom=0.15)
@@ -435,7 +435,8 @@ def ComputeAndPlotCentroidalAngularMomentumForPaper2(x, t_x, x2, t_x2, plant, co
     # plt.gcf().subplots_adjust(bottom=0.1)
     # plt.gcf().subplots_adjust(left=0.1)
 
-    plt.legend(["ACoM", "pelvis"], loc='lower right')
+    plt.legend(["WBO", "pelvis"], loc='lower right')
+    # plt.legend(["ACoM", "pelvis"], loc='lower right')
     # plt.legend(["Pelvis", "ACoM"], loc='lower right')
     plt.grid()
 

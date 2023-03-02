@@ -75,6 +75,10 @@ OperationalSpaceControl::OperationalSpaceControl(
       this->DeclareVectorInputPort(
               "x, u, t", OutputVector<double>(n_q_w_spr, n_v_w_spr, n_u_w_spr))
           .get_index();
+
+  ff_input_port_ = this->DeclareVectorInputPort("udes", n_u_).get_index();
+  W_input_ = MatrixXd::Zero(n_u_, n_u_);
+
   if (used_with_finite_state_machine) {
     fsm_port_ =
         this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
@@ -174,9 +178,6 @@ void OperationalSpaceControl::SetUpDoubleSupportPhaseBlending(
 
 void OperationalSpaceControl::SetInputCostForJointAndFsmStateWeight(
     const std::string& joint_u_name, int fsm, double w) {
-  if (W_input_.size() == 0) {
-    W_input_ = Eigen::MatrixXd::Zero(n_u_, n_u_);
-  }
   int idx = MakeNameToActuatorsMap(plant_wo_spr_).at(joint_u_name);
   fsm_to_w_input_map_[fsm] = std::pair<int, double>{idx, w};
 }
@@ -232,12 +233,9 @@ void OperationalSpaceControl::AddTrackingData(
   if (traj_name_to_port_index_map_.find(traj_name) ==
       traj_name_to_port_index_map_.end()) {
     PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
-    int port_index =
-        this->DeclareAbstractInputPort(
-                traj_name,
-                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+    traj_name_to_port_index_map_[traj_name] = this->DeclareAbstractInputPort(
+        traj_name, drake::Value<drake::trajectories::Trajectory<double>>(pp))
             .get_index();
-    traj_name_to_port_index_map_[traj_name] = port_index;
   }
 }
 void OperationalSpaceControl::AddConstTrackingData(
@@ -389,11 +387,9 @@ void OperationalSpaceControl::Build() {
 
   // Add costs
   // 1. input cost
-  if (W_input_.size() > 0) {
-    input_cost_ = prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_)
-                      .evaluator()
-                      .get();
-  }
+  input_cost_ = prog_->AddQuadraticCost(W_input_, VectorXd::Zero(n_u_), u_)
+      .evaluator().get();
+
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
     DRAKE_DEMAND(W_joint_accel_.rows() == n_v_);
@@ -760,7 +756,10 @@ VectorXd OperationalSpaceControl::SolveQp(
       double w = fsm_to_w_input_map_.at(fsm_state).second;
       W(j, j) += w;
     }
-    input_cost_->UpdateCoefficients(W, VectorXd::Zero(n_u_));
+    VectorXd ud = (get_input_port(ff_input_port_).HasValue(context)) ?
+                   get_input_port(ff_input_port_).Eval(context) :
+                   VectorXd::Zero(n_u_);
+    input_cost_->UpdateCoefficients(2 * W, -2 * ud, ud.transpose() * W * ud);
   }
 
   // (Testing) 7. Cost for staying close to the previous input

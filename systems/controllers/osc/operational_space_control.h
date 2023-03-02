@@ -155,6 +155,18 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_impact_info() const {
     return this->get_input_port(impact_info_port_);
   }
+
+  /*!
+   * Input port for a desired feedforward torque
+   */
+  const drake::systems::InputPort<double>& get_feedforward_input_port() const {
+    if (W_input_.isZero()) {
+      std::cout << "Warning: wired feedforward input port "
+                   "without specifying an input cost";
+    }
+    return this->get_input_port(ff_input_port_);
+  }
+
   /*!
    * Contains the desired trajectory in the same representation as the target
    * output (OscTrackingData)
@@ -319,13 +331,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                      TimestampedVector<double>* output) const;
 
   // Input/Output ports
-  int osc_debug_port_;
-  int osc_output_port_;
-  int state_port_;
-  int clock_port_;
-  int fsm_port_;
-  int impact_info_port_;
-  int failure_port_;
+  drake::systems::OutputPortIndex osc_debug_port_;
+  drake::systems::OutputPortIndex osc_output_port_;
+  drake::systems::OutputPortIndex failure_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::InputPortIndex clock_port_;
+  drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex impact_info_port_;
+  drake::systems::InputPortIndex ff_input_port_;
 
   // Discrete update
   int prev_fsm_state_idx_;
@@ -336,7 +349,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
 
   // Map from (non-const) trajectory names to input port indices
-  std::map<std::string, int> traj_name_to_port_index_map_;
+  std::map<std::string,
+           drake::systems::InputPortIndex> traj_name_to_port_index_map_;
 
   // MBP's.
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;

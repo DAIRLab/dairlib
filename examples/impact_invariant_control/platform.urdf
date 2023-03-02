@@ -5,7 +5,7 @@
         </inertial>
         <visual>
             <geometry>
-                <box size="1.0 1.0 1.0"/>
+                <box size="1.0 1.0 0.5"/>
             </geometry>
             <material name="white">
                 <color rgba="1 1 1 1"/>
@@ -14,7 +14,7 @@
         </visual>
         <collision>
             <geometry>
-                <box size="1.0 1.0 1.0"/>
+                <box size="1.0 1.0 0.5"/>
             </geometry>
             <origin xyz="0.5 0 -0.5" rpy="0 0 0"/>
         </collision>

@@ -18,7 +18,7 @@ W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 w_input_reg: 0.01
 w_soft_constraint: 1000
-crouch_x_offset: -0.03
+crouch_x_offset: -0.01
 land_x_offset: 0.00
 relative_feet: true
 
@@ -32,11 +32,11 @@ w_hip_yaw: 100
 hip_yaw_kp: 100
 hip_yaw_kd: 10
 
-min_pelvis_acc: -3.5
+min_pelvis_acc: -7
 max_pelvis_acc: 10000
-impact_threshold: 0.000
+impact_threshold: 0.050
 impact_tau: 0.005
-landing_delay: 0.030
+landing_delay: 0.070
 #landing_delay: 0.
 
 CoMW:
@@ -56,8 +56,8 @@ PelvisRotW:
    0,  5,   0,
    0,   0,  1]
 PelvisRotKp:
-  [150.,   0,   0,
-   0,  200.,   0,
+  [500.,   0,   0,
+   0,  750.,   0,
    0,    0,  0.]
 PelvisRotKd:
   [10,   0,  0,

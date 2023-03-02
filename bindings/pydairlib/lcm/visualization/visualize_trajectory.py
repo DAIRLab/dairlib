@@ -18,10 +18,10 @@ from visualize_params import DirconVisualizationParams
 
 
 def main():
-  visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/long_jump.yaml'
+  # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/long_jump.yaml'
   # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/box_jump.yaml'
   # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/down_jump.yaml'
-  # visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/jump.yaml'
+  visualization_config_file = 'bindings/pydairlib/lcm/visualization/visualize_configs/jump.yaml'
   params = DirconVisualizationParams(visualization_config_file)
 
   builder = DiagramBuilder()
@@ -96,7 +96,7 @@ def main():
     for i in range(params.num_poses):
       poses[i] = optimal_traj.value(
         t_vec[int(i * len(t_vec) / params.num_poses)])[:, 0]
-      # poses[i, 6] += 0.5
+      poses[i, 6] += 0.5
     # alpha_scale = np.linspace(0.2, 1.0, params.num_poses)
     alpha_scale = np.linspace(1.0, 1.0, params.num_poses)
     visualizer = MultiposeVisualizer(FindResourceOrThrow(
@@ -114,8 +114,8 @@ def main():
     translation = np.array([0.5, 0, 0.25])
     origin = RigidTransform(translation)
     box = Box(0.5, 1.0, 0.5)
-    # visualizer.GetMeshcat().SetObject("box", box)
-    # visualizer.GetMeshcat().SetTransform("box", origin)
+    visualizer.GetMeshcat().SetObject("box", box)
+    visualizer.GetMeshcat().SetTransform("box", origin)
     visualizer.GetMeshcat().SetCamera(ortho_camera)
     visualizer.DrawPoses(poses.T)
     while(True):

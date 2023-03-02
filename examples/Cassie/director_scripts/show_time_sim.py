@@ -21,8 +21,8 @@ class TimeVisualizer(object):
         self.text_time.setProperty('Font Size', 36)
         self.text_time.setProperty('Bold', True)
         self.set_enabled(True)
-        gridObj.setProperty('Grid Half Width', 100)
-        gridObj.setProperty('Major Tick Resolution', 100)
+        gridObj.setProperty('Grid Half Width', 50)
+        gridObj.setProperty('Major Tick Resolution', 50)
 
     def add_subscriber(self):
         if (self._subscriber is not None):
@@ -71,6 +71,7 @@ class TimeVisualizer(object):
         pelvis_height_text = 'pelvis height: %.3f' % pelvis_height
 
         pelvis_velocity_text = 'pelvis velocity: %.3f' % np.array(self._pelvis_velocity).mean()
+        # pelvis_position_text = 'forward position: %.3f' % np.array(msg.position[4]).mean()
         realtime_text = ''
 
         if (len(self._real_time) >= self._num_msg_for_average):
@@ -87,7 +88,7 @@ class TimeVisualizer(object):
             # my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
         # vis.updateText(my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text +'\n' + realtime_text, 'text')
-        self.text_time.setProperty('Text', my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text +'\n' + realtime_text)
+        self.text_time.setProperty('Text', my_text + '\n' + pelvis_height_text + '\n' + pelvis_velocity_text + '\n' + realtime_text)
 
         # vis.updateText(my_text + '\n' + pelvis_velocity_text, 'text')
 

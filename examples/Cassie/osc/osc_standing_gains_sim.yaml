@@ -9,7 +9,7 @@ controller_frequency: 1000
 
 w_input: 0.000001
 w_accel: 0.000001
-w_lambda: 0.000001
+w_lambda: 0.01
 #W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
 #           1, 1, 1, 1, 0.01, 0.001,
 #           1, 1, 1, 1, 0.01, 0.001 ]
@@ -28,7 +28,7 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
 w_soft_constraint: 1000
 w_input_reg: 0.00001
 impact_threshold: 0.00
-center_of_mass_filter_tau: 0.000
+center_of_mass_filter_tau: 0.00
 rot_filter_tau: 0.000
 center_of_mass_command_filter_alpha: 1.0
 orientation_command_filter_alpha: 1.0
@@ -43,7 +43,7 @@ PelvisW:
     0,     2,    0,
     0,     0,   2 ]
 PelvisKp:
-  [ 40,   0,    0,
+  [ 20,   0,    0,
     0,   50,    0,
     0,    0,  75 ]
 PelvisKd:

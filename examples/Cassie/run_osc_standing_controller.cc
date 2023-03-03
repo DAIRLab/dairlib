@@ -223,9 +223,12 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputSmoothingCostWeights(gains.w_input_reg *
       gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
+  osc->SetLambdaContactRegularizationWeight(
+      osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
       gains.W_lambda_h_regularization);
-  osc->SetJointLimitWeight(1.0);
+  osc->SetContactSoftConstraintWeight(osc_gains.w_soft_constraint);
+//  osc->SetJointLimitWeight(osc_gains.w_joint_limit);
 
   auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
@@ -241,10 +244,10 @@ int DoMain(int argc, char* argv[]) {
           "pelvis_trans_traj", osc_gains.K_p_pelvis_rot,
           osc_gains.K_d_pelvis_rot, osc_gains.W_pelvis_rot, plant, plant,
           pelvis_tracking_data.get(), stance_foot_tracking_data.get());
-//  if (osc_gains.center_of_mass_filter_tau > 0) {
-//    pelvis_trans_rel_tracking_data->SetLowPassFilter(
-//        osc_gains.center_of_mass_filter_tau, {0, 1, 2});
-//  }
+  if (osc_gains.center_of_mass_filter_tau > 0) {
+    pelvis_trans_rel_tracking_data->SetLowPassFilter(
+        osc_gains.center_of_mass_filter_tau, {0, 1, 2});
+  }
   pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,

@@ -182,7 +182,7 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
 
   // Callback entry point from ROS into this class.
   void HandleMessage(const RosMessage& message) {
-    drake::log()->info("Receiving ROS {} message", topic_);
+    //drake::log()->info("Receiving ROS {} message", topic_);
     std::lock_guard<std::mutex> lock(received_message_mutex_);
     received_message_ = message;
     received_message_count_++;

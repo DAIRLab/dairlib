@@ -1,67 +1,59 @@
-# Set xy PD gains so they do not effect  passive LIPM dynamics at capture
-# point, when x = sqrt(l/g) * xdot
-# Passive dynamics: xddot = g/l * x
-#
-# -Kp * x - Kd * xdot =
-# -Kp * x + Kd * sqrt(g/l) * x = g/l * x
-# Kp = sqrt(g/l) * Kd - g/l
 controller_frequency: 1000
 
-rows: 3
-cols: 3
-w_input: 0.0
-w_accel: 0.001
-w_lambda: 0.00001
+w_input: 0.000001
+w_accel: 0.000001
+w_lambda: 0.2
 #W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
 #           1, 1, 1, 1, 0.01, 0.001,
 #           1, 1, 1, 1, 0.01, 0.001 ]
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
            1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
            1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001 ]
-W_input_reg: [ 1, 0.9, 0.6, 0.3, 5,
-               1, 0.9, 0.5, 0.1, 5 ]
+W_input_reg: [ 1, 0.9, 0.5, 0.3, 1,
+               1, 0.9, 0.5, 0.3, 1 ]
 W_lambda_c_reg: [ 1, 0.001, 0.01,
                   1, 0.001, 0.01,
-                  1, 0.1, 0.01,
-                  1, 0.1, 0.01 ]
+                  1, 0.001, 0.01,
+                  1, 0.001, 0.01 ]
+#W_lambda_h_reg: [ 0.02, 0.02 ]
 W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.002, 0.002 ]
-w_soft_constraint: 100
-w_input_reg: 0.00
+w_soft_constraint: 1000
+w_input_reg: 0.3
 impact_threshold: 0.00
-center_of_mass_filter_tau: 0.000
-rot_filter_tau: 0.00
-center_of_mass_command_filter_alpha: 0.01
-orientation_command_filter_alpha: 0.0005
+center_of_mass_filter_tau: 0.00
+rot_filter_tau: 0.000
+center_of_mass_command_filter_alpha: 0.8
+orientation_command_filter_alpha: 1.0
 impact_tau: 0.00
 mu: 0.6
 weight_scaling: 1.0
-HipYawKp: 40
+HipYawKp: 100
 HipYawKd: 5
-HipYawW: 0
+HipYawW: 2.5
 PelvisW:
-  [1,    0,    0,
-   0,     2,    0,
-   0,     0,   10]
+  [ 5,    0,    0,
+    0,     5,    0,
+    0,     0,   2 ]
 PelvisKp:
-  [50,   0,    0,
-   0,   50,    0,
-   0,    0,  75]
+  [ 75,   0,    0,
+    0,   50,    0,
+    0,    0,  40 ]
 PelvisKd:
-  [ 0.1,    0,   0,
-    0,    0.1,   0,
-    0,    0,   1]
+  [ 2,    0,   0,
+    0,    2,   0,
+    0,    0,   2]
 PelvisRotW:
-  [5,  0,   0,
-   0,  5,   0,
-   0,    0,  1]
+  [ 5,  0,   0,
+    0,  5,   0,
+    0,    0,  10 ]
 PelvisRotKp:
-  [25,   0,   0,
-   0,  10,   0,
-   0,    0,   50]
+  [150.,   0,   0,
+   0,  200.,   0,
+   0,    0,   50 ]
 PelvisRotKd:
-  [0,   0,  0,
-   0,   0.1,  0,
-   0,    0,  0.1]
+  [ 2,   0,  0,
+    0,   2,  0,
+    0,    0,  2 ]
 
 

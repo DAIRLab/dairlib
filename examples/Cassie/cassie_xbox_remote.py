@@ -112,7 +112,7 @@ def main():
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        # radio_msg.channel[0] = speeds[i]
+        radio_msg.channel[0] = speeds[i]
 
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)

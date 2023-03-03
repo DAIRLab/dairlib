@@ -148,7 +148,11 @@ EventStatus SwingFootInterfaceSystem::DiscreteVariableUpdate(
     auto swing_foot = swing_foot_map_.at(fsm_state);
     plant_.CalcPointsPositions(*plant_context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
-
+    swing_foot_pos_at_liftoff =
+        multibody::ReExpressWorldVector3InBodyYawFrame(
+            plant_, *plant_context_, "pelvis",
+            swing_foot_pos_at_liftoff -
+                plant_.CalcCenterOfMassPositionInWorld(*plant_context_));
   }
   return EventStatus::Succeeded();
 }
@@ -233,15 +237,6 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
 
     if (relative_to_com_) {
       footstep_target(2) = -com_height_;
-
-      const auto q = dynamic_cast<const OutputVector<double>*>(
-          EvalVectorInput(context, state_port_))->GetPositions();
-      multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
-      swing_foot_pos_at_liftoff =
-          multibody::ReExpressWorldVector3InBodyYawFrame(
-              plant_, *plant_context_, "pelvis",
-              swing_foot_pos_at_liftoff -
-                  plant_.CalcCenterOfMassPositionInWorld(*plant_context_));
     }
 
     // Assign traj

@@ -64,12 +64,11 @@ source /opt/ros/noetic/setup.bash
 ```
 3. Install additional dependencies
 ```
-sudo apt install python-rosinstall-generator python-catkin-tools
+sudo apt install python-rosinstall-generator python-catkin-tools python3-vcstool
 ```
 4. Build the ROS workspace using catkin. From `dairlib/`,
 ```
-cd tools/workspace/ros
-./compile_ros_workspace.sh
+sudo ./tools/workspace/ros/compile_ros_workspace.sh
 ```
 5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON`. For instance, add to `~/.bashrc`
 ```

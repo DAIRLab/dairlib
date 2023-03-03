@@ -40,17 +40,17 @@ target_vel_filter_alpha: 0.01
 # SLIP parameters
 rest_length: 0.9
 rest_length_offset: 0.05
-stance_duration: 0.22
-flight_duration: 0.09
+stance_duration: 0.2
+flight_duration: 0.1
 # max percent variance
-stance_variance: 0.3
-flight_variance: 0.3
+stance_variance: 0.4
+flight_variance: 0.2
 
 w_swing_toe: 0.1
 swing_toe_kp: 2000
 swing_toe_kd: 5
 
-w_hip_yaw: 2.5
+w_hip_yaw: 5
 hip_yaw_kp: 100
 hip_yaw_kd: 7
 # Foot placement parameters
@@ -73,7 +73,7 @@ PelvisKp:
 PelvisKd:
   [ 0,    0,   0,
     0,   0,   0,
-    0,    0,   7]
+    0,    0,   5]
 PelvisRotW:
   [10,  0,   0,
    0,  5,   0,
@@ -89,7 +89,7 @@ PelvisRotKd:
 SwingFootW:
   [10,    0,    0,
    0,   100,    0,
-   0,    0,   10]
+   0,    0,   50]
 SwingFootKp:
   [145,   0,    0,
    0,    150,    0,

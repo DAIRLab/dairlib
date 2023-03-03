@@ -238,7 +238,8 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   }
   //  Y[0](2) -= rest_length_offset_;
   Y[1] = start_pos + x_mid_point_ratio * (foot_end_pos_des - start_pos);
-  Y[1](2) += mid_foot_height_;
+  double foot_height_scale = std::clamp(pelvis_vel[0] / 2.5, 1.0, 1.3);
+  Y[1](2) += foot_height_scale * mid_foot_height_;
   Y[2] = foot_end_pos_des;
 
   // corrections

@@ -17,10 +17,7 @@
 #include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
-#include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
-#include "examples/Cassie/osc_run/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
-#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
@@ -63,8 +60,6 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
-using examples::osc::PelvisPitchTrajGenerator;
-using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
 using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_run::FootTrajGenerator;
@@ -466,7 +461,7 @@ int DoMain(int argc, char* argv[]) {
 
   if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                               {0, 1, 2});
+                                               {1, 2});
   }
 
   // Swing toe joint trajectory

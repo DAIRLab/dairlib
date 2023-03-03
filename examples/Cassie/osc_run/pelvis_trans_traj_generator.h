@@ -61,8 +61,6 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::BodyFrame<double>& pelvis_frame_;
   const bool relative_pelvis_;
 
-  //  drake::systems::DiscreteStateIndex prev_fsm_idx_;
-
   // pelvis trajectory
   drake::trajectories::PiecewisePolynomial<double> traj_;
 
@@ -79,7 +77,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
 
   // SLIP parameters
   double rest_length_ = 0.8;
-  double rest_length_offset_ = 0.8;
+  double rest_length_offset_ = 0.0;
   double k_leg_ = 100.0;
   double b_leg_ = 5.0;
 };

@@ -101,12 +101,6 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
 
   auto stored_fsm_state = (RUNNING_FSM_STATE)state->get_mutable_discrete_state(
       stored_fsm_state_index_)[0];
-//  double stored_transition_time =
-//      state->get_discrete_state(stored_transition_time_index_)[0];
-//  double nominal_stance_duration =
-//      state->get_discrete_state(nominal_state_durations_index_)[0];
-//  double nominal_flight_duration =
-//      state->get_discrete_state(nominal_state_durations_index_)[1];
   auto transition_times =
       state->get_mutable_discrete_state(transition_times_index_)
           .get_mutable_value();
@@ -182,8 +176,6 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
           std::clamp(stance_scale, 1 - stance_variance_, 1 + stance_variance_);
       double next_transition_time =
           stored_transition_time + stance_scale * stance_duration_;
-      //      double next_transition_time = stored_transition_time +
-      //      stance_duration_;
       state->get_mutable_discrete_state(nominal_state_durations_index_)[0] =
           next_transition_time - stored_transition_time;
       if (active_state == LEFT_STANCE) {
@@ -260,7 +252,6 @@ void ContactScheduler::CalcNextImpactInfo(
   auto alpha_func = blend_func_ == SIGMOID ? &blend_sigmoid : &blend_exp;
 
   near_impact->set_timestamp(current_time);
-  //  near_impact->SetCurrentContactMode(0);
   near_impact->SetAlpha(0);
 
   // Get current finite state
@@ -334,10 +325,6 @@ void ContactScheduler::CalcContactScheduler(
   contact_timing->get_mutable_value()(5) = transition_times[RIGHT_FLIGHT] +
                                            2 * nominal_flight_duration +
                                            nominal_stance_duration;
-  //  std::cout << "contact_scheduler start: "
-  //            << contact_timing->get_mutable_value()(2) << std::endl;
-  //  std::cout << "contact_scheduler end: "
-  //            << contact_timing->get_mutable_value()(3) << std::endl;
 }
 
 void ContactScheduler::OutputDebuggingInfo(

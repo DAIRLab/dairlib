@@ -12,8 +12,6 @@
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
-#include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
-#include "examples/Cassie/osc_run/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
@@ -54,8 +52,6 @@ using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
-using examples::osc::PelvisPitchTrajGenerator;
-using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
 using examples::osc_run::FootTrajGenerator;
 using multibody::FixedJointEvaluator;

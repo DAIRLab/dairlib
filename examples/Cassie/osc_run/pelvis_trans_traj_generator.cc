@@ -91,17 +91,14 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
     return PiecewisePolynomial<double>();
   }
 
-//  Vector3d f_g = {0, 0, -9.81};
-  Vector3d f_g = drake::multibody::UniformGravityFieldElement<double>().gravity_vector();
+  Vector3d f_g =
+      drake::multibody::UniformGravityFieldElement<double>().gravity_vector();
   Vector3d foot_pos = Vector3d::Zero();
   Vector3d pelvis_pos = Vector3d::Zero();
   Vector3d pelvis_vel = Vector3d::Zero();
   plant_.CalcPointsPositions(*context_,
                              feet_contact_points_.at(fsm_state)[0].second,
                              Vector3d::Zero(), world_, &foot_pos);
-  //  plant_.CalcPointsPositions(*context_, pelvis_frame_, Vector3d::Zero(),
-  //  world_,
-  //                             &pelvis_pos);
   pelvis_pos = plant_.CalcCenterOfMassPositionInWorld(*context_);
   pelvis_vel =
       plant_.EvalBodySpatialVelocityInWorld(*context_, pelvis_).translational();
@@ -110,52 +107,30 @@ PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
   double compression = leg_length.norm() - rest_length_;
   Vector3d f_leg =
       k_leg_ * compression * leg_length.normalized() + b_leg_ * pelvis_vel;
-//  Vector3d rddot = f_g + f_leg;
+  // ignoring f_leg, spring forces handled by OSC gains
   Vector3d rddot = f_g;
 
   double dt = 1e-2;
   Eigen::Vector2d breaks;
-  //  if (t <= 0.3) {
-  //    breaks << 0, 0.25, 0.4;
-  //  } else {
-  //    breaks << 0.4, 0.65, 0.8;
-  //  }
   breaks << t0, tf;
   MatrixXd samples(3, 2);
   MatrixXd samples_dot(3, 2);
 
-  //  std::cout << "t0:" << t0 << std::endl;
-  //  std::cout << "tf:" << tf << std::endl;
-  //  samples << pelvis_pos, pelvis_pos + 0.5 * rddot * dt * dt;
-  //  samples_dot << pelvis_vel, pelvis_vel + rddot * dt;
-
-  //  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-  //      breaks, samples, pelvis_vel, pelvis_vel + rddot * dt);
   double y_dist_des = 0;
   if (fsm_state == 0) {
     y_dist_des = -0.1;
   } else if (fsm_state == 1) {
     y_dist_des = 0.1;
   }
-  //  samples << 0, 0, y_dist_des, y_dist_des, rest_length_, rest_length_ +
-  //  rest_length_offset_;
 
-  samples << 0, 0 + 0.5 * rddot[0] * dt * dt,
-            y_dist_des, y_dist_des + 0.5 * rddot[1] * dt * dt,
-            rest_length_, rest_length_ + 0.5 * rddot[2] * dt * dt;
-  samples_dot <<  0, 0 + rddot[0] * dt,
-                  0, 0 + rddot[1] * dt,
-                  0, 0 + rddot[2] * dt;
-  //  return PiecewisePolynomial<double>(Vector3d{0, y_dist_des, rest_length_});
+  samples << 0, 0 + 0.5 * rddot[0] * dt * dt, y_dist_des,
+      y_dist_des + 0.5 * rddot[1] * dt * dt, rest_length_,
+      rest_length_ + 0.5 * rddot[2] * dt * dt;
+  samples_dot << 0, 0 + rddot[0] * dt, 0, 0 + rddot[1] * dt, 0,
+      0 + rddot[2] * dt;
 
-  //  return PiecewisePolynomial<double>::FirstOrderHold(breaks, samples);
-  return PiecewisePolynomial<double>::CubicHermite(breaks, samples, samples_dot);
-
-  //  return PiecewisePolynomial<double>::CubicHermite(
-  //      breaks, samples, samples_dot);
-  //  return PiecewisePolynomial<double>::CubicShapePreserving(breaks, samples);
-  //  return PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-  //      breaks, samples, VectorXd::Zero(3), VectorXd::Zero(3));
+  return PiecewisePolynomial<double>::CubicHermite(breaks, samples,
+                                                   samples_dot);
 }
 
 void PelvisTransTrajGenerator::CalcTraj(
@@ -171,11 +146,6 @@ void PelvisTransTrajGenerator::CalcTraj(
       this->EvalVectorInput(context, clock_port_)->get_value()(0);
   const auto& mode_length =
       this->EvalVectorInput(context, contact_scheduler_port_)->get_value();
-
-  //  std::cout << "fsm_state: " << fsm_state << std::endl;
-  //  std::cout << "clock: " << clock << std::endl;
-  //  std::cout << "mode_length start: " << mode_length[0] << std::endl;
-  //  std::cout << "mode_length end: " << mode_length[1] << std::endl;
 
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

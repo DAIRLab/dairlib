@@ -88,18 +88,12 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   double tau_;
   const BLEND_FUNC blend_func_;
 
-  /// contains pairs (start of fsm, fsm_state)
-  /// the order of the vector goes: last transition, next upcoming three
-  /// transitions
-  //  mutable std::vector<std::pair<double, RUNNING_FSM_STATE>>
-  //  upcoming_transitions_; // sorted by upcoming time mutable
-  //  std::vector<double> transition_times_; // fixed order by RUNNING_FSM_STATE
-
   int initial_state_ = 0;
 
   drake::systems::DiscreteStateIndex stored_fsm_state_index_;
   drake::systems::DiscreteStateIndex stored_robot_state_index_;
   drake::systems::DiscreteStateIndex stored_transition_time_index_;
+
   // estimates of state durations for stance and flight in seconds
   drake::systems::DiscreteStateIndex nominal_state_durations_index_;
   drake::systems::DiscreteStateIndex transition_times_index_;

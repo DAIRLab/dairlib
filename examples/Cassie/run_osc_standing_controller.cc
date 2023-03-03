@@ -168,12 +168,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, context_w_spr.get(), context_w_spr.get(), false);
 
-  // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
-  auto left_loop = LeftLoopClosureEvaluator(plant);
-  auto right_loop = RightLoopClosureEvaluator(plant);
-  evaluators.add_evaluator(&left_loop);
-  evaluators.add_evaluator(&right_loop);
 
   // Fix the springs in the dynamics
   auto pos_idx_map = multibody::MakeNameToPositionsMap(plant);
@@ -184,16 +179,21 @@ int DoMain(int argc, char* argv[]) {
   auto right_fixed_knee_spring =
       FixedJointEvaluator(plant, pos_idx_map.at("knee_joint_right"),
                           vel_idx_map.at("knee_joint_rightdot"), 0);
-  auto left_fixed_ankle_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("ankle_spring_joint_left"),
-                          vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-  auto right_fixed_ankle_spring =
-      FixedJointEvaluator(plant, pos_idx_map.at("ankle_spring_joint_right"),
-                          vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = FixedJointEvaluator(
+      plant, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = FixedJointEvaluator(
+      plant, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
   evaluators.add_evaluator(&left_fixed_knee_spring);
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
+
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
 
   osc->AddKinematicConstraint(&evaluators);
 
@@ -241,19 +241,20 @@ int DoMain(int argc, char* argv[]) {
           "pelvis_trans_traj", osc_gains.K_p_pelvis_rot,
           osc_gains.K_d_pelvis_rot, osc_gains.W_pelvis_rot, plant, plant,
           pelvis_tracking_data.get(), stance_foot_tracking_data.get());
-  if (osc_gains.center_of_mass_filter_tau > 0) {
-    pelvis_trans_rel_tracking_data->SetLowPassFilter(
-        osc_gains.center_of_mass_filter_tau, {0, 1, 2});
-  }
+//  if (osc_gains.center_of_mass_filter_tau > 0) {
+//    pelvis_trans_rel_tracking_data->SetLowPassFilter(
+//        osc_gains.center_of_mass_filter_tau, {0, 1, 2});
+//  }
   pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);
+//  pelvis_rot_tracking_data->SetViewFrame(pelvis_view_frame);
   pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
-  if (osc_gains.rot_filter_tau > 0) {
-    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                               {0, 1, 2});
-  }
+//  if (osc_gains.rot_filter_tau > 0) {
+//    pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
+//                                               {0, 1, 2});
+//  }
   osc->AddTrackingData(std::move(pelvis_trans_rel_tracking_data));
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
@@ -265,8 +266,8 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.W_hip_yaw, plant, plant);
   left_hip_yaw_traj->AddJointToTrack("hip_yaw_left", "hip_yaw_leftdot");
   osc->AddConstTrackingData(std::move(left_hip_yaw_traj), VectorXd::Zero(1));
-  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
-  osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
+//  right_hip_yaw_traj->AddJointToTrack("hip_yaw_right", "hip_yaw_rightdot");
+//  osc->AddConstTrackingData(std::move(right_hip_yaw_traj), VectorXd::Zero(1));
 
   // Build OSC problem
   osc->Build();
@@ -283,7 +284,7 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc standing controller"));
+  owned_diagram->set_name(("osc_standing_controller"));
 
   // Build lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

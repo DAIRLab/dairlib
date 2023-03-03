@@ -81,6 +81,6 @@ struct OSCStandingGains : OSCGains {
     w_soft_constraint *= weight_scaling;
     W_pelvis_rot *= weight_scaling;
     W_pelvis *= weight_scaling;
-    W_pelvis_rot *= weight_scaling;    W_hip_yaw *= weight_scaling;
+    W_hip_yaw *= weight_scaling;
   }
 };

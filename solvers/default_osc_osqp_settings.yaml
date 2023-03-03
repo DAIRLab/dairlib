@@ -1,4 +1,4 @@
-rho: 0.0001
+rho: 0.001
 sigma: 1e-6
 max_iter: 1000
 eps_abs: 1e-7
@@ -14,9 +14,9 @@ verbose: 0
 scaled_termination: 1
 check_termination: 25
 warm_start: 1
-scaling: 10
+scaling: 1
 adaptive_rho: 1
 adaptive_rho_interval: 0
 adaptive_rho_tolerance: 5
 adaptive_rho_fraction: 0.4
-time_limit: 0.0
+time_limit: 0

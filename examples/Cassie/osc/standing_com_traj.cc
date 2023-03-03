@@ -35,7 +35,6 @@ StandingComTraj::StandingComTraj(
       feet_contact_points_(feet_contact_points),
       height_(height),
       set_target_height_by_radio_(set_target_height_by_radio) {
-
   target_pos_filter_ = std::make_unique<FirstOrderLowPassFilter>(1.0, 3);
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -122,9 +121,9 @@ void StandingComTraj::CalcDesiredTraj(
                               right_toe_position + right_heel_position) /
                              4;
   //  }
-  //  double mid_point_x = ((left_toe_position[0] - left_heel_position[0]) +
-  //                        (right_toe_position[0] - right_heel_position[0])) /
-  //                       2;
+  double mid_point_x = (left_toe_position[0] + right_toe_position[0] +
+                        right_heel_position[0] - 3 * left_heel_position[0]) /
+                       6;
   double mid_point_y = ((left_toe_position[1] - right_toe_position[1]) +
                         (left_heel_position[1] - right_heel_position[1])) /
                        4;
@@ -144,11 +143,10 @@ void StandingComTraj::CalcDesiredTraj(
 
   // Desired com pos
   Vector3d desired_com_pos_offset;
-  desired_com_pos_offset << 0.04, -mid_point_y, contact_pos_sum(2);
+  desired_com_pos_offset << mid_point_x - 0.02, -mid_point_y, 0;
   Vector3d desired_com_pos = desired_com_pos_offset + target_pos;
 
   target_pos_filter_->Update(desired_com_pos);
-
 
   // Assign traj
   PiecewisePolynomial<double>* pp_traj =

@@ -39,7 +39,7 @@ footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.15
 final_foot_height: 0.05
-final_foot_velocity_z: 0.4
+final_foot_velocity_z: 0.35
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -95,7 +95,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    2.5]
+      0,     0,    4]
 period_of_no_heading_control: 0.0
 
 SwingFootW:

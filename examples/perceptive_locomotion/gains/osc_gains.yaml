@@ -37,15 +37,15 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.16
-final_foot_height: 0.045
-final_foot_velocity_z: 0.3
+mid_foot_height: 0.15
+final_foot_height: 0.05
+final_foot_velocity_z: 0.4
 
 # LIPM trajectory
 lipm_height: 0.83
 
 # OSC gains
-mu: 0.8
+mu: 0.75
 
 w_accel: 0.0
 w_soft_constraint: 8000
@@ -66,7 +66,7 @@ CoMW:
 CoMKp:
   [   0,   0,     0,
       0,    0,    0,
-      0,    0,   100]
+      0,    0,   150]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
@@ -95,7 +95,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    4]
+      0,     0,    2.5]
 period_of_no_heading_control: 0.0
 
 SwingFootW:
@@ -103,12 +103,12 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 160,  0,     0,
+  [ 170,  0,     0,
     0,   170,    0,
     0,    0,   200]
 SwingFootKd:
-  [0.5,    0,     0,
-   0,    0.5,     0,
+  [0.5,  0,     0,
+   0,    0.5,   0,
    0,    0,     1]
 
 AlipKalmanQ:

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "geometry/convex_foothold_receiver.h"
+#include "geometry/convex_foothold_set.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
 
 namespace dairlib::geometry{

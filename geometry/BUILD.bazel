@@ -43,7 +43,6 @@ cc_test(
     srcs = ["test/convex_foothold_test.cc"],
     deps = [
         ":convex_foothold",
-        ":convex_foothold_receiver",
         ":convex_foothold_set",
         "//common",
         "//lcmtypes:lcmt_robot",

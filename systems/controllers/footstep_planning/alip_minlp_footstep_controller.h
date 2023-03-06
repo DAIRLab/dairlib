@@ -72,6 +72,10 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   const {
     return this->get_output_port(footstep_target_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_ankle_torque()
+  const {
+    return this->get_output_port(ankle_torque_output_port_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_mpc_debug() const {
     return this->get_output_port(mpc_debug_output_port_);
   }
@@ -82,6 +86,9 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::EventStatus UnrestrictedUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
+
+  void CopyAnkleTorque(const drake::systems::Context<double>& context,
+                       lcmt_saved_traj* traj) const;
 
   void CopyFsmOutput(const drake::systems::Context<double>& context,
                      drake::systems::BasicVector<double>* fsm) const;
@@ -125,6 +132,7 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex prev_impact_time_output_port_;
   drake::systems::OutputPortIndex footstep_target_output_port_;
   drake::systems::OutputPortIndex mpc_debug_output_port_;
+  drake::systems::OutputPortIndex ankle_torque_output_port_;
 
   // controller states
   drake::systems::DiscreteStateIndex fsm_state_idx_;

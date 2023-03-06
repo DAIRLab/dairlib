@@ -129,6 +129,10 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
       "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm)
       .get_index();
+  ankle_torque_output_port_ = DeclareAbstractOutputPort(
+      "lcmt_saved_traj",
+      &AlipMINLPFootstepController::CopyAnkleTorque)
+      .get_index();
 }
 
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
@@ -426,6 +430,30 @@ void AlipMINLPFootstepController::CopyPrevImpactTimeOutput(
   } else {
     t->set_value(VectorXd::Ones(1) * (t_prev + double_stance_duration_));
   }
+}
+
+
+void AlipMINLPFootstepController::CopyAnkleTorque(
+    const Context<double> &context, lcmt_saved_traj *traj) const {
+  double t  = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_))->get_timestamp();
+
+  const int nk = gains_.knots_per_mode;
+
+  MatrixXd knots = trajopt_.GetInputSolution().front().transpose();
+  VectorXd breaks = VectorXd::Zero(nk - 1);
+  double T = trajopt_.GetTimingSolution()(0);
+  for (int n = 0; n < nk - 1; n++) {
+    breaks(n) = t + static_cast<double>(n) / T;
+  }
+  LcmTrajectory::Trajectory input_traj;
+  input_traj.traj_name = "input_traj";
+  input_traj.datatypes = vector<std::string>(1, "double");
+  input_traj.datapoints = knots;
+  input_traj.time_vector = breaks;
+  LcmTrajectory lcm_traj(
+      {input_traj}, {"input_traj"}, "input_traj", "input_traj");
+  *traj = lcm_traj.GenerateLcmObject();
 }
 
 

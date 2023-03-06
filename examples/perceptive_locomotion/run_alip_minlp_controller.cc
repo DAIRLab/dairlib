@@ -80,8 +80,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
               "LCM channel for footstep target");
 
-DEFINE_string(channel_com, "ALIP_COM_TRAJ",
-              "LCM channel for center of mass trajectory");
+DEFINE_string(channel_u, "ALIP_INPUT",
+              "LCM channel for ankle torque trajectory");
 
 DEFINE_string(fsm_channel, "FSM", "lcm channel for fsm");
 
@@ -237,17 +237,21 @@ int DoMain(int argc, char* argv[]) {
 
   std::unique_ptr<LcmPublisherSystem> footstep_pub_ptr;
   std::unique_ptr<LcmPublisherSystem> fsm_pub_ptr;
+  std::unique_ptr<LcmPublisherSystem> input_pub_ptr;
   if (FLAGS_plan_offboard) {
     footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_network);
     fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_network);
+    input_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_u, &lcm_network);
   } else {
     footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
     fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_local);
+    input_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_u, &lcm_local);
   }
 
   auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
   auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
   auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
+  auto input_pub = builder.AddSystem(std::move(input_pub_ptr));
 
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
       "ALIP_MINLP_DEBUG", &lcm_local, 0);
@@ -310,6 +314,8 @@ int DoMain(int argc, char* argv[]) {
                   footstep_sender->get_input_port());
   builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
                   mpc_debug_pub->get_input_port());
+  builder.Connect(foot_placement_controller->get_output_port_ankle_torque(),
+                  input_pub->get_input_port());
 
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);

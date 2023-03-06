@@ -85,6 +85,7 @@ cc_binary(
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/Cassie/systems:simulator_drift",
         "//examples/perceptive_locomotion/gains:alip_minlp_gains",
+        "//examples/perceptive_locomotion/systems:alip_input_receiver",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",

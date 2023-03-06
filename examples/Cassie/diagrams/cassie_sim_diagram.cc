@@ -105,10 +105,10 @@ CassieSimDiagram::CassieSimDiagram(
   builder.Connect(radio_parser->get_output_port(),
                   sensor_aggregator_->get_input_port_radio());
 
-  builder.ExportInput(input_receiver->get_input_port(), "lcmt_robot_input");
-  builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
-  builder.ExportOutput(state_sender->get_output_port(0), "lcmt_robot_output");
-  builder.ExportOutput(sensor_aggregator_->get_output_port(0),
+  actuation_port_ = builder.ExportInput(input_receiver->get_input_port(), "lcmt_robot_input");
+  radio_port_ = builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
+  state_port_ = builder.ExportOutput(state_sender->get_output_port(0), "lcmt_robot_output");
+  cassie_out_port_ = builder.ExportOutput(sensor_aggregator_->get_output_port(0),
                        "lcmt_cassie_out");
   if (visualize) {
     DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);
@@ -116,7 +116,6 @@ CassieSimDiagram::CassieSimDiagram(
   builder.BuildInto(this);
   this->set_name("cassie_sim_diagram");
   DrawAndSaveDiagramGraph(*this);
-  std::cout << "Built simulator" << std::endl;
 }
 }  // namespace examples
 }  // namespace dairlib

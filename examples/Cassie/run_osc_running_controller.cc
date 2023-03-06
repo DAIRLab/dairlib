@@ -28,7 +28,6 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -263,14 +262,6 @@ int DoMain(int argc, char* argv[]) {
   auto right_loop = RightLoopClosureEvaluator(plant);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
-  //  &left_fixed_knee_spring);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
-  //  &right_fixed_knee_spring);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
-  //  &left_fixed_ankle_spring);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
-  //  &right_fixed_ankle_spring);
 
   osc->AddKinematicConstraint(&evaluators);
 
@@ -400,18 +391,6 @@ int DoMain(int argc, char* argv[]) {
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant, right_foot_tracking_data.get(),
           right_hip_tracking_data.get());
-  auto left_foot_yz_rel_tracking_data =
-      std::make_unique<RelativeTranslationTrackingData>(
-          "left_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
-          osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot,
-          plant, plant, left_foot_yz_tracking_data.get(),
-          left_hip_yz_tracking_data.get());
-  auto right_foot_yz_rel_tracking_data =
-      std::make_unique<RelativeTranslationTrackingData>(
-          "right_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
-          osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot,
-          plant, plant, right_foot_yz_tracking_data.get(),
-          right_hip_yz_tracking_data.get());
   auto pelvis_trans_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
@@ -419,8 +398,6 @@ int DoMain(int argc, char* argv[]) {
           stance_foot_tracking_data.get());
   left_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   right_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
-  left_foot_yz_rel_tracking_data->SetViewFrame(pelvis_view_frame);
-  right_foot_yz_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
 
   auto foot_traj_weight_trajectory =
@@ -511,8 +488,6 @@ int DoMain(int argc, char* argv[]) {
   if (osc_gains.no_derivative_feedback) {
     left_foot_rel_tracking_data->SetNoDerivativeFeedback(true);
     right_foot_rel_tracking_data->SetNoDerivativeFeedback(true);
-    left_foot_yz_rel_tracking_data->SetNoDerivativeFeedback(true);
-    right_foot_yz_rel_tracking_data->SetNoDerivativeFeedback(true);
     pelvis_trans_rel_tracking_data->SetNoDerivativeFeedback(true);
     left_hip_yaw_tracking_data->SetNoDerivativeFeedback(true);
     right_hip_yaw_tracking_data->SetNoDerivativeFeedback(true);
@@ -522,8 +497,6 @@ int DoMain(int argc, char* argv[]) {
   } else {
     left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
     right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
-    left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
-    right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
     pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
     left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
     right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);

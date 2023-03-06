@@ -54,7 +54,8 @@ class OSCRunningControllerDiagram final
   }
 
   /// @return the output port for the lcmt_robot_input message.
-  const drake::systems::OutputPort<double>& get_output_port_robot_input() const {
+  const drake::systems::OutputPort<double>& get_output_port_robot_input()
+      const {
     return this->get_output_port(control_port_);
   }
 
@@ -117,18 +118,10 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<TransTaskSpaceTrackingData> stance_foot_tracking_data;
   std::unique_ptr<TransTaskSpaceTrackingData> left_foot_tracking_data;
   std::unique_ptr<TransTaskSpaceTrackingData> right_foot_tracking_data;
-  std::unique_ptr<TransTaskSpaceTrackingData> left_foot_yz_tracking_data;
-  std::unique_ptr<TransTaskSpaceTrackingData> right_foot_yz_tracking_data;
   std::unique_ptr<TransTaskSpaceTrackingData> left_hip_tracking_data;
   std::unique_ptr<TransTaskSpaceTrackingData> right_hip_tracking_data;
-  std::unique_ptr<TransTaskSpaceTrackingData> left_hip_yz_tracking_data;
-  std::unique_ptr<TransTaskSpaceTrackingData> right_hip_yz_tracking_data;
   std::unique_ptr<RelativeTranslationTrackingData> left_foot_rel_tracking_data;
   std::unique_ptr<RelativeTranslationTrackingData> right_foot_rel_tracking_data;
-  std::unique_ptr<RelativeTranslationTrackingData>
-      left_foot_yz_rel_tracking_data;
-  std::unique_ptr<RelativeTranslationTrackingData>
-      right_foot_yz_rel_tracking_data;
   std::unique_ptr<RelativeTranslationTrackingData>
       pelvis_trans_rel_tracking_data;
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_rot_tracking_data;
@@ -137,10 +130,10 @@ class OSCRunningControllerDiagram final
   std::unique_ptr<JointSpaceTrackingData> left_hip_yaw_tracking_data;
   std::unique_ptr<JointSpaceTrackingData> right_hip_yaw_tracking_data;
 
-  const drake::systems::InputPortIndex
-      state_port_ = drake::systems::InputPortIndex(0);
-  const drake::systems::InputPortIndex
-      radio_port_ = drake::systems::InputPortIndex(1);
+  const drake::systems::InputPortIndex state_port_ =
+      drake::systems::InputPortIndex(0);
+  const drake::systems::InputPortIndex radio_port_ =
+      drake::systems::InputPortIndex(1);
   const drake::systems::OutputPortIndex control_port_ =
       drake::systems::OutputPortIndex(0);
   const drake::systems::OutputPortIndex torque_port_ =

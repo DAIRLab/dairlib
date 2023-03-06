@@ -573,12 +573,12 @@ py_binary(
 )
 
 py_binary(
-    name = "cassie_virtual_remote_py",
-    srcs = ["cassie_virtual_remote.py"],
+    name = "forward_command_py",
+    srcs = ["forward_command.py"],
     data = [
         "@lcm//:lcm-python",
     ],
-    main = "cassie_virtual_remote.py",
+    main = "forward_command.py",
     deps = [
         "//lcmtypes:lcmtypes_robot_py",
     ],
@@ -599,8 +599,8 @@ py_binary(
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 
 drake_runfiles_binary(
-    name = "cassie_virtual_remote",
-    target = "cassie_virtual_remote_py",
+    name = "forward_command",
+    target = "forward_command_py",
 )
 
 drake_runfiles_binary(

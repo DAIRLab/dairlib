@@ -1,71 +1,78 @@
-w_input: 0.000
-w_lambda: 0.000
-w_accel: 0.0000001
+controller_frequency: 1000
+w_input: 0.000001
+w_lambda: 0.1
+w_accel: 0.0001
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
-W_input_reg: [1, 0.9, 0.5, 0.1, 5,
-              1, 0.9, 0.5, 0.1, 5]
+W_input_reg: [0.5, 0.9, 0.5, 0.1, 0.1,
+              0.5, 0.9, 0.5, 0.1, 0.1]
+# left toe, left heel, right toe, right heel: x y z
 W_lambda_c_reg: [1, 0.001, 0.01,
                  1, 0.001, 0.01,
                  1, 0.1, 0.01,
                  1, 0.1, 0.01]
+# left_knee_spring, right_knee_spring, left_ankle_spring, right_ankle_spring, left_loop, right_loop
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
-w_input_reg: 0.001
-w_soft_constraint: 100
-x_offset: 0.0
+w_input_reg: 0.01
+w_soft_constraint: 1000
+crouch_x_offset: 0.00
+land_x_offset: 0.00
 relative_feet: true
 
-mu: 0.4
+mu: 0.6
 
-w_swing_toe: 1
-swing_toe_kp: 2000
+w_swing_toe: 0.01
+swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 1
-hip_yaw_kp: 40
+w_hip_yaw: 2.5
+hip_yaw_kp: 100
 hip_yaw_kd: 5
 
-impact_threshold: 0.050
+min_pelvis_acc: -25
+max_pelvis_acc: 100
+impact_threshold: 0.000
 impact_tau: 0.005
-landing_delay: 0.0
+landing_delay: 0.000
+#landing_delay: -0.0
 
 CoMW:
   [20,    0,    0,
    0,     2,    0,
    0,     0,   20]
-PelvisRotW:
-  [1,  0,   0,
-   0,  1,   0,
-   0,    0,  1]
-FlightFootW:
-  [1,   0,    0,
-   0,   1,    0,
-   0,   0,   1]
 CoMKp:
-  [30,   0,    0,
+  [40,   0,    0,
    0,   50,    0,
-   0,    0,  50]
+   0,    0,  40]
 CoMKd:
   [ 7.5,    0,   0,
     0,    5,   0,
     0,    0,   5]
+PelvisRotW:
+  [10,  0,   0,
+   0,  5,   0,
+   0,   0,  1]
 PelvisRotKp:
-  [25,   0,   0,
-   0,  50,   0,
-   0,    0,   50]
+  [150.,   0,   0,
+   0,  200.,   0,
+   0,    0,  0.]
 PelvisRotKd:
-  [5,   0,  0,
-   0,   10,  0,
-   0,    0,  1]
-FlightFootKp:
-  [100,   0,    0,
+  [10,   0,  0,
+   0,  10,  0,
+   0,    0,  5.]
+FlightFootW:
+  [10,    0,    0,
    0,   100,    0,
-   0,     0,  100]
+   0,    0,   10]
+FlightFootKp:
+  [125,   0,    0,
+   0,   50,    0,
+   0,     0,  150]
 FlightFootKd:
-  [10,   0,    0,
-   0,   10,     0,
+  [2.5,   0,    0,
+   0,   2.5,     0,
    0,   0,    0]
 

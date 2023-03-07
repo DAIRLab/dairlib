@@ -6,6 +6,7 @@
 #include "dairlib/lcmt_controller_failure.hpp"
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/Cassie/cassie_lcm_driven_loop.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/systems/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
@@ -13,8 +14,9 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
-#include "examples/Cassie/cassie_lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/framework/diagram.h"
@@ -92,7 +94,7 @@ int do_main(int argc, char* argv[]) {
   auto command_receiver = builder.AddSystem<RobotInputReceiver>(plant);
 
   // Safety Controller
-  auto controller = builder.AddSystem<systems::LinearController>(
+  auto safety_controller = builder.AddSystem<systems::LinearController>(
       plant.num_positions(), plant.num_velocities(), plant.num_actuators());
   // Create config receiver.
   auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(plant);
@@ -116,17 +118,17 @@ int do_main(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(
-          "INPUT_SUPERVISOR_STATUS", &lcm_network, {TriggerType::kPeriodic}, FLAGS_pub_rate));
+          "INPUT_SUPERVISOR_STATUS", &lcm_network, {TriggerType::kPeriodic},
+          FLAGS_pub_rate));
   builder.Connect(*state_sub, *state_receiver);
 
   double input_supervisor_update_period = 1.0 / 1000.0;
-
 
   // Get input limits
   int nu = plant.num_actuators();
   VectorXd input_limit(nu);
   for (drake::multibody::JointActuatorIndex i(0); i < nu; ++i) {
-    input_limit(i) = plant.get_joint_actuator(i).effort_limit();
+    input_limit[i] = plant.get_joint_actuator(i).effort_limit();
   }
 
   auto input_supervisor = builder.AddSystem<InputSupervisor>(
@@ -145,10 +147,10 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(cassie_out_receiver->get_output_port(),
                   input_supervisor->get_input_port_cassie());
   builder.Connect(state_receiver->get_output_port(0),
-                  controller->get_input_port_output());
+                  safety_controller->get_input_port_output());
   builder.Connect(config_receiver->get_output_port(0),
-                  controller->get_input_port_config());
-  builder.Connect(controller->get_output_port(0),
+                  safety_controller->get_input_port_config());
+  builder.Connect(safety_controller->get_output_port(0),
                   input_supervisor->get_input_port_safety_controller());
   builder.Connect(input_supervisor->get_output_port_failure(),
                   controller_error_pub->get_input_port());
@@ -167,22 +169,22 @@ int do_main(int argc, char* argv[]) {
   // Create and connect LCM command echo to network
   auto net_command_sender = builder.AddSystem<RobotCommandSender>(plant);
 
-  LcmPublisherSystem* command_pub;
-  if (FLAGS_sim) {
-    command_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-            "CASSIE_INPUT", &lcm_local, {TriggerType::kForced}));
-  } else {
-    command_pub =
+  LcmPublisherSystem* command_pub_network;
+  if (!FLAGS_sim) {
+    command_pub_network =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
             "NETWORK_CASSIE_INPUT", &lcm_network, {TriggerType::kPeriodic},
             FLAGS_pub_rate));
+    builder.Connect(*net_command_sender, *command_pub_network);
   }
+  auto command_pub_local =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          "CASSIE_INPUT", &lcm_local, {TriggerType::kForced}));
 
   builder.Connect(input_supervisor->get_output_port_command(),
                   net_command_sender->get_input_port(0));
 
-  builder.Connect(*net_command_sender, *command_pub);
+  builder.Connect(*net_command_sender, *command_pub_local);
 
   // Finish building the diagram
   auto owned_diagram = builder.Build();
@@ -201,7 +203,7 @@ int do_main(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   CassieLcmDrivenLoop<dairlib::lcmt_robot_input,
-                         dairlib::lcmt_controller_switch>
+                      dairlib::lcmt_controller_switch>
       loop(&lcm_local, std::move(owned_diagram), command_receiver,
            input_channels, FLAGS_control_channel_name_initial, switch_channel,
            true, FLAGS_state_channel_name);
@@ -222,7 +224,7 @@ int do_main(int argc, char* argv[]) {
       &(loop.get_diagram()->GetMutableSubsystemContext(
           *config_receiver, &loop.get_diagram_mutable_context())),
       msg);
-
+  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

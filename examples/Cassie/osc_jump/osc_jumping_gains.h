@@ -7,7 +7,8 @@ using Eigen::MatrixXd;
 
 struct OSCJumpingGains : OSCGains {
   // costs
-  double x_offset;
+  double crouch_x_offset;
+  double land_x_offset;
   // center of mass tracking
   std::vector<double> CoMW;
   std::vector<double> CoMKp;
@@ -28,6 +29,8 @@ struct OSCJumpingGains : OSCGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
+  double min_pelvis_acc;
+  double max_pelvis_acc;
   double landing_delay;
   bool relative_feet;
 
@@ -47,7 +50,8 @@ struct OSCJumpingGains : OSCGains {
   template <typename Archive>
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
-    a->Visit(DRAKE_NVP(x_offset));
+    a->Visit(DRAKE_NVP(crouch_x_offset));
+    a->Visit(DRAKE_NVP(land_x_offset));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
     a->Visit(DRAKE_NVP(CoMKd));
@@ -63,6 +67,8 @@ struct OSCJumpingGains : OSCGains {
     a->Visit(DRAKE_NVP(w_hip_yaw));
     a->Visit(DRAKE_NVP(hip_yaw_kp));
     a->Visit(DRAKE_NVP(hip_yaw_kd));
+    a->Visit(DRAKE_NVP(min_pelvis_acc));
+    a->Visit(DRAKE_NVP(max_pelvis_acc));
     a->Visit(DRAKE_NVP(landing_delay));
     a->Visit(DRAKE_NVP(relative_feet));
 

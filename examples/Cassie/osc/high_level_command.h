@@ -69,16 +69,16 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
                    const Eigen::Vector2d& params_of_no_turning);
 
   // Input/output ports
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::OutputPort<double>& get_yaw_output_port() const {
-    return this->get_output_port(yaw_port_);
-  }
-  const drake::systems::InputPort<double>& get_radio_port() const {
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
-  const drake::systems::OutputPort<double>& get_xy_output_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_yaw() const {
+    return this->get_output_port(yaw_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_xy() const {
     return this->get_output_port(xy_port_);
   }
 

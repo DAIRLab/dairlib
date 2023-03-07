@@ -102,7 +102,7 @@ EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
       switch_time << timestamp;
     }
     // Offset desired pelvis location based on final landing location
-    pelvis_x_offset(0) = kLandingOffset;
+    pelvis_x_offset(0) = landing_x_offset_;
   }
   if (initial_pelvis_pos == VectorXd::Zero(3)) {
     VectorXd q = robot_output->GetPositions();
@@ -117,7 +117,7 @@ EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
 }
 
 drake::trajectories::PiecewisePolynomial<double>
-PelvisTransTrajGenerator::generateBalanceTraj(
+PelvisTransTrajGenerator::GenerateBalanceTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
   plant_.SetPositionsAndVelocities(context_, x);
@@ -150,7 +150,7 @@ PelvisTransTrajGenerator::generateBalanceTraj(
 }
 
 drake::trajectories::PiecewisePolynomial<double>
-PelvisTransTrajGenerator::generateCrouchTraj(const Eigen::VectorXd& x,
+PelvisTransTrajGenerator::GenerateCrouchTraj(const Eigen::VectorXd& x,
                                              double time) const {
   // This assumes that the crouch is starting at the exact position as the
   // start of the target trajectory which should be handled by balance
@@ -175,7 +175,7 @@ PelvisTransTrajGenerator::generateCrouchTraj(const Eigen::VectorXd& x,
 }
 
 drake::trajectories::PiecewisePolynomial<double>
-PelvisTransTrajGenerator::generateLandingTraj(
+PelvisTransTrajGenerator::GenerateLandingTraj(
     const drake::systems::Context<double>& context, const Eigen::VectorXd& x,
     double time) const {
   plant_.SetPositionsAndVelocities(context_, x);
@@ -230,11 +230,11 @@ void PelvisTransTrajGenerator::CalcTraj(
   const drake::VectorX<double>& x = robot_output->GetState();
 
   if (fsm_state[0] == BALANCE)
-    *casted_traj = generateBalanceTraj(context, x, time);
+    *casted_traj = GenerateBalanceTraj(context, x, time);
   else if (fsm_state[0] == CROUCH)
-    *casted_traj = generateCrouchTraj(x, time);
+    *casted_traj = GenerateCrouchTraj(x, time);
   else if (fsm_state[0] == LAND)
-    *casted_traj = generateLandingTraj(context, x, time);
+    *casted_traj = GenerateLandingTraj(context, x, time);
 }
 
 }  // namespace dairlib::examples::osc_jump

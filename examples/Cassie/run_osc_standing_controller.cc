@@ -4,21 +4,23 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/osc/osc_standing_gains.h"
 #include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/osc/operational_space_control.h"
-#include "systems/framework/lcm_driven_loop.h"
-#include "systems/robot_lcm_systems.h"
-#include "drake/common/yaml/yaml_io.h"
-#include "systems/controllers/osc/options_tracking_data.h"
-#include "systems/controllers/osc/trans_space_tracking_data.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
+#include "systems/controllers/osc/operational_space_control.h"
+#include "systems/controllers/osc/options_tracking_data.h"
+#include "systems/controllers/osc/osc_gains.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
+#include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -37,9 +39,9 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::TriggerTypeSet;
 
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
@@ -62,47 +64,6 @@ DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
-
-// Currently the controller runs at the rate between 500 Hz and 200 Hz, so the
-// publish rate of the robot state needs to be less than 500 Hz. Otherwise, the
-// performance seems to degrade due to this. (Recommended publish rate: 200 Hz)
-// Maybe we need to update the lcm driven loop to clear the queue of lcm message
-// if it's more than one message?
-
-struct OSCStandingGains {
-  int rows;
-  int cols;
-  double w_input;
-  double w_accel;
-  double w_soft_constraint;
-  double HipYawKp;
-  double HipYawKd;
-  double HipYawW;
-  std::vector<double> CoMKp;
-  std::vector<double> CoMKd;
-  std::vector<double> PelvisRotKp;
-  std::vector<double> PelvisRotKd;
-  std::vector<double> CoMW;
-  std::vector<double> PelvisW;
-
-  template <typename Archive>
-  void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(rows));
-    a->Visit(DRAKE_NVP(cols));
-    a->Visit(DRAKE_NVP(w_input));
-    a->Visit(DRAKE_NVP(w_accel));
-    a->Visit(DRAKE_NVP(w_soft_constraint));
-    a->Visit(DRAKE_NVP(CoMKp));
-    a->Visit(DRAKE_NVP(CoMKd));
-    a->Visit(DRAKE_NVP(PelvisRotKp));
-    a->Visit(DRAKE_NVP(PelvisRotKd));
-    a->Visit(DRAKE_NVP(HipYawKp));
-    a->Visit(DRAKE_NVP(HipYawKd));
-    a->Visit(DRAKE_NVP(CoMW));
-    a->Visit(DRAKE_NVP(PelvisW));
-    a->Visit(DRAKE_NVP(HipYawW));
-  }
-};
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -135,38 +96,12 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local;
-  auto gains = drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_gains_filename);
-
-  MatrixXd K_p_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKp.data(), gains.rows, gains.cols);
-  MatrixXd K_d_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMKd.data(), gains.rows, gains.cols);
-  MatrixXd K_p_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotKp.data(), gains.rows, gains.cols);
-  MatrixXd K_d_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisRotKd.data(), gains.rows, gains.cols);
-  MatrixXd K_p_hip_yaw = gains.HipYawKp * MatrixXd::Identity(1, 1);
-  MatrixXd K_d_hip_yaw = gains.HipYawKd * MatrixXd::Identity(1, 1);
-  MatrixXd W_com = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.CoMW.data(), gains.rows, gains.cols);
-  MatrixXd W_pelvis = Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      gains.PelvisW.data(), gains.rows, gains.cols);
-  MatrixXd W_hip_yaw = gains.HipYawW * MatrixXd::Identity(1, 1);
-  std::cout << "w input (not used): \n" << gains.w_input << std::endl;
-  std::cout << "w accel: \n" << gains.w_accel << std::endl;
-  std::cout << "w soft constraint: \n" << gains.w_soft_constraint << std::endl;
-  std::cout << "COM Kp: \n" << K_p_com << std::endl;
-  std::cout << "COM Kd: \n" << K_d_com << std::endl;
-  std::cout << "Pelvis Rot Kp: \n" << K_p_pelvis << std::endl;
-  std::cout << "Pelvis Rot Kd: \n" << K_d_pelvis << std::endl;
-  std::cout << "COM W: \n" << W_com << std::endl;
-  std::cout << "Pelvis W: \n" << W_pelvis << std::endl;
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
+  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
+      FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
+  OSCStandingGains osc_gains = drake::yaml::LoadYamlFile<OSCStandingGains>(
+      FindResourceOrThrow(FLAGS_gains_filename));
 
   // Create Lcm subsriber for lcmt_target_standing_height
   auto target_height_receiver = builder.AddSystem(
@@ -180,8 +115,7 @@ int DoMain(int argc, char* argv[]) {
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
-  auto cassie_out_to_radio =
-      builder.AddSystem<systems::CassieOutToRadio>();
+  auto cassie_out_to_radio = builder.AddSystem<systems::CassieOutToRadio>();
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
 
   // Create command sender.
@@ -204,7 +138,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const drake::multibody::Frame<double>&>>
       feet_contact_points = {left_toe, left_heel, right_toe, right_heel};
   auto com_traj_generator = builder.AddSystem<cassie::osc::StandingComTraj>(
-      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height, FLAGS_use_radio);
+      plant_w_springs, context_w_spr.get(), feet_contact_points, FLAGS_height,
+      FLAGS_use_radio);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<cassie::osc::StandingPelvisOrientationTraj>(
           plant_w_springs, context_w_spr.get(), feet_contact_points,
@@ -267,23 +202,25 @@ int DoMain(int argc, char* argv[]) {
   //                                      W_com * FLAGS_cost_weight_multiplier,
   //                                      plant_w_springs, plant_wo_springs);
   auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
-      "com_traj", K_p_com, K_d_com, W_com * FLAGS_cost_weight_multiplier,
-      plant_w_springs, plant_wo_springs);
+      "com_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
+      osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      plant_wo_springs);
   center_of_mass_traj->AddPointToTrack("pelvis");
-  double cutoff_freq = 5; // in Hz
+  double cutoff_freq = 5;  // in Hz
   double tau = 1 / (2 * M_PI * cutoff_freq);
   center_of_mass_traj->SetLowPassFilter(tau, {1});
   osc->AddTrackingData(std::move(center_of_mass_traj));
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
-      "pelvis_rot_traj", K_p_pelvis, K_d_pelvis,
-      W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
+      "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
+      osc_gains.W_pelvis_rot * FLAGS_cost_weight_multiplier, plant_w_springs,
       plant_wo_springs);
   pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 
   // Hip yaw joint tracking
   // We use hip yaw joint tracking instead of pelvis yaw tracking because the
-  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to 0.
+  // foot sometimes rotates about yaw, and we need hip yaw joint to go back to
+  // 0.
   double w_hip_yaw = 0.5;
   double hip_yaw_kp = 40;
   double hip_yaw_kd = 0.5;
@@ -307,7 +244,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
   builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(),
+                  osc_debug_pub->get_input_port());
   builder.Connect(com_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("com_traj"));
   builder.Connect(pelvis_rot_traj_generator->get_output_port(0),

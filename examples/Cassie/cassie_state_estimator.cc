@@ -228,8 +228,7 @@ void CassieStateEstimator::solveFourbarLinkage(
   double spring_length = rod_on_heel_springs_[0].first.norm();
   // Spring rest angle offset
   double spring_rest_offset =
-      atan(rod_on_heel_springs_[0].first(1) / rod_on_heel_springs_[0].first(0));
-
+      atan2(rod_on_heel_springs_[0].first(1), rod_on_heel_springs_[0].first(0));
   plant_.SetPositions(context_.get(), q);
 
   for (int i = 0; i < 2; i++) {
@@ -779,9 +778,9 @@ EventStatus CassieStateEstimator::Update(
 
   std::vector<std::pair<int, bool>> contacts;
   contacts.push_back(std::pair<int, bool>(0, left_contact));
-  contacts.push_back(std::pair<int, bool>(1, left_contact));
+//  contacts.push_back(std::pair<int, bool>(1, left_contact));
   contacts.push_back(std::pair<int, bool>(2, right_contact));
-  contacts.push_back(std::pair<int, bool>(3, right_contact));
+//  contacts.push_back(std::pair<int, bool>(3, right_contact));
   ekf.setContacts(contacts);
 
   // Step 4 - EKF (measurement step)

@@ -13,6 +13,13 @@ class AlipInputReceiver : public drake::systems::LeafSystem<double> {
                     std::vector<int> left_right_fsm_states,
                     std::vector<std::string> left_right_ankle_motor_names);
 
+  const drake::systems::InputPort<double>& get_input_port_fsm() {
+    return this->get_input_port(fsm_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_u() {
+    return this->get_input_port(input_traj_input_port_);
+  }
+
  private:
 
   void CopyInput(const drake::systems::Context<double>& context,

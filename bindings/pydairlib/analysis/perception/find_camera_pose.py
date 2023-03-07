@@ -229,9 +229,12 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
         right_toe_front = X_WR.multiply(TOE_FRONT).ravel()
         left_toe_front = X_WL.multiply(np.array([-0.0457, 0.112, 0])).ravel()
 
-        board_origin_in_world = 0.25 * (
-                right_toe_front + right_toe_rear +
-                left_toe_front + left_toe_rear)
+        # board_origin_in_world = 0.25 * (
+        #         right_toe_front + right_toe_rear +
+        #         left_toe_front + left_toe_rear)
+
+        board_origin_in_world = 0.5 * (right_toe_front + right_toe_rear) - \
+                                tag_positions[calibration_params.start_id]
 
         board_x_in_world = (right_toe_front - right_toe_rear)
 
@@ -360,7 +363,7 @@ def write_bag_for_calibration_playback(poses, X_PC, bag_path):
 
 def main():
     hardware_fname = sys.argv[1]
-    time_offset = -0.57
+    time_offset = 0.0
     cutoff_time = 24
     poses, data = extract_calibration_data(
         hardware_fname,

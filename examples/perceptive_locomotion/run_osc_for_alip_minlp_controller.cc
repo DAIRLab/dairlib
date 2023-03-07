@@ -22,6 +22,7 @@
 
 // MPC related
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
+#include "examples/perceptive_locomotion/systems/alip_input_receiver.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/controllers/lcm_trajectory_receiver.h"
@@ -116,6 +117,8 @@ DEFINE_string(gains_filename,
 DEFINE_string(minlp_gains_filename,
               "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
               "Filepath to alip minlp gains");
+
+DEFINE_string(channel_u_mpc, "ALIP_INPUT", "ankle torque lcm channel");
 
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
@@ -369,6 +372,16 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
 
+  // Stance toe torques
+  auto alip_input_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_channel_u_mpc,
+                                                 &lcm_local));
+  auto alip_input_receiver =
+      builder.AddSystem<perceptive_locomotion::AlipInputReceiver>(
+          plant_w_spr,
+          left_right_support_fsm_states,
+          std::vector<std::string>({"toe_left_motor", "toe_right_motor"}));
+
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, plant_wo_spr, context_w_spr.get(), context_wo_spr.get(), true);
@@ -581,16 +594,16 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-//  if (gains.W_com(0,0) == 0){
-//    osc->SetInputCostForJointAndFsmStateWeight(
-//        "toe_left_motor", left_stance_state, 1.0);
-//    osc->SetInputCostForJointAndFsmStateWeight(
-//        "toe_left_motor", post_right_double_support_state, 1.0);
-//    osc->SetInputCostForJointAndFsmStateWeight(
-//        "toe_right_motor", right_stance_state, 1.0);
-//    osc->SetInputCostForJointAndFsmStateWeight(
-//        "toe_right_motor", post_left_double_support_state, 1.0);
-//  }
+  if (gains.W_com(0,0) == 0){
+    osc->SetInputCostForJointAndFsmStateWeight(
+        "toe_left_motor", left_stance_state, 1.0);
+    osc->SetInputCostForJointAndFsmStateWeight(
+        "toe_left_motor", post_right_double_support_state, 1.0);
+    osc->SetInputCostForJointAndFsmStateWeight(
+        "toe_right_motor", right_stance_state, 1.0);
+    osc->SetInputCostForJointAndFsmStateWeight(
+        "toe_right_motor", post_left_double_support_state, 1.0);
+  }
   osc->Build();
 
   // Connect ports
@@ -612,6 +625,12 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
                     osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
+  builder.Connect(fsm->get_output_port_fsm(),
+                  alip_input_receiver->get_input_port_fsm());
+  builder.Connect(alip_input_subscriber->get_output_port(),
+                  alip_input_receiver->get_input_port_u());
+  builder.Connect(alip_input_receiver->get_output_port(),
+                  osc->get_feedforward_input_port());
 
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   if (FLAGS_publish_osc_data) {

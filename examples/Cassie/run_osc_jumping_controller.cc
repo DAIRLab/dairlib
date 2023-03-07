@@ -87,7 +87,8 @@ DEFINE_string(traj_name, "jumping_0.15h_0.3d",
               "File to load saved trajectories from");
 DEFINE_string(gains_filename, "examples/Cassie/osc_jump/osc_jumping_gains.yaml",
               "Filepath containing gains");
-DEFINE_string(osqp_settings, "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+DEFINE_string(osqp_settings,
+              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
               "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
@@ -153,28 +154,28 @@ int DoMain(int argc, char* argv[]) {
   for (int mode = 0; mode < dircon_trajectory.GetNumModes(); ++mode) {
     const LcmTrajectory::Trajectory lcm_pelvis_trans_trajectory =
         output_trajs.GetTrajectory("pelvis_trans_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_foot_traj =
         output_trajs.GetTrajectory("left_foot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_foot_traj =
         output_trajs.GetTrajectory("right_foot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_hip_traj =
         output_trajs.GetTrajectory("left_hip_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_hip_traj =
         output_trajs.GetTrajectory("right_hip_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_left_toe_traj =
         output_trajs.GetTrajectory("left_toe_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_right_toe_traj =
         output_trajs.GetTrajectory("right_toe_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     const LcmTrajectory::Trajectory lcm_pelvis_rot_traj =
         output_trajs.GetTrajectory("pelvis_rot_trajectory" +
-            std::to_string(mode));
+                                   std::to_string(mode));
     pelvis_trans_traj.ConcatenateInTime(
         PiecewisePolynomial<double>::CubicHermite(
             lcm_pelvis_trans_trajectory.time_vector,
@@ -220,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
   double flight_time =
       FLAGS_delay_time + dircon_trajectory.GetStateBreaks(1)(0);
   double land_time = FLAGS_delay_time + dircon_trajectory.GetStateBreaks(2)(0) +
-      osc_gains.landing_delay;
+                     osc_gains.landing_delay;
   std::vector<double> transition_times = {0.0, FLAGS_delay_time, flight_time,
                                           land_time};
 
@@ -248,16 +249,17 @@ int DoMain(int argc, char* argv[]) {
           feet_contact_points, FLAGS_delay_time);
   auto l_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_left", true, l_foot_trajectory,
-      l_hip_trajectory, osc_gains.relative_feet, FLAGS_delay_time);
+      l_hip_trajectory, FLAGS_delay_time);
   auto r_foot_traj_generator = builder.AddSystem<FlightFootTrajGenerator>(
       plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
-      r_hip_trajectory, osc_gains.relative_feet, FLAGS_delay_time);
+      r_hip_trajectory, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
       builder.AddSystem<BasicTrajectoryPassthrough>(
           pelvis_rot_trajectory, "pelvis_rot_traj", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
-      gains.impact_threshold, (osc_jump::JUMPING_FSM_STATE)FLAGS_init_fsm_state);
+      gains.impact_threshold,
+      (osc_jump::JUMPING_FSM_STATE)FLAGS_init_fsm_state);
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -289,8 +291,6 @@ int DoMain(int argc, char* argv[]) {
     contact_results_sub = builder.AddSystem(
         LcmSubscriberSystem::Make<drake::lcmt_contact_results_for_viz>(
             "CASSIE_CONTACT_FOR_FSM_DISPATCHER", &lcm));
-    // TODO(yangwill): Add PR for GM contact observer, currently in
-    // gm_contact_estimator branch
   } else {
     std::cerr << "Unknown simulator type!" << std::endl;
   }
@@ -300,12 +300,13 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
   // Cost
   osc->SetAccelerationCostWeights(gains.w_accel * gains.W_acceleration);
-  osc->SetInputSmoothingCostWeights(1e-3 * gains.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(gains.w_input *
+                                    gains.W_input_regularization);
   osc->SetInputCostWeights(gains.w_input * gains.W_input_regularization);
-  osc->SetLambdaContactRegularizationWeight(
-      gains.w_lambda * gains.W_lambda_c_regularization);
-  osc->SetLambdaHolonomicRegularizationWeight(1e-5 *
-      gains.W_lambda_h_regularization);
+  osc->SetLambdaContactRegularizationWeight(gains.w_lambda *
+                                            gains.W_lambda_c_regularization);
+  osc->SetLambdaHolonomicRegularizationWeight(gains.w_lambda *
+                                              gains.W_lambda_h_regularization);
   // Soft constraint on contacts
   osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
 
@@ -324,15 +325,14 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
-  vector<osc_jump::JUMPING_FSM_STATE> stance_modes = {osc_jump::BALANCE,
-                                                      osc_jump::CROUCH, osc_jump::LAND};
+  vector<osc_jump::JUMPING_FSM_STATE> stance_modes = {
+      osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
   for (auto mode : stance_modes) {
     osc->AddStateAndContactPoint(mode, &left_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &left_heel_evaluator);
     osc->AddStateAndContactPoint(mode, &right_toe_evaluator);
     osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
   }
-
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
 
@@ -503,9 +503,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("right_toe_angle_traj"));
-  builder.Connect(
-      pelvis_rot_traj_generator->get_output_port(0),
-      osc->get_input_port_tracking_data("pelvis_rot_traj"));
+  builder.Connect(pelvis_rot_traj_generator->get_output_port(0),
+                  osc->get_input_port_tracking_data("pelvis_rot_traj"));
 
   // FSM connections
   builder.Connect(contact_results_sub->get_output_port(),
@@ -540,7 +539,8 @@ int DoMain(int argc, char* argv[]) {
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(),
+                  osc_debug_pub->get_input_port());
   builder.Connect(osc->get_output_port_failure(),
                   failure_aggregator->get_input_port(0));
   builder.Connect(failure_aggregator->get_status_output_port(),

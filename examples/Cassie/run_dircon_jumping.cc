@@ -23,7 +23,6 @@
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/solve.h"
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
 using std::cout;
@@ -36,7 +35,6 @@ using std::vector;
 
 using drake::geometry::SceneGraph;
 using drake::multibody::Parser;
-using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -47,16 +45,11 @@ using dairlib::multibody::KinematicEvaluator;
 using dairlib::multibody::KinematicEvaluatorSet;
 using dairlib::solvers::NonlinearCost;
 using dairlib::systems::trajectory_optimization::Dircon;
-using dairlib::systems::trajectory_optimization::DirconDynamicConstraint;
-using dairlib::systems::trajectory_optimization::DirconKinConstraintType;
-using dairlib::systems::trajectory_optimization::DirconKinematicConstraint;
 using dairlib::systems::trajectory_optimization::DirconMode;
 using dairlib::systems::trajectory_optimization::DirconModeSequence;
 using dairlib::systems::trajectory_optimization::DirconOptions;
-using dairlib::systems::trajectory_optimization::HybridDircon;
 using dairlib::systems::trajectory_optimization::PointPositionConstraint;
 using drake::VectorX;
-using drake::math::RotationMatrix;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Body;
 using drake::multibody::MultibodyPlant;
@@ -71,54 +64,6 @@ using drake::trajectories::PiecewisePolynomial;
 DEFINE_string(jumping_parameters, "", "Jumping parameters");
 
 namespace dairlib {
-
-class JointAccelCost : public solvers::NonlinearCost<double> {
- public:
-  JointAccelCost(const MatrixXd& W_Q,
-                 const drake::multibody::MultibodyPlant<double>& plant,
-                 const KinematicEvaluatorSet<double>* constraints,
-                 const std::string& description = "")
-      : solvers::NonlinearCost<double>(
-            plant.num_positions() + plant.num_velocities() +
-                plant.num_actuators() + constraints->count_full(),
-            description),
-        plant_(plant),
-        context_(plant_.CreateDefaultContext()),
-        constraints_(constraints),
-        n_v_(plant.num_velocities()),
-        n_x_(plant.num_positions() + plant.num_velocities()),
-        n_u_(plant.num_actuators()),
-        n_lambda_(constraints->count_full()),
-        W_Q_(W_Q){};
-
- private:
-  void EvaluateCost(const Eigen::Ref<const drake::VectorX<double>>& x,
-                    drake::VectorX<double>* y) const override {
-    DRAKE_ASSERT(x.size() == n_x_ + n_u_ + n_lambda_);
-
-    // Extract our input variables:
-    const auto x0 = x.segment(0, n_x_);
-    const auto u0 = x.segment(n_x_, n_u_);
-    VectorXd l0 = x.segment(n_x_ + n_u_, n_lambda_);
-
-    multibody::SetContext<double>(plant_, x0, u0, context_.get());
-    const VectorX<double> xdot0 =
-        constraints_->CalcTimeDerivatives(*context_, &l0);
-
-    (*y) = xdot0.tail(n_v_).transpose() * W_Q_ * xdot0.tail(n_v_);
-  };
-
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
-  const KinematicEvaluatorSet<double>* constraints_;
-
-  int n_v_;
-  int n_x_;
-  int n_u_;
-  int n_lambda_;
-
-  MatrixXd W_Q_;
-};
 
 struct DirconJumpingParameters {
   // model urdfs
@@ -358,10 +303,6 @@ void DoMain() {
     solver_options.SetOption(id, "print_timing_statistics", "yes");  // NOLINT
     solver_options.SetOption(id, "print_level", 5);                  // NOLINT
     solver_options.SetOption(id, "output_file", "../ipopt.out");     // NOLINT
-    //    solver_options.SetOption(id, "acceptable_compl_inf_tol", tol);    //
-    //    NOLINT solver_options.SetOption(id, "acceptable_constr_viol_tol",
-    //    tol);  // NOLINT solver_options.SetOption(id,
-    //    "acceptable_obj_change_tol", 1e-3);  // NOLINT
     solver_options.SetOption(id, "acceptable_tol",
                              gait_params.acceptable_tol);  // NOLINT
     solver_options.SetOption(id, "acceptable_iter",
@@ -379,23 +320,6 @@ void DoMain() {
     solver_options.SetOption(id, "Solution", "No");                    // NOLINT
     solver_options.SetOption(id, "Major feasibility tolerance",
                              gait_params.tol);  // NOLINT
-
-    //    prog.SetSolverOption(id, "Print file", "../snopt.out");
-    //    prog.SetSolverOption(id, "Major iterations limit", 1e5);
-    //    prog.SetSolverOption(id, "Iterations limit", 100000);
-    //    prog.SetSolverOption(id, "Verify level", 0);
-
-    // snopt doc said try 2 if seeing snopta exit 40
-    //    prog.SetSolverOption(id, "Scale option", 2);
-    //    prog.SetSolverOption(id, );
-
-    // target nonlinear constraint violation
-    //    prog.SetSolverOption(id, "Major optimality tolerance", 1e-5);
-    //    prog.SetSolverOption(id, "Major optimality tolerance",
-    //                         1e-5);
-
-    // target complementarity gap
-    //    prog.SetSolverOption(id, );
   }
 
   std::cout << "Adding kinematic constraints: " << std::endl;
@@ -502,8 +426,6 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   //  bounding box constraints on all decision  variables
   for (int i = 0; i < mode_lengths.size(); ++i) {
     for (int j = 0; j < mode_lengths[i]; ++i) {
-      //      auto state_vars_ij = trajopt->state_vars(i, j);
-      //      auto input_vars_ij = trajopt->input_vars(i, j);
       auto force_vars_ij = trajopt->force_vars(i, j);
       prog->AddBoundingBoxConstraint(
           VectorXd::Constant(force_vars_ij.rows(), -200),
@@ -642,8 +564,6 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
     prog->AddBoundingBoxConstraint(u_min, u_max, ui);
     if (i < trajopt->N() - 1) {
       auto uip1 = trajopt->input(i + 1);
-      //      prog->AddConstraint(ui - uip1 <= VectorXd::Constant(n_u, 50));
-      //      prog->AddConstraint(ui - uip1 >= VectorXd::Constant(n_u, -50));
       prog->AddConstraint(ui - uip1 <=
                           VectorXd::Constant(n_u, gait_params.input_delta));
       prog->AddConstraint(ui - uip1 >=
@@ -768,13 +688,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Only add constraints of lambdas for stance modes
   // ALL BUT THE LAST SEGMENT (to ensure the feet can leave the ground
-//  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
-//    auto lambda = trajopt->force_vars(0, index);
-//    prog->AddLinearConstraint(lambda(2) >= 60);
-//    prog->AddLinearConstraint(lambda(5) >= 60);
-//    prog->AddLinearConstraint(lambda(8) >= 60);
-//    prog->AddLinearConstraint(lambda(11) >= 60);
-//  }
+  //  for (int index = 0; index < (mode_lengths[0] - 2); index++) {
+  //    auto lambda = trajopt->force_vars(0, index);
+  //    prog->AddLinearConstraint(lambda(2) >= 60);
+  //    prog->AddLinearConstraint(lambda(5) >= 60);
+  //    prog->AddLinearConstraint(lambda(8) >= 60);
+  //    prog->AddLinearConstraint(lambda(11) >= 60);
+  //  }
   // Limit the ground reaction forces in the landing phase
   for (int index = 0; index < mode_lengths[2]; index++) {
     auto lambda = trajopt->force_vars(2, index);
@@ -869,29 +789,10 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   }
 
   MatrixXd Q = gait_params.cost_scaling * 0.02 * MatrixXd::Identity(n_v, n_v);
-  //  MatrixXd Q = 0.02 * MatrixXd::Identity(n_v - 3, n_v - 3);
   MatrixXd R = gait_params.cost_scaling * 1e-1 * MatrixXd::Identity(n_u, n_u);
-  //  R(act_map.at("hip_roll_left_motor"), act_map.at("hip_roll_left_motor")) =
-  //      5e-1;
-  //  R(act_map.at("hip_roll_right_motor"), act_map.at("hip_roll_right_motor"))
-  //  =
-  //      5e-1;
-  //  R(act_map.at("hip_yaw_left_motor"), act_map.at("hip_yaw_left_motor")) =
-  //  5e-1; R(act_map.at("hip_yaw_right_motor"),
-  //  act_map.at("hip_yaw_right_motor")) =
-  //      5e-1;
-  //  R(act_map.at("hip_pitch_left_motor"), act_map.at("hip_pitch_left_motor"))
-  //  =
-  //      5e-5;
-  //  R(act_map.at("hip_pitch_right_motor"),
-  //  act_map.at("hip_pitch_right_motor")) =
-  //      5e-5;
 
   trajopt->AddRunningCost(x.tail(n_v - 3).transpose() * Q * x.tail(n_v - 3));
   VectorXd q_f = VectorXd::Zero(n_q);
-  //  VectorXd quat_identity(4);
-  //  quat_identity << 1, 0, 0, 0;
-  //  q_f.head(4) = quat_identity;
   q_f(pos_map.at("hip_yaw_left")) = 0;
   q_f(pos_map.at("hip_yaw_right")) = 0;
   q_f(pos_map.at("hip_roll_left")) = 0;
@@ -914,32 +815,6 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   trajopt->AddRunningCost((x.segment(13, 3) - q_f_target_right).transpose() *
                           Q_right * (x.segment(13, 3) - q_f_target_right));
   trajopt->AddRunningCost(u.transpose() * R * u);
-
-  //  vector<int> mode_lengths = {gait_params.knot_points,
-  //  gait_params.knot_points,
-  //                              gait_params.knot_points};
-  //  MatrixXd W = 1e-1 * MatrixXd::Identity(n_v, n_v);
-  //  W(vel_map["hip_pitch_leftdot"], vel_map["hip_pitch_leftdot"]) = 1e2;
-  //  W(vel_map["hip_pitch_rightdot"], vel_map["hip_pitch_rightdot"]) = 1e2;
-  //  W(vel_map["hip_roll_leftdot"], vel_map["hip_roll_leftdot"]) = 5e1;
-  //  W(vel_map["hip_roll_rightdot"], vel_map["hip_roll_rightdot"]) = 5e1;
-  //  W(vel_map["hip_yaw_leftdot"], vel_map["hip_yaw_leftdot"]) *= 1e2;
-  //  W(vel_map["hip_yaw_rightdot"], vel_map["hip_yaw_rightdot"]) *= 1e2;
-  //  W(vel_map["toe_leftdot"], vel_map["toe_leftdot"]) = 1e-4;
-  //  W(vel_map["toe_rightdot"], vel_map["toe_rightdot"]) = 1e-4;
-  //  W *= 2.0 * gait_params.cost_scaling;
-  //  vector<std::shared_ptr<JointAccelCost>> joint_accel_costs;
-  //  for (int mode : {0, 1, 2}) {
-  //    joint_accel_costs.push_back(std::make_shared<JointAccelCost>(
-  //        W, plant, &constraints->mode(mode).evaluators()));
-  //    for (int index = 0; index < mode_lengths[mode]; index++) {
-  //      // Assumes mode_lengths are the same across modes
-  //      auto x_i = trajopt->state_vars(mode, index);
-  //      auto u_i = trajopt->input_vars(mode, index);
-  //      auto l_i = trajopt->force_vars(mode, index);
-  //      trajopt->prog().AddCost(joint_accel_costs[mode], {x_i, u_i, l_i});
-  //    }
-  //  }
 }
 
 void SetInitialGuessFromDirconTrajectory(Dircon<double>& trajopt,

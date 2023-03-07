@@ -58,8 +58,8 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
       this->DeclareVectorInputPort("t_mode", BasicVector<double>(6))
           .get_index();
 
-  PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
-  Trajectory<double>& traj_inst = empty_pp_traj;
+  PiecewisePolynomial<double> empty_traj(VectorXd(0));
+  Trajectory<double>& traj_inst = empty_traj;
   this->DeclareAbstractOutputPort("pelvis_trans_traj", traj_inst,
                                   &PelvisTransTrajGenerator::CalcTraj);
 

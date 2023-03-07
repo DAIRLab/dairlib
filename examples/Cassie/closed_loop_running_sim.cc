@@ -75,7 +75,6 @@ int DoMain(int argc, char* argv[]) {
 
   new_plant.SetPositionsAndVelocities(&plant_context, x_init);
   simulator.Initialize();
-  //  auto sim = drake::systems::Simulator(diagram);
   std::cout << "advancing simulator: " << std::endl;
   simulator.AdvanceTo(5.0);
 }

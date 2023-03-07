@@ -2,7 +2,6 @@
 
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/systems/primitives/zero_order_hold.h>
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
@@ -104,8 +103,6 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant);
   auto right_heel = RightToeRear(plant);
 
-  int nv = plant.num_velocities();
-
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
@@ -115,10 +112,10 @@ int DoMain(int argc, char* argv[]) {
       int, std::vector<std::pair<const Vector3d,
                                  const drake::multibody::Frame<double>&>>>
       feet_contact_points;
-  feet_contact_points[0] = std::vector<
+  feet_contact_points[LEFT_STANCE] = std::vector<
       std::pair<const Vector3d, const drake::multibody::Frame<double>&>>(
       {left_toe, left_heel});
-  feet_contact_points[1] = std::vector<
+  feet_contact_points[RIGHT_STANCE] = std::vector<
       std::pair<const Vector3d, const drake::multibody::Frame<double>&>>(
       {right_toe, right_heel});
 
@@ -432,7 +429,7 @@ int DoMain(int argc, char* argv[]) {
       RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
       RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
-//  pelvis_rot_tracking_data->SetViewFrame(pelvis_view_frame);
+  pelvis_rot_tracking_data->SetViewFrame(pelvis_view_frame);
   if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
                                                {1, 2});
@@ -587,10 +584,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("right_ft_traj"));
-  //  builder.Connect(l_foot_traj_generator->get_output_port(0),
-  //                  osc->get_input_port_tracking_data("left_ft_z_traj"));
-  //  builder.Connect(r_foot_traj_generator->get_output_port(0),
-  //                  osc->get_input_port_tracking_data("right_ft_z_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
@@ -603,10 +596,6 @@ int DoMain(int argc, char* argv[]) {
                   high_level_command->get_radio_input_port());
   builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-  //  builder.Connect(osc->get_osc_output_port(),
-  //                  controller_frequency_regulator->get_input_port());
-  //  builder.Connect(controller_frequency_regulator->get_output_port(),
-  //                  command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_debug(),
@@ -618,25 +607,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(contact_scheduler->get_output_port_debug_info(),
                   contact_scheduler_debug_publisher->get_input_port());
 
-  // Run lcm-driven simulation
-  // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("osc_running_controller"));
-  // Run lcm-driven simulation
+
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
-  //  std::cout << "waiting for messages" << std::endl;
-  //  LcmHandleSubscriptionsUntil(&lcm, [&]() {
-  //    return cassie_out_receiver->GetInternalMessageCount()>2;
-  //  });
-  //  controller_frequency_regulator->LatchInputPortToState(&loop.get_diagram()->GetMutableSubsystemContext(
-  //      *controller_frequency_regulator,
-  //      &loop.get_diagram_mutable_context()));
-  //
-  //  std::cout << "got message, starting simulator" << std::endl;
-  //
   loop.Simulate();
 
   return 0;

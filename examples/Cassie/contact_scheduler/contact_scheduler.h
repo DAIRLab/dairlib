@@ -88,8 +88,6 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   double tau_;
   const BLEND_FUNC blend_func_;
 
-  int initial_state_ = 0;
-
   drake::systems::DiscreteStateIndex stored_fsm_state_index_;
   drake::systems::DiscreteStateIndex stored_robot_state_index_;
   drake::systems::DiscreteStateIndex stored_transition_time_index_;
@@ -102,11 +100,11 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   drake::systems::AbstractStateIndex upcoming_transitions_index_;
 
   /// SLIP parameters
-  double rest_length_;
-  double stance_duration_;
-  double flight_duration_;
-  double stance_variance_;
-  double flight_variance_;
+  double rest_length_ = 0.0;
+  double stance_duration_ = 0.0;
+  double flight_duration_ = 0.0;
+  double stance_variance_ = 0.0;
+  double flight_variance_ = 0.0;
 };
 
 }  // namespace dairlib

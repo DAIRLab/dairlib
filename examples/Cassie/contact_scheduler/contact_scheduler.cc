@@ -37,6 +37,8 @@ ContactScheduler::ContactScheduler(const MultibodyPlant<double>& plant,
       near_impact_threshold_(near_impact_threshold),
       tau_(tau),
       blend_func_(blend_func) {
+  DRAKE_DEMAND(tau_ > 0);
+  DRAKE_DEMAND(near_impact_threshold_ >= 0);
   this->set_name("ContactScheduler");
   // Declare system ports
   state_port_ = this->DeclareVectorInputPort(
@@ -75,8 +77,6 @@ ContactScheduler::ContactScheduler(const MultibodyPlant<double>& plant,
        {0.00, LEFT_STANCE},
        {0.25, LEFT_FLIGHT},
        {0.35, RIGHT_STANCE}};
-  //  transition_times_index_ = DeclareAbstractState(
-  //      drake::Value<std::vector<double>>{{0.1, 0.3, 0.4, 0.6}});
   VectorXd initial_transition_times = VectorXd::Zero(4);
   initial_transition_times << -0.1, 0.0, 0.25, 0.35;
   transition_times_index_ = DeclareDiscreteState(initial_transition_times);
@@ -95,6 +95,10 @@ ContactScheduler::ContactScheduler(const MultibodyPlant<double>& plant,
 
 EventStatus ContactScheduler::UpdateTransitionTimes(
     const Context<double>& context, State<double>* state) const {
+  DRAKE_DEMAND(rest_length_ > 0);
+  DRAKE_DEMAND(stance_duration_ > 0);
+  DRAKE_DEMAND(flight_duration_ > 0);
+
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double current_time = robot_output->get_timestamp();
@@ -104,7 +108,7 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
   auto transition_times =
       state->get_mutable_discrete_state(transition_times_index_)
           .get_mutable_value();
-  std::vector<std::pair<double, RUNNING_FSM_STATE>>& upcoming_transitions =
+  auto& upcoming_transitions =
       state->get_mutable_abstract_state<
           std::vector<std::pair<double, RUNNING_FSM_STATE>>>(
           upcoming_transitions_index_);
@@ -168,10 +172,8 @@ EventStatus ContactScheduler::UpdateTransitionTimes(
     double pelvis_zdot = robot_output->GetVelocityAtIndex(5);
 
     if (active_state == LEFT_STANCE || active_state == RIGHT_STANCE) {
-      // Store the ground height of the stance foot
-
-      // TODO(yangwill): calculate end of stance duration
-      double stance_scale = (pelvis_z)/ (rest_length_);
+      // This is a very crude approximation
+      double stance_scale = (pelvis_z) / (rest_length_);
       stance_scale =
           std::clamp(stance_scale, 1 - stance_variance_, 1 + stance_variance_);
       double next_transition_time =
@@ -244,10 +246,9 @@ void ContactScheduler::CalcNextImpactInfo(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_time = static_cast<double>(robot_output->get_timestamp());
-  const std::vector<std::pair<double, RUNNING_FSM_STATE>>&
-      upcoming_transitions = context.get_abstract_state<
-          std::vector<std::pair<double, RUNNING_FSM_STATE>>>(
-          upcoming_transitions_index_);
+  const auto& upcoming_transitions = context.get_abstract_state<
+      std::vector<std::pair<double, RUNNING_FSM_STATE>>>(
+      upcoming_transitions_index_);
   // Assign the blending function ptr
   auto alpha_func = blend_func_ == SIGMOID ? &blend_sigmoid : &blend_exp;
 
@@ -261,9 +262,6 @@ void ContactScheduler::CalcNextImpactInfo(
   RUNNING_FSM_STATE current_state = upcoming_transitions.at(2).second;
   double blend_window = blend_func_ == SIGMOID ? 1.5 * near_impact_threshold_
                                                : near_impact_threshold_;
-  // Check if we're close to an impact event either upcoming or one that just
-  // happened
-
   // Check if the upcoming state has an impact
   if (impact_states_.count(transition_state) != 0) {
     if (abs(current_time - transition_time) < blend_window) {
@@ -302,7 +300,7 @@ void ContactScheduler::CalcClock(const Context<double>& context,
 void ContactScheduler::CalcContactScheduler(
     const Context<double>& context, BasicVector<double>* contact_timing) const {
   // Read in lcm message time
-  RUNNING_FSM_STATE current_state_ =
+  auto current_state_ =
       (RUNNING_FSM_STATE)context.get_discrete_state(stored_fsm_state_index_)[0];
   double nominal_stance_duration =
       context.get_discrete_state(nominal_state_durations_index_)[0];
@@ -310,6 +308,14 @@ void ContactScheduler::CalcContactScheduler(
       context.get_discrete_state(nominal_state_durations_index_)[1];
   auto transition_times =
       context.get_discrete_state(transition_times_index_).value();
+  /// Timing indices: order goes from start time to end time for when the
+  /// tracking objective is active.
+  /// PelvisTouchdown = 0
+  /// PelvisLiftoff = 1
+  /// LeftFootLiftoff = 2
+  /// LeftFootTouchdown = 3
+  /// RightFootLiftoff = 4
+  /// RightFootTouchdown = 5
   if (current_state_ == LEFT_STANCE || current_state_ == RIGHT_FLIGHT) {
     contact_timing->get_mutable_value()(0) = transition_times[LEFT_STANCE];
     contact_timing->get_mutable_value()(1) = transition_times[LEFT_FLIGHT];

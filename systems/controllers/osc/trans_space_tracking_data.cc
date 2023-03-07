@@ -1,4 +1,5 @@
 #include "trans_space_tracking_data.h"
+
 #include <iostream>
 
 using Eigen::MatrixXd;
@@ -19,8 +20,7 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
-                          plant_wo_spr) {
-}
+                          plant_wo_spr) {}
 
 void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
                                                  const Vector3d& pt_on_body) {
@@ -63,21 +63,6 @@ void TransTaskSpaceTrackingData::UpdateJ(
       context_wo_spr, JacobianWrtVariable::kV,
       *body_frames_wo_spr_.at(fsm_state_), pts_on_body_[fsm_state_],
       world_wo_spr_, world_wo_spr_, &J_);
-//  if (fsm_state_ < 2) {
-//    J_(2, 8) = 0;
-//    J_(2, 16) = 0;
-//    J_(2, 6) = 0;
-//    J_(2, 14) = 0;
-//  }
-//  if (fsm_state_ >= 2) {
-//    J_(2, 7) = 0;
-//    J_(2, 15) = 0;
-//    J_(2, 6) = 0;
-//    J_(2, 14) = 0;
-//  }
-  if (J_.hasNaN()) {
-    std::cout << "Jacobian has NaNs" << std::endl;
-  }
 }
 
 void TransTaskSpaceTrackingData::UpdateJdotV(
@@ -89,8 +74,8 @@ void TransTaskSpaceTrackingData::UpdateJdotV(
 }
 
 void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-    if (!body_frames_w_spr_.empty()) {
-      body_frames_w_spr_ = body_frames_wo_spr_;
-    }
+  if (!body_frames_w_spr_.empty()) {
+    body_frames_w_spr_ = body_frames_wo_spr_;
+  }
 }
 }  // namespace dairlib::systems::controllers

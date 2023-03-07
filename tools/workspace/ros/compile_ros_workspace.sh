@@ -10,7 +10,7 @@ cd $(dirname "$BASH_SOURCE")
 
 set -e
 
-PACKAGES="roscpp rospy std_msgs geometry_msgs geometry2 sensor_msgs tf"
+PACKAGES="roscpp rospy"
 # You can add any published ros packages you need to this list.
 # Local ROS packages should be their own bazel local_repository
 

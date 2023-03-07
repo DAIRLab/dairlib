@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Only tested on Ubuntu 18.04
+
+# In addition to your base ROS install,
+# you must sudo apt-get install python3-vcstool
+
+# Tested on ubuntu 20.04 and 18.04
 BASE_DIR="$PWD"
 
 cd $(dirname "$BASH_SOURCE")
@@ -7,10 +11,13 @@ cd $(dirname "$BASH_SOURCE")
 set -e
 
 PACKAGES="roscpp rospy"
+# You can add any published ros packages you need to this list.
+# Local ROS packages should be their own bazel local_repository
 
 rm -rf bundle_ws
 mkdir bundle_ws
 pushd bundle_ws
+mkdir src
 
 DISTRO=$(lsb_release -c -s)
 
@@ -24,7 +31,6 @@ then
   wstool init -j1 src ws.rosinstall
 elif [ $DISTRO == "focal" ]
 then
-  mkdir src
   rosinstall_generator \
     --rosdistro noetic \
     --deps \
@@ -47,6 +53,6 @@ catkin config \
     --isolate-devel \
     --no-extend
 
-catkin build
+catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3
 
 cd $BASE_DIR

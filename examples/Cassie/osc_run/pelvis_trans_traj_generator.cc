@@ -37,8 +37,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     const std::unordered_map<
         int, std::vector<std::pair<const Eigen::Vector3d,
                                    const drake::multibody::Frame<double>&>>>&
-        feet_contact_points,
-    bool relative_pelvis)
+        feet_contact_points)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),

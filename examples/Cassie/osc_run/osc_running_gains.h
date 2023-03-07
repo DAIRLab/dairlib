@@ -20,8 +20,6 @@ struct OSCRunningGains : OSCGains {
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
   double target_vel_filter_alpha;
-  bool relative_feet;
-  bool relative_pelvis;
   bool no_derivative_feedback;
   double rest_length;
   double rest_length_offset;
@@ -80,8 +78,6 @@ struct OSCRunningGains : OSCGains {
     OSCGains::Serialize(a);
     a->Visit(DRAKE_NVP(controller_frequency));
     a->Visit(DRAKE_NVP(weight_scaling));
-    a->Visit(DRAKE_NVP(relative_feet));
-    a->Visit(DRAKE_NVP(relative_pelvis));
     a->Visit(DRAKE_NVP(no_derivative_feedback));
     a->Visit(DRAKE_NVP(rest_length));
     a->Visit(DRAKE_NVP(rest_length_offset));

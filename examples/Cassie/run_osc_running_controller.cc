@@ -132,9 +132,9 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
-  //  solvers::OSQPSettingsYaml osqp_settings =
-  //      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-  //          FindResourceOrThrow(FLAGS_osqp_settings));
+  drake::solvers::SolverOptions solver_options = drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+      FindResourceOrThrow(FLAGS_osqp_settings))
+      .osqp_options;
 
   /**** FSM and contact mode configuration ****/
 
@@ -278,8 +278,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), feet_contact_points,
-          osc_gains.relative_pelvis);
+          plant, plant_context.get(), feet_contact_points);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
                                              osc_gains.rest_length_offset);
 
@@ -513,7 +512,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
 
-  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
+  osc->SetOsqpSolverOptions(solver_options);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

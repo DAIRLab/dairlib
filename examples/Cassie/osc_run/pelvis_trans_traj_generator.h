@@ -17,8 +17,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::unordered_map<
           int, std::vector<std::pair<const Eigen::Vector3d,
                                      const drake::multibody::Frame<double>&>>>&
-          feet_contact_points,
-      bool relative_pelvis = false);
+          feet_contact_points);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);

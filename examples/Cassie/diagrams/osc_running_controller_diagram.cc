@@ -211,8 +211,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), feet_contact_points,
-          osc_running_gains.relative_pelvis);
+          plant, plant_context.get(), feet_contact_points);
   pelvis_trans_traj_generator->SetSLIPParams(
       osc_running_gains.rest_length, osc_running_gains.rest_length_offset);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(

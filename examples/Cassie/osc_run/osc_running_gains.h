@@ -16,12 +16,6 @@ struct OSCRunningGains : OSCGains {
   double w_hip_yaw;
   double hip_yaw_kp;
   double hip_yaw_kd;
-  double w_hip_pitch;
-  double hip_pitch_kp;
-  double hip_pitch_kd;
-  double w_hip_roll;
-  double hip_roll_kp;
-  double hip_roll_kd;
   double vel_scale_rot;
   double vel_scale_trans_sagital;
   double vel_scale_trans_lateral;
@@ -74,9 +68,6 @@ struct OSCRunningGains : OSCGains {
   MatrixXd W_swing_foot;
   MatrixXd K_p_swing_foot;
   MatrixXd K_d_swing_foot;
-  MatrixXd W_liftoff_swing_foot;
-  MatrixXd K_p_liftoff_swing_foot;
-  MatrixXd K_d_liftoff_swing_foot;
   MatrixXd W_swing_toe;
   MatrixXd K_p_swing_toe;
   MatrixXd K_d_swing_toe;
@@ -141,15 +132,6 @@ struct OSCRunningGains : OSCGains {
     K_d_swing_foot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->SwingFootKd.data(), 3, 3);
-     W_liftoff_swing_foot = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->LiftoffSwingFootW.data(), 3, 3);
-    K_p_liftoff_swing_foot = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->LiftoffSwingFootKp.data(), 3, 3);
-    K_d_liftoff_swing_foot = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->LiftoffSwingFootKd.data(), 3, 3);
     W_pelvis = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->PelvisW.data(), 3, 3);
@@ -188,7 +170,6 @@ struct OSCRunningGains : OSCGains {
     W_pelvis *= weight_scaling;
     W_pelvis_rot *= weight_scaling;
     W_swing_foot *= weight_scaling;
-    W_liftoff_swing_foot *= weight_scaling;
     W_swing_toe *= weight_scaling;
     W_hip_yaw *= weight_scaling;
   }

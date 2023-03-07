@@ -209,10 +209,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       osc_running_gains.vel_scale_trans_sagital,
       osc_running_gains.vel_scale_trans_lateral);
 
-  auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), default_traj, feet_contact_points,
+          plant, plant_context.get(), feet_contact_points,
           osc_running_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(
       osc_running_gains.rest_length, osc_running_gains.rest_length_offset);

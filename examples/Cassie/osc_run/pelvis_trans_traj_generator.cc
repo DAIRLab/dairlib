@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "examples/Cassie/contact_scheduler/contact_scheduler.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
@@ -18,6 +19,7 @@ using Eigen::VectorXd;
 
 using dairlib::systems::OutputVector;
 using drake::multibody::Frame;
+using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -25,8 +27,6 @@ using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 using drake::trajectories::PiecewisePolynomial;
-// using drake::common::Polynomial;
-using drake::multibody::JacobianWrtVariable;
 using drake::trajectories::Trajectory;
 
 namespace dairlib::examples::osc {
@@ -34,7 +34,6 @@ namespace dairlib::examples::osc {
 PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
-    drake::trajectories::PiecewisePolynomial<double>& traj,
     const std::unordered_map<
         int, std::vector<std::pair<const Eigen::Vector3d,
                                    const drake::multibody::Frame<double>&>>>&
@@ -44,10 +43,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
-      pelvis_frame_(pelvis_.body_frame()),
-      traj_(traj),
-      feet_contact_points_(feet_contact_points),
-      relative_pelvis_(relative_pelvis) {
+      feet_contact_points_(feet_contact_points){
   this->set_name("pelvis_trans_traj_generator");
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -78,18 +74,9 @@ EventStatus PelvisTransTrajGenerator::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
-PiecewisePolynomial<double> PelvisTransTrajGenerator::GeneratePelvisTraj(
-    const VectorXd& x, double t, int fsm_state) const {
-  return traj_;
-}
-
 PiecewisePolynomial<double> PelvisTransTrajGenerator::GenerateSLIPTraj(
     const VectorXd& x, double t0, double tf, int fsm_state) const {
-  // fsm_state should be unused
-  if (fsm_state >= 2) {
-    // flight phase trajectory should be unused
-    return PiecewisePolynomial<double>();
-  }
+  DRAKE_DEMAND(fsm_state < 2);
 
   Vector3d f_g =
       drake::multibody::UniformGravityFieldElement<double>().gravity_vector();
@@ -150,15 +137,9 @@ void PelvisTransTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  //  const drake::VectorX<double>& x = robot_output->GetState();
-  if (fsm_state == 0 || fsm_state == 1) {
-    if (relative_pelvis_) {
-      *casted_traj = GenerateSLIPTraj(robot_output->GetState(), mode_length[0],
-                                      mode_length[1], fsm_state);
-    } else {
-      *casted_traj =
-          GeneratePelvisTraj(robot_output->GetState(), clock, fsm_state);
-    }
+  if (fsm_state == LEFT_STANCE || fsm_state == RIGHT_STANCE) {
+    *casted_traj = GenerateSLIPTraj(robot_output->GetState(), mode_length[0],
+                                    mode_length[1], fsm_state);
   }
 }
 

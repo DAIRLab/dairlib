@@ -14,7 +14,6 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
-#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
@@ -277,10 +276,9 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), osc_gains.vel_scale_rot,
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
 
-  auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), default_traj, feet_contact_points,
+          plant, plant_context.get(), feet_contact_points,
           osc_gains.relative_pelvis);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
                                              osc_gains.rest_length_offset);

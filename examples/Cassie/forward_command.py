@@ -17,9 +17,9 @@ def main():
     clock = pygame.time.Clock()
 
     done = False
-    max_speed = 2.9
+    max_speed = 1.3
     dt = .020
-    acceleration = 1.25 # m/s^2
+    acceleration = 0.5 # m/s^2
     deceleration = 0.75 # m/s^2
     max_speed_duration = 20
     velocity_step_up = acceleration * dt

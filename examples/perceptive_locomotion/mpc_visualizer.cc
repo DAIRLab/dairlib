@@ -23,7 +23,7 @@
 namespace dairlib {
 
 DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "State channel");
-DEFINE_string(channel_mpc, "MPC_DEBUG", "mpc_debug_channel");
+DEFINE_string(channel_mpc, "ALIP_MINLP_DEBUG", "mpc_debug_channel");
 
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");

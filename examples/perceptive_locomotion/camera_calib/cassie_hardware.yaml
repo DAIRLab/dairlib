@@ -3,6 +3,5 @@ rotation: # Rotation of the camera depth_optical_frame in the pelvis frame
     0.9998431085420764,   0.017148465271426456, -0.0044371657657185145,
    -0.009845782805750382, 0.3297994909184909,   -0.9439996590842517]
 
-
 translation: # Translation of the camera base_link in the pelvis frame
   [0.18484121400622242, -0.05367380551342962, 0.1297107343190393]

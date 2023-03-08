@@ -85,7 +85,7 @@ void AlipMIQP::MakeFootholdConstraints() {
 }
 
 void AlipMIQP::UpdateFootholdConstraints() {
-  const int n = footholds_.size();
+  const int n = std::min(static_cast<int>(footholds_.size()), kMaxFootholds);
   for (int i = 0; i < n; i++) {
     const auto& [Aeq, beq] = footholds_.at(i).GetEqualityConstraintMatrices();
     const auto& [A, b] = footholds_.at(i).GetConstraintMatrices();

@@ -15,6 +15,7 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210416_3dlipm_grid_all_files/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210505_3dlipm_all_files/"
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210602_3dlipm/"                                                      # rom_option 4
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20210602_3dlipm_swing_ft_cubic_spline/robot_1/"                               # rom_option 4
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210612_3dlipm/"                                                      # rom_option 4
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210702_lipm_limit_height/"                                           # rom_option 4
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/models_20210709_3dlipm_bigger_task_range/"                                    # rom_option 4

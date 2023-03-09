@@ -94,7 +94,7 @@ DEFINE_double(pelvis_y_vel, 0, "for stability");
 // ROS publishing flags
 DEFINE_string(
     camera_pose_calib,
-    "examples/perceptive_locomotion/camera_calib/depth_simulation.yaml",
+    "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
     "For use with vision sensing - path to yaml file containing the pose of the"
     " realsense base_link in the pelvis frame");
 DEFINE_bool(publish_ros, false, "whether to publish state to ROS");

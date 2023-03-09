@@ -112,7 +112,9 @@ DEFINE_string(channel_u, "CASSIE_INPUT",
 DEFINE_string(stepping_stone_filename,
               "examples/perceptive_locomotion/terrains/stones.yaml",
               "YAML file defining stepping stones");
-
+DEFINE_string(camera_calib_yaml,
+              "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
+              "yaml with camera calib");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -146,9 +148,10 @@ int do_main(int argc, char* argv[]) {
 
   double camera_pitch = - 74 * M_PI / 180.0;
   const auto camera_position = Vector3d(0.175, 0, 0.15);
-  const auto cam_transform = RigidTransformd(
-      camera::MakeXZAlignedCameraRotation(camera_pitch), camera_position);
 
+  const auto cam_transform = camera::ReadCameraPoseFromYaml(FLAGS_camera_calib_yaml);
+//      RigidTransformd(
+//          camera::MakeXZAlignedCameraRotation(camera_pitch), camera_position);
   plant.Finalize();
 
   auto context = plant.CreateDefaultContext();

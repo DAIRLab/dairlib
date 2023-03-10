@@ -18,6 +18,7 @@ struct AlipMINLPGainsImport {
   double ds_time;
   int nmodes;
   int knots_per_mode;
+  int solver_threads;
   std::vector<double> qf;
   std::vector<double> q;
   std::vector<double> r;
@@ -56,6 +57,7 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(reset_discretization_method));
     a->Visit(DRAKE_NVP(pelvis_vel_butter_order));
     a->Visit(DRAKE_NVP(pelvis_vel_butter_wc));
+    a->Visit(DRAKE_NVP(solver_threads));
 
     Qf = Eigen::Map<
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->qf.data());

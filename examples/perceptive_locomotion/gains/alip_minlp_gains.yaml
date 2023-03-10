@@ -1,7 +1,7 @@
 t_commit: 0.25
 t_min: 0.24
 t_max: 0.5
-u_max: 10
+u_max: 0
 h_des: 0.83
 stance_width: 0.25
 ss_time: 0.3
@@ -9,7 +9,8 @@ ds_time: 0.1
 nmodes: 3
 knots_per_mode: 5
 pelvis_vel_butter_order: 2
-pelvis_vel_butter_wc: [100, 100, 100]
+pelvis_vel_butter_wc: [150, 150, 150]
+solver_threads: 4
 qf:
   [100.0, 0, 0, 0,
    0, 100.0, 0, 0,
@@ -22,6 +23,6 @@ q:
    0, 0, 0, 0]
 r: [100.0]
 reset_discretization_method: 'ZOH'
-filter_alip_state: true
+filter_alip_state: false
 qfilt: [.001, .001, .01, .01]
 rfilt: [.0001, .0001, .01, .01]

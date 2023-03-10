@@ -29,6 +29,7 @@
 #ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_receiver.h"
 #include "systems/ros/ros_subscriber_system.h"
+#include "ros/callback_queue.h"
 
 void SigintHandler(int sig) {
   ros::shutdown();
@@ -121,7 +122,8 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
-  ros::AsyncSpinner spinner(1);
+  ros::CallbackQueue q;
+  ros::AsyncSpinner spinner(1, &q);
 #else
   if (FLAGS_use_perception) {
     throw std::runtime_error(
@@ -203,11 +205,14 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
-  const auto& planner_solver_options =
-      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
-      FindResourceOrThrow(
-          "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
-      ));
+//  const auto& planner_solver_options =
+//      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+//      FindResourceOrThrow(
+//          "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
+//      ));
+
+  drake::solvers::SolverOptions solver_options;
+  solver_options.SetOption(drake::solvers::GurobiSolver::id(), "Threads", gains_mpc.solver_threads);
 
   auto pelvis_filt =
       builder.AddSystem<systems::FloatingBaseVelocityButterworthFilter>(
@@ -218,7 +223,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains_mpc.gains, planner_solver_options.osqp_options);
+          left_right_toe, gains_mpc.gains, solver_options);
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);

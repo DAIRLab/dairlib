@@ -331,7 +331,7 @@ int do_main(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("dispatcher_robot_out"));
   const auto& diagram = *owned_diagram;
-  DrawAndSaveDiagramGraph(diagram);
+//  DrawAndSaveDiagramGraph(diagram);
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
 

@@ -15,15 +15,15 @@
 
 namespace dairlib {
 
-enum RUNNING_FSM_STATE { LEFT_STANCE, RIGHT_STANCE, LEFT_FLIGHT, RIGHT_FLIGHT };
+enum RunningFsmState { kLeftStance, kRightStance, kLeftFlight, kRightFlight };
 
-class ContactScheduler : public drake::systems::LeafSystem<double> {
+class SLIPContactScheduler : public drake::systems::LeafSystem<double> {
  public:
-  ContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>* plant_context,
-                   std::set<RUNNING_FSM_STATE> impact_states,
-                   double near_impact_threshold = 0, double tau = 0.0025,
-                   BLEND_FUNC blend_func = SIGMOID);
+  SLIPContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
+                       drake::systems::Context<double>* plant_context,
+                       std::set<RunningFsmState> impact_states,
+                       double near_impact_threshold = 0, double tau = 0.0025,
+                       BLEND_FUNC blend_func = kSigmoid);
 
   void SetSLIPParams(double rest_length) { rest_length_ = rest_length; }
   void SetNominalStepTimings(double stance_duration, double flight_duration) {
@@ -83,7 +83,7 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* plant_context_;
 
   // For impact-invariant calculations
-  const std::set<RUNNING_FSM_STATE> impact_states_;
+  const std::set<RunningFsmState> impact_states_;
   double near_impact_threshold_;
   double tau_;
   const BLEND_FUNC blend_func_;

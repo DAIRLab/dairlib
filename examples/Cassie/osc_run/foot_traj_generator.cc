@@ -258,12 +258,12 @@ void FootTrajGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (is_left_foot_) {
-    if (fsm_state != LEFT_STANCE) {
+    if (fsm_state != kLeftStance) {
       *casted_traj = GenerateFlightTraj(context);
     }
 
   } else {
-    if (fsm_state != RIGHT_STANCE) {
+    if (fsm_state != kRightStance) {
       *casted_traj = GenerateFlightTraj(context);
     }
   }

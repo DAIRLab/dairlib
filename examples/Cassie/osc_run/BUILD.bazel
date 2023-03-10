@@ -31,19 +31,6 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "convert_traj_for_controller",
-    srcs = ["convert_traj_for_controller.cc"],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        "//lcm:lcm_trajectory_saver",
-        "//lcm:dircon_trajectory_saver",
-        "//multibody:utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 cc_library(
     name = "osc_running_gains",
     hdrs = ["osc_running_gains.h"],

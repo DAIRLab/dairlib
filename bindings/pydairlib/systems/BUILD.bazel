@@ -12,6 +12,21 @@ load(
 )
 
 pybind_py_library(
+    name = "cameras_py",
+    cc_deps = [
+        "//systems/cameras:camera_utils",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "cameras",
+    cc_srcs = ["cameras_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
     name = "robot_lcm_systems_py",
     cc_deps = [
         "//systems:robot_lcm_systems",
@@ -77,6 +92,7 @@ PY_LIBRARIES = [
     ":robot_lcm_systems_py",
     ":primitives_py",
     ":framework_py",
+    ":cameras_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

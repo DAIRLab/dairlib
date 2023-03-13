@@ -1,0 +1,56 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "trifinger_urdf",
+    data = glob([
+    	"robot_properties_fingers/urdf/**",
+    	"robot_properties_fingers/urdf/pro/**",
+    	"robot_properties_fingers/urdf/edu/**",
+    	"robot_properties_fingers/meshes/**",
+    	"robot_properties_fingers/meshes/pro/**",
+    	"robot_properties_fingers/meshes/pro/detailed/**",
+    	"robot_properties_fingers/meshes/edu/**",
+        "robot_properties_fingers/cube/**"])
+)
+
+cc_binary(
+    name = "franka_sim",
+    srcs = ["franka_sim.cc"],
+    deps = [
+        ":franka_sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+    ],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
+    name = "franka_visualizer",
+    srcs = ["franka_visualizer.cc"],
+    deps = [
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = [":trifinger_urdf",
+        "@drake//manipulation/models/franka_description:models"]
+)
+
+cc_library(
+    name = "franka_sim_params",
+    hdrs = ["franka_sim_params.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

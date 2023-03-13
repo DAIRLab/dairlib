@@ -257,8 +257,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
   if (!foothold_set.empty()) {
-    trajopt_.UpdateFootholds(
-        foothold_set.GetSubsetCloseToPoint(p_b, 2.0).footholds());
+    trajopt_.UpdateFootholds(foothold_set.footholds());
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }

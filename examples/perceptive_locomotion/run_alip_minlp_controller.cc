@@ -122,8 +122,8 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
-  ros::CallbackQueue q;
-  ros::AsyncSpinner spinner(1, &q);
+//  ros::CallbackQueue q;
+  ros::AsyncSpinner spinner(2);
 #else
   if (FLAGS_use_perception) {
     throw std::runtime_error(

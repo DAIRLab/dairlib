@@ -2,7 +2,7 @@ rows: 3
 cols: 3
 
 # High level command gains (with radio)
-vel_scale_rot: -1.5
+vel_scale_rot: -0.75
 vel_scale_trans_sagital: 0.0
 vel_scale_trans_lateral: 0.0
 
@@ -38,8 +38,8 @@ max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.15
-final_foot_height: 0.05
-final_foot_velocity_z: 0.35
+final_foot_height: 0.04
+final_foot_velocity_z: 0.5
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -49,7 +49,7 @@ mu: 0.75
 
 w_accel: 0.0
 w_soft_constraint: 8000
-w_input_reg: 0.0000001
+w_input_reg: 0.000001
 
 w_swing_toe: 1
 swing_toe_kp: 1500
@@ -103,13 +103,13 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 170,  0,     0,
-    0,   170,    0,
+  [ 160,  0,     0,
+    0,   160,    0,
     0,    0,   200]
 SwingFootKd:
-  [0.5,  0,     0,
-   0,    0.5,   0,
-   0,    0,     1]
+  [2,  0,  0,
+   0,  2,  0,
+   0,  0,  2]
 
 AlipKalmanQ:
   [.001, .001, .01, .01]

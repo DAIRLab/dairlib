@@ -46,22 +46,25 @@ SLIPContactScheduler::SLIPContactScheduler(const MultibodyPlant<double>& plant,
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
                     .get_index();
-  fsm_port_ = this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
+  fsm_port_ = this->DeclareVectorOutputPort("fsm", 1,
                                             &SLIPContactScheduler::CalcFiniteState)
                   .get_index();
   impact_info_port_ = this->DeclareVectorOutputPort(
                               "near_impact", ImpactInfoVector<double>(0, 0, 0),
                               &SLIPContactScheduler::CalcNextImpactInfo)
                           .get_index();
-  clock_port_ = this->DeclareVectorOutputPort("clock", BasicVector<double>(1),
+  clock_port_ = this->DeclareVectorOutputPort("clock", 1,
                                               &SLIPContactScheduler::CalcClock)
                     .get_index();
   contact_scheduler_port_ =
       this->DeclareVectorOutputPort(
               "contact_scheduler (pelvis_t0, pelvis_tf, left_t0, left_tf, "
               "right_t0, right_t0",
-              BasicVector<double>(6), &SLIPContactScheduler::CalcContactScheduler)
+              6, &SLIPContactScheduler::CalcContactScheduler)
           .get_index();
+  debug_port_ = this->DeclareAbstractOutputPort(
+          "status", &SLIPContactScheduler::OutputDebuggingInfo)
+      .get_index();
 
   // Declare discrete states and update
   stored_fsm_state_index_ = DeclareDiscreteState(3 * VectorXd::Ones(1));
@@ -85,9 +88,6 @@ SLIPContactScheduler::SLIPContactScheduler(const MultibodyPlant<double>& plant,
   upcoming_transitions_index_ = DeclareAbstractState(
       drake::Value<std::vector<std::pair<double, RunningFsmState>>>{
           initial_state_transitions});
-  debug_port_ = this->DeclareAbstractOutputPort(
-                        "status", &SLIPContactScheduler::OutputDebuggingInfo)
-                    .get_index();
 
   DeclarePerStepUnrestrictedUpdateEvent(
       &SLIPContactScheduler::UpdateTransitionTimes);

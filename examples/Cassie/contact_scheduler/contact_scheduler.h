@@ -17,6 +17,27 @@ namespace dairlib {
 
 enum RunningFsmState { kLeftStance, kRightStance, kLeftFlight, kRightFlight };
 
+/**
+ * Variable timing finite state machine that predicts the liftoff and touchdown
+ * timing assuming that the leg length is undeflected at touchdown and liftoff.
+ * This system is also responsible for outputting the upcoming contact mode as
+ * well as the blending function that is necessary for impact-invariant control
+ *
+ *
+ *
+ * @system
+ * name: SLIPContactScheduler
+ * input_ports:
+ * - state_port: robot_state
+ * output_ports:
+ * - fsm_port: current contact mode (RunningFsmState)
+ * - clock_port: current clock (phase variable)
+ * - impact_info_port: upcoming contact/impact event (ImpactInfoVector)
+ * - contact_scheduler_port: upcoming start and end times for pelvis and foot (BasicVector)
+ * trajectories
+ * - debug_port: lcm output for predicted contact mode switches
+ * (lcmt_contact_timing)
+ */
 class SLIPContactScheduler : public drake::systems::LeafSystem<double> {
  public:
   SLIPContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
@@ -30,7 +51,8 @@ class SLIPContactScheduler : public drake::systems::LeafSystem<double> {
     stance_duration_ = stance_duration;
     flight_duration_ = flight_duration;
   }
-  void SetMaxStepTimingVariance(double stance_variance, double flight_variance) {
+  void SetMaxStepTimingVariance(double stance_variance,
+                                double flight_variance) {
     stance_variance_ = stance_variance;
     flight_variance_ = flight_variance;
   }

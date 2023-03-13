@@ -511,9 +511,9 @@ void CassieStateEstimator::EstimateContactForEkf(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-                              left_heel_spring < heel_spring_threshold_ekf_);
+                              left_heel_spring < ankle_spring_threshold_ekf_);
   bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-                               right_heel_spring < heel_spring_threshold_ekf_);
+                               right_heel_spring < ankle_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
@@ -527,7 +527,7 @@ void CassieStateEstimator::EstimateContactForEkf(
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
          << right_knee_spring << ", " << knee_spring_threshold_ekf_ << endl;
     cout << "left/right heel spring, threshold = " << left_heel_spring << ", "
-         << right_heel_spring << ", " << heel_spring_threshold_ekf_ << endl;
+         << right_heel_spring << ", " << ankle_spring_threshold_ekf_ << endl;
     cout << "left/right contacts = " << *left_contact << ", " << *right_contact
          << endl;
   }
@@ -574,10 +574,10 @@ void CassieStateEstimator::EstimateContactForController(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ctrl_ ||
-                              left_heel_spring < heel_spring_threshold_ctrl_);
+                              left_heel_spring < ankle_spring_threshold_ctrl_);
   bool right_contact_spring =
       (right_knee_spring < knee_spring_threshold_ctrl_ ||
-       right_heel_spring < heel_spring_threshold_ctrl_);
+       right_heel_spring < ankle_spring_threshold_ctrl_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {

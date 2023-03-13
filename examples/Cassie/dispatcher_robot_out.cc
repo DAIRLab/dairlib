@@ -29,6 +29,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "examples/Cassie/cassie_state_estimator_settings.h"
 
 namespace dairlib {
 
@@ -62,9 +63,8 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-DEFINE_double(contact_force_threshold, 60,
-              "Contact force threshold. Set to 140 for walking");
 DEFINE_string(joint_offset_yaml, "", "yaml with joint offset values");
+DEFINE_string(contact_detection_yaml, "examples/Cassie/default_state_estimator_settings.yaml", "Yaml with contact estimation values");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -211,12 +211,18 @@ int do_main(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<std::map<std::string, double>>(
           FindResourceOrThrow(FLAGS_joint_offset_yaml));
 
+  CassieStateEstimatorSettings settings = drake::yaml::LoadYamlFile<CassieStateEstimatorSettings>(
+      FindResourceOrThrow(FLAGS_contact_detection_yaml));
+
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
       &right_contact_evaluator, joint_offset_map,
       FLAGS_test_with_ground_truth_state, FLAGS_print_ekf_info,
-      FLAGS_test_mode, FLAGS_contact_force_threshold);
+      FLAGS_test_mode);
 
+  state_estimator->SetSpringDeflectionThresholds(settings.knee_spring_threshold,
+                                                 settings.ankle_spring_threshold);
+  state_estimator->SetContactForceThreshold(settings.contact_force_threshold);
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();

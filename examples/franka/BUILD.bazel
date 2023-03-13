@@ -32,6 +32,23 @@ cc_binary(
 )
 
 cc_binary(
+    name = "franka_osc_controller",
+    srcs = ["franka_osc_controller.cc"],
+    deps = [
+        ":franka_controller_params",
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = [":trifinger_urdf",
+            "@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
     name = "franka_visualizer",
     srcs = ["franka_visualizer.cc"],
     deps = [
@@ -50,6 +67,13 @@ cc_binary(
 cc_library(
     name = "franka_sim_params",
     hdrs = ["franka_sim_params.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+cc_library(
+    name = "franka_controller_params",
+    hdrs = ["franka_controller_params.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],

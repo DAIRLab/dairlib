@@ -1,3 +1,9 @@
+state_channel: FRANKA_OUTPUT
+controller_channel: FRANKA_INPUT
+publish_rate: 1000
+publish_efforts: true
+actuator_delay: 0.000
+
 dt: 0.0001
 realtime_rate: 1.0
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]

@@ -1,0 +1,15 @@
+state_channel: FRANKA_OUTPUT
+controller_channel: FRANKA_INPUT
+
+EndEffectorW:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+EndEffectorKp:
+  [ 100, 0, 0,
+    0, 100, 0,
+    0, 0, 100 ]
+EndEffectorKd:
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 1 ]

@@ -1,55 +1,52 @@
-#include <vector>
 #include <math.h>
 
+#include <vector>
+
+#include <drake/geometry/drake_visualizer.h>
+#include <drake/lcm/drake_lcm.h>
+#include <drake/math/rigid_transform.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/systems/primitives/multiplexer.h>
+#include <drake/systems/primitives/vector_log_sink.h>
+
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "examples/franka/franka_sim_params.h"
+#include "multibody/multibody_utils.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
-
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include <drake/lcm/drake_lcm.h>
-#include <drake/multibody/tree/multibody_element.h>
-#include <drake/multibody/parsing/parser.h>
-#include <drake/common/trajectories/piecewise_polynomial.h>
-#include <drake/geometry/drake_visualizer.h>
-#include <drake/math/rigid_transform.h>
-#include "drake/common/yaml/yaml_io.h"
-#include <drake/systems/primitives/vector_log_sink.h>
-#include <drake/systems/primitives/multiplexer.h>
-
-#include "systems/robot_lcm_systems.h"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
-#include "examples/franka/franka_sim_params.h"
-#include "multibody/multibody_utils.h"
-#include "systems/system_utils.h"
-
-#include "systems/robot_lcm_systems.h"
-#include "systems/framework/lcm_driven_loop.h"
 
 namespace dairlib {
 
+using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::math::RigidTransform;
+using drake::multibody::AddMultibodyPlantSceneGraph;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Parser;
+using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::Context;
-using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
-using drake::systems::VectorLogSink;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
 
-using Eigen::VectorXd;
 using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
-int DoMain(int argc, char* argv[]){
+int DoMain(int argc, char* argv[]) {
   // load parameters
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/franka/franka_sim_params.yaml");
@@ -64,38 +61,23 @@ int DoMain(int argc, char* argv[]){
   parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   X_WI);
   plant.Finalize();
 
   /* -------------------------------------------------------------------------------------------*/
 
   drake::lcm::DrakeLcm drake_lcm;
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
-
+  auto lcm =
+      builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
-      &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
-      1/output_dt, true, 0.0);
-
-  /// meshcat visualizer
-//  drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
-//  drake::geometry::MeshcatVisualizerParams params;
-//  params.publish_period = 1.0/30.0;
-//  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-//  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-//      &builder, scene_graph, meshcat, std::move(params));
+      &builder, plant, lcm, sim_params.controller_channel,
+      sim_params.state_channel, sim_params.publish_rate,
+      sim_params.publish_efforts, sim_params.actuator_delay);
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
-  auto logger = builder.AddSystem<VectorLogSink<double>>(nq+nv+nu, output_dt);
-
-  // multiplex state and input for logger
-  std::vector<int> input_sizes = {nq+nv, nu};
-  auto mux = builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
-
-  builder.Connect(plant.get_state_output_port(), mux->get_input_port(0));
-  builder.Connect(passthrough->get_output_port(), mux->get_input_port(1));
-  builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
 
   auto diagram = builder.Build();
 
@@ -128,11 +110,9 @@ int DoMain(int argc, char* argv[]){
   simulator.Initialize();
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
-  // do data logging here
-
   return 0;
 }
 
-} // namespace dairlib
+}  // namespace dairlib
 
-int main(int argc, char* argv[]) { dairlib::DoMain(argc, argv);}
+int main(int argc, char* argv[]) { dairlib::DoMain(argc, argv); }

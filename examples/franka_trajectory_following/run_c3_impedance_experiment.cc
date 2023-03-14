@@ -83,6 +83,7 @@ int DoMain(int argc, char* argv[]){
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere3.urdf");
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -100,6 +101,7 @@ int DoMain(int argc, char* argv[]){
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+  parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere3.urdf");
 
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("panda_link0"), X_WI);
   plant_f.Finalize();

@@ -1,5 +1,5 @@
 # bouncy ball parameters
-num_balls: 2
+num_balls: 3
 
 # impedance control parameters
 translational_stiffness: 400 # 400

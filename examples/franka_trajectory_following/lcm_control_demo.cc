@@ -64,6 +64,7 @@ int DoMain(int argc, char* argv[]){
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere3.urdf");
 
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -83,6 +84,7 @@ int DoMain(int argc, char* argv[]){
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+  parser_f.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere3.urdf");
 
   RigidTransform<double> X_WI_f = RigidTransform<double>::Identity();
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f);
@@ -105,6 +107,7 @@ int DoMain(int argc, char* argv[]){
   parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
   parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+  parser_franka.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere3.urdf");
 
   RigidTransform<double> X_WI_franka = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka);
@@ -145,6 +148,15 @@ int DoMain(int argc, char* argv[]){
   q[q_map["sphere2_y"]] = param.q_init_ball_c3(5);
   q[q_map["sphere2_z"]] = param.q_init_ball_c3(6);
 
+  ///add for 3rd ball (subject to change)
+  q[q_map["sphere3_qw"]] = param.q_init_ball_c3(0);
+  q[q_map["sphere3_qx"]] = param.q_init_ball_c3(1);
+  q[q_map["sphere3_qy"]] = param.q_init_ball_c3(2);
+  q[q_map["sphere3_qz"]] = param.q_init_ball_c3(3);
+  q[q_map["sphere3_x"]] = param.q_init_ball_c3(4);
+  q[q_map["sphere3_y"]] = param.q_init_ball_c3(5);
+  q[q_map["sphere3_z"]] = param.q_init_ball_c3(6);
+
   double mu = param.mu;
 
   MatrixXd Qinit = param.Q_default * MatrixXd::Identity(nq+nv, nq+nv);
@@ -156,15 +168,18 @@ int DoMain(int argc, char* argv[]){
   Qinit(14,14) = param.Q_ball_x2;  /// for sphere(2): x
   Qinit(15,15) = param.Q_ball_y2;  /// for sphere(2): y
 
+  Qinit(21,21) = param.Q_ball_x2;  /// for sphere(3): x (for now same for ball 2 and 3)
+  Qinit(22,22) = param.Q_ball_y2;  /// for sphere(3): y
+
   Qinit.block(3+7*num_balls,3+7*num_balls,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv); ///all balls penalized same in terms of velocity
   Qinit.block(3+7*num_balls,3+7*num_balls,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
-  MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc*num_balls+6, nq+nv+nu+6*num_balls*nc+6);
-  MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*num_balls*nc+6, nq+nv+nu+6*num_balls*nc+6);
+  MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc*num_balls+18, nq+nv+nu+6*num_balls*nc+18);
+  MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*num_balls*nc+18, nq+nv+nu+6*num_balls*nc+18);
   Uinit.block(0,0,nq+nv,nq+nv) << 
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);
-  Uinit.block(nq+nv+6*num_balls*nc+6, nq+nv+6*num_balls*nc+6, nu, nu) <<
+  Uinit.block(nq+nv+6*num_balls*nc+18, nq+nv+6*num_balls*nc+18, nu, nu) <<
     param.U_u * MatrixXd::Identity(nu, nu);
 
   VectorXd xdesiredinit = VectorXd::Zero(nq+nv);
@@ -261,8 +276,10 @@ int DoMain(int argc, char* argv[]){
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
   drake::geometry::GeometryId sphere_geoms2 =
       plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere2"))[0];
+  drake::geometry::GeometryId sphere_geoms3 =
+      plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere3"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms =
-    {finger_geoms, sphere_geoms, ground_geoms, sphere_geoms2};
+    {finger_geoms, sphere_geoms, ground_geoms, sphere_geoms2, sphere_geoms3};
 
   /* -------------------------------------------------------------------------------------------*/
 

@@ -239,9 +239,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   ///for two balls, change for n-balls!!!!! (CHECK THIS PART)
   VectorXd ball1 = q_plant.segment(7,7); //first 7 are Franka
   VectorXd ball2 = q_plant.segment(14,7);
+  VectorXd ball3 = q_plant.segment(21,7);
 
   VectorXd ball1_dot = v_plant.segment(7,6);
   VectorXd ball2_dot = v_plant.segment(13,6);
+  VectorXd ball3_dot = v_plant.segment(19,6);
 
   //VectorXd ball = q_plant.tail(7);
   Vector3d ball_xyz = ball1.tail(3);  // xyz for ball1
@@ -251,10 +253,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //for 2nd ball
   Vector3d ball_xyz2 = ball2.tail(3);
 
+  //for 3rd ball
+  Vector3d ball_xyz3 = ball3.tail(3);
+
   VectorXd q(3 + 7 * num_balls_);
-  q << end_effector, ball1, ball2;
+  q << end_effector, ball1, ball2, ball3;
   VectorXd v(3 + 6 * num_balls_);
-  v << end_effector_dot, ball1_dot, ball2_dot;
+  v << end_effector_dot, ball1_dot, ball2_dot, ball3_dot;
 
   VectorXd u = VectorXd::Zero(3);
 
@@ -273,6 +278,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double x2 = ball_xyz2(0) - x_c;
     double y2 = ball_xyz2(1) - y_c;
 
+    double x3 = ball_xyz3(0) - x_c;
+    double y3 = ball_xyz3(1) - y_c;
+
     // note that the x and y arguments are intentionally flipped
     // since we want to get the angle from the y-axis, not the x-axis
     double angle = atan2(x,y);
@@ -286,24 +294,38 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     traj_desired_vector(q_map_.at("sphere2_y")) = y2 - 0.01; //  y - 0.01 - 2*ball_radius; // + traj_radius * cos(theta);
     traj_desired_vector(q_map_.at("sphere2_z")) = ball_radius + table_offset;
 
+    traj_desired_vector(q_map_.at("sphere3_x")) = x_c; // + traj_radius * sin(theta);
+    traj_desired_vector(q_map_.at("sphere3_y")) = y3 - 0.01; //  y - 0.01 - 2*ball_radius; // + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere3_z")) = ball_radius + table_offset;
+
   }
 
   // compute sphere positional error
   Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("sphere_x")),
                       traj_desired_vector(q_map_.at("sphere_y")),
                       traj_desired_vector(q_map_.at("sphere_z")));
+
+  Vector3d ball_xyz_d2(traj_desired_vector(q_map_.at("sphere_x")),
+                      traj_desired_vector(q_map_.at("sphere_y")),
+                      traj_desired_vector(q_map_.at("sphere_z")));
+
+  Vector3d ball_xyz_d3(traj_desired_vector(q_map_.at("sphere_x")),
+                       traj_desired_vector(q_map_.at("sphere_y")),
+                       traj_desired_vector(q_map_.at("sphere_z")));
+
+
   Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
-
   // compute phase
   double shifted_time = timestamp - settling_time -  return_phase;
   if (shifted_time < 0) shifted_time += period;
   double ts = shifted_time - period * floor((shifted_time / period));
   double back_dist = param_.gait_parameters(0);
 
-  if (state[8] > state[15]) {
+  if (state[8] > state[15] && state[8] > state[22]) {
 
+    //std::cout << "here" << std::endl;
     /// rolling phase
     if (ts < roll_phase) {
       traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7]; //- 0.2* back_dist*error_hat(0);  //14
@@ -333,7 +355,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   }
 
-  else {
+  else if (state[15] > state[8] && state[15] > state[22]) {
+
+    error_xy = ball_xyz_d2 - ball_xyz2;
+    error_xy(2) = 0;
+    error_hat = error_xy / error_xy.norm();
 
     /// rolling phase
     if (ts < roll_phase) {
@@ -344,8 +370,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
       /// upwards phase
     else if (ts < roll_phase + return_phase / 3) {
-      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[14]; //0.55;
-      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[15]; //0.1;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
       traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
 
     }
@@ -362,7 +388,41 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
     }
 
+  }
 
+  else{
+
+    error_xy = ball_xyz_d3 - ball_xyz3;
+    error_xy(2) = 0;
+    error_hat = error_xy / error_xy.norm();
+
+    /// rolling phase
+    //std::cout << "here" << std::endl;
+    if (ts < roll_phase) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[21]; //- 0.2* back_dist*error_hat(0);  //14
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[22]; //- 0.2* back_dist*error_hat(1);  //15
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] =
+          traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    }
+      /// upwards phase
+    else if (ts < roll_phase + return_phase / 3) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+
+    }
+      /// side ways phase
+    else if (ts < roll_phase + 2 * return_phase / 3) {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[21] - back_dist * error_hat(0);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[22] - back_dist * error_hat(1);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+    }
+      /// position finger phase
+    else {
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[21] - 1 * back_dist * error_hat(0);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[22] - 1 * back_dist * error_hat(1);
+      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
+    }
 
 
   }
@@ -429,6 +489,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
   contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
   contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[3]));
+  ///3rd ball
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
+
+
   auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1, time_horizon_);
@@ -454,21 +521,28 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //  active_lambda_inds.insert(11);
 //  inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
 
-  active_lambda_inds.insert(6);   ///\lambda_n for sphere1 - ground contact
-  active_lambda_inds.insert(8);   ///\lambda_n for sphere2 - ground contact
+  active_lambda_inds.insert(10);   ///\lambda_n for sphere1 - ground contact
+  active_lambda_inds.insert(12);   ///\lambda_n for sphere2 - ground contact
+  active_lambda_inds.insert(15);   ///\lambda_n for sphere3 - ground contact
 
-  active_lambda_inds.insert(14);   ///\lambda_t for sphere1 - ground contact
-  active_lambda_inds.insert(15);
-  active_lambda_inds.insert(16);
-  active_lambda_inds.insert(17);
-
-  active_lambda_inds.insert(22);   ///\lambda_t for sphere2 - ground contact
+  active_lambda_inds.insert(22);   ///\lambda_t for sphere1 - ground contact
   active_lambda_inds.insert(23);
   active_lambda_inds.insert(24);
   active_lambda_inds.insert(25);
 
+  active_lambda_inds.insert(30);   ///\lambda_t for sphere2 - ground contact
+  active_lambda_inds.insert(31);
+  active_lambda_inds.insert(32);
+  active_lambda_inds.insert(33);
+
+  active_lambda_inds.insert(42);   ///\lambda_t for sphere3 - ground contact
+  active_lambda_inds.insert(43);
+  active_lambda_inds.insert(44);
+  active_lambda_inds.insert(45);
+
   inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
   inactive_lambda_inds.insert(3);  ///gamma for sphere2 - ground contact
+  inactive_lambda_inds.insert(6);  ///gamma for sphere2 - ground contact
 
   auto lcs_system_fixed = solvers::LCSFactory::FixSomeModes(lcs_system_full,
       active_lambda_inds, inactive_lambda_inds);
@@ -514,12 +588,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // sphere_pos (2)
   S.block(5, 14, 2, 2) = MatrixXd::Identity(2, 2);
 
+  // sphere_pos (3)
+  S.block(7, 21, 2, 2) = MatrixXd::Identity(2, 2);
+
   // finger_vel
   S.block(ny_q, plant_f_.num_positions(), 3, 3) = MatrixXd::Identity(3, 3);
   // sphere_vel(1)
   S.block(ny_q + 3, plant_f_.num_positions() + 6, 2, 2) = MatrixXd::Identity(2, 2);
   // sphere_vel(2)
   S.block(ny_q + 5, plant_f_.num_positions() + 12, 2, 2) = MatrixXd::Identity(2, 2);
+
+  // sphere_vel(3)
+  S.block(ny_q + 7, plant_f_.num_positions() + 18, 2, 2) = MatrixXd::Identity(2, 2);
 
   // Offset
   VectorXd x0 = VectorXd::Zero(n);
@@ -532,6 +612,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //height for sphere(2)
   x0(16) = param_.ball_radius + param_.table_offset;
 
+  //quaternion for sphere(3)
+  x0(17) = 1;
+  //height for sphere(2)
+  x0(23) = param_.ball_radius + param_.table_offset;
+
   //Angular velocity
   MatrixXd W = MatrixXd::Zero(n, ny);
 
@@ -542,6 +627,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //sphere(2)
   W(plant_f_.num_positions() + 9, ny_q + 6) = -param_.ball_radius;
   W(plant_f_.num_positions() + 10, ny_q + 5) = param_.ball_radius;
+
+  //sphere(3)
+  W(plant_f_.num_positions() + 15, ny_q + 8) = -param_.ball_radius;
+  W(plant_f_.num_positions() + 16, ny_q + 7) = param_.ball_radius;
 
   // y' = S*x' = S*A*x + S*B*u + S*D*lambda + S*d
   //           = S*A*(S^T + W)*y + S*B*u + S*D*lambda + S*d + S*A*x0
@@ -628,6 +717,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Qnew(8,8) = param_.Qnew_ball_y;
     Qnew(14,14) = param_.Qnew_ball_x;
     Qnew(15,15) = param_.Qnew_ball_y;
+
+
+    //sphere(3)
+    Qnew(21,21) = param_.Qnew_ball_x;
+    Qnew(22,22) = param_.Qnew_ball_y;
+
+
   }
 
   if (param_.rolling_state_reduction) {

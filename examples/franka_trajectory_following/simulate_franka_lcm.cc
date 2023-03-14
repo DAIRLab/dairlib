@@ -66,6 +66,7 @@ int DoMain(int argc, char* argv[]){
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere2.urdf");
+  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere3.urdf");
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
@@ -148,6 +149,15 @@ int DoMain(int argc, char* argv[]){
   q[q_map["sphere2_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
   q[q_map["sphere2_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0)-2*param.ball_radius - 0.01;
   q[q_map["sphere2_z"]] = param.ball_radius + param.table_offset;
+
+  // initialize ball 3
+  q[q_map["sphere3_qw"]] = param.q_init_ball(0);
+  q[q_map["sphere3_qx"]] = param.q_init_ball(1);
+  q[q_map["sphere3_qy"]] = param.q_init_ball(2);
+  q[q_map["sphere3_qz"]] = param.q_init_ball(3);
+  q[q_map["sphere3_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0) + 2*param.ball_radius + 0.01;
+  q[q_map["sphere3_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0)-2*param.ball_radius - 0.01 ;
+  q[q_map["sphere3_z"]] = param.ball_radius + param.table_offset;
 
   plant.SetPositions(&plant_context, q);
 

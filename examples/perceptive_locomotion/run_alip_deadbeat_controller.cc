@@ -13,7 +13,6 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/stepping_stone_utils.h"
 
-#include "solvers/osqp_solver_options.h"
 #include "systems/controllers/footstep_planning/alip_deadbeat_footstep_controller.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"

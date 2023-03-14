@@ -2,13 +2,31 @@
 
 #include "drake/solvers/solver_options.h"
 
-/// Struct containing solver options loaded from a yaml file
 
 namespace dairlib::solvers {
 
 using drake::solvers::SolverOptions;
 using drake::solvers::CommonSolverOption;
 
+/*
+ * Struct containing solver options loaded from a YAML.
+ * Two common options are print_to_console (1 or 0) and log_file_name
+ * (if not applicable, use "").
+ *
+ * If you aren't supplying options for a given
+ * type, provide an empty mapping container, i.e. string_options: {}
+ *
+ * Loading occurs in two steps in order to easily use the same serialization for
+ * any solver. First load this struct from a YAML, then get a
+ * drake::solvers::SolverOptions object by calling GetAsSolverOptions and
+ * supplying the id of your solver. For example:
+ *
+ * auto solver_options_from_yaml =
+ *    drake::yaml::LoadYamlFile<SolverOptionsFromYaml>(filename);
+ * auto osqp_solver_options = solver_options_from_yaml.GetAsSolverOptions(
+ *    drake::solvers::OsqpSolver::id());
+ *
+ */
 struct SolverOptionsFromYaml {
   // Common solver options
   int print_to_console;

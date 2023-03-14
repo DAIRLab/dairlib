@@ -25,6 +25,7 @@ struct OSCGains {
 
   MatrixXd W_acceleration;
   MatrixXd W_input_regularization;
+  MatrixXd W_input_smoothing_regularization;
   MatrixXd W_lambda_c_regularization;
   MatrixXd W_lambda_h_regularization;
 
@@ -56,9 +57,10 @@ struct OSCGains {
     Eigen::VectorXd w_lambda_h_regularization =
         Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
             this->W_lambda_h_reg.data(), this->W_lambda_h_reg.size());
-    W_acceleration = w_acceleration.asDiagonal();
-    W_input_regularization = w_input_regularization.asDiagonal();
-    W_lambda_c_regularization = w_lambda_c_regularization.asDiagonal();
-    W_lambda_h_regularization = w_lambda_h_regularization.asDiagonal();
+    W_acceleration = w_accel * w_acceleration.asDiagonal();
+    W_input_regularization = w_input * w_input_regularization.asDiagonal();
+    W_input_smoothing_regularization = w_input_reg * w_input_regularization.asDiagonal();
+    W_lambda_c_regularization = w_lambda * w_lambda_c_regularization.asDiagonal();
+    W_lambda_h_regularization = w_lambda * w_lambda_h_regularization.asDiagonal();
   }
 };

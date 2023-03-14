@@ -1,5 +1,6 @@
 
 #include <gflags/gflags.h>
+#include <dairlib/lcmt_radio_out.hpp>
 
 #include "examples/franka/franka_controller_params.h"
 #include "multibody/multibody_utils.h"
@@ -19,6 +20,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "examples/franka/systems/end_effector_trajectory.h"
 
 namespace dairlib {
 
@@ -47,9 +49,13 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // load parameters
+  drake::yaml::LoadYamlOptions yaml_options;
+  yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/franka/franka_controller_params.yaml");
+  OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
+      FindResourceOrThrow("examples/franka/franka_controller_params.yaml"), {}, {}, yaml_options);
 
   DiagramBuilder<double> builder;
 
@@ -70,22 +76,63 @@ int DoMain(int argc, char* argv[]) {
           controller_params.controller_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto end_effector_trajectory =
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(plant,
+                                                        plant_context.get());
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          controller_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          "OSC_DEBUG_FRANKA", &lcm, TriggerTypeSet({TriggerType::kForced})));
+          controller_params.osc_debug_channel, &lcm, TriggerTypeSet({TriggerType::kForced})));
 
-  auto end_effector_pose_tracking_data =
+  osc->SetAccelerationCostWeights(gains.W_acceleration);
+  osc->SetInputCostWeights(gains.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
+
+  auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "end_effector_target", controller_params.K_p_end_effector,
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
-  osc->AddConstTrackingData(std::move(end_effector_pose_tracking_data),
-                            Eigen::Vector3d::Ones());
+  end_effector_position_tracking_data->AddPointToTrack("panda_link10");
+  osc->AddTrackingData(std::move(end_effector_position_tracking_data));
+  auto mid_link_position_tracking_data =
+      std::make_unique<TransTaskSpaceTrackingData>(
+          "mid_link", controller_params.K_p_mid_link,
+          controller_params.K_d_mid_link, controller_params.W_mid_link,
+          plant, plant);
+  mid_link_position_tracking_data->AddPointToTrack("panda_link3");
+  Eigen::Vector3d elbow_up_target = Eigen::Vector3d::Zero();
+  elbow_up_target(1) = 0.2;
+  elbow_up_target(2) = 0.6;
+  osc->AddConstTrackingData(std::move(mid_link_position_tracking_data),
+                            elbow_up_target);
+  auto end_effector_orientation_tracking_data =
+      std::make_unique<RotTaskSpaceTrackingData>(
+          "end_effector_orientation_target", controller_params.K_p_end_effector_rot,
+          controller_params.K_d_end_effector_rot, controller_params.W_end_effector_rot,
+          plant, plant);
+  end_effector_orientation_tracking_data->AddFrameToTrack("panda_link10");
+  Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
+  orientation_target(0) = 0.707;
+  orientation_target(2) = 0.707;
+//  orientation_target(1) = 1;
+//  orientation_target(3) = 0.707;
+  osc->AddConstTrackingData(std::move(end_effector_orientation_tracking_data),
+                            orientation_target);
+
   osc->SetContactFriction(0.4);
   osc->Build();
 
+  builder.Connect(state_receiver->get_output_port(0),
+                  end_effector_trajectory->get_input_port_state());
+  builder.Connect(radio_sub->get_output_port(0),
+                  end_effector_trajectory->get_input_port_radio());
+  builder.Connect(end_effector_trajectory->get_output_port(0),
+                  osc->get_input_port_tracking_data("end_effector_target"));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_command(),

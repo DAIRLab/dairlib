@@ -309,6 +309,17 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
+//  std::cout << "LOOP" << std::endl;
+//  std::cout << "CURRENT_X" << std::endl;
+//  std::cout << ball_xyz(0) << std::endl;
+//  std::cout << "DESIRED X" << std::endl;
+//  std::cout << traj_desired_vector(q_map_.at("base_x")) << std::endl;
+//  std::cout << "CURRENT_Y" << std::endl;
+//  std::cout << ball_xyz(1) << std::endl;
+//  std::cout << "DESIRED Y" << std::endl;
+//  std::cout << traj_desired_vector(q_map_.at("base_y")) << std::endl;
+
+
   /// compute desired orientation
   Vector3d axis = VectorXd::Zero(3);
   if (param_.axis_option == 1){
@@ -488,6 +499,14 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+
+//  std::cout << "ADMM_X" << std::endl;
+//  std::cout << state_next(7) << std::endl;
+//  std::cout << "ADMM_Y" << std::endl;
+//  std::cout << state_next(8) << std::endl;
+
+//  std::cout << "FORCE_CONTRIBUTION" << std::endl;
+//  std::cout << system2_.D_[0] * force / scaling2 << std::endl;
   
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);

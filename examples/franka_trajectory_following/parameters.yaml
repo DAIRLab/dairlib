@@ -22,8 +22,8 @@ mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 1      # finger xyz cost
 
-Q_ball_x: 1000000 #10000 #1000000
-Q_ball_y: 1000000 #10000 #1000000
+Q_ball_x: 500000 #10000 #1000000
+Q_ball_y: 500000 #10000 #1000000
 Q_ball_x2: 100000 #100000
 Q_ball_y2: 100000 #100000
 

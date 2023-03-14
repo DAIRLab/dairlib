@@ -305,13 +305,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                       traj_desired_vector(q_map_.at("sphere_y")),
                       traj_desired_vector(q_map_.at("sphere_z")));
 
-  Vector3d ball_xyz_d2(traj_desired_vector(q_map_.at("sphere_x")),
-                      traj_desired_vector(q_map_.at("sphere_y")),
-                      traj_desired_vector(q_map_.at("sphere_z")));
+  Vector3d ball_xyz_d2(traj_desired_vector(q_map_.at("sphere2_x")),
+                      traj_desired_vector(q_map_.at("sphere2_y")),
+                      traj_desired_vector(q_map_.at("sphere2_z")));
 
-  Vector3d ball_xyz_d3(traj_desired_vector(q_map_.at("sphere_x")),
-                       traj_desired_vector(q_map_.at("sphere_y")),
-                       traj_desired_vector(q_map_.at("sphere_z")));
+  Vector3d ball_xyz_d3(traj_desired_vector(q_map_.at("sphere3_x")),
+                       traj_desired_vector(q_map_.at("sphere3_y")),
+                       traj_desired_vector(q_map_.at("sphere3_z")));
 
 
   Vector3d error_xy = ball_xyz_d - ball_xyz;

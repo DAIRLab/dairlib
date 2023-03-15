@@ -56,13 +56,16 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
 
 LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
                              const vector<string>& trajectory_names,
-                             const string& name, const string& description)
+                             const string& name, const string& description,
+                             bool get_metadata)
     : trajectory_names_(trajectory_names) {
   int index = 0;
   for (const string& traj_name : trajectory_names_) {
     trajectories_[traj_name] = trajectories[index++];
   }
-  ConstructMetadataObject(name, description);
+  if (get_metadata) {
+    ConstructMetadataObject(name, description);
+  }
 }
 
 LcmTrajectory::LcmTrajectory(const lcmt_saved_traj& traj) {

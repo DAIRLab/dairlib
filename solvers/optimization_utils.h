@@ -92,12 +92,16 @@ class LinearBigMConstraint {
   void update(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
     auto [Ac, lb, ub] = GetBigMFormulation(A, b, M_);
     constraint_.evaluator()->UpdateCoefficients(Ac, lb, ub);
+    active_ = true;
   }
   void deactivate() {
-    constraint_.evaluator()->UpdateCoefficients(
+    if (active_) {
+      constraint_.evaluator()->UpdateCoefficients(
         Eigen::RowVectorXd::Zero(x_.size() + 1),
         drake::Vector1d::Constant(1, -std::numeric_limits<double>::infinity()),
         drake::Vector1d::Constant(1, std::numeric_limits<double>::infinity()));
+    }
+    active_ = false;
   }
   void deactivate(drake::solvers::MathematicalProgram& prog) {
     deactivate();
@@ -105,6 +109,7 @@ class LinearBigMConstraint {
     prog.SetInitialGuess(z_, 0);
   }
  private:
+  bool active_ = true;
   drake::solvers::Binding<drake::solvers::LinearConstraint> constraint_;
   const double M_;
   const drake::solvers::DecisionVariable& z_;

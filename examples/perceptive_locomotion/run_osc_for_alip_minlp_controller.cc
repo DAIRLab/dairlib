@@ -596,13 +596,13 @@ int DoMain(int argc, char* argv[]) {
 
   if (gains.W_com(0,0) == 0){
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_left_motor", left_stance_state, 1.0);
+        "toe_left_motor", left_stance_state, 0.01);
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_left_motor", post_right_double_support_state, 1.0);
+        "toe_left_motor", post_right_double_support_state, 0.01);
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_right_motor", right_stance_state, 1.0);
+        "toe_right_motor", right_stance_state, 0.01);
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_right_motor", post_left_double_support_state, 1.0);
+        "toe_right_motor", post_left_double_support_state, 0.01);
   }
   osc->Build();
 

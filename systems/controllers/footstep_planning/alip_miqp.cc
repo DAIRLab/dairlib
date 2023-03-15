@@ -153,7 +153,7 @@ void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 }
 
 void AlipMIQP::UpdateInitialGuess() {
-  UpdateInitialGuess(Vector3d::Zero(), Vector4d::Zero());
+  prog_->SetInitialGuessForAllVariables(solution_.first.GetSolution());
 }
 
 }

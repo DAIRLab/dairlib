@@ -12,8 +12,7 @@
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/stepping_stone_utils.h"
-
-#include "solvers/osqp_solver_options.h"
+#include "solvers/solver_options_io.h"
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
@@ -29,6 +28,7 @@
 #ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_receiver.h"
 #include "systems/ros/ros_subscriber_system.h"
+#include "ros/callback_queue.h"
 
 void SigintHandler(int sig) {
   ros::shutdown();
@@ -121,7 +121,8 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
-  ros::AsyncSpinner spinner(1);
+//  ros::CallbackQueue q;
+  ros::AsyncSpinner spinner(2);
 #else
   if (FLAGS_use_perception) {
     throw std::runtime_error(
@@ -204,10 +205,10 @@ int DoMain(int argc, char* argv[]) {
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
   const auto& planner_solver_options =
-      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
       FindResourceOrThrow(
-          "examples/perceptive_locomotion/gains/osqp_options_planner.yaml"
-      ));
+          "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml"
+      )).GetAsSolverOptions(drake::solvers::GurobiSolver::id());
 
   auto pelvis_filt =
       builder.AddSystem<systems::FloatingBaseVelocityButterworthFilter>(
@@ -218,7 +219,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<AlipMINLPFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains_mpc.gains, planner_solver_options.osqp_options);
+          left_right_toe, gains_mpc.gains, planner_solver_options);
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);

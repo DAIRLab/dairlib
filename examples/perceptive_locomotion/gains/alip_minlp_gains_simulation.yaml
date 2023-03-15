@@ -10,16 +10,17 @@ nmodes: 3
 knots_per_mode: 5
 pelvis_vel_butter_order: 2
 pelvis_vel_butter_wc: [100, 100, 100]
+solver_threads: 4
 qf:
   [100.0, 0, 0, 0,
-   0, 100.0, 0, 0,
-   0, 0, 100.0, 0,
-   0, 0, 0, 100.0]
+        0, 100.0, 0, 0,
+        0, 0, 100.0, 0,
+        0, 0, 0, 100.0]
 q:
   [1, 0, 0, 0,
-   0, 1, 0, 0,
-   0, 0, 0, 0,
-   0, 0, 0, 0]
+        0, 1, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0]
 r: [0.01]
 reset_discretization_method: 'FOH'
 filter_alip_state: true

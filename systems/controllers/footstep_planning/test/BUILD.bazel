@@ -7,7 +7,7 @@ cc_binary(
     srcs = ["alip_mpc_test.cc"],
     deps = [
         "//common:find_resource",
-        "//solvers:osqp_solver_options",
+        "//solvers:solver_options_io",
         "//systems/controllers/footstep_planning:alip_miqp",
         "//systems/controllers/footstep_planning:alip_multiqp",
         "@drake//:drake_shared_library",

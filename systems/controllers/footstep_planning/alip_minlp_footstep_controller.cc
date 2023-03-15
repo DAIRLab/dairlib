@@ -257,8 +257,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
   if (!foothold_set.empty()) {
-    trajopt_.UpdateFootholds(
-        foothold_set.GetSubsetCloseToPoint(p_b, 2.0).footholds());
+    trajopt_.UpdateFootholds(foothold_set.footholds());
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }
@@ -285,7 +284,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   workspace.AddFace(-Vector3d::UnitX(), com_xy - 10 * Vector3d::UnitX());
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
-  trajopt_.CalcOptimalFootstepPlan(x, p_b, warmstart);
+  trajopt_.CalcOptimalFootstepPlan(x, p_b, false);
 
   // Update discrete states
   double t0 = trajopt_.GetTimingSolution()(0);
@@ -319,11 +318,11 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
 
-  const auto& x = robot_output->GetState();
-  const auto R_WB_x = drake::math::RotationMatrixd(
-      Eigen::Quaterniond(x(0), x(1), x(2), x(3))).matrix().col(0);
-  const auto Ryaw =
-      drake::math::RotationMatrixd::MakeZRotation(atan2(R_WB_x(1), R_WB_x(0)));
+//  const auto& x = robot_output->GetState();
+//  const auto R_WB_x = drake::math::RotationMatrixd(
+//      Eigen::Quaterniond(x(0), x(1), x(2), x(3))).matrix().col(0);
+//  const auto Ryaw =
+//      drake::math::RotationMatrixd::MakeZRotation(atan2(R_WB_x(1), R_WB_x(0)));
   auto foothold_set =
       EvalAbstractInput(context, foothold_input_port_)->get_value<ConvexFootholdSet>();
   foothold_set.CopyToLcm(&mpc_debug->footholds);
@@ -379,23 +378,20 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
   solution->nk_minus_one = solution->nk - 1;
 
   solution->pp.clear();
-  solution->pp.reserve(gains_.nmodes);
   solution->xx.clear();
-  solution->xx.reserve(gains_.nmodes);
   solution->uu.clear();
-  solution->uu.reserve(gains_.nmodes);
 
   for (int n = 0; n < gains_.nmodes; n++) {
     solution->pp.push_back(CopyVectorXdToStdVector(pp.at(n)));
-    solution->xx.push_back(vector<vector<double>>{});
-    solution->uu.push_back(vector<vector<double>>{});
+    solution->xx.emplace_back(vector<vector<double>>{});
+    solution->uu.emplace_back(vector<vector<double>>{});
     for (int k = 0; k < gains_.knots_per_mode; k++) {
-      solution->xx.back().push_back(CopyVectorXdToStdVector(
+      solution->xx.back().emplace_back(CopyVectorXdToStdVector(
           AlipMultiQP::GetStateAtKnot(xx.at(n), k)
       ));
     }
     for(int k = 0; k < gains_.knots_per_mode - 1; k++) {
-      solution->uu.back().push_back(CopyVectorXdToStdVector(
+      solution->uu.back().emplace_back(CopyVectorXdToStdVector(
           AlipMultiQP::GetInputAtKnot(uu.at(n), k)
       ));
     }
@@ -452,7 +448,7 @@ void AlipMINLPFootstepController::CopyAnkleTorque(
   input_traj.datapoints = knots;
   input_traj.time_vector = breaks;
   LcmTrajectory lcm_traj(
-      {input_traj}, {"input_traj"}, "input_traj", "input_traj");
+      {input_traj}, {"input_traj"}, "input_traj", "input_traj", false);
   *traj = lcm_traj.GenerateLcmObject();
 }
 

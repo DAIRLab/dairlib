@@ -423,7 +423,7 @@ cc_binary(
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
-        "//solvers:osqp_solver_options",
+        "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers:fsm_event_time",

@@ -2,7 +2,6 @@
 #include "systems/controllers/footstep_planning/alip_miqp.h"
 #include "common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
-#include "solvers/osqp_solver_options.h"
 #include <iostream>
 
 namespace dairlib::systems::controllers {

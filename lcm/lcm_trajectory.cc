@@ -184,10 +184,10 @@ void LcmTrajectory::ConstructMetadataObject(string name, string description) {
 
   // convert now to string form
   metadata_.datetime = asctime(std::localtime(&t));
-  metadata_.git_dirty_flag = (!exec("git diff-index HEAD").empty());
+  metadata_.git_dirty_flag = 0;//(!exec("git diff-index HEAD").empty());
   metadata_.name = name;
   metadata_.description = description;
-  metadata_.git_commit_hash = exec("git rev-parse HEAD");
+  metadata_.git_commit_hash = "";//exec("git rev-parse HEAD");
 }
 
 }  // namespace dairlib

@@ -153,6 +153,9 @@ HybridRomPlannerTrajectory::HybridRomPlannerTrajectory(
 
   // Metadata
   if (!lightweight) {
+    // `ConstructMetadataObject` is very expensive.
+    // It creates new thread to call git diff and git rev.
+    // Since I don't use them, I just removed the git calls in the method.
     ConstructMetadataObject(name, description);
   } else {
     metadata_.name = name;

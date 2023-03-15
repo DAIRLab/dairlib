@@ -64,6 +64,7 @@ LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
     trajectories_[traj_name] = trajectories[index++];
   }
   if (get_metadata) {
+    std::cout << "NOTE: Using subprocesses to get LcmTrajectory metadata\n";
     ConstructMetadataObject(name, description);
   }
 }

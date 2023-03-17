@@ -67,8 +67,9 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     const PlannerSetting& param, const set<int>& relax_index,
     const set<int>& set_init_state_from_prev_solution,
     const set<int>& idx_const_rom_vel_during_double_support,
-    bool singel_eval_mode, bool log_data, int print_level)
-    : nq_(plant_control.num_positions()),
+    bool singel_eval_mode, bool log_data, bool is_RL_training, int print_level)
+    : is_RL_training_(is_RL_training),
+      nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
       plant_control_(plant_control),
@@ -111,9 +112,9 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
       this->DeclareVectorInputPort("phase", BasicVector<double>(1)).get_index();
   state_port_ =
       this->DeclareVectorInputPort(
-              "x, u, t", OutputVector<double>(plant_control.num_positions(),
-                                              plant_control.num_velocities(),
-                                              plant_control.num_actuators()))
+              "x_init", OutputVector<double>(plant_control.num_positions(),
+                                             plant_control.num_velocities(),
+                                             plant_control.num_actuators()))
           .get_index();
   controller_signal_port_ =
       this->DeclareVectorInputPort("ctrl_thread", TimestampedVector<double>(5))
@@ -633,6 +634,73 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
            param.rom_option * VectorXd::Ones(1));
   writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
   writeCSV(param.dir_data + "sample_idx.csv", param.sample * VectorXd::Ones(1));
+}
+
+void CassiePlannerWithOnlyRom::InitializeForRL(
+    const MultibodyPlant<double>& plant_feedback, int task_dim) {
+  // Create an input port for logging robot output
+  robot_output_port_ =
+      this->DeclareVectorInputPort(
+              "(x,u,t) for RL data",
+              OutputVector<double>(plant_feedback.num_positions(),
+                                   plant_feedback.num_velocities(),
+                                   plant_feedback.num_actuators()))
+          .get_index();
+
+  /// Initialization for RL training
+  int s_dim = plant_feedback.num_positions() + plant_feedback.num_velocities() +
+              plant_feedback.num_actuators() + task_dim + 2;
+  if (only_use_rom_state_in_near_future_for_RL_) {
+    // We cut off the rom state in the far future that we don't use
+    a_dim_rom_state_part_ = rom_->n_y() * 2 * param_.knots_per_mode * 1;
+  } else {
+    a_dim_rom_state_part_ =
+        rom_->n_y() * 2 * param_.knots_per_mode * param_.n_step;
+  }
+  a_dim_rom_input_part_ = 4 * param_.n_step;
+  int a_dim = a_dim_rom_state_part_ + a_dim_rom_input_part_ + 1;
+  RL_state_prev_ = VectorXd::Zero(s_dim);
+  RL_state_ = VectorXd::Zero(s_dim);
+  RL_action_prev_ = VectorXd::Zero(a_dim);
+  RL_action_ = VectorXd::Zero(a_dim);
+
+  // Save the action and state name
+  auto mbp_state_name = multibody::createStateNameVectorFromMap(plant_feedback);
+  auto mbp_act_name =
+      multibody::createActuatorNameVectorFromMap(plant_feedback);
+  vector<string> RL_state_names;
+  RL_state_names.insert(RL_state_names.end(), mbp_state_name.begin(),
+                        mbp_state_name.end());
+  RL_state_names.insert(RL_state_names.end(), mbp_act_name.begin(),
+                        mbp_act_name.end());
+  RL_state_names.push_back("des_com_vel_x");
+  RL_state_names.push_back("des_com_height");
+  RL_state_names.push_back("left_stance");
+  RL_state_names.push_back("init_phase");
+  vector<string> RL_action_names;
+  for (int i = 0; i < a_dim_rom_state_part_; i++) {
+    RL_action_names.push_back("rom_state");
+  }
+  for (int i = a_dim_rom_state_part_;
+       i < a_dim_rom_state_part_ + a_dim_rom_input_part_ / 2; i++) {
+    RL_action_names.push_back("global_com_pos");
+  }
+  for (int i = a_dim_rom_state_part_ + a_dim_rom_input_part_ / 2;
+       i < a_dim_rom_state_part_ + a_dim_rom_input_part_; i++) {
+    RL_action_names.push_back("global_foot_pos");
+  }
+  RL_action_names.push_back("dt");
+
+  SaveStringVecToCsv(RL_state_names,
+                     param_.dir_data + string("RL_state_names.csv"));
+  SaveStringVecToCsv(RL_action_names,
+                     param_.dir_data + string("RL_action_names.csv"));
+
+  // Sanity check
+  cout << "RL state dim = " << s_dim << endl;
+  cout << "RL action dim = " << a_dim << endl;
+  DRAKE_DEMAND(RL_state_names.size() == s_dim);
+  DRAKE_DEMAND(RL_action_names.size() == a_dim);
 }
 
 void CassiePlannerWithOnlyRom::SolveTrajOpt(
@@ -1368,6 +1436,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         quat_xyz_shift, current_local_stance_foot_pos, final_position,
         global_regularization_footstep, local_delta_footstep,
         global_delta_footstep_, trajopt, result, param_.dir_data, prefix);
+    if (is_RL_training_) {
+      SaveStateAndActionIntoFilesForRLTraining(
+          context, des_xy_vel_com_rt_init_stance_foot.at(0)(0),
+          desired_com_height_, start_with_left_stance, init_phase,
+          lightweight_saved_traj_, current_time, param_.dir_data);
+      SaveGradientIntoFilesForRLTraining();
+    }
     break5 = std::chrono::high_resolution_clock::now();
     // Save trajectory into lcm binary
     {
@@ -1711,7 +1786,7 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
   TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, x_init,
                                         &global_x_init);
 
-  /// Save the solution vector
+  /// Save the solution vector (used in initializing the first iter)
   writeCSV(dir_pref + "z.csv",
            result.GetSolution(trajopt.decision_variables()));
   // cout << trajopt.decision_variables() << endl;
@@ -1757,6 +1832,67 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
            current_time * VectorXd::Ones(1), true);
   writeCSV(dir_pref + string("global_fsm_idx.csv"),
            global_fsm_idx * VectorXd::Ones(1), true);
+}
+
+void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
+    const Context<double>& context, double dex_x_vel, double des_com_height,
+    bool start_with_left_stance, double init_phase,
+    const HybridRomPlannerTrajectory& saved_traj, double current_time,
+    const string& dir_data) const {
+  // Get robot_output for RL
+  const OutputVector<double>* robot_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, robot_output_port_);
+
+  // Assign dt
+  RL_action_prev_.tail<1>() << current_time - prev_time_;
+
+  // Assign new state and action
+  RL_state_ << robot_output->GetState(), robot_output->GetEfforts(), dex_x_vel,
+      des_com_height, start_with_left_stance, init_phase;
+  RL_action_.segment(0, a_dim_rom_state_part_).setZero();
+  if (only_use_rom_state_in_near_future_for_RL_) {
+    RL_action_.segment(0, saved_traj.GetStateSamples(0).size()) =
+        Eigen::Map<const VectorXd>(saved_traj.GetStateSamples(0).data(),
+                                   saved_traj.GetStateSamples(0).size());
+    int idx = saved_traj.GetStateSamples(0).size();
+    RL_action_.segment(idx, a_dim_rom_state_part_ - idx) =
+        (Eigen::Map<const VectorXd>(saved_traj.GetStateSamples(1).data(),
+                                    saved_traj.GetStateSamples(1).size()))
+            .head(a_dim_rom_state_part_ - idx);
+  } else {
+    int idx = 0;
+    for (int mode = 0; mode < param_.n_step; mode++) {
+      RL_action_.segment(idx, saved_traj.GetStateSamples(mode).size()) =
+          Eigen::Map<const VectorXd>(saved_traj.GetStateSamples(mode).data(),
+                                     saved_traj.GetStateSamples(mode).size());
+      idx += saved_traj.GetStateSamples(mode).size();
+    }
+  }
+  RL_action_.segment(a_dim_rom_state_part_, a_dim_rom_input_part_)
+      << Eigen::Map<const VectorXd>(saved_traj.get_global_com_pos().data(),
+                                    saved_traj.get_global_com_pos().size()),
+      Eigen::Map<const VectorXd>(saved_traj.get_global_feet_pos().data(),
+                                 saved_traj.get_global_feet_pos().size());
+  // We don't use RL_action_.tail<1>();
+
+  // Save data
+  if (counter_ > 0) {
+    string dir_pref = dir_data + to_string(counter_ - 1) + "_";
+    writeCSV(dir_pref + string("s.csv"), RL_state_prev_, true);
+    writeCSV(dir_pref + string("s_prime.csv"), RL_state_, true);
+    writeCSV(dir_pref + string("a.csv"), RL_action_prev_, true);
+    // Initial guess of the MPC is in: <idx>_init_file.csv
+  }
+
+  // Hold data for one time step
+  RL_state_prev_ = RL_state_;
+  RL_action_prev_ = RL_action_;
+  prev_time_ = current_time;
+}
+
+void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining() const {
+  // TODO: finish this
+  DRAKE_UNREACHABLE();
 }
 
 void CassiePlannerWithOnlyRom::PrintCost(

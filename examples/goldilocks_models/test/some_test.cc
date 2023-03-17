@@ -95,6 +95,22 @@ TEST_F(MultibodyPlantJointOrderTest, FixedSpringCassie) {
   EXPECT_TRUE(act_map.at("toe_right_motor") == 9);
 }
 
+TEST_F(EigenTest, MapMatrixXdToVectorXd) {
+  // I did a mapping operation in cassie_hybrid_rom_planner_system when
+  // is_RL_training == true. Adding a unit test here just in case.
+
+  Eigen::MatrixXd A(2, 2);
+  A << 1, 2, 3, 4;
+  Eigen::VectorXd A_vec = Eigen::Map<const Eigen::VectorXd>(A.data(), A.size());
+  cout << "A = \n" << A << endl;
+  cout << "A_vec = \n" << A_vec << endl;
+
+  Eigen::VectorXd A_vec_expected(4);
+  A_vec_expected << 1, 2, 3, 4;
+
+  EXPECT_TRUE((A_vec - A_vec_expected).norm() == 0);
+}
+
 }  // namespace
 }  // namespace goldilocks_models
 }  // namespace dairlib

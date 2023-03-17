@@ -200,6 +200,12 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_pelvis_height > 0) {
     gains.pelvis_height = FLAGS_pelvis_height;
   }
+  if (FLAGS_is_RL_training) {
+    // Need to set the pelvis_height task for RL training
+    DRAKE_DEMAND(gains.pelvis_height > 0);
+    // haven't implemented for the mixed MPC
+    DRAKE_DEMAND(gains.use_hybrid_rom_mpc);
+  }
 
   if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
     DRAKE_DEMAND(FLAGS_dir_and_prefix_FOM.empty());
@@ -474,7 +480,11 @@ int DoMain(int argc, char* argv[]) {
       std::set<int>(initialize_with_prev_rom_state.begin(),
                     initialize_with_prev_rom_state.end()),
       idx_const_rom_vel_during_double_support, FLAGS_debug_mode, FLAGS_log_data,
-      FLAGS_print_level);
+      FLAGS_is_RL_training, FLAGS_print_level);
+  if (FLAGS_is_RL_training) {
+    int task_dim = 2;
+    hybrid_rom_planner->InitializeForRL(plant_feedback, task_dim);
+  }
   if (gains.use_hybrid_rom_mpc) {
     if (FLAGS_completely_use_trajs_from_model_opt_as_target)
       hybrid_rom_planner->completely_use_trajs_from_model_opt_as_target();
@@ -490,6 +500,10 @@ int DoMain(int argc, char* argv[]) {
                     hybrid_rom_planner->get_input_port_planner_final_pos());
     builder.Connect(controller_signal_receiver->get_output_port(0),
                     hybrid_rom_planner->get_input_port_fsm_and_lo_time());
+    if (FLAGS_is_RL_training) {
+      builder.Connect(state_receiver->get_output_port(0),
+                      hybrid_rom_planner->get_input_port_robot_output());
+    }
     builder.Connect(hybrid_rom_planner->get_output_port(0),
                     traj_publisher->get_input_port());
   } else {
@@ -526,7 +540,7 @@ int DoMain(int argc, char* argv[]) {
                             dairlib::lcmt_robot_output>
       loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
            std::move(owned_diagram), lcm_parsers, input_channels, true,
-           FLAGS_min_mpc_thread_loop_duration,
+           FLAGS_is_RL_training ? FLAGS_min_mpc_thread_loop_duration : 0,
            FLAGS_run_one_loop_to_get_init_file
                ? 1
                : std::numeric_limits<int>::infinity());
@@ -539,6 +553,12 @@ int DoMain(int argc, char* argv[]) {
 
     loop.Simulate();
   } else {
+    if (FLAGS_is_RL_training) {
+      // TODO: need to take care of the new input `robot_output_port_` for RL
+      //  data logging
+      DRAKE_UNREACHABLE();
+    }
+
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate
     // the output (we do not run the LcmDrivenLoop)
 

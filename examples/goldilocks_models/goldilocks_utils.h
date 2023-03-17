@@ -211,5 +211,13 @@ struct PlannerSetting {
   void PrintAll() const;
 };
 
+template<typename K, typename V>
+std::map<V, K> reverse_map(const std::map<K, V>& m) {
+  std::map<V, K> r;
+  for (const auto& kv : m)
+    r[kv.second] = kv.first;
+  return r;
+}
+
 }  // namespace goldilocks_models
 }  // namespace dairlib

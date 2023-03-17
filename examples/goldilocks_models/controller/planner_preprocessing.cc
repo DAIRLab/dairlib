@@ -418,7 +418,7 @@ InitialStateForPlanner::InitialStateForPlanner(
 
   adjusted_state_port_ =
       this->DeclareVectorOutputPort(
-              "x, u, t",
+              "x_init",
               OutputVector<double>(plant_control.num_positions(),
                                    plant_control.num_velocities(),
                                    plant_control.num_actuators()),

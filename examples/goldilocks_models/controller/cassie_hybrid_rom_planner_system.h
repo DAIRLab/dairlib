@@ -42,7 +42,8 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const std::set<int>& relax_index,
       const std::set<int>& set_init_state_from_prev_solution,
       const std::set<int>& idx_const_rom_vel_during_double_support,
-      bool singel_eval_mode, bool log_data, int print_level = 1);
+      bool singel_eval_mode, bool log_data, bool is_RL_training,
+      int print_level = 1);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -65,6 +66,9 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const {
     return this->get_input_port(planner_final_pos_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_robot_output() const {
+    return this->get_input_port(robot_output_port_);
+  }
 
   // Testing
   void completely_use_trajs_from_model_opt_as_target() {
@@ -82,6 +86,11 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   }
   int knots_per_double_support() const { return knots_per_double_support_; }
   int knots_per_single_support() const { return knots_per_single_support_; }
+
+  // For RL training
+  void InitializeForRL(
+      const drake::multibody::MultibodyPlant<double>& plant_feedback,
+      int task_dim);
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
@@ -155,6 +164,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   int controller_signal_port_;
   int quat_xyz_shift_port_;
   int planner_final_pos_port_;
+  int robot_output_port_;
 
   std::map<std::string, int> pos_map_;
   std::map<std::string, int> vel_map_;
@@ -351,6 +361,26 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& quat_xyz_shift,
       const Eigen::VectorXd& current_local_stance_foot_pos) const;
   void PrintTrajMsg(dairlib::lcmt_timestamped_saved_traj* traj_msg) const;
+
+  // For RL training
+  bool is_RL_training_;
+  bool only_use_rom_state_in_near_future_for_RL_ = true;
+  void SaveStateAndActionIntoFilesForRLTraining(
+      const drake::systems::Context<double>& context, double dex_x_vel,
+      double des_com_height, bool start_with_left_stance, double init_phase,
+      const HybridRomPlannerTrajectory& saved_traj, double current_time,
+      const std::string& dir_data) const;
+  void SaveGradientIntoFilesForRLTraining() const;
+  mutable Eigen::VectorXd RL_state_prev_;
+  mutable Eigen::VectorXd RL_state_;
+  mutable Eigen::VectorXd RL_action_prev_;
+  mutable Eigen::VectorXd RL_action_;
+  mutable double prev_time_;
+  int a_dim_rom_state_part_;
+  int a_dim_rom_input_part_;
+  // TODO:
+  //  1. have a lcmttraj class for replicating the results
+  //  2. have a lcmttraj class for rl specific
 };
 
 }  // namespace goldilocks_models

@@ -124,7 +124,7 @@ DEFINE_bool(debug_mode, false, "Only run the traj opt once locally");
 DEFINE_int32(solve_idx_for_read_from_file, -1,
              "Files index for input port values");
 
-// For non debug mode (I think I don't use some of these anymore)
+// For non debug mode (I think I don't use all of these anymore)
 DEFINE_string(dir_and_prefix_FOM, "",
               "file location and prefix for FOM poses (used in planner's "
               "regularization cost)");
@@ -139,6 +139,12 @@ DEFINE_double(xy_disturbance, 0,
               "Disturbance to FoM initial state. Range from 0 to 1");
 DEFINE_double(yaw_disturbance, 0,
               "Disturbance to FoM initial state. Range from 0 to 1");
+
+// RL training
+DEFINE_bool(is_RL_training, false, "");
+DEFINE_double(min_mpc_thread_loop_duration, 0,
+              "limits how fast the MPC should run; default to 0 which doesn't "
+              "impose any limit");
 
 // Testing -- for sim eval and multithreading
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
@@ -520,6 +526,7 @@ int DoMain(int argc, char* argv[]) {
                             dairlib::lcmt_robot_output>
       loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
            std::move(owned_diagram), lcm_parsers, input_channels, true,
+           FLAGS_min_mpc_thread_loop_duration,
            FLAGS_run_one_loop_to_get_init_file
                ? 1
                : std::numeric_limits<int>::infinity());

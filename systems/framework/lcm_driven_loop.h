@@ -316,6 +316,7 @@ class TwoLcmDrivenLoop {
       std::unique_ptr<drake::systems::Diagram<double>> diagram,
       std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers,
       const std::vector<std::string>& input_channels, bool is_forced_publish,
+      double min_update_period = 0,
       int max_loop_number = std::numeric_limits<int>::infinity())
       : drake_lcm_(drake_lcm),
         lcm_parsers_(lcm_parsers),
@@ -325,6 +326,7 @@ class TwoLcmDrivenLoop {
         subscriber1_(drake::lcm::Subscriber<InputMessageType2>(
             drake_lcm_, input_channels[1])),
         is_forced_publish_(is_forced_publish),
+        min_update_period_(min_update_period),
         max_n_loop_(max_loop_number) {
     DRAKE_DEMAND(lcm_parsers.size() == 2);
     DRAKE_DEMAND(input_channels.size() == 2);
@@ -358,6 +360,9 @@ class TwoLcmDrivenLoop {
     // Initialize the context time.
     const double t0 = subscriber0_.message().utime * 1e-6;
     diagram_context.SetTime(t0);
+
+    // Setup for min loop duration
+    prev_time_ = t0;
 
     // "Simulator" time
     double time = 0;  // initialize the current time with 0
@@ -395,6 +400,7 @@ class TwoLcmDrivenLoop {
 
       // Get message time from the active channel to advance
       time = subscriber0_.message().utime * 1e-6;
+      prev_time_ = time;
 
       // Check if we are very far ahead or behind
       // (likely due to a restart of the driving clock)
@@ -435,7 +441,17 @@ class TwoLcmDrivenLoop {
       subscriber0_.clear();
       subscriber1_.clear();
       LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
-        return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+        if ((subscriber0_.message().utime * 1e-6 - prev_time_) >=
+            min_update_period_) {
+          return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+        } else {
+          if (subscriber0_.count() > 0) {
+            subscriber0_.clear();
+          }
+          if (subscriber1_.count() > 0) {
+            subscriber1_.clear();
+          }
+        }
       });
     }
   };
@@ -452,6 +468,9 @@ class TwoLcmDrivenLoop {
   drake::lcm::Subscriber<InputMessageType2> subscriber1_;
 
   bool is_forced_publish_;
+
+  double min_update_period_;
+  double prev_time_;
 
   int max_n_loop_;
 };

@@ -18,6 +18,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include "systems/system_utils.h"
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/common/find_resource.h"
 
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
@@ -25,6 +26,11 @@ DEFINE_string(channel, "FRANKA_OUTPUT",
               "use FRANKA_ROS_OUTPUT to get state from state estimator");
 
 namespace dairlib {
+
+
+using Eigen::VectorXd;
+using Eigen::Vector3d;
+using Eigen::MatrixXd;
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
@@ -57,8 +63,16 @@ int do_main(int argc, char* argv[]) {
 
   Parser parser(&plant, &scene_graph);
   parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
+  parser.AddModelFromFile(drake::FindResourceOrThrow(
+      "drake/examples/kuka_iiwa_arm/models/table/"
+      "extra_heavy_duty_table_surface_only_collision.sdf"));
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
+  Vector3d shift = Eigen::VectorXd::Zero(3);
+  shift(2) = 0.7645;
+  RigidTransform<double> R_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), shift);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link"),
+                   X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), R_X_W);
 
   plant.Finalize();
 

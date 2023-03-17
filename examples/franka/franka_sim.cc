@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include <drake/common/find_resource.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
@@ -45,6 +46,7 @@ using systems::AddActuationRecieverAndStateSenderLcm;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 
 int DoMain(int argc, char* argv[]) {
   // load parameters
@@ -55,14 +57,24 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   double output_dt = sim_params.dt;
+  //  auto scene_graph =
+  //  builder.AddSystem(std::make_unique<SceneGraph<double>>());
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
   parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
+  parser.AddModelFromFile(drake::FindResourceOrThrow(
+      "drake/examples/kuka_iiwa_arm/models/table/"
+      "extra_heavy_duty_table_surface_only_collision.sdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+  Vector3d shift = Eigen::VectorXd::Zero(3);
+  shift(2) = 0.7645;
+  RigidTransform<double> R_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), shift);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link"),
                    X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), R_X_W);
+
   plant.Finalize();
 
   /* -------------------------------------------------------------------------------------------*/

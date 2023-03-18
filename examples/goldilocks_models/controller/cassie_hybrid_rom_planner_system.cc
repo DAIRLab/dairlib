@@ -67,8 +67,8 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     const PlannerSetting& param, const set<int>& relax_index,
     const set<int>& set_init_state_from_prev_solution,
     const set<int>& idx_const_rom_vel_during_double_support,
-    bool singel_eval_mode, bool log_data, bool is_RL_training, int print_level)
-    : is_RL_training_(is_RL_training),
+    bool singel_eval_mode, bool log_data, int print_level)
+    : is_RL_training_(param.is_RL_training),
       nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
@@ -1441,7 +1441,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
           context, des_xy_vel_com_rt_init_stance_foot.at(0)(0),
           desired_com_height_, start_with_left_stance, init_phase,
           lightweight_saved_traj_, current_time, param_.dir_data);
-      SaveGradientIntoFilesForRLTraining();
+      SaveGradientIntoFilesForRLTraining(trajopt, result);
     }
     break5 = std::chrono::high_resolution_clock::now();
     // Save trajectory into lcm binary
@@ -1701,8 +1701,10 @@ void CassiePlannerWithOnlyRom::TransformBetweenGlobalAndLocalFrame3D(
   //  Cassie faces backward (-z world axis).
   //  I did the following change, but it didn't fix the bug -- Make sure that
   //  the quaternion doesn't pick the other solution of the same rotation.
-  //  TODO: I will need to turn off constraints gradually to find where the bug
-  //   is. I think the quaternion constraint in rom_traj_opt could be the bug.
+  // TODO: I will need to turn off constraints gradually to find where the bug
+  //    is. I think the quaternion constraint in rom_traj_opt could be the bug.
+  //  20230317 Update: I did mujoco and hardware experiments in December where I
+  //  turned Cassie around a lot and it was fine.
   // Make sure that the quaternion doesn't pick the other solution of the same
   // rotation.
   // Hacks: Not sure what's the best the way to deal with this.
@@ -1787,8 +1789,7 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
                                         &global_x_init);
 
   /// Save the solution vector (used in initializing the first iter)
-  writeCSV(dir_pref + "z.csv",
-           result.GetSolution(trajopt.decision_variables()));
+  writeCSV(dir_pref + "z.csv", result.GetSolution());
   // cout << trajopt.decision_variables() << endl;
 
   /// Save traj to csv
@@ -1890,9 +1891,166 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   prev_time_ = current_time;
 }
 
-void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining() const {
-  // TODO: finish this
+void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
+    const HybridRomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result, const string& dir_data) const {
+  // Get the linear approximation of the cosntraints and second order
+  // approximation of the cost.
+  MatrixXd A, H;
+  VectorXd y, lb, ub, b;
+  solvers::LinearizeConstraints(trajopt, result.GetSolution(), &y, &A, &lb,
+                                &ub);
+  solvers::SecondOrderCost(trajopt, result.GetSolution(), &H, &b);
+
+  // Get the linear approximation of the constraints wrt parameters
+  int n_theta_yddot = rom_->n_theta_yddot();
+  MatrixXd B = MatrixXd::Zero(A.rows(), n_theta_yddot);
+  for (int i = 0; i < trajopt.dynamics_constraints.size(); i++) {
+    // Get the row index of B matrix where dynamics constraint starts
+    VectorXd ind_start = solvers::GetConstraintRows(
+        trajopt, trajopt.dynamics_constraints_bindings[i]);
+    // cout << "ind_start = " << ind_start(0) << endl;
+
+    // Get gradient and fill in B matrix
+    B.block(ind_start(0), 0, rom_->n_y() * 2, n_theta_yddot) =
+        trajopt.dynamics_constraints[i]->GetGradientWrtTheta(result.GetSolution(
+            trajopt.dynamics_constraints_bindings[i].variables()));
+
+    // TODO: Could we use dual_sol to speed up the computation?
+    //    // Testing -- getting cost gradient by envelope thm
+    //    // Minus sign for gradient descent instead of ascent
+    //    VectorXd dual_sol =
+    //        result.GetDualSolution(trajopt.dynamics_constraints_bindings[i]);
+  }
+
+  // Do gradient here (inside the MPC loop)?
+  // TODO: There is currently a bug -- we need to make sure that the w order is
+  //  the same as the RL action
+  MatrixXd grad_w_wrt_theta =
+      ExtractActiveConstraintAndDoLinearSolve(A, B, H, y, lb, ub, b);
+  // Save gradient
+  // TODO: Take care of the recompute case. We shouldn't use counter
   DRAKE_UNREACHABLE();
+  string dir_pref = dir_data + to_string(counter_) + "_";
+  writeCSV(dir_pref + "grad_w_wrt_theta.csv", grad_w_wrt_theta);
+}
+
+MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
+    MatrixXd A, MatrixXd B, MatrixXd H, VectorXd y, VectorXd lb, VectorXd ub,
+    VectorXd b, double active_tol,
+    int method_to_solve_system_of_equations) const {
+  /// Step 1 - Extract active cosntraints
+  int nt_i = B.cols();
+  int nw_i = A.cols();
+
+  int nl_i = 0;
+  for (int i = 0; i < y.rows(); i++) {
+    if (y(i) >= ub(i) - active_tol || y(i) <= lb(i) + active_tol) nl_i++;
+  }
+
+  MatrixXd A_active(nl_i, nw_i);
+  MatrixXd B_active(nl_i, nt_i);
+
+  nl_i = 0;
+  for (int i = 0; i < y.rows(); i++) {
+    if (y(i) >= ub(i) - active_tol || y(i) <= lb(i) + active_tol) {
+      A_active.row(nl_i) = A.row(i);
+      B_active.row(nl_i) = B.row(i);
+      nl_i++;
+    }
+  }
+
+  cout << "nt_i = " << nt_i << endl;
+  cout << "nw_i = " << nw_i << endl;
+  cout << "nl_i = " << nl_i << endl;
+
+  // Note that no need to extract independent rows here (the method we use
+  // doesn't requires it)
+
+  bool is_testing = false;
+  if (is_testing) {
+    // Run a quadprog to check if the solution to the following problem is 0
+    // Theoratically, it should be 0. Otherwise, something is wrong
+    // min 0.5*w^T Q w + c^T w
+    // st  A w = 0
+    nl_i = A_active.rows();
+    MathematicalProgram quadprog;
+    auto w2 = quadprog.NewContinuousVariables(nw_i, "w2");
+    quadprog.AddLinearConstraint(A_active, VectorXd::Zero(nl_i),
+                                 VectorXd::Zero(nl_i), w2);
+    quadprog.AddQuadraticCost(H, b, w2);
+
+    // (Testing) use snopt to solve the QP
+    bool use_snopt = true;
+    drake::solvers::SnoptSolver snopt_solver;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    const auto result =
+        use_snopt ? snopt_solver.Solve(quadprog) : Solve(quadprog);
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+
+    auto solution_result = result.get_solution_result();
+    if (result.is_success()) {
+      VectorXd w_sol_check = result.GetSolution(quadprog.decision_variables());
+      cout << solution_result << " | " << elapsed.count() << "| "
+           << result.get_optimal_cost() << " | " << w_sol_check.norm() << " | "
+           << w_sol_check.transpose() * (b) << endl;
+    } else {
+      cout << solution_result << " | " << elapsed.count() << " | "
+           << result.get_optimal_cost() << endl;
+    }
+  }
+
+  /// Step 2 linear solve
+  MatrixXd Pi(nw_i, B_active.cols());
+
+  double residual_tol = 1e-4;
+  bool successful = false;
+  while (!successful) {
+    // H_ext = [H A'; A 0]
+    MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
+    H_ext.block(0, 0, nw_i, nw_i) = (H);
+    H_ext.block(0, nw_i, nw_i, nl_i) = A_active.transpose();
+    H_ext.block(nw_i, 0, nl_i, nw_i) = (A_active);
+    H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
+
+    if (method_to_solve_system_of_equations == 4) {
+      // Method 4: linear solve with householderQr ///////////////////////////
+      MatrixXd B_aug = MatrixXd::Zero(H_ext.rows(), B_active.cols());
+      B_aug.bottomRows(nl_i) = -(B_active);
+
+      MatrixXd sol = H_ext.householderQr().solve(B_aug);
+      Pi = sol.topRows(nw_i);
+
+      double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+      if (max_error > residual_tol || std::isnan(max_error) ||
+          std::isinf(max_error)) {
+        cout << "max_error = " << max_error << "; switch to method 5\n";
+        method_to_solve_system_of_equations = 5;
+      } else {
+        successful = true;
+      }
+
+    } else if (method_to_solve_system_of_equations == 5) {
+      // Method 5: linear solve with ColPivHouseholderQR /////////////////////
+      MatrixXd B_aug = MatrixXd::Zero(H_ext.rows(), B_active.cols());
+      B_aug.bottomRows(nl_i) = -(B_active);
+
+      MatrixXd sol = Eigen::ColPivHouseholderQR<MatrixXd>(H_ext).solve(B_aug);
+      Pi = sol.topRows(nw_i);
+
+      double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+      if (max_error > residual_tol || std::isnan(max_error) ||
+          std::isinf(max_error)) {
+        cout << "max_error = " << max_error << "; move on.\n";
+      }
+      break;
+    }
+  }
+
+  //
+  return Pi;
 }
 
 void CassiePlannerWithOnlyRom::PrintCost(

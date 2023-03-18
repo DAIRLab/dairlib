@@ -42,8 +42,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const std::set<int>& relax_index,
       const std::set<int>& set_init_state_from_prev_solution,
       const std::set<int>& idx_const_rom_vel_during_double_support,
-      bool singel_eval_mode, bool log_data, bool is_RL_training,
-      int print_level = 1);
+      bool singel_eval_mode, bool log_data, int print_level = 1);
 
   const drake::systems::InputPort<double>& get_input_port_stance_foot() const {
     return this->get_input_port(stance_foot_port_);
@@ -370,7 +369,15 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       double des_com_height, bool start_with_left_stance, double init_phase,
       const HybridRomPlannerTrajectory& saved_traj, double current_time,
       const std::string& dir_data) const;
-  void SaveGradientIntoFilesForRLTraining() const;
+  void SaveGradientIntoFilesForRLTraining(
+      const HybridRomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      const std::string& dir_data) const;
+  Eigen::MatrixXd ExtractActiveConstraintAndDoLinearSolve(
+      Eigen::MatrixXd A, Eigen::MatrixXd B, Eigen::MatrixXd H,
+      Eigen::VectorXd y, Eigen::VectorXd lb, Eigen::VectorXd ub,
+      Eigen::VectorXd b, double active_tol = 1e-6,
+      int method_to_solve_system_of_equations = 5) const;
   mutable Eigen::VectorXd RL_state_prev_;
   mutable Eigen::VectorXd RL_state_;
   mutable Eigen::VectorXd RL_action_prev_;

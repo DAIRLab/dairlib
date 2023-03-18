@@ -206,6 +206,9 @@ struct PlannerSetting {
   // Testing
   int n_step_lipm;
 
+  // RL
+  bool is_RL_training;
+
   // Debugging
   int solve_idx_for_read_from_file;
   void PrintAll() const;

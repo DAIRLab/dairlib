@@ -6,6 +6,7 @@
 #include <memory.h>
 
 #include "examples/goldilocks_models/goldilocks_utils.h"
+#include "examples/goldilocks_models/planning/dynamics_constraint.h"
 #include "examples/goldilocks_models/reduced_order_models.h"
 
 #include "drake/common/drake_copyable.h"
@@ -18,6 +19,7 @@
 #include "drake/systems/trajectory_optimization/multiple_shooting.h"
 
 using drake::solvers::Binding;
+using drake::solvers::Constraint;
 using drake::solvers::Cost;
 
 namespace dairlib {
@@ -200,6 +202,11 @@ class HybridRomTrajOpt
   drake::solvers::VectorXDecisionVariable predicted_com_vel_var_;
   drake::solvers::VectorXDecisionVariable x_lipm_vars_;
   drake::solvers::VectorXDecisionVariable u_lipm_vars_;
+
+  // RL training
+  std::vector<std::shared_ptr<planning::DynamicsConstraint>>
+      dynamics_constraints;
+  std::vector<Binding<Constraint>> dynamics_constraints_bindings;
 
  protected:
   // Implements a running cost at all timesteps using trapezoidal integration.

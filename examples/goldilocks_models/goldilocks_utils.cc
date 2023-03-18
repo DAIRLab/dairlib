@@ -716,6 +716,7 @@ void PlannerSetting::PrintAll() const {
   cout << "dir_model" << dir_model << endl;
   cout << "dir_data" << dir_data << endl;
   cout << "init_file" << init_file << endl;
+  cout << "is_RL_training" << is_RL_training << endl;
   cout << "solve_idx_for_read_from_file" << solve_idx_for_read_from_file
        << endl;
 }

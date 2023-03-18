@@ -301,6 +301,7 @@ int DoMain(int argc, char* argv[]) {
   param.dir_data = gains.dir_data;
   param.init_file = FLAGS_init_file;
   param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
+  param.is_RL_training = FLAGS_is_RL_training;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
   if (0 < param.time_limit && param.time_limit < 0.1) {
@@ -480,7 +481,7 @@ int DoMain(int argc, char* argv[]) {
       std::set<int>(initialize_with_prev_rom_state.begin(),
                     initialize_with_prev_rom_state.end()),
       idx_const_rom_vel_during_double_support, FLAGS_debug_mode, FLAGS_log_data,
-      FLAGS_is_RL_training, FLAGS_print_level);
+      FLAGS_print_level);
   if (FLAGS_is_RL_training) {
     int task_dim = 2;
     hybrid_rom_planner->InitializeForRL(plant_feedback, task_dim);

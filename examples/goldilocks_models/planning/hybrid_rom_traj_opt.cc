@@ -237,18 +237,23 @@ HybridRomTrajOpt::HybridRomTrajOpt(
           rom,
           set_zero_accel ? idx_constant_rom_vel_during_double_support
                          : empty_idx_set_,
+          param.is_RL_training,
           "rom_dyn_" + std::to_string(mode) + "_" + std::to_string(j));
       DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
                    num_states());
       dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);
       int time_index = mode_start_[mode] + j;
-      AddConstraint(
+      auto binding = AddConstraint(
           dyn_constraint,
           {state_vars_by_mode(mode, j),
            u_vars().segment(time_index * num_inputs(), num_inputs()),
            state_vars_by_mode(mode, j + 1),
            u_vars().segment((time_index + 1) * num_inputs(), num_inputs()),
            h_vars().segment(time_index, 1)});
+      if (param.is_RL_training) {
+        dynamics_constraints.push_back(dyn_constraint);
+        dynamics_constraints_bindings.push_back(binding);
+      }
     }
 
     // Add discrete map constraint

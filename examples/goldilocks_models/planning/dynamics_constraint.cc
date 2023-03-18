@@ -35,7 +35,7 @@ using Eigen::VectorXd;
 
 DynamicsConstraint::DynamicsConstraint(
     const ReducedOrderModel& rom, const std::set<int>& idx_constant_rom_vel,
-    const std::string& description)
+    bool is_RL_training, const std::string& description)
     : NonlinearConstraint<double>(2 * rom.n_y(),
                                   2 * (2 * rom.n_y() + rom.n_tau()) + 1,
                                   VectorXd::Zero(2 * rom.n_y()),
@@ -44,7 +44,12 @@ DynamicsConstraint::DynamicsConstraint(
       n_y_(rom.n_y()),
       n_z_(2 * rom.n_y()),
       n_tau_(rom.n_tau()),
-      idx_constant_rom_vel_(idx_constant_rom_vel) {}
+      idx_constant_rom_vel_(idx_constant_rom_vel),
+      is_RL_training_(is_RL_training) {
+  if (is_RL_training) {
+    mutable_rom_ = rom.Clone();
+  }
+}
 
 void DynamicsConstraint::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<double>>& ztzth,
@@ -83,7 +88,12 @@ void DynamicsConstraint::EvaluateConstraint(
 VectorX<double> DynamicsConstraint::g(const VectorX<double>& z,
                                       const VectorX<double>& tau) const {
   VectorX<double> zdot(2 * n_y_);
-  zdot << z.tail(n_y_), rom_.EvalDynamicFunc(z.head(n_y_), z.tail(n_y_), tau);
+  if (is_RL_training_) {
+    zdot << z.tail(n_y_),
+        mutable_rom_->EvalDynamicFunc(z.head(n_y_), z.tail(n_y_), tau);
+  } else {
+    zdot << z.tail(n_y_), rom_.EvalDynamicFunc(z.head(n_y_), z.tail(n_y_), tau);
+  }
 
   // Set some acceleration to 0 (heuristic)
   for (const auto& idx : idx_constant_rom_vel_) {
@@ -98,6 +108,110 @@ VectorX<double> DynamicsConstraint::g(const VectorX<double>& z,
   //  }
 
   return zdot;
+}
+
+drake::VectorX<double>
+DynamicsConstraint::EvaluateConstraintWithSpecifiedThetaYddot(
+    const Eigen::Ref<const drake::VectorX<double>>& ztzth,
+    const Eigen::VectorXd& theta_yddot) const {
+  mutable_rom_->SetThetaYddot(theta_yddot);
+
+  drake::VectorX<double> y(n_z_);
+  EvaluateConstraint(ztzth, &y);
+
+  return y;
+}
+
+Eigen::MatrixXd DynamicsConstraint::GetGradientWrtTheta(
+    const Eigen::VectorXd& x) const {
+  // ////////// V1: Do forward differencing wrt theta //////////////////////////
+  /*
+  // Get the gradient wrt theta_y and theta_yddot
+  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+  theta << theta_y_, theta_yddot_;
+  MatrixXd gradWrtTheta(n_y_, theta.size());
+  vector<VectorXd> y_vec;
+  for (int k = 0; k < theta.size(); k++) {
+    for (double shift : fd_shift_vec_) {
+      theta(k) += shift;
+
+      VectorXd theta_y = theta.head(n_theta_y_);
+      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
+
+      // Evaluate constraint value
+      // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
+      //                                         x_i, x_iplus1, h_i,
+      //                                         theta_y, theta_yddot)));
+      y_vec.push_back(EvalConstraintWithModelParams(
+                        x_u_lambda_tau,
+                        theta_y, theta_yddot));
+
+      theta(k) -= shift;
+    }
+
+    // Get gradient
+    gradWrtTheta.col(k) = (y_vec[1] - y_vec[0]) / eps_fd_;
+    y_vec.clear();
+  }*/
+
+  // ////////// V2: Do central differencing wrt theta //////////////////////////
+  // Get the gradient wrt theta_y and theta_yddot
+  VectorXd theta_yddot = rom_.theta_yddot();
+  MatrixXd gradWrtTheta(rom_.n_y(), theta_yddot.size());
+  vector<VectorXd> y_vec(2, VectorXd(n_z_));
+  for (int k = 0; k < theta_yddot.size(); k++) {
+    for (int i = 0; i < 2; i++) {
+      double shift = cd_shift_vec_.at(i);
+      theta_yddot(k) += shift;
+      y_vec.at(i) = EvaluateConstraintWithSpecifiedThetaYddot(x, theta_yddot);
+      theta_yddot(k) -= shift;
+    }
+
+    // Get gradient
+    gradWrtTheta.col(k) = (y_vec[1] - y_vec[0]) / eps_cd_;
+  }
+
+  // /////////// V3: higher order method of finite difference //////////////////
+  // Reference:
+  // https://en.wikipedia.org/wiki/Numerical_differentiation#Higher-order_methods
+
+  /*
+  // Get the gradient wrt theta_y and theta_yddot
+  VectorXd theta(n_theta_y_ + n_theta_yddot_);
+  theta << theta_y_, theta_yddot_;
+  MatrixXd gradWrtTheta(n_y_, theta.size());
+  vector<VectorXd> y_vec;
+  for (int k = 0; k < theta.size(); k++) {
+    for (double shift : ho_shift_vec_) {
+      theta(k) += shift;
+
+      VectorXd theta_y = theta.head(n_theta_y_);
+      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
+
+      // Evaluate constraint value
+      // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
+      //                                         x_i, x_iplus1, h_i,
+      //                                         theta_y, theta_yddot)));
+      y_vec.push_back(EvalConstraintWithModelParams(
+                        x_u_lambda_tau,
+                        theta_y, theta_yddot));
+
+      theta(k) -= shift;
+    }
+
+    // Get gradient
+    gradWrtTheta.col(k) =
+      (-y_vec[3] + 8 * y_vec[2] - 8 * y_vec[1] + y_vec[0]) / (3 * eps_ho_);
+    y_vec.clear();
+  }*/
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Finding the optimal step size
+  // https://math.stackexchange.com/questions/815113/is-there-a-general-formula-for-estimating-the-step-size-h-in-numerical-different
+  // https://www.uio.no/studier/emner/matnat/math/MAT-INF1100/h10/kompendiet/kap11.pdf
+
+  return gradWrtTheta;
 }
 
 }  // namespace planning

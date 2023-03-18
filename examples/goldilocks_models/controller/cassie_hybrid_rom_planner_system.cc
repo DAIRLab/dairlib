@@ -101,8 +101,12 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   DRAKE_DEMAND(param_.knots_per_mode > 0);
 
   // print level
-  if (single_eval_mode_) print_level_ = 2;
   print_level_ = print_level;
+  if (single_eval_mode_) {
+    print_level_ = 2;
+    cout.precision(dbl::max_digits10);
+  }
+  if (param_.is_RL_training) print_level_ = 0;
 
   // Input/Output Setup
   stance_foot_port_ =
@@ -151,6 +155,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
 
   /// Provide initial guess
   n_y_ = rom_->n_y();
+  n_z_ = 2 * n_y_;
   n_tau_ = rom_->n_tau();
   string model_dir_n_pref = param_.dir_model + to_string(param_.iter) +
                             string("_") + to_string(param_.sample) +
@@ -622,11 +627,13 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   }
 
   /// For single evaluation mode (debug mode)
-  if (param.solve_idx_for_read_from_file > 0) {
+  if (param.solve_idx_for_read_from_file >= 0) {
     lightweight_saved_traj_ = HybridRomPlannerTrajectory(
         param.dir_data + to_string(param.solve_idx_for_read_from_file) +
             "_rom_trajectory",
         true);
+
+    counter_ = param.solve_idx_for_read_from_file;
   }
 
   /// Save data for (offline) debug mode
@@ -652,12 +659,12 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
               plant_feedback.num_actuators() + task_dim + 2;
   if (only_use_rom_state_in_near_future_for_RL_) {
     // We cut off the rom state in the far future that we don't use
-    a_dim_rom_state_part_ = rom_->n_y() * 2 * param_.knots_per_mode * 1;
+    n_knots_used_for_RL_action_ = param_.knots_per_mode * 1;
   } else {
-    a_dim_rom_state_part_ =
-        rom_->n_y() * 2 * param_.knots_per_mode * param_.n_step;
+    n_knots_used_for_RL_action_ = param_.knots_per_mode * param_.n_step;
   }
-  a_dim_rom_input_part_ = 4 * param_.n_step;
+  a_dim_rom_state_part_ = n_z_ * n_knots_used_for_RL_action_;
+  a_dim_rom_input_part_ = 2 * param_.n_step;
   int a_dim = a_dim_rom_state_part_ + a_dim_rom_input_part_ + 1;
   RL_state_prev_ = VectorXd::Zero(s_dim);
   RL_state_ = VectorXd::Zero(s_dim);
@@ -782,18 +789,24 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       this->EvalVectorInput(context, planner_final_pos_port_)->get_value();
 
   if (single_eval_mode_) {
-    cout.precision(dbl::max_digits10);
-    cout << "Used for the planner: \n";
-    cout << "  x_init  = " << x_init.transpose() << endl;
-    cout << "  quat_xyz_shift  = " << quat_xyz_shift.transpose() << endl;
-    cout << "  current_time  = " << current_time << endl;
-    cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
-    cout << "  init_phase  = " << init_phase << endl;
-    cout << "  final_position = " << final_position.transpose() << endl;
+    if (print_level_ > 1) {
+      cout << "Used for the planner: \n";
+      cout << "  x_init  = " << x_init.transpose() << endl;
+      cout << "  quat_xyz_shift  = " << quat_xyz_shift.transpose() << endl;
+      cout << "  current_time  = " << current_time << endl;
+      cout << "  start_with_left_stance  = " << start_with_left_stance << endl;
+      cout << "  init_phase  = " << init_phase << endl;
+      cout << "  final_position = " << final_position.transpose() << endl;
+    }
   }
 
   // For data logging
-  string prefix = single_eval_mode_ ? "debug_" : to_string(counter_) + "_";
+  string prefix;
+  if (single_eval_mode_ && !param_.is_RL_training) {
+    prefix = "debug_";
+  } else {
+    prefix = to_string(counter_) + "_";
+  }
 
   ///
   /// Some setups
@@ -836,7 +849,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Get the init ROM state form the previous plan
   std::set<int> set_init_state_from_prev_solution =
       set_init_state_from_prev_solution_;
-  VectorXd init_rom_state_from_prev_sol(2 * n_y_);
+  VectorXd init_rom_state_from_prev_sol(n_z_);
   if (!set_init_state_from_prev_solution.empty()) {
     if (counter_ == 0) {
       set_init_state_from_prev_solution.clear();
@@ -863,22 +876,27 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   init_rom_state_mirrored(2) = desired_com_height_;
   init_rom_state_mirrored(5) = 0;
   if (single_eval_mode_) {
-    cout << "init_rom_state_from_current_feedback = "
-         << init_rom_state_from_current_feedback.transpose() << endl;
-    cout << "init_rom_state_from_prev_sol = "
-         << init_rom_state_from_prev_sol.transpose() << endl;
-    cout << "init_rom_state = " << init_rom_state_mirrored.transpose() << endl;
+    if (print_level_ > 1) {
+      cout << "init_rom_state_from_current_feedback = "
+           << init_rom_state_from_current_feedback.transpose() << endl;
+      cout << "init_rom_state_from_prev_sol = "
+           << init_rom_state_from_prev_sol.transpose() << endl;
+      cout << "init_rom_state = " << init_rom_state_mirrored.transpose()
+           << endl;
+    }
   }
 
   // Init footstep
   Vector2d init_footstep =
       (current_local_swing_foot_pos - current_local_stance_foot_pos).head<2>();
   if (single_eval_mode_) {
-    cout << "current_local_swing_foot_pos = "
-         << current_local_swing_foot_pos.transpose() << endl;
-    cout << "current_local_stance_foot_pos = "
-         << current_local_stance_foot_pos.transpose() << endl;
-    cout << "init_footstep = " << init_footstep.transpose() << endl;
+    if (print_level_ > 1) {
+      cout << "current_local_swing_foot_pos = "
+           << current_local_swing_foot_pos.transpose() << endl;
+      cout << "current_local_stance_foot_pos = "
+           << current_local_stance_foot_pos.transpose() << endl;
+      cout << "init_footstep = " << init_footstep.transpose() << endl;
+    }
   }
 
   ///
@@ -910,11 +928,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   Vector2d des_com_pos_rt_stance_foot_at_end_of_mode =
       des_xy_pos_com_rt_init_stance_foot.at(0);
   if (single_eval_mode_) {
-    for (auto& pos : des_xy_pos_com_rt_init_stance_foot) {
-      cout << "pos = " << pos.transpose() << endl;
-    }
-    for (auto& vel : des_xy_vel_com_rt_init_stance_foot) {
-      cout << "vel = " << vel.transpose() << endl;
+    if (print_level_ > 1) {
+      for (auto& pos : des_xy_pos_com_rt_init_stance_foot) {
+        cout << "pos = " << pos.transpose() << endl;
+      }
+      for (auto& vel : des_xy_vel_com_rt_init_stance_foot) {
+        cout << "vel = " << vel.transpose() << endl;
+      }
     }
   }
   // My ntoes: Only the goal position needs the above shift.
@@ -1089,8 +1109,11 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     // 1 step because velocity is asymmetric in y direction
     des_predicted_xy_vel =
         des_xy_vel_com_rt_init_stance_foot.at(param_.n_step - 2);
-    if (single_eval_mode_)
-      cout << "des_predicted_xy_vel = " << des_predicted_xy_vel << endl;
+    if (single_eval_mode_) {
+      if (print_level_ > 1) {
+        cout << "des_predicted_xy_vel = " << des_predicted_xy_vel << endl;
+      }
+    }
 
     // Constraint and cost for the last foot step location
     trajopt.AddConstraintAndCostForLastFootStep(
@@ -1110,7 +1133,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
 
   // Initial guess for all variables
-  if (counter_ == 0 && !param_.init_file.empty()) {
+  if ((counter_ == 0 && !param_.init_file.empty()) || single_eval_mode_) {
     PrintStatus("Set initial guess from the file " + param_.init_file);
     VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
     // writeCSV(param_.dir_data + "testing_" + string("init_file.csv"), z0,
@@ -1325,12 +1348,14 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
                                         local_com_pos, &global_com_pos);
   if (single_eval_mode_) {
-    cout << "local_com_pos.col(0) = " << local_com_pos.col(0).transpose()
-         << endl;
-    cout << "global_com_pos.col(0) = " << global_com_pos.col(0).transpose()
-         << endl;
-    cout << "global_feet_pos.col(0) = " << global_feet_pos.col(0).transpose()
-         << endl;
+    if (print_level_ > 1) {
+      cout << "local_com_pos.col(0) = " << local_com_pos.col(0).transpose()
+           << endl;
+      cout << "global_com_pos.col(0) = " << global_com_pos.col(0).transpose()
+           << endl;
+      cout << "global_feet_pos.col(0) = " << global_feet_pos.col(0).transpose()
+           << endl;
+    }
   }
 
   // Unit Testing TransformBetweenGlobalAndLocalFrame3D
@@ -1440,8 +1465,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       SaveStateAndActionIntoFilesForRLTraining(
           context, des_xy_vel_com_rt_init_stance_foot.at(0)(0),
           desired_com_height_, start_with_left_stance, init_phase,
-          lightweight_saved_traj_, current_time, param_.dir_data);
-      SaveGradientIntoFilesForRLTraining(trajopt, result);
+          lightweight_saved_traj_, trajopt, result, current_time,
+          param_.dir_data);
+      SaveGradientIntoFilesForRLTraining(trajopt, result, param_.dir_data);
     }
     break5 = std::chrono::high_resolution_clock::now();
     // Save trajectory into lcm binary
@@ -1838,7 +1864,9 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
 void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
     const Context<double>& context, double dex_x_vel, double des_com_height,
     bool start_with_left_stance, double init_phase,
-    const HybridRomPlannerTrajectory& saved_traj, double current_time,
+    const HybridRomPlannerTrajectory& saved_traj,
+    const HybridRomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result, double current_time,
     const string& dir_data) const {
   // Get robot_output for RL
   const OutputVector<double>* robot_output =
@@ -1850,7 +1878,6 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   // Assign new state and action
   RL_state_ << robot_output->GetState(), robot_output->GetEfforts(), dex_x_vel,
       des_com_height, start_with_left_stance, init_phase;
-  RL_action_.segment(0, a_dim_rom_state_part_).setZero();
   if (only_use_rom_state_in_near_future_for_RL_) {
     RL_action_.segment(0, saved_traj.GetStateSamples(0).size()) =
         Eigen::Map<const VectorXd>(saved_traj.GetStateSamples(0).data(),
@@ -1861,6 +1888,7 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
                                     saved_traj.GetStateSamples(1).size()))
             .head(a_dim_rom_state_part_ - idx);
   } else {
+    RL_action_.segment(0, a_dim_rom_state_part_).setZero();
     int idx = 0;
     for (int mode = 0; mode < param_.n_step; mode++) {
       RL_action_.segment(idx, saved_traj.GetStateSamples(mode).size()) =
@@ -1870,19 +1898,32 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
     }
   }
   RL_action_.segment(a_dim_rom_state_part_, a_dim_rom_input_part_)
+      << result.GetSolution(
+             trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars_),
+      result.GetSolution(
+          trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars_);
+  /*// Comment out the following code, since we don't use global_com_pos and
+  // global_feet_pos for gradient simplicity
+  RL_action_.segment(a_dim_rom_state_part_, a_dim_rom_input_part_)
       << Eigen::Map<const VectorXd>(saved_traj.get_global_com_pos().data(),
                                     saved_traj.get_global_com_pos().size()),
       Eigen::Map<const VectorXd>(saved_traj.get_global_feet_pos().data(),
                                  saved_traj.get_global_feet_pos().size());
-  // We don't use RL_action_.tail<1>();
+  // RL_action_.tail<1>() is reserved for the next iteration*/
 
   // Save data
-  if (counter_ > 0) {
-    string dir_pref = dir_data + to_string(counter_ - 1) + "_";
-    writeCSV(dir_pref + string("s.csv"), RL_state_prev_, true);
-    writeCSV(dir_pref + string("s_prime.csv"), RL_state_, true);
-    writeCSV(dir_pref + string("a.csv"), RL_action_prev_, true);
-    // Initial guess of the MPC is in: <idx>_init_file.csv
+  if (single_eval_mode_) {
+    string dir_pref = dir_data + to_string(counter_) + "_";
+    RL_action_.tail<1>() << param_.min_mpc_thread_loop_duration;  // nominally
+    writeCSV(dir_pref + string("a.csv"), RL_action_, true);
+  } else {
+    if (counter_ > 0) {
+      string dir_pref = dir_data + to_string(counter_ - 1) + "_";
+      writeCSV(dir_pref + string("s.csv"), RL_state_prev_, true);
+      writeCSV(dir_pref + string("s_prime.csv"), RL_state_, true);
+      writeCSV(dir_pref + string("a.csv"), RL_action_prev_, true);
+      // Initial guess of the MPC is in: <idx>_init_file.csv
+    }
   }
 
   // Hold data for one time step
@@ -1912,7 +1953,7 @@ void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
     // cout << "ind_start = " << ind_start(0) << endl;
 
     // Get gradient and fill in B matrix
-    B.block(ind_start(0), 0, rom_->n_y() * 2, n_theta_yddot) =
+    B.middleRows(ind_start(0), n_z_) =
         trajopt.dynamics_constraints[i]->GetGradientWrtTheta(result.GetSolution(
             trajopt.dynamics_constraints_bindings[i].variables()));
 
@@ -1924,15 +1965,50 @@ void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
   }
 
   // Do gradient here (inside the MPC loop)?
-  // TODO: There is currently a bug -- we need to make sure that the w order is
-  //  the same as the RL action
   MatrixXd grad_w_wrt_theta =
       ExtractActiveConstraintAndDoLinearSolve(A, B, H, y, lb, ub, b);
+  // Select and pack gradient in the order of policy action
+  MatrixXd grad_w_wrt_theta_orderred(RL_action_.size(), n_theta_yddot);
+  int trajopt_num_knots = trajopt.num_knots();
+  int trajopt_num_modes = trajopt.num_modes();
+  // int idx_start_x = 0;
+  // int idx_start_h = trajopt_num_knots * n_z_;
+  int idx_start_xp = trajopt_num_knots * n_z_ + trajopt_num_knots - 1;
+  int idx_start_footsteps = idx_start_xp + trajopt_num_modes * n_z_;
+  // State part
+  if (only_use_rom_state_in_near_future_for_RL_) {
+    const std::vector<int>& mode_start = trajopt.mode_start();
+    const std::vector<int>& mode_lengths = trajopt.mode_lengths();
+    int i = 0;
+    for (int mode = 0; mode < mode_lengths.size(); mode++) {
+      for (int knot_idx = 0; knot_idx < mode_lengths.at(mode); knot_idx++) {
+        if (knot_idx == 0 && mode > 0) {
+          grad_w_wrt_theta_orderred.middleRows(i * n_z_, n_z_) =
+              grad_w_wrt_theta.middleRows(idx_start_xp + (mode - 1) * n_z_,
+                                          n_z_);
+        } else {
+          grad_w_wrt_theta_orderred.middleRows(i * n_z_, n_z_) =
+              grad_w_wrt_theta.middleRows((mode_start[mode] + knot_idx) * n_z_,
+                                          n_z_);
+        }
+        i++;
+        if (i == n_knots_used_for_RL_action_) break;
+      }
+    }
+  } else {
+    // Not implemented for this case yet. Might not use it anyway.
+    DRAKE_UNREACHABLE();
+  }
+  grad_w_wrt_theta_orderred.middleRows(a_dim_rom_state_part_, 2) =
+      grad_w_wrt_theta.middleRows(idx_start_footsteps, 2);
+  grad_w_wrt_theta_orderred.middleRows(a_dim_rom_state_part_ + 2, 2) =
+      grad_w_wrt_theta.middleRows(idx_start_footsteps + 2, 2);
+  // Last row (zeros) is the gradient of delta_t
+  grad_w_wrt_theta_orderred.bottomRows<1>().setZero();
+
   // Save gradient
-  // TODO: Take care of the recompute case. We shouldn't use counter
-  DRAKE_UNREACHABLE();
   string dir_pref = dir_data + to_string(counter_) + "_";
-  writeCSV(dir_pref + "grad_w_wrt_theta.csv", grad_w_wrt_theta);
+  writeCSV(dir_pref + "grad_a_wrt_theta.csv", grad_w_wrt_theta_orderred);
 }
 
 MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
@@ -1944,20 +2020,19 @@ MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
   int nw_i = A.cols();
 
   int nl_i = 0;
+  vector<int> active_row_indices(y.rows());
   for (int i = 0; i < y.rows(); i++) {
-    if (y(i) >= ub(i) - active_tol || y(i) <= lb(i) + active_tol) nl_i++;
+    if (y(i) >= ub(i) - active_tol || y(i) <= lb(i) + active_tol) {
+      active_row_indices.at(nl_i) = i;
+      nl_i++;
+    }
   }
 
   MatrixXd A_active(nl_i, nw_i);
   MatrixXd B_active(nl_i, nt_i);
-
-  nl_i = 0;
-  for (int i = 0; i < y.rows(); i++) {
-    if (y(i) >= ub(i) - active_tol || y(i) <= lb(i) + active_tol) {
-      A_active.row(nl_i) = A.row(i);
-      B_active.row(nl_i) = B.row(i);
-      nl_i++;
-    }
+  for (int i = 0; i < nl_i; i++) {
+    A_active.row(i) = A.row(active_row_indices.at(i));
+    B_active.row(i) = B.row(active_row_indices.at(i));
   }
 
   cout << "nt_i = " << nt_i << endl;
@@ -1973,7 +2048,6 @@ MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
     // Theoratically, it should be 0. Otherwise, something is wrong
     // min 0.5*w^T Q w + c^T w
     // st  A w = 0
-    nl_i = A_active.rows();
     MathematicalProgram quadprog;
     auto w2 = quadprog.NewContinuousVariables(nw_i, "w2");
     quadprog.AddLinearConstraint(A_active, VectorXd::Zero(nl_i),
@@ -2013,7 +2087,7 @@ MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
     H_ext.block(0, 0, nw_i, nw_i) = (H);
     H_ext.block(0, nw_i, nw_i, nl_i) = A_active.transpose();
     H_ext.block(nw_i, 0, nl_i, nw_i) = (A_active);
-    H_ext.block(nw_i, nw_i, nl_i, nl_i) = MatrixXd::Zero(nl_i, nl_i);
+    H_ext.block(nw_i, nw_i, nl_i, nl_i).setZero();
 
     if (method_to_solve_system_of_equations == 4) {
       // Method 4: linear solve with householderQr ///////////////////////////

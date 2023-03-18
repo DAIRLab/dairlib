@@ -327,7 +327,10 @@ RomTrajOpt::RomTrajOpt(
           rom,
           set_zero_accel ? idx_constant_rom_vel_during_double_support
                          : empty_idx_set_,
+          param.is_RL_training,
           "rom_dyn_" + std::to_string(i) + "_" + std::to_string(j));
+      // The above constructor -- we don't use RL training with rom_traj_opt for
+      // now
       DRAKE_DEMAND(static_cast<int>(dyn_constraint->num_constraints()) ==
                    num_states());
       dyn_constraint->SetConstraintScaling(rom_dyn_constraint_scaling_);

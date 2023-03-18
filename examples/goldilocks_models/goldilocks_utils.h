@@ -208,6 +208,7 @@ struct PlannerSetting {
 
   // RL
   bool is_RL_training;
+  double min_mpc_thread_loop_duration;
 
   // Debugging
   int solve_idx_for_read_from_file;

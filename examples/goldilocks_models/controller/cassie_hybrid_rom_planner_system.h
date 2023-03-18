@@ -173,6 +173,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   int nx_;
   int n_y_;
   int n_tau_;
+  int n_z_;
 
   const drake::multibody::MultibodyPlant<double>& plant_control_;
   std::unique_ptr<drake::systems::Context<double>> context_plant_control_;
@@ -367,8 +368,10 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   void SaveStateAndActionIntoFilesForRLTraining(
       const drake::systems::Context<double>& context, double dex_x_vel,
       double des_com_height, bool start_with_left_stance, double init_phase,
-      const HybridRomPlannerTrajectory& saved_traj, double current_time,
-      const std::string& dir_data) const;
+      const HybridRomPlannerTrajectory& saved_traj,
+      const HybridRomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      double current_time, const std::string& dir_data) const;
   void SaveGradientIntoFilesForRLTraining(
       const HybridRomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
@@ -383,6 +386,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd RL_action_prev_;
   mutable Eigen::VectorXd RL_action_;
   mutable double prev_time_;
+  int n_knots_used_for_RL_action_;
   int a_dim_rom_state_part_;
   int a_dim_rom_input_part_;
   // TODO:

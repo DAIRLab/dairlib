@@ -302,6 +302,7 @@ int DoMain(int argc, char* argv[]) {
   param.init_file = FLAGS_init_file;
   param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
   param.is_RL_training = FLAGS_is_RL_training;
+  param.min_mpc_thread_loop_duration = FLAGS_min_mpc_thread_loop_duration;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
   if (0 < param.time_limit && param.time_limit < 0.1) {

@@ -440,19 +440,20 @@ class TwoLcmDrivenLoop {
       // message instead of the old message.
       subscriber0_.clear();
       subscriber1_.clear();
-      LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+      bool continue_listening = true;
+      while (continue_listening) {
+        LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+          return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+        });
+
         if ((subscriber0_.message().utime * 1e-6 - prev_time_) >=
             min_update_period_) {
-          return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
+          continue_listening = false;
         } else {
-          if (subscriber0_.count() > 0) {
-            subscriber0_.clear();
-          }
-          if (subscriber1_.count() > 0) {
-            subscriber1_.clear();
-          }
+          subscriber0_.clear();
+          subscriber1_.clear();
         }
-      });
+      }
     }
   };
 

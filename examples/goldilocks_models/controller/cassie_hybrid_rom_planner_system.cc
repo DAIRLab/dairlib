@@ -879,8 +879,10 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     if (print_level_ > 1) {
       cout << "init_rom_state_from_current_feedback = "
            << init_rom_state_from_current_feedback.transpose() << endl;
-      cout << "init_rom_state_from_prev_sol = "
-           << init_rom_state_from_prev_sol.transpose() << endl;
+      if (counter_ > 0) {
+        cout << "init_rom_state_from_prev_sol = "
+             << init_rom_state_from_prev_sol.transpose() << endl;
+      }
       cout << "init_rom_state = " << init_rom_state_mirrored.transpose()
            << endl;
     }
@@ -1324,7 +1326,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Get global feet position (for both start and end of each mode)
   // This is used to generate swing foot pos in the controller thread
   MatrixXd local_feet_pos(2, param_.n_step + 1);
-  local_feet_pos.col(0) = current_local_stance_foot_pos;
+  local_feet_pos.col(0) = current_local_stance_foot_pos.head<2>();;
   for (int i = 1; i < param_.n_step + 1; i++) {
     local_feet_pos.col(i) =
         local_feet_pos.col(i - 1) + local_delta_footstep.col(i - 1);

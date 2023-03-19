@@ -1287,16 +1287,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     result.set_x_val(trajopt.initial_guess());*/
   }
 
-  // TODO: maybe I should not assign the new desired traj to controller thread
-  //  when the solver didn't find optimal solution (unless it's going to run out
-  //  of traj to use)? We should just use the old previous_output_msg_
   if (!result.is_success()) {
     *traj_msg = previous_output_msg_;
-    // TODO: It's still good to do some bookkeeping, so that I can resolve it.
-
-    // TODO: after the hybrid MPC works, turn out the code below
-    //    cout << "Bad solution. Skip this one.\n";
-    //    return;
   }
 
   ///
@@ -1326,7 +1318,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   // Get global feet position (for both start and end of each mode)
   // This is used to generate swing foot pos in the controller thread
   MatrixXd local_feet_pos(2, param_.n_step + 1);
-  local_feet_pos.col(0) = current_local_stance_foot_pos.head<2>();;
+  local_feet_pos.col(0) = current_local_stance_foot_pos.head<2>();
   for (int i = 1; i < param_.n_step + 1; i++) {
     local_feet_pos.col(i) =
         local_feet_pos.col(i - 1) + local_delta_footstep.col(i - 1);
@@ -1870,6 +1862,10 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, double current_time,
     const string& dir_data) const {
+  PrintStatus("Save RL state and action data\n");
+
+  auto start = std::chrono::high_resolution_clock::now();
+
   // Get robot_output for RL
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, robot_output_port_);
@@ -1932,18 +1928,35 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   RL_state_prev_ = RL_state_;
   RL_action_prev_ = RL_action_;
   prev_time_ = current_time;
+
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  cout << "Time to save RL state and action data: " << elapsed.count() << endl;
 }
 
 void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& dir_data) const {
+  auto start = std::chrono::high_resolution_clock::now();
+  PrintStatus("Approximate the problem with a QP\n");
   // Get the linear approximation of the cosntraints and second order
   // approximation of the cost.
+  // Notes:
+  //  - I just checked. If we added two bounding box constraints on the same
+  //    variable, what's gonna happen is that there will be two rows of the
+  //    linearized cosntraint corresponding to this. We dont' need to worry
+  //    that we overconstrain the QP, since at most only one of the constraints
+  //    will be active (Drake also goes through all the bounding box constraints
+  //    and take the min/max of all ub/lb's)
+  //  - Additionally, the solver tolerance for nonlinear constraints shouldn't
+  //    matter, because my nonlinear constraints are all equality constraints,
+  //    so the code here will detect that it's always active.
   MatrixXd A, H;
   VectorXd y, lb, ub, b;
   solvers::LinearizeConstraints(trajopt, result.GetSolution(), &y, &A, &lb,
                                 &ub);
   solvers::SecondOrderCost(trajopt, result.GetSolution(), &H, &b);
+  auto checkpoint0 = std::chrono::high_resolution_clock::now();
 
   // Get the linear approximation of the constraints wrt parameters
   int n_theta_yddot = rom_->n_theta_yddot();
@@ -1966,10 +1979,16 @@ void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
     //        result.GetDualSolution(trajopt.dynamics_constraints_bindings[i]);
   }
 
+  auto checkpoint1 = std::chrono::high_resolution_clock::now();
+
   // Do gradient here (inside the MPC loop)?
+  PrintStatus("ExtractActiveConstraintAndDoLinearSolve\n");
   MatrixXd grad_w_wrt_theta =
       ExtractActiveConstraintAndDoLinearSolve(A, B, H, y, lb, ub, b);
+  auto checkpoint2 = std::chrono::high_resolution_clock::now();
+
   // Select and pack gradient in the order of policy action
+  PrintStatus("Select and pack gradient\n");
   MatrixXd grad_w_wrt_theta_orderred(RL_action_.size(), n_theta_yddot);
   int trajopt_num_knots = trajopt.num_knots();
   int trajopt_num_modes = trajopt.num_modes();
@@ -1977,7 +1996,7 @@ void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
   // int idx_start_h = trajopt_num_knots * n_z_;
   int idx_start_xp = trajopt_num_knots * n_z_ + trajopt_num_knots - 1;
   int idx_start_footsteps = idx_start_xp + trajopt_num_modes * n_z_;
-  // State part
+  // ROM state part
   if (only_use_rom_state_in_near_future_for_RL_) {
     const std::vector<int>& mode_start = trajopt.mode_start();
     const std::vector<int>& mode_lengths = trajopt.mode_lengths();
@@ -1994,52 +2013,80 @@ void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
                                           n_z_);
         }
         i++;
-        if (i == n_knots_used_for_RL_action_) break;
+        if (i == n_knots_used_for_RL_action_) {
+          mode = mode_lengths.size();  // To break the outer for loop
+          break;                       // To break the inner for loop
+        }
       }
     }
   } else {
     // Not implemented for this case yet. Might not use it anyway.
     DRAKE_UNREACHABLE();
   }
-  grad_w_wrt_theta_orderred.middleRows(a_dim_rom_state_part_, 2) =
-      grad_w_wrt_theta.middleRows(idx_start_footsteps, 2);
-  grad_w_wrt_theta_orderred.middleRows(a_dim_rom_state_part_ + 2, 2) =
-      grad_w_wrt_theta.middleRows(idx_start_footsteps + 2, 2);
+  // ROM footstep part
+  grad_w_wrt_theta_orderred.middleRows<2>(a_dim_rom_state_part_) =
+      grad_w_wrt_theta.middleRows<2>(idx_start_footsteps);
+  grad_w_wrt_theta_orderred.middleRows<2>(a_dim_rom_state_part_ + 2) =
+      grad_w_wrt_theta.middleRows<2>(idx_start_footsteps + 2);
   // Last row (zeros) is the gradient of delta_t
   grad_w_wrt_theta_orderred.bottomRows<1>().setZero();
+
+  auto checkpoint3 = std::chrono::high_resolution_clock::now();
+
+  //  writeCSV("test_A.csv", A);
+  //  writeCSV("test_B.csv", B);
+  //  writeCSV("test_H.csv", H);
+  //  writeCSV("test_y.csv", y);
+  //  writeCSV("test_lb.csv", lb);
+  //  writeCSV("test_ub.csv", ub);
+  //  writeCSV("test_b.csv", b);
+  //  writeCSV("test_grad_w_wrt_theta.csv", grad_w_wrt_theta);
+  //  writeCSV("test_grad_w_wrt_theta_orderred.csv", grad_w_wrt_theta_orderred);
 
   // Save gradient
   string dir_pref = dir_data + to_string(counter_) + "_";
   writeCSV(dir_pref + "grad_a_wrt_theta.csv", grad_w_wrt_theta_orderred);
+
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  cout << "Time to get MPC gradient: " << elapsed.count() << endl;
+  elapsed = checkpoint1 - start;
+  cout << "  Approximate with QP: " << elapsed.count() << endl;
+  elapsed = checkpoint1 - checkpoint0;
+  cout << "  Approximate with QP (only B part): " << elapsed.count() << endl;
+  elapsed = checkpoint2 - checkpoint1;
+  cout << "  Linear solve: " << elapsed.count() << endl;
+  elapsed = checkpoint3 - checkpoint2;
+  cout << "  Ordering the rows of the gradient: " << elapsed.count() << endl;
 }
 
 MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
-    MatrixXd A, MatrixXd B, MatrixXd H, VectorXd y, VectorXd lb, VectorXd ub,
-    VectorXd b, double active_tol,
-    int method_to_solve_system_of_equations) const {
+    const MatrixXd& A, const MatrixXd& B, const MatrixXd& H, const VectorXd& y,
+    const VectorXd& lb, const VectorXd& ub, const VectorXd& b,
+    double active_tol, int method_to_solve_system_of_equations) const {
   /// Step 1 - Extract active cosntraints
   int nt_i = B.cols();
   int nw_i = A.cols();
 
-  int nl_i = 0;
+  int nc_active_i = 0;
   vector<int> active_row_indices(y.rows());
   for (int i = 0; i < y.rows(); i++) {
     if (y(i) >= ub(i) - active_tol || y(i) <= lb(i) + active_tol) {
-      active_row_indices.at(nl_i) = i;
-      nl_i++;
+      active_row_indices.at(nc_active_i) = i;
+      nc_active_i++;
     }
   }
 
-  MatrixXd A_active(nl_i, nw_i);
-  MatrixXd B_active(nl_i, nt_i);
-  for (int i = 0; i < nl_i; i++) {
+  MatrixXd A_active(nc_active_i, nw_i);
+  MatrixXd B_active(nc_active_i, nt_i);
+  for (int i = 0; i < nc_active_i; i++) {
     A_active.row(i) = A.row(active_row_indices.at(i));
     B_active.row(i) = B.row(active_row_indices.at(i));
   }
 
-  cout << "nt_i = " << nt_i << endl;
-  cout << "nw_i = " << nw_i << endl;
-  cout << "nl_i = " << nl_i << endl;
+  //  cout << "nt_i = " << nt_i << endl;
+  //  cout << "nw_i = " << nw_i << endl;
+  //  cout << "nc_active_i = " << nc_active_i << endl;
 
   // Note that no need to extract independent rows here (the method we use
   // doesn't requires it)
@@ -2052,8 +2099,8 @@ MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
     // st  A w = 0
     MathematicalProgram quadprog;
     auto w2 = quadprog.NewContinuousVariables(nw_i, "w2");
-    quadprog.AddLinearConstraint(A_active, VectorXd::Zero(nl_i),
-                                 VectorXd::Zero(nl_i), w2);
+    quadprog.AddLinearConstraint(A_active, VectorXd::Zero(nc_active_i),
+                                 VectorXd::Zero(nc_active_i), w2);
     quadprog.AddQuadraticCost(H, b, w2);
 
     // (Testing) use snopt to solve the QP
@@ -2085,21 +2132,22 @@ MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
   bool successful = false;
   while (!successful) {
     // H_ext = [H A'; A 0]
-    MatrixXd H_ext(nw_i + nl_i, nw_i + nl_i);
+    MatrixXd H_ext(nw_i + nc_active_i, nw_i + nc_active_i);
     H_ext.block(0, 0, nw_i, nw_i) = (H);
-    H_ext.block(0, nw_i, nw_i, nl_i) = A_active.transpose();
-    H_ext.block(nw_i, 0, nl_i, nw_i) = (A_active);
-    H_ext.block(nw_i, nw_i, nl_i, nl_i).setZero();
+    H_ext.block(0, nw_i, nw_i, nc_active_i) = A_active.transpose();
+    H_ext.block(nw_i, 0, nc_active_i, nw_i) = (A_active);
+    H_ext.block(nw_i, nw_i, nc_active_i, nc_active_i).setZero();
 
     if (method_to_solve_system_of_equations == 4) {
       // Method 4: linear solve with householderQr ///////////////////////////
       MatrixXd B_aug = MatrixXd::Zero(H_ext.rows(), B_active.cols());
-      B_aug.bottomRows(nl_i) = -(B_active);
+      B_aug.bottomRows(nc_active_i) = -(B_active);
 
       MatrixXd sol = H_ext.householderQr().solve(B_aug);
       Pi = sol.topRows(nw_i);
 
       double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+      cout << "max_error = " << max_error << "\n";
       if (max_error > residual_tol || std::isnan(max_error) ||
           std::isinf(max_error)) {
         cout << "max_error = " << max_error << "; switch to method 5\n";
@@ -2111,12 +2159,13 @@ MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(
     } else if (method_to_solve_system_of_equations == 5) {
       // Method 5: linear solve with ColPivHouseholderQR /////////////////////
       MatrixXd B_aug = MatrixXd::Zero(H_ext.rows(), B_active.cols());
-      B_aug.bottomRows(nl_i) = -(B_active);
+      B_aug.bottomRows(nc_active_i) = -(B_active);
 
       MatrixXd sol = Eigen::ColPivHouseholderQR<MatrixXd>(H_ext).solve(B_aug);
       Pi = sol.topRows(nw_i);
 
       double max_error = (H_ext * sol - B_aug).cwiseAbs().maxCoeff();
+      cout << "max_error = " << max_error << "\n";
       if (max_error > residual_tol || std::isnan(max_error) ||
           std::isinf(max_error)) {
         cout << "max_error = " << max_error << "; move on.\n";

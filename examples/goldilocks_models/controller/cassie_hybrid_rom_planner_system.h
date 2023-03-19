@@ -377,9 +377,10 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& dir_data) const;
   Eigen::MatrixXd ExtractActiveConstraintAndDoLinearSolve(
-      Eigen::MatrixXd A, Eigen::MatrixXd B, Eigen::MatrixXd H,
-      Eigen::VectorXd y, Eigen::VectorXd lb, Eigen::VectorXd ub,
-      Eigen::VectorXd b, double active_tol = 1e-6,
+      const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& y,
+      const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+      const Eigen::VectorXd& b, double active_tol = 1e-6,
       int method_to_solve_system_of_equations = 5) const;
   mutable Eigen::VectorXd RL_state_prev_;
   mutable Eigen::VectorXd RL_state_;

@@ -116,7 +116,7 @@ DynamicsConstraint::EvaluateConstraintWithSpecifiedThetaYddot(
     const Eigen::VectorXd& theta_yddot) const {
   mutable_rom_->SetThetaYddot(theta_yddot);
 
-  drake::VectorX<double> y(n_z_);
+  drake::VectorX<double> y(this->num_constraints());
   EvaluateConstraint(ztzth, &y);
 
   return y;
@@ -125,40 +125,26 @@ DynamicsConstraint::EvaluateConstraintWithSpecifiedThetaYddot(
 Eigen::MatrixXd DynamicsConstraint::GetGradientWrtTheta(
     const Eigen::VectorXd& x) const {
   // ////////// V1: Do forward differencing wrt theta //////////////////////////
-  /*
   // Get the gradient wrt theta_y and theta_yddot
-  VectorXd theta(n_theta_y_ + n_theta_yddot_);
-  theta << theta_y_, theta_yddot_;
-  MatrixXd gradWrtTheta(n_y_, theta.size());
-  vector<VectorXd> y_vec;
-  for (int k = 0; k < theta.size(); k++) {
-    for (double shift : fd_shift_vec_) {
-      theta(k) += shift;
-
-      VectorXd theta_y = theta.head(n_theta_y_);
-      VectorXd theta_yddot = theta.tail(n_theta_yddot_);
-
-      // Evaluate constraint value
-      // y_vec.push_back(autoDiffToValueMatrix(getConstraintValueInAutoDiff(
-      //                                         x_i, x_iplus1, h_i,
-      //                                         theta_y, theta_yddot)));
-      y_vec.push_back(EvalConstraintWithModelParams(
-                        x_u_lambda_tau,
-                        theta_y, theta_yddot));
-
-      theta(k) -= shift;
-    }
+  /*VectorXd theta_yddot = rom_.theta_yddot();
+  MatrixXd gradWrtTheta(this->num_constraints(), theta_yddot.size());
+  vector<VectorXd> y_vec(2, VectorXd(this->num_constraints()));
+  y_vec.at(0) = EvaluateConstraintWithSpecifiedThetaYddot(x, theta_yddot);
+  for (int k = 0; k < theta_yddot.size(); k++) {
+    double shift = fd_shift_vec_.at(1);
+    theta_yddot(k) += shift;
+    y_vec.at(1) = EvaluateConstraintWithSpecifiedThetaYddot(x, theta_yddot);
+    theta_yddot(k) -= shift;
 
     // Get gradient
     gradWrtTheta.col(k) = (y_vec[1] - y_vec[0]) / eps_fd_;
-    y_vec.clear();
   }*/
 
   // ////////// V2: Do central differencing wrt theta //////////////////////////
   // Get the gradient wrt theta_y and theta_yddot
   VectorXd theta_yddot = rom_.theta_yddot();
-  MatrixXd gradWrtTheta(rom_.n_y(), theta_yddot.size());
-  vector<VectorXd> y_vec(2, VectorXd(n_z_));
+  MatrixXd gradWrtTheta(this->num_constraints(), theta_yddot.size());
+  vector<VectorXd> y_vec(2, VectorXd(this->num_constraints()));
   for (int k = 0; k < theta_yddot.size(); k++) {
     for (int i = 0; i < 2; i++) {
       double shift = cd_shift_vec_.at(i);
@@ -179,7 +165,7 @@ Eigen::MatrixXd DynamicsConstraint::GetGradientWrtTheta(
   // Get the gradient wrt theta_y and theta_yddot
   VectorXd theta(n_theta_y_ + n_theta_yddot_);
   theta << theta_y_, theta_yddot_;
-  MatrixXd gradWrtTheta(n_y_, theta.size());
+  MatrixXd gradWrtTheta(this->num_constraints(), theta.size());
   vector<VectorXd> y_vec;
   for (int k = 0; k < theta.size(); k++) {
     for (double shift : ho_shift_vec_) {

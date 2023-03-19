@@ -106,6 +106,7 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
 
   // First, count constraints
   num_constraints += CountConstraintRows(prog);
+//  cout << "num_constraints = " << num_constraints << endl;
 
   // Initialize data storage
   lb->resize(num_constraints);
@@ -117,14 +118,17 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
   auto constraints = prog.GetAllConstraints();
   int i = 0;
   for (auto const& binding : constraints) {
-    // cout << "i = " << i << ": ";
+//    cout << "i = " << i << ": ";
     auto const& c = binding.evaluator();
-    // std::cout << c->get_description() << std::endl;
+//    std::cout << c->get_description();// << std::endl;
     int n = c->num_constraints();
+//    cout << ", idx = " << constraint_index;
+//    cout << ", n = " << n;
     lb->segment(constraint_index, n) = c->lower_bound();
     ub->segment(constraint_index, n) = c->upper_bound();
 
     auto variables = binding.variables();
+//    cout << ", vars = " << variables.transpose() << endl;
     // Initialize AutoDiff vector for result
     // Warning: there is a bug in initializeAutoDiff.
     // You cannot use it if gradient.rows() > gradient.cols(). (it'll write outside the range)

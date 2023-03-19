@@ -205,6 +205,10 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(gains.pelvis_height > 0);
     // haven't implemented for the mixed MPC
     DRAKE_DEMAND(gains.use_hybrid_rom_mpc);
+
+    if (FLAGS_debug_mode) {
+      DRAKE_DEMAND(FLAGS_solve_idx_for_read_from_file >= 0);
+    }
   }
 
   if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
@@ -555,12 +559,6 @@ int DoMain(int argc, char* argv[]) {
 
     loop.Simulate();
   } else {
-    if (FLAGS_is_RL_training) {
-      // TODO: need to take care of the new input `robot_output_port_` for RL
-      //  data logging
-      DRAKE_UNREACHABLE();
-    }
-
     // Manually set the input ports of CassiePlannerWithMixedRomFom and evaluate
     // the output (we do not run the LcmDrivenLoop)
 
@@ -713,6 +711,32 @@ int DoMain(int argc, char* argv[]) {
                                 {fsm_state, prev_lift_off_time, global_fsm_idx,
                                  0.0, 0.0, current_time}));
 
+      // Set extra input port for RL training
+      if (FLAGS_is_RL_training) {
+        // I think the value of robot state here doesn't matter, because I don't
+        // use it in the MPC computation. It's only passed into this block, so I
+        // can save it into s.csv file. And I don't save this file when I rerun
+        // the MPC offline (the goal is to get a and gradient offline, instead
+        // of s)
+        VectorXd RL_state =
+            readCSV(param.dir_data +
+                    to_string(FLAGS_solve_idx_for_read_from_file) + "_s.csv")
+                .col(0);
+        OutputVector<double> feedback_robot_output(
+            RL_state.head(plant_feedback.num_positions()),
+            RL_state.segment(plant_feedback.num_positions(),
+                             plant_feedback.num_velocities()),
+            RL_state.segment(plant_feedback.num_positions() +
+                                 plant_feedback.num_velocities(),
+                             plant_feedback.num_actuators()));
+        // The current time is not set in the robot output anymore
+        feedback_robot_output.set_timestamp(-1);
+
+        // Set
+        hybrid_rom_planner->get_input_port_robot_output().FixValue(
+            &planner_context, feedback_robot_output);
+      }
+
       ///
       /// Eval output port and store data
       ///
@@ -721,6 +745,10 @@ int DoMain(int argc, char* argv[]) {
       auto output = hybrid_rom_planner->AllocateOutput();
       hybrid_rom_planner->CalcOutput(planner_context, output.get());
     } else {
+      if (FLAGS_is_RL_training) {
+        DRAKE_UNREACHABLE();  // not implemented for this case yet
+      }
+
       auto& planner_context = diagram_ptr->GetMutableSubsystemContext(
           *rom_planner, &diagram_context);
 

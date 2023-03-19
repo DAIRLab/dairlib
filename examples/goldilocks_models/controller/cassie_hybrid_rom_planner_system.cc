@@ -106,7 +106,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     print_level_ = 2;
     cout.precision(dbl::max_digits10);
   }
-  if (param_.is_RL_training) print_level_ = 0;
+  //if (param_.is_RL_training) print_level_ = 0;
 
   // Input/Output Setup
   stance_foot_port_ =

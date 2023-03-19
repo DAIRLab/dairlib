@@ -208,6 +208,10 @@ int DoMain(int argc, char* argv[]) {
 
     if (FLAGS_debug_mode) {
       DRAKE_DEMAND(FLAGS_solve_idx_for_read_from_file >= 0);
+
+      // Just in case this matters in the policy update steps (I think it
+      // doesn't matter)
+      DRAKE_DEMAND(FLAGS_min_mpc_thread_loop_duration > 0);
     }
   }
 

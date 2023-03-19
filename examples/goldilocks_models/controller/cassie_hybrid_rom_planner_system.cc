@@ -143,6 +143,10 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   // This leafsystem hasn't taken care of active ROM case (e.g. no good warm
   // starting)
   DRAKE_DEMAND(rom_->n_tau() == 0);
+  // Set to a different model parameters if the file is given
+  if (param_.is_RL_training) {
+    DRAKE_UNREACHABLE(); // not implemented
+  }
 
   // Create mirror maps
   state_mirror_ = StateMirror(MirrorPosIndexMap(plant_control, ROBOT),

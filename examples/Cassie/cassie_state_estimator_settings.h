@@ -5,7 +5,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 
-struct CassieStateEstimatorSettings{
+struct CassieStateEstimatorContactThresholds{
 
   double knee_spring_threshold;
   double ankle_spring_threshold;

@@ -22,7 +22,7 @@ plot_joint_velocities: false
 plot_measured_efforts: true
 plot_commanded_efforts: true
 plot_contact_forces: false
-special_positions_to_plot: [ ]
+special_positions_to_plot: [ 'knee_joint_left', 'ankle_spring_joint_left', 'knee_joint_right', 'ankle_spring_joint_right']
 special_velocities_to_plot: [ ]
 special_efforts_to_plot: [ ]
 
@@ -34,7 +34,7 @@ fsm_state_names: [ 'Left Stance (LS)',
                    'Double Support Post Right (DSPR)' ]
 
 # Foot position plots
-foot_positions_to_plot: []
+foot_positions_to_plot: ['left', 'right']
 foot_xyz_to_plot: { 'right': [ 2 ], 'left': [ 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 

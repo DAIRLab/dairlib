@@ -9,12 +9,18 @@ def main():
     # get devices
     dev_names = []
     cmd = 'v4l2-ctl --list-devices'.split(' ')
-    process = subprocess.check_output(cmd)
+    process = ''
+    try:
+        process = subprocess.check_output(cmd)
+    except subprocess.SubprocessError as err:
+        process = err.output
+        pass
+
     lines = process.decode("utf-8").split('\n')
     for i, line in enumerate(lines):
         if 'HD' in line:
             dev_names.append(lines[i+1].split('\t')[1])
-
+    print(dev_names)
     cmds = []
 
     # determine log number

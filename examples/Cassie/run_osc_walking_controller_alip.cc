@@ -198,7 +198,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(cassie_out_receiver->get_output_port(),
                     cassie_out_to_radio->get_input_port());
     builder.Connect(cassie_out_to_radio->get_output_port(),
-                    high_level_command->get_radio_input_port());
+                    high_level_command->get_input_port_radio());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), osc_walking_gains.kp_yaw, osc_walking_gains.kd_yaw,
@@ -208,14 +208,14 @@ int DoMain(int argc, char* argv[]) {
         params_of_no_turning);
   }
   builder.Connect(pelvis_filt->get_output_port(0),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
 
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
   builder.Connect(simulator_drift->get_output_port(0),
                   head_traj_gen->get_state_input_port());
-  builder.Connect(high_level_command->get_yaw_output_port(),
+  builder.Connect(high_level_command->get_output_port_yaw(),
                   head_traj_gen->get_yaw_input_port());
 
   // Create finite state machine
@@ -332,7 +332,7 @@ int DoMain(int argc, char* argv[]) {
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   swing_ft_traj_generator->get_input_port_alip_state());
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   swing_ft_traj_generator->get_input_port_vdes());
 
   // Swing toe joint trajectory

@@ -20,7 +20,7 @@ class ImpactTimeBasedFiniteStateMachine
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
       const std::vector<double>& state_durations, double t0 = 0,
-      double near_impact_threshold = 0, double tau = 0.0025, BLEND_FUNC blend_func = SIGMOID);
+      double near_impact_threshold = 0, double tau = 0.0025, BLEND_FUNC blend_func = kSigmoid);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);

@@ -17,7 +17,7 @@ def main():
     clock = pygame.time.Clock()
 
     done = False
-    max_speed = 2.8
+    max_speed = 1.4
     dt = .020
     acceleration = 2.0 # m/s^2
     deceleration = 0.5 # m/s^2

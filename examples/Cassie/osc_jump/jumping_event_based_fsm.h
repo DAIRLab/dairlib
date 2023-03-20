@@ -27,7 +27,7 @@ class JumpingEventFsm : public drake::systems::LeafSystem<double> {
                   const std::vector<double>& transition_times,
                   bool contact_based = true, double impact_threshold = 0.0,
                   JUMPING_FSM_STATE init_state = BALANCE,
-                  BLEND_FUNC blend_func = SIGMOID);
+                  BLEND_FUNC blend_func = kSigmoid);
 
   const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);

@@ -178,7 +178,7 @@ int DoMain(int argc, char* argv[]) {
             FLAGS_cassie_out_channel, &lcm_local));
     builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
     builder.Connect(cassie_out_to_radio->get_output_port(),
-                    high_level_command->get_radio_input_port());
+                    high_level_command->get_input_port_radio());
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
@@ -188,14 +188,14 @@ int DoMain(int argc, char* argv[]) {
         params_of_no_turning);
   }
   builder.Connect(state_receiver->get_output_port(0),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
 
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
   builder.Connect(state_receiver->get_output_port(0),
                   head_traj_gen->get_state_input_port());
-  builder.Connect(high_level_command->get_yaw_output_port(),
+  builder.Connect(high_level_command->get_output_port_yaw(),
                   head_traj_gen->get_yaw_input_port());
 
   // Create finite state machine
@@ -303,7 +303,7 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), gains.k_ff_lateral,
           gains.k_fb_lateral, gains.k_ff_sagittal, gains.k_fb_sagittal,
           left_support_duration, 0, wrt_com_in_local_frame);
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   walking_speed_control->get_input_port_des_hor_vel());
   builder.Connect(state_receiver->get_output_port(0),
                   walking_speed_control->get_input_port_state());

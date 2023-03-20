@@ -136,7 +136,7 @@ void PelvisTransTrajGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  if (fsm_state == LEFT_STANCE || fsm_state == RIGHT_STANCE) {
+  if (fsm_state == kLeftStance || fsm_state == kRightStance) {
     *casted_traj = GenerateSLIPTraj(robot_output->GetState(), mode_length[0],
                                     mode_length[1], fsm_state);
   }

@@ -68,7 +68,9 @@ void RotTaskSpaceTrackingData::UpdateYError() {
   double theta = 2 * acos(relative_quat.w());
   Vector3d rot_axis = relative_quat.vec().normalized();
   error_y_ = theta * rot_axis;
-  if (with_view_frame_) error_y_ = view_frame_rot_T_ * error_y_;
+  if (with_view_frame_) {
+    error_y_ = view_frame_rot_T_ * error_y_;
+  }
 }
 
 void RotTaskSpaceTrackingData::UpdateYdot(

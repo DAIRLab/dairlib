@@ -28,7 +28,7 @@ There is no need to extract the tar.
 ### Build Drake
 The library is meant to be built with Drake (see http://drake.mit.edu/ for more details). There are two ways to use Drake within dairlib:
 
-#### Option 1: use pegged revision
+#### Option 1: use pegged revision (Note - These steps may need repeated if switching to a branch with a different pegged revision of drake).
 The only specific action needed here is to install all of Drake's prerequisites. There are two choices for completing this step:
 
 a) In `dairlib/install`, run the appropriate `install_prereqs_xxx.sh`. This is untested on mac, and has not been tested to get every dependency for a fresh install.
@@ -37,7 +37,7 @@ b) Download a source copy of drake, and install pre-requisites as described here
 
 bazel will automatically download the pegged revision, specified in the WORKSPACE file. dairlib developers hope to keep this pegged revision current, and ensure that the pegged version will always work with a specific version of dairlib.
 
-This option is recommended for users who are not currently editing any source code in Drake itself. 
+This option is recommended for users who are not currently editing any source code in Drake itself.
 
 #### Option 2: source install of Drake
 Complete both steps (a) and (b) above. By running the drake install script after the dairlib install script, you are capturing any dependency changes between the pegged revision and the current Drake master, while still getting any aditional dairlib dependencies we may add. There is no need to build Drake. Next, to tell dairlib to use your local install, set the environment variable `DAIRLIB_LOCAL_DRAKE_PATH`, e.g.
@@ -64,12 +64,11 @@ source /opt/ros/noetic/setup.bash
 ```
 3. Install additional dependencies
 ```
-sudo apt install python-rosinstall-generator python-catkin-tools
+sudo apt install python3-rosinstall-generator python-catkin-tools python3-vcstool
 ```
 4. Build the ROS workspace using catkin. From `dairlib/`,
 ```
-cd tools/workspace/ros
-./compile_ros_workspace.sh
+sudo ./tools/workspace/ros/compile_ros_workspace.sh
 ```
 5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON`. For instance, add to `~/.bashrc`
 ```

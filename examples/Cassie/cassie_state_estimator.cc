@@ -35,6 +35,7 @@ using drake::systems::LeafSystem;
 using drake::systems::UnrestrictedUpdateEvent;
 
 using multibody::KinematicEvaluatorSet;
+using multibody::MakeJointPositionOffsetFromMap;
 using systems::OutputVector;
 
 static const int SPACE_DIM = 3;
@@ -44,6 +45,7 @@ CassieStateEstimator::CassieStateEstimator(
     const KinematicEvaluatorSet<double>* fourbar_evaluator,
     const KinematicEvaluatorSet<double>* left_contact_evaluator,
     const KinematicEvaluatorSet<double>* right_contact_evaluator,
+    std::map<std::string, double> joint_offset_map,
     bool test_with_ground_truth_state, bool print_info_to_terminal,
     int hardware_test_mode, double contact_force_threshold)
     : plant_(plant),
@@ -64,7 +66,8 @@ CassieStateEstimator::CassieStateEstimator(
       test_with_ground_truth_state_(test_with_ground_truth_state),
       print_info_to_terminal_(print_info_to_terminal),
       hardware_test_mode_(hardware_test_mode),
-      contact_force_threshold_(contact_force_threshold) {
+      contact_force_threshold_(contact_force_threshold),
+      joint_offsets_(MakeJointPositionOffsetFromMap(plant, joint_offset_map)){
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -226,8 +229,6 @@ void CassieStateEstimator::solveFourbarLinkage(
   // Spring rest angle offset
   double spring_rest_offset =
       atan2(rod_on_heel_springs_[0].first(1), rod_on_heel_springs_[0].first(0));
-//  std::cout << "spring length" << spring_length << std::endl;
-//  std::cout << "spring rest offset" << spring_rest_offset << std::endl;
   plant_.SetPositions(context_.get(), q);
 
   for (int i = 0; i < 2; i++) {
@@ -300,9 +301,6 @@ void CassieStateEstimator::solveFourbarLinkage(
     else
       *right_heel_spring =
           spring_deflect_sign * heel_spring_angle - spring_rest_offset;
-//    std::cout << "terms: " << std::endl;
-//    std::cout << r_sol_wrt_heel_base << std::endl;
-//    std::cout << spring_rest_dir_wrt_spring_base << std::endl;
   }  // end for
 }
 
@@ -416,7 +414,9 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   // Solve fourbar linkage for heel spring positions
   double left_heel_spring = 0;
   double right_heel_spring = 0;
-  VectorXd q = output->GetMutablePositions();
+  VectorXd q = output->GetPositions() + joint_offsets_;
+  output->SetPositions(q);
+  
   if (is_floating_base_) {
     // Floating-base state doesn't affect the spring values
     // We assign the floating base of q in case output's floating base is
@@ -511,9 +511,9 @@ void CassieStateEstimator::EstimateContactForEkf(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-                              left_heel_spring < heel_spring_threshold_ekf_);
+                              left_heel_spring < ankle_spring_threshold_ekf_);
   bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-                               right_heel_spring < heel_spring_threshold_ekf_);
+                               right_heel_spring < ankle_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
@@ -527,7 +527,7 @@ void CassieStateEstimator::EstimateContactForEkf(
     cout << "left/right knee spring, threshold = " << left_knee_spring << ", "
          << right_knee_spring << ", " << knee_spring_threshold_ekf_ << endl;
     cout << "left/right heel spring, threshold = " << left_heel_spring << ", "
-         << right_heel_spring << ", " << heel_spring_threshold_ekf_ << endl;
+         << right_heel_spring << ", " << ankle_spring_threshold_ekf_ << endl;
     cout << "left/right contacts = " << *left_contact << ", " << *right_contact
          << endl;
   }
@@ -574,10 +574,10 @@ void CassieStateEstimator::EstimateContactForController(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ctrl_ ||
-                              left_heel_spring < heel_spring_threshold_ctrl_);
+                              left_heel_spring < ankle_spring_threshold_ctrl_);
   bool right_contact_spring =
       (right_knee_spring < knee_spring_threshold_ctrl_ ||
-       right_heel_spring < heel_spring_threshold_ctrl_);
+       right_heel_spring < ankle_spring_threshold_ctrl_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
@@ -834,14 +834,14 @@ EventStatus CassieStateEstimator::Update(
         J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
     inekf::Kinematics rear_frame(2 * i, rear_toe_pose, rear_covariance);
     measured_kinematics.push_back(rear_frame);
-//    plant_.CalcJacobianTranslationalVelocity(
-//        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
-//        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
-//    J_wrt_joints = J.block(0, 6, 3, 16);
-//    front_covariance.block<3, 3>(3, 3) =
-//        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-//    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
-//    measured_kinematics.push_back(front_frame);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
+    J_wrt_joints = J.block(0, 6, 3, 16);
+    front_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
+    measured_kinematics.push_back(front_frame);
 
     if (print_info_to_terminal_) {
       cout << "covariance.block<3, 3>(3, 3) = \n"

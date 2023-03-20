@@ -420,10 +420,10 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   //  builder.Connect(cassie_out_receiver->get_output_port(),
   //                  high_level_command->get_cassie_out_input_port());
   builder.Connect(state_receiver->get_output_port(0),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   head_traj_gen->get_state_input_port());
-  builder.Connect(high_level_command->get_yaw_output_port(),
+  builder.Connect(high_level_command->get_output_port_yaw(),
                   head_traj_gen->get_yaw_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm->get_state_input_port());
@@ -455,7 +455,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   swing_ft_traj_generator->get_input_port_alip_state());
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   swing_ft_traj_generator->get_input_port_vdes());
   builder.Connect(state_receiver->get_output_port(0),
                   left_toe_angle_traj_gen->get_input_port_state());
@@ -478,7 +478,7 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
                   osc->get_input_port_tracking_data("right_toe_angle_traj"));
   builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
   builder.Connect(radio_parser->get_output_port(),
-                  high_level_command->get_radio_input_port());
+                  high_level_command->get_input_port_radio());
 
   // Publisher connections
   builder.ExportInput(state_receiver->get_input_port(), "x, u, t");

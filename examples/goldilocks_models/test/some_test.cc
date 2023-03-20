@@ -111,7 +111,7 @@ TEST_F(EigenTest, MapMatrixXdToVectorXd) {
   cout << "A_vec = \n" << A_vec << endl;
 
   Eigen::VectorXd A_vec_expected(4);
-  A_vec_expected << 1, 2, 3, 4;
+  A_vec_expected << 1, 3, 2, 4;
 
   EXPECT_TRUE((A_vec - A_vec_expected).norm() == 0);
 }

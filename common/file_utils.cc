@@ -25,6 +25,9 @@ typedef std::numeric_limits<double> dbl;
 const static Eigen::IOFormat CSVFormatManuallySpecifiedPrecision(
     dbl::max_digits10, Eigen::DontAlignCols, ", ", "\n");
 
+// Note: Use CSVFormatManuallySpecifiedPrecision instead of CSVFormatFullPrec.
+// CSVFormatManuallySpecifiedPrecision has higher precision.
+
 namespace dairlib {
 
 MatrixXd readCSV(const string& path) {

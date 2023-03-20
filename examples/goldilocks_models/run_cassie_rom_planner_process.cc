@@ -142,6 +142,8 @@ DEFINE_double(yaw_disturbance, 0,
 
 // RL training
 DEFINE_bool(is_RL_training, false, "");
+DEFINE_bool(get_RL_gradient_offline, false,
+            "true if we don't want to compute the policy gradient online");
 DEFINE_double(min_mpc_thread_loop_duration, 0,
               "limits how fast the MPC should run; default to 0 which doesn't "
               "impose any limit");
@@ -310,6 +312,7 @@ int DoMain(int argc, char* argv[]) {
   param.init_file = FLAGS_init_file;
   param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
   param.is_RL_training = FLAGS_is_RL_training;
+  param.get_RL_gradient_offline = FLAGS_get_RL_gradient_offline;
   param.min_mpc_thread_loop_duration = FLAGS_min_mpc_thread_loop_duration;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;

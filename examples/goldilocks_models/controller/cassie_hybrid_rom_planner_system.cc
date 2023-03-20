@@ -106,7 +106,8 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     print_level_ = 2;
     cout.precision(dbl::max_digits10);
   }
-  //if (param_.is_RL_training) print_level_ = 0;
+  // TODO: comment the following out, once you finished implementing everything
+  // if (param_.is_RL_training) print_level_ = 0;
 
   // Input/Output Setup
   stance_foot_port_ =
@@ -145,7 +146,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   DRAKE_DEMAND(rom_->n_tau() == 0);
   // Set to a different model parameters if the file is given
   if (param_.is_RL_training) {
-    DRAKE_UNREACHABLE(); // not implemented
+    DRAKE_UNREACHABLE();  // not implemented
   }
 
   // Create mirror maps
@@ -1142,6 +1143,10 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   if ((counter_ == 0 && !param_.init_file.empty()) || single_eval_mode_) {
     PrintStatus("Set initial guess from the file " + param_.init_file);
     VectorXd z0 = readCSV(param_.dir_data + param_.init_file).col(0);
+    /*if (param_.get_RL_gradient_offline) {
+      z0 = readCSV(param_.dir_data + prefix + "z.csv").col(0);
+      DRAKE_DEMAND(z0.rows() == trajopt.decision_variables().size());
+    }*/
     // writeCSV(param_.dir_data + "testing_" + string("init_file.csv"), z0,
     // true);
     int n_dec = trajopt.decision_variables().size();
@@ -1251,6 +1256,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   PrintEssentialStatus("\nSolving optimization problem... ");
   drake::solvers::MathematicalProgramResult result;
   //  dairlib::solvers::ResetEvalTime();
+  /*if (is_RL_training_ && param_.get_RL_gradient_offline) {
+    result.set_decision_variable_index(trajopt.decision_variable_index());
+    result.set_x_val(trajopt.initial_guess());
+    result.set_solution_result(SolutionResult::kSolutionFound);
+    result.set_optimal_cost(-1);
+  } else {
+  }*/
   if (param_.use_ipopt) {
     PrintEssentialStatus("(ipopt)");
     solver_ipopt_->Solve(trajopt, trajopt.initial_guess(), solver_option_ipopt_,
@@ -1466,6 +1478,13 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
           lightweight_saved_traj_, trajopt, result, current_time,
           param_.dir_data);
       SaveGradientIntoFilesForRLTraining(trajopt, result, param_.dir_data);
+      // Sanity check
+      /*if (param_.get_RL_gradient_offline) {
+        cout << "(trajopt.initial_guess() - result.GetSolution()).norm() = "
+             << (trajopt.initial_guess() - result.GetSolution()).norm() << endl;
+        DRAKE_DEMAND((trajopt.initial_guess() - result.GetSolution()).norm() <
+                     1e-8);
+      }*/
     }
     break5 = std::chrono::high_resolution_clock::now();
     // Save trajectory into lcm binary
@@ -1814,6 +1833,7 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
 
   /// Save the solution vector (used in initializing the first iter)
   writeCSV(dir_pref + "z.csv", result.GetSolution());
+  //  writeCSV(dir_pref + "z.csv", result.GetSolution(), is_RL_training_);
   // cout << trajopt.decision_variables() << endl;
 
   /// Save traj to csv
@@ -1941,6 +1961,11 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
 void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& dir_data) const {
+  if (!param_.get_RL_gradient_offline) {
+    // Avoid computing gradient online
+    return;
+  }
+
   auto start = std::chrono::high_resolution_clock::now();
   PrintStatus("Approximate the problem with a QP\n");
   // Get the linear approximation of the cosntraints and second order

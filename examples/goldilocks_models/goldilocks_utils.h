@@ -208,6 +208,7 @@ struct PlannerSetting {
 
   // RL
   bool is_RL_training;
+  bool get_RL_gradient_offline;
   double min_mpc_thread_loop_duration;
 
   // Debugging

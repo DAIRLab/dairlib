@@ -66,7 +66,7 @@ DEFINE_string(
 DEFINE_double(cost_weight_multiplier, 1.0,
               "A cosntant times with cost weight of OSC traj tracking");
 DEFINE_double(height, .8, "The initial COM height (m)");
-DEFINE_string(osc_gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
+DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing osc_gains");
 DEFINE_string(osqp_settings, "solvers/default_osc_osqp_settings.yaml",
               "Filepath containing qp settings");
@@ -102,14 +102,12 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-  //  auto osc_gains =
-  //      drake::yaml::LoadYamlFile<OSCStandingGains>(FLAGS_osc_gains_filename);
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(FLAGS_osc_gains_filename), {}, {}, yaml_options);
+      FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCStandingGains osc_gains = drake::yaml::LoadYamlFile<OSCStandingGains>(
-      FindResourceOrThrow(FLAGS_osc_gains_filename));
+      FindResourceOrThrow(FLAGS_gains_filename));
 
   // Create Lcm subsriber for lcmt_target_standing_height
   auto target_height_receiver = builder.AddSystem(

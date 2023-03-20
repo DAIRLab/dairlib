@@ -66,7 +66,7 @@ def main():
     joystick.init()
 
     done = False
-    max_speed = 2.9
+    max_speed = 1.5
     ramp_up = np.arange(0, max_speed, 0.025)
     stay = max_speed * np.ones(500)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01))

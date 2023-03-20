@@ -17,7 +17,7 @@ class TimeVisualizer(object):
         # Number of messages used to average for real time factor.
         self._num_msg_for_average = 20
         self.text_time = vis.TextItem('sim_info', 'sim_info', view)
-        self.text_time.setProperty('Position', [10, 900])
+        self.text_time.setProperty('Position', [10, 400])
         self.text_time.setProperty('Font Size', 36)
         self.text_time.setProperty('Bold', True)
         self.set_enabled(True)

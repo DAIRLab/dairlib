@@ -28,6 +28,11 @@ class MultibodyPlantJointOrderTest : public ::testing::Test {
   MultibodyPlantJointOrderTest(){};
 };
 
+class EigenTest : public ::testing::Test {
+ protected:
+  EigenTest(){};
+};
+
 TEST_F(MultibodyPlantJointOrderTest, FixedSpringCassie) {
   // Because in some of my code I hard-coded the joint index.
   // Putting a test here to give myself a headsup.

@@ -62,10 +62,12 @@ int DoMain(int argc, char* argv[]) {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
-  parser.AddModelFromFile(drake::FindResourceOrThrow(
+  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
+  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
       "drake/examples/kuka_iiwa_arm/models/table/"
       "extra_heavy_duty_table_surface_only_collision.sdf"));
+  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
+      "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d shift = Eigen::VectorXd::Zero(3);
@@ -85,7 +87,18 @@ int DoMain(int argc, char* argv[]) {
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, sim_params.controller_channel,
       sim_params.state_channel, sim_params.publish_rate,
+      franka_index,
       sim_params.publish_efforts, sim_params.actuator_delay);
+  auto tray_state_sender =
+      builder.AddSystem<systems::RobotOutputSender>(plant, tray_index);
+  auto tray_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          sim_params.tray_state_channel, lcm, 1.0 / sim_params.publish_rate));
+
+  builder.Connect(plant.get_state_output_port(tray_index),
+                  tray_state_sender->get_input_port_state());
+  builder.Connect(tray_state_sender->get_output_port(),
+                  tray_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -113,6 +126,8 @@ int DoMain(int argc, char* argv[]) {
   q[q_map["panda_joint2"]] = sim_params.q_init_franka[1];
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
   q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
+
+  q[plant.num_positions() - 4] = 1;
 
   plant.SetPositions(&plant_context, q);
 

@@ -16,6 +16,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 #include <drake/multibody/parsing/parser.h>
+#include <drake/systems/primitives/multiplexer.h>
 #include "systems/system_utils.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/common/find_resource.h"
@@ -62,10 +63,13 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
-  parser.AddModelFromFile(drake::FindResourceOrThrow(
+  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
+  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
       "drake/examples/kuka_iiwa_arm/models/table/"
       "extra_heavy_duty_table_surface_only_collision.sdf"));
+  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
+      "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
+
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d shift = Eigen::VectorXd::Zero(3);
   shift(2) = 0.7645;
@@ -79,19 +83,37 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Create state receiver.
-  auto state_sub =
+  auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_channel, lcm));
-  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
-  builder.Connect(*state_sub, *state_receiver);
+  auto tray_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          "TRAY_OUTPUT", lcm));
+  auto franka_state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
+  auto tray_state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
 
-  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-      state_receiver->get_output_port(0).size(), 0, plant.num_positions());
-  builder.Connect(*state_receiver, *passthrough);
+  builder.Connect(*franka_state_sub, *franka_state_receiver);
+  builder.Connect(*tray_state_sub, *tray_state_receiver);
+
+  auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      franka_state_receiver->get_output_port(0).size(), 0, plant.num_positions(franka_index));
+  auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      tray_state_receiver->get_output_port(0).size(), 0, plant.num_positions(tray_index));
+  builder.Connect(*franka_state_receiver, *franka_passthrough);
+  builder.Connect(*tray_state_receiver, *tray_passthrough);
+
+  std::vector<int> input_sizes =
+      {plant.num_positions(franka_index), plant.num_positions(tray_index)};
+  auto mux =
+      builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
+  builder.Connect(franka_passthrough->get_output_port(),
+                  mux->get_input_port(0));
+  builder.Connect(tray_passthrough->get_output_port(),
+                  mux->get_input_port(1));
 
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
-  builder.Connect(*passthrough, *to_pose);
+  builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
@@ -106,8 +128,17 @@ int do_main(int argc, char* argv[]) {
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
-
   auto context = diagram->CreateDefaultContext();
+
+  auto& franka_state_sub_context = diagram->GetMutableSubsystemContext(
+      *franka_state_sub, context.get());
+  auto& tray_state_sub_context = diagram->GetMutableSubsystemContext(
+      *tray_state_sub, context.get());
+  franka_state_receiver->InitializeSubscriberPositions(plant,
+                                                       franka_state_sub_context);
+  tray_state_receiver->InitializeSubscriberPositions(plant,
+                                                     tray_state_sub_context);
+
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

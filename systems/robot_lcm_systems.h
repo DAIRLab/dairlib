@@ -27,7 +27,9 @@ namespace systems {
 class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotOutputReceiver(
-      const drake::multibody::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance_index =
+          drake::multibody::default_model_instance());
 
   /// Convenience function to initialize an lcmt_robot_output subscriber with
   /// positions and velocities which are all zero except for the quaternion
@@ -54,6 +56,8 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotOutputSender(
       const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance_index =
+          drake::multibody::default_model_instance(),
       const bool publish_efforts = false, const bool publish_imu = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -122,7 +126,6 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 };
 
-
 ///
 /// Convenience method to add and connect leaf systems for controlling
 /// a MultibodyPlant via LCM. Makes two primary connections:
@@ -148,11 +151,11 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::lcm::LcmInterfaceSystem* lcm,
-    std::string actuator_channel,
-    std::string state_channel,
-    double publish_rate,
-    bool publish_efforts = true,
-    double actuator_delay = 0);
+    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
+    std::string state_channel, double publish_rate,
+    drake::multibody::ModelInstanceIndex model_instance_index =
+        drake::multibody::default_model_instance(),
+    bool publish_efforts = true, double actuator_delay = 0);
+
 }  // namespace systems
 }  // namespace dairlib

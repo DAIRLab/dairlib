@@ -14,6 +14,7 @@ struct FrankaSimParams {
 
   std::string state_channel;
   std::string controller_channel;
+  std::string tray_state_channel;
   double publish_rate;
   bool publish_efforts;
   double actuator_delay;
@@ -22,6 +23,7 @@ struct FrankaSimParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(state_channel));
     a->Visit(DRAKE_NVP(controller_channel));
+    a->Visit(DRAKE_NVP(tray_state_channel));
     a->Visit(DRAKE_NVP(publish_rate));
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(actuator_delay));

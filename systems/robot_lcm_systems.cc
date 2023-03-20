@@ -1,16 +1,15 @@
-#include <iostream>
-
 #include "robot_lcm_systems.h"
 
+#include <iostream>
+
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/multibody_utils.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -19,9 +18,9 @@ using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+using drake::systems::LeafSystem;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::LeafSystem;
 using Eigen::VectorXd;
 using std::string;
 using systems::OutputVector;
@@ -30,9 +29,10 @@ using systems::OutputVector;
 // methods implementation for RobotOutputReceiver.
 
 RobotOutputReceiver::RobotOutputReceiver(
-    const drake::multibody::MultibodyPlant<double>& plant) {
-  num_positions_ = plant.num_positions();
-  num_velocities_ = plant.num_velocities();
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index) {
+  num_positions_ = plant.num_positions(model_instance_index);
+  num_velocities_ = plant.num_velocities(model_instance_index);
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
@@ -41,7 +41,8 @@ RobotOutputReceiver::RobotOutputReceiver(
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
       "x, u, t",
-      OutputVector<double>(plant.num_positions(), plant.num_velocities(),
+      OutputVector<double>(plant.num_positions(model_instance_index),
+                           plant.num_velocities(model_instance_index),
                            plant.num_actuators()),
       &RobotOutputReceiver::CopyOutput);
 }
@@ -84,7 +85,7 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
 
 void RobotOutputReceiver::InitializeSubscriberPositions(
     const MultibodyPlant<double>& plant,
-    drake::systems::Context<double> &context) const {
+    drake::systems::Context<double>& context) const {
   auto& state_msg = context.get_mutable_abstract_state<lcmt_robot_output>(0);
 
   // using the time from the context
@@ -128,10 +129,11 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
 
 RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index,
     const bool publish_efforts, const bool publish_imu)
     : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
-  num_positions_ = plant.num_positions();
-  num_velocities_ = plant.num_velocities();
+  num_positions_ = plant.num_positions(model_instance_index);
+  num_velocities_ = plant.num_velocities(model_instance_index);
   num_efforts_ = plant.num_actuators();
 
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
@@ -284,13 +286,10 @@ void RobotCommandSender::OutputCommand(
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,
-    drake::systems::lcm::LcmInterfaceSystem* lcm,
-    std::string actuator_channel,
-    std::string state_channel,
-    double publish_rate,
-    bool publish_efforts,
-    double actuator_delay) {
-
+    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
+    std::string state_channel, double publish_rate,
+    drake::multibody::ModelInstanceIndex model_instance_index,
+    bool publish_efforts, double actuator_delay) {
   // Create LCM input for actuators
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
@@ -307,31 +306,32 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
       builder->AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           state_channel, lcm, 1.0 / publish_rate));
   auto state_sender = builder->AddSystem<RobotOutputSender>(
-      plant, publish_efforts);
-  builder->Connect(plant.get_state_output_port(),
+      plant, model_instance_index, publish_efforts);
+
+  builder->Connect(plant.get_state_output_port(model_instance_index),
                    state_sender->get_input_port_state());
 
   // Add delay, if used, and associated connections
   if (actuator_delay > 0) {
-      auto discrete_time_delay =
-          builder->AddSystem<drake::systems::DiscreteTimeDelay>(
-              1.0 / publish_rate, actuator_delay * publish_rate,
-              plant.num_actuators());
-      builder->Connect(*passthrough, *discrete_time_delay);
-      builder->Connect(discrete_time_delay->get_output_port(),
-                       plant.get_actuation_input_port());
+    auto discrete_time_delay =
+        builder->AddSystem<drake::systems::DiscreteTimeDelay>(
+            1.0 / publish_rate, actuator_delay * publish_rate,
+            plant.num_actuators());
+    builder->Connect(*passthrough, *discrete_time_delay);
+    builder->Connect(discrete_time_delay->get_output_port(),
+                     plant.get_actuation_input_port());
 
-      if (publish_efforts) {
-        builder->Connect(discrete_time_delay->get_output_port(),
-                         state_sender->get_input_port_effort());
-      }
+    if (publish_efforts) {
+      builder->Connect(discrete_time_delay->get_output_port(),
+                       state_sender->get_input_port_effort());
+    }
   } else {
+    builder->Connect(passthrough->get_output_port(),
+                     plant.get_actuation_input_port());
+    if (publish_efforts) {
       builder->Connect(passthrough->get_output_port(),
-                       plant.get_actuation_input_port());
-      if (publish_efforts) {
-        builder->Connect(passthrough->get_output_port(),
-                         state_sender->get_input_port_effort());
-      }
+                       state_sender->get_input_port_effort());
+    }
   }
 
   builder->Connect(*state_sender, *state_pub);

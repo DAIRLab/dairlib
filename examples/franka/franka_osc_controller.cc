@@ -66,6 +66,24 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
+
+  VectorXd rotor_inertias(plant.num_actuators());
+  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
+  rotor_inertias *= 1e-6;
+  VectorXd gear_ratios(plant.num_actuators());
+  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
+  std::vector<std::string> motor_joint_names = {
+      "panda_motor1", "panda_motor2", "panda_motor3",
+      "panda_motor4", "panda_motor5", "panda_motor6",
+      "panda_motor7"};
+  for (int i = 0; i < rotor_inertias.size(); ++i) {
+    auto& joint_actuator = plant.get_mutable_joint_actuator(
+        drake::multibody::JointActuatorIndex(i));
+    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+    joint_actuator.set_default_gear_ratio(gear_ratios(i));
+    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+  }
+
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
@@ -98,7 +116,7 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_target", controller_params.K_p_end_effector,
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
-  end_effector_position_tracking_data->AddPointToTrack("panda_link8");
+  end_effector_position_tracking_data->AddPointToTrack("paddle");
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   auto mid_link_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
@@ -116,7 +134,7 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_orientation_target", controller_params.K_p_end_effector_rot,
           controller_params.K_d_end_effector_rot, controller_params.W_end_effector_rot,
           plant, plant);
-  end_effector_orientation_tracking_data->AddFrameToTrack("panda_link8");
+  end_effector_orientation_tracking_data->AddFrameToTrack("paddle");
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
 //  orientation_target(2) = 1;

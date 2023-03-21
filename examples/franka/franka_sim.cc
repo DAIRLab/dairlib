@@ -45,8 +45,8 @@ using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
 
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 int DoMain(int argc, char* argv[]) {
   // load parameters
@@ -62,20 +62,55 @@ int DoMain(int argc, char* argv[]) {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
-  drake::multibody::ModelInstanceIndex franka_index = parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
-  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
-      "drake/examples/kuka_iiwa_arm/models/table/"
-      "extra_heavy_duty_table_surface_only_collision.sdf"));
-  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
-      "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
+  drake::multibody::ModelInstanceIndex franka_index =
+      parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
+  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(
+      drake::FindResourceOrThrow(
+          "drake/examples/kuka_iiwa_arm/models/table/"
+          "extra_heavy_duty_table_surface_only_collision.sdf"),
+      "table0");
+  drake::multibody::ModelInstanceIndex second_table_index =
+      parser.AddModelFromFile(
+          drake::FindResourceOrThrow(
+              "drake/examples/kuka_iiwa_arm/models/table/"
+              "extra_heavy_duty_table_surface_only_collision.sdf"),
+          "table1");
+  drake::multibody::ModelInstanceIndex tray_index =
+      parser.AddModelFromFile(drake::FindResourceOrThrow(
+          "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Vector3d shift = Eigen::VectorXd::Zero(3);
-  shift(2) = 0.7645;
-  RigidTransform<double> R_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), shift);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link"),
-                   X_WI);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), R_X_W);
+  Vector3d franka_origin = Eigen::VectorXd::Zero(3);
+  Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
+  franka_origin(2) = 0.7645;
+  second_table_origin(0) = 0.75;
+  RigidTransform<double> R_X_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), franka_origin);
+  RigidTransform<double> T_X_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), second_table_origin);
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("link", table_index), X_WI);
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("link", second_table_index), T_X_W);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   R_X_W);
+
+  VectorXd rotor_inertias(plant.num_actuators());
+  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
+  rotor_inertias *= 1e-6;
+  VectorXd gear_ratios(plant.num_actuators());
+  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
+  std::vector<std::string> motor_joint_names = {
+      "panda_motor1", "panda_motor2", "panda_motor3",
+      "panda_motor4", "panda_motor5", "panda_motor6",
+      "panda_motor7"};
+  for (int i = 0; i < rotor_inertias.size(); ++i) {
+    auto& joint_actuator = plant.get_mutable_joint_actuator(
+        drake::multibody::JointActuatorIndex(i));
+    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+    joint_actuator.set_default_gear_ratio(gear_ratios(i));
+    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+  }
 
   plant.Finalize();
 
@@ -86,8 +121,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, sim_params.controller_channel,
-      sim_params.state_channel, sim_params.publish_rate,
-      franka_index,
+      sim_params.state_channel, sim_params.publish_rate, franka_index,
       sim_params.publish_efforts, sim_params.actuator_delay);
   auto tray_state_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, tray_index);
@@ -119,16 +153,17 @@ int DoMain(int argc, char* argv[]) {
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
+  q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
+  q[q_map["panda_joint2"]] = sim_params.q_init_franka[1];
   q[q_map["panda_joint3"]] = sim_params.q_init_franka[2];
   q[q_map["panda_joint4"]] = sim_params.q_init_franka[3];
   q[q_map["panda_joint5"]] = sim_params.q_init_franka[4];
   q[q_map["panda_joint6"]] = sim_params.q_init_franka[5];
-  q[q_map["panda_joint2"]] = sim_params.q_init_franka[1];
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
-  q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
 
   q[plant.num_positions() - 7] = 1;
   q[plant.num_positions() - 1] = 2;
+  q[plant.num_positions() - 3] = 0.75;
 
   plant.SetPositions(&plant_context, q);
 

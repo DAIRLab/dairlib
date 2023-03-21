@@ -500,28 +500,34 @@
         <axis xyz="0 0 1"/>
         <limit effort="12" lower="-2.8973" upper="2.8973" velocity="2.610"/>
     </joint>
-    <link name="panda_link8">
+    <link name="paddle">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 0.0048"/>
             <mass value="0.5"/>
         </inertial>
-        <collision>
-            <origin rpy="0 0 0" xyz="0 0 0.0048"/>
-            <geometry>
-								<box size="0.1 0.1 0.01"/>
-            </geometry>
-        </collision>
+        <collision name="collision">
+					<origin rpy="0 0 0" xyz="0 0 0.0048"/>
+					<geometry>
+							<box size="0.2 0.2 0.01"/>
+					</geometry>
+					<drake:proximity_properties>
+      			<drake:rigid_hydroelastic/>
+						<drake:mesh_resolution_hint value="100"/>
+						<drake:mu_dynamic value="1.0"/>
+						<drake:mu_static value="1.0"/>
+					</drake:proximity_properties>
+				</collision>
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0.0048"/>
             <geometry>
-								<box size="0.1 0.1 0.01"/>
+								<box size="0.2 0.2 0.01"/>
             </geometry>
         </visual>
     </link>
-    <joint name="panda_joint8" type="fixed">
+    <joint name="fixed_paddle" type="fixed">
         <origin rpy="0 0 0" xyz="0 0 0.107"/>
         <parent link="panda_link7"/>
-        <child link="panda_link8"/>
+        <child link="paddle"/>
     </joint>
     <transmission name="panda_tran1">
         <type>transmission_interface/SimpleTransmission</type>

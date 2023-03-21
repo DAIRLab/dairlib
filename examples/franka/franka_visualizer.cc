@@ -66,28 +66,30 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
-  drake::multibody::ModelInstanceIndex table_index =
-      parser.AddModelFromFile(drake::FindResourceOrThrow(
-          "drake/examples/kuka_iiwa_arm/models/table/"
-          "extra_heavy_duty_table_surface_only_collision.sdf"));
+  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
+      "drake/examples/kuka_iiwa_arm/models/table/"
+      "extra_heavy_duty_table_surface_only_collision.sdf"), "table0");
+  drake::multibody::ModelInstanceIndex second_table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
+      "drake/examples/kuka_iiwa_arm/models/table/"
+      "extra_heavy_duty_table_surface_only_collision.sdf"), "table1");
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModelFromFile(drake::FindResourceOrThrow(
           "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Vector3d shift = Eigen::VectorXd::Zero(3);
-  shift(2) = 0.7645;
-  RigidTransform<double> R_X_W =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(), shift);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link"), X_WI);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   R_X_W);
+  Vector3d franka_origin = Eigen::VectorXd::Zero(3);
+  Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
+  franka_origin(2) = 0.7645;
+  second_table_origin(0) = 0.75;
+  RigidTransform<double> R_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), franka_origin);
+  RigidTransform<double> T_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), second_table_origin);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link", table_index),
+                   X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link", second_table_index),
+                   T_X_W);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), R_X_W);
 
   plant.Finalize();
-  std::cout << "num floating base bodies "
-            << plant.GetFloatingBaseBodies().size() << std::endl;
-  std::cout << "num positions " << plant.num_positions(drake::multibody::ModelInstanceIndex(1)) << std::endl;
-  std::cout << "num positions " << plant.num_positions() << std::endl;
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 

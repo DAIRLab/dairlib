@@ -27,9 +27,11 @@ namespace systems {
 class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotOutputReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant);
+
+  explicit RobotOutputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::multibody::ModelInstanceIndex model_instance_index =
-          drake::multibody::default_model_instance());
+      drake::multibody::ModelInstanceIndex model_instance);
 
   /// Convenience function to initialize an lcmt_robot_output subscriber with
   /// positions and velocities which are all zero except for the quaternion
@@ -43,6 +45,9 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
                   OutputVector<double>* output) const;
+  drake::multibody::ModelInstanceIndex model_instance_;
+  int positions_start_idx_;
+  int velocities_start_idx_;
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
@@ -153,8 +158,14 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
     std::string state_channel, double publish_rate,
-    drake::multibody::ModelInstanceIndex model_instance_index =
-        drake::multibody::default_model_instance(),
+    drake::multibody::ModelInstanceIndex model_instance_index,
+    bool publish_efforts = true, double actuator_delay = 0);
+
+SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
+    std::string state_channel, double publish_rate,
     bool publish_efforts = true, double actuator_delay = 0);
 
 }  // namespace systems

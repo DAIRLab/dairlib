@@ -80,10 +80,23 @@ template <typename T>
 std::map<std::string, int> MakeNameToPositionsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+/// Given a MultibodyPlant, builds a map from position name to position index
+template <typename T>
+std::map<std::string, int> MakeNameToPositionsMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
+
 /// Given a MultiBodyTree, builds a map from velocity name to velocity index
 template <typename T>
 std::map<std::string, int> MakeNameToVelocitiesMap(
     const drake::multibody::MultibodyPlant<T>& plant);
+
+
+/// Given a MultiBodyTree, builds a map from velocity name to velocity index
+template <typename T>
+std::map<std::string, int> MakeNameToVelocitiesMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
 
 /// Given a MultiBodyTree, builds a map from actuator name to actuator index
 template <typename T>
@@ -145,17 +158,14 @@ bool HasQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 template <typename T>
 Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::systems::Context<T>& context,
-    const std::string& body_name,
+    const drake::systems::Context<T>& context, const std::string& body_name,
     const Eigen::Vector3d& vec);
 
 template <typename T>
 Eigen::Vector2d ReExpressWorldVector2InBodyYawFrame(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::systems::Context<T>& context,
-    const std::string& body_name,
+    const drake::systems::Context<T>& context, const std::string& body_name,
     const Eigen::Vector2d& vec);
-
 
 /// Computes the matrix for mapping global roll-pitch-yaw angular velocity to
 /// quaternion derivatives

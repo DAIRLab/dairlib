@@ -14,6 +14,7 @@
 #include "systems/system_utils.h"
 
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/common/find_resource.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"

@@ -127,7 +127,8 @@ int DoMain(int argc, char* argv[]) {
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
   q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
 
-  q[plant.num_positions() - 4] = 1;
+  q[plant.num_positions() - 7] = 1;
+  q[plant.num_positions() - 1] = 2;
 
   plant.SetPositions(&plant_context, q);
 

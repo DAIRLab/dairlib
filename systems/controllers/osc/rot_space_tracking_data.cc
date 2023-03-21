@@ -59,15 +59,10 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
 void RotTaskSpaceTrackingData::UpdateYError() {
   DRAKE_DEMAND(y_des_.size() == 4);
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  y_quat_des.normalize();
-
   Quaterniond y_quat(y_(0), y_(1), y_(2), y_(3));
 
-  // Get relative quaternion (from current to desired)
-  Quaterniond relative_quat = (y_quat_des * y_quat.inverse()).normalized();
-  double theta = 2 * acos(relative_quat.w());
-  Vector3d rot_axis = relative_quat.vec().normalized();
-  error_y_ = theta * rot_axis;
+  Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
+  error_y_ = angle_axis_diff.angle() * angle_axis_diff.axis();
   if (with_view_frame_) {
     error_y_ = view_frame_rot_T_ * error_y_;
   }
@@ -90,7 +85,11 @@ void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
                           ydot_des_(3));
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
-  error_ydot_ = w_des_ - ydot_ - GetJ() * v_proj;
+  // Because we transform the error here rather than in the parent
+  // options_tracking_data, and because J_y is already transformed in the view
+  // frame, we need to undo the transformation on J_y
+  error_ydot_ =
+      w_des_ - ydot_ - view_frame_rot_T_.transpose() * GetJ() * v_proj;
   if (with_view_frame_) {
     error_ydot_ = view_frame_rot_T_ * error_ydot_;
   }

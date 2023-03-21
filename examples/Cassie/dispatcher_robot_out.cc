@@ -64,7 +64,7 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_string(joint_offset_yaml, "", "yaml with joint offset values");
-DEFINE_string(contact_detection_yaml, "examples/Cassie/default_state_estimator_settings.yaml", "Yaml with contact estimation values");
+DEFINE_string(contact_detection_yaml, "examples/Cassie/state_estimator_contact_thresholds.yaml", "Yaml with contact estimation values");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -211,7 +211,7 @@ int do_main(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<std::map<std::string, double>>(
           FindResourceOrThrow(FLAGS_joint_offset_yaml));
 
-  CassieStateEstimatorSettings settings = drake::yaml::LoadYamlFile<CassieStateEstimatorSettings>(
+  CassieStateEstimatorContactThresholds settings = drake::yaml::LoadYamlFile<CassieStateEstimatorContactThresholds>(
       FindResourceOrThrow(FLAGS_contact_detection_yaml));
 
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(

@@ -147,6 +147,8 @@ DEFINE_bool(get_RL_gradient_offline, false,
 DEFINE_double(min_mpc_thread_loop_duration, 0,
               "limits how fast the MPC should run; default to 0 which doesn't "
               "impose any limit");
+DEFINE_string(path_model_params, "", "file path of the rom params");
+DEFINE_string(path_var, "", "file path of the mpc output variance");
 
 // Testing -- for sim eval and multithreading
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
@@ -207,6 +209,10 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(gains.pelvis_height > 0);
     // haven't implemented for the mixed MPC
     DRAKE_DEMAND(gains.use_hybrid_rom_mpc);
+
+    // We can turn off the drake demands here if we are testing
+    DRAKE_DEMAND(FLAGS_path_model_params.size() > 0);
+    DRAKE_DEMAND(FLAGS_path_var.size() > 0);
 
     if (FLAGS_debug_mode) {
       DRAKE_DEMAND(FLAGS_solve_idx_for_read_from_file >= 0);
@@ -314,6 +320,8 @@ int DoMain(int argc, char* argv[]) {
   param.is_RL_training = FLAGS_is_RL_training;
   param.get_RL_gradient_offline = FLAGS_get_RL_gradient_offline;
   param.min_mpc_thread_loop_duration = FLAGS_min_mpc_thread_loop_duration;
+  param.path_model_params = FLAGS_path_model_params;
+  param.path_var = FLAGS_path_var;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
   param.gains = gains;
   if (0 < param.time_limit && param.time_limit < 0.1) {

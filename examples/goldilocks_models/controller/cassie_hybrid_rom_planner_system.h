@@ -371,7 +371,8 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const HybridRomPlannerTrajectory& saved_traj,
       const HybridRomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
-      double current_time, const std::string& dir_data) const;
+      double current_time, const Eigen::VectorXd& mpc_sol_noise,
+      const std::string& dir_data) const;
   void SaveGradientIntoFilesForRLTraining(
       const HybridRomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
@@ -382,6 +383,9 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
       const Eigen::VectorXd& b, double active_tol = 1e-6,
       int method_to_solve_system_of_equations = 5) const;
+  void ExtractAndReorderFromMpcSolToRlAction(
+      const HybridRomTrajOptCassie& trajopt, const MatrixXd& matrix_in_w_order,
+      MatrixXd& matrix_in_a_order) const;
   mutable Eigen::VectorXd RL_state_prev_;
   mutable Eigen::VectorXd RL_state_;
   mutable Eigen::VectorXd RL_action_prev_;
@@ -390,6 +394,11 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   int n_knots_used_for_RL_action_;
   int a_dim_rom_state_part_;
   int a_dim_rom_input_part_;
+  // randomize output of MPC for RL
+  double RL_policy_output_variance_;
+  mutable Eigen::VectorXd RL_action_noise_prev_;
+  std::default_random_engine generator_;
+  mutable std::normal_distribution<double> distribution_;
   // TODO:
   //  1. have a lcmttraj class for replicating the results
   //  2. have a lcmttraj class for rl specific

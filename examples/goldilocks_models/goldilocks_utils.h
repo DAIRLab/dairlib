@@ -210,6 +210,8 @@ struct PlannerSetting {
   bool is_RL_training;
   bool get_RL_gradient_offline;
   double min_mpc_thread_loop_duration;
+  std::string path_model_params;
+  std::string path_var;
 
   // Debugging
   int solve_idx_for_read_from_file;

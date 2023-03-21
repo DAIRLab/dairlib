@@ -22,6 +22,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
+#include "common/find_resource.h"
 
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
@@ -66,12 +67,15 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
-  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
-      "drake/examples/kuka_iiwa_arm/models/table/"
-      "extra_heavy_duty_table_surface_only_collision.sdf"), "table0");
-  drake::multibody::ModelInstanceIndex second_table_index = parser.AddModelFromFile(drake::FindResourceOrThrow(
-      "drake/examples/kuka_iiwa_arm/models/table/"
-      "extra_heavy_duty_table_surface_only_collision.sdf"), "table1");
+  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(
+      drake::FindResourceOrThrow(
+          "drake/examples/kuka_iiwa_arm/models/table/"
+          "extra_heavy_duty_table_surface_only_collision.sdf"),
+      "table0");
+  drake::multibody::ModelInstanceIndex second_table_index =
+      parser.AddModelFromFile(
+          dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
+          "table1");
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModelFromFile(drake::FindResourceOrThrow(
           "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
@@ -81,13 +85,16 @@ int do_main(int argc, char* argv[]) {
   Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
   franka_origin(2) = 0.7645;
   second_table_origin(0) = 0.75;
-  RigidTransform<double> R_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), franka_origin);
-  RigidTransform<double> T_X_W = RigidTransform<double>(drake::math::RotationMatrix<double>(), second_table_origin);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link", table_index),
-                   X_WI);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("link", second_table_index),
-                   T_X_W);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), R_X_W);
+  RigidTransform<double> R_X_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), franka_origin);
+  RigidTransform<double> T_X_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), second_table_origin);
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("link", table_index), X_WI);
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("link", second_table_index), T_X_W);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   R_X_W);
 
   plant.Finalize();
 
@@ -150,8 +157,8 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*tray_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
-  tray_state_receiver->InitializeSubscriberPositions(
-      plant, tray_state_sub_context);
+  tray_state_receiver->InitializeSubscriberPositions(plant,
+                                                     tray_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

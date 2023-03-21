@@ -68,7 +68,7 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateCircle(
   double dt = 0.1;
   double frequency = 0.5 * (1 + radio_out->channel[2]) * M_PI;
   double radius = radio_out->channel[0] * 0.2;
-  int index = std::max(0.0, radio_out->channel[15]);
+  int index = 1 - std::max(0.0, radio_out->channel[15]);
   VectorXd y0 = VectorXd::Zero(3);
   y0(1 - index) = 0.7;
   y0(index) = radius * cos(frequency * t);

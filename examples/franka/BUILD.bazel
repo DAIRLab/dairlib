@@ -29,6 +29,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
+        "//common:find_resource",
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
     ],
@@ -62,6 +63,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
+        "//common:find_resource",
         "//multibody:utils",
         "//multibody:visualization_utils",
         "//systems:robot_lcm_systems",

@@ -10,6 +10,7 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <drake/systems/primitives/vector_log_sink.h>
 
+#include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka/franka_sim_params.h"
@@ -71,9 +72,7 @@ int DoMain(int argc, char* argv[]) {
       "table0");
   drake::multibody::ModelInstanceIndex second_table_index =
       parser.AddModelFromFile(
-          drake::FindResourceOrThrow(
-              "drake/examples/kuka_iiwa_arm/models/table/"
-              "extra_heavy_duty_table_surface_only_collision.sdf"),
+          dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
           "table1");
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModelFromFile(drake::FindResourceOrThrow(
@@ -101,9 +100,8 @@ int DoMain(int argc, char* argv[]) {
   VectorXd gear_ratios(plant.num_actuators());
   gear_ratios << 25, 25, 25, 25, 25, 25, 25;
   std::vector<std::string> motor_joint_names = {
-      "panda_motor1", "panda_motor2", "panda_motor3",
-      "panda_motor4", "panda_motor5", "panda_motor6",
-      "panda_motor7"};
+      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
+      "panda_motor5", "panda_motor6", "panda_motor7"};
   for (int i = 0; i < rotor_inertias.size(); ++i) {
     auto& joint_actuator = plant.get_mutable_joint_actuator(
         drake::multibody::JointActuatorIndex(i));

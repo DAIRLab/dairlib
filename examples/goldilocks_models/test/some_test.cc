@@ -116,6 +116,14 @@ TEST_F(EigenTest, MapMatrixXdToVectorXd) {
   EXPECT_TRUE((A_vec - A_vec_expected).norm() == 0);
 }
 
+TEST_F(EigenTest, VectorIsColumnVector) {
+// I use middleRows() method on VectorXd in cassie_hybrid_rom_planner_system
+Eigen::VectorXd A(2);
+EXPECT_TRUE(A.rows() == 2);
+EXPECT_TRUE(A.cols() == 1);
+}
+
+
 }  // namespace
 }  // namespace goldilocks_models
 }  // namespace dairlib

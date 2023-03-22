@@ -117,18 +117,21 @@ int DoMain(int argc, char* argv[]) {
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
   end_effector_position_tracking_data->AddPointToTrack("paddle");
-  osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   auto mid_link_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "mid_link", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link,
           plant, plant);
-  mid_link_position_tracking_data->AddPointToTrack("panda_link3");
-  Eigen::Vector3d elbow_up_target = Eigen::Vector3d::Zero();
-  elbow_up_target(1) = 0.2;
-  elbow_up_target(2) = 0.6;
-  osc->AddConstTrackingData(std::move(mid_link_position_tracking_data),
-                            elbow_up_target);
+  mid_link_position_tracking_data->AddPointToTrack("panda_link5");
+  auto wrist_relative_tracking_data =
+      std::make_unique<RelativeTranslationTrackingData>(
+          "wrist_down_target", controller_params.K_p_mid_link,
+          controller_params.K_d_mid_link, controller_params.W_mid_link,
+          plant, plant, mid_link_position_tracking_data.get(), end_effector_position_tracking_data.get());
+  Eigen::Vector3d wrist_down_target = Eigen::Vector3d::Zero();
+  wrist_down_target(1) = -0.3;
+  wrist_down_target(2) = 0.2;
+
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
           "end_effector_orientation_target", controller_params.K_p_end_effector_rot,
@@ -140,6 +143,9 @@ int DoMain(int argc, char* argv[]) {
 //  orientation_target(2) = 1;
 //  orientation_target(1) = 1;
 //  orientation_target(3) = 0.707;
+  osc->AddTrackingData(std::move(end_effector_position_tracking_data));
+  osc->AddConstTrackingData(std::move(wrist_relative_tracking_data),
+                            wrist_down_target);
   osc->AddConstTrackingData(std::move(end_effector_orientation_tracking_data),
                             orientation_target);
 

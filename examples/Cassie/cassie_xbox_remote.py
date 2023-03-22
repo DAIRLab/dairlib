@@ -112,16 +112,16 @@ def main():
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        radio_msg.channel[0] = joystick.get_axis(1)
+        radio_msg.channel[0] = -joystick.get_axis(1)
 
-        radio_msg.channel[1] = joystick.get_axis(0)
-        radio_msg.channel[2] = -joystick.get_axis(4)
-        radio_msg.channel[3] = joystick.get_axis(3)
+        radio_msg.channel[1] =  -joystick.get_axis(0)
+        radio_msg.channel[2] = -joystick.get_axis(3)
+        radio_msg.channel[3] = joystick.get_axis(2)
         radio_msg.channel[4] = radio_channel_4_pos
         radio_msg.channel[5] = radio_channel_5_pos
         radio_msg.channel[6] = radio_channel_6_pos
 
-        radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
+        # radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
         publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())

@@ -83,6 +83,28 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateCircle(
                                                                           samples);
 }
 
+PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
+    const drake::systems::Context<double>& context) const {
+  const auto robot_output =
+      this->template EvalVectorInput<OutputVector>(context, state_port_);
+//  const auto desired_pelvis_vel_xy =
+//      this->EvalVectorInput(context, target_vel_port_)->get_value();
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  double t = robot_output->get_timestamp();
+  double dt = 0.1;
+  VectorXd y0 = VectorXd::Zero(3);
+  y0(0) = 0.7 + radio_out->channel[0] * 0.2;
+  y0(0) = std::clamp(y0(0), 0.0, 0.8);
+  y0(1) = radio_out->channel[1] * 0.2;
+  y0(2) = 0.3 + radio_out->channel[2] * 0.2;
+  VectorXd ydot0 = VectorXd::Zero(3);
+  std::vector<double> breaks = {t, t + dt};
+  std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
+  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(breaks,
+                                                                          samples);
+}
+
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateLine(
     const drake::systems::Context<double>& context) const {
   const auto robot_output =
@@ -115,7 +137,8 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   auto* casted_traj =
   (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
       traj);
-  *casted_traj = GenerateCircle(context);
+//  *casted_traj = GenerateCircle(context);
+  *casted_traj = GeneratePose(context);
 //  *casted_traj = GenerateLine(context);
 }
 

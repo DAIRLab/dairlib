@@ -146,6 +146,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   DRAKE_DEMAND(rom_->n_tau() == 0);
   // Set to a different model parameters if the file is given
   if (param_.is_RL_training) {
+    cout << "param_.path_model_params = " << param_.path_model_params << endl;
     MatrixXd theta_yddot = readCSV(param_.path_model_params);
     MatrixXd var = readCSV(param_.path_var);
     DRAKE_DEMAND(theta_yddot.size() > 0);
@@ -154,6 +155,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     RL_policy_output_variance_ = var(0, 0);
 
     // Initialize gaussian distribution
+    generator_ = std::make_unique<std::default_random_engine>();
     generator_->seed(
         std::chrono::system_clock::now().time_since_epoch().count());
     distribution_ = std::make_unique<std::normal_distribution<double>>(
@@ -1318,9 +1320,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   VectorXd mpc_sol_noise(trajopt.num_vars());
   drake::solvers::MathematicalProgramResult result_with_noise;
   if (is_RL_training_) {
-    DRAKE_UNREACHABLE();
-    // I think the noise is independent of the gradient calculation, because we
-    // are computing the gradient of the mean all the time.
+    // The noise is independent of the gradient calculation, because we are
+    // computing the gradient of the mean all the time.
     for (int i = 0; i < mpc_sol_noise.size(); i++) {
       double rand = (*distribution_)(*generator_);
       mpc_sol_noise(i) = rand;
@@ -2058,8 +2059,7 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
 void CassiePlannerWithOnlyRom::SaveGradientIntoFilesForRLTraining(
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& dir_data) const {
-  // TODO: the result here should be the one WITHOUT noise
-  DRAKE_UNREACHABLE();
+  // The argument `result` here should be the one WITHOUT noise
 
   if (!param_.get_RL_gradient_offline) {
     // Avoid computing gradient online

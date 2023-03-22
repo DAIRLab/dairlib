@@ -122,15 +122,15 @@ int DoMain(int argc, char* argv[]) {
           "mid_link", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link,
           plant, plant);
-  mid_link_position_tracking_data->AddPointToTrack("panda_link5");
+  mid_link_position_tracking_data->AddPointToTrack("panda_link4");
   auto wrist_relative_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "wrist_down_target", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link,
           plant, plant, mid_link_position_tracking_data.get(), end_effector_position_tracking_data.get());
   Eigen::Vector3d wrist_down_target = Eigen::Vector3d::Zero();
-  wrist_down_target(1) = -0.3;
-  wrist_down_target(2) = 0.2;
+  wrist_down_target(1) = 0.0;
+  wrist_down_target(2) = 0.0;
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(

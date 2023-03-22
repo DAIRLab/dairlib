@@ -1,5 +1,7 @@
 #pragma once
 
+#include <random>
+
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_trajectory_block.hpp"
 #include "examples/goldilocks_models/goldilocks_utils.h"
@@ -110,6 +112,21 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       double init_phase, const Eigen::Vector2d& final_position,
       std::vector<Eigen::Vector2d>* des_xy_pos,
       std::vector<Eigen::Vector2d>* des_xy_vel) const;
+
+  Eigen::MatrixXd ExtractMpcFootsteps(
+      const HybridRomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result) const;
+  void TransformToGlobalFrameForWarmStartLater(
+      const Eigen::VectorXd& quat_xyz_shift,
+      const drake::VectorX<double>& current_local_stance_foot_pos,
+      const HybridRomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result) const;
+  void ExtractGlobalComAndFootstepPosition(
+      const Eigen::VectorXd& quat_xyz_shift,
+      const drake::VectorX<double>& current_local_stance_foot_pos,
+      bool start_with_left_stance, const HybridRomTrajOptCassie& trajopt,
+      const drake::solvers::MathematicalProgramResult& result,
+      MatrixXd* global_feet_pos, MatrixXd* global_com_pos) const;
 
   void TransformBetweenGlobalAndLocalFrame3D(
       bool transform_from_global_to_local,
@@ -346,8 +363,8 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& quat_xyz_shift,
       const Eigen::VectorXd& current_local_stance_foot_pos,
       const Eigen::VectorXd& final_position,
-      const Eigen::MatrixXd& global_regularization_x_FOM,
-      const Eigen::MatrixXd& local_x0_FOM, const Eigen::MatrixXd& local_xf_FOM,
+      const std::vector<Eigen::Vector2d>& reg_local_delta_footstep,
+      const Eigen::MatrixXd& global_delta_footstep,
       const HybridRomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
       const std::string& dir_data, const std::string& prefix) const;
@@ -396,9 +413,10 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   int a_dim_rom_input_part_;
   // randomize output of MPC for RL
   double RL_policy_output_variance_;
+  std::unique_ptr<std::default_random_engine> generator_;
+  std::unique_ptr<std::normal_distribution<double>> distribution_;
   mutable Eigen::VectorXd RL_action_noise_prev_;
-  std::default_random_engine generator_;
-  mutable std::normal_distribution<double> distribution_;
+  mutable HybridRomPlannerTrajectory lightweight_saved_traj_with_noise_;
   // TODO:
   //  1. have a lcmttraj class for replicating the results
   //  2. have a lcmttraj class for rl specific

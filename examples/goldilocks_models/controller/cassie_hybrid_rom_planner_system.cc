@@ -154,10 +154,10 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     RL_policy_output_variance_ = var(0, 0);
 
     // Initialize gaussian distribution
-    generator_.seed(
+    generator_->seed(
         std::chrono::system_clock::now().time_since_epoch().count());
-    distribution_ =
-        std::normal_distribution<double>(0, RL_policy_output_variance_);
+    distribution_ = std::make_unique<std::normal_distribution<double>>(
+        0, RL_policy_output_variance_);
   }
 
   // Create mirror maps
@@ -1316,99 +1316,64 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
 
   VectorXd mpc_sol_noise(trajopt.num_vars());
+  drake::solvers::MathematicalProgramResult result_with_noise;
   if (is_RL_training_) {
     DRAKE_UNREACHABLE();
     // I think the noise is independent of the gradient calculation, because we
     // are computing the gradient of the mean all the time.
     for (int i = 0; i < mpc_sol_noise.size(); i++) {
-      mpc_sol_noise(i) = distribution_(generator_);
+      double rand = (*distribution_)(*generator_);
+      mpc_sol_noise(i) = rand;
     }
     mpc_sol_noise.tail<1>() << 0;
 
-    // TODO: modify the code here. Since I do data logging which I need the
-    //  original info, I shouldn't update it here. Maybe the easiest
-    //  implmenetation is just to make a copy of the mathematical result, and
-    //  send the noisy one to OSC thread and RL data
-    result.set_x_val(result.GetSolution() + mpc_sol_noise);
+    result_with_noise = result;
+    result_with_noise.set_x_val(result.GetSolution() + mpc_sol_noise);
   }
 
   ///
   /// Pack traj into lcm message (traj_msg)
   ///
-  // Note that the trajectory is discontinuous between mode (even the position
-  // jumps because left vs right stance leg).
+  // Notes
+  //  - reminder: the trajectory is discontinuous between mode (even the
+  //    position jumps because left vs right stance leg).
+  //  - lightweight_saved_traj_ is also used in warm starting (we can implement
+  //    in the way that doesn't use lightweight_saved_traj_)
 
-  // 1. Transform relative foot step from local to global
-  // Note that since it's relative, we only need to rotate the vector
-  MatrixXd local_delta_footstep(2, param_.n_step);
-  local_delta_footstep.row(0) = result.GetSolution(
-      trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
-  local_delta_footstep.row(1) = result.GetSolution(
-      trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
-  TransformBetweenGlobalAndLocalFrame2D(false, true, true, quat_xyz_shift,
-                                        local_delta_footstep,
-                                        &global_delta_footstep_);
-
-  // 2. Transform from the local com to global com
-  TransformBetweenGlobalAndLocalFrame2D(
-      false, false, true, quat_xyz_shift,
-      result.GetSolution(trajopt.y_end_of_last_mode_rt_init_stance_foot_var()) +
-          current_local_stance_foot_pos.head<2>(),
-      &global_y_end_of_last_mode_);
-
-  // Get global feet position (for both start and end of each mode)
-  // This is used to generate swing foot pos in the controller thread
-  MatrixXd local_feet_pos(2, param_.n_step + 1);
-  local_feet_pos.col(0) = current_local_stance_foot_pos.head<2>();
-  for (int i = 1; i < param_.n_step + 1; i++) {
-    local_feet_pos.col(i) =
-        local_feet_pos.col(i - 1) + local_delta_footstep.col(i - 1);
-  }
+  // Get global com and feet position
   MatrixXd global_feet_pos(2, param_.n_step + 1);
-  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
-                                        local_feet_pos, &global_feet_pos);
-  // Get global com position (for both start and end of each mode)
-  // This is used to generate *relative* swing foot pos in the controller thread
-  // (i.e. swing foot pos relative to the COM)
-  MatrixXd local_com_pos(2, param_.n_step + 1);
-  left_stance = start_with_left_stance;
-  for (int i = 0; i < param_.n_step + 1; i++) {
-    local_com_pos.col(i) =
-        result.GetSolution(trajopt.state_vars_by_mode(i, 0).head<2>());
-    if (!left_stance) local_com_pos.col(i)(1) *= -1;
-    local_com_pos.col(i) += local_feet_pos.col(i);
-    left_stance = !left_stance;
-  }
   MatrixXd global_com_pos(2, param_.n_step + 1);
-  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
-                                        local_com_pos, &global_com_pos);
-  if (single_eval_mode_) {
-    if (print_level_ > 1) {
-      cout << "local_com_pos.col(0) = " << local_com_pos.col(0).transpose()
-           << endl;
-      cout << "global_com_pos.col(0) = " << global_com_pos.col(0).transpose()
-           << endl;
-      cout << "global_feet_pos.col(0) = " << global_feet_pos.col(0).transpose()
-           << endl;
-    }
+  ExtractGlobalComAndFootstepPosition(
+      quat_xyz_shift, current_local_stance_foot_pos, start_with_left_stance,
+      trajopt, result, &global_feet_pos, &global_com_pos);
+  MatrixXd global_feet_pos_with_noise;
+  MatrixXd global_com_pos_with_noise;
+  if (is_RL_training_) {
+    global_feet_pos_with_noise = MatrixXd(2, param_.n_step + 1);
+    global_com_pos_with_noise = MatrixXd(2, param_.n_step + 1);
+    ExtractGlobalComAndFootstepPosition(
+        quat_xyz_shift, current_local_stance_foot_pos, start_with_left_stance,
+        trajopt, result_with_noise, &global_feet_pos_with_noise,
+        &global_com_pos_with_noise);
   }
-
-  // Unit Testing TransformBetweenGlobalAndLocalFrame3D
-  /*MatrixXd local_x0_FOM2 = global_x0_FOM_;
-  MatrixXd local_xf_FOM2 = global_xf_FOM_;
-  TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_x0_FOM_,
-                                   &local_x0_FOM2);
-  TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_xf_FOM_,
-                                   &local_xf_FOM2);
-  DRAKE_DEMAND((local_x0_FOM2 - local_x0_FOM).norm() < 1e-14);
-  DRAKE_DEMAND((local_xf_FOM2 - local_xf_FOM).norm() < 1e-14);*/
 
   // Benchmark: for n_step = 3, the packing time is about 60us and the message
   // size is about 4.5KB (use WriteToFile() to check).
   lightweight_saved_traj_ = HybridRomPlannerTrajectory(
       trajopt, result, global_feet_pos, global_com_pos, quat_xyz_shift,
       current_local_stance_foot_pos, prefix, "", true, current_time);
-  *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
+  if (is_RL_training_) {
+    lightweight_saved_traj_with_noise_ = HybridRomPlannerTrajectory(
+        trajopt, result_with_noise, global_feet_pos_with_noise,
+        global_com_pos_with_noise, quat_xyz_shift,
+        current_local_stance_foot_pos, prefix, "", true, current_time);
+  }
+
+  if (is_RL_training_) {
+    *traj_msg = lightweight_saved_traj_with_noise_.GenerateLcmObject();
+  } else {
+    *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
+  }
   //  PrintTrajMsg(traj_msg);
 
   // Store the previous message
@@ -1418,9 +1383,11 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   ///
   /// Save solutions for either logging for warm-starting
   ///
-
   // TODO: maybe don't save the trajectory for warmstart if the solver didn't
   //  find an optimal solution
+
+  TransformToGlobalFrameForWarmStartLater(
+      quat_xyz_shift, current_local_stance_foot_pos, trajopt, result);
 
   h_solutions_ = trajopt.GetTimeStepSolution(result);
   input_at_knots_ = trajopt.GetInputSamples(result);
@@ -1432,6 +1399,14 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                              param_.n_step_lipm + 1);
     local_u_lipm_ = Eigen::Map<MatrixXd>(
         result.GetSolution(trajopt.u_lipm_vars_).data(), 2, param_.n_step_lipm);
+
+    // Transform solutions into global frame for warm start later
+    global_x_lipm_ = local_x_lipm_;
+    global_u_lipm_ = local_u_lipm_;
+    TransformBetweenGlobalAndLocalFrame2D(false, false, false, quat_xyz_shift,
+                                          local_x_lipm_, &global_x_lipm_);
+    TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                          local_u_lipm_, &global_u_lipm_);
   } else {
     local_predicted_com_vel_ =
         result.GetSolution(trajopt.predicted_com_vel_var_);
@@ -1445,16 +1420,6 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   prev_global_fsm_idx_ = global_fsm_idx;
   prev_first_mode_knot_idx_ = first_mode_knot_idx;
   prev_mode_start_ = trajopt.mode_start();
-
-  // Transform some solutions into global frame
-  if (param_.n_step_lipm > 1) {
-    global_x_lipm_ = local_x_lipm_;
-    global_u_lipm_ = local_u_lipm_;
-    TransformBetweenGlobalAndLocalFrame2D(false, false, false, quat_xyz_shift,
-                                          local_x_lipm_, &global_x_lipm_);
-    TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
-                                          local_u_lipm_, &global_u_lipm_);
-  }
 
   auto break5 = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed_pack_lcm = break5 - break4;
@@ -1474,34 +1439,18 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
 
   if (log_data_and_check_solution_) {
-    // Rotate from local to global
-    MatrixXd global_regularization_footstep(2, param_.n_step);
-    MatrixXd local_regularization_footstep(2, param_.n_step);
-    for (int i = 0; i < param_.n_step; i++) {
-      local_regularization_footstep.middleCols<1>(i) =
-          reg_local_delta_footstep.at(i);
-    }
-    global_regularization_footstep = local_regularization_footstep;
-    TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
-                                          local_regularization_footstep,
-                                          &global_regularization_footstep);
-    //    cout << "global_regularization_footstep = \n"
-    //         << global_regularization_footstep << endl;
-    //    cout << "local_regularization_footstep = \n"
-    //         << local_regularization_footstep << endl;
-
     // Extract and save solution into files (for debugging)
-    SaveDataIntoFiles(
-        current_time, global_fsm_idx, x_init, init_phase, is_right_stance,
-        quat_xyz_shift, current_local_stance_foot_pos, final_position,
-        global_regularization_footstep, local_delta_footstep,
-        global_delta_footstep_, trajopt, result, param_.dir_data, prefix);
+    SaveDataIntoFiles(current_time, global_fsm_idx, x_init, init_phase,
+                      is_right_stance, quat_xyz_shift,
+                      current_local_stance_foot_pos, final_position,
+                      reg_local_delta_footstep, global_delta_footstep_, trajopt,
+                      result, param_.dir_data, prefix);
     if (is_RL_training_) {
       SaveStateAndActionIntoFilesForRLTraining(
           context, des_xy_vel_com_rt_init_stance_foot.at(0)(0),
           desired_com_height_, start_with_left_stance, init_phase,
-          lightweight_saved_traj_, trajopt, result, current_time, mpc_sol_noise,
-          param_.dir_data);
+          lightweight_saved_traj_with_noise_, trajopt, result_with_noise,
+          current_time, mpc_sol_noise, param_.dir_data);
       SaveGradientIntoFilesForRLTraining(trajopt, result, param_.dir_data);
       // Sanity check
       /*if (param_.get_RL_gradient_offline) {
@@ -1522,6 +1471,18 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
           param_.gains.lightweight_lcm_log, current_time);
       full_saved_traj.WriteToFile(param_.dir_data + file_name);
       cout << "Wrote to file: " << param_.dir_data + file_name << endl;
+
+      if (is_RL_training_) {
+        string file_name = prefix + "rom_trajectory_w_noise";
+        HybridRomPlannerTrajectory full_saved_traj(
+            trajopt, result_with_noise, global_feet_pos_with_noise,
+            global_com_pos_with_noise, quat_xyz_shift,
+            current_local_stance_foot_pos, file_name,
+            drake::solvers::to_string(result_with_noise.get_solution_result()),
+            param_.gains.lightweight_lcm_log, current_time);
+        full_saved_traj.WriteToFile(param_.dir_data + file_name);
+        cout << "Wrote to file: " << param_.dir_data + file_name << endl;
+      }
     }
 
     // Check the cost
@@ -1565,8 +1526,95 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     //    DRAKE_DEMAND(result.get_optimal_cost() < 1e-2);
   }
 
+  // Unit Testing TransformBetweenGlobalAndLocalFrame3D
+  if (single_eval_mode_) {
+    MatrixXd global_x_init = x_init;
+    MatrixXd x_init_2 = x_init;
+    TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, x_init,
+                                          &global_x_init);
+    TransformBetweenGlobalAndLocalFrame3D(true, quat_xyz_shift, global_x_init,
+                                          &x_init_2);
+    DRAKE_DEMAND((x_init_2 - x_init).norm() < 1e-14);
+  }
+
   ///
   counter_++;
+}
+
+MatrixXd CassiePlannerWithOnlyRom::ExtractMpcFootsteps(
+    const HybridRomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result) const {
+  MatrixXd local_delta_footstep(2, param_.n_step);
+  local_delta_footstep.row(0) = result.GetSolution(
+      trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars());
+  local_delta_footstep.row(1) = result.GetSolution(
+      trajopt.discrete_swing_foot_pos_rt_stance_foot_y_vars());
+  return local_delta_footstep;
+}
+
+void CassiePlannerWithOnlyRom::TransformToGlobalFrameForWarmStartLater(
+    const VectorXd& quat_xyz_shift,
+    const drake::VectorX<double>& current_local_stance_foot_pos,
+    const HybridRomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result) const {
+  MatrixXd local_delta_footstep = ExtractMpcFootsteps(trajopt, result);
+
+  // 1. Transform relative foot step from local to global
+  // Note that since it's relative, we only need to rotate the vector
+  TransformBetweenGlobalAndLocalFrame2D(false, true, true, quat_xyz_shift,
+                                        local_delta_footstep,
+                                        &global_delta_footstep_);
+
+  // 2. Transform from the local com to global com
+  TransformBetweenGlobalAndLocalFrame2D(
+      false, false, true, quat_xyz_shift,
+      result.GetSolution(trajopt.y_end_of_last_mode_rt_init_stance_foot_var()) +
+          current_local_stance_foot_pos.head<2>(),
+      &global_y_end_of_last_mode_);
+}
+
+void CassiePlannerWithOnlyRom::ExtractGlobalComAndFootstepPosition(
+    const VectorXd& quat_xyz_shift,
+    const drake::VectorX<double>& current_local_stance_foot_pos,
+    bool start_with_left_stance, const HybridRomTrajOptCassie& trajopt,
+    const MathematicalProgramResult& result, MatrixXd* global_feet_pos,
+    MatrixXd* global_com_pos) const {
+  MatrixXd local_delta_footstep = ExtractMpcFootsteps(trajopt, result);
+
+  // Get global feet position (for both start and end of each mode)
+  // This is used to generate swing foot pos in the controller thread
+  MatrixXd local_feet_pos(2, param_.n_step + 1);
+  local_feet_pos.col(0) = current_local_stance_foot_pos.head<2>();
+  for (int i = 1; i < param_.n_step + 1; i++) {
+    local_feet_pos.col(i) =
+        local_feet_pos.col(i - 1) + local_delta_footstep.col(i - 1);
+  }
+  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                        local_feet_pos, global_feet_pos);
+  // Get global com position (for both start and end of each mode)
+  // This is used to generate *relative* swing foot pos in the controller thread
+  // (i.e. swing foot pos relative to the COM)
+  MatrixXd local_com_pos(2, param_.n_step + 1);
+  bool left_stance = start_with_left_stance;
+  for (int i = 0; i < param_.n_step + 1; i++) {
+    local_com_pos.col(i) =
+        result.GetSolution(trajopt.state_vars_by_mode(i, 0).head<2>());
+    if (!left_stance) local_com_pos.col(i)(1) *= -1;
+    local_com_pos.col(i) += local_feet_pos.col(i);
+    left_stance = !left_stance;
+  }
+  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                        local_com_pos, global_com_pos);
+  if (single_eval_mode_) {
+    if (print_level_ > 1) {
+      cout << "local_com_pos.col(0) = " << local_com_pos.col(0).transpose()
+           << endl;
+      cout << "global_com_pos.col(0) = " << global_com_pos->col(0).transpose()
+           << endl;
+      cout << "global_feet_pos.col(0) = " << global_feet_pos->col(0).transpose()
+           << endl;
+    }
+  }
 }
 
 int CassiePlannerWithOnlyRom::DetermineNumberOfKnotPoints(
@@ -1843,14 +1891,30 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
     double init_phase, bool is_right_stance, const VectorXd& quat_xyz_shift,
     const VectorXd& current_local_stance_foot_pos,
     const VectorXd& final_position,
-    const MatrixXd& global_regularization_footstep,
-    const MatrixXd& local_delta_footstep, const MatrixXd& global_delta_footstep,
+    const vector<Vector2d>& reg_local_delta_footstep,
+    const MatrixXd& global_delta_footstep,
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, const string& dir_data,
     const string& prefix) const {
   string dir_pref = dir_data + prefix;
 
   /// Rotate some local vectors to global
+  // Rotate from local to global
+  /*MatrixXd global_regularization_footstep(2, param_.n_step);
+  MatrixXd local_regularization_footstep(2, param_.n_step);
+  for (int i = 0; i < param_.n_step; i++) {
+    local_regularization_footstep.middleCols<1>(i) =
+        reg_local_delta_footstep.at(i);
+  }
+  global_regularization_footstep = local_regularization_footstep;
+  TransformBetweenGlobalAndLocalFrame2D(false, false, true, quat_xyz_shift,
+                                        local_regularization_footstep,
+                                        &global_regularization_footstep);*/
+  //    cout << "global_regularization_footstep = \n"
+  //         << global_regularization_footstep << endl;
+  //    cout << "local_regularization_footstep = \n"
+  //         << local_regularization_footstep << endl;
+
   MatrixXd global_x_init(nx_, 1);
   global_x_init = x_init;
   TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, x_init,
@@ -1870,10 +1934,10 @@ void CassiePlannerWithOnlyRom::SaveDataIntoFiles(
   }
   writeCSV(dir_pref + "input_at_knots.csv", trajopt.GetInputSamples(result));*/
 
-  writeCSV(dir_pref + "local_delta_footstep.csv", local_delta_footstep);
+  /*writeCSV(dir_pref + "local_delta_footstep.csv", local_delta_footstep);
   writeCSV(dir_pref + "global_delta_footstep.csv", global_delta_footstep);
   writeCSV(dir_pref + "global_regularization_footstep.csv",
-           global_regularization_footstep);
+           global_regularization_footstep);*/
 
   /*writeCSV(dir_pref + "global_x_lipm.csv", global_x_lipm_);
   writeCSV(dir_pref + "global_u_lipm.csv", global_u_lipm_);
@@ -2100,31 +2164,26 @@ void CassiePlannerWithOnlyRom::ExtractAndReorderFromMpcSolToRlAction(
   int idx_start_xp = trajopt_num_knots * n_z_ + trajopt_num_knots - 1;
   int idx_start_footsteps = idx_start_xp + trajopt_num_modes * n_z_;
   // ROM state part
-  if (only_use_rom_state_in_near_future_for_RL_) {
-    const std::vector<int>& mode_start = trajopt.mode_start();
-    const std::vector<int>& mode_lengths = trajopt.mode_lengths();
-    int i = 0;
-    for (int mode = 0; mode < mode_lengths.size(); mode++) {
-      for (int knot_idx = 0; knot_idx < mode_lengths.at(mode); knot_idx++) {
-        if (knot_idx == 0 && mode > 0) {
-          matrix_in_a_order.middleRows(i * n_z_, n_z_) =
-              matrix_in_w_order.middleRows(idx_start_xp + (mode - 1) * n_z_,
-                                           n_z_);
-        } else {
-          matrix_in_a_order.middleRows(i * n_z_, n_z_) =
-              matrix_in_w_order.middleRows((mode_start[mode] + knot_idx) * n_z_,
-                                           n_z_);
-        }
-        i++;
-        if (i == n_knots_used_for_RL_action_) {
-          mode = mode_lengths.size();  // To break the outer for loop
-          break;                       // To break the inner for loop
-        }
+  const std::vector<int>& mode_start = trajopt.mode_start();
+  const std::vector<int>& mode_lengths = trajopt.mode_lengths();
+  int i = 0;
+  for (int mode = 0; mode < mode_lengths.size(); mode++) {
+    for (int knot_idx = 0; knot_idx < mode_lengths.at(mode); knot_idx++) {
+      if (knot_idx == 0 && mode > 0) {
+        matrix_in_a_order.middleRows(i * n_z_, n_z_) =
+            matrix_in_w_order.middleRows(idx_start_xp + (mode - 1) * n_z_,
+                                         n_z_);
+      } else {
+        matrix_in_a_order.middleRows(i * n_z_, n_z_) =
+            matrix_in_w_order.middleRows((mode_start[mode] + knot_idx) * n_z_,
+                                         n_z_);
+      }
+      i++;
+      if (i == n_knots_used_for_RL_action_) {
+        mode = mode_lengths.size();  // To break the outer for loop
+        break;                       // To break the inner for loop
       }
     }
-  } else {
-    // Not implemented for this case yet. Might not use it anyway.
-    DRAKE_UNREACHABLE();
   }
   // ROM footstep part
   matrix_in_a_order.middleRows<2>(a_dim_rom_state_part_) =

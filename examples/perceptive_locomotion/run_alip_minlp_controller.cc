@@ -22,12 +22,14 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
+#include "examples/perceptive_locomotion/systems/stance_foot_ros_sender.h"
 
 #include "geometry/convex_foothold_set.h"
 
 #ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_receiver.h"
 #include "systems/ros/ros_subscriber_system.h"
+#include "systems/ros/ros_publisher_system.h"
 #include "ros/callback_queue.h"
 
 void SigintHandler(int sig) {
@@ -97,6 +99,9 @@ DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
 
 DEFINE_string(foothold_topic, "", "ros topic containing the footholds");
 
+DEFINE_string(stance_foot_topic, "/alip_mpc/stance_foot",
+              "ros topic with frame id of stance foot");
+
 DEFINE_bool(spring_model, true, "");
 
 DEFINE_bool(use_perception, false, "get footholds from percption system");
@@ -121,7 +126,6 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
-//  ros::CallbackQueue q;
   ros::AsyncSpinner spinner(2);
 #else
   if (FLAGS_use_perception) {
@@ -269,11 +273,27 @@ int DoMain(int argc, char* argv[]) {
 
     if (FLAGS_use_perception) {
 #ifdef DAIR_ROS_ON
+      auto stance_publisher = builder.AddSystem(
+          systems::RosPublisherSystem<std_msgs::String>::Make(
+              FLAGS_stance_foot_topic, &node_handle));
+
+      std::unordered_map<int, std::string> stance_frames;
+      stance_frames[left_stance_state] = "toe_left";
+      stance_frames[right_stance_state] = "toe_right";
+      stance_frames[post_left_double_support_state] = "toe_left";
+      stance_frames[post_right_double_support_state] = "toe_right";
+
+      auto stance_sender =
+          builder.AddSystem<perceptive_locomotion::StanceFootRosSender>(stance_frames);
+
+      builder.Connect(foot_placement_controller->get_output_port_fsm(),
+                      stance_sender->get_input_port());
+      builder.Connect(*stance_sender, *stance_publisher);
+
       auto plane_subscriber = builder.AddSystem(
           systems::RosSubscriberSystem<
               convex_plane_decomposition_msgs::PlanarTerrain>::Make(
                   FLAGS_foothold_topic, &node_handle));
-      std::cout << "subscribing to " << FLAGS_foothold_topic << std::endl;
 
       auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);

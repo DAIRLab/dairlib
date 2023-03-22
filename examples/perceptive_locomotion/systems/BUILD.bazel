@@ -7,9 +7,19 @@ cc_library(
     srcs = ["alip_input_receiver.cc"],
     hdrs = ["alip_input_receiver.h"],
     deps = [
-        "//multibody:utils",
-        "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "stance_foot_ros_sender",
+    srcs = ["stance_foot_ros_sender.cc"],
+    hdrs = ["stance_foot_ros_sender.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@ros",
     ],
 )

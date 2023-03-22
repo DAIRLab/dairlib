@@ -34,6 +34,7 @@ cc_binary(
             "//tools/workspace/ros:dair_ros_on": [
                 "//geometry:convex_foothold_receiver",
                 "//systems/ros:dairlib_ros",
+                "//examples/perceptive_locomotion/systems:stance_foot_ros_sender",
             ],
             "//tools/workspace/ros:dair_ros_off": [],
         },

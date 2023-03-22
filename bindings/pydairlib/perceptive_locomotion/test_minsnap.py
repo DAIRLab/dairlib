@@ -46,25 +46,16 @@ def minsnap_around_box(p0, p1, t, h):
     breaks = np.array([0, 0.5, 1.0])
     wp = np.zeros((breaks.size, 3))
 
-    tadj = 0.3
+    p01 = p1 - p0
+    yaw = np.arctan2(p01[1], p01[0])
+    nxy = np.array([np.cos(yaw - np.pi/2), np.sin(yaw - np.pi/2), 0])
+    n = np.cross(nxy, p01)
+    n /= np.linalg.norm(n)
+    mid = 0.5 * (p0 + p1) + n * h
 
     wp[0] = p0
-    wp[-1] = p1
-
-    hdiff = p1[2] - p0[2]
-
-    if hdiff > (h / 4):
-        # Middle waypoint for step up
-        wp[1] = p0
-        wp[1, 2] = p1[2] + h/2
-        breaks[1] = tadj
-    elif -hdiff > (h / 4):
-        wp[1] = p1
-        wp[1, 2] = p0[2] + h/2
-        breaks[1] = 1.0 - tadj
-    else:
-        wp[1] = 0.5 * (p0 + p1)
-        wp[1, 2] += h
+    wp[1] = mid
+    wp[2] = p1
 
     breaks *= t
     s = time.time()
@@ -79,7 +70,7 @@ def minsnap_around_box(p0, p1, t, h):
 
 
 def test():
-    minsnap_around_box(np.zeros((3,)), np.array([-0.1, -0.05, -0.1]), 0.3, 0.10)
+    minsnap_around_box(np.zeros((3,)), np.array([-0.1, -0.05, 0.1]), 0.3, 0.1)
 
 
 if __name__ == "__main__":

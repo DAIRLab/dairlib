@@ -2245,7 +2245,8 @@ class SnapOpt
   }
 };
 
-drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
+inline drake::trajectories::PiecewisePolynomial<double>
+MakeMinSnapTrajFromWaypoints(
     const Eigen::Matrix3Xd& waypoints,
     const std::vector<double>& breaks,
     double des_final_vertical_velocity=0) {
@@ -2290,7 +2291,7 @@ drake::trajectories::PiecewisePolynomial<double> MakeMinSnapTrajFromWaypoints(
     for (int i = 0; i < 3; i++) {
       polymat(i) = drake::Polynomiald(coeffs.row(i).transpose());
     }
-    polys.push_back(polymat);
+    polys.emplace_back(polymat);
   }
   return {polys, breaks};
 }

@@ -1326,7 +1326,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       double rand = (*distribution_)(*generator_);
       mpc_sol_noise(i) = rand;
     }
-    mpc_sol_noise.tail<1>() << 0;
+    // We don't randomize the time variable
+    int idx_start =
+        trajopt.decision_variable_index().at(trajopt.timestep(0)(0).get_id());
+    for (int i = idx_start; i < idx_start + trajopt.num_knots() - 1; i++) {
+      mpc_sol_noise(i) = 0;
+    }
 
     result_with_noise = result;
     result_with_noise.set_x_val(result.GetSolution() + mpc_sol_noise);
@@ -2160,8 +2165,8 @@ void CassiePlannerWithOnlyRom::ExtractAndReorderFromMpcSolToRlAction(
   int trajopt_num_knots = trajopt.num_knots();
   int trajopt_num_modes = trajopt.num_modes();
   // int idx_start_x = 0;
-  // int idx_start_h = trajopt_num_knots * n_z_;
-  int idx_start_xp = trajopt_num_knots * n_z_ + trajopt_num_knots - 1;
+  int idx_start_h = trajopt_num_knots * n_z_;
+  int idx_start_xp = idx_start_h + trajopt_num_knots - 1;
   int idx_start_footsteps = idx_start_xp + trajopt_num_modes * n_z_;
   // ROM state part
   const std::vector<int>& mode_start = trajopt.mode_start();
@@ -2186,12 +2191,26 @@ void CassiePlannerWithOnlyRom::ExtractAndReorderFromMpcSolToRlAction(
     }
   }
   // ROM footstep part
+  // WARNING: we only extract two footsteps
   matrix_in_a_order.middleRows<2>(a_dim_rom_state_part_) =
       matrix_in_w_order.middleRows<2>(idx_start_footsteps);
   matrix_in_a_order.middleRows<2>(a_dim_rom_state_part_ + 2) =
       matrix_in_w_order.middleRows<2>(idx_start_footsteps + 2);
   // Last row (zeros) is the gradient of delta_t
   matrix_in_a_order.bottomRows<1>().setZero();
+
+  // Some unit testing
+  if (single_eval_mode_) {
+    // Testing
+    const auto& var_idx_map = trajopt.decision_variable_index();
+    DRAKE_DEMAND(var_idx_map.at(trajopt.timestep(0)(0).get_id()) ==
+                 idx_start_h);
+    DRAKE_DEMAND(var_idx_map.at(trajopt.z_post_impact_vars()(0).get_id()) ==
+                 idx_start_xp);
+    DRAKE_DEMAND(var_idx_map.at(
+                     trajopt.discrete_swing_foot_pos_rt_stance_foot_x_vars()(0)
+                         .get_id()) == idx_start_footsteps);
+  }
 }
 
 MatrixXd CassiePlannerWithOnlyRom::ExtractActiveConstraintAndDoLinearSolve(

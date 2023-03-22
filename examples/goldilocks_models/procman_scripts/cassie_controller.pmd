@@ -203,6 +203,10 @@ group "1.rom-space-controller-with-init-traj" {
         exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true  --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=true --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=4 --time_limit=0.1 --switch_to_snopt_after_first_loop=false";
         host = "localhost";
     }
+    cmd "2.2.rom-planner (w init) (with dispatcher) (test RL rollout)" {
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true  --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=true --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=4 --time_limit=0.1 --switch_to_snopt_after_first_loop=false --is_RL_training=true --pelvis_height=0.95 --path_model_params=/home/yuming/workspace/dairlib_data/goldilocks_models/test/1_theta_yddot.csv --path_var=/home/yuming/workspace/dairlib_data/goldilocks_models/test/1_var.csv";
+        host = "localhost";
+    }
 }
 
 group "4.mujoco-simulator" {
@@ -261,6 +265,31 @@ script "run-rom-walking-mujoco" {
     start cmd "2.dispatcher-robot-out (lcm, floating-base)";
     start cmd "2.1.rom-walking-controller (w init) (with dispatcher)";
     start cmd "2.2.rom-planner (w init) (with dispatcher)";
+    start cmd "1.joystick";
+    wait ms 500;
+    start cmd "0. cassie-mujoco";
+}
+
+script "run-rom-walking-mujoco-test-RL" {
+    stop group "0.operator";
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "4.mujoco-simulator";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.2.rom-planner";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    wait ms 500;
+    stop cmd "3.2.rom-planner";
+    stop cmd "2.1.rom-walking-controller";
+    stop cmd "0.simulator";
+    stop group "0.operator";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "2.1.rom-walking-controller (w init) (with dispatcher)";
+    start cmd "2.2.rom-planner (w init) (with dispatcher) (test RL rollout)";
     start cmd "1.joystick";
     wait ms 500;
     start cmd "0. cassie-mujoco";

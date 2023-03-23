@@ -513,8 +513,8 @@
 					<drake:proximity_properties>
       			<drake:rigid_hydroelastic/>
 						<drake:mesh_resolution_hint value="100"/>
-						<drake:mu_dynamic value="1.0"/>
-						<drake:mu_static value="1.0"/>
+						<drake:mu_dynamic value="0.2"/>
+						<drake:mu_static value="0.2"/>
 					</drake:proximity_properties>
 				</collision>
         <visual>

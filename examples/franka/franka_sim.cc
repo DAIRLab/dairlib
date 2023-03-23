@@ -160,7 +160,7 @@ int DoMain(int argc, char* argv[]) {
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
 
   q[plant.num_positions() - 7] = 1;
-  q[plant.num_positions() - 1] = 1.25;
+  q[plant.num_positions() - 1] = 1.2;
   q[plant.num_positions() - 3] = 0.68;
 
   plant.SetPositions(&plant_context, q);

@@ -3,16 +3,16 @@
 <model name="plate">
   <link name="plate">
     <inertial>
-      <mass>10</mass>
+      <mass>2</mass>
       <!-- Inertia values were calculated to be consistent with the mass and
            geometry size, assuming a uniform density. -->
       <inertia>
-        <ixx>1</ixx>
+        <ixx>0.015</ixx>
         <ixy>0</ixy>
         <ixz>0</ixz>
-        <iyy>1</iyy>
+        <iyy>0.015</iyy>
         <iyz>0</iyz>
-        <izz>0.1</izz>
+        <izz>0.03</izz>
       </inertia>
     </inertial>
     <visual name="plate">

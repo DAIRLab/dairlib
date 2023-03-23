@@ -77,8 +77,8 @@ int do_main(int argc, char* argv[]) {
           dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
           "table1");
   drake::multibody::ModelInstanceIndex tray_index =
-      parser.AddModelFromFile(drake::FindResourceOrThrow(
-          "drake/examples/kuka_iiwa_arm/models/objects/open_top_box.urdf"));
+      parser.AddModelFromFile(FindResourceOrThrow(
+          "examples/franka/urdf/plate.sdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);

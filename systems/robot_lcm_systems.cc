@@ -30,14 +30,11 @@ using systems::OutputVector;
 
 RobotOutputReceiver::RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant) {
-
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
-  position_index_map_ =
-      multibody::MakeNameToPositionsMap(plant);
-  velocity_index_map_ =
-      multibody::MakeNameToVelocitiesMap(plant);
+  position_index_map_ = multibody::MakeNameToPositionsMap(plant);
+  velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
   model_instance_ = drake::multibody::ModelInstanceIndex(-1);
 
   positions_start_idx_ = 0;
@@ -47,8 +44,7 @@ RobotOutputReceiver::RobotOutputReceiver(
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareVectorOutputPort(
       "x, u, t",
-      OutputVector<double>(plant.num_positions(),
-                           plant.num_velocities(),
+      OutputVector<double>(plant.num_positions(), plant.num_velocities(),
                            plant.num_actuators()),
       &RobotOutputReceiver::CopyOutput);
 }
@@ -56,7 +52,6 @@ RobotOutputReceiver::RobotOutputReceiver(
 RobotOutputReceiver::RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance) {
-
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
@@ -66,8 +61,12 @@ RobotOutputReceiver::RobotOutputReceiver(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  positions_start_idx_ = plant.get_joint(plant.GetJointIndices(model_instance).front()).position_start();
-  velocities_start_idx_ = plant.get_joint(plant.GetJointIndices(model_instance).front()).velocity_start();
+  positions_start_idx_ =
+      plant.get_joint(plant.GetJointIndices(model_instance).front())
+          .position_start();
+  velocities_start_idx_ =
+      plant.get_joint(plant.GetJointIndices(model_instance).front())
+          .velocity_start();
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
@@ -138,23 +137,63 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   state_msg.velocity.resize(num_positions_);
 
   for (int i = 0; i < num_positions_; i++) {
-    state_msg.position_names.at(i) = ordered_position_names.at(i);
-    state_msg.position.at(i) = 0;
+    state_msg.position_names[i] = ordered_position_names[i];
+    state_msg.position[i] = 0;
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ >= 0 && plant.HasUniqueFreeBaseBody(model_instance_)) {
-    state_msg.position.at(0) = 1;
+  for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
+    const auto& body = plant.get_body(body_idx);
+    if (body.has_quaternion_dofs()) {
+      state_msg.position[body.floating_positions_start()] = 1;
+    }
   }
 
   for (int i = 0; i < num_velocities_; i++) {
-    state_msg.velocity.at(i) = 0;
-    state_msg.velocity_names.at(i) = ordered_velocity_names[i];
+    state_msg.velocity[i] = 0;
+    state_msg.velocity_names[i] = ordered_velocity_names[i];
   }
 }
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
+RobotOutputSender::RobotOutputSender(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const bool publish_efforts, const bool publish_imu)
+    : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
+  num_positions_ = plant.num_positions();
+  num_velocities_ = plant.num_velocities();
+  num_efforts_ = plant.num_actuators();
+
+  position_index_map_ = multibody::MakeNameToPositionsMap(plant);
+  velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
+  effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
+
+  ordered_position_names_ =
+      multibody::ExtractOrderedNamesFromMap(position_index_map_);
+  ordered_velocity_names_ =
+      multibody::ExtractOrderedNamesFromMap(velocity_index_map_);
+  ordered_effort_names_ =
+      multibody::ExtractOrderedNamesFromMap(effort_index_map_);
+
+  state_input_port_ =
+      this->DeclareVectorInputPort(
+              "x", BasicVector<double>(num_positions_ + num_velocities_))
+          .get_index();
+  if (publish_efforts_) {
+    effort_input_port_ =
+        this->DeclareVectorInputPort("u", BasicVector<double>(num_efforts_))
+            .get_index();
+  }
+  if (publish_imu_) {
+    imu_input_port_ =
+        this->DeclareVectorInputPort("imu_acceleration", BasicVector<double>(3))
+            .get_index();
+  }
+
+  this->DeclareAbstractOutputPort("lcmt_robot_output",
+                                  &RobotOutputSender::Output);
+}
 
 RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,

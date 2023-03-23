@@ -62,7 +62,11 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   explicit RobotOutputSender(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::multibody::ModelInstanceIndex model_instance_index =
-          drake::multibody::default_model_instance(),
+      drake::multibody::default_model_instance(),
+      const bool publish_efforts = false, const bool publish_imu = false);
+
+  explicit RobotOutputSender(
+      const drake::multibody::MultibodyPlant<double>& plant,
       const bool publish_efforts = false, const bool publish_imu = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {

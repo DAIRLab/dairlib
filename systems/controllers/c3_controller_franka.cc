@@ -501,7 +501,19 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
 //  std::cout << "ADMM_X" << std::endl;
+//  std::cout << state_next.tail(9) << std::endl;
+
+//  std::cout << "ADMM_X" << std::endl;
 //  std::cout << state_next(7) << std::endl;
+
+//std::cout << "FORCE" << std::endl;
+//std::cout << force << std::endl;
+
+//if(force(2)>0) {
+//  std::cout << "force_effect" << std::endl;
+//  VectorXd test_vector = system2_.D_[0] * force / scaling2;
+//  std::cout << test_vector.tail(3) << std::endl;
+//}
 //  std::cout << "ADMM_Y" << std::endl;
 //  std::cout << state_next(8) << std::endl;
 

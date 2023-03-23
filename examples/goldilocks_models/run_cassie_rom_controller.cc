@@ -166,6 +166,10 @@ DEFINE_double(drift_rate, 0.0, "Drift rate for floating-base state");
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
 DEFINE_string(path_wait_identifier, "", "");
 
+// RL training
+DEFINE_bool(is_RL_training, false, "");
+DEFINE_string(path_model_params, "", "file path of the rom params");
+
 // Testing
 DEFINE_bool(
     track_mid_contact_pt, false,
@@ -283,6 +287,11 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(!FLAGS_get_swing_hip_angle_from_planner);
   }
 
+  if (FLAGS_is_RL_training) {
+    DRAKE_DEMAND(FLAGS_iter <= 1);  // We don't use iter
+    DRAKE_DEMAND(gains.vel_command_offset_x == 0);
+  }
+
   if (FLAGS_track_mid_contact_pt) {
     gains.swing_foot_target_offset_x = 0;
   }
@@ -332,9 +341,21 @@ int DoMain(int argc, char* argv[]) {
 
   // Reduced order model
   int model_iter = FLAGS_iter > 0 ? FLAGS_iter : gains.model_iter;
+  if (FLAGS_is_RL_training) {
+    // We don't use model_iter
+    model_iter = 1;
+  }
   std::unique_ptr<ReducedOrderModel> rom =
       CreateRom(gains.rom_option, 1 /*robot_option*/, plant_wo_springs, true);
+  // Read model
   ReadModelParameters(rom.get(), gains.dir_model, model_iter);
+  if (FLAGS_is_RL_training) {
+    // Update parameter
+    cout << "path_model_params = " << FLAGS_path_model_params << endl;
+    MatrixXd theta_yddot = readCSV(FLAGS_path_model_params);
+    DRAKE_DEMAND(theta_yddot.size() > 0);
+    rom->SetThetaYddot(theta_yddot.col(0));
+  }
 
   // Mirrored reduced order model
   int robot_option = 1;
@@ -479,7 +500,7 @@ int DoMain(int argc, char* argv[]) {
     // hack: help rom_iter=300 walk in place at start
     if (!FLAGS_close_sim_gap) {
       high_level_command->vel_command_offset_x_ =
-          gains.vel_command_offset_x * (gains.model_iter / 300);
+          gains.vel_command_offset_x * ((model_iter - 1) / 300);
     }
   } else {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
@@ -793,7 +814,7 @@ int DoMain(int argc, char* argv[]) {
       // Heuristics -- penalize front contact force for optimal ROM
       if (osc_gains.w_rom_contact_force_reg > 0 && model_iter > 1) {
         osc->AddContactForceRegularizationCostForOptimalROM(
-            osc_gains.w_rom_contact_force_reg * model_iter / 300);
+            osc_gains.w_rom_contact_force_reg * (model_iter - 1) / 300);
       }
 
       // Testing to use toe effort tracking

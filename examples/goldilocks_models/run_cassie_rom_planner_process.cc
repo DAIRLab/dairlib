@@ -210,6 +210,9 @@ int DoMain(int argc, char* argv[]) {
     // haven't implemented for the mixed MPC
     DRAKE_DEMAND(gains.use_hybrid_rom_mpc);
 
+    // We only use iter for MPC initial guess and regularization term
+    DRAKE_DEMAND(FLAGS_iter <= 1);
+
     // We can turn off the drake demands here if we are testing
     DRAKE_DEMAND(FLAGS_path_model_params.size() > 0);
     DRAKE_DEMAND(FLAGS_path_var.size() > 0);

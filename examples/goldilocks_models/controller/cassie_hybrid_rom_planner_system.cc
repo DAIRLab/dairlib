@@ -140,12 +140,12 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   // Reduced order model
   PrintEssentialStatus("model directory = " + param_.dir_model);
   rom_ = CreateRom(param_.rom_option, ROBOT, plant_control, false);
-  ReadModelParameters(rom_.get(), param_.dir_model, param_.iter);
-  // This leafsystem hasn't taken care of active ROM case (e.g. no good warm
-  // starting)
-  DRAKE_DEMAND(rom_->n_tau() == 0);
-  // Set to a different model parameters if the file is given
-  if (param_.is_RL_training) {
+  if (!param_.is_RL_training) {
+    ReadModelParameters(rom_.get(), param_.dir_model, param_.iter);
+
+  } else {
+    ReadModelParameters(rom_.get(), param_.dir_model, 1);
+
     cout << "param_.path_model_params = " << param_.path_model_params << endl;
     MatrixXd theta_yddot = readCSV(param_.path_model_params);
     MatrixXd var = readCSV(param_.path_var);
@@ -161,6 +161,9 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     distribution_ = std::make_unique<std::normal_distribution<double>>(
         0, RL_policy_output_variance_);
   }
+  // This leafsystem hasn't taken care of active ROM case (e.g. no good warm
+  // starting)
+  DRAKE_DEMAND(rom_->n_tau() == 0);
 
   // Create mirror maps
   state_mirror_ = StateMirror(MirrorPosIndexMap(plant_control, ROBOT),

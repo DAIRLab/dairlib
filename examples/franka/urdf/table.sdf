@@ -163,53 +163,54 @@
         </material>
       </visual>
       <visual name="front_left_support">
-				<pose>0.16 0.16 0.9525 0 0 0</pose>
-				<geometry>
-					<box>
-						<size>0.05 0.05 0.381</size>
-					</box>
-				</geometry>
-				<material>
-					<ambient>0.3 0.3 0.3 1</ambient>
-					<diffuse>0.7 0.7 0.7 1</diffuse>
-					<specular>0.01 0.01 0.01 1</specular>
-					<emissive>0 0 0 1</emissive>
-				</material>
-			</visual>
+          <pose>0.04 0.12 0.9525 0 0 0</pose>
+          <geometry>
+              <box>
+                  <size>0.05 0.05 0.381</size>
+              </box>
+          </geometry>
+          <material>
+              <ambient>0.3 0.3 0.3 1</ambient>
+              <diffuse>0.7 0.7 0.7 1</diffuse>
+              <specular>0.01 0.01 0.01 1</specular>
+              <emissive>0 0 0 1</emissive>
+          </material>
+      </visual>
       <visual name="front_right_support">
-				<pose>0.16 -0.16 0.9525 0 0 0</pose>
-				<geometry>
-					<box>
-						<size>0.05 0.05 0.381</size>
-					</box>
-				</geometry>
-				<material>
-					<ambient>0.3 0.3 0.3 1</ambient>
-					<diffuse>0.7 0.7 0.7 1</diffuse>
-					<specular>0.01 0.01 0.01 1</specular>
-					<emissive>0 0 0 1</emissive>
-				</material>
-			</visual>
+          <pose>0.04 -0.12 0.9525 0 0 0</pose>
+          <geometry>
+              <box>
+                  <size>0.05 0.05 0.381</size>
+              </box>
+          </geometry>
+          <material>
+              <ambient>0.3 0.3 0.3 1</ambient>
+              <diffuse>0.7 0.7 0.7 1</diffuse>
+              <specular>0.01 0.01 0.01 1</specular>
+              <emissive>0 0 0 1</emissive>
+          </material>
+      </visual>
       <visual name="back_left_support">
-				<pose>-0.16 0.16 0.9525 0 0 0</pose>
-				<geometry>
-					<box>
-						<size>0.05 0.05 0.381</size>
-					</box>
-				</geometry>
-				<material>
-					<ambient>0.3 0.3 0.3 1</ambient>
-					<diffuse>0.7 0.7 0.7 1</diffuse>
-					<specular>0.01 0.01 0.01 1</specular>
-					<emissive>0 0 0 1</emissive>
-				</material>
-			</visual>
-			<collision name="front_left_support">
+        <pose>-0.20 0.12 0.9525 0 0 0</pose>
+        <geometry>
+            <box>
+                <size>0.05 0.05 0.381</size>
+            </box>
+        </geometry>
+        <material>
+            <ambient>0.3 0.3 0.3 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+            <emissive>0 0 0 1</emissive>
+        </material>
+      </visual>
+      <collision name="front_left_support">
         <geometry>
           <sphere>
             <radius>0.0</radius>
-          </sphere>        </geometry>
-        <pose>0.16 0.16 1.143 0 0 0</pose>
+          </sphere>
+        </geometry>
+        <pose>0.04 0.12 0.9525 0 0 0</pose>
       </collision>
       <collision name="front_right_support">
         <geometry>
@@ -217,7 +218,7 @@
             <radius>0.0</radius>
           </sphere>
         </geometry>
-        <pose> -0.16 0.16 1.143 0 0 0</pose>
+        <pose>0.04 -0.12 0.9525 0 0 0</pose>
       </collision>
       <collision name="back_left_support">
         <geometry>
@@ -225,7 +226,7 @@
             <radius>0.0</radius>
           </sphere>
         </geometry>
-        <pose> 0.16 -0.16 1.143 0 0 0</pose>
+        <pose>-0.20 0.12 0.9525 0 0 0</pose>
       </collision>
       <collision name="surface">
         <laser_retro>0</laser_retro>

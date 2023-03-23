@@ -158,12 +158,10 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
 }
 
 /// Get the ordered names from a NameTo___Map
-vector<string> ExtractOrderedNamesFromMap(const map<string, int>& map) {
-//  vector<string> names(map.size());
-  vector<string> names;
+vector<string> ExtractOrderedNamesFromMap(const map<string, int>& map, int index_start) {
+  vector<string> names(map.size());
   for (const auto& entry : map) {
-//    std::cout << "index: " << entry.second << std::endl;
-    names.push_back(entry.first);
+    names[entry.second - index_start] = entry.first;
   }
   return names;
 }

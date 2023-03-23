@@ -123,9 +123,11 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   state_msg.utime = context.get_time() * 1e6;
 
   std::vector<std::string> ordered_position_names =
-      multibody::ExtractOrderedNamesFromMap(position_index_map_);
+      multibody::ExtractOrderedNamesFromMap(position_index_map_,
+                                            positions_start_idx_);
   std::vector<std::string> ordered_velocity_names =
-      multibody::ExtractOrderedNamesFromMap(velocity_index_map_);
+      multibody::ExtractOrderedNamesFromMap(velocity_index_map_,
+                                            velocities_start_idx_);
   std::vector<std::string> ordered_effort_names =
       multibody::ExtractOrderedNamesFromMap(effort_index_map_);
 
@@ -142,10 +144,17 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
-    const auto& body = plant.get_body(body_idx);
-    if (body.has_quaternion_dofs()) {
-      state_msg.position[body.floating_positions_start()] = 1;
+  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+    if (plant.HasUniqueFreeBaseBody(model_instance_)) {
+      state_msg.position.at(0) = 1;
+    }
+  } else {
+    for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
+      const auto& body = plant.get_body(body_idx);
+      if (body.has_quaternion_dofs()) {
+        state_msg.position.at(body.floating_positions_start()) = 1;
+      }
+      std::cout << "Here: " << std::endl;
     }
   }
 
@@ -168,6 +177,10 @@ RobotOutputSender::RobotOutputSender(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
+
+  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
+  positions_start_idx_ = 0;
+  velocities_start_idx_ = 0;
 
   ordered_position_names_ =
       multibody::ExtractOrderedNamesFromMap(position_index_map_);
@@ -199,7 +212,7 @@ RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance,
     const bool publish_efforts, const bool publish_imu)
-    : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
+    : model_instance_(model_instance), publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
   num_efforts_ = plant.num_actuators();
@@ -210,10 +223,17 @@ RobotOutputSender::RobotOutputSender(
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
 
+  positions_start_idx_ =
+      plant.get_joint(plant.GetJointIndices(model_instance).front())
+          .position_start();
+  velocities_start_idx_ =
+      plant.get_joint(plant.GetJointIndices(model_instance).front())
+          .velocity_start();
+
   ordered_position_names_ =
-      multibody::ExtractOrderedNamesFromMap(position_index_map_);
+      multibody::ExtractOrderedNamesFromMap(position_index_map_, positions_start_idx_);
   ordered_velocity_names_ =
-      multibody::ExtractOrderedNamesFromMap(velocity_index_map_);
+      multibody::ExtractOrderedNamesFromMap(velocity_index_map_, velocities_start_idx_);
   ordered_effort_names_ =
       multibody::ExtractOrderedNamesFromMap(effort_index_map_);
 

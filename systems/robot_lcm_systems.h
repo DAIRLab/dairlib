@@ -86,6 +86,9 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   void Output(const drake::systems::Context<double>& context,
               dairlib::lcmt_robot_output* output) const;
 
+  drake::multibody::ModelInstanceIndex model_instance_;
+  int positions_start_idx_;
+  int velocities_start_idx_;
   int num_positions_;
   int num_velocities_;
   int num_efforts_;

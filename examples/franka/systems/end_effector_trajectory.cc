@@ -94,8 +94,8 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
   double t = robot_output->get_timestamp();
   double dt = 0.1;
   VectorXd y0 = VectorXd::Zero(3);
-  y0(0) = 0.7 + radio_out->channel[0] * 0.2;
-  y0(0) = std::clamp(y0(0), 0.0, 0.8);
+  y0(0) = 0.65 + radio_out->channel[0] * 0.2;
+  y0(0) = std::clamp(y0(0), 0.0, 0.75);
   y0(1) = radio_out->channel[1] * 0.2;
   y0(2) = 0.3 + radio_out->channel[2] * 0.2;
   VectorXd ydot0 = VectorXd::Zero(3);

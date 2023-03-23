@@ -13,6 +13,8 @@ struct FrankaControllerParams : OSCGains {
   std::string radio_channel;
   std::string osc_debug_channel;
 
+  double end_effector_acceleration;
+
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
   std::vector<double> EndEffectorKd;
@@ -41,6 +43,7 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(controller_channel));
     a->Visit(DRAKE_NVP(radio_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
+    a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(EndEffectorW));
     a->Visit(DRAKE_NVP(EndEffectorKp));
     a->Visit(DRAKE_NVP(EndEffectorKd));

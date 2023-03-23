@@ -34,6 +34,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
@@ -42,6 +43,9 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
+DEFINE_string(osqp_settings,
+              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+              "Filepath containing qp settings");
 DEFINE_string(controller_settings, "",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
@@ -57,7 +61,9 @@ int DoMain(int argc, char* argv[]) {
           "examples/franka/franka_controller_params.yaml");
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow("examples/franka/franka_controller_params.yaml"), {}, {}, yaml_options);
-
+  drake::solvers::SolverOptions solver_options = drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+      FindResourceOrThrow(FLAGS_osqp_settings))
+      .osqp_options;
   DiagramBuilder<double> builder;
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
@@ -117,17 +123,26 @@ int DoMain(int argc, char* argv[]) {
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
   end_effector_position_tracking_data->AddPointToTrack("paddle");
-  auto mid_link_position_tracking_data =
+  const VectorXd& bound = controller_params.end_effector_acceleration * Vector3d::Ones();
+  end_effector_position_tracking_data->SetCmdAccelerationBounds(
+      -bound, bound);
+  auto end_effector_position_tracking_data_for_rel =
+      std::make_unique<TransTaskSpaceTrackingData>(
+          "end_effector_target", controller_params.K_p_end_effector,
+          controller_params.K_d_end_effector, controller_params.W_end_effector,
+          plant, plant);
+  end_effector_position_tracking_data_for_rel->AddPointToTrack("paddle");
+  auto mid_link_position_tracking_data_for_rel =
       std::make_unique<TransTaskSpaceTrackingData>(
           "mid_link", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link,
           plant, plant);
-  mid_link_position_tracking_data->AddPointToTrack("panda_link4");
+  mid_link_position_tracking_data_for_rel->AddPointToTrack("panda_link4");
   auto wrist_relative_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "wrist_down_target", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link,
-          plant, plant, mid_link_position_tracking_data.get(), end_effector_position_tracking_data.get());
+          plant, plant, mid_link_position_tracking_data_for_rel.get(), end_effector_position_tracking_data_for_rel.get());
   Eigen::Vector3d wrist_down_target = Eigen::Vector3d::Zero();
   wrist_down_target(1) = 0.0;
   wrist_down_target(2) = 0.0;
@@ -150,6 +165,8 @@ int DoMain(int argc, char* argv[]) {
                             orientation_target);
 
   osc->SetContactFriction(0.4);
+  osc->SetOsqpSolverOptions(solver_options);
+
   osc->Build();
 
   builder.Connect(state_receiver->get_output_port(0),

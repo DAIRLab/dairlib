@@ -715,11 +715,15 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
     RL_action_names.push_back("rom_delta_footstep");
   }
   RL_action_names.push_back("dt");
+  vector<string> RL_addtl_info_names;
+  RL_addtl_info_names.push_back("s_prime_time");
 
   SaveStringVecToCsv(RL_state_names,
                      param_.dir_data + string("RL_state_names.csv"));
   SaveStringVecToCsv(RL_action_names,
                      param_.dir_data + string("RL_action_names.csv"));
+  SaveStringVecToCsv(RL_addtl_info_names,
+                     param_.dir_data + string("RL_addtl_info_names.csv"));
 
   // Sanity check
   cout << "RL state dim = " << s_dim << endl;
@@ -2045,6 +2049,8 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   } else {
     if (counter_ > 0) {
       string dir_pref = dir_data + to_string(counter_ - 1) + "_";
+      writeCSV(dir_pref + string("RL_addtl_info.csv"),
+               current_time * VectorXd::Ones(1), true);
       writeCSV(dir_pref + string("s.csv"), RL_state_prev_, true);
       writeCSV(dir_pref + string("s_prime.csv"), RL_state_, true);
       writeCSV(dir_pref + string("a.csv"), RL_action_prev_, true);

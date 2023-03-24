@@ -163,7 +163,7 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
     const Vector3d &final_pos) const {
 
   Vector3d final = final_pos;
-  final(2) += desired_final_foot_height_;
+  final(2) += desired_final_foot_height_; // What is this value
 
   const Vector2d time_scaling_breaks(start_time, end_time);
   auto time_scaling_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
@@ -177,8 +177,11 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   // set midpoint similarly to https://arxiv.org/pdf/2206.14049.pdf
   // (Section V/E)
   Vector3d swing_foot_disp = final - init_pos;
+  if (swing_foot_disp(2) < 0.025) {
+    swing_foot_disp(2) = 0;
+  }
   double disp_yaw = atan2(swing_foot_disp(1), swing_foot_disp(0));
-  Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0);
+  Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0); // plane normal?
 
   Vector3d n = n_planar.cross(swing_foot_disp).normalized();
   control_points.col(1) = 0.5 * (init_pos + final) + mid_foot_height_ * n;
@@ -432,8 +435,10 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
   // Assign traj
   auto exp_pp_traj =
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
+
+  int sgn = (dz > 0);
   *exp_pp_traj = ConstructAlipComTraj(CoM, stance_foot_pos, x_alip,
-                                      desired_com_height_ + s * dz,
+                                      desired_com_height_ + (s + sgn * s * (1 - s)) * dz,
                                       desired_com_height_ + dz,
                                       t, end_time_offset);
 }

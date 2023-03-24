@@ -21,7 +21,7 @@ class PlotStyler():
     self.dpi = 200
     self.directory = '/home/brian/workspace/plot_styler/'
     self.fig = plt.figure(dpi=self.dpi) if figure is None else figure
-    matplotlib.rcParams['figure.figsize'] = 8, 4
+    matplotlib.rcParams['figure.figsize'] = 20, 10
     self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
     self.legend_labels = []
@@ -38,11 +38,11 @@ class PlotStyler():
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 16
+    matplotlib.rcParams['figure.figsize'] = 16, 32
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 20}
+    font = {'size': 8}
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 4
+    matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
     self.directory = directory
 

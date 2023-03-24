@@ -48,7 +48,7 @@ struct SquareSteppingStoneList {
       ConvexFoothold foothold;
       foothold.SetContactPlane(normal, center);
 
-      double e = 0.075; // Add a 5 cm margin of error to
+      double e = 0.12; // Add a 5 cm margin of error to
                        // stepping stone boundaries
       foothold.AddFace(
           R_WB.matrix() * Vector3d::UnitX(),

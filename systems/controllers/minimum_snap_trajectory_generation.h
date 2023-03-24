@@ -2273,12 +2273,16 @@ MakeMinSnapTrajFromWaypoints(
 
   // Set the initial acceleration and jerk to be relatively large in the
   // direction of the first intermediate waypoint
-  init_state.col(2) = 2 * (waypoints.col(1) - waypoints.col(0)) /
-                          (durations(0) * durations(0));
-  init_state.col(3) =  3 * init_state.col(2) / durations(0);
+//  init_state.col(1)(2) = 0; // set some initial velocity
+//  init_state.col(2) = 2.0 * (waypoints.col(1) - waypoints.col(0)) /
+//                          (durations(0) * durations(0));
+//  init_state.col(2)(2) *= 2.5;
+//  init_state.col(3) =  3 * init_state.col(2) / durations(0);
   final_state.col(2) = -2 * (waypoints.col(N-1) - waypoints.col(N-2)) /
                             (durations(N-2) * durations(N-2));
-  init_state.col(3) =  3 * final_state.col(2) / durations(0);
+//  final_state.col(2)(1) *= 0.5;
+//  final_state.col(2)(0) = 0;
+  final_state.col(3) =  3 * final_state.col(2) / durations(0);
 
   opt.reset(init_state, final_state, N-1);
   opt.generate(waypoints.block(0, 1, 3, N-2), durations);

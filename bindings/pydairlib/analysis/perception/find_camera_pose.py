@@ -86,9 +86,12 @@ def find_camera_pose_by_constrained_optimization(data):
 @dataclass
 class CalibrationParams:
     apriltag_family: str = "t36h11"
-    margin: float = 0.05
-    tag_size: float = 0.174
+    margin: float = 0.025
+    tag_size: float = 0.0745
     start_id: int = 78
+    ntags: int = 50
+    width: int = 10
+    height: int = 5
     valid_pose_error_threshold: float = 0.02
     board_pose_in_world_frame: RigidTransform = RigidTransform.Identity()
 
@@ -98,12 +101,14 @@ class CalibrationParams:
 # assumes cassie's right foot is on the start_id tag and there are 6 tags
 def get_tag_positions_on_board(params):
     tag_positions = {}
-    for i in range(6):
-        x = float(i % 3) * (params.tag_size + params.margin)
-        y = (params.margin + params.tag_size) / 2.0 if i > 3 else \
-            -(params.margin + params.tag_size) / 2.0
-        z = 0
-        tag_positions[params.start_id + i] = np.array([x, y, z])
+
+    cell_size = params.tag_size + params.margin
+    o = np.array([0.5 * cell_size, 2 * cell_size, 0])
+    for i in range(params.ntags):
+        x_cell = params.width - (i % params.width) - 1
+        y_cell = params.height - (i // params.width) - 1
+        tag_positions[params.start_id + i] = \
+            np.array([x_cell * cell_size, y_cell * cell_size, 0]) - o
     return tag_positions
 
 
@@ -229,12 +234,12 @@ def collate_data(timestamped_apriltag_poses, timestamped_pelvis_poses,
         right_toe_front = X_WR.multiply(TOE_FRONT).ravel()
         left_toe_front = X_WL.multiply(np.array([-0.0457, 0.112, 0])).ravel()
 
-        # board_origin_in_world = 0.25 * (
-        #         right_toe_front + right_toe_rear +
-        #         left_toe_front + left_toe_rear)
+        board_origin_in_world = 0.25 * (
+                right_toe_front + right_toe_rear +
+                left_toe_front + left_toe_rear)
 
-        board_origin_in_world = 0.5 * (right_toe_front + right_toe_rear) - \
-                                tag_positions[calibration_params.start_id]
+        # board_origin_in_world = 0.5 * (right_toe_front + right_toe_rear) - \
+        #                         tag_positions[calibration_params.start_id]
 
         board_x_in_world = (right_toe_front - right_toe_rear)
 
@@ -364,7 +369,7 @@ def write_bag_for_calibration_playback(poses, X_PC, bag_path):
 def main():
     hardware_fname = sys.argv[1]
     time_offset = 0.0
-    cutoff_time = 24
+    cutoff_time = 45
     poses, data = extract_calibration_data(
         hardware_fname,
         CalibrationParams(),

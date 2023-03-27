@@ -777,6 +777,8 @@ EventStatus CassieStateEstimator::Update(
       right_contact;
 
   std::vector<std::pair<int, bool>> contacts;
+  // TODO(yangwill): Decide whether to use both contacts per foot or just one.
+  // Possibly leave it as an option to the state estimator
   contacts.push_back(std::pair<int, bool>(0, left_contact));
 //  contacts.push_back(std::pair<int, bool>(1, left_contact));
   contacts.push_back(std::pair<int, bool>(2, right_contact));

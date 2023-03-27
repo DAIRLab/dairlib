@@ -1,5 +1,6 @@
 #include <limits>
-
+#include <chrono>
+#include <iostream>
 #include "convex_foothold_set.h"
 #include "common/eigen_utils.h"
 

@@ -50,7 +50,7 @@ void AlipMIQP::Build() {
 }
 
 void AlipMIQP::MakeFootholdConstraints() {
-  constexpr double bigM = 4.0;
+  constexpr double bigM = 5.0;
   for (int j = 1; j < nmodes_; j++) {
     const std::string& js = std::to_string(j -1);
     zz_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "zz" + js));

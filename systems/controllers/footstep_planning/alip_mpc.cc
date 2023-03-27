@@ -74,6 +74,7 @@ void AlipDynamicsConstraint::EvaluateConstraint(
 Matrix4d AlipDynamicsConstraint::Ad(double t) {
   return alip_utils::CalcAd(H_, m_, t / n_);
 }
+
 void AlipMPC::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
                                       const Eigen::Vector3d &p,
                                       bool warmstart) {
@@ -82,6 +83,8 @@ void AlipMPC::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
      (solution_.first.is_success() ||
       solution_.first.get_solution_result() == kIterationLimit)){
     UpdateInitialGuess();
+    prog_->SetInitialGuess(xx_.front().head<4>(), x);
+    prog_->SetInitialGuess(pp_.front(), p);
   } else {
     UpdateInitialGuess(p, x);
   }

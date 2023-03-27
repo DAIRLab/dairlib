@@ -1,5 +1,7 @@
 #include "trans_space_tracking_data.h"
 
+#include <iostream>
+
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -18,8 +20,7 @@ TransTaskSpaceTrackingData::TransTaskSpaceTrackingData(
     const MatrixXd& W, const MultibodyPlant<double>& plant_w_spr,
     const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
-                          plant_wo_spr) {
-}
+                          plant_wo_spr) {}
 
 void TransTaskSpaceTrackingData::AddPointToTrack(const std::string& body_name,
                                                  const Vector3d& pt_on_body) {
@@ -73,8 +74,8 @@ void TransTaskSpaceTrackingData::UpdateJdotV(
 }
 
 void TransTaskSpaceTrackingData::CheckDerivedOscTrackingData() {
-    if (!body_frames_w_spr_.empty()) {
-      body_frames_w_spr_ = body_frames_wo_spr_;
-    }
+  if (!body_frames_w_spr_.empty()) {
+    body_frames_w_spr_ = body_frames_wo_spr_;
+  }
 }
 }  // namespace dairlib::systems::controllers

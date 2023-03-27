@@ -107,6 +107,15 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
                                  const Eigen::VectorXd& imu_value) const;
+  void SetSpringDeflectionThresholds(double knee_spring_threshold, double ankle_spring_threshold) {
+    knee_spring_threshold_ctrl_ = knee_spring_threshold;
+    knee_spring_threshold_ekf_ = knee_spring_threshold;
+    ankle_spring_threshold_ctrl_ = ankle_spring_threshold;
+    ankle_spring_threshold_ekf_ = ankle_spring_threshold;
+  }
+  void SetContactForceThreshold(double force_threshold) {
+    contact_force_threshold_ = force_threshold;
+  }
 
   // Copy joint state from cassie_out_t to an OutputVector
   void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
@@ -217,12 +226,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   //     Heel ~???
   //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
   //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
-  const double knee_spring_threshold_ctrl_ = -0.015;
-  const double knee_spring_threshold_ekf_ = -0.015;
-  const double heel_spring_threshold_ctrl_ = -0.01;
-  const double heel_spring_threshold_ekf_ = -0.01;
+  double knee_spring_threshold_ctrl_ = -0.015;
+  double knee_spring_threshold_ekf_ = -0.015;
+  double ankle_spring_threshold_ctrl_ = -0.01;
+  double ankle_spring_threshold_ekf_ = -0.01;
   const double w_soft_constraint_ = 100;  // Soft constraint cost
-  const double contact_force_threshold_;  // Soft constraint cost
+  double contact_force_threshold_ = 60;  // Soft constraint cost
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;

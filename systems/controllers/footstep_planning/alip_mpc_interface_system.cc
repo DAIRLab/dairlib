@@ -419,6 +419,9 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
          EvalVectorInput(context, delta_z_input_port_)->get_value()(0);
   }
 
+  double alpha = exp(50 * dz);
+  dz *= 2.0 * (alpha / (1.0 + alpha) - 0.5);
+
   Vector3d CoM, L, stance_foot_pos;
   CalcAlipState(
       robot_output->GetState(), mode_index, &CoM, &L, &stance_foot_pos);

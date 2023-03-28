@@ -80,7 +80,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(publish_ros_pose, false, "if true, publishes the pelvis tf");
-DEFINE_bool(publish_points, true, "publish ros pointcloud messages");
+DEFINE_bool(publish_points, false, "publish ros pointcloud messages");
 DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
@@ -137,7 +137,7 @@ int do_main(int argc, char* argv[]) {
 
   std::string urdf;
   if (FLAGS_spring_model) {
-    urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
+    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   } else {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
@@ -175,14 +175,6 @@ int do_main(int argc, char* argv[]) {
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
       plant, FLAGS_publish_efforts);
 
-  // Contact Information
-  ContactResultsToLcmSystem<double>& contact_viz =
-      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
-  contact_viz.set_name("contact_visualization");
-  auto& contact_results_publisher = *builder.AddSystem(
-      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
-  contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
   auto radio_sub =
@@ -246,7 +238,7 @@ int do_main(int argc, char* argv[]) {
   if (FLAGS_publish_points) {
     const auto& [color_camera, depth_camera] =
     camera::MakeDairD455CameraModel(renderer_name,
-                                    camera::D455ImageSize::k640x480);
+                                    camera::D455ImageSize::k424x240);
     const auto parent_body_id = plant.GetBodyFrameIdIfExists(
             plant.GetFrameByName("pelvis").body().index());
 
@@ -303,10 +295,6 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
-  builder.Connect(plant.get_contact_results_output_port(),
-                  contact_viz.get_input_port(0));
-  builder.Connect(contact_viz.get_output_port(0),
-                  contact_results_publisher.get_input_port());
   builder.Connect(radio_sub->get_output_port(),
                   sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),

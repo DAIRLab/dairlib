@@ -152,6 +152,23 @@ void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   }
 }
 
+
+Vector3d AlipMIQP::SnapFootstepToTopFoothold(const Vector3d& p) const {
+  double zmax = p(2);
+  const auto& stones = foothold_constraints_.front();
+  for (int i = 0; i < footholds_.size(); i++) {
+    if (stones.at(i).CheckSatisfiedIfActive(p)) {
+      const auto& [a, b] = footholds_.at(i).GetEqualityConstraintMatrices();
+      double z = (b - a.leftCols<2>() * p.head<2>())(0);
+      zmax = std::max(zmax, z);
+    }
+  }
+  Vector3d pnew = p;
+  pnew(2) = zmax;
+  return pnew;
+}
+
+
 void AlipMIQP::UpdateInitialGuess() {
   prog_->SetInitialGuessForAllVariables(solution_.first.GetSolution());
 }

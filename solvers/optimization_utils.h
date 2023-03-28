@@ -108,6 +108,14 @@ class LinearBigMConstraint {
     prog.SetInitialGuess(x_, Eigen::VectorXd::Zero(x_.rows()));
     prog.SetInitialGuess(z_, 0);
   }
+  [[nodiscard]] bool CheckSatisfiedIfActive(const Eigen::VectorXd& x,
+                                            double tol=1e-4) const {
+    DRAKE_ASSERT(x.size() == x_.size());
+    Eigen::VectorXd xtmp = Eigen::VectorXd::Zero(x_.rows() + 1);
+    xtmp.head(x.rows()) = x;
+    xtmp.tail<1>()(0) = 1;
+    return constraint_.evaluator()->CheckSatisfied(xtmp, tol);
+  }
  private:
   bool active_ = true;
   drake::solvers::Binding<drake::solvers::LinearConstraint> constraint_;

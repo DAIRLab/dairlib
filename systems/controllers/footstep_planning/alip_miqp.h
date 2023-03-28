@@ -40,6 +40,7 @@ class AlipMIQP final : public AlipMPC {
     return zz;
   }
 
+  Eigen::Vector3d SnapFootstepToTopFoothold(const Eigen::Vector3d& p) const;
  private:
   static constexpr int kMaxFootholds = 20;
   std::vector<VectorXDecisionVariable> zz_{};

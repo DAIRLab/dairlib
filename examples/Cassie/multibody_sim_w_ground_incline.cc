@@ -267,8 +267,9 @@ int do_main(int argc, char* argv[]) {
   VectorXd x_init(plant.num_positions() + plant.num_velocities());
   if (!FLAGS_path_init_state.empty()) {
     // set init state from file
-    std::cout << "Set init state form a file\n";
+    std::cout << "Set init state form a file: " + FLAGS_path_init_state << "\n";
     VectorXd x_init_wo_spr = readCSV(FLAGS_path_init_state).col(0);
+    std::cout << "x_init_wo_spr = " << x_init_wo_spr << std::endl;
 
     if (FLAGS_spring_model) {
       drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);

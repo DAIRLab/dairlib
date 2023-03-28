@@ -142,6 +142,8 @@ DEFINE_double(yaw_disturbance, 0,
 
 // RL training
 DEFINE_bool(is_RL_training, false, "");
+DEFINE_bool(only_construct_to_get_RL_problem_size_so_do_not_simulate, false,
+            "");
 DEFINE_bool(get_RL_gradient_offline, false,
             "true if we don't want to compute the policy gradient online");
 DEFINE_double(min_mpc_thread_loop_duration, 0,
@@ -554,6 +556,11 @@ int DoMain(int argc, char* argv[]) {
   owned_diagram->set_name("MPC");
 
   DrawAndSaveDiagramGraph(*owned_diagram);
+
+  if (FLAGS_only_construct_to_get_RL_problem_size_so_do_not_simulate) {
+    DRAKE_DEMAND(FLAGS_is_RL_training);
+    return 0;
+  }
 
   // Run lcm-driven simulation
   std::vector<const drake::systems::LeafSystem<double>*> lcm_parsers = {

@@ -20,6 +20,7 @@
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
+#include "solvers/solver_options_io.h"
 #include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -129,9 +130,10 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
-  drake::solvers::SolverOptions solver_options = drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
-      FindResourceOrThrow(FLAGS_osqp_settings))
-      .osqp_options;
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   /**** FSM and contact mode configuration ****/
 

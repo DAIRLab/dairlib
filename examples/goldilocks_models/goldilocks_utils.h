@@ -216,6 +216,8 @@ struct PlannerSetting {
   // Debugging
   int solve_idx_for_read_from_file;
   void PrintAll() const;
+
+  bool unit_testing;
 };
 
 template<typename K, typename V>

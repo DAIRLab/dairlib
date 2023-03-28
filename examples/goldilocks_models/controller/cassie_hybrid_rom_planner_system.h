@@ -412,7 +412,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   int a_dim_rom_state_part_;
   int a_dim_rom_input_part_;
   // randomize output of MPC for RL
-  double RL_policy_output_variance_;
+  double RL_policy_output_variance_ = 0.0;
   std::unique_ptr<std::default_random_engine> generator_;
   std::unique_ptr<std::normal_distribution<double>> distribution_;
   mutable Eigen::VectorXd RL_action_noise_prev_;

@@ -148,11 +148,13 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
 
     cout << "param_.path_model_params = " << param_.path_model_params << endl;
     MatrixXd theta_yddot = readCSV(param_.path_model_params);
-    MatrixXd var = readCSV(param_.path_var);
     DRAKE_DEMAND(theta_yddot.size() > 0);
-    DRAKE_DEMAND(var.size() == 1);
     rom_->SetThetaYddot(theta_yddot.col(0));
-    RL_policy_output_variance_ = var(0, 0);
+    if (!param_.path_var.empty()) {
+      MatrixXd var = readCSV(param_.path_var);
+      DRAKE_DEMAND(var.size() == 1);
+      RL_policy_output_variance_ = var(0, 0);
+    }
 
     // Initialize gaussian distribution
     generator_ = std::make_unique<std::default_random_engine>();
@@ -1540,7 +1542,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   }
 
   // Unit Testing TransformBetweenGlobalAndLocalFrame3D
-  if (single_eval_mode_) {
+  if (single_eval_mode_ || param_.unit_testing) {
     MatrixXd global_x_init = x_init;
     MatrixXd x_init_2 = x_init;
     TransformBetweenGlobalAndLocalFrame3D(false, quat_xyz_shift, x_init,
@@ -2209,7 +2211,7 @@ void CassiePlannerWithOnlyRom::ExtractAndReorderFromMpcSolToRlAction(
   matrix_in_a_order.bottomRows<1>().setZero();
 
   // Some unit testing
-  if (single_eval_mode_) {
+  if (single_eval_mode_ || param_.unit_testing) {
     // Testing
     const auto& var_idx_map = trajopt.decision_variable_index();
     DRAKE_DEMAND(var_idx_map.at(trajopt.timestep(0)(0).get_id()) ==

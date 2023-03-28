@@ -159,6 +159,9 @@ DEFINE_bool(completely_use_trajs_from_model_opt_as_target, false, "");
 DEFINE_bool(close_sim_gap, false,
             "Modify to close the gap between open loop and closed loop sim");
 
+DEFINE_bool(unit_testing, false, "test_code");
+DEFINE_string(path_unit_testing_success, "", "file_indicating_success");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -216,8 +219,11 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(FLAGS_iter <= 1);
 
     // We can turn off the drake demands here if we are testing
-    DRAKE_DEMAND(FLAGS_path_model_params.size() > 0);
-    DRAKE_DEMAND(FLAGS_path_var.size() > 0);
+    DRAKE_DEMAND(!FLAGS_path_model_params.empty());
+
+    // Commenting out, since we don't have this when getting the size of the
+    // action in the initialization of the RL python code
+    // DRAKE_DEMAND(FLAGS_path_var.size() > 0);
 
     if (FLAGS_debug_mode) {
       DRAKE_DEMAND(FLAGS_solve_idx_for_read_from_file >= 0);
@@ -328,6 +334,7 @@ int DoMain(int argc, char* argv[]) {
   param.path_model_params = FLAGS_path_model_params;
   param.path_var = FLAGS_path_var;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;
+  param.unit_testing = FLAGS_unit_testing;
   param.gains = gains;
   if (0 < param.time_limit && param.time_limit < 0.1) {
     cout << "WARNING: small time_limit! (I tried 0.7s solve time for the mpc "
@@ -567,14 +574,15 @@ int DoMain(int argc, char* argv[]) {
       controller_signal_receiver, state_receiver};
   std::vector<std::string> input_channels = {FLAGS_channel_fsm_t,
                                              FLAGS_channel_x};
+  int max_n_loop = (FLAGS_run_one_loop_to_get_init_file || FLAGS_unit_testing)
+                       ? 1
+                       : std::numeric_limits<int>::infinity();
   systems::TwoLcmDrivenLoop<dairlib::lcmt_dairlib_signal,
                             dairlib::lcmt_robot_output>
       loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
            std::move(owned_diagram), lcm_parsers, input_channels, true,
            FLAGS_is_RL_training ? FLAGS_min_mpc_thread_loop_duration : 0,
-           FLAGS_run_one_loop_to_get_init_file
-               ? 1
-               : std::numeric_limits<int>::infinity());
+           max_n_loop);
   if (!FLAGS_debug_mode) {
     // Create the file to indicate that the planner thread is listening
     if (!FLAGS_path_wait_identifier.empty()) {
@@ -801,6 +809,12 @@ int DoMain(int argc, char* argv[]) {
       auto output = rom_planner->AllocateOutput();
       rom_planner->CalcOutput(planner_context, output.get());
     }
+  }
+
+  if (FLAGS_unit_testing) {
+    DRAKE_DEMAND(!FLAGS_path_unit_testing_success.empty());
+    std::system(("touch " + FLAGS_path_unit_testing_success).c_str());
+    cout << "Created " << FLAGS_path_unit_testing_success << endl;
   }
 
   return 0;

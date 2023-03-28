@@ -152,16 +152,20 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     rom_->SetThetaYddot(theta_yddot.col(0));
     if (!param_.path_var.empty()) {
       MatrixXd var = readCSV(param_.path_var);
-      DRAKE_DEMAND(var.size() == 1);
-      RL_policy_output_variance_ = var(0, 0);
+      DRAKE_DEMAND(var.size() > 1);
+      RL_policy_output_variances_ = var.col(0);
     }
 
     // Initialize gaussian distribution
     generator_ = std::make_unique<std::default_random_engine>();
     generator_->seed(
         std::chrono::system_clock::now().time_since_epoch().count());
-    distribution_ = std::make_unique<std::normal_distribution<double>>(
-        0, RL_policy_output_variance_);
+    distributions_ =
+        std::make_unique<std::vector<std::normal_distribution<double>>>();
+    for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
+      distributions_->push_back(
+          std::normal_distribution<double>(0, RL_policy_output_variances_(i)));
+    }
   }
   // This leafsystem hasn't taken care of active ROM case (e.g. no good warm
   // starting)
@@ -732,6 +736,8 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   cout << "RL action dim = " << a_dim << endl;
   DRAKE_DEMAND(RL_state_names.size() == s_dim);
   DRAKE_DEMAND(RL_action_names.size() == a_dim);
+
+  DRAKE_DEMAND(RL_policy_output_variances_.size() == a_dim);
 }
 
 void CassiePlannerWithOnlyRom::SolveTrajOpt(
@@ -1326,22 +1332,55 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     *traj_msg = previous_output_msg_;
   }
 
-  VectorXd mpc_sol_noise(trajopt.num_vars());
+  VectorXd RL_action_noise(RL_policy_output_variances_.size());
   drake::solvers::MathematicalProgramResult result_with_noise;
   if (is_RL_training_) {
-    // The noise is independent of the gradient calculation, because we are
-    // computing the gradient of the mean all the time.
-    for (int i = 0; i < mpc_sol_noise.size(); i++) {
-      double rand = (*distribution_)(*generator_);
-      mpc_sol_noise(i) = rand;
+    for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
+      double rand = (distributions_->at(i))(*generator_);
+      RL_action_noise(i) = rand;
     }
-    // We don't randomize the time variable
-    int idx_start =
-        trajopt.decision_variable_index().at(trajopt.timestep(0)(0).get_id());
-    for (int i = idx_start; i < idx_start + trajopt.num_knots() - 1; i++) {
-      mpc_sol_noise(i) = 0;
-    }
+    // Last row (zeros) is the gradient of delta_t, which we don't randomize
+    RL_action_noise.bottomRows<1>().setZero();
 
+    // Map RL_action_noise to mpc_sol_noise
+    VectorXd mpc_sol_noise = VectorXd::Zero(trajopt.num_vars());
+
+    int idx_start_x;
+    int idx_start_h;
+    int idx_start_xp;
+    int idx_start_footsteps;
+    trajopt.GetStartOfVariableIndices(idx_start_x, idx_start_h, idx_start_xp,
+                                      idx_start_footsteps);
+
+    // ROM state part
+    const std::vector<int>& mode_start = trajopt.mode_start();
+    const std::vector<int>& mode_lengths = trajopt.mode_lengths();
+    int i = 0;
+    for (int mode = 0; mode < mode_lengths.size(); mode++) {
+      for (int knot_idx = 0; knot_idx < mode_lengths.at(mode); knot_idx++) {
+        if (knot_idx == 0 && mode > 0) {
+          mpc_sol_noise.middleRows(idx_start_xp + (mode - 1) * n_z_, n_z_) =
+              RL_action_noise.middleRows(i * n_z_, n_z_);
+        } else {
+          mpc_sol_noise.middleRows((mode_start[mode] + knot_idx) * n_z_, n_z_) =
+              RL_action_noise.middleRows(i * n_z_, n_z_);
+        }
+        i++;
+        if (i == n_knots_used_for_RL_action_) {
+          mode = mode_lengths.size();  // To break the outer for loop
+          break;                       // To break the inner for loop
+        }
+      }
+    }
+    // ROM footstep part
+    // WARNING: we assume two footsteps here
+    DRAKE_DEMAND(param_.n_step == 2);
+    mpc_sol_noise.middleRows<2>(idx_start_footsteps) =
+        RL_action_noise.middleRows<2>(a_dim_rom_state_part_);
+    mpc_sol_noise.middleRows<2>(idx_start_footsteps + 2) =
+        RL_action_noise.middleRows<2>(a_dim_rom_state_part_ + 2);
+
+    // Apply noise to solution
     result_with_noise = result;
     result_with_noise.set_x_val(result.GetSolution() + mpc_sol_noise);
   }
@@ -1465,7 +1504,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
           context, des_xy_vel_com_rt_init_stance_foot.at(0)(0),
           desired_com_height_, start_with_left_stance, init_phase,
           lightweight_saved_traj_with_noise_, trajopt, result_with_noise,
-          current_time, mpc_sol_noise, param_.dir_data);
+          current_time, RL_action_noise, param_.dir_data);
       SaveGradientIntoFilesForRLTraining(trajopt, result, param_.dir_data);
       // Sanity check
       /*if (param_.get_RL_gradient_offline) {
@@ -1989,7 +2028,7 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
     const HybridRomPlannerTrajectory& saved_traj,
     const HybridRomTrajOptCassie& trajopt,
     const MathematicalProgramResult& result, double current_time,
-    const VectorXd& mpc_sol_noise, const string& dir_data) const {
+    const VectorXd& RL_action_noise, const string& dir_data) const {
   PrintStatus("Save RL state and action data\n");
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -2037,10 +2076,10 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
                                  saved_traj.get_global_feet_pos().size());
   // RL_action_.tail<1>() is reserved for the next iteration*/
 
-  // Extract the action noise
+  /*// Extract the action noise
   MatrixXd RL_action_noise(RL_action_.size(), 1);
   ExtractAndReorderFromMpcSolToRlAction(trajopt, mpc_sol_noise,
-                                        RL_action_noise);
+                                        RL_action_noise);*/
 
   // Save data
   if (single_eval_mode_) {
@@ -2173,12 +2212,13 @@ void CassiePlannerWithOnlyRom::ExtractAndReorderFromMpcSolToRlAction(
   DRAKE_DEMAND(matrix_in_w_order.rows() == trajopt.num_vars());
   DRAKE_DEMAND(matrix_in_a_order.rows() == RL_action_.size());
 
-  int trajopt_num_knots = trajopt.num_knots();
-  int trajopt_num_modes = trajopt.num_modes();
-  // int idx_start_x = 0;
-  int idx_start_h = trajopt_num_knots * n_z_;
-  int idx_start_xp = idx_start_h + trajopt_num_knots - 1;
-  int idx_start_footsteps = idx_start_xp + trajopt_num_modes * n_z_;
+  int idx_start_x;
+  int idx_start_h;
+  int idx_start_xp;
+  int idx_start_footsteps;
+  trajopt.GetStartOfVariableIndices(idx_start_x, idx_start_h, idx_start_xp,
+                                    idx_start_footsteps);
+
   // ROM state part
   const std::vector<int>& mode_start = trajopt.mode_start();
   const std::vector<int>& mode_lengths = trajopt.mode_lengths();
@@ -2202,7 +2242,8 @@ void CassiePlannerWithOnlyRom::ExtractAndReorderFromMpcSolToRlAction(
     }
   }
   // ROM footstep part
-  // WARNING: we only extract two footsteps
+  // WARNING: we assume two footsteps here
+  DRAKE_DEMAND(param_.n_step == 2);
   matrix_in_a_order.middleRows<2>(a_dim_rom_state_part_) =
       matrix_in_w_order.middleRows<2>(idx_start_footsteps);
   matrix_in_a_order.middleRows<2>(a_dim_rom_state_part_ + 2) =

@@ -203,6 +203,18 @@ class HybridRomTrajOpt
   drake::solvers::VectorXDecisionVariable x_lipm_vars_;
   drake::solvers::VectorXDecisionVariable u_lipm_vars_;
 
+  // Indices getter
+  void GetStartOfVariableIndices(int& idx_start_x, int& idx_start_h,
+                                 int& idx_start_xp,
+                                 int& idx_start_footsteps) const {
+    int trajopt_num_knots = this->num_knots();
+    int trajopt_num_modes = this->num_modes();
+    idx_start_x = 0;
+    idx_start_h = idx_start_x + trajopt_num_knots * n_z_;
+    idx_start_xp = idx_start_h + trajopt_num_knots - 1;
+    idx_start_footsteps = idx_start_xp + trajopt_num_modes * n_z_;
+  }
+
   // RL training
   std::vector<std::shared_ptr<planning::DynamicsConstraint>>
       dynamics_constraints;

@@ -388,7 +388,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
       const HybridRomPlannerTrajectory& saved_traj,
       const HybridRomTrajOptCassie& trajopt,
       const drake::solvers::MathematicalProgramResult& result,
-      double current_time, const Eigen::VectorXd& mpc_sol_noise,
+      double current_time, const Eigen::VectorXd& RL_action_noise,
       const std::string& dir_data) const;
   void SaveGradientIntoFilesForRLTraining(
       const HybridRomTrajOptCassie& trajopt,
@@ -412,9 +412,10 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   int a_dim_rom_state_part_;
   int a_dim_rom_input_part_;
   // randomize output of MPC for RL
-  double RL_policy_output_variance_ = 0.0;
+  std::unordered_map<int, int> map_from_RL_action_to_MPC_sol_;
+  Eigen::VectorXd RL_policy_output_variances_;
   std::unique_ptr<std::default_random_engine> generator_;
-  std::unique_ptr<std::normal_distribution<double>> distribution_;
+  std::unique_ptr<std::vector<std::normal_distribution<double>>> distributions_;
   mutable Eigen::VectorXd RL_action_noise_prev_;
   mutable HybridRomPlannerTrajectory lightweight_saved_traj_with_noise_;
   // TODO:

@@ -1,0 +1,9 @@
+
+mu: 1                  # changes need to be consistent with urdf
+mu_plate: 1
+R: 0.01                 # torque cost in xyz
+G: 0.01
+U_default: 1
+U_pos_vel: 10           # first 19 diag elements of U
+U_u: 1                  # last 3 diag elements of U
+dt: 0.015

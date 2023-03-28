@@ -45,6 +45,28 @@ cc_binary(
     deps = [
         ":franka_controller_params",
         "//examples/franka/systems:end_effector_trajectory",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_c3_controller",
+    srcs = ["franka_c3_controller.cc"],
+    data = [
+        ":trifinger_urdf",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_controller_params",
+        "//examples/franka/systems:end_effector_trajectory",
+        "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",

@@ -1,18 +1,16 @@
 #pragma once
 
-#include "systems/controllers/osc/osc_gains.h"
 #include "yaml-cpp/yaml.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
 
-struct FrankaControllerParams : OSCGains {
+struct FrankaControllerParams {
   std::string state_channel;
   std::string controller_channel;
   std::string radio_channel;
   std::string osc_debug_channel;
-  std::string c3_channel;
 
   double end_effector_acceleration;
 
@@ -44,7 +42,6 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(controller_channel));
     a->Visit(DRAKE_NVP(radio_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
-    a->Visit(DRAKE_NVP(c3_channel));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(EndEffectorW));
     a->Visit(DRAKE_NVP(EndEffectorKp));

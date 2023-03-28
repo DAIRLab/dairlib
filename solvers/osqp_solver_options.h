@@ -2,7 +2,7 @@
 
 #include "drake/solvers/solver_options.h"
 
-namespace dairlib::solvers{
+namespace dairlib::solvers {
 
 /// Convenience struct for parsing solver options
 struct DairOsqpSolverOptions {
@@ -55,28 +55,53 @@ struct DairOsqpSolverOptions {
     a->Visit(DRAKE_NVP(adaptive_rho_fraction));
     a->Visit(DRAKE_NVP(time_limit));
 
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "verbose", verbose); //NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "rho",  rho); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "sigma",  sigma); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "max_iter",  max_iter); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_abs",  eps_abs); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_rel",  eps_rel); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_prim_inf",  eps_prim_inf); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_dual_inf",  eps_dual_inf); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "alpha",  alpha); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "linsys_solver", linsys_solver); //NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "delta",  delta); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "polish",  polish); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "polish_refine_iter",  polish_refine_iter); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "scaled_termination",  scaled_termination); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "check_termination",  check_termination); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "warm_start",  warm_start); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "scaling",  scaling); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "adaptive_rho",  adaptive_rho); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "adaptive_rho_interval",  adaptive_rho_interval); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "adaptive_rho_tolerance",  adaptive_rho_tolerance); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "adaptive_rho_fraction",  adaptive_rho_fraction); // NOLINT
-    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "time_limit",  time_limit); // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "verbose",
+                           verbose);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "rho",
+                           rho);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "sigma",
+                           sigma);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "max_iter",
+                           max_iter);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_abs",
+                           eps_abs);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_rel",
+                           eps_rel);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_prim_inf",
+                           eps_prim_inf);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "eps_dual_inf",
+                           eps_dual_inf);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "alpha",
+                           alpha);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "linsys_solver",
+                           linsys_solver);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "delta",
+                           delta);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "polish",
+                           polish);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(),
+                           "polish_refine_iter", polish_refine_iter);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(),
+                           "scaled_termination", scaled_termination);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(),
+                           "check_termination", check_termination);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "warm_start",
+                           warm_start);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "scaling",
+                           scaling);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "adaptive_rho",
+                           adaptive_rho);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(),
+                           "adaptive_rho_interval",
+                           adaptive_rho_interval);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(),
+                           "adaptive_rho_tolerance",
+                           adaptive_rho_tolerance);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(),
+                           "adaptive_rho_fraction",
+                           adaptive_rho_fraction);  // NOLINT
+    osqp_options.SetOption(drake::solvers::OsqpSolver::id(), "time_limit",
+                           time_limit);  // NOLINT
   }
 };
-}
+}  // namespace dairlib::solvers

@@ -2,7 +2,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "controllers_all",
     srcs = [],
@@ -40,6 +39,7 @@ cc_library(
         "@lcm",
     ],
 )
+
 cc_library(
     name = "cassie_out_to_radio",
     srcs = ["cassie_out_to_radio.cc"],
@@ -48,6 +48,23 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "c3_controller",
+    srcs = [
+        "c3_controller.cc",
+    ],
+    hdrs = [
+        "c3_controller.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:c3",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
     ],
 )
 

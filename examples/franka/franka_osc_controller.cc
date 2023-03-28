@@ -1,8 +1,10 @@
 
-#include <gflags/gflags.h>
 #include <dairlib/lcmt_radio_out.hpp>
+#include <gflags/gflags.h>
 
 #include "examples/franka/franka_controller_params.h"
+#include "examples/franka/systems/end_effector_trajectory.h"
+#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -13,15 +15,14 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "drake/common/yaml/yaml_io.h"
 #include "drake/common/find_resource.h"
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "examples/franka/systems/end_effector_trajectory.h"
 
 namespace dairlib {
 
@@ -33,8 +34,8 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
@@ -60,10 +61,12 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/franka/franka_controller_params.yaml");
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow("examples/franka/franka_controller_params.yaml"), {}, {}, yaml_options);
-  drake::solvers::SolverOptions solver_options = drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
-      FindResourceOrThrow(FLAGS_osqp_settings))
-      .osqp_options;
+      FindResourceOrThrow("examples/franka/franka_controller_params.yaml"), {},
+      {}, yaml_options);
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+          FindResourceOrThrow(FLAGS_osqp_settings))
+          .osqp_options;
   DiagramBuilder<double> builder;
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
@@ -79,9 +82,8 @@ int DoMain(int argc, char* argv[]) {
   VectorXd gear_ratios(plant.num_actuators());
   gear_ratios << 25, 25, 25, 25, 25, 25, 25;
   std::vector<std::string> motor_joint_names = {
-      "panda_motor1", "panda_motor2", "panda_motor3",
-      "panda_motor4", "panda_motor5", "panda_motor6",
-      "panda_motor7"};
+      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
+      "panda_motor5", "panda_motor6", "panda_motor7"};
   for (int i = 0; i < rotor_inertias.size(); ++i) {
     auto& joint_actuator = plant.get_mutable_joint_actuator(
         drake::multibody::JointActuatorIndex(i));
@@ -96,6 +98,9 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto trajectory_receiver =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_saved_traj>(
+          controller_params.c3_channel, &lcm));
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           controller_params.controller_channel, &lcm,
@@ -111,7 +116,8 @@ int DoMain(int argc, char* argv[]) {
       plant, plant, plant_context.get(), plant_context.get(), false);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          controller_params.osc_debug_channel, &lcm, TriggerTypeSet({TriggerType::kForced})));
+          controller_params.osc_debug_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
 
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
@@ -123,9 +129,9 @@ int DoMain(int argc, char* argv[]) {
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
   end_effector_position_tracking_data->AddPointToTrack("paddle");
-  const VectorXd& bound = controller_params.end_effector_acceleration * Vector3d::Ones();
-  end_effector_position_tracking_data->SetCmdAccelerationBounds(
-      -bound, bound);
+  const VectorXd& bound =
+      controller_params.end_effector_acceleration * Vector3d::Ones();
+  end_effector_position_tracking_data->SetCmdAccelerationBounds(-bound, bound);
   auto end_effector_position_tracking_data_for_rel =
       std::make_unique<TransTaskSpaceTrackingData>(
           "end_effector_target", controller_params.K_p_end_effector,
@@ -135,29 +141,31 @@ int DoMain(int argc, char* argv[]) {
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<TransTaskSpaceTrackingData>(
           "mid_link", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link,
-          plant, plant);
+          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
+          plant);
   mid_link_position_tracking_data_for_rel->AddPointToTrack("panda_link4");
   auto wrist_relative_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "wrist_down_target", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link,
-          plant, plant, mid_link_position_tracking_data_for_rel.get(), end_effector_position_tracking_data_for_rel.get());
+          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
+          plant, mid_link_position_tracking_data_for_rel.get(),
+          end_effector_position_tracking_data_for_rel.get());
   Eigen::Vector3d wrist_down_target = Eigen::Vector3d::Zero();
   wrist_down_target(1) = 0.0;
   wrist_down_target(2) = 0.0;
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
-          "end_effector_orientation_target", controller_params.K_p_end_effector_rot,
-          controller_params.K_d_end_effector_rot, controller_params.W_end_effector_rot,
-          plant, plant);
+          "end_effector_orientation_target",
+          controller_params.K_p_end_effector_rot,
+          controller_params.K_d_end_effector_rot,
+          controller_params.W_end_effector_rot, plant, plant);
   end_effector_orientation_tracking_data->AddFrameToTrack("paddle");
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
-//  orientation_target(2) = 1;
-//  orientation_target(1) = 1;
-//  orientation_target(3) = 0.707;
+  //  orientation_target(2) = 1;
+  //  orientation_target(1) = 1;
+  //  orientation_target(3) = 0.707;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(wrist_relative_tracking_data),
                             wrist_down_target);
@@ -185,7 +193,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_controller"));
+  owned_diagram->set_name(("franka_osc_controller"));
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,

@@ -518,11 +518,29 @@
 					</drake:proximity_properties>
 				</collision>
         <visual>
-            <origin rpy="0 0 0" xyz="0 0 0.0048"/>
+            <origin rpy="0 0 0" xyz="0 0 0.005"/>
             <geometry>
 								<box size="0.2 0.2 0.01"/>
             </geometry>
         </visual>
+        <visual>
+					<origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
+					<geometry>
+							<sphere radius="0.001"/>
+					</geometry>
+				</visual>
+				<visual>
+					<origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
+					<geometry>
+							<sphere radius="0.001"/>
+					</geometry>
+				</visual>
+				<visual>
+					<origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
+					<geometry>
+							<sphere radius="0.001"/>
+					</geometry>
+				</visual>
     </link>
     <joint name="fixed_paddle" type="fixed">
         <origin rpy="0 0 0" xyz="0 0 0.107"/>

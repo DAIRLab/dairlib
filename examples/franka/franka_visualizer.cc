@@ -66,7 +66,7 @@ int do_main(int argc, char* argv[]) {
 
   Parser parser(&plant, &scene_graph);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelFromFile("examples/franka/urdf/franka_box.urdf");
+      parser.AddModelFromFile("examples/franka/urdf/franka.urdf");
   drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(
       drake::FindResourceOrThrow(
           "drake/examples/kuka_iiwa_arm/models/table/"
@@ -78,7 +78,7 @@ int do_main(int argc, char* argv[]) {
           "table1");
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModelFromFile(FindResourceOrThrow(
-          "examples/franka/urdf/plate.sdf"));
+          "examples/franka/urdf/tray.sdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);

@@ -4,16 +4,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "trifinger_urdf",
+    name = "urdfs",
     data = glob([
-        "robot_properties_fingers/urdf/**",
-        "robot_properties_fingers/urdf/pro/**",
-        "robot_properties_fingers/urdf/edu/**",
-        "robot_properties_fingers/meshes/**",
-        "robot_properties_fingers/meshes/pro/**",
-        "robot_properties_fingers/meshes/pro/detailed/**",
-        "robot_properties_fingers/meshes/edu/**",
-        "robot_properties_fingers/cube/**",
+        "urdf/**",
     ]),
 )
 
@@ -21,7 +14,7 @@ cc_binary(
     name = "franka_sim",
     srcs = ["franka_sim.cc"],
     data = [
-        ":trifinger_urdf",
+        ":urdfs",
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
@@ -39,7 +32,7 @@ cc_binary(
     name = "franka_osc_controller",
     srcs = ["franka_osc_controller.cc"],
     data = [
-        ":trifinger_urdf",
+        ":urdfs",
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
@@ -60,15 +53,16 @@ cc_binary(
     name = "franka_c3_controller",
     srcs = ["franka_c3_controller.cc"],
     data = [
-        ":trifinger_urdf",
+        ":urdfs",
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_controller_params",
+        ":franka_c3_controller_params",
         "//examples/franka/systems:end_effector_trajectory",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems/controllers:c3_controller",
         "//systems/controllers",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
@@ -81,7 +75,7 @@ cc_binary(
     name = "franka_visualizer",
     srcs = ["franka_visualizer.cc"],
     data = [
-        ":trifinger_urdf",
+        ":urdfs",
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
@@ -108,6 +102,15 @@ cc_library(
     name = "franka_controller_params",
     hdrs = ["franka_controller_params.h"],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_c3_controller_params",
+    hdrs = ["franka_c3_controller_params.h"],
+    deps = [
+        "//solvers:c3",
         "@drake//:drake_shared_library",
     ],
 )

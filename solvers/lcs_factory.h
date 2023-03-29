@@ -10,7 +10,7 @@ namespace solvers {
 class LCSFactory {
  public:
   /// Build a time-invariant LCS, linearizing a MultibodyPlant
-  /// Contacts are specified by the pairs in contact_geoms. Each elemnt
+  /// Contacts are specified by the pairs in contact_geoms. Each element
   /// in the contact_geoms vector defines a collision.
   /// This method also uses two copies of the Context, one for double and one
   /// for AutoDiff. Given that Contexts can be expensive to create, this is

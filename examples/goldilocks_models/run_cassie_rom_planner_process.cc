@@ -203,6 +203,11 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_stride_length > -100) {
     gains.set_constant_walking_speed = true;
     gains.constant_step_length_x = FLAGS_stride_length;
+
+    cout << "WARNING: Set `use_radio` to false because `FLAGS_stride_length` "
+            "was set\n\n";
+    gains.use_virtual_radio = false;
+    gains.use_radio = false;
   }
   gains.constant_step_length_x *= FLAGS_stride_length_scaling;
 

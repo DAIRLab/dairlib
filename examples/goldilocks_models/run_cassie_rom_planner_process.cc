@@ -210,6 +210,9 @@ int DoMain(int argc, char* argv[]) {
     gains.pelvis_height = FLAGS_pelvis_height;
   }
   if (FLAGS_is_RL_training) {
+    // We need to log data for RL training
+    DRAKE_DEMAND(FLAGS_log_data);
+
     // Need to set the pelvis_height task for RL training
     DRAKE_DEMAND(gains.pelvis_height > 0);
     // haven't implemented for the mixed MPC

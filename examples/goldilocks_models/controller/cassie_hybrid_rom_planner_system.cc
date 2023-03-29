@@ -730,8 +730,8 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   distributions_ =
       std::make_unique<std::vector<std::normal_distribution<double>>>();
   for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
-    distributions_->push_back(
-        std::normal_distribution<double>(0, RL_policy_output_variances_(i)));
+    distributions_->push_back(std::normal_distribution<double>(
+        0, std::sqrt(RL_policy_output_variances_(i))));
   }
 
   // Sanity check

@@ -154,7 +154,7 @@ class LcmDrivenLoop {
     auto& diagram_context = simulator_->get_mutable_context();
 
     // Wait for the first message.
-    drake::log()->info("Waiting for first lcm input message");
+    drake::log()->info(diagram_name_ + " waiting for first lcm input message");
     LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
       return name_to_input_sub_map_.at(active_channel_).count() > 0;
     });
@@ -352,7 +352,7 @@ class TwoLcmDrivenLoop {
     auto& diagram_context = simulator_->get_mutable_context();
 
     // Wait for the first message.
-    drake::log()->info("Waiting for initial lcm input messages");
+    drake::log()->info(diagram_name_ + " waiting for first lcm input messages");
     LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
       return ((subscriber0_.count() > 0) && (subscriber1_.count() > 0));
     });

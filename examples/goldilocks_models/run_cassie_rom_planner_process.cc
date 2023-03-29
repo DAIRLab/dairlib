@@ -564,7 +564,8 @@ int DoMain(int argc, char* argv[]) {
 
   DrawAndSaveDiagramGraph(*owned_diagram);
 
-  if (FLAGS_only_construct_to_get_RL_problem_size_so_do_not_simulate) {
+  if (FLAGS_only_construct_to_get_RL_problem_size_so_do_not_simulate &&
+      !FLAGS_unit_testing) {
     DRAKE_DEMAND(FLAGS_is_RL_training);
     return 0;
   }

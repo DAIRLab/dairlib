@@ -150,22 +150,6 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     MatrixXd theta_yddot = readCSV(param_.path_model_params);
     DRAKE_DEMAND(theta_yddot.size() > 0);
     rom_->SetThetaYddot(theta_yddot.col(0));
-    if (!param_.path_var.empty()) {
-      MatrixXd var = readCSV(param_.path_var);
-      DRAKE_DEMAND(var.size() > 1);
-      RL_policy_output_variances_ = var.col(0);
-    }
-
-    // Initialize gaussian distribution
-    generator_ = std::make_unique<std::default_random_engine>();
-    generator_->seed(
-        std::chrono::system_clock::now().time_since_epoch().count());
-    distributions_ =
-        std::make_unique<std::vector<std::normal_distribution<double>>>();
-    for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
-      distributions_->push_back(
-          std::normal_distribution<double>(0, RL_policy_output_variances_(i)));
-    }
   }
   // This leafsystem hasn't taken care of active ROM case (e.g. no good warm
   // starting)
@@ -731,13 +715,30 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   SaveStringVecToCsv(RL_addtl_info_names,
                      param_.dir_data + string("RL_addtl_info_names.csv"));
 
+  // Initialize gaussian distribution for RL policy noise
+  if (!param_.path_var.empty()) {
+    MatrixXd var = readCSV(param_.path_var);
+    DRAKE_DEMAND(var.size() > 1);
+    RL_policy_output_variances_ = var.col(0);
+    DRAKE_DEMAND(RL_policy_output_variances_.size() == a_dim);
+  } else {
+    RL_policy_output_variances_ = VectorXd::Zero(a_dim);
+  }
+
+  generator_ = std::make_unique<std::default_random_engine>();
+  generator_->seed(std::chrono::system_clock::now().time_since_epoch().count());
+  distributions_ =
+      std::make_unique<std::vector<std::normal_distribution<double>>>();
+  for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
+    distributions_->push_back(
+        std::normal_distribution<double>(0, RL_policy_output_variances_(i)));
+  }
+
   // Sanity check
   cout << "RL state dim = " << s_dim << endl;
   cout << "RL action dim = " << a_dim << endl;
   DRAKE_DEMAND(RL_state_names.size() == s_dim);
   DRAKE_DEMAND(RL_action_names.size() == a_dim);
-
-  DRAKE_DEMAND(RL_policy_output_variances_.size() == a_dim);
 }
 
 void CassiePlannerWithOnlyRom::SolveTrajOpt(

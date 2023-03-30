@@ -75,6 +75,9 @@ int DoMain(int argc, char* argv[]) {
   parser_plate.package_map().Add("franka_urdfs", "examples/franka/urdf");
   parser_plate.AddModelFromFile(controller_params.plate_model);
   parser_plate.AddModelFromFile(controller_params.tray_model);
+
+  plant_plate.WeldFrames(plant_plate.world_frame(),
+                         plant_plate.GetFrameByName("base_link"), X_WI);
   plant_plate.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_plate_ad =
@@ -116,25 +119,33 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
           controller_params.c3_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  drake::AutoDiffVecXd q_v_ad = drake::math::InitializeAutoDiff(VectorXd::Zero(
-      plant_plate_ad->num_positions() + plant_plate_ad->num_velocities()));
+  drake::AutoDiffVecXd q_v_u_ad =
+      drake::math::InitializeAutoDiff(VectorXd::Zero(
+          plant_plate_ad->num_positions() + plant_plate_ad->num_velocities() +
+          plant_plate_ad->num_actuators()));
   std::cout << "num_positions: " << plant_plate_ad->num_positions()
             << std::endl;
   std::cout << "num_velocities: " << plant_plate_ad->num_velocities()
             << std::endl;
-  VectorXd q_v = VectorXd::Zero(plant_plate.num_positions() +
-                                plant_plate.num_velocities());
-  q_v[0] = 1;
-  q_v[7] = 1;
-  q_v_ad[0] = 1;
-  q_v_ad[7] = 1;
+  std::cout << "num_actuators: " << plant_plate_ad->num_actuators()
+            << std::endl;
+  VectorXd q_v_u = VectorXd::Zero(plant_plate.num_positions() +
+                                plant_plate.num_velocities() +
+                                plant_plate.num_actuators());
+  q_v_u[0] = 1;
+  q_v_u[4] = 1;
+  q_v_u_ad[0] = 1;
+  q_v_u_ad[4] = 1;
 
-  plant_plate_ad->SetPositionsAndVelocities(plate_context_ad.get(), q_v_ad);
-  plant_plate.SetPositionsAndVelocities(plate_context.get(), q_v);
+  int n_x = plant_plate_ad->num_positions() + plant_plate_ad->num_velocities();
+  int n_u = plant_plate_ad->num_actuators();
+
+  plant_plate_ad->SetPositionsAndVelocities(plate_context_ad.get(), q_v_u_ad.head(n_x));
+  plant_plate.SetPositionsAndVelocities(plate_context.get(), q_v_u.head(n_x));
   auto lcs = LCSFactory::LinearizePlantToLCS(
       plant_plate, *plate_context, *plant_plate_ad, *plate_context_ad,
       contact_pairs, controller_params.num_friction_directions,
-      controller_params.mu, controller_params.dt, 5);
+      controller_params.mu, controller_params.dt, controller_params.N);
 
   auto Q = std::vector<MatrixXd>(controller_params.N, controller_params.Q);
   auto R = std::vector<MatrixXd>(controller_params.N, controller_params.R);
@@ -143,8 +154,10 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<systems::C3Controller>(
       lcs.first, c3_options, Q, R, G, U);
 
-  builder.Connect(state_receiver->get_output_port(), controller->get_input_port_state());
-  builder.Connect(controller->get_output_port_trajectory(), trajectory_sender->get_input_port());
+  builder.Connect(state_receiver->get_output_port(),
+                  controller->get_input_port_state());
+  builder.Connect(controller->get_output_port_trajectory(),
+                  trajectory_sender->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

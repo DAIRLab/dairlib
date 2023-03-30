@@ -23,7 +23,7 @@ w_U: 0.001
 g_size: 10
 u_size: 10
 # State Tracking Error, assuming diagonal
-q_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+q_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+           1, 1, 1, 1, 1, 1, 1, 1, 1]
 # Penalty on efforts, assuming diagonal
-r_vector: [1, 1, 1, 1, 1, 1]
+r_vector: [1, 1, 1]

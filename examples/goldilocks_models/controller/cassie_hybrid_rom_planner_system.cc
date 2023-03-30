@@ -1542,7 +1542,9 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     }
 
     // Check the cost
-    PrintCost(trajopt, result);
+    if (print_level_ > 0) {
+      PrintCost(trajopt, result);
+    }
 
     // Check constraint violation
     if (!result.is_success()) {

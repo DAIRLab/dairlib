@@ -49,12 +49,13 @@ LCS LCSFactory::LinearizePlantToLCS(
 
   // std::cout << ExtractGradient(C).cols() << std::endl;
 
+
   AutoDiffVecXd Bu = plant_ad.MakeActuationMatrix() *
                      plant_ad.get_actuation_input_port().Eval(context_ad);
 
-//  std::cout << "Bu" << std::endl;
-//  std::cout << ExtractValue(Bu) << std::endl;
-//  std::cout << "Bu" << std::endl;
+  std::cout << "Bu" << std::endl;
+  std::cout << ExtractValue(Bu) << std::endl;
+  std::cout << "Bu" << std::endl;
 
   //  auto u = plant.get_actuation_input_port().Eval(context);
   //  auto u_ad = drake::math::InitializeAutoDiff(u);

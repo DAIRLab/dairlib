@@ -244,7 +244,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   q << end_effector, ball;
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
-  VectorXd u = VectorXd::Zero(3);
+  VectorXd u = 1000*VectorXd::Ones(3);
 
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);

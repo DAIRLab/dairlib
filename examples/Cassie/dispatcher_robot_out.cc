@@ -347,6 +347,11 @@ int do_main(int argc, char* argv[]) {
       "camera_depth_optical_frame",
       camera::ReadCameraPoseFromYaml(FLAGS_camera_pose_calib)
     });
+    bff.push_back({
+      "map_center",
+      drake::math::RigidTransformd(drake::math::RotationMatrixd(),
+                                  Vector3d::UnitX())
+    });
     std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};
 
     const auto& tf_broadcaster =

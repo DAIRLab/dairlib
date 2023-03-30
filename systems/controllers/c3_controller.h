@@ -19,7 +19,11 @@ namespace systems {
 /// Outputs a lcmt_timestamped_saved_traj
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
-  explicit C3Controller(solvers::LCS& lcs, C3Options c3_options);
+  explicit C3Controller(solvers::LCS& lcs, C3Options c3_options,
+                        std::vector<Eigen::MatrixXd> Q,
+                        std::vector<Eigen::MatrixXd> R,
+                        std::vector<Eigen::MatrixXd> G,
+                        std::vector<Eigen::MatrixXd> U);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(target_input_port_);

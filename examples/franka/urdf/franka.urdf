@@ -502,11 +502,18 @@
     </joint>
     <link name="paddle">
         <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0.0048"/>
+            <origin rpy="0 0 0" xyz="0 0 0.005"/>
             <mass value="0.5"/>
+            <inertia
+							ixx="0.0067"
+							ixy="0"
+							ixz="0"
+							iyy="0.0067"
+							iyz="0"
+							izz="0.013" />
         </inertial>
         <collision name="collision">
-					<origin rpy="0 0 0" xyz="0 0 0.0048"/>
+					<origin rpy="0 0 0" xyz="0 0 0.005"/>
 					<geometry>
 							<box size="0.2 0.2 0.01"/>
 					</geometry>

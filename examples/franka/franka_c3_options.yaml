@@ -1,0 +1,5 @@
+admm_iter: 2
+rho: 0.1
+rho_scale: 3
+num_threads: 0
+delta_option: 1

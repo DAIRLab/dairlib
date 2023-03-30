@@ -9,19 +9,22 @@ namespace dairlib {
 
 using drake::systems::BasicVector;
 using Eigen::VectorXd;
-using solvers::LCS;
 using solvers::C3MIQP;
+using solvers::LCS;
 
 namespace systems {
 
-C3Controller::C3Controller(LCS& lcs, C3Options c3_options) : lcs_(lcs) {
-  target_input_port_ =
-      this->DeclareVectorInputPort("desired_position",
-                                   BasicVector<double>(2 + 16))
-          .get_index();
+C3Controller::C3Controller(LCS& lcs, C3Options c3_options,
+                           std::vector<Eigen::MatrixXd> Q,
+                           std::vector<Eigen::MatrixXd> R,
+                           std::vector<Eigen::MatrixXd> G,
+                           std::vector<Eigen::MatrixXd> U)
+    : lcs_(lcs), Q_(Q), R_(R), G_(G), U_(U) {
+  target_input_port_ = this->DeclareVectorInputPort("desired_position",
+                                                    BasicVector<double>(2 + 16))
+                           .get_index();
   lcs_state_input_port_ =
-      this->DeclareVectorInputPort(
-              "x_lcs", BasicVector<double>(10))
+      this->DeclareVectorInputPort("x_lcs", BasicVector<double>(10))
           .get_index();
 
   std::vector<VectorXd> x_desired = {VectorXd::Zero(3)};
@@ -38,10 +41,10 @@ C3Controller::C3Controller(LCS& lcs, C3Options c3_options) : lcs_(lcs) {
 void C3Controller::OutputTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
-  const BasicVector<double>& x_des =
-      *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
-  const BasicVector<double>& x =
-      *this->template EvalVectorInput<BasicVector>(context, lcs_state_input_port_);
+//  const BasicVector<double>& x_des =
+//      *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
+  const BasicVector<double>& x = *this->template EvalVectorInput<BasicVector>(
+      context, lcs_state_input_port_);
   // delta
   // in order:
   // state, forces, inputs

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <robot name="plate">
+  <link name="base_link"/>
+  <link name="plate_x"/>
+  <link name="plate_y"/>
   <link name="plate">
     <inertial>
       <mass value="2"/>
@@ -30,41 +33,72 @@
         <box size="0.2 0.2 0.01"/>
       </geometry>
     </visual>
-    <visual>
+    <visual name="middle_right">
       <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
     </visual>
-    <visual>
+    <visual name="top_left">
       <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
     </visual>
-    <visual>
+    <visual name="bottom_left">
       <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
     </visual>
-    <collision>
+    <collision name="middle_right">
       <geometry>
         <sphere radius="0.0"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
     </collision>
-    <collision>
+    <collision name="top_left">
       <geometry>
         <sphere radius="0.0"/>
       </geometry>
       <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
     </collision>
-    <collision>
+    <collision name="bottom_left">
       <geometry>
         <sphere radius="0.0"/>
       </geometry>
       <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
     </collision>
+
+    <joint name="plate_x" type="prismatic">
+      <parent link="base_link"/>
+      <child link="plate_x"/>
+      <axis xyz="1 0 0"/>
+    </joint>
+    <joint name="plate_y" type="prismatic">
+      <parent link="plate_x"/>
+      <child link="plate_y"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+    <joint name="plate_z" type="prismatic">
+      <parent link="plate_y"/>
+      <child link="plate_z"/>
+      <axis xyz="0 0 1"/>
+    </joint>
+    <transmission name="plate_x" type="SimpleTransmission">
+      <actuator name="plate_virtual_actuator_x"/>
+      <joint name="plate_x"/>
+      <mechanicalReduction>1</mechanicalReduction>
+    </transmission>
+    <transmission name="plate_y" type="SimpleTransmission">
+      <actuator name="plate_virtual_actuator_y"/>
+      <joint name="plate_y"/>
+      <mechanicalReduction>1</mechanicalReduction>
+    </transmission>
+    <transmission name="plate_z" type="SimpleTransmission">
+      <actuator name="plate_virtual_actuator_z"/>
+      <joint name="plate_z"/>
+      <mechanicalReduction>1</mechanicalReduction>
+    </transmission>
   </link>
 </robot>

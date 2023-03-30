@@ -163,45 +163,45 @@
         </material>
       </visual>
       <visual name="front_left_support">
-          <pose>0.04 0.12 0.9525 0 0 0</pose>
-          <geometry>
-              <box>
-                  <size>0.05 0.05 0.381</size>
-              </box>
-          </geometry>
-          <material>
-              <ambient>0.3 0.3 0.3 1</ambient>
-              <diffuse>0.7 0.7 0.7 1</diffuse>
-              <specular>0.01 0.01 0.01 1</specular>
-              <emissive>0 0 0 1</emissive>
-          </material>
+        <pose>0.04 0.12 0.9525 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.05 0.05 0.381</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.3 0.3 0.3 1</ambient>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.01 0.01 0.01 1</specular>
+          <emissive>0 0 0 1</emissive>
+        </material>
       </visual>
       <visual name="front_right_support">
-          <pose>0.04 -0.12 0.9525 0 0 0</pose>
-          <geometry>
-              <box>
-                  <size>0.05 0.05 0.381</size>
-              </box>
-          </geometry>
-          <material>
-              <ambient>0.3 0.3 0.3 1</ambient>
-              <diffuse>0.7 0.7 0.7 1</diffuse>
-              <specular>0.01 0.01 0.01 1</specular>
-              <emissive>0 0 0 1</emissive>
-          </material>
+        <pose>0.04 -0.12 0.9525 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.05 0.05 0.381</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.3 0.3 0.3 1</ambient>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.01 0.01 0.01 1</specular>
+          <emissive>0 0 0 1</emissive>
+        </material>
       </visual>
       <visual name="back_left_support">
         <pose>-0.20 0.12 0.9525 0 0 0</pose>
         <geometry>
-            <box>
-                <size>0.05 0.05 0.381</size>
-            </box>
+          <box>
+            <size>0.05 0.05 0.381</size>
+          </box>
         </geometry>
         <material>
-            <ambient>0.3 0.3 0.3 1</ambient>
-            <diffuse>0.7 0.7 0.7 1</diffuse>
-            <specular>0.01 0.01 0.01 1</specular>
-            <emissive>0 0 0 1</emissive>
+          <ambient>0.3 0.3 0.3 1</ambient>
+          <diffuse>0.7 0.7 0.7 1</diffuse>
+          <specular>0.01 0.01 0.01 1</specular>
+          <emissive>0 0 0 1</emissive>
         </material>
       </visual>
       <collision name="front_left_support">
@@ -273,7 +273,8 @@
             </ode>
             <bullet>
               <split_impulse>1</split_impulse>
-              <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
+              <split_impulse_penetration_threshold>-0.01
+              </split_impulse_penetration_threshold>
               <soft_cfm>0</soft_cfm>
               <soft_erp>0.2</soft_erp>
               <kp>1e+13</kp>

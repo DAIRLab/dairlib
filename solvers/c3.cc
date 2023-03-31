@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include <omp.h>
+#include <iostream>
 
 #include "solvers/lcs.h"
 
@@ -97,7 +98,6 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
 
   MatrixXd LinEq(n_, 2 * n_ + k_ + m_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
-
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_, n_) = A_.at(i);
     LinEq.block(0, n_, n_, k_) = B_.at(i);
@@ -106,7 +106,6 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     prog_.AddLinearEqualityConstraint(
         LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i), x_.at(i + 1)});
   }
-
   for (int i = 0; i < N_ + 1; i++) {
     prog_.AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * xdesired_.at(i),
                            x_.at(i), 1);

@@ -72,7 +72,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   VectorXd d_v = d_vv - x_dvvcomp;
 
   ///////////
-  //  AutoDiffVecXd state = plant_ad.get_state_output_port().Eval(context_ad);
   AutoDiffVecXd x_ad = plant_ad.GetPositionsAndVelocities(context_ad);
   AutoDiffVecXd qdot_no_contact(plant.num_positions());
   AutoDiffVecXd vel_ad = x_ad.tail(n_v);

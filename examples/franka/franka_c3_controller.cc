@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/franka/franka_c3_controller_params.h"
+#include "examples/franka/franka_kinematics.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
@@ -68,6 +69,14 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
   plant_franka.Finalize();
+  auto franka_context = plant_franka.CreateDefaultContext();
+
+  ///
+  MultibodyPlant<double> plant_tray(0.0);
+  Parser parser_tray(&plant_tray, nullptr);
+  parser_tray.AddModelFromFile(controller_params.tray_model);
+  plant_tray.Finalize();
+  auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
   MultibodyPlant<double> plant_plate(0.0);
@@ -113,8 +122,16 @@ int DoMain(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  auto state_receiver =
+  auto tray_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          "TRAY_OUTPUT", &lcm));
+  auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+  auto tray_state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_tray);
+  auto reduced_order_model_receiver =
+      builder.AddSystem<systems::FrankaKinematics>(
+          plant_franka, franka_context.get(), plant_tray, tray_context.get(), "paddle");
   auto trajectory_sender =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
           controller_params.c3_channel, &lcm,
@@ -130,8 +147,8 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "num_actuators: " << plant_plate_ad->num_actuators()
             << std::endl;
   VectorXd q_v_u = VectorXd::Zero(plant_plate.num_positions() +
-                                plant_plate.num_velocities() +
-                                plant_plate.num_actuators());
+                                  plant_plate.num_velocities() +
+                                  plant_plate.num_actuators());
   q_v_u[0] = 1;
   q_v_u[4] = 1;
   q_v_u_ad[0] = 1;
@@ -140,21 +157,28 @@ int DoMain(int argc, char* argv[]) {
   int n_x = plant_plate_ad->num_positions() + plant_plate_ad->num_velocities();
   int n_u = plant_plate_ad->num_actuators();
 
-  plant_plate_ad->SetPositionsAndVelocities(plate_context_ad.get(), q_v_u_ad.head(n_x));
+  plant_plate_ad->SetPositionsAndVelocities(plate_context_ad.get(),
+                                            q_v_u_ad.head(n_x));
   plant_plate.SetPositionsAndVelocities(plate_context.get(), q_v_u.head(n_x));
   auto lcs = LCSFactory::LinearizePlantToLCS(
       plant_plate, *plate_context, *plant_plate_ad, *plate_context_ad,
       contact_pairs, controller_params.num_friction_directions,
       controller_params.mu, controller_params.dt, controller_params.N);
 
-  auto Q = std::vector<MatrixXd>(controller_params.N, controller_params.Q);
+  auto Q = std::vector<MatrixXd>(controller_params.N + 1, controller_params.Q);
   auto R = std::vector<MatrixXd>(controller_params.N, controller_params.R);
   auto G = std::vector<MatrixXd>(controller_params.N, controller_params.G);
   auto U = std::vector<MatrixXd>(controller_params.N, controller_params.U);
   auto controller = builder.AddSystem<systems::C3Controller>(
       lcs.first, c3_options, Q, R, G, U);
 
-  builder.Connect(state_receiver->get_output_port(),
+  builder.Connect(franka_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_franka_state());
+  builder.Connect(tray_state_sub->get_output_port(),
+                  tray_state_receiver->get_input_port());
+  builder.Connect(tray_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_object_state());
+  builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_state());
   builder.Connect(controller->get_output_port_trajectory(),
                   trajectory_sender->get_input_port());
@@ -163,7 +187,7 @@ int DoMain(int argc, char* argv[]) {
   owned_diagram->set_name(("franka_c3_controller"));
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver,
+      &lcm, std::move(owned_diagram), franka_state_receiver,
       controller_params.state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();

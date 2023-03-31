@@ -618,9 +618,6 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     DRAKE_DEMAND(!param_.gains.constant_rom_vel_during_double_support);
   }
   // Checks for idx_const_rom_vel_during_double_support_
-  if (param_.gains.constant_rom_vel_during_double_support) {
-    DRAKE_DEMAND(idx_const_rom_vel_during_double_support_.size() > 0);
-  }
   if (idx_const_rom_vel_during_double_support_.size() > 0) {
     DRAKE_DEMAND(param_.gains.constant_rom_vel_during_double_support);
     for (auto& element : idx_const_rom_vel_during_double_support_) {

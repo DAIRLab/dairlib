@@ -510,6 +510,11 @@ int DoMain(int argc, char* argv[]) {
             "double_support_duration = 0\n";
     idx_const_rom_vel_during_double_support.clear();
   }
+  if (param.gains.constant_rom_vel_during_double_support) {
+    if (idx_const_rom_vel_during_double_support.empty()) {
+      cout << "WARNING: idx_const_rom_vel_during_double_support is empty\n";
+    }
+  }
 
   // Create optimal rom trajectory generator
   auto rom_planner = builder.AddSystem<CassiePlannerWithMixedRomFom>(

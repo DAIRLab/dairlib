@@ -1,9 +1,9 @@
 #include "solvers/c3.h"
 
 #include <chrono>
+#include <iostream>
 
 #include <omp.h>
-#include <iostream>
 
 #include "solvers/lcs.h"
 
@@ -114,7 +114,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     }
   }
 
-  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
+  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 1);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
@@ -129,13 +129,7 @@ VectorXd C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   VectorXd z;
 
   for (int i = 0; i < options_.admm_iter - 1; i++) {
-    // std::cout << "Iteration" << i <<  std::endl;
-
     z = ADMMStep(x0, &delta, &w, &Gv);
-    // std::cout << "new delta" << i <<  std::endl;
-    // std::cout << delta.at(0).segment(n_,m_) << std::endl;
-    //    std::cout << "w" << i <<  std::endl;
-    //    std::cout << w.at(0) << std::endl;
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -146,43 +140,6 @@ VectorXd C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
 
   z = zfin[0];
-
-  //  std::cout <<  "contact prediction" << std::endl;
-  //      std::cout << zfin[0].segment(n_, m_) << std::endl;
-
-  //    std::cout << "violation" << std::endl;
-  //  std::cout << delta.at(0) << std::endl;
-
-  //  std::cout << "delta_force" << std::endl;
-  //  std::cout << delta.at(0).segment(n_,m_) << std::endl;
-  //
-  //  std::cout << "delta_displace" << std::endl;
-  //  std::cout << delta.at(0).segment(0,n_) << std::endl;
-
-  // VectorXd hold = delta.at(0).segment(n_,m_);
-  // VectorXd hold = z.segment(n_,m_);
-
-  //  double count = 0;
-  //
-  //  for (int i = 3; i < 5; i++) {
-  //    count = count + hold(i);
-  //  }
-  //
-  //  if ( count >= 0.001){
-  //    std::cout << "guessing_contact" << std::endl;
-  //  }
-
-  //  std::cout << "w" << std::endl;
-  //  std::cout << w.at(0).segment(n_+3,3) << std::endl;
-
-  //      std::cout <<  "input" << std::endl;
-  //      std::cout << z.segment(n_+m_, k_) << std::endl;
-
-  //      std::cout <<  "contact prediction" << std::endl;
-  //      std::cout << z.segment(n_, m_) << std::endl;
-
-  //      std::cout <<  "prediction state" << std::endl;
-  //    std::cout << z.segment(0, n_) << std::endl;
 
   return z.segment(n_ + m_, k_);
 }
@@ -229,13 +186,10 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (hflag_ == 1) {
-    std::cout << "hflag true: " << std::endl;
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
-    std::cout << "adding constraint: " << std::endl;
     constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
-    std::cout << "added constraint: " << std::endl;
   }
 
   for (auto& cost : costs_) {
@@ -328,10 +282,10 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
   int i;
 
-//  if (options_.num_threads > 0) {
-//    omp_set_dynamic(0);  // Explicitly disable dynamic teams
-//    omp_set_num_threads(options_.num_threads);  // Set number of threads
-//  }
+  //  if (options_.num_threads > 0) {
+  //    omp_set_dynamic(0);  // Explicitly disable dynamic teams
+  //    omp_set_num_threads(options_.num_threads);  // Set number of threads
+  //  }
 
 #pragma omp parallel for
   for (i = 0; i < N_; i++) {

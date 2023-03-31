@@ -35,7 +35,8 @@ C3Controller::C3Controller(
       Q_(std::vector<MatrixXd>(c3_options_.N + 1, c3_options_.Q)),
       R_(std::vector<MatrixXd>(c3_options_.N, c3_options_.R)),
       G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
-      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)) {
+      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
+      N_(c3_options_.N){
   //  DRAKE_DEMAND(Q_[0].rows() == lcs.A_[0].rows());
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -86,15 +87,20 @@ void C3Controller::OutputTrajectory(
 
   plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x));
   plant_ad_.SetPositionsAndVelocities(context_ad_, q_v_u_ad.head(n_x));
-  auto lcs = LCSFactory::LinearizePlantToLCS(
+  auto lcs_pair = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N);
-  c3_ = std::make_unique<C3MIQP>(lcs.first, Q_, R_, G_, U_, x_desired,
+  auto lcs = lcs_pair.first;
+  c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired,
                                  c3_options_);
 
-  std::vector<VectorXd> delta(N_, VectorXd::Zero(1));
-  std::vector<VectorXd> w(N_, VectorXd::Zero(1));
+//  int N = (system_.A_).size();
+  int n = ((lcs.A_)[0].cols());
+  int m = ((lcs.D_)[0].cols());
+  int k = ((lcs.B_)[0].cols());
+  std::vector<VectorXd> delta(N_, VectorXd::Zero(n + m + k));
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n + m + k));
   c3_->Solve(x.get_data(), delta, w);
   *output_traj = dairlib::lcmt_timestamped_saved_traj();
 }

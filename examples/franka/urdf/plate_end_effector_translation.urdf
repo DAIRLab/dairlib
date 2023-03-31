@@ -15,18 +15,18 @@
           iyz="0"
           izz="0.013"/>
     </inertial>
-    <collision name="collision">
-      <origin rpy="0 0 0" xyz="0 0 0.005"/>
-      <geometry>
-        <box size="0.2 0.2 0.01"/>
-      </geometry>
-      <drake:proximity_properties>
-        <drake:rigid_hydroelastic/>
-        <drake:mesh_resolution_hint value="100"/>
-        <drake:mu_dynamic value="0.2"/>
-        <drake:mu_static value="0.2"/>
-      </drake:proximity_properties>
-    </collision>
+<!--    <collision name="collision">-->
+<!--      <origin rpy="0 0 0" xyz="0 0 0.005"/>-->
+<!--      <geometry>-->
+<!--        <box size="0.2 0.2 0.01"/>-->
+<!--      </geometry>-->
+<!--      <drake:proximity_properties>-->
+<!--        <drake:rigid_hydroelastic/>-->
+<!--        <drake:mesh_resolution_hint value="100"/>-->
+<!--        <drake:mu_dynamic value="0.2"/>-->
+<!--        <drake:mu_static value="0.2"/>-->
+<!--      </drake:proximity_properties>-->
+<!--    </collision>-->
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.005"/>
       <geometry>
@@ -53,24 +53,23 @@
     </visual>
     <collision name="middle_right">
       <geometry>
-        <sphere radius="0.0"/>
+        <sphere radius="0.01"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
     </collision>
     <collision name="top_left">
       <geometry>
-        <sphere radius="0.0"/>
+        <sphere radius="0.01"/>
       </geometry>
       <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
-        <sphere radius="0.0"/>
+        <sphere radius="0.01"/>
       </geometry>
       <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
     </collision>
   </link>
-
   <joint name="plate_x" type="prismatic">
     <parent link="base_link"/>
     <child link="plate_x"/>

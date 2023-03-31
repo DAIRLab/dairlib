@@ -31,6 +31,7 @@ using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -60,10 +61,14 @@ int DoMain(int argc, char* argv[]) {
   C3Options c3_options =
       drake::yaml::LoadYamlFile<C3Options>(controller_params.c3_options_file);
 
+
+  DiagramBuilder<double> plant_builder;
+
   ///
 
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
+  parser_franka.package_map().Add("franka_urdfs", "examples/franka/urdf");
   parser_franka.AddModelFromFile(controller_params.franka_model);
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
@@ -79,20 +84,21 @@ int DoMain(int argc, char* argv[]) {
   auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
-  MultibodyPlant<double> plant_plate(0.0);
+//  MultibodyPlant<double> plant_plate(0.0);
+  auto [plant_plate, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_plate(&plant_plate);
-  parser_plate.package_map().Add("franka_urdfs", "examples/franka/urdf");
   parser_plate.AddModelFromFile(controller_params.plate_model);
   parser_plate.AddModelFromFile(controller_params.tray_model);
 
   plant_plate.WeldFrames(plant_plate.world_frame(),
                          plant_plate.GetFrameByName("base_link"), X_WI);
   plant_plate.Finalize();
-
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_plate_ad =
       drake::systems::System<double>::ToAutoDiffXd(plant_plate);
 
-  auto plate_context = plant_plate.CreateDefaultContext();
+  auto plant_diagram = plant_builder.Build();
+  std::unique_ptr<drake::systems::Context<double>> diagram_context = plant_diagram->CreateDefaultContext();
+  auto& plate_context = plant_diagram->GetMutableSubsystemContext(plant_plate, diagram_context.get());
   auto plate_context_ad = plant_plate_ad->CreateDefaultContext();
 
   ///
@@ -102,22 +108,21 @@ int DoMain(int argc, char* argv[]) {
   std::vector<drake::geometry::GeometryId> tray_geoms =
       plant_plate.GetCollisionGeometriesForBody(
           plant_plate.GetBodyByName("tray"));
-  //  drake::geometry::GeometryId ground_geoms =
-  //      plant_plate.GetCollisionGeometriesForBody(plant_plate.GetBodyByName("box"))[0];
-  //  drake::geometry::GeometryId sphere_geoms2 =
-  //      plant_plate.GetCollisionGeometriesForBody(plant_plate.GetBodyByName("sphere2"))[0];
-  //  std::vector<drake::geometry::GeometryId> contact_geoms = {plate_geoms,
-  //                                                            tray_geoms};
   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
       contact_geoms;
   contact_geoms["PLATE"] = plate_contact_points;
   contact_geoms["TRAY"] = tray_geoms;
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  for (auto geom_id : plate_contact_points) {
-    contact_pairs.push_back(SortedPair(geom_id, contact_geoms["TRAY"][0]));
+  for (auto geom_id : contact_geoms["PLATE"]) {
+    contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
-
+  std::cout << "n_contacts: " << contact_pairs.size() << std::endl;
+  std::cout << "plate_contacts: " << plate_contact_points.size() << std::endl;
+  std::cout << "tray_contacts: " << tray_geoms.size() << std::endl;
+  std::cout << "num_positions: " << plant_plate.num_positions() << std::endl;
+  std::cout << "num_velocities: " << plant_plate.num_velocities() << std::endl;
+  std::cout << "num_actuators: " << plant_plate.num_actuators() << std::endl;
   ///
 
   DiagramBuilder<double> builder;
@@ -136,41 +141,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  drake::AutoDiffVecXd q_v_u_ad =
-      drake::math::InitializeAutoDiff(VectorXd::Zero(
-          plant_plate_ad->num_positions() + plant_plate_ad->num_velocities() +
-          plant_plate_ad->num_actuators()));
-  std::cout << "num_positions: " << plant_plate_ad->num_positions()
-            << std::endl;
-  std::cout << "num_velocities: " << plant_plate_ad->num_velocities()
-            << std::endl;
-  std::cout << "num_actuators: " << plant_plate_ad->num_actuators()
-            << std::endl;
-  VectorXd q_v_u = VectorXd::Zero(plant_plate.num_positions() +
-                                  plant_plate.num_velocities() +
-                                  plant_plate.num_actuators());
-  q_v_u[0] = 1;
-  q_v_u[4] = 1;
-  q_v_u_ad[0] = 1;
-  q_v_u_ad[4] = 1;
 
-  int n_x = plant_plate_ad->num_positions() + plant_plate_ad->num_velocities();
-  int n_u = plant_plate_ad->num_actuators();
-
-  plant_plate_ad->SetPositionsAndVelocities(plate_context_ad.get(),
-                                            q_v_u_ad.head(n_x));
-  plant_plate.SetPositionsAndVelocities(plate_context.get(), q_v_u.head(n_x));
-  auto lcs = LCSFactory::LinearizePlantToLCS(
-      plant_plate, *plate_context, *plant_plate_ad, *plate_context_ad,
-      contact_pairs, controller_params.num_friction_directions,
-      controller_params.mu, controller_params.dt, controller_params.N);
-
-  auto Q = std::vector<MatrixXd>(controller_params.N + 1, controller_params.Q);
-  auto R = std::vector<MatrixXd>(controller_params.N, controller_params.R);
-  auto G = std::vector<MatrixXd>(controller_params.N, controller_params.G);
-  auto U = std::vector<MatrixXd>(controller_params.N, controller_params.U);
   auto controller = builder.AddSystem<systems::C3Controller>(
-      lcs.first, c3_options, Q, R, G, U);
+      plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(), contact_pairs, c3_options);
 
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -183,8 +156,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(controller->get_output_port_trajectory(),
                   trajectory_sender->get_input_port());
 
+//  std::unique_ptr<drake::systems::Context<double>> diagram_context = plant_diagram->CreateDefaultContext();
+
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
+  plant_diagram->set_name(("franka_c3_plant"));
+  DrawAndSaveDiagramGraph(*plant_diagram);
+
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,

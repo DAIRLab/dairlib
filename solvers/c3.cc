@@ -226,14 +226,16 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
-
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (hflag_ == 1) {
+    std::cout << "hflag true: " << std::endl;
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
+    std::cout << "adding constraint: " << std::endl;
     constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
+    std::cout << "added constraint: " << std::endl;
   }
 
   for (auto& cost : costs_) {

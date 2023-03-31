@@ -16,11 +16,11 @@ using systems::TimestampedVector;
 namespace systems {
 
 C3Controller::C3Controller(LCS& lcs, C3Options c3_options,
-                           std::vector<Eigen::MatrixXd> Q,
-                           std::vector<Eigen::MatrixXd> R,
-                           std::vector<Eigen::MatrixXd> G,
-                           std::vector<Eigen::MatrixXd> U)
-    : lcs_(lcs), Q_(Q), R_(R), G_(G), U_(U) {
+                           std::vector<Eigen::MatrixXd>& Q,
+                           std::vector<Eigen::MatrixXd>& R,
+                           std::vector<Eigen::MatrixXd>& G,
+                           std::vector<Eigen::MatrixXd>& U)
+    : lcs_(lcs), Q_(Q), R_(R), G_(G), U_(U), N_(Q_.size()) {
   DRAKE_DEMAND(Q_[0].rows() == lcs.A_[0].rows());
   target_input_port_ = this->DeclareVectorInputPort("desired_position",
                                                     BasicVector<double>(2 + 16))
@@ -52,8 +52,8 @@ void C3Controller::OutputTrajectory(
   // in order:
   // state, forces, inputs
   // initialize with zeros or current state
-  std::vector<VectorXd> delta(1, VectorXd::Zero(1));
-  std::vector<VectorXd> w(1, VectorXd::Zero(1));
+  std::vector<VectorXd> delta(N_, VectorXd::Zero(1));
+  std::vector<VectorXd> w(N_, VectorXd::Zero(1));
   c3_->Solve(x.value(), delta, w);
 }
 

@@ -21,10 +21,10 @@ namespace systems {
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
   explicit C3Controller(solvers::LCS& lcs, C3Options c3_options,
-                        std::vector<Eigen::MatrixXd> Q,
-                        std::vector<Eigen::MatrixXd> R,
-                        std::vector<Eigen::MatrixXd> G,
-                        std::vector<Eigen::MatrixXd> U);
+                        std::vector<Eigen::MatrixXd>& Q,
+                        std::vector<Eigen::MatrixXd>& R,
+                        std::vector<Eigen::MatrixXd>& G,
+                        std::vector<Eigen::MatrixXd>& U);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(target_input_port_);
@@ -54,6 +54,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   std::vector<Eigen::MatrixXd> R_;
   std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::MatrixXd> U_;
+  int N_;
 };
 
 }  // namespace systems

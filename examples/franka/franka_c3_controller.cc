@@ -133,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(), "paddle");
   auto trajectory_sender =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_saved_traj>(
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   drake::AutoDiffVecXd q_v_u_ad =

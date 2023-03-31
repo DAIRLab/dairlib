@@ -2091,12 +2091,12 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   } else {
     if (counter_ > 0) {
       string dir_pref = dir_data + to_string(counter_ - 1) + "_";
-      writeCSV(dir_pref + string("RL_addtl_info.csv"),
-               current_time * VectorXd::Ones(1), true);
       writeCSV(dir_pref + string("s.csv"), RL_state_prev_, true);
       writeCSV(dir_pref + string("s_prime.csv"), RL_state_, true);
       writeCSV(dir_pref + string("a.csv"), RL_action_prev_, true);
       writeCSV(dir_pref + string("a_noise.csv"), RL_action_noise_prev_, true);
+      writeCSV(dir_pref + string("RL_addtl_info.csv"),
+               current_time * VectorXd::Ones(1), true);
       // Initial guess of the MPC is in: <idx>_init_file.csv
     }
   }

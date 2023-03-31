@@ -224,7 +224,7 @@ int do_main(int argc, char* argv[]) {
       &(loop.get_diagram()->GetMutableSubsystemContext(
           *config_receiver, &loop.get_diagram_mutable_context())),
       msg);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
+//  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

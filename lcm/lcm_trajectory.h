@@ -40,7 +40,9 @@ class LcmTrajectory {
   LcmTrajectory() = default;
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
-                const std::string& name, const std::string& description);
+                const std::string& name,
+                const std::string& description,
+                bool get_metadata=true);
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 

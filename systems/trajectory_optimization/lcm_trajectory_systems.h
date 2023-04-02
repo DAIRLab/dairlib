@@ -28,13 +28,13 @@ class LcmTrajectoryReceiver : public drake::systems::LeafSystem<double> {
 
  private:
   void OutputTrajectory(const drake::systems::Context<double>& context,
-                        drake::trajectories::PiecewisePolynomial<double>* output_trajectory) const;
+                        drake::trajectories::Trajectory<double>* traj) const;
   drake::systems::InputPortIndex trajectory_input_port_;
   drake::systems::OutputPortIndex trajectory_output_port_;
   const std::string trajectory_name_;
 
   mutable LcmTrajectory lcm_traj_;
-  std::string nominal_stand_path_ = "";
+  std::string nominal_stand_path_ = "examples/franka/saved_trajectories/default_end_effector_pose";
 };
 
 }  // namespace systems

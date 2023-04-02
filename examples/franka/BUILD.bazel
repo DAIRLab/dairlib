@@ -42,6 +42,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",

@@ -38,7 +38,7 @@ std::string exec(const char* cmd) {
   return result;
 }
 
-LcmTrajectory::Trajectory::Trajectory(string traj_name,
+LcmTrajectory::Trajectory::Trajectory(const string& traj_name,
                                       const lcmt_trajectory_block& traj_block) {
   int num_points = traj_block.num_points;
   int num_datatypes = traj_block.num_datatypes;

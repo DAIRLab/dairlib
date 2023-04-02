@@ -46,6 +46,10 @@ class LCS {
   const std::vector<Eigen::MatrixXd> H_;
   const std::vector<Eigen::VectorXd> c_;
   const int N_;
+
+  const int n_;
+  const int m_;
+  const int k_;
 };
 
 }  // namespace solvers

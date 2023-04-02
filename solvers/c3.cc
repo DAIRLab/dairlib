@@ -201,17 +201,16 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
     if (i < N_) {
       costs_.push_back(prog_.AddQuadraticCost(
           G.at(i).block(0, 0, n_, n_) * 2,
-          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i),
-          1));
+          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i)));
       costs_.push_back(prog_.AddQuadraticCost(
           G.at(i).block(n_, n_, m_, m_) * 2,
           -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
-          lambda_.at(i), 1));
+          lambda_.at(i)));
       costs_.push_back(
           prog_.AddQuadraticCost(G.at(i).block(n_ + m_, n_ + m_, k_, k_) * 2,
                                  -2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_) *
                                      WD.at(i).segment(n_ + m_, k_),
-                                 u_.at(i), 1));
+                                 u_.at(i)));
     }
   }
 

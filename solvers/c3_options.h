@@ -30,6 +30,7 @@ struct C3Options {
   double mu_plate;
   double dt;
   int num_friction_directions;
+  int num_contacts;
   MatrixXd Q;
   MatrixXd R;
   MatrixXd G;
@@ -47,6 +48,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(mu_plate));
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(num_friction_directions));
+    a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
     a->Visit(DRAKE_NVP(w_Q));

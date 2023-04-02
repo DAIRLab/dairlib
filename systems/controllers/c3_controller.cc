@@ -92,6 +92,12 @@ void C3Controller::OutputTrajectory(
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N);
   auto lcs = lcs_pair.first;
+  DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
+  DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
+  DRAKE_DEMAND(R_.front().rows() == lcs.k_);
+  DRAKE_DEMAND(R_.front().cols() == lcs.k_);
+  DRAKE_DEMAND(G_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
+  DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
   c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired,
                                  c3_options_);
 

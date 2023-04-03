@@ -203,7 +203,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   c /= AnDn;
   H /= AnDn;
 
-  LCS system(A, B, D, d, E, F, H, c, N);
+  LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);
 

@@ -139,10 +139,11 @@ VectorXd C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
 
-  z = zfin[0];
+  auto z0 = zfin[0];
 
 //  return z.segment(n_ + m_, k_);
-  return z;
+  return z0;
+//  return zfin;
 }
 
 VectorXd C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,

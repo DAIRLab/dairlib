@@ -68,7 +68,7 @@ void C3Controller::OutputTrajectory(
   const TimestampedVector<double>& x =
       *this->template EvalVectorInput<TimestampedVector>(context,
                                                          lcs_state_input_port_);
-
+  double t = x.get_timestamp();
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
@@ -111,7 +111,23 @@ void C3Controller::OutputTrajectory(
   auto x_sol = z_sol.head(lcs.n_);
   auto lambda_sol = z_sol.segment(lcs.n_, lcs.m_);
   auto u_sol = z_sol.tail(lcs.k_);
+
+  MatrixXd knots = x_sol;
+  VectorXd breaks = VectorXd::Zero(1);
+//  double T = trajopt_.GetTimingSolution()(0);
+  for (int n = 0; n < N_; n++) {
+    breaks(n) = t + lcs.dt_;
+  }
+  LcmTrajectory::Trajectory input_traj;
+  input_traj.traj_name = "input_traj";
+  input_traj.datatypes = std::vector<std::string>(1, "double");
+  input_traj.datapoints = knots;
+  input_traj.time_vector = breaks;
+  LcmTrajectory lcm_traj(
+      {input_traj}, {"input_traj"}, "input_traj", "input_traj", false);
   *output_traj = dairlib::lcmt_timestamped_saved_traj();
+  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_traj->utime = ;
 }
 
 }  // namespace systems

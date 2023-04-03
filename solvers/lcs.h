@@ -23,13 +23,15 @@ class LCS {
       const std::vector<Eigen::MatrixXd>& E,
       const std::vector<Eigen::MatrixXd>& F,
       const std::vector<Eigen::MatrixXd>& H,
-      const std::vector<Eigen::VectorXd>& c);
+      const std::vector<Eigen::VectorXd>& c,
+      double dt);
 
   /// Constructor for time-invariant LCS
   LCS(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
       const Eigen::MatrixXd& D, const Eigen::VectorXd& d,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
-      const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N);
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
+      double dt);
 
   /// Simulate the system for one-step
   /// @param x_init Initial x value
@@ -46,6 +48,7 @@ class LCS {
   const std::vector<Eigen::MatrixXd> H_;
   const std::vector<Eigen::VectorXd> c_;
   const int N_;
+  const double dt_;
 
   const int n_;
   const int m_;

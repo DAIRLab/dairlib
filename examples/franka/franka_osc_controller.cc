@@ -67,9 +67,9 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow("examples/franka/franka_controller_params.yaml"), {},
       {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
-          .osqp_options;
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
   DiagramBuilder<double> builder;
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
@@ -114,7 +114,7 @@ int DoMain(int argc, char* argv[]) {
           controller_params.c3_channel, &lcm));
   auto trajectory_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_trajectory");
+          "end_effector_traj");
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           controller_params.controller_channel, &lcm,

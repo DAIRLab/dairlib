@@ -47,6 +47,9 @@ using multibody::MakeNameToVelocitiesMap;
 DEFINE_string(controller_settings, "",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
+DEFINE_string(osqp_settings,
+              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+              "Filepath containing qp settings");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -60,7 +63,10 @@ int DoMain(int argc, char* argv[]) {
           "examples/franka/franka_c3_controller_params.yaml");
   C3Options c3_options =
       drake::yaml::LoadYamlFile<C3Options>(controller_params.c3_options_file);
-
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   DiagramBuilder<double> plant_builder;
 
@@ -144,7 +150,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(), contact_pairs, c3_options);
-
+  controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(tray_state_sub->get_output_port(),

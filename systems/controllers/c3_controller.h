@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <drake/common/yaml/yaml_io.h>
 
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -13,6 +14,8 @@
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
+#include "solvers/solver_options_io.h"
+#include "common/find_resource.h"
 
 namespace dairlib {
 namespace systems {
@@ -41,6 +44,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(trajectory_output_port_);
   }
 
+  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+    solver_options_ = options;
+  }
+
  private:
   void OutputTrajectory(
       const drake::systems::Context<double>& context,
@@ -57,6 +64,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
       contact_pairs_;
   C3Options c3_options_;
+  drake::solvers::SolverOptions solver_options_ =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   int n_q_;
   int n_v_;

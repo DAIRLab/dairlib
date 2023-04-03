@@ -56,7 +56,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       k_((LCS.B_)[0].cols()),
       hflag_(H_[0].isZero(0)),
       prog_(MathematicalProgram()),
-      OSQPoptions_(SolverOptions()),
+      solver_options_(SolverOptions()),
       osqp_(OsqpSolver()) {
   // Deep copy warm start
   warm_start_ = warm_start;
@@ -114,17 +114,17 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     }
   }
 
-  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 1);
+  //  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 1);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter", 30);  // 30
-  prog_.SetSolverOptions(OSQPoptions_);
+  //  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter", 30);  // 30
+  //  prog_.SetSolverOptions(solver_options_);
 }
 
-VectorXd C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
-                   vector<VectorXd>& w) {
+vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
+                           vector<VectorXd>& w) {
   vector<MatrixXd> Gv = G_;
   VectorXd z;
 
@@ -141,9 +141,9 @@ VectorXd C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 
   auto z0 = zfin[0];
 
-//  return z.segment(n_ + m_, k_);
-  return z0;
-//  return zfin;
+  //  return z.segment(n_ + m_, k_);
+  //  return z0;
+  return zfin;
 }
 
 VectorXd C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
@@ -203,7 +203,8 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
     if (i < N_) {
       costs_.push_back(prog_.AddQuadraticCost(
           G.at(i).block(0, 0, n_, n_) * 2,
-          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i)));
+          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_),
+          x_.at(i)));
       costs_.push_back(prog_.AddQuadraticCost(
           G.at(i).block(n_, n_, m_, m_) * 2,
           -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
@@ -226,6 +227,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   //    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
   //  }
 
+  prog_.SetSolverOptions(solver_options_);
   MathematicalProgramResult result = osqp_.Solve(prog_);
   VectorXd xSol = result.GetSolution(x_[0]);
   vector<VectorXd> zz(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -242,7 +244,9 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
       warm_start_u_[i] = result.GetSolution(u_[i]);
     }
   }
-  if (warm_start_) warm_start_x_[N_] = result.GetSolution(x_[N_]);
+  if (warm_start_) {
+    warm_start_x_[N_] = result.GetSolution(x_[N_]);
+  }
 
   return zz;
 }

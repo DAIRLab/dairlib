@@ -36,7 +36,7 @@ class C3 {
   /// @param delta A pointer to the copy variable solution
   /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
-  Eigen::VectorXd Solve(const Eigen::VectorXd& x0,
+  std::vector<Eigen::VectorXd> Solve(const Eigen::VectorXd& x0,
                         std::vector<Eigen::VectorXd>& delta,
                         std::vector<Eigen::VectorXd>& w);
 
@@ -90,6 +90,10 @@ class C3 {
                                                 const Eigen::VectorXd& c,
                                                 const int& warm_start_index) = 0;
 
+  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+    solver_options_ = options;
+  }
+
  public:
   const std::vector<Eigen::MatrixXd> A_;
   const std::vector<Eigen::MatrixXd> B_;
@@ -121,7 +125,7 @@ class C3 {
 
  private:
   drake::solvers::MathematicalProgram prog_;
-  drake::solvers::SolverOptions OSQPoptions_;
+  drake::solvers::SolverOptions solver_options_;
   drake::solvers::OsqpSolver osqp_;
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;

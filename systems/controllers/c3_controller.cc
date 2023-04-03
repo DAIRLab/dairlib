@@ -100,6 +100,7 @@ void C3Controller::OutputTrajectory(
   DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
   c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired,
                                  c3_options_);
+  c3_->SetOsqpSolverOptions(solver_options_);
 
 //  int N = (system_.A_).size();
   int n = ((lcs.A_)[0].cols());
@@ -108,24 +109,33 @@ void C3Controller::OutputTrajectory(
   std::vector<VectorXd> delta(N_, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w(N_, VectorXd::Zero(n + m + k));
   auto z_sol = c3_->Solve(x.get_data(), delta, w);
-  auto x_sol = z_sol.head(lcs.n_);
-  auto lambda_sol = z_sol.segment(lcs.n_, lcs.m_);
-  auto u_sol = z_sol.tail(lcs.k_);
 
-  MatrixXd knots = x_sol;
-  VectorXd breaks = VectorXd::Zero(1);
-//  double T = trajopt_.GetTimingSolution()(0);
+  MatrixXd x_sol = MatrixXd::Zero(lcs.n_, N_);
+  MatrixXd lambda_sol = MatrixXd::Zero(lcs.m_, N_);
+  MatrixXd u_sol = MatrixXd::Zero(lcs.k_, N_);
+  VectorXd breaks = VectorXd::Zero(N_);
+
   for (int n = 0; n < N_; n++) {
-    breaks(n) = t + lcs.dt_;
+    breaks(n) = t + n * lcs.dt_;
+    x_sol.col(n) = z_sol[n];
+    lambda_sol.col(n) = z_sol[n];
+    u_sol.col(n) = z_sol[n];
   }
-  LcmTrajectory::Trajectory input_traj;
-  input_traj.traj_name = "input_traj";
-  input_traj.datatypes = std::vector<std::string>(1, "double");
-  input_traj.datapoints = knots;
-  input_traj.time_vector = breaks;
+//  auto x_sol = z_sol.head(lcs.n_);
+//  auto lambda_sol = z_sol.segment(lcs.n_, lcs.m_);
+//  auto u_sol = z_sol.tail(lcs.k_);
+//  int dim = 3;
+//  int dim = 3;
+  MatrixXd knots = x_sol.topRows(3);
+//  double T = trajopt_.GetTimingSolution()(0);
+  LcmTrajectory::Trajectory end_effector_traj;
+  end_effector_traj.traj_name = "end_effector_traj";
+  end_effector_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  end_effector_traj.datapoints = knots;
+  end_effector_traj.time_vector = breaks;
   LcmTrajectory lcm_traj(
-      {input_traj}, {"input_traj"}, "input_traj", "input_traj", false);
-  *output_traj = dairlib::lcmt_timestamped_saved_traj();
+      {end_effector_traj}, {"end_effector_traj"}, "end_effector_traj", "end_effector_traj", false);
+//  *output_traj = dairlib::lcmt_timestamped_saved_traj();
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = t * 1e6;
 }

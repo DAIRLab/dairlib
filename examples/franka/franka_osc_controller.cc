@@ -1,7 +1,7 @@
 
 #include <dairlib/lcmt_radio_out.hpp>
-#include <gflags/gflags.h>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
+#include <gflags/gflags.h>
 
 #include "examples/franka/franka_controller_params.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
@@ -15,6 +15,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
 #include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -24,8 +25,6 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "systems/trajectory_optimization/lcm_trajectory_systems.h"
-#include "lcm/lcm_trajectory.h"
 
 namespace dairlib {
 
@@ -98,23 +97,14 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-
-//  lcmt_trajectory_block traj_block;
-//  traj_block.datapoints.push_back({0.65, 0.0, 0.3});
-//  traj_block.time_vec.push_back({0.0});
-//  auto default_traj = LcmTrajectory::Trajectory("end_effector_traj", traj_block);
-//  auto default_lcm_traj = LcmTrajectory({default_traj}, {"end_effector_traj"}, "default_franka_trajectory", "");
-//  default_lcm_traj.WriteToFile("default_end_effector_pose");
-
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto trajectory_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+  auto trajectory_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel, &lcm));
   auto trajectory_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_traj");
+      builder.AddSystem<systems::LcmTrajectoryReceiver>("end_effector_traj");
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           controller_params.controller_channel, &lcm,
@@ -204,9 +194,10 @@ int DoMain(int argc, char* argv[]) {
                   osc_debug_pub->get_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
-  builder.Connect(trajectory_sub->get_output_port(), trajectory_receiver->get_input_port_trajectory());
-//  builder.Connect(end_effector_trajectory->get_output_port(0),
-//                  osc->get_input_port_tracking_data("end_effector_target"));
+  builder.Connect(trajectory_sub->get_output_port(),
+                  trajectory_receiver->get_input_port_trajectory());
+  //  builder.Connect(end_effector_trajectory->get_output_port(0),
+  //                  osc->get_input_port_tracking_data("end_effector_target"));
   builder.Connect(trajectory_receiver->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_target"));
   auto owned_diagram = builder.Build();

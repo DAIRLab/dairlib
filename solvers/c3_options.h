@@ -65,9 +65,11 @@ struct C3Options {
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
 
-    Q = q.asDiagonal();
-    R = r.asDiagonal();
+    Q = w_Q * q.asDiagonal();
+    R = w_R * r.asDiagonal();
     G = w_G * MatrixXd::Identity(g_size, g_size);
     U = w_U * MatrixXd::Identity(u_size, u_size);
+
+    U.block(0, 0, 19, 19) = 100 * MatrixXd::Identity(19, 19);
   }
 };

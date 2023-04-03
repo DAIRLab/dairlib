@@ -87,6 +87,17 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
 
+  z_sol_ = std::make_unique<std::vector<VectorXd>>();
+  x_sol_ = std::make_unique<std::vector<VectorXd>>();
+  lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
+  u_sol_ = std::make_unique<std::vector<VectorXd>>();
+  for (int i = 0; i < N_; ++i) {
+    z_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
+    x_sol_->push_back(Eigen::VectorXd::Zero(n_));
+    lambda_sol_->push_back(Eigen::VectorXd::Zero(m_));
+    u_sol_->push_back(Eigen::VectorXd::Zero(k_));
+  }
+
   for (int i = 0; i < N_ + 1; i++) {
     x_.push_back(prog_.NewContinuousVariables(n_, "x" + std::to_string(i)));
     if (i < N_) {
@@ -113,14 +124,6 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       prog_.AddQuadraticCost(R_.at(i) * 2, VectorXd::Zero(k_), u_.at(i), 1);
     }
   }
-
-  //  OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 1);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  //  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter", 30);  // 30
-  //  prog_.SetSolverOptions(solver_options_);
 }
 
 vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
@@ -139,7 +142,7 @@ vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
 
-  auto z0 = zfin[0];
+//  auto z0 = zfin[0];
 
   //  return z.segment(n_ + m_, k_);
   //  return z0;
@@ -229,57 +232,61 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
 
   prog_.SetSolverOptions(solver_options_);
   MathematicalProgramResult result = osqp_.Solve(prog_);
-  VectorXd xSol = result.GetSolution(x_[0]);
-  vector<VectorXd> zz(N_, VectorXd::Zero(n_ + m_ + k_));
 
-  for (int i = 0; i < N_; i++) {
-    zz.at(i).segment(0, n_) = result.GetSolution(x_[i]);
-    zz.at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
-    zz.at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
+  if (result.is_success()) {
 
+    for (int i = 0; i < N_; i++) {
+      x_sol_->at(i) = result.GetSolution(x_[i]);
+      lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
+      u_sol_->at(i) = result.GetSolution(u_[i]);
+      z_sol_->at(i).segment(0, n_) = x_sol_->at(i);
+      z_sol_->at(i).segment(n_, m_) = lambda_sol_->at(i);
+      z_sol_->at(i).segment(n_ + m_, k_) = u_sol_->at(i);
+
+      if (warm_start_) {
+        // update warm start parameters
+        warm_start_x_[i] = result.GetSolution(x_[i]);
+        warm_start_lambda_[i] = result.GetSolution(lambda_[i]);
+        warm_start_u_[i] = result.GetSolution(u_[i]);
+      }
+    }
     if (warm_start_) {
-      // update warm start parameters
-      warm_start_x_[i] = result.GetSolution(x_[i]);
-      warm_start_lambda_[i] = result.GetSolution(lambda_[i]);
-      warm_start_u_[i] = result.GetSolution(u_[i]);
+      warm_start_x_[N_] = result.GetSolution(x_[N_]);
     }
   }
-  if (warm_start_) {
-    warm_start_x_[N_] = result.GetSolution(x_[N_]);
-  }
 
-  return zz;
+  return *z_sol_;
 }
 
 void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double& Lowerbound,
                              double& Upperbound, int& constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; i++) {
-      userconstraints_.push_back(
+      user_constraints_.push_back(
           prog_.AddLinearConstraint(A, Lowerbound, Upperbound, x_.at(i)));
     }
   }
 
   if (constraint == 2) {
     for (int i = 0; i < N_; i++) {
-      userconstraints_.push_back(
+      user_constraints_.push_back(
           prog_.AddLinearConstraint(A, Lowerbound, Upperbound, u_.at(i)));
     }
   }
 
   if (constraint == 3) {
     for (int i = 0; i < N_; i++) {
-      userconstraints_.push_back(
+      user_constraints_.push_back(
           prog_.AddLinearConstraint(A, Lowerbound, Upperbound, lambda_.at(i)));
     }
   }
 }
 
 void C3::RemoveConstraints() {
-  for (auto& userconstraint : userconstraints_) {
+  for (auto& userconstraint : user_constraints_) {
     prog_.RemoveConstraint(userconstraint);
   }
-  userconstraints_.clear();
+  user_constraints_.clear();
 }
 
 vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,

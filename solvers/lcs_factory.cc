@@ -45,7 +45,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   plant_ad.CalcBiasTerm(context_ad, &C);
   auto B_dyn_ad = plant_ad.MakeActuationMatrix();
   VectorXd u_dyn = VectorXd::Zero(n_u);
-  AutoDiffVecXd u_dyn_ad = drake::math::InitializeAutoDiff(u_dyn, n_q + n_v + n_u);
+  AutoDiffVecXd u_dyn_ad =
+      drake::math::InitializeAutoDiff(u_dyn, n_q + n_v + n_u);
   AutoDiffVecXd Bu = B_dyn_ad * u_dyn_ad;
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
@@ -121,9 +122,19 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   MatrixXd H(n_contact_vars, n_u);
   VectorXd c(n_contact_vars);
 
+
   MatrixXd AB_v_q = AB_v.block(0, 0, n_v, n_q);
   MatrixXd AB_v_v = AB_v.block(0, n_q, n_v, n_v);
-  MatrixXd AB_v_u = AB_v.block(0, n_x, n_v, n_u);
+//  MatrixXd AB_v_u = AB_v.block(0, n_x, n_v, n_u);
+  MatrixXd M_double = MatrixXd::Zero(n_v, n_v);
+  plant.CalcMassMatrix(context, &M_double);
+  // TODO(yangwill): Check why gradient wrt u is not working correctly
+  MatrixXd AB_v_u = M_double.inverse() * MatrixXd::Identity(n_v, n_u);
+//  AB_v_u = M.ldlt().solve();
+//  std::cout << "AB_v: " << AB_v << std::endl;
+//  std::cout << "AB_v rows: " << AB_v.rows() << std::endl;
+//  std::cout << "AB_v cols: " << AB_v.cols() << std::endl;
+//  std::cout << "AB_v_u: " << AB_v_u << std::endl;
 
   A.block(0, 0, n_q, n_q) =
       MatrixXd::Identity(n_q, n_q) + dt * dt * Nq * AB_v_q;
@@ -185,8 +196,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
 
   H = MatrixXd::Zero(n_contact_vars, n_u);
   H.block(n_contacts, 0, n_contacts, n_u) = dt * dt * J_n * AB_v_u;
-  H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions,
-          n_u) = dt * J_t * AB_v_u;
+  H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
+      dt * J_t * AB_v_u;
 
   c = VectorXd::Zero(n_contact_vars);
   c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
@@ -203,7 +214,19 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   c /= AnDn;
   H /= AnDn;
 
-  LCS system(A, B, D, d, E, F, H, c, N, dt);
+//  std::cout << B << std::endl;
+  std::vector<MatrixXd> A_lcs(N, A);
+  std::vector<MatrixXd> B_lcs(N, B);
+  std::vector<MatrixXd> D_lcs(N, D);
+  std::vector<VectorXd> d_lcs(N, d);
+  std::vector<MatrixXd> E_lcs(N, E);
+  std::vector<MatrixXd> F_lcs(N, F);
+  std::vector<VectorXd> c_lcs(N, c);
+  std::vector<MatrixXd> H_lcs(N, H);
+
+  LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs, dt);
+
+  //  LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);
 

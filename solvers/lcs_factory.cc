@@ -215,18 +215,18 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   H /= AnDn;
 
 //  std::cout << B << std::endl;
-  std::vector<MatrixXd> A_lcs(N, A);
-  std::vector<MatrixXd> B_lcs(N, B);
-  std::vector<MatrixXd> D_lcs(N, D);
-  std::vector<VectorXd> d_lcs(N, d);
-  std::vector<MatrixXd> E_lcs(N, E);
-  std::vector<MatrixXd> F_lcs(N, F);
-  std::vector<VectorXd> c_lcs(N, c);
-  std::vector<MatrixXd> H_lcs(N, H);
+//  std::vector<MatrixXd> A_lcs(N, A);
+//  std::vector<MatrixXd> B_lcs(N, B);
+//  std::vector<MatrixXd> D_lcs(N, D);
+//  std::vector<VectorXd> d_lcs(N, d);
+//  std::vector<MatrixXd> E_lcs(N, E);
+//  std::vector<MatrixXd> F_lcs(N, F);
+//  std::vector<VectorXd> c_lcs(N, c);
+//  std::vector<MatrixXd> H_lcs(N, H);
+//
+//  LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs, dt);
 
-  LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs, dt);
-
-  //  LCS system(A, B, D, d, E, F, H, c, N, dt);
+  LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);
 

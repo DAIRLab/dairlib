@@ -158,9 +158,10 @@ void C3Controller::OutputTrajectory(
 //  std::cout << "height diff: " << state_next[2] - x.get_data()[2] << std::endl;
 //  std::cout << "state next: " << state_next.transpose() << std::endl;
 //  std::cout << "current state: " << x.get_value().transpose() << std::endl;
-//  std::cout << "force: " << force << std::endl;
-//  std::cout << "u_sol: " << u_sol.col(0) << std::endl;
-//  std::cout << "u: " << u_sol.col(0) << std::endl;
+  std::cout << "second_lcs.A_[0] * x.get_data(): " << second_lcs.A_[0] * x.get_data() << std::endl;
+  std::cout << "second_lcs.B_[0] * u_sol.col(0): " << second_lcs.B_[0] * u_sol.col(0) << std::endl;
+  std::cout << "second_lcs.D_[0] * force / second_scale: " << second_lcs.D_[0] * force / second_scale << std::endl;
+  std::cout << "second_lcs.d_[0]: " << second_lcs.d_[0] << std::endl;
 //  std::cout << "Bu + d: " << second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) + second_lcs.d_[0] << std::endl;
 //  std::cout << "d: " << second_lcs.d_[0] << std::endl;
 //  x_sol.col(N_ - 1) = z_sol[0].segment(0, lcs.n_);

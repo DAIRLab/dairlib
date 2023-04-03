@@ -318,7 +318,7 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     D.push_back(D_k);
     d.push_back(d_k);
   }
-  return LCS(A, B, D, d, E, F, H, c);
+  return LCS(A, B, D, d, E, F, H, c, other.dt_);
 }
 
 }  // namespace solvers

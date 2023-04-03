@@ -127,7 +127,7 @@ void C3Controller::OutputTrajectory(
       {input_traj}, {"input_traj"}, "input_traj", "input_traj", false);
   *output_traj = dairlib::lcmt_timestamped_saved_traj();
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
-  output_traj->utime = ;
+  output_traj->utime = t * 1e6;
 }
 
 }  // namespace systems

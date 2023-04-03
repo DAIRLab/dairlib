@@ -47,6 +47,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   VectorXd u_dyn = VectorXd::Zero(n_u);
   AutoDiffVecXd u_dyn_ad =
       drake::math::InitializeAutoDiff(u_dyn, n_q + n_v + n_u);
+//  AutoDiffVecXd u_dyn_ad =
+//      plant_ad.;
   AutoDiffVecXd Bu = B_dyn_ad * u_dyn_ad;
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);

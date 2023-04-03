@@ -64,6 +64,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//solvers:c3",
         "//common:find_resource",
+        "//multibody:utils",
         "//solvers:solver_options_io",
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",

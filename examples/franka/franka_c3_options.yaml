@@ -13,7 +13,7 @@ N: 5
 w_Q: 0.00001
 w_R: 0.0
 # Penalty on all decision variables, assuming scalar
-w_G: 0.01
+w_G: 100
 # Penalty on all decision variables, assuming scalar
 w_U: 1
 
@@ -22,7 +22,7 @@ u_size: 40
 # State Tracking Error, assuming diagonal
 #q_vector: [100, 100, 100, 1, 1, 1, 1, 1, 1, 1,
 #           1, 1, 1, 1, 1, 1, 1, 1, 1]
-q_vector: [1, 1, 10000000, 0, 0, 0, 0, 0, 0, 0,
-           10000000, 10000000, 10000000, 0, 0, 0, 0, 0, 0]
+q_vector: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
+           1, 1, 1, 0, 0, 0, 0, 0, 0]
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1]

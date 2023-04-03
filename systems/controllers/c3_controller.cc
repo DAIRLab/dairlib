@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "common/find_resource.h"
+#include "multibody/multibody_utils.h"
+
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "solvers/lcs_factory.h"
 
@@ -94,6 +96,8 @@ void C3Controller::OutputTrajectory(
 
   plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x));
   plant_ad_.SetPositionsAndVelocities(context_ad_, q_v_u_ad.head(n_x));
+  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u), context_);
+  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u), context_ad_);
   // TODO(yangwill): Check why gradient wrt u is not working correctly
   auto lcs_pair = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,

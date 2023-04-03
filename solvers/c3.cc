@@ -141,7 +141,8 @@ VectorXd C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 
   z = zfin[0];
 
-  return z.segment(n_ + m_, k_);
+//  return z.segment(n_ + m_, k_);
+  return z;
 }
 
 VectorXd C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,

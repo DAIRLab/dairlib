@@ -107,7 +107,10 @@ void C3Controller::OutputTrajectory(
   int k = ((lcs.B_)[0].cols());
   std::vector<VectorXd> delta(N_, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w(N_, VectorXd::Zero(n + m + k));
-  c3_->Solve(x.get_data(), delta, w);
+  auto z_sol = c3_->Solve(x.get_data(), delta, w);
+  auto x_sol = z_sol.head(lcs.n_);
+  auto lambda_sol = z_sol.segment(lcs.n_, lcs.m_);
+  auto u_sol = z_sol.tail(lcs.k_);
   *output_traj = dairlib::lcmt_timestamped_saved_traj();
 }
 

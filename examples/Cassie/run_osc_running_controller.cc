@@ -2,7 +2,6 @@
 
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/systems/primitives/zero_order_hold.h>
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
@@ -14,24 +13,20 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
-#include "examples/Cassie/osc_jump/toe_angle_traj_generator.h"
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
-#include "examples/Cassie/osc_run/pelvis_pitch_traj_generator.h"
-#include "examples/Cassie/osc_run/pelvis_roll_traj_generator.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
-#include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/cassie_out_to_radio.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
+#include "solvers/solver_options_io.h"
 #include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -63,8 +58,6 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
-using examples::osc::PelvisPitchTrajGenerator;
-using examples::osc::PelvisRollTrajGenerator;
 using examples::osc::PelvisTransTrajGenerator;
 using examples::osc_jump::BasicTrajectoryPassthrough;
 using examples::osc_run::FootTrajGenerator;
@@ -111,8 +104,6 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant);
   auto right_heel = RightToeRear(plant);
 
-  int nv = plant.num_velocities();
-
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
@@ -122,10 +113,10 @@ int DoMain(int argc, char* argv[]) {
       int, std::vector<std::pair<const Vector3d,
                                  const drake::multibody::Frame<double>&>>>
       feet_contact_points;
-  feet_contact_points[0] = std::vector<
+  feet_contact_points[kLeftStance] = std::vector<
       std::pair<const Vector3d, const drake::multibody::Frame<double>&>>(
       {left_toe, left_heel});
-  feet_contact_points[1] = std::vector<
+  feet_contact_points[kRightStance] = std::vector<
       std::pair<const Vector3d, const drake::multibody::Frame<double>&>>(
       {right_toe, right_heel});
 
@@ -139,16 +130,17 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_gains_filename), {}, {}, yaml_options);
   OSCRunningGains osc_gains = drake::yaml::LoadYamlFile<OSCRunningGains>(
       FindResourceOrThrow(FLAGS_gains_filename));
-  //  solvers::OSQPSettingsYaml osqp_settings =
-  //      drake::yaml::LoadYamlFile<solvers::OSQPSettingsYaml>(
-  //          FindResourceOrThrow(FLAGS_osqp_settings));
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   /**** FSM and contact mode configuration ****/
 
   vector<int> fsm_states = {
-      RUNNING_FSM_STATE::LEFT_STANCE, RUNNING_FSM_STATE::LEFT_FLIGHT,
-      RUNNING_FSM_STATE::RIGHT_STANCE, RUNNING_FSM_STATE::RIGHT_FLIGHT,
-      RUNNING_FSM_STATE::LEFT_STANCE};
+      RunningFsmState::kLeftStance, RunningFsmState::kLeftFlight,
+      RunningFsmState::kRightStance, RunningFsmState::kRightFlight,
+      RunningFsmState::kLeftStance};
 
   vector<double> state_durations = {
       osc_gains.stance_duration, osc_gains.flight_duration,
@@ -161,8 +153,8 @@ int DoMain(int argc, char* argv[]) {
   }
   accumulated_state_durations.pop_back();
 
-  std::set<RUNNING_FSM_STATE> impact_states = {LEFT_STANCE, RIGHT_STANCE};
-  auto contact_scheduler = builder.AddSystem<ContactScheduler>(
+  std::set<RunningFsmState> impact_states = {kLeftStance, kRightStance};
+  auto contact_scheduler = builder.AddSystem<SLIPContactScheduler>(
       plant, plant_context.get(), impact_states, gains.impact_threshold,
       gains.impact_tau);
   contact_scheduler->SetSLIPParams(osc_gains.rest_length);
@@ -230,13 +222,13 @@ int DoMain(int argc, char* argv[]) {
       plant, right_heel.first, right_heel.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
+  osc->AddStateAndContactPoint(RunningFsmState::kLeftStance,
                                &left_toe_evaluator);
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
+  osc->AddStateAndContactPoint(RunningFsmState::kLeftStance,
                                &left_heel_evaluator);
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
+  osc->AddStateAndContactPoint(RunningFsmState::kRightStance,
                                &right_toe_evaluator);
-  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
+  osc->AddStateAndContactPoint(RunningFsmState::kRightStance,
                                &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
@@ -265,14 +257,6 @@ int DoMain(int argc, char* argv[]) {
   auto right_loop = RightLoopClosureEvaluator(plant);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
-  //  &left_fixed_knee_spring);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
-  //  &right_fixed_knee_spring);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::LEFT_STANCE,
-  //  &left_fixed_ankle_spring);
-  //  osc->AddStateAndContactPoint(RUNNING_FSM_STATE::RIGHT_STANCE,
-  //  &right_fixed_ankle_spring);
 
   osc->AddKinematicConstraint(&evaluators);
 
@@ -288,18 +272,16 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), osc_gains.vel_scale_rot,
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
 
-  auto default_traj = PiecewisePolynomial<double>(Vector3d{0, 0, 0});
   auto pelvis_trans_traj_generator =
       builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), default_traj, feet_contact_points,
-          osc_gains.relative_pelvis);
+          plant, plant_context.get(), feet_contact_points);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
                                              osc_gains.rest_length_offset);
 
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_left", "pelvis", LEFT_STANCE);
+      plant, plant_context.get(), "toe_left", "pelvis", kLeftStance);
   auto r_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
-      plant, plant_context.get(), "toe_right", "pelvis", RIGHT_STANCE);
+      plant, plant_context.get(), "toe_right", "pelvis", kRightStance);
   l_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   r_foot_traj_generator->SetFootstepGains(osc_gains.K_d_footstep);
   l_foot_traj_generator->SetFootPlacementOffsets(
@@ -325,27 +307,27 @@ int DoMain(int argc, char* argv[]) {
   auto right_foot_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::LEFT_STANCE,
+  pelvis_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftStance,
                                                 "pelvis");
-  pelvis_tracking_data->AddStateAndPointToTrack(RUNNING_FSM_STATE::RIGHT_STANCE,
+  pelvis_tracking_data->AddStateAndPointToTrack(RunningFsmState::kRightStance,
                                                 "pelvis");
   stance_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_STANCE, "toe_left");
+      RunningFsmState::kLeftStance, "toe_left");
   stance_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_STANCE, "toe_right");
+      RunningFsmState::kRightStance, "toe_right");
   left_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_STANCE, "toe_left");
+      RunningFsmState::kRightStance, "toe_left");
   right_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_STANCE, "toe_right");
+      RunningFsmState::kLeftStance, "toe_right");
   left_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_left");
+      RunningFsmState::kRightFlight, "toe_left");
   right_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right");
+      RunningFsmState::kLeftFlight, "toe_right");
 
   left_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left");
+      RunningFsmState::kLeftFlight, "toe_left");
   right_foot_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right");
+      RunningFsmState::kRightFlight, "toe_right");
 
   auto left_foot_yz_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
@@ -356,9 +338,9 @@ int DoMain(int argc, char* argv[]) {
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
   left_foot_yz_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left");
+      RunningFsmState::kLeftFlight, "toe_left");
   right_foot_yz_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right");
+      RunningFsmState::kRightFlight, "toe_right");
 
   auto left_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -367,18 +349,18 @@ int DoMain(int argc, char* argv[]) {
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
   left_hip_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+      RunningFsmState::kRightStance, "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+      RunningFsmState::kLeftStance, "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+      RunningFsmState::kLeftFlight, "pelvis");
   left_hip_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+      RunningFsmState::kRightFlight, "pelvis");
 
   left_hip_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+      RunningFsmState::kLeftFlight, "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+      RunningFsmState::kRightFlight, "pelvis");
 
   auto left_hip_yz_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "left_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
@@ -388,9 +370,9 @@ int DoMain(int argc, char* argv[]) {
           "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant);
   left_hip_yz_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
+      RunningFsmState::kLeftFlight, "pelvis");
   right_hip_yz_tracking_data->AddStateAndPointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+      RunningFsmState::kRightFlight, "pelvis");
 
   auto left_foot_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
@@ -402,18 +384,6 @@ int DoMain(int argc, char* argv[]) {
           "right_ft_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
           osc_gains.W_swing_foot, plant, plant, right_foot_tracking_data.get(),
           right_hip_tracking_data.get());
-  auto left_foot_yz_rel_tracking_data =
-      std::make_unique<RelativeTranslationTrackingData>(
-          "left_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
-          osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot,
-          plant, plant, left_foot_yz_tracking_data.get(),
-          left_hip_yz_tracking_data.get());
-  auto right_foot_yz_rel_tracking_data =
-      std::make_unique<RelativeTranslationTrackingData>(
-          "right_ft_z_traj", osc_gains.K_p_liftoff_swing_foot,
-          osc_gains.K_d_liftoff_swing_foot, osc_gains.W_liftoff_swing_foot,
-          plant, plant, right_foot_yz_tracking_data.get(),
-          right_hip_yz_tracking_data.get());
   auto pelvis_trans_rel_tracking_data =
       std::make_unique<RelativeTranslationTrackingData>(
           "pelvis_trans_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
@@ -421,8 +391,6 @@ int DoMain(int argc, char* argv[]) {
           stance_foot_tracking_data.get());
   left_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   right_foot_rel_tracking_data->SetViewFrame(pelvis_view_frame);
-  left_foot_yz_rel_tracking_data->SetViewFrame(pelvis_view_frame);
-  right_foot_yz_rel_tracking_data->SetViewFrame(pelvis_view_frame);
   pelvis_trans_rel_tracking_data->SetViewFrame(pelvis_view_frame);
 
   auto foot_traj_weight_trajectory =
@@ -453,17 +421,17 @@ int DoMain(int argc, char* argv[]) {
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
       osc_gains.W_pelvis_rot, plant, plant);
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::LEFT_STANCE, "pelvis");
+      RunningFsmState::kLeftStance, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::RIGHT_STANCE, "pelvis");
+      RunningFsmState::kRightStance, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "pelvis");
+      RunningFsmState::kRightFlight, "pelvis");
   pelvis_rot_tracking_data->AddStateAndFrameToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "pelvis");
-
+      RunningFsmState::kLeftFlight, "pelvis");
+  pelvis_rot_tracking_data->SetViewFrame(pelvis_view_frame);
   if (osc_gains.rot_filter_tau > 0) {
     pelvis_rot_tracking_data->SetLowPassFilter(osc_gains.rot_filter_tau,
-                                               {0, 1, 2});
+                                               {1, 2});
   }
 
   // Swing toe joint trajectory
@@ -486,17 +454,17 @@ int DoMain(int argc, char* argv[]) {
       "right_toe_angle_traj", osc_gains.K_p_swing_toe, osc_gains.K_d_swing_toe,
       osc_gains.W_swing_toe, plant, plant);
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
-      RUNNING_FSM_STATE::RIGHT_STANCE, "toe_left", "toe_leftdot");
+      RunningFsmState::kRightStance, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_left", "toe_leftdot");
+      RunningFsmState::kLeftFlight, "toe_left", "toe_leftdot");
   left_toe_angle_tracking_data->AddStateAndJointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_left", "toe_leftdot");
+      RunningFsmState::kRightFlight, "toe_left", "toe_leftdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
-      RUNNING_FSM_STATE::LEFT_STANCE, "toe_right", "toe_rightdot");
+      RunningFsmState::kLeftStance, "toe_right", "toe_rightdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
-      RUNNING_FSM_STATE::LEFT_FLIGHT, "toe_right", "toe_rightdot");
+      RunningFsmState::kLeftFlight, "toe_right", "toe_rightdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
-      RUNNING_FSM_STATE::RIGHT_FLIGHT, "toe_right", "toe_rightdot");
+      RunningFsmState::kRightFlight, "toe_right", "toe_rightdot");
 
   // Swing hip yaw joint tracking
   auto left_hip_yaw_tracking_data = std::make_unique<JointSpaceTrackingData>(
@@ -513,8 +481,6 @@ int DoMain(int argc, char* argv[]) {
   if (osc_gains.no_derivative_feedback) {
     left_foot_rel_tracking_data->SetNoDerivativeFeedback(true);
     right_foot_rel_tracking_data->SetNoDerivativeFeedback(true);
-    left_foot_yz_rel_tracking_data->SetNoDerivativeFeedback(true);
-    right_foot_yz_rel_tracking_data->SetNoDerivativeFeedback(true);
     pelvis_trans_rel_tracking_data->SetNoDerivativeFeedback(true);
     left_hip_yaw_tracking_data->SetNoDerivativeFeedback(true);
     right_hip_yaw_tracking_data->SetNoDerivativeFeedback(true);
@@ -524,8 +490,6 @@ int DoMain(int argc, char* argv[]) {
   } else {
     left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
     right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
-    left_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
-    right_foot_yz_rel_tracking_data->SetImpactInvariantProjection(true);
     pelvis_trans_rel_tracking_data->SetImpactInvariantProjection(true);
     left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
     right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
@@ -544,7 +508,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
 
-  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
+  osc->SetOsqpSolverOptions(solver_options);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -581,9 +545,9 @@ int DoMain(int argc, char* argv[]) {
                   pelvis_trans_traj_generator->get_fsm_input_port());
   builder.Connect(contact_scheduler->get_output_port_clock(),
                   pelvis_trans_traj_generator->get_clock_input_port());
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   l_foot_traj_generator->get_input_port_target_vel());
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   r_foot_traj_generator->get_input_port_target_vel());
   builder.Connect(state_receiver->get_output_port(0),
                   l_foot_traj_generator->get_input_port_state());
@@ -611,7 +575,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(state_receiver->get_output_port(0),
                   heading_traj_generator->get_state_input_port());
-  builder.Connect(high_level_command->get_yaw_output_port(),
+  builder.Connect(high_level_command->get_output_port_yaw(),
                   heading_traj_generator->get_yaw_input_port());
   builder.Connect(heading_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_rot_traj"));
@@ -619,10 +583,6 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("left_ft_traj"));
   builder.Connect(r_foot_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("right_ft_traj"));
-  //  builder.Connect(l_foot_traj_generator->get_output_port(0),
-  //                  osc->get_input_port_tracking_data("left_ft_z_traj"));
-  //  builder.Connect(r_foot_traj_generator->get_output_port(0),
-  //                  osc->get_input_port_tracking_data("right_ft_z_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
@@ -632,13 +592,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(cassie_out_receiver->get_output_port(),
                   cassie_out_to_radio->get_input_port());
   builder.Connect(cassie_out_to_radio->get_output_port(),
-                  high_level_command->get_radio_input_port());
+                  high_level_command->get_input_port_radio());
   builder.Connect(osc->get_output_port_osc_command(),
                   command_sender->get_input_port(0));
-  //  builder.Connect(osc->get_osc_output_port(),
-  //                  controller_frequency_regulator->get_input_port());
-  //  builder.Connect(controller_frequency_regulator->get_output_port(),
-  //                  command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_debug(),
@@ -650,25 +606,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(contact_scheduler->get_output_port_debug_info(),
                   contact_scheduler_debug_publisher->get_input_port());
 
-  // Run lcm-driven simulation
-  // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("osc_running_controller"));
-  // Run lcm-driven simulation
+
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
-  //  std::cout << "waiting for messages" << std::endl;
-  //  LcmHandleSubscriptionsUntil(&lcm, [&]() {
-  //    return cassie_out_receiver->GetInternalMessageCount()>2;
-  //  });
-  //  controller_frequency_regulator->LatchInputPortToState(&loop.get_diagram()->GetMutableSubsystemContext(
-  //      *controller_frequency_regulator,
-  //      &loop.get_diagram_mutable_context()));
-  //
-  //  std::cout << "got message, starting simulator" << std::endl;
-  //
   loop.Simulate();
 
   return 0;

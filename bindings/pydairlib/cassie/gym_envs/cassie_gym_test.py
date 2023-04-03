@@ -18,7 +18,6 @@ def main():
     reward_function_weights = ''
 
     action = np.zeros(18)
-    action[2] = 1.0
     cumulative_reward = 0
     while 1:
         controller_plant = MultibodyPlant(1e-3)
@@ -30,11 +29,11 @@ def main():
         # reward_func = RewardOSUDRL(reward_function_weights)
         reward_func = RewardOSUDRL()
 
-        gym_env = DrakeCassieGym(reward_func, visualize=True)
-        # gym_env = MuJoCoCassieGym(reward_func, visualize=True)
+        # gym_env = DrakeCassieGym(reward_func, visualize=True)
+        gym_env = MuJoCoCassieGym(reward_func, visualize=True)
         gym_env.make(controller)
-        cumulative_reward = gym_env.advance_to(7.5)
-        print(cumulative_reward)
+        cumulative_reward = gym_env.advance_to(25)
+        # print(cumulative_reward)
         gym_env.free_sim()
         # gym_env.reset()
     # while gym_env.current_time < 5.0:

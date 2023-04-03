@@ -15,22 +15,44 @@
 
 namespace dairlib {
 
-enum RUNNING_FSM_STATE { LEFT_STANCE, RIGHT_STANCE, LEFT_FLIGHT, RIGHT_FLIGHT };
+enum RunningFsmState { kLeftStance, kRightStance, kLeftFlight, kRightFlight };
 
-class ContactScheduler : public drake::systems::LeafSystem<double> {
+/**
+ * Variable timing finite state machine that predicts the liftoff and touchdown
+ * timing assuming that the leg length is undeflected at touchdown and liftoff.
+ * This system is also responsible for outputting the upcoming contact mode as
+ * well as the blending function that is necessary for impact-invariant control
+ *
+ *
+ *
+ * @system
+ * name: SLIPContactScheduler
+ * input_ports:
+ * - state_port: robot_state
+ * output_ports:
+ * - fsm_port: current contact mode (RunningFsmState)
+ * - clock_port: current clock (phase variable)
+ * - impact_info_port: upcoming contact/impact event (ImpactInfoVector)
+ * - contact_scheduler_port: upcoming start and end times for pelvis and foot (BasicVector)
+ * trajectories
+ * - debug_port: lcm output for predicted contact mode switches
+ * (lcmt_contact_timing)
+ */
+class SLIPContactScheduler : public drake::systems::LeafSystem<double> {
  public:
-  ContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
-                   drake::systems::Context<double>* plant_context,
-                   std::set<RUNNING_FSM_STATE> impact_states,
-                   double near_impact_threshold = 0, double tau = 0.0025,
-                   BLEND_FUNC blend_func = SIGMOID);
+  SLIPContactScheduler(const drake::multibody::MultibodyPlant<double>& plant,
+                       drake::systems::Context<double>* plant_context,
+                       std::set<RunningFsmState> impact_states,
+                       double near_impact_threshold = 0, double tau = 0.0025,
+                       BLEND_FUNC blend_func = kSigmoid);
 
   void SetSLIPParams(double rest_length) { rest_length_ = rest_length; }
   void SetNominalStepTimings(double stance_duration, double flight_duration) {
     stance_duration_ = stance_duration;
     flight_duration_ = flight_duration;
   }
-  void SetMaxStepTimingVariance(double stance_variance, double flight_variance) {
+  void SetMaxStepTimingVariance(double stance_variance,
+                                double flight_variance) {
     stance_variance_ = stance_variance;
     flight_variance_ = flight_variance;
   }
@@ -83,23 +105,15 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* plant_context_;
 
   // For impact-invariant calculations
-  const std::set<RUNNING_FSM_STATE> impact_states_;
+  const std::set<RunningFsmState> impact_states_;
   double near_impact_threshold_;
   double tau_;
   const BLEND_FUNC blend_func_;
 
-  /// contains pairs (start of fsm, fsm_state)
-  /// the order of the vector goes: last transition, next upcoming three
-  /// transitions
-  //  mutable std::vector<std::pair<double, RUNNING_FSM_STATE>>
-  //  upcoming_transitions_; // sorted by upcoming time mutable
-  //  std::vector<double> transition_times_; // fixed order by RUNNING_FSM_STATE
-
-  int initial_state_ = 0;
-
   drake::systems::DiscreteStateIndex stored_fsm_state_index_;
   drake::systems::DiscreteStateIndex stored_robot_state_index_;
   drake::systems::DiscreteStateIndex stored_transition_time_index_;
+
   // estimates of state durations for stance and flight in seconds
   drake::systems::DiscreteStateIndex nominal_state_durations_index_;
   drake::systems::DiscreteStateIndex transition_times_index_;
@@ -108,11 +122,11 @@ class ContactScheduler : public drake::systems::LeafSystem<double> {
   drake::systems::AbstractStateIndex upcoming_transitions_index_;
 
   /// SLIP parameters
-  double rest_length_;
-  double stance_duration_;
-  double flight_duration_;
-  double stance_variance_;
-  double flight_variance_;
+  double rest_length_ = 0.0;
+  double stance_duration_ = 0.0;
+  double flight_duration_ = 0.0;
+  double stance_variance_ = 0.0;
+  double flight_variance_ = 0.0;
 };
 
 }  // namespace dairlib

@@ -617,6 +617,18 @@ Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<T>& plant,
                   -sin(yaw) * vec(0) + cos(yaw) * vec(1));
 }
 
+VectorXd MakeJointPositionOffsetFromMap(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::map<std::string, double>& joint_offset_map) {
+  VectorXd q_offset = VectorXd::Zero(plant.num_positions());
+  const auto pos_map = multibody::MakeNameToPositionsMap(plant);
+  for (const auto& [joint_name, joint_offset] : joint_offset_map) {
+    DRAKE_DEMAND(pos_map.count(joint_name) > 0);
+    q_offset(pos_map.at(joint_name)) = joint_offset;
+  }
+  return q_offset;
+}
+
 Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
   // clang-format off
   Eigen::MatrixXd ret(4,3);

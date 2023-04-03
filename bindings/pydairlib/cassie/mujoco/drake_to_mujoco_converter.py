@@ -24,7 +24,7 @@ class DrakeToMujocoConverter():
         self.drake_sim_dt = drake_sim_dt
         self.plant, self.scene_graph = AddMultibodyPlantSceneGraph(self.builder, drake_sim_dt)
         AddCassieMultibody(self.plant, self.scene_graph, True,
-                           'examples/Cassie/urdf/cassie_v2.urdf', False, False)
+                           'examples/Cassie/urdf/cassie_v2.urdf', False, False, True)
         self.plant.Finalize()
 
         self.foot_crank_builder = DiagramBuilder()

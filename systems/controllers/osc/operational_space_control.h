@@ -15,7 +15,7 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "solvers/fast_osqp_solver.h"
-#include "solvers/osqp_solver_options.h"
+#include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
@@ -259,9 +259,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   }
   void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
     SetOsqpSolverOptions(
-        drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+        drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
             FindResourceOrThrow(yaml_string))
-            .osqp_options);
+            .GetAsSolverOptions(drake::solvers::OsqpSolver::id())
+    );
   };
   // OSC LeafSystem builder
   void Build();
@@ -385,9 +386,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Solver
   std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
-      drake::yaml::LoadYamlFile<solvers::DairOsqpSolverOptions>(
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
-          .osqp_options;
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // MathematicalProgram
   std::unique_ptr<drake::solvers::MathematicalProgram> prog_;

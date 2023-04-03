@@ -67,9 +67,6 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::multibody::Frame<double>& foot_frame_;
   const drake::multibody::Frame<double>& hip_frame_;
 
-  // Foot spline parameters
-//  std::vector<double> state_durations_;
-
   // Foot placement constants
   double rest_length_;
   double rest_length_offset_;
@@ -91,11 +88,11 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex contact_scheduler_port_;
 
-  int initial_foot_pos_idx_;
-  int initial_hip_pos_idx_;
-  int pelvis_yaw_idx_;
-  int pelvis_vel_est_idx_;
-  int last_stance_timestamp_idx_;
+  drake::systems::DiscreteStateIndex initial_foot_pos_idx_;
+  drake::systems::DiscreteStateIndex initial_hip_pos_idx_;
+  drake::systems::DiscreteStateIndex pelvis_yaw_idx_;
+  drake::systems::DiscreteStateIndex pelvis_vel_est_idx_;
+  drake::systems::DiscreteStateIndex last_stance_timestamp_idx_;
 
   std::unique_ptr<FirstOrderLowPassFilter> target_vel_filter_;
 

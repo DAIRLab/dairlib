@@ -774,12 +774,12 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   if (W_lambda_c_reg_.size() > 0) {
-    lambda_c_cost_->UpdateCoefficients(alpha * W_lambda_c_reg_,
+    lambda_c_cost_->UpdateCoefficients((1 + alpha) * W_lambda_c_reg_,
                                        VectorXd::Zero(n_c_));
   }
 
   if (W_lambda_h_reg_.size() > 0) {
-    lambda_h_cost_->UpdateCoefficients(alpha * W_lambda_h_reg_,
+    lambda_h_cost_->UpdateCoefficients((1 + alpha) * W_lambda_h_reg_,
                                        VectorXd::Zero(n_h_));
   }
   if (!solver_->IsInitialized()) {

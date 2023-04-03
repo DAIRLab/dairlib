@@ -20,14 +20,14 @@ class DrakeCassieGym():
         self.sim_dt = 1e-3
         self.visualize = visualize
         self.reward_func = reward_func
-        self.start_time = 0.00
+        self.start_time = 0.35
         self.current_time = 0.00
-        self.end_time = 0.05
+        # self.end_time = 0.05
         self.hardware_traj = None
         self.action_dim = 10
         self.state_dim = 45
         self.x_init = np.array(
-            [1, 0, 0, 0, 0, 0, 0.85, -0.0358636, 0, 0.67432, -1.588, -0.0458742, 1.90918,
+            [1, 0, 0, 0, 0, 0, 0.9, -0.0358636, 0, 0.67432, -1.588, -0.0458742, 1.90918,
              -0.0381073, -1.82312, 0.0358636, 0, 0.67432, -1.588, -0.0457885, 1.90919, -0.0382424, -1.82321,
              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         self.prev_cassie_state = None
@@ -91,6 +91,7 @@ class DrakeCassieGym():
         if not self.initialized:
             print("Call make() before calling step() or advance()")
         next_timestep = self.sim.get_context().get_time() + self.sim_dt
+        action = self.velocity_profile(next_timestep)
         self.simulator.get_input_port_radio().FixValue(self.simulator_context, action)
         self.controller.get_input_port_radio().FixValue(self.controller_context, action)
         self.sim.AdvanceTo(next_timestep)
@@ -100,12 +101,19 @@ class DrakeCassieGym():
             self.plant.GetMyMutableContextFromRoot(
                 self.sim.get_context()))
         u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
-        print(u)
+        # u = self.controller_output_port.Eval(self.controller_context)[:-1] # remove the timestamp
+        # print(u)
         self.cassie_state = CassieEnvState(self.current_time, x, u, action)
         reward = self.reward_func.compute_reward(self.sim_dt, self.cassie_state, self.prev_cassie_state)
         self.terminated = self.check_termination()
         self.prev_cassie_state = self.cassie_state
         return self.cassie_state, reward
+
+    def velocity_profile(self, timestep):
+        velocity_command = np.zeros(18)
+        velocity_command[2] = min(0.1 * timestep, 1.0)
+        # velocity_command[2] = 5.0
+        return velocity_command
 
     def get_traj(self):
         return self.traj

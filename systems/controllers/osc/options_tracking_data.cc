@@ -58,7 +58,7 @@ void OptionsTrackingData::UpdateFilters(double t) {
     } else if (t != last_timestamp_) {
       double dt = t - last_timestamp_;
       double alpha = dt / (dt + tau_);
-      if (n_y_ == 4) {  // quaternion
+      if (this->is_rotational_tracking_data_) {  // quaternion
         auto slerp = drake::trajectories::PiecewiseQuaternionSlerp<double>(
             {0, 1}, {Quaterniond(y_[0], y_[1], y_[2], y_[3]),
                      Quaterniond(filtered_y_[0], filtered_y_[1], filtered_y_[2],

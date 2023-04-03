@@ -130,18 +130,7 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
                                &hip_pos);
     foot_pos = rot.transpose() * foot_pos;
     hip_pos = rot.transpose() * hip_pos;
-    //    auto pelvis_vel =
-    //    discrete_state->get_mutable_value(pelvis_vel_est_idx_); pelvis_vel =
-    //    0.99 * v.segment(3, 3) + 0.01 * pelvis_vel; auto last_stance_time =
-    //        discrete_state->get_mutable_vector(pelvis_vel_est_idx_)
-    //            .get_mutable_value();
-    //    last_stance_time[0] = robot_output->get_timestamp();
-    //    pelvis_vel = v.segment(3, 3);
-    //    std::cout << "stance state: " << stance_state_ << std::endl;
-    //    pelvis_vel = Vector3d::Zero();
   }
-  //  if (fsm_state(0) != stance_state_) {
-  //  }
 
   return EventStatus::Succeeded();
 }
@@ -172,7 +161,6 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
     sagital_radio_tuning += radio_out->channel[5];
   }
 
-  VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant_, robot_output->GetState(), context_);
@@ -236,19 +224,17 @@ PiecewisePolynomial<double> FootTrajGenerator::GenerateFlightTraj(
   if (start_pos(2) == 0) {
     Y[0](2) = -rest_length_;
   }
-  //  Y[0](2) -= rest_length_offset_;
   Y[1] = start_pos + x_mid_point_ratio * (foot_end_pos_des - start_pos);
-  Y[1](2) += mid_foot_height_;
+  double foot_height_scale = std::clamp(pelvis_vel[0] / 2.5, 1.0, 1.4);
+  Y[1](2) += foot_height_scale * mid_foot_height_;
   Y[2] = foot_end_pos_des;
 
-  // corrections
+  // prevent foot collisions
   if (is_left_foot_) {
-    //    Y[1](1) -= lateral_offset_;
     Y[1](1) = std::clamp(Y[1](1), lateral_offset_, 0.2);
     Y[2](1) = std::clamp(Y[2](1), lateral_offset_, 0.2);
 
   } else {
-    //    Y[1](1) += lateral_offset_;
     Y[1](1) = std::clamp(Y[1](1), -0.2, -lateral_offset_);
     Y[2](1) = std::clamp(Y[2](1), -0.2, -lateral_offset_);
   }
@@ -272,12 +258,12 @@ void FootTrajGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (is_left_foot_) {
-    if (fsm_state != LEFT_STANCE) {
+    if (fsm_state != kLeftStance) {
       *casted_traj = GenerateFlightTraj(context);
     }
 
   } else {
-    if (fsm_state != RIGHT_STANCE) {
+    if (fsm_state != kRightStance) {
       *casted_traj = GenerateFlightTraj(context);
     }
   }

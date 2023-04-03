@@ -33,7 +33,7 @@ class MuJoCoCassieGym():
         self.reward_func = reward_func
         # hardware logs are 50ms long and start approximately 5ms before impact
         # the simulator will check to make sure ground reaction forces are first detected within 3-7ms
-        self.start_time = 0.00
+        self.start_time = 0.3
         self.current_time = 0.00
         self.end_time = 7.5
 
@@ -179,7 +179,7 @@ class MuJoCoCassieGym():
 
     def velocity_profile(self, timestep):
         velocity_command = np.zeros(18)
-        velocity_command[2] = min(1.0 * timestep, 4.0)
+        velocity_command[2] = min(0.1 * timestep, 2.0)
         # velocity_command[2] = 5.0
         return velocity_command
 
@@ -199,7 +199,6 @@ class MuJoCoCassieGym():
         self.radio_input_port.FixValue(self.controller_context, action)
         u = self.controller_output_port.Eval(self.controller_context)[:-1]  # remove the timestamp
         cassie_in, u_mujoco = self.pack_input(self.cassie_in, u)
-        # import pdb; pdb.set_trace()
         self.drake_sim.AdvanceTo(next_timestep)
         # self.reward_func.reset_clock_reward()
         while self.simulator.time() < next_timestep:
@@ -213,8 +212,6 @@ class MuJoCoCassieGym():
 
         self.current_time = next_timestep
         t = self.simulator.time()
-        # q = np.copy()
-        # v = np.copy()
         q, v = self.drake_to_mujoco_converter.convert_to_drake(self.simulator.qpos(), self.simulator.qvel())
         self.current_time = t
         x = np.hstack((q, v))

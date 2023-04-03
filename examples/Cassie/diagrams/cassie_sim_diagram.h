@@ -59,10 +59,10 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   const systems::GearedMotor* cassie_motor_;
   //  const systems::RadioParser* radio_parser_;
   drake::geometry::SceneGraph<double>* scene_graph_;
-  const int actuation_port_ = 0;
-  const int radio_port_ = 1;
-  const int state_port_ = 0;
-  const int cassie_out_port_ = 1;
+  drake::systems::InputPortIndex actuation_port_;
+  drake::systems::InputPortIndex radio_port_;
+  drake::systems::OutputPortIndex state_port_;
+  drake::systems::OutputPortIndex cassie_out_port_;
   const double actuator_delay = 5e-3;        // 5ms
   const double actuator_update_rate = 1e-3;  // 1ms
   const double dt_ = 8e-5;

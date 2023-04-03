@@ -62,6 +62,14 @@ cc_library(
 )
 
 cc_library(
+    name = "cassie_state_estimator_settings",
+    hdrs = ["cassie_state_estimator_settings.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ]
+)
+
+cc_library(
     name = "cassie_state_estimator",
     srcs = ["cassie_state_estimator.cc"],
     hdrs = ["cassie_state_estimator.h"],
@@ -69,6 +77,7 @@ cc_library(
         ":cassie_utils",
         "//examples/Cassie/datatypes:cassie_names",
         "//examples/Cassie/datatypes:cassie_out_t",
+        "//examples/Cassie:cassie_state_estimator_settings",
         "//multibody:utils",
         "//multibody/kinematic",
         "//systems/framework:vector",
@@ -152,23 +161,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "closed_loop_running_sim",
-    srcs = ["closed_loop_running_sim.cc"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//common",
-        "//examples/Cassie/diagrams:diagrams",
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/controllers:pd_config_lcm",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "visualizer",
     srcs = ["visualizer.cc"],
     deps = [
@@ -182,8 +174,6 @@ cc_binary(
         "@gflags",
     ],
 )
-
-
 
 cc_binary(
     name = "multibody_sim",
@@ -362,6 +352,7 @@ cc_binary(
         ":cassie_utils",
         "//examples/Cassie/osc",
         "//examples/Cassie/contact_scheduler:all",
+        "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/Cassie/osc_jump",
         "//examples/Cassie/osc_run",
         "//lcm:trajectory_saver",
@@ -386,7 +377,7 @@ cc_binary(
         ":cassie_utils",
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
-        "//examples/impact_invariant_control:impact_aware_time_based_fsm",
+        "//examples/Cassie/systems:simulator_drift",
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
@@ -414,7 +405,7 @@ cc_binary(
         "//multibody:utils",
         "//multibody:view_frame",
         "//multibody/kinematic",
-        "//solvers:osqp_solver_options",
+        "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers:fsm_event_time",
@@ -521,24 +512,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_dircon_running",
-    srcs = ["run_dircon_running.cc"],
-    data = glob(["examples/Cassie/urdf/cassie_fixed_springs.urdf"]),
-    deps = [
-        ":cassie_utils",
-        "//common",
-        "//lcm:dircon_trajectory_saver",
-        "//multibody:visualization_utils",
-        "//solvers:cost_function_utils",
-        "//solvers:optimization_utils",
-        "//systems/primitives",
-        "//systems/trajectory_optimization:dircon",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "run_controller_switch",
     srcs = ["run_controller_switch.cc"],
     deps = [
@@ -573,18 +546,6 @@ py_binary(
 )
 
 py_binary(
-    name = "cassie_virtual_remote_py",
-    srcs = ["cassie_virtual_remote.py"],
-    data = [
-        "@lcm//:lcm-python",
-    ],
-    main = "cassie_virtual_remote.py",
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-py_binary(
     name = "cassie_xbox_remote_py",
     srcs = ["cassie_xbox_remote.py"],
     data = [
@@ -597,11 +558,6 @@ py_binary(
 )
 
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
-
-drake_runfiles_binary(
-    name = "cassie_virtual_remote",
-    target = "cassie_virtual_remote_py",
-)
 
 drake_runfiles_binary(
     name = "cassie_xbox_remote",

@@ -27,22 +27,7 @@ cc_library(
     deps = [
         ":foot_traj_generator",
         ":osc_running_gains",
-        ":pelvis_roll_traj_generator",
-        ":pelvis_pitch_traj_generator",
         ":pelvis_trans_traj_generator",
-    ],
-)
-
-cc_binary(
-    name = "convert_traj_for_controller",
-    srcs = ["convert_traj_for_controller.cc"],
-    deps = [
-        "//examples/Cassie:cassie_utils",
-        "//lcm:lcm_trajectory_saver",
-        "//lcm:dircon_trajectory_saver",
-        "//multibody:utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
     ],
 )
 
@@ -62,34 +47,12 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//systems/controllers/osc:osc_gains",
+        "//examples/Cassie/contact_scheduler:all",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )
 
-cc_library(
-    name = "pelvis_roll_traj_generator",
-    srcs = ["pelvis_roll_traj_generator.cc"],
-    hdrs = ["pelvis_roll_traj_generator.h"],
-    deps = [
-        "//multibody:utils",
-        "//systems/controllers/osc:osc_gains",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "pelvis_pitch_traj_generator",
-    srcs = ["pelvis_pitch_traj_generator.cc"],
-    hdrs = ["pelvis_pitch_traj_generator.h"],
-    deps = [
-        "//multibody:utils",
-        "//systems/controllers/osc:osc_gains",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
 
 cc_library(
     name = "foot_traj_generator",

@@ -164,12 +164,12 @@ void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
   near_impact->set_timestamp(timestamp);
   near_impact->SetCurrentContactMode(0);
   near_impact->SetAlpha(0);
-  auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
+  auto alpha_func = blend_func_ == kSigmoid ? &alpha_sigmoid : &alpha_exp;
 
   // Get current finite state
   if (abs(timestamp - transition_times_[FLIGHT]) < impact_threshold_) {
     double blend_window =
-        blend_func_ == SIGMOID ? 1.5 * impact_threshold_ : impact_threshold_;
+        blend_func_ == kSigmoid ? 1.5 * impact_threshold_ : impact_threshold_;
     if (abs(timestamp - transition_times_[FLIGHT]) < blend_window) {
       if (timestamp < transition_times_[FLIGHT]) {
         near_impact->SetAlpha(alpha_func(timestamp - transition_times_[FLIGHT],

@@ -153,7 +153,7 @@ cc_binary(
     name = "mpc_visualizer",
     srcs = ["mpc_visualizer.cc"],
     deps = [
-        ":meshcat_foothold_visualizer",
+        ":meshcat_mpc_debug_visualizer",
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//lcmtypes:lcmt_robot",
@@ -167,12 +167,13 @@ cc_binary(
 )
 
 cc_library(
-    name = "meshcat_foothold_visualizer",
-    srcs = ["meshcat_foothold_visualizer.cc"],
-    hdrs = ["meshcat_foothold_visualizer.h"],
+    name = "meshcat_mpc_debug_visualizer",
+    srcs = ["meshcat_mpc_debug_visualizer.cc"],
+    hdrs = ["meshcat_mpc_debug_visualizer.h"],
     deps = [
         "//geometry:convex_foothold_set",
         "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

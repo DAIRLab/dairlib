@@ -3,7 +3,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_mpc_debug.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/perceptive_locomotion/meshcat_foothold_visualizer.h"
+#include "examples/perceptive_locomotion/meshcat_mpc_debug_visualizer.h"
 
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -30,7 +30,7 @@ DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
-using dairlib::perceptive_locomotion::MeshcatFootholdVisualizer;
+using dairlib::perceptive_locomotion::MeshcatMPCDebugVisualizer;
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
@@ -83,8 +83,11 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  auto foothold_vis = builder.AddSystem<MeshcatFootholdVisualizer>(meshcat);
-  builder.Connect(*mpc_sub, *foothold_vis);
+  auto foothold_vis = builder.AddSystem<MeshcatMPCDebugVisualizer>(meshcat, plant);
+  builder.Connect(mpc_sub->get_output_port(),
+                  foothold_vis->get_input_port_mpc());
+  builder.Connect(state_receiver->get_output_port(),
+                  foothold_vis->get_input_port_state());
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 

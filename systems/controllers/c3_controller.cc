@@ -2,12 +2,12 @@
 
 #include <iostream>
 #include <utility>
+
 #include <dairlib/lcmt_radio_out.hpp>
 
 #include "common/find_resource.h"
-#include "multibody/multibody_utils.h"
-
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 
 #include "drake/solvers/moby_lcp_solver.h"
@@ -89,9 +89,9 @@ void C3Controller::OutputTrajectory(
   /// default position
   x_des[0] = 0.7;
   x_des[1] = 0.02;
-  x_des[2] = 0.35;
+  //  x_des[2] = 0.35;
   /// center of plate
-  x_des.segment(0, 3) = x.get_data().segment(7, 3);
+  x_des[2] = 0.45 + radio_out->channel[2] * 0.2;
   x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
@@ -106,9 +106,12 @@ void C3Controller::OutputTrajectory(
 
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
 
-  std::cout << "plate_error: " << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose() << std::endl;
-  std::cout << "end_effector_error: " << (x_des.segment(0, 3) - x.get_data().segment(0, 3)).transpose() << std::endl;
-
+  std::cout << "plate_error: "
+            << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose()
+            << std::endl;
+  std::cout << "end_effector_error: "
+            << (x_des.segment(0, 3) - x.get_data().segment(0, 3)).transpose()
+            << std::endl;
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -116,7 +119,8 @@ void C3Controller::OutputTrajectory(
   plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x));
   plant_ad_.SetPositionsAndVelocities(context_ad_, q_v_u_ad.head(n_x));
   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u), context_);
-  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u), context_ad_);
+  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u),
+                                               context_ad_);
   auto lcs_pair = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
@@ -152,7 +156,7 @@ void C3Controller::OutputTrajectory(
     u_sol.col(i) = z_sol[i].segment(lcs.n_ + lcs.m_, lcs.k_);
   }
 
-//  double solve_dt = c3;
+  //  double solve_dt = c3;
   auto second_lcs_pair = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.solve_dt,
@@ -169,16 +173,16 @@ void C3Controller::OutputTrajectory(
       &force);
 
   (void)flag;  // suppress compiler unused variable warning
-  VectorXd state_next = second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) +
-                        second_lcs.D_[0] * force / second_scale +
-                        second_lcs.d_[0];
+  VectorXd state_next =
+      second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) +
+      second_lcs.D_[0] * force / second_scale + second_lcs.d_[0];
 
   x_sol.col(0) = state_next;
   x_sol.col(1) = state_next;
   x_sol.col(2) = state_next;
   x_sol.col(3) = state_next;
   x_sol.col(4) = state_next;
-//  x_sol.col(N_ - 1) = x.get_data();
+  //  x_sol.col(N_ - 1) = x.get_data();
 
   MatrixXd knots = x_sol.topRows(3);
   LcmTrajectory::Trajectory end_effector_traj;

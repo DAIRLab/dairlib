@@ -117,7 +117,9 @@ void C3Controller::OutputTrajectory(
   int n = ((lcs.A_)[0].cols());
   int m = ((lcs.D_)[0].cols());
   int k = ((lcs.B_)[0].cols());
-  std::vector<VectorXd> delta(N_, VectorXd::Zero(n + m + k));
+  VectorXd delta_init = VectorXd::Zero(n + m + k);
+  delta_init.head(n) = x.get_data();
+  std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n + m + k));
   auto z_sol = c3_->Solve(x.get_data(), delta, w);
 
@@ -157,18 +159,18 @@ void C3Controller::OutputTrajectory(
                         second_lcs.d_[0];
 
 
-//  x_sol.col(0) = state_next;
-//  x_sol.col(1) = state_next;
 //  std::cout << "height diff: " << state_next[2] - x.get_data()[2] << std::endl;
 //  std::cout << "state next: " << state_next.transpose() << std::endl;
 //  std::cout << "current state: " << x.get_value().transpose() << std::endl;
-  std::cout << "second_lcs.A_[0] * x.get_data(): " << second_lcs.A_[0] * x.get_data() << std::endl;
-  std::cout << "second_lcs.B_[0] * u_sol.col(0): " << second_lcs.B_[0] * u_sol.col(0) << std::endl;
-  std::cout << "second_lcs.D_[0] * force / second_scale: " << second_lcs.D_[0] * force / second_scale << std::endl;
-  std::cout << "second_lcs.d_[0]: " << second_lcs.d_[0] << std::endl;
-//  std::cout << "Bu + d: " << second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) + second_lcs.d_[0] << std::endl;
-//  std::cout << "d: " << second_lcs.d_[0] << std::endl;
-//  x_sol.col(N_ - 1) = z_sol[0].segment(0, lcs.n_);
+
+//  std::cout << "second_lcs.A_[0] * x.get_data(): " << second_lcs.A_[0] * x.get_data() << std::endl;
+//  std::cout << "second_lcs.B_[0] * u_sol.col(0): " << second_lcs.B_[0] * u_sol.col(0) << std::endl;
+//  std::cout << "second_lcs.D_[0] * force / second_scale: " << second_lcs.D_[0] * force / second_scale << std::endl;
+//  std::cout << "second_lcs.d_[0]: " << second_lcs.d_[0] << std::endl;
+
+//  std::cout << "second_lcs.D_[0] * force / second_scale: " << (second_lcs.D_[0] * force / second_scale).transpose() << std::endl;
+//  std::cout << "second_lcs.D_[0] * lambda / second_scale: " << (second_lcs.D_[0] * lambda_sol.col(0) / second_scale).transpose() << std::endl;
+
 
 
   MatrixXd knots = x_sol.topRows(3);

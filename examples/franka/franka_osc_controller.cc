@@ -196,9 +196,9 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
   builder.Connect(trajectory_sub->get_output_port(),
                   trajectory_receiver->get_input_port_trajectory());
-  //  builder.Connect(end_effector_trajectory->get_output_port(0),
-  //                  osc->get_input_port_tracking_data("end_effector_target"));
   builder.Connect(trajectory_receiver->get_output_port(0),
+                  end_effector_trajectory->get_input_port_trajectory());
+  builder.Connect(end_effector_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_target"));
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));

@@ -17,8 +17,8 @@ class EndEffectorTrajectoryGenerator : public drake::systems::LeafSystem<double>
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_target_vel() const {
-    return this->get_input_port(target_vel_port_);
+  const drake::systems::InputPort<double>& get_input_port_trajectory() const {
+    return this->get_input_port(trajectory_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -43,7 +43,7 @@ class EndEffectorTrajectoryGenerator : public drake::systems::LeafSystem<double>
   const drake::multibody::Frame<double>& world_;
 
   drake::systems::InputPortIndex state_port_;
-  drake::systems::InputPortIndex target_vel_port_;
+  drake::systems::InputPortIndex trajectory_port_;
   drake::systems::InputPortIndex radio_port_;
 
 };

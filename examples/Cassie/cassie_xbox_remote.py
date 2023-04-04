@@ -45,15 +45,8 @@ def main():
     clock = pygame.time.Clock()
     textPrint = TextPrint()
 
-    # radio spoof variables
-    radio_channel_6_pos = 0
-    radio_channel_6_delta = 0.05
-
-    radio_channel_4_pos = 0
-    radio_channel_4_delta = 0.05
-
-    radio_channel_5_pos = 0
-    radio_channel_5_delta = 0.05
+    latching_switch = 0
+    # radio_msg.channel[14] = 0
 
     if (pygame.joystick.get_count() != 1):
         raise RuntimeError("Please connect exactly one controller")
@@ -62,11 +55,6 @@ def main():
     joystick.init()
 
     done = False
-    max_speed = 1.6
-    ramp_up = np.arange(0, max_speed, 0.03)
-    stay = max_speed * np.ones(125)
-    ramp_down = np.flip(np.arange(0, max_speed, 0.01))
-    speeds = np.hstack((ramp_up, stay, ramp_down))
     i = 0
     while not done:
         # DRAWING STEP
@@ -81,17 +69,9 @@ def main():
             if event.type == pygame.QUIT: # If user clicked close
                 done=True # Flag that we are done so we exit this loop
 
-            if event.type == pygame.JOYHATMOTION:
-                hat_val = joystick.get_hat(0)
-                radio_channel_6_pos += radio_channel_6_delta * hat_val[1]
-                # saturate between -1 and 1
-                radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
             if event.type == pygame.JOYBUTTONDOWN:
-                radio_channel_4_pos += -radio_channel_5_delta * joystick.get_button(2) + radio_channel_5_delta * joystick.get_button(1)
-                radio_channel_5_pos += -radio_channel_4_delta * joystick.get_button(0) + radio_channel_4_delta * joystick.get_button(3)
-                # for i in range(joystick.get_numbuttons()):
-                #     print(i)
-                #     print(joystick.get_button(i))
+                if event.button == 0:
+                    latching_switch = not latching_switch
 
 
         # Send LCM message
@@ -100,10 +80,11 @@ def main():
         radio_msg.channel[1] = -joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)
-        radio_msg.channel[4] = radio_channel_4_pos
-        radio_msg.channel[5] = radio_channel_5_pos
-        radio_msg.channel[6] = radio_channel_6_pos
+        # radio_msg.channel[4] = radio_channel_4_pos
+        # radio_msg.channel[5] = radio_channel_5_pos
+        # radio_msg.channel[6] = radio_channel_6_pos
 
+        radio_msg.channel[14] = latching_switch
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 

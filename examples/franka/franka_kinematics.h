@@ -18,7 +18,8 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
                             drake::systems::Context<double>* franka_context,
                             const drake::multibody::MultibodyPlant<double>& object_plant,
                             drake::systems::Context<double>* object_context,
-                            const std::string& end_effector_name);
+                            const std::string& end_effector_name,
+                            const std::string& object_name);
 
   const drake::systems::InputPort<double>& get_input_port_object_state() const {
     return this->get_input_port(object_state_port_);
@@ -47,6 +48,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* object_context_;
   const drake::multibody::Frame<double>& world_;
   std::string end_effector_name_;
+  std::string object_name_;
 };
 
 }  // namespace systems

@@ -41,7 +41,6 @@ C3Controller::C3Controller(
       G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
       U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
       N_(c3_options_.N) {
-  //  DRAKE_DEMAND(Q_[0].rows() == lcs.A_[0].rows());
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
@@ -81,15 +80,19 @@ void C3Controller::OutputTrajectory(
   VectorXd x_des = VectorXd::Zero(n_q_ + n_v_);
   x_des[0] = 0.7;
   x_des[1] = 0.02;
-  x_des[2] = 0.4;
+  x_des[2] = 0.35;
   x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
   x_des[6] = 0;
-  x_des[7] = 0.7;
-  x_des[8] = 0.02;
-  x_des[9] = 0.3;
+  x_des[7] = 0.4;
+  x_des[8] = -0.2;
+  x_des[9] = 0.45;
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
+//  std::cout << "x value: " << x.get_data() << std::endl;
+//  std::cout << "x_desired: " << (x_des - x.get_data()).transpose() << std::endl;
+  std::cout << "plate_error: " << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose() << std::endl;
+
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -98,7 +101,6 @@ void C3Controller::OutputTrajectory(
   plant_ad_.SetPositionsAndVelocities(context_ad_, q_v_u_ad.head(n_x));
   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u), context_);
   multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u), context_ad_);
-  // TODO(yangwill): Check why gradient wrt u is not working correctly
   auto lcs_pair = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
@@ -113,7 +115,6 @@ void C3Controller::OutputTrajectory(
   c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
   c3_->SetOsqpSolverOptions(solver_options_);
 
-  //  int N = (system_.A_).size();
   int n = ((lcs.A_)[0].cols());
   int m = ((lcs.D_)[0].cols());
   int k = ((lcs.B_)[0].cols());
@@ -128,25 +129,23 @@ void C3Controller::OutputTrajectory(
   MatrixXd u_sol = MatrixXd::Zero(lcs.k_, N_);
   VectorXd breaks = VectorXd::Zero(N_);
 
-  for (int n = 0; n < N_; n++) {
-    breaks(n) = t + n * lcs.dt_;
-//    x_sol.col(n) = state_next;
-    x_sol.col(n) = z_sol[n].segment(0, lcs.n_);
-    lambda_sol.col(n) = z_sol[n].segment(lcs.n_, lcs.m_);
-    u_sol.col(n) = z_sol[n].segment(lcs.n_ + lcs.m_, lcs.k_);
+  for (int i = 0; i < N_; i++) {
+    breaks(i) = t + i * lcs.dt_;
+    x_sol.col(i) = z_sol[i].segment(0, lcs.n_);
+    lambda_sol.col(i) = z_sol[i].segment(lcs.n_, lcs.m_);
+    u_sol.col(i) = z_sol[i].segment(lcs.n_ + lcs.m_, lcs.k_);
   }
 
-  double solve_dt = 0.1;
+//  double solve_dt = c3;
   auto second_lcs_pair = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, solve_dt,
+      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.solve_dt,
       c3_options_.N);
   auto second_lcs = second_lcs_pair.first;
   auto second_scale = second_lcs_pair.second;
   drake::solvers::MobyLCPSolver<double> LCPSolver;
   VectorXd force;
-//  auto flag = LCPSolver.SolveLcpLemkeRegularized(
-  auto flag = LCPSolver.SolveLcpLemke(
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(
       second_lcs.F_[0],
       second_lcs.E_[0] * second_scale * x.get_data() +
           second_lcs.c_[0] * second_scale +
@@ -158,20 +157,12 @@ void C3Controller::OutputTrajectory(
                         second_lcs.D_[0] * force / second_scale +
                         second_lcs.d_[0];
 
-
-//  std::cout << "height diff: " << state_next[2] - x.get_data()[2] << std::endl;
-//  std::cout << "state next: " << state_next.transpose() << std::endl;
-//  std::cout << "current state: " << x.get_value().transpose() << std::endl;
-
-//  std::cout << "second_lcs.A_[0] * x.get_data(): " << second_lcs.A_[0] * x.get_data() << std::endl;
-//  std::cout << "second_lcs.B_[0] * u_sol.col(0): " << second_lcs.B_[0] * u_sol.col(0) << std::endl;
-//  std::cout << "second_lcs.D_[0] * force / second_scale: " << second_lcs.D_[0] * force / second_scale << std::endl;
-//  std::cout << "second_lcs.d_[0]: " << second_lcs.d_[0] << std::endl;
-
-//  std::cout << "second_lcs.D_[0] * force / second_scale: " << (second_lcs.D_[0] * force / second_scale).transpose() << std::endl;
-//  std::cout << "second_lcs.D_[0] * lambda / second_scale: " << (second_lcs.D_[0] * lambda_sol.col(0) / second_scale).transpose() << std::endl;
-
-
+  x_sol.col(0) = state_next;
+  x_sol.col(1) = state_next;
+  x_sol.col(2) = state_next;
+  x_sol.col(3) = state_next;
+  x_sol.col(4) = state_next;
+//  x_sol.col(N_ - 1) = x.get_data();
 
   MatrixXd knots = x_sol.topRows(3);
   LcmTrajectory::Trajectory end_effector_traj;

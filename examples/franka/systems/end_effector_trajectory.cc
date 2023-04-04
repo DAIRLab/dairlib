@@ -28,23 +28,22 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const MultibodyPlant<double>& plant,
-                                     Context<double>* context)
-    : plant_(plant),
-      context_(context),
-      world_(plant.world_frame())
-      {
-
-
+EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
+    const MultibodyPlant<double>& plant, Context<double>* context)
+    : plant_(plant), context_(context), world_(plant.world_frame()) {
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-          "x", OutputVector<double>(plant_.num_positions(),
-                                    plant_.num_velocities(),
-                                    plant_.num_actuators()))
-      .get_index();
-//  target_vel_port_ = this->DeclareVectorInputPort(
-//          "v_des", BasicVector<double>(VectorXd::Zero(2)))
-//      .get_index();
+                        "x", OutputVector<double>(plant_.num_positions(),
+                                                  plant_.num_velocities(),
+                                                  plant_.num_actuators()))
+                    .get_index();
+  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+
+  trajectory_port_ =
+      this->DeclareAbstractInputPort(
+              "trajectory",
+              drake::Value<drake::trajectories::Trajectory<double>>(pp))
+          .get_index();
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
@@ -53,15 +52,12 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const MultibodyPl
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("right_ft_traj", traj_inst,
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
-
 }
 
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateCircle(
     const drake::systems::Context<double>& context) const {
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
-//  const auto desired_pelvis_vel_xy =
-//      this->EvalVectorInput(context, target_vel_port_)->get_value();
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   double t = robot_output->get_timestamp();
@@ -79,16 +75,14 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateCircle(
   ydot0(2) = -radius * frequency * cos(frequency * t);
   std::vector<double> breaks = {t, t + dt};
   std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
-  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(breaks,
-                                                                          samples);
+  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+      breaks, samples);
 }
 
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
     const drake::systems::Context<double>& context) const {
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
-//  const auto desired_pelvis_vel_xy =
-//      this->EvalVectorInput(context, target_vel_port_)->get_value();
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   double t = robot_output->get_timestamp();
@@ -101,18 +95,14 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
   VectorXd ydot0 = VectorXd::Zero(3);
   std::vector<double> breaks = {t, t + dt};
   std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
-  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(breaks,
-                                                                          samples);
+  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+      breaks, samples);
 }
 
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateLine(
     const drake::systems::Context<double>& context) const {
   const auto robot_output =
       this->template EvalVectorInput<OutputVector>(context, state_port_);
-//  const auto desired_pelvis_vel_xy =
-//      this->EvalVectorInput(context, target_vel_port_)->get_value();
-//  const auto radio_signal =
-//      this->EvalVectorInput(context, radio_port_)->get_value();
   double t = robot_output->get_timestamp();
   double dt = 0.1;
   VectorXd y0 = VectorXd::Zero(3);
@@ -125,21 +115,30 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateLine(
   ydot0(2) = -0.2 * M_PI * cos(M_PI * t);
   std::vector<double> breaks = {t, t + dt};
   std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
-  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(breaks,
-                                                                          samples);
+  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
+      breaks, samples);
 }
 
 void EndEffectorTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
   //  // Read in finite state machine
-
+  const auto& trajectory_input =
+      this->EvalAbstractInput(context, trajectory_port_)
+          ->get_value<drake::trajectories::Trajectory<double>>();
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   auto* casted_traj =
-  (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-      traj);
-//  *casted_traj = GenerateCircle(context);
-  *casted_traj = GeneratePose(context);
-//  *casted_traj = GenerateLine(context);
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          traj);
+  if (radio_out->channel[14]) {
+    *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
+        const PiecewisePolynomial<double>*>(&trajectory_input);
+  } else {
+    *casted_traj = GeneratePose(context);
+    //  *casted_traj = GenerateCircle(context);
+    //  *casted_traj = GenerateLine(context);
+  }
 }
 
-}  // namespace dairlib::examples::osc_run
+}  // namespace dairlib

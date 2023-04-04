@@ -20,13 +20,15 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                    Context<double>* franka_context,
                                    const MultibodyPlant<double>& object_plant,
                                    Context<double>* object_context,
-                                   const std::string& end_effector_name)
+                                   const std::string& end_effector_name,
+                                   const std::string& object_name)
     : franka_plant_(franka_plant),
       franka_context_(franka_context),
       object_plant_(object_plant),
       object_context_(object_context),
       world_(franka_plant_.world_frame()),
-      end_effector_name_(end_effector_name) {
+      end_effector_name_(end_effector_name),
+      object_name_(object_name){
   this->set_name("franka_kinematics");
   franka_state_port_ =
       this->DeclareVectorInputPort(
@@ -65,15 +67,24 @@ void FrankaKinematics::ComputeLCSState(
                                        franka_context_);
   multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
                                         franka_context_);
+  multibody::SetPositionsIfNew<double>(object_plant_, q_object,
+                                       object_context_);
+  multibody::SetVelocitiesIfNew<double>(object_plant_, v_object,
+                                        object_context_);
 
   auto end_effector_pose = franka_plant_.EvalBodyPoseInWorld(
       *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
+//  auto franka_base_pose = franka_plant_.EvalBodyPoseInWorld(
+//      *franka_context_, franka_plant_.GetBodyByName("panda_link0"));
+  auto object_pose = object_plant_.EvalBodyPoseInWorld(
+      *object_context_, object_plant_.GetBodyByName(object_name_));
+  auto relative_translation = object_pose.translation();
+  relative_translation(2) -= 0.7645;
   auto end_effector_spatial_velocity =
       franka_plant_.EvalBodySpatialVelocityInWorld(
           *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
-
   VectorXd lcs_output = VectorXd::Zero(lcs_state->size() - 1);
-  lcs_output << end_effector_pose.translation(), q_object,
+  lcs_output << end_effector_pose.translation(), q_object.head(4), relative_translation,
       end_effector_spatial_velocity.translational(), v_object;
 
   lcs_state->set_timestamp(franka_output->get_timestamp());

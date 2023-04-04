@@ -43,13 +43,11 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
 
   AutoDiffVecXd C(plant.num_velocities());
   plant_ad.CalcBiasTerm(context_ad, &C);
+  VectorXd u_dyn = plant.get_actuation_input_port().Eval(context);
+
   auto B_dyn_ad = plant_ad.MakeActuationMatrix();
-  VectorXd u_dyn = VectorXd::Zero(n_u);
-  AutoDiffVecXd u_dyn_ad =
-      drake::math::InitializeAutoDiff(u_dyn, n_q + n_v + n_u);
-//  AutoDiffVecXd u_dyn_ad =
-//      plant_ad.;
-  AutoDiffVecXd Bu = B_dyn_ad * u_dyn_ad;
+  AutoDiffVecXd Bu =
+      B_dyn_ad * plant_ad.get_actuation_input_port().Eval(context_ad);
 
   AutoDiffVecXd tau_g = plant_ad.CalcGravityGeneralizedForces(context_ad);
 
@@ -60,15 +58,12 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   plant_ad.CalcMassMatrix(context_ad, &M);
 
   // If this ldlt is slow, there are alternate formulations which avoid it
-  // TODO(yangwill): check this line below
   AutoDiffVecXd vdot_no_contact =
       M.ldlt().solve(tau_g + Bu + f_app.generalized_forces() - C);
   // Constant term in dynamics, d_vv = d + A x_0 + B u_0
   VectorXd d_vv = ExtractValue(vdot_no_contact);
   // Derivatives w.r.t. x and u, AB
   MatrixXd AB_v = ExtractGradient(vdot_no_contact);
-  //  VectorXd inp_dvv = plant.get_actuation_input_port().Eval(context);
-  //  VectorXd inp_dvv = u_dyn;
   VectorXd x_dvv(plant.num_positions() + plant.num_velocities() + n_u);
   x_dvv << plant.GetPositions(context), plant.GetVelocities(context), u_dyn;
   VectorXd x_dvvcomp = AB_v * x_dvv;
@@ -79,7 +74,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   AutoDiffVecXd qdot_no_contact(plant.num_positions());
   AutoDiffVecXd vel_ad = x_ad.tail(n_v);
 
-  // TODO(yangwill): check this line below
   plant_ad.MapVelocityToQDot(context_ad, vel_ad, &qdot_no_contact);
   MatrixXd AB_q = ExtractGradient(qdot_no_contact);
   MatrixXd d_q = ExtractValue(qdot_no_contact);
@@ -124,19 +118,11 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   MatrixXd H(n_contact_vars, n_u);
   VectorXd c(n_contact_vars);
 
-
   MatrixXd AB_v_q = AB_v.block(0, 0, n_v, n_q);
   MatrixXd AB_v_v = AB_v.block(0, n_q, n_v, n_v);
-//  MatrixXd AB_v_u = AB_v.block(0, n_x, n_v, n_u);
+  MatrixXd AB_v_u = AB_v.block(0, n_x, n_v, n_u);
   MatrixXd M_double = MatrixXd::Zero(n_v, n_v);
   plant.CalcMassMatrix(context, &M_double);
-  // TODO(yangwill): Check why gradient wrt u is not working correctly
-  MatrixXd AB_v_u = M_double.inverse() * MatrixXd::Identity(n_v, n_u);
-//  AB_v_u = M.ldlt().solve();
-//  std::cout << "AB_v: " << AB_v << std::endl;
-//  std::cout << "AB_v rows: " << AB_v.rows() << std::endl;
-//  std::cout << "AB_v cols: " << AB_v.cols() << std::endl;
-//  std::cout << "AB_v_u: " << AB_v_u << std::endl;
 
   A.block(0, 0, n_q, n_q) =
       MatrixXd::Identity(n_q, n_q) + dt * dt * Nq * AB_v_q;
@@ -215,18 +201,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   E /= AnDn;
   c /= AnDn;
   H /= AnDn;
-
-//  std::cout << B << std::endl;
-//  std::vector<MatrixXd> A_lcs(N, A);
-//  std::vector<MatrixXd> B_lcs(N, B);
-//  std::vector<MatrixXd> D_lcs(N, D);
-//  std::vector<VectorXd> d_lcs(N, d);
-//  std::vector<MatrixXd> E_lcs(N, E);
-//  std::vector<MatrixXd> F_lcs(N, F);
-//  std::vector<VectorXd> c_lcs(N, c);
-//  std::vector<MatrixXd> H_lcs(N, H);
-//
-//  LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs, dt);
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
 

@@ -142,7 +142,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_tray);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_tray, tray_context.get(), "paddle");
+          plant_franka, franka_context.get(), plant_tray, tray_context.get(), "paddle", "tray");
   auto trajectory_sender =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel, &lcm,

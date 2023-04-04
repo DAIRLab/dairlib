@@ -2,8 +2,10 @@
 
 #include <string>
 #include <vector>
+
 #include <drake/common/yaml/yaml_io.h>
 
+#include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
@@ -11,11 +13,10 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_options.h"
 #include "solvers/lcs.h"
+#include "solvers/solver_options_io.h"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
-#include "solvers/solver_options_io.h"
-#include "common/find_resource.h"
 
 namespace dairlib {
 namespace systems {
@@ -44,6 +45,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(trajectory_output_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
+  }
+
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
   }
@@ -55,6 +60,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
+  drake::systems::InputPortIndex radio_port_;
   drake::systems::OutputPortIndex trajectory_output_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;

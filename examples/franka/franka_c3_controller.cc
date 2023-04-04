@@ -90,7 +90,6 @@ int DoMain(int argc, char* argv[]) {
   auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
-//  MultibodyPlant<double> plant_plate(0.0);
   auto [plant_plate, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_plate(&plant_plate);
   parser_plate.AddModelFromFile(controller_params.plate_model);
@@ -123,12 +122,7 @@ int DoMain(int argc, char* argv[]) {
   for (auto geom_id : contact_geoms["PLATE"]) {
     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
-  std::cout << "n_contacts: " << contact_pairs.size() << std::endl;
-  std::cout << "plate_contacts: " << plate_contact_points.size() << std::endl;
-  std::cout << "tray_contacts: " << tray_geoms.size() << std::endl;
-  std::cout << "num_positions: " << plant_plate.num_positions() << std::endl;
-  std::cout << "num_velocities: " << plant_plate.num_velocities() << std::endl;
-  std::cout << "num_actuators: " << plant_plate.num_actuators() << std::endl;
+
   ///
 
   DiagramBuilder<double> builder;
@@ -147,6 +141,9 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          controller_params.radio_channel, &lcm));
 
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(), contact_pairs, c3_options);
@@ -159,8 +156,11 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_object_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_state());
+  builder.Connect(radio_sub->get_output_port(),
+                  controller->get_input_port_radio());
   builder.Connect(controller->get_output_port_trajectory(),
                   trajectory_sender->get_input_port());
+
 
 //  std::unique_ptr<drake::systems::Context<double>> diagram_context = plant_diagram->CreateDefaultContext();
 

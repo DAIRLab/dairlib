@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <utility>
+#include <dairlib/lcmt_radio_out.hpp>
 
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
@@ -44,13 +45,18 @@ C3Controller::C3Controller(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
-
+  Q_.back() = 100 * c3_options_.Q;
   target_input_port_ = this->DeclareVectorInputPort("desired_position",
                                                     BasicVector<double>(2 + 16))
                            .get_index();
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs",
                                    TimestampedVector<double>(n_q_ + n_v_))
+          .get_index();
+
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
 
   this->set_name("c3_controller");
@@ -67,6 +73,8 @@ void C3Controller::OutputTrajectory(
   //  const BasicVector<double>& x_des =
   //      *this->template EvalVectorInput<BasicVector>(context,
   //      target_input_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   const TimestampedVector<double>& x =
       *this->template EvalVectorInput<TimestampedVector>(context,
                                                          lcs_state_input_port_);
@@ -78,20 +86,28 @@ void C3Controller::OutputTrajectory(
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
   VectorXd x_des = VectorXd::Zero(n_q_ + n_v_);
+  /// default position
   x_des[0] = 0.7;
   x_des[1] = 0.02;
   x_des[2] = 0.35;
+  /// center of plate
+  x_des.segment(0, 3) = x.get_data().segment(7, 3);
   x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
   x_des[6] = 0;
-  x_des[7] = 0.4;
+  /// radio command
+  x_des[7] = 0.5;
   x_des[8] = -0.2;
   x_des[9] = 0.45;
+  x_des(7) += radio_out->channel[0] * 0.2;
+  x_des(8) += radio_out->channel[1] * 0.2;
+  x_des(9) += radio_out->channel[2] * 0.2;
+
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
-//  std::cout << "x value: " << x.get_data() << std::endl;
-//  std::cout << "x_desired: " << (x_des - x.get_data()).transpose() << std::endl;
+
   std::cout << "plate_error: " << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose() << std::endl;
+  std::cout << "end_effector_error: " << (x_des.segment(0, 3) - x.get_data().segment(0, 3)).transpose() << std::endl;
 
 
   int n_x = plant_.num_positions() + plant_.num_velocities();

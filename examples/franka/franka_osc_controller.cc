@@ -167,16 +167,14 @@ int DoMain(int argc, char* argv[]) {
   end_effector_orientation_tracking_data->AddFrameToTrack("paddle");
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
-  //  orientation_target(2) = 1;
-  //  orientation_target(1) = 1;
-  //  orientation_target(3) = 0.707;
+
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(wrist_relative_tracking_data),
                             wrist_down_target);
   osc->AddConstTrackingData(std::move(end_effector_orientation_tracking_data),
                             orientation_target);
 
-  osc->SetContactFriction(0.4);
+  osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();

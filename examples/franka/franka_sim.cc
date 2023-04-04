@@ -150,6 +150,9 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
+  for (auto pair : q_map){
+    std::cout << pair.first << pair.second << std::endl;
+  }
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
   q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
   q[q_map["panda_joint2"]] = sim_params.q_init_franka[1];
@@ -159,9 +162,13 @@ int DoMain(int argc, char* argv[]) {
   q[q_map["panda_joint6"]] = sim_params.q_init_franka[5];
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
 
-  q[plant.num_positions() - 7] = 1;
-  q[plant.num_positions() - 1] = 1.2;
-  q[plant.num_positions() - 3] = 0.68;
+  q[q_map["base_qw"]] = sim_params.q_init_plate[0];
+  q[q_map["base_qx"]] = sim_params.q_init_plate[1];
+  q[q_map["base_qy"]] = sim_params.q_init_plate[2];
+  q[q_map["base_qz"]] = sim_params.q_init_plate[3];
+  q[q_map["base_x"]] = sim_params.q_init_plate[4];
+  q[q_map["base_y"]] = sim_params.q_init_plate[5];
+  q[q_map["base_z"]] = sim_params.q_init_plate[6];
 
   plant.SetPositions(&plant_context, q);
 

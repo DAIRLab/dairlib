@@ -11,6 +11,7 @@ struct FrankaSimParams {
   double dt;
   double realtime_rate;
   std::vector<double> q_init_franka;
+  std::vector<double> q_init_plate;
 
   std::string state_channel;
   std::string controller_channel;
@@ -30,6 +31,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
     a->Visit(DRAKE_NVP(q_init_franka));
+    a->Visit(DRAKE_NVP(q_init_plate));
 
   }
 };

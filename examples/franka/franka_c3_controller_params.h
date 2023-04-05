@@ -10,7 +10,8 @@ using Eigen::VectorXd;
 
 struct FrankaC3ControllerParams {
   std::string c3_options_file;
-  std::string c3_channel;
+  std::string c3_channel_actor;
+  std::string c3_channel_object;
   std::string state_channel;
   std::string radio_channel;
   std::string franka_model;
@@ -20,7 +21,8 @@ struct FrankaC3ControllerParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(c3_options_file));
-    a->Visit(DRAKE_NVP(c3_channel));
+    a->Visit(DRAKE_NVP(c3_channel_actor));
+    a->Visit(DRAKE_NVP(c3_channel_object));
     a->Visit(DRAKE_NVP(state_channel));
     a->Visit(DRAKE_NVP(radio_channel));
     a->Visit(DRAKE_NVP(franka_model));

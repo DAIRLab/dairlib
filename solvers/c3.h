@@ -22,8 +22,7 @@ class C3 {
      const std::vector<Eigen::MatrixXd>& R,
      const std::vector<Eigen::MatrixXd>& G,
      const std::vector<Eigen::MatrixXd>& U,
-     const std::vector<Eigen::VectorXd>& xdesired,
-     const C3Options& options,
+     const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options,
      const std::vector<Eigen::VectorXd>& warm_start_delta = {},
      const std::vector<Eigen::VectorXd>& warm_start_binary = {},
      const std::vector<Eigen::VectorXd>& warm_start_x_ = {},
@@ -37,8 +36,8 @@ class C3 {
   /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
   std::vector<Eigen::VectorXd> Solve(const Eigen::VectorXd& x0,
-                        std::vector<Eigen::VectorXd>& delta,
-                        std::vector<Eigen::VectorXd>& w);
+                                     std::vector<Eigen::VectorXd>& delta,
+                                     std::vector<Eigen::VectorXd>& w);
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -82,17 +81,20 @@ class C3 {
   /// @param E, F, H, c LCS parameters
   /// @param U A pointer to the U variables
   /// @param delta_c A pointer to the copy of (z + w) variables
-  virtual Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
-                                                const Eigen::VectorXd& delta_c,
-                                                const Eigen::MatrixXd& E,
-                                                const Eigen::MatrixXd& F,
-                                                const Eigen::MatrixXd& H,
-                                                const Eigen::VectorXd& c,
-                                                const int& warm_start_index) = 0;
+  virtual Eigen::VectorXd SolveSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const int& warm_start_index) = 0;
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
   }
+
+  std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
+  std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
+  std::vector<Eigen::VectorXd> GetForceSolution() { return *lambda_sol_; }
+  std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
 
  public:
   const std::vector<Eigen::MatrixXd> A_;
@@ -132,9 +134,9 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-  constraints_;
+      constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-  user_constraints_;
+      user_constraints_;
 
   // Solutions
 

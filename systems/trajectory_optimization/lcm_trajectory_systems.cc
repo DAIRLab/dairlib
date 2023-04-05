@@ -55,15 +55,19 @@ void LcmTrajectoryReceiver::OutputTrajectory(
 
 LcmTrajectoryDrawer::LcmTrajectoryDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    std::string trajectory_name)
-    : meshcat_(meshcat), trajectory_name_(std::move(trajectory_name)) {
+    std::string trajectory_name, const std::string& default_trajectory_path)
+    : meshcat_(meshcat),
+      trajectory_name_(std::move(trajectory_name)),
+      default_trajectory_path_(default_trajectory_path) {
+  this->set_name(trajectory_name);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
-  lcm_traj_ = LcmTrajectory(dairlib::FindResourceOrThrow(nominal_stand_path_));
+  lcm_traj_ =
+      LcmTrajectory(dairlib::FindResourceOrThrow(default_trajectory_path_));
   DeclarePerStepDiscreteUpdateEvent(&LcmTrajectoryDrawer::DrawTrajectory);
 }
 
@@ -78,13 +82,13 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
             context, trajectory_input_port_);
     lcm_traj_ = LcmTrajectory(lcm_traj->saved_traj);
   }
-  Eigen::MatrixXd setpoints = lcm_traj_.GetTrajectory(trajectory_name_).datapoints;
-  for(int i = 0; i < setpoints.cols(); ++i){
+  Eigen::MatrixXd setpoints =
+      lcm_traj_.GetTrajectory(trajectory_name_).datapoints;
+  for (int i = 0; i < setpoints.cols(); ++i) {
     setpoints(2, i) += 0.7645;
   }
-  meshcat_->SetLine("/trajectories/end_effector_target",
-                    setpoints, 100000,
-                    Rgba(0.1, 0.1, 0.1, 1.0));
+  meshcat_->SetLine("/trajectories/" + trajectory_name_, setpoints, 100,
+                    rgba_);
   return drake::systems::EventStatus::Succeeded();
 }
 

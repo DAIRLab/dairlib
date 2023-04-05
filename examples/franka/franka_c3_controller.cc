@@ -137,9 +137,13 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(), "paddle", "tray");
-  auto trajectory_sender =
+  auto actor_trajectory_sender =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          controller_params.c3_channel, &lcm,
+          controller_params.c3_channel_actor, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto object_trajectory_sender =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          controller_params.c3_channel_object, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
@@ -158,8 +162,10 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
-  builder.Connect(controller->get_output_port_trajectory(),
-                  trajectory_sender->get_input_port());
+  builder.Connect(controller->get_output_port_actor_trajectory(),
+                  actor_trajectory_sender->get_input_port());
+  builder.Connect(controller->get_output_port_object_trajectory(),
+                  object_trajectory_sender->get_input_port());
 
 
 //  std::unique_ptr<drake::systems::Context<double>> diagram_context = plant_diagram->CreateDefaultContext();

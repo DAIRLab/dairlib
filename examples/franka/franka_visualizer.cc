@@ -93,7 +93,7 @@ int do_main(int argc, char* argv[]) {
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("link", table_index), X_WI);
   plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("link", second_table_index), T_X_W);
+                   plant.GetFrameByName("table", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
 
@@ -125,9 +125,12 @@ int do_main(int argc, char* argv[]) {
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
-  auto trajectory_sub = builder.AddSystem(
+  auto trajectory_sub_actor = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          "C3_TRAJECTORY", lcm));
+          "C3_TRAJECTORY_ACTOR", lcm));
+  auto trajectory_sub_object = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "C3_TRAJECTORY_TRAY", lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
@@ -137,14 +140,20 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  auto trajectory_drawer = builder.AddSystem<systems::LcmTrajectoryDrawer>(
+  auto trajectory_drawer_actor = builder.AddSystem<systems::LcmTrajectoryDrawer>(
       meshcat, "end_effector_traj");
+  auto trajectory_drawer_object = builder.AddSystem<systems::LcmTrajectoryDrawer>(
+      meshcat, "object_traj");
+  trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
+  trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
-  builder.Connect(trajectory_sub->get_output_port(),
-                  trajectory_drawer->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_actor->get_output_port(),
+                  trajectory_drawer_actor->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_object->get_output_port(),
+                  trajectory_drawer_object->get_input_port_trajectory());
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),

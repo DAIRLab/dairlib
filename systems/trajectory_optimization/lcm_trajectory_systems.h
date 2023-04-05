@@ -44,11 +44,18 @@ class LcmTrajectoryReceiver : public drake::systems::LeafSystem<double> {
 /// and draws it through meshcat.
 class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
  public:
-  explicit LcmTrajectoryDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
-                               std::string trajectory_name);
+  explicit LcmTrajectoryDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>&,
+      std::string trajectory_name,
+      const std::string& default_trajectory_path =
+          "examples/franka/saved_trajectories/franka_defaults");
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
+  }
+
+  void SetLineColor(drake::geometry::Rgba rgba){
+    rgba_ = rgba;
   }
 
  private:
@@ -63,8 +70,8 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::string trajectory_name_;
   mutable LcmTrajectory lcm_traj_;
-  std::string nominal_stand_path_ =
-      "examples/franka/saved_trajectories/default_end_effector_pose";
+  std::string default_trajectory_path_;
+  drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
 };
 
 }  // namespace systems

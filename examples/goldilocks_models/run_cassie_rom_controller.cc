@@ -1090,7 +1090,7 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(&swing_toe_traj_right);
 
     // Set double support duration for force blending
-    if (!close_sim_gap) {
+    if (!close_sim_gap && !is_two_phase) {
       osc->SetUpDoubleSupportPhaseBlending(
           double_support_duration, left_stance_state, right_stance_state,
           {post_left_double_support_state, post_right_double_support_state});

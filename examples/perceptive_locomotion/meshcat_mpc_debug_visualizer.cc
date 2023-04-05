@@ -38,8 +38,8 @@ void MeshcatMPCDebugVisualizer::DrawComTrajSolution(
     const Matrix3d& R_yaw, const double z_com) const {
 
   std::vector<drake::geometry::Rgba> rgb = {
-      drake::geometry::Rgba(0.003921569, 0.121568627, 0.356862745, 0.6),
-      drake::geometry::Rgba(.6, 0, 0, 0.5)
+      drake::geometry::Rgba(0, 0, 1, 0.8),
+      drake::geometry::Rgba(1, 0, 0, 0.8)
   };
   for (int n = 0; n < com_traj_solution.nm; n++) {
     Matrix3Xd segment = Matrix3Xd::Zero(3, com_traj_solution.nk);
@@ -54,7 +54,7 @@ void MeshcatMPCDebugVisualizer::DrawComTrajSolution(
       segment.col(k) = R_yaw * com_k;
     }
     std::string label = path + "_" + std::to_string(n);
-    meshcat_->SetLine(label, segment, 0.5, rgb.at(n % 2));
+    meshcat_->SetLine(label, segment, 4.0, rgb.at(n % 2));
   }
 }
 

@@ -1,5 +1,6 @@
 #include <utility>
 
+#include "drake/geometry/shape_specification.h"
 #include "meshcat_mpc_debug_visualizer.h"
 #include "systems/framework/output_vector.h"
 #include "drake/geometry/rgba.h"
@@ -58,6 +59,27 @@ void MeshcatMPCDebugVisualizer::DrawComTrajSolution(
   }
 }
 
+
+void MeshcatMPCDebugVisualizer::DrawFootsteps(
+    const dairlib::lcmt_mpc_solution &solution,
+    const Eigen::Matrix3d &R_yaw) const {
+
+  std::vector<drake::geometry::Rgba> rgb = {
+      drake::geometry::Rgba(1, 0, 0, 0.8),
+      drake::geometry::Rgba(0, 0, 1, 0.8)
+  };
+
+  for (int n = 1; n < solution.nm; n++) {
+    Eigen::Matrix4d X = Eigen::Matrix4d::Identity();
+    std::string path = "footstep_sol_" + std::to_string(n);
+    X.block<3, 1>(0, 3) =
+        R_yaw * Eigen::Vector3d::Map(solution.pp.at(n).data());
+    const auto sphere = drake::geometry::Sphere(.025);
+    meshcat_->SetObject(path, sphere, rgb.at(n % 2));
+    meshcat_->SetTransform(path, X);
+  }
+}
+
 void MeshcatMPCDebugVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
                                               int n_prev) const {
   std::vector<drake::geometry::Rgba> rgb = {
@@ -107,6 +129,7 @@ drake::systems::EventStatus MeshcatMPCDebugVisualizer::UnrestrictedUpdate(
   auto foothold_set = ConvexFootholdSet::CopyFromLcm(mpc_debug.footholds);
 
   DrawComTrajSolution("com_sol", mpc_debug.solution, R_yaw, 0.83);
+  DrawFootsteps(mpc_debug.solution, R_yaw);
 
   int n_prev = state->get_discrete_state(n_footholds_idx_).get_value()(0);
   DrawFootholds(foothold_set, n_prev);

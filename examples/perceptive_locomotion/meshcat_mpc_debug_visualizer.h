@@ -37,7 +37,8 @@ class MeshcatMPCDebugVisualizer : public drake::systems::LeafSystem<double> {
       const Eigen::Matrix3d& R_yaw,
       const double z_com) const;
 
-  void DrawNextFootstep(const Eigen::Vector3d& p_w) const;
+  void DrawFootsteps(const dairlib::lcmt_mpc_solution& solution,
+                     const Eigen::Matrix3d& R_yaw) const;
 
   drake::systems::EventStatus UnrestrictedUpdate(
       const drake::systems::Context<double>& context,

@@ -84,23 +84,21 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
       this->DeclareVectorInputPort("t_touchdown", 1).get_index();
   footstep_target_port_ =
       this->DeclareVectorInputPort("desired footstep target", 3).get_index();
+  ExponentialPlusPiecewisePolynomial<double> exp;
+  com_traj_input_port_ = this->DeclareAbstractInputPort(
+      "com_xyz", drake::Value<Trajectory<double>>(exp)).get_index();
+
 
   // Provide an instance to allocate the memory first (for the output)
   PathParameterizedTrajectory<double> pp(
       PiecewisePolynomial<double>(VectorXd::Zero(1)),
       PiecewisePolynomial<double>(VectorXd::Zero(1))
   );
-  drake::trajectories::Trajectory<double> &traj_instance = pp;
-
+  Trajectory<double> &traj_instance = pp;
   swing_foot_traj_output_port_ = this->DeclareAbstractOutputPort(
      "swing_foot_xyz", traj_instance, &SwingFootInterfaceSystem::CalcSwingTraj)
      .get_index();
 
-  com_height_offset_output_port_ = this->DeclareVectorOutputPort(
-      "com_z_next_td_offset", 1, &SwingFootInterfaceSystem::CopyComHeightOffset)
-      .get_index();
-
-  // State variables inside this controller block
   DeclarePerStepDiscreteUpdateEvent(
       &SwingFootInterfaceSystem::DiscreteVariableUpdate);
 
@@ -256,42 +254,18 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
   }
 }
 
-void SwingFootInterfaceSystem::CopyComHeightOffset(
-    const Context<double> &context,
-    BasicVector<double> *com_height_offset) const {
-  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      EvalVectorInput(context, state_port_));
-  int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-  const VectorXd& q = robot_output->GetPositions();
-  multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
-  Vector3d stance_foot_pos = Vector3d::Zero();
-
-  plant_.CalcPointsPositions(
-      *plant_context_, stance_foot_map_.at(fsm_state).second,
-      stance_foot_map_.at(fsm_state).first, world_, &stance_foot_pos);
-
-  // Swing foot position at touchdown
-  const Vector3d& footstep_target =
-      this->EvalVectorInput(context, footstep_target_port_)->get_value();
-  double offset = footstep_target(2) - stance_foot_pos(2) + foot_height_offset_;
-  com_height_offset->set_value(drake::Vector1d(offset));
-}
-
-
 ComTrajInterfaceSystem::ComTrajInterfaceSystem(
     const drake::multibody::MultibodyPlant<double> &plant,
     drake::systems::Context<double> *context,
     double desired_com_height,
     double t_ds,
     const std::vector<int> &unordered_fsm_states,
-    bool use_offset,
     const std::vector<PointOnFramed> contact_point_in_each_state) :
     plant_(plant),
     context_(context),
     desired_com_height_(desired_com_height),
     tds_(t_ds),
     fsm_states_(unordered_fsm_states),
-    use_offset_(use_offset),
     contact_point_in_each_state_(contact_point_in_each_state) {
 
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_point_in_each_state.size());
@@ -307,9 +281,7 @@ ComTrajInterfaceSystem::ComTrajInterfaceSystem(
   fsm_port_ = DeclareVectorInputPort("fsm", 1).get_index();
   next_touchdown_time_port_ = DeclareVectorInputPort("t1", 1).get_index();
   prev_liftoff_time_port_ = DeclareVectorInputPort("t0", 1).get_index();
-  delta_z_input_port_ = DeclareVectorInputPort("com_z", 1).get_index();
-
-  delta_z_idx_ = DeclareDiscreteState(drake::Vector1d::Zero());
+  slope_params_port_ = DeclareVectorInputPort("slope_params", 2).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
   ExponentialPlusPiecewisePolynomial<double> exp;
@@ -319,53 +291,33 @@ ComTrajInterfaceSystem::ComTrajInterfaceSystem(
       &ComTrajInterfaceSystem::CalcComTrajFromCurrent).get_index();
 
   m_ = plant_.CalcTotalMass(*context);
-
-  this->DeclarePerStepUnrestrictedUpdateEvent(
-      &ComTrajInterfaceSystem::UnrestrictedUpdate);
 }
 
-
-drake::systems::EventStatus ComTrajInterfaceSystem::UnrestrictedUpdate(
-    const drake::systems::Context<double> &context,
-    drake::systems::State<double> *state) const {
-  int fsm = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-  if (fsm <= 1) {
-    state->get_mutable_discrete_state(delta_z_idx_).set_value(
-        EvalVectorInput(context, delta_z_input_port_)->get_value());
-  }
-  return EventStatus::Succeeded();
-}
 
 ExponentialPlusPiecewisePolynomial<double>
 ComTrajInterfaceSystem::ConstructAlipComTraj(
-    const Vector3d& CoM, const Vector3d& stance_foot_pos,
-    const Vector4d& x_alip,
-    double com_z_rel_to_stance_now,
-    double com_z_rel_to_stance_at_next_td,
-    double start_time, double end_time_of_this_fsm_state) const {
-
-  double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
+    const Vector3d& stance_foot_pos, const Vector4d& x_alip,
+    const Vector2d& kx_ky, double start_time, double end_time) const {
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
-  Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};
+  Vector2d T_waypoint_com {start_time, end_time};
   MatrixXd Y = MatrixXd::Zero(3, 2);
   Y.col(0).head(2) = stance_foot_pos.head(2);
   Y.col(1).head(2) = stance_foot_pos.head(2);
 
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
-  double max_height_diff_per_step = 0.05;
-  double start_height = com_z_rel_to_stance_now + stance_foot_pos(2);
-  double final_height = com_z_rel_to_stance_at_next_td + stance_foot_pos(2);
-  Y(2, 0) = start_height;
-  Y(2, 1) = final_height;
+  double height = stance_foot_pos(2) + desired_com_height_;
+  Y(2, 0) = height;
+  Y(2, 1) = height;
 
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::FirstOrderHold(T_waypoint_com, Y);
 
   MatrixXd K = MatrixXd::Zero(3,4);
-  K.topLeftCorner(2,2) = MatrixXd::Identity(2,2);
-  auto A = CalcA(CoM_wrt_foot_z);
+  K.topLeftCorner<2,2>() = Eigen::Matrix2d::Identity();
+  K.bottomLeftCorner<1, 2>() = kx_ky.transpose();
+  auto A = CalcA(desired_com_height_);
   return {K, A, x_alip, pp_part};
 }
 
@@ -399,39 +351,26 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
       EvalVectorInput(context, prev_liftoff_time_port_)->get_value()(0);
   double timestamp = robot_output->get_timestamp();
 
+  // read in slope parameters
+  const Vector2d& kx_ky =
+      EvalVectorInput(context, slope_params_port_)->get_value();
+
   bool is_ss = fsm_state <= 1;
   double start_time_offset = is_ss ? start_time : start_time - 0.3;
   double end_time_offset = is_ss ? end_time + tds_ : start_time + tds_;
   double t = std::clamp<double>(timestamp,
                                 -std::numeric_limits<double>::infinity(),
                                 end_time_offset - 0.001);
-  double s = std::clamp<double>(
-      (timestamp - start_time_offset) / (end_time_offset - start_time_offset),
-      0, 1);
-
-  int mode_index = GetModeIdx(fsm_state);
-
-  // read in next touchdown com z
-  double dz = 0;
-  if (use_offset_) {
-    dz = (fsm_state > 1) ?
-         context.get_discrete_state(delta_z_idx_).get_value()(0) :
-         EvalVectorInput(context, delta_z_input_port_)->get_value()(0);
-  }
-
-  double alpha = exp(35 * dz);
-  dz *= 2.0 * abs((alpha / (1.0 + alpha) - 0.5));
 
   Vector3d CoM, L, stance_foot_pos;
-  CalcAlipState(
-      robot_output->GetState(), mode_index, &CoM, &L, &stance_foot_pos);
+  CalcAlipState(robot_output->GetState(), GetModeIdx(fsm_state),
+                &CoM, &L, &stance_foot_pos);
 
   Vector4d x_alip = Vector4d::Zero();
   x_alip.head(2) = multibody::ReExpressWorldVector2InBodyYawFrame(
       plant_, *context_, "pelvis", CoM.head(2) - stance_foot_pos.head(2));
   x_alip.tail(2) = multibody::ReExpressWorldVector2InBodyYawFrame(
       plant_, *context_, "pelvis", L.head(2));
-
   stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
       plant_, *context_, "pelvis", stance_foot_pos);
 
@@ -439,11 +378,8 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
   auto exp_pp_traj =
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
-  int sgn = (dz > 0);
-  *exp_pp_traj = ConstructAlipComTraj(CoM, stance_foot_pos, x_alip,
-                                      desired_com_height_ + (s + sgn * s * (1 - s)) * dz,
-                                      desired_com_height_ + dz,
-                                      t, end_time_offset);
+  *exp_pp_traj = ConstructAlipComTraj(
+      stance_foot_pos, x_alip, kx_ky, t, end_time_offset);
 }
 
 
@@ -458,10 +394,6 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
       builder.AddSystem<SwingFootInterfaceSystem>(plant, context, swing_params);
   auto com_interface =
       builder.AddSystem<ComTrajInterfaceSystem>(plant, context, com_params);
-
-  // Connect com traj
-  builder.Connect(swing_interface->get_output_port_com_height_offset(),
-                  com_interface->get_input_port_delta_z());
 
   // Export ports
   state_port_ = ExportSharedInput(

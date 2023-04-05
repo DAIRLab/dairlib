@@ -43,7 +43,7 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double> &get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
-  const drake::systems::InputPort<double> &get_input_port_fsm_switch_time()
+  const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
   const {
     return this->get_input_port(liftoff_time_port_);
   }
@@ -51,17 +51,16 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   const {
     return this->get_input_port(touchdown_time_port_);
   }
-  const drake::systems::InputPort<double> &get_input_port_footstep_target()
+  const drake::systems::InputPort<double>& get_input_port_com_traj() const {
+    return this->get_input_port(com_traj_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_footstep_target()
   const {
     return this->get_input_port(footstep_target_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_swing_foot_traj()
   const {
     return this->get_output_port(swing_foot_traj_output_port_);
-  }
-  const drake::systems::OutputPort<double>& get_output_port_com_height_offset()
-  const {
-    return this->get_output_port(com_height_offset_output_port_);
   }
 
  private:
@@ -80,17 +79,14 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   void CalcSwingTraj(const drake::systems::Context<double> &context,
                      drake::trajectories::Trajectory<double> *traj) const;
 
-  void CopyComHeightOffset(const drake::systems::Context<double>& context,
-                           drake::systems::BasicVector<double>* com_height_offset) const;
-
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
+  drake::systems::InputPortIndex com_traj_input_port_;
   drake::systems::InputPortIndex liftoff_time_port_;
   drake::systems::InputPortIndex touchdown_time_port_;
   drake::systems::InputPortIndex footstep_target_port_;
 
   drake::systems::OutputPortIndex swing_foot_traj_output_port_;
-  drake::systems::OutputPortIndex com_height_offset_output_port_;
 
   drake::systems::DiscreteStateIndex liftoff_swing_foot_pos_idx_;
   drake::systems::DiscreteStateIndex prev_fsm_state_idx_;
@@ -150,7 +146,6 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
       double desired_com_height,
       double t_ds,
       const std::vector<int>& fsm_states,
-      bool use_offset,
       const std::vector<alip_utils::PointOnFramed> contact_point_in_each_state);
 
   ComTrajInterfaceSystem(const drake::multibody::MultibodyPlant<double>& plant,
@@ -160,7 +155,6 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
                         params.desired_com_height,
                         params.t_ds,
                         params.fsm_states,
-                        params.use_offset,
                         params.contact_point_in_each_state) {}
 
   // Input port getters
@@ -181,8 +175,8 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
   }
   // Input port for the desired CoM height at the following touchdown relative
   // to the current stance foot
-  const drake::systems::InputPort<double>& get_input_port_delta_z() const {
-    return this->get_input_port(delta_z_input_port_);
+  const drake::systems::InputPort<double>& get_input_port_slope_params() const {
+    return this->get_input_port(slope_params_port_);
   }
 
   const drake::systems::OutputPort<double>& get_output_port_com() const {
@@ -191,33 +185,22 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
 
  private:
 
-  drake::systems::EventStatus UnrestrictedUpdate(
-      const drake::systems::Context<double>& context,
-      drake::systems::State<double>* state) const;
-
   void CalcAlipState(const Eigen::VectorXd& x, int mode_index,
                      const drake::EigenPtr<Eigen::Vector3d>& CoM,
                      const drake::EigenPtr<Eigen::Vector3d>& L,
                      const drake::EigenPtr<Eigen::Vector3d>& stance_pos) const;
 
   drake::trajectories::ExponentialPlusPiecewisePolynomial<double>
-  ConstructAlipComTraj(const Eigen::Vector3d& CoM,
-                       const Eigen::Vector3d& stance_foot_pos,
+  ConstructAlipComTraj(const Eigen::Vector3d& stance_foot_pos,
                        const Eigen::Vector4d& x_alip,
-                       double com_z_rel_to_stance_now,
-                       double com_z_rel_to_stance_at_next_td,
-                       double start_time,
-                       double end_time_of_this_fsm_state) const;
+                       const Eigen::Vector2d& kx_ky,
+                       double start_time, double end_time) const;
 
   void CalcComTrajFromCurrent(const drake::systems::Context<double>& context,
                               drake::trajectories::Trajectory<double>* traj) const;
 
   Eigen::Matrix4d CalcA(double com_z) const {
     return controllers::alip_utils::CalcA(com_z, m_);
-  }
-
-  Eigen::Matrix4d CalcAd(double com_z, double t) const {
-    return controllers::alip_utils::CalcAd(com_z, m_, t);
   }
 
   int GetModeIdx(int fsm_state) const {
@@ -232,15 +215,12 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex prev_liftoff_time_port_;
   drake::systems::InputPortIndex next_touchdown_time_port_;
-  drake::systems::InputPortIndex delta_z_input_port_;
+  drake::systems::InputPortIndex slope_params_port_;
   drake::systems::OutputPortIndex output_port_com_;
-
-  drake::systems::DiscreteStateIndex delta_z_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
 
-  const bool use_offset_;
   double desired_com_height_;
   double tds_;
 

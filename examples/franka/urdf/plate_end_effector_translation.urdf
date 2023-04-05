@@ -36,19 +36,19 @@
     <visual name="middle_right">
       <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
     </visual>
     <visual name="top_left">
       <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
     </visual>
     <visual name="bottom_left">
       <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
     </visual>
 <!--    <collision name="middle_right">-->

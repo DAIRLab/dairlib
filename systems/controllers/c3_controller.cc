@@ -91,7 +91,7 @@ void C3Controller::OutputTrajectory(
   x_des[1] = 0.02;
   //  x_des[2] = 0.35;
   /// center of plate
-  x_des[2] = 0.45 + radio_out->channel[2] * 0.2;
+  x_des[2] = 0.40 - 0.01 + radio_out->channel[2] * 0.2;
   x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
@@ -99,7 +99,7 @@ void C3Controller::OutputTrajectory(
   /// radio command
   x_des[7] = 0.5;
   x_des[8] = -0.2;
-  x_des[9] = 0.45;
+  x_des[9] = 0.40;
   x_des(7) += radio_out->channel[0] * 0.2;
   x_des(8) += radio_out->channel[1] * 0.2;
   x_des(9) += radio_out->channel[2] * 0.2;

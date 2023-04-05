@@ -642,7 +642,7 @@
         <drake:member link="paddle"/>
         <drake:ignored_collision_filter_group name="group_link5paddle"/>
     </drake:collision_filter_group>
-<drake:collision_filter_group name="">
+    <drake:collision_filter_group name="">
         <drake:member link="panda_link4"/>
         <drake:member link="paddle"/>
         <drake:ignored_collision_filter_group name="group_link4paddle"/>

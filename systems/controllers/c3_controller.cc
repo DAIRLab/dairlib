@@ -177,11 +177,11 @@ void C3Controller::OutputTrajectory(
       second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) +
       second_lcs.D_[0] * force / second_scale + second_lcs.d_[0];
 
-  x_sol.col(0) = state_next;
-  x_sol.col(1) = state_next;
-  x_sol.col(2) = state_next;
-  x_sol.col(3) = state_next;
-  x_sol.col(4) = state_next;
+//  x_sol.col(0) = state_next;
+//  x_sol.col(1) = state_next;
+//  x_sol.col(2) = state_next;
+//  x_sol.col(3) = state_next;
+//  x_sol.col(4) = state_next;
   //  x_sol.col(N_ - 1) = x.get_data();
 
   MatrixXd knots = x_sol.topRows(3);

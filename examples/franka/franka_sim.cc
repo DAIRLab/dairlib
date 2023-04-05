@@ -32,6 +32,7 @@ namespace dairlib {
 
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
+using drake::geometry::GeometrySet;
 using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -90,9 +91,17 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("link", table_index), X_WI);
   plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("link", second_table_index), T_X_W);
+                   plant.GetFrameByName("table", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
+  
+//  drake::geometry::CollisionFilterDeclaration plate_table = drake::geometry::CollisionFilterDeclaration::ExcludeBetween(plant.GetCollisionGeometriesForBody());
+  const drake::geometry::GeometrySet &paddle_geom_set = plant.CollectRegisteredGeometries({&plant.GetBodyByName(
+      "paddle")});
+  auto table_support_set = GeometrySet(plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
+//  table_support_set);
+  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair({"paddle", paddle_geom_set}, {"table_support", table_support_set});
+  
 
   VectorXd rotor_inertias(plant.num_actuators());
   rotor_inertias << 61, 61, 61, 61, 61, 61, 61;

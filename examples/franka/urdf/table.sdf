@@ -9,7 +9,7 @@
     involving the table due to a decrease in number of collision
     checks needed.
     -->
-    <link name="link">
+    <link name="table">
       <inertial>
         <mass>53.5</mass>
         <!--
@@ -284,14 +284,6 @@
         </surface>
       </collision>
     </link>
-    <frame name="top_center">
-      <!--
-      TODO(eric.cousineau): @frame='link' is redundant, but not having it
-      causes RBT SDFormat parsing code to segfault. Remove this once RBT is
-      removed.
-      -->
-      <pose relative_to="link">0 0 0.7645 0 0 0</pose>
-    </frame>
     <!--
     N.B. This model used to have <static>true</static>, but this creates
     issues in reusability with the current implementation of MBP parsing

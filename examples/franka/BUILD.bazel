@@ -85,6 +85,7 @@ cc_binary(
         "//multibody:utils",
         "//multibody:visualization_utils",
         "//systems:robot_lcm_systems",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//systems:system_utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",

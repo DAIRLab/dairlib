@@ -1,9 +1,11 @@
 #include <iostream>
 
+#include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -11,6 +13,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
 #include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -22,7 +25,6 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "common/find_resource.h"
 
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
@@ -76,9 +78,8 @@ int do_main(int argc, char* argv[]) {
       parser.AddModelFromFile(
           dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
           "table1");
-  drake::multibody::ModelInstanceIndex tray_index =
-      parser.AddModelFromFile(FindResourceOrThrow(
-          "examples/franka/urdf/tray.sdf"));
+  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(
+      FindResourceOrThrow("examples/franka/urdf/tray.sdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
@@ -112,32 +113,23 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, tray_index);
 
-  builder.Connect(*franka_state_sub, *franka_state_receiver);
-  builder.Connect(*tray_state_sub, *tray_state_receiver);
-
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(tray_index));
-  builder.Connect(*franka_state_receiver, *franka_passthrough);
-  builder.Connect(*tray_state_receiver, *tray_passthrough);
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
                                   plant.num_positions(tray_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
-  builder.Connect(franka_passthrough->get_output_port(),
-                  mux->get_input_port(0));
-  builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
 
+  auto trajectory_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "C3_TRAJECTORY", lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
-  builder.Connect(*mux, *to_pose);
-  builder.Connect(
-      to_pose->get_output_port(),
-      scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   drake::geometry::MeshcatVisualizerParams params;
@@ -145,8 +137,23 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
+  auto trajectory_drawer = builder.AddSystem<systems::LcmTrajectoryDrawer>(
+      meshcat, "end_effector_traj");
 
-  // state_receiver->set_publish_period(1.0/30.0);  // framerate
+  builder.Connect(franka_passthrough->get_output_port(),
+                  mux->get_input_port(0));
+  builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
+  builder.Connect(trajectory_sub->get_output_port(),
+                  trajectory_drawer->get_input_port_trajectory());
+  builder.Connect(*mux, *to_pose);
+  builder.Connect(
+      to_pose->get_output_port(),
+      scene_graph.get_source_pose_port(plant.get_source_id().value()));
+  builder.Connect(*franka_state_receiver, *franka_passthrough);
+  builder.Connect(*tray_state_receiver, *tray_passthrough);
+
+  builder.Connect(*franka_state_sub, *franka_state_receiver);
+  builder.Connect(*tray_state_sub, *tray_state_receiver);
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();

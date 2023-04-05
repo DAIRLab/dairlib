@@ -77,6 +77,8 @@ C3Controller::C3Controller(
                                       dairlib::lcmt_timestamped_saved_traj(),
                                       &C3Controller::OutputObjectTrajectory)
           .get_index();
+
+  //TODO:yangwill check to make sure C3 isn't computing twice here
   DeclarePerStepDiscreteUpdateEvent(&C3Controller::ComputePlan);
 }
 

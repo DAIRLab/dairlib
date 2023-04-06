@@ -61,7 +61,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
   init_fsm << init_fsm_state;
   prev_fsm_idx_ = this->DeclareDiscreteState(init_fsm);
 
-  DeclarePerStepDiscreteUpdateEvent(
+  DeclareForcedDiscreteUpdateEvent(
       &PelvisTransTrajGenerator::DiscreteVariableUpdate);
   crouch_traj_.shiftRight(time_offset_);
 }

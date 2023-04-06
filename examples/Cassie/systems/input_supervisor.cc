@@ -105,7 +105,7 @@ InputSupervisor::InputSupervisor(
   K_ *= kEStopGain;
 
   // Create update for error flag
-  DeclarePerStepDiscreteUpdateEvent(&InputSupervisor::UpdateErrorFlag);
+  DeclareForcedDiscreteUpdateEvent(&InputSupervisor::UpdateErrorFlag);
 }
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,

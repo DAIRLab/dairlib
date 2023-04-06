@@ -35,7 +35,7 @@ OutputVectorFilter::OutputVectorFilter(
   this->DeclareVectorInputPort("x", model_vector);
   this->DeclareVectorOutputPort("y", model_vector,
                                 &OutputVectorFilter::CopyFilterValues);
-  this->DeclarePerStepDiscreteUpdateEvent(
+  this->DeclareForcedDiscreteUpdateEvent(
       &OutputVectorFilter::DiscreteVariableUpdate);
 
   prev_val_idx_ = this->DeclareDiscreteState(VectorXd::Zero(n_y));

@@ -98,7 +98,11 @@ int do_main(int argc, char* argv[]) {
                    R_X_W);
 
   plant.Finalize();
-
+  auto lcm_traj =
+      LcmTrajectory(dairlib::FindResourceOrThrow("examples/franka/saved_trajectories/default_end_effector_pose"));
+  auto traj = lcm_traj.GetTrajectory("end_effector_traj");
+  lcm_traj.AddTrajectory("object_traj", traj);
+  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Create state receiver.

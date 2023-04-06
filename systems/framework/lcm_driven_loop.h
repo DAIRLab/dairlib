@@ -261,7 +261,11 @@ class LcmDrivenLoop {
           simulator_->Initialize();
         }
         simulator_->AdvanceTo(time);
-        if (is_forced_publish_) {
+        diagram_ptr_->CalcForcedUnrestrictedUpdate(
+            diagram_context, &diagram_context.get_mutable_state());
+        diagram_ptr_->CalcForcedDiscreteVariableUpdate(diagram_context,
+                                                       &diagram_context.get_mutable_discrete_state());
+         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
         }

@@ -77,9 +77,9 @@ C3Controller::C3Controller(
                                       dairlib::lcmt_timestamped_saved_traj(),
                                       &C3Controller::OutputObjectTrajectory)
           .get_index();
-
-  //TODO:yangwill check to make sure C3 isn't computing twice here
-  DeclarePerStepDiscreteUpdateEvent(&C3Controller::ComputePlan);
+  plan_start_time_index_ = DeclareDiscreteState(1);
+  // TODO:yangwill check to make sure C3 isn't computing twice here
+  DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
 }
 
 drake::systems::EventStatus C3Controller::ComputePlan(
@@ -90,6 +90,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const TimestampedVector<double>& x =
       *this->template EvalVectorInput<TimestampedVector>(context,
                                                          lcs_state_input_port_);
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
+      x.get_timestamp();
+
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
@@ -102,27 +105,27 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   x_des[1] = 0.02;
   //  x_des[2] = 0.35;
   /// center of plate
-  x_des[2] = 0.40 - 0.01 + radio_out->channel[2] * 0.2;
+  x_des[2] = 0.45 - 0.01 + radio_out->channel[2] * 0.2;
   x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
   x_des[6] = 0;
   /// radio command
-  x_des[7] = 0.5;
-  x_des[8] = -0.2;
-  x_des[9] = 0.40;
+  x_des[7] = 0.7;
+  x_des[8] = 0.02;
+  x_des[9] = 0.45;
   x_des(7) += radio_out->channel[0] * 0.2;
   x_des(8) += radio_out->channel[1] * 0.2;
   x_des(9) += radio_out->channel[2] * 0.2;
 
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
 
-  std::cout << "plate_error: "
-            << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose()
-            << std::endl;
-  std::cout << "end_effector_error: "
-            << (x_des.segment(0, 3) - x.get_data().segment(0, 3)).transpose()
-            << std::endl;
+//  std::cout << "plate_error: "
+//            << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose()
+//            << std::endl;
+//  std::cout << "end_effector_error: "
+//            << (x_des.segment(0, 3) - x.get_data().segment(0, 3)).transpose()
+//            << std::endl;
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -156,12 +159,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 void C3Controller::OutputActorTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
-
-  const TimestampedVector<double>& x =
-      *this->template EvalVectorInput<TimestampedVector>(context,
-                                                         lcs_state_input_port_);
-  // TODO:yangwill, check to make sure the time being used here makes sense
-  double t = x.get_timestamp();
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto z_sol = c3_->GetFullSolution();
   MatrixXd x_sol = MatrixXd::Zero(n_q_ + n_v_, N_);
@@ -186,14 +184,21 @@ void C3Controller::OutputActorTrajectory(
 //  VectorXd force;
 //  auto flag = LCPSolver.SolveLcpLemkeRegularized(
 //      second_lcs.F_[0],
-//      second_lcs.E_[0] * second_scale * x.get_data() +
+//      second_lcs.E_[0] * second_scale * x_sol.col(0) +
 //          second_lcs.c_[0] * second_scale +
 //          second_lcs.H_[0] * second_scale * u_sol.col(0),
 //      &force);
 //
+//  (void)flag;  // suppress compiler unused variable warning
 //  VectorXd state_next =
-//      second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) +
+//      second_lcs.A_[0] * x_sol.col(0) + second_lcs.B_[0] * u_sol.col(0) +
 //      second_lcs.D_[0] * force / second_scale + second_lcs.d_[0];
+
+//  x_sol.col(0) = state_next;
+//  x_sol.col(1) = state_next;
+  //  x_sol.col(2) = state_next;
+  //  x_sol.col(0) = state_next;
+  //  x_sol.col(0) = state_next;
 
   MatrixXd knots = x_sol.topRows(3);
   LcmTrajectory::Trajectory end_effector_traj;
@@ -211,12 +216,8 @@ void C3Controller::OutputActorTrajectory(
 void C3Controller::OutputObjectTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
-
-  const TimestampedVector<double>& x =
-      *this->template EvalVectorInput<TimestampedVector>(context,
-                                                         lcs_state_input_port_);
   // TODO:yangwill, check to make sure the time being used here makes sense
-  double t = x.get_timestamp();
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto z_sol = c3_->GetFullSolution();
   MatrixXd x_sol = MatrixXd::Zero(n_q_ + n_v_, N_);
@@ -231,36 +232,14 @@ void C3Controller::OutputObjectTrajectory(
     u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
   }
 
-  //  double solve_dt = c3;
-//  auto second_lcs_pair = LCSFactory::LinearizePlantToLCS(
-//      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-//      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.solve_dt,
-//      c3_options_.N);
-//  auto second_lcs = second_lcs_pair.first;
-//  auto second_scale = second_lcs_pair.second;
-//  drake::solvers::MobyLCPSolver<double> LCPSolver;
-//  VectorXd force;
-//  auto flag = LCPSolver.SolveLcpLemkeRegularized(
-//      second_lcs.F_[0],
-//      second_lcs.E_[0] * second_scale * x.get_data() +
-//          second_lcs.c_[0] * second_scale +
-//          second_lcs.H_[0] * second_scale * u_sol.col(0),
-//      &force);
-//
-//  (void)flag;  // suppress compiler unused variable warning
-//  VectorXd state_next =
-//      second_lcs.A_[0] * x.get_data() + second_lcs.B_[0] * u_sol.col(0) +
-//          second_lcs.D_[0] * force / second_scale + second_lcs.d_[0];
-
-  MatrixXd knots = x_sol.topRows(n_q_).bottomRows( 3);
+  MatrixXd knots = x_sol.topRows(n_q_).bottomRows(3);
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_traj";
-  object_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
+  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
   object_traj.datapoints = knots;
   object_traj.time_vector = breaks;
-  LcmTrajectory lcm_traj({object_traj}, {"object_traj"},
-                         "object_traj", "object_traj", false);
+  LcmTrajectory lcm_traj({object_traj}, {"object_traj"}, "object_traj",
+                         "object_traj", false);
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = t * 1e6;
 }

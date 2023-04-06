@@ -35,12 +35,12 @@
             case you want to change the box to something else like capsules,
             cylinders, ellipsoids, or spheres.
           -->
-          <drake:mesh_resolution_hint>100</drake:mesh_resolution_hint>
+          <drake:mesh_resolution_hint>1</drake:mesh_resolution_hint>
           <!-- Both mu_dynamic and mu_static are used in Continuous system.
             Only mu_dynamic is used in Discrete system.
           -->
-          <drake:mu_dynamic>0.4</drake:mu_dynamic>
-          <drake:mu_static>0.4</drake:mu_static>
+          <drake:mu_dynamic>1.0</drake:mu_dynamic>
+          <drake:mu_static>1.0</drake:mu_static>
         </drake:proximity_properties>
       </collision>
     </link>

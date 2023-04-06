@@ -168,8 +168,6 @@ int DoMain(int argc, char* argv[]) {
                   object_trajectory_sender->get_input_port());
 
 
-//  std::unique_ptr<drake::systems::Context<double>> diagram_context = plant_diagram->CreateDefaultContext();
-
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));

@@ -510,7 +510,7 @@
     </joint>
     <link name="paddle">
         <inertial>
-            <origin rpy="0 0 0" xyz="0 0 0.005"/>
+            <origin rpy="0 0 0" xyz="0 0 0.01"/>
             <mass value="0.5"/>
             <inertia
                     ixx="0.0067"
@@ -521,37 +521,37 @@
                     izz="0.013"/>
         </inertial>
         <collision name="collision">
-            <origin rpy="0 0 0" xyz="0 0 0.005"/>
+            <origin rpy="0 0 0" xyz="0 0 0.01"/>
             <geometry>
-                <box size="0.2 0.2 0.01"/>
+                <box size="0.2 0.2 0.02"/>
             </geometry>
             <drake:proximity_properties>
                 <drake:rigid_hydroelastic/>
-                <drake:mesh_resolution_hint value="100"/>
+                <drake:mesh_resolution_hint value="1"/>
                 <drake:mu_dynamic value="1.0"/>
                 <drake:mu_static value="1.0"/>
             </drake:proximity_properties>
         </collision>
         <visual>
-            <origin rpy="0 0 0" xyz="0 0 0.005"/>
+            <origin rpy="0 0 0" xyz="0 0 0.01"/>
             <geometry>
-                <box size="0.2 0.2 0.01"/>
+                <box size="0.2 0.2 0.02"/>
             </geometry>
         </visual>
         <visual>
-            <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
-            <geometry>
-                <sphere radius="0.001"/>
-            </geometry>
-        </visual>
-        <visual>
-            <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
+            <origin rpy="0 0 0" xyz="0.1 0.0 0.02"/>
             <geometry>
                 <sphere radius="0.001"/>
             </geometry>
         </visual>
         <visual>
-            <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
+            <origin rpy="0 0 0" xyz="-0.1 0.1 0.02"/>
+            <geometry>
+                <sphere radius="0.001"/>
+            </geometry>
+        </visual>
+        <visual>
+            <origin rpy="0 0 0" xyz="-0.1 -0.1 0.02"/>
             <geometry>
                 <sphere radius="0.001"/>
             </geometry>

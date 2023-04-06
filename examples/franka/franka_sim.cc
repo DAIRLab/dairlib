@@ -9,6 +9,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <drake/systems/primitives/vector_log_sink.h>
+#include <drake/visualization/visualization_config_functions.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -97,9 +98,12 @@ int DoMain(int argc, char* argv[]) {
   
 //  drake::geometry::CollisionFilterDeclaration plate_table = drake::geometry::CollisionFilterDeclaration::ExcludeBetween(plant.GetCollisionGeometriesForBody());
   const drake::geometry::GeometrySet &paddle_geom_set = plant.CollectRegisteredGeometries({&plant.GetBodyByName(
-      "paddle")});
+      "paddle"), &plant.GetBodyByName(
+      "panda_link4"), &plant.GetBodyByName(
+      "panda_link5"), &plant.GetBodyByName(
+      "panda_link6"),&plant.GetBodyByName(
+      "panda_link7"), });
   auto table_support_set = GeometrySet(plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
-//  table_support_set);
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair({"paddle", paddle_geom_set}, {"table_support", table_support_set});
   
 
@@ -144,6 +148,8 @@ int DoMain(int argc, char* argv[]) {
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
+
+  drake::visualization::AddDefaultVisualization(&builder);
 
   auto diagram = builder.Build();
 

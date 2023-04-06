@@ -207,7 +207,7 @@
       <collision name="front_left_support">
         <geometry>
           <sphere>
-            <radius>0.0</radius>
+            <radius>0.001</radius>
           </sphere>
         </geometry>
         <pose>0.04 0.12 1.143 0 0 0</pose>
@@ -215,7 +215,7 @@
       <collision name="front_right_support">
         <geometry>
           <sphere>
-            <radius>0.0</radius>
+            <radius>0.001</radius>
           </sphere>
         </geometry>
         <pose>0.04 -0.12 1.143 0 0 0</pose>
@@ -223,7 +223,7 @@
       <collision name="back_left_support">
         <geometry>
           <sphere>
-            <radius>0.0</radius>
+            <radius>0.001</radius>
           </sphere>
         </geometry>
         <pose>-0.20 0.12 1.143 0 0 0</pose>

@@ -66,7 +66,7 @@ int DoMain(int argc, char* argv[]) {
 
   Parser parser(&plant);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelFromFile("examples/franka/urdf/franka.urdf");
+      parser.AddModelFromFile(sim_params.franka_model);
   drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(
       drake::FindResourceOrThrow(
           "drake/examples/kuka_iiwa_arm/models/table/"
@@ -149,7 +149,9 @@ int DoMain(int argc, char* argv[]) {
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
 
-  drake::visualization::AddDefaultVisualization(&builder);
+  if (sim_params.visualize){
+    drake::visualization::AddDefaultVisualization(&builder);
+  }
 
   auto diagram = builder.Build();
 

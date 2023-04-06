@@ -41,17 +41,17 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
       const std::vector<int>& states,
       const std::vector<double>& state_durations, double t0 = 0);
 
-  const drake::systems::InputPort<double>& get_input_port_state() const {
+  const drake::systems::InputPort<double>& get_state_input_port() const {
     return this->get_input_port(state_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+  const drake::systems::OutputPort<double>& get_fsm_output_port() const {
     return this->get_output_port(fsm_port_);
   }
 
  protected:
-  int state_port_;
-  int fsm_port_;
+  drake::systems::InputPortIndex state_port_;
+  drake::systems::OutputPortIndex fsm_port_;
 
  private:
   void CalcFiniteState(const drake::systems::Context<double>& context,

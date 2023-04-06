@@ -19,8 +19,7 @@ using systems::TimestampedVector;
 InputSupervisor::InputSupervisor(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& initial_channel, double max_joint_velocity,
-    double update_period, Eigen::VectorXd& input_limit,
-    int min_consecutive_failures)
+    double update_period, Eigen::VectorXd& input_limit, int min_consecutive_failures)
     : plant_(plant),
       num_actuators_(plant_.num_actuators()),
       num_positions_(plant_.num_positions()),
@@ -29,6 +28,7 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
+
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort("u, t",
@@ -105,8 +105,7 @@ InputSupervisor::InputSupervisor(
   K_ *= kEStopGain;
 
   // Create update for error flag
-  DeclarePeriodicDiscreteUpdateEvent(update_period, 0,
-                                     &InputSupervisor::UpdateErrorFlag);
+  DeclarePerStepDiscreteUpdateEvent(&InputSupervisor::UpdateErrorFlag);
 }
 
 void InputSupervisor::SetMotorTorques(const Context<double>& context,
@@ -126,7 +125,7 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   // iterate through all the possible error flags
   bool is_error = false;
   for (const auto& error_flags : error_indices_) {
-    is_error = is_error || context.get_discrete_state().get_value(
+    is_error = is_error || context.get_discrete_state().value(
                                error_indices_index_)[error_flags.second];
   }
 
@@ -146,22 +145,22 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
   /// 2. safety_pd_controller
   /// 3. blended efforts from switching control signals
   /// 4. command from controller
+  auto prev_efforts = context.get_discrete_state(prev_efforts_index_).value();
 
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
-  if (cassie_out->pelvis.radio.channel[15] == -1) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[13] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
     input_limit_ = 100 * Eigen::VectorXd::Ones(num_actuators_);
     output->set_timestamp(state->get_timestamp());
     output->SetDataVector(u);
   } else if (is_error) {
     output->set_timestamp(safety_command->get_timestamp());
-    output->SetDataVector(safety_command->get_value());
+    output->SetDataVector(safety_command->value());
   } else if (alpha < 1.0) {
     Eigen::VectorXd blended_effort =
-        alpha * command->get_value() +
-        (1 - alpha) *
-            context.get_discrete_state(prev_efforts_index_).get_value();
+        alpha * command->value() +
+        (1 - alpha) * context.get_discrete_state(prev_efforts_index_).value();
     output->SetDataVector(blended_effort);
   } else {
     output->get_mutable_data() = command->get_data();
@@ -175,6 +174,10 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     } else if (command_value < -input_limit_(i)) {
       command_value = -input_limit_(i);
     }
+//    if(i < 2){
+//      command_value += -0.2 * K_.row(i) * state->GetVelocities();
+//      command_value = 0.95 * command_value + 0.05 * prev_efforts(i);
+//    }
     output->get_mutable_data()(i) = command_value;
   }
 }
@@ -187,14 +190,14 @@ void InputSupervisor::SetStatus(
                                                         command_input_port_);
   output->utime = command->get_timestamp() * 1e6;
   output->active_channel = active_channel_;
-  output->shutdown = context.get_discrete_state().get_value(shutdown_index_)[0];
+  output->shutdown = context.get_discrete_state().value(shutdown_index_)[0];
   output->num_status = error_indices_.size();
   output->status_names = std::vector<std::string>(error_indices_.size());
   output->status_states = std::vector<int8_t>(error_indices_.size());
   for (const auto& error_flags : error_indices_) {
     output->status_names[error_flags.second] = error_flags.first;
     output->status_states[error_flags.second] =
-        context.get_discrete_state().get_value(
+        context.get_discrete_state().value(
             error_indices_index_)[error_flags.second];
   }
 }
@@ -203,13 +206,12 @@ void InputSupervisor::SetFailureStatus(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_controller_failure* output) const {
   output->utime = context.get_time() * 1e6;
-  output->error_code =
-      context.get_discrete_state().get_value(shutdown_index_)[0];
+  output->error_code = context.get_discrete_state().value(shutdown_index_)[0];
   output->controller_channel = "GLOBAL_ERROR";
   output->error_name = "";
 }
 
-void InputSupervisor::UpdateErrorFlag(
+drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   const auto* controller_switch =
@@ -223,9 +225,9 @@ void InputSupervisor::UpdateErrorFlag(
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         command_input_port_);
-  // Because we are only ever setting the error flags to true, all errors are
-  // latching. ie. the error flags will only be reset if the input supervisor is
-  // reconstructed
+
+  // Note the += operator works as an or operator because we only check if the
+  // error flag != 0
   if (controller_error->controller_channel == active_channel_ &&
       controller_error->error_code != 0) {
     discrete_state->get_mutable_value(
@@ -251,7 +253,7 @@ void InputSupervisor::UpdateErrorFlag(
 
   bool is_error = false;
   for (const auto& error_flags : error_indices_) {
-    is_error = is_error || context.get_discrete_state().get_value(
+    is_error = is_error || context.get_discrete_state().value(
                                error_indices_index_)[error_flags.second];
   }
   discrete_state->get_mutable_value(shutdown_index_)[0] = is_error;
@@ -273,9 +275,9 @@ void InputSupervisor::UpdateErrorFlag(
   // efforts
   if (command->get_timestamp() - controller_switch->utime * 1e-6 >=
       blend_duration_) {
-    discrete_state->get_mutable_value(prev_efforts_index_) =
-        command->get_value();
+    discrete_state->get_mutable_value(prev_efforts_index_) = command->value();
   }
+  return drake::systems::EventStatus::Succeeded();
 }
 
 void InputSupervisor::CheckVelocities(
@@ -285,8 +287,7 @@ void InputSupervisor::CheckVelocities(
       (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
   const Eigen::VectorXd& velocities = state->GetVelocities();
 
-  if (discrete_state->get_value(n_fails_index_)[0] <
-      min_consecutive_failures_) {
+  if (discrete_state->value(n_fails_index_)[0] < min_consecutive_failures_) {
     // If any velocity is above the threshold, set the error flag
     bool is_velocity_error = (velocities.array() > max_joint_velocity_).any() ||
                              (velocities.array() < -max_joint_velocity_).any();
@@ -296,7 +297,7 @@ void InputSupervisor::CheckVelocities(
       std::cout << "Error! Velocity has exceeded the threshold of "
                 << max_joint_velocity_ << std::endl;
       std::cout << "Consecutive error "
-                << discrete_state->get_value(n_fails_index_)[0] << " of "
+                << discrete_state->value(n_fails_index_)[0] << " of "
                 << min_consecutive_failures_ << std::endl;
       std::cout << "Velocity vector: " << std::endl
                 << velocities << std::endl
@@ -313,7 +314,7 @@ void InputSupervisor::CheckRadio(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, cassie_input_port_);
-  if (cassie_out->pelvis.radio.channel[15] == -1) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[13] == -1) {
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("soft_estop")] = 1;
   }

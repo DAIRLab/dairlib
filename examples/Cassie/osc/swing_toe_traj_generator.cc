@@ -26,25 +26,20 @@ SwingToeTrajGenerator::SwingToeTrajGenerator(
       feet_contact_points_(feet_contact_points) {
   DRAKE_DEMAND(feet_contact_points_.size() == 2);
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(
-          "x, u, t", OutputVector<double>(plant.num_positions(),
-                                          plant.num_velocities(),
-                                          plant.num_actuators())
-          ).get_index();
-  toe_angle_port_ = DeclareVectorInputPort("toe_angle", 1).get_index();
-
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+                    .get_index();
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  this->DeclareAbstractOutputPort("toe_ang", traj_inst,
+  this->DeclareAbstractOutputPort("toe_angle", traj_inst,
                                   &SwingToeTrajGenerator::CalcTraj);
 }
 
 void SwingToeTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     Trajectory<double>* traj) const {
-  // Read in current state
-
   // Read in current state
   const OutputVector<double>* robotOutput =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
@@ -58,6 +53,8 @@ void SwingToeTrajGenerator::CalcTraj(
 
   Vector3d pt_0;
   Vector3d pt_1;
+  // Calculate difference between toe and ground assuming flat ground
+  // Apply difference to current toe angle to use as desired
   plant_.CalcPointsPositions(*context_, feet_contact_points_[0].second,
                              feet_contact_points_[0].first, world_, &pt_0);
   plant_.CalcPointsPositions(*context_, feet_contact_points_[1].second,

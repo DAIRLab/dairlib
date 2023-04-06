@@ -238,25 +238,10 @@ int DoMain(int argc, char* argv[]) {
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.0);
 
-  auto footstep_sender = builder.AddSystem<FootstepSender>();
-
-  std::unique_ptr<LcmPublisherSystem> footstep_pub_ptr;
-  std::unique_ptr<LcmPublisherSystem> fsm_pub_ptr;
-  std::unique_ptr<LcmPublisherSystem> input_pub_ptr;
-  if (FLAGS_plan_offboard) {
-    footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_network);
-    fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_network);
-    input_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_u, &lcm_network);
-  } else {
-    footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
-    fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_fsm_channel, &lcm_local);
-    input_pub_ptr = LcmPublisherSystem::Make<lcmt_saved_traj>(FLAGS_channel_u, &lcm_local);
-  }
-
-  auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
-  auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
-  auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
-  auto input_pub = builder.AddSystem(std::move(input_pub_ptr));
+  auto mpc_output_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_alip_mpc_output>(
+          FLAGS_channel_foot,
+          FLAGS_plan_offboard? &lcm_network : &lcm_local));
 
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
       "ALIP_MINLP_DEBUG", &lcm_local, 0);
@@ -317,26 +302,14 @@ int DoMain(int argc, char* argv[]) {
                   high_level_command->get_state_input_port());
   builder.Connect(pelvis_filt->get_output_port(0),
                   foot_placement_controller->get_input_port_state());
-  builder.Connect(pelvis_filt->get_output_port(0),
-                  fsm_sender->get_input_port_state());
 
   // planner ports
   builder.Connect(high_level_command->get_xy_output_port(),
                   foot_placement_controller->get_input_port_vdes());
 
   // planner out ports
-  builder.Connect(foot_placement_controller->get_output_port_fsm(),
-                  fsm_sender->get_input_port_fsm());
-  builder.Connect(foot_placement_controller->get_output_port_prev_impact_time(),
-                  fsm_sender->get_input_port_prev_switch_time());
-  builder.Connect(foot_placement_controller->get_output_port_next_impact_time(),
-                  fsm_sender->get_input_port_next_switch_time());
-  builder.Connect(foot_placement_controller->get_output_port_footstep_target(),
-                  footstep_sender->get_input_port());
   builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
                   mpc_debug_pub->get_input_port());
-  builder.Connect(foot_placement_controller->get_output_port_ankle_torque(),
-                  input_pub->get_input_port());
 
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
@@ -345,20 +318,14 @@ int DoMain(int argc, char* argv[]) {
 
 
   if (FLAGS_sim_delay > 0) {
-    auto fzoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-        FLAGS_sim_delay, drake::Value<dairlib::lcmt_footstep_target>());
-    builder.Connect(*footstep_sender, *fzoh);
-    builder.Connect(*fzoh, *footstep_pub);
-    auto fsmzoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-        FLAGS_sim_delay, drake::Value<dairlib::lcmt_fsm_info>());
-    builder.Connect(fsm_sender->get_output_port_fsm_info(),
-                    fsmzoh->get_input_port());
-    builder.Connect(*fsmzoh, *fsm_pub);
-
+    auto zoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+        FLAGS_sim_delay, drake::Value<dairlib::lcmt_alip_mpc_output>());
+    builder.Connect(foot_placement_controller->get_output_port_mpc_output(),
+                    zoh->get_input_port());
+    builder.Connect(*zoh, *mpc_output_pub);
   } else {
-    builder.Connect(*footstep_sender, *footstep_pub);
-    builder.Connect(fsm_sender->get_output_port_fsm_info(),
-                    fsm_pub->get_input_port());
+    builder.Connect(foot_placement_controller->get_output_port_mpc_output(),
+                    mpc_output_pub->get_input_port());
   }
 
   // Create the diagram

@@ -243,7 +243,7 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
   Vector3d stance_foot_pos;
   auto stance_foot = stance_foot_map_.at(fsm_state);
   plant_.CalcPointsPositions(*plant_context_, stance_foot.second,
-                             stance_foot.first,world_, &stance_foot_pos);
+                             stance_foot.first, world_, &stance_foot_pos);
   stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
       plant_, *plant_context_, "pelvis", stance_foot_pos);
 

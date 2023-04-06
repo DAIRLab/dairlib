@@ -2,6 +2,7 @@
 #include <dairlib/lcmt_saved_traj.hpp>
 #include <dairlib/lcmt_mpc_debug.hpp>
 #include <dairlib/lcmt_mpc_solution.hpp>
+#include <dairlib/lcmt_alip_mpc_output.hpp>
 
 #include "alip_utils.h"
 #include "alip_multiqp.h"
@@ -57,28 +58,16 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_footholds() const {
     return this->get_input_port(foothold_input_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
-    return this->get_output_port(fsm_output_port_);
-  }
-  const drake::systems::OutputPort<double>& get_output_port_next_impact_time()
-  const {
-    return this->get_output_port(next_impact_time_output_port_);
-  }
-  const drake::systems::OutputPort<double>& get_output_port_prev_impact_time()
-  const {
-    return this->get_output_port(prev_impact_time_output_port_);
-  }
-  const drake::systems::OutputPort<double>& get_output_port_footstep_target()
-  const {
-    return this->get_output_port(footstep_target_output_port_);
-  }
-  const drake::systems::OutputPort<double>& get_output_port_ankle_torque()
-  const {
-    return this->get_output_port(ankle_torque_output_port_);
+  const drake::systems::OutputPort<double>& get_output_port_mpc_output() const {
+    return this->get_output_port(mpc_output_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_mpc_debug() const {
     return this->get_output_port(mpc_debug_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
+    return this->get_output_port(fsm_output_port_);
+  }
+
 
  private:
 
@@ -87,17 +76,15 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
+  void CopyMpcOutput(const drake::systems::Context<double>& context,
+                     lcmt_alip_mpc_output* traj) const;
   void CopyAnkleTorque(const drake::systems::Context<double>& context,
                        lcmt_saved_traj* traj) const;
-
   void CopyFsmOutput(const drake::systems::Context<double>& context,
                      drake::systems::BasicVector<double>* fsm) const;
-
-  void CopyPrevImpactTimeOutput(const drake::systems::Context<double>& context,
-                                drake::systems::BasicVector<double>* t) const;
-
-  void CopyNextFootstepOutput(const drake::systems::Context<double>& context,
-                              drake::systems::BasicVector<double>* p_W) const;
+  int GetFsmForOutput(const drake::systems::Context<double>& context) const;
+  double GetPrevImpactTimeForOutput(
+      const drake::systems::Context<double>& context) const;
 
   void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
                          lcmt_mpc_debug* mpc_debug) const;
@@ -127,12 +114,9 @@ class AlipMINLPFootstepController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex foothold_input_port_;
 
   // drake output ports
-  drake::systems::OutputPortIndex fsm_output_port_;
-  drake::systems::OutputPortIndex next_impact_time_output_port_;
-  drake::systems::OutputPortIndex prev_impact_time_output_port_;
-  drake::systems::OutputPortIndex footstep_target_output_port_;
+  drake::systems::OutputPortIndex mpc_output_port_;
   drake::systems::OutputPortIndex mpc_debug_output_port_;
-  drake::systems::OutputPortIndex ankle_torque_output_port_;
+  drake::systems::OutputPortIndex fsm_output_port_;
 
   // controller states
   drake::systems::DiscreteStateIndex fsm_state_idx_;

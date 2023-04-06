@@ -1,8 +1,8 @@
 #pragma once
 #include <limits>
 
-#include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "dairlib/lcmt_controller_failure.hpp"
+#include "dairlib/lcmt_input_supervisor_status.hpp"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -87,7 +87,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   void SetMotorTorques(const drake::systems::Context<double>& context,
                        systems::TimestampedVector<double>* output) const;
-  void UpdateErrorFlag(
+  drake::systems::EventStatus UpdateErrorFlag(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
@@ -102,7 +102,7 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
 
   // Output a failure message when any error is triggered
   void SetFailureStatus(const drake::systems::Context<double>& context,
-                 dairlib::lcmt_controller_failure* output) const;
+                        dairlib::lcmt_controller_failure* output) const;
 
   void CheckVelocities(
       const drake::systems::Context<double>& context,
@@ -110,7 +110,6 @@ class InputSupervisor : public drake::systems::LeafSystem<double> {
   void CheckRadio(const drake::systems::Context<double>& context,
                   drake::systems::DiscreteValues<double>* discrete_state) const;
 
- private:
   const drake::multibody::MultibodyPlant<double>& plant_;
   const int num_actuators_;
   const int num_positions_;

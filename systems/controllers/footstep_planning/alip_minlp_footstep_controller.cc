@@ -114,25 +114,14 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       .get_index();
 
   // output ports
-  next_impact_time_output_port_ = DeclareStateOutputPort(
-      "t_next", next_impact_time_state_idx_)
-      .get_index();
-  prev_impact_time_output_port_ = DeclareVectorOutputPort(
-      "t_prev", 1, &AlipMINLPFootstepController::CopyPrevImpactTimeOutput)
-      .get_index();
-  fsm_output_port_ = DeclareVectorOutputPort(
-      "fsm", 1, &AlipMINLPFootstepController::CopyFsmOutput)
-      .get_index();
-  footstep_target_output_port_ = DeclareVectorOutputPort(
-      "p_SW", 3, &AlipMINLPFootstepController::CopyNextFootstepOutput)
-      .get_index();
+  mpc_output_port_ = DeclareAbstractOutputPort(
+      "lcmt_alip_mpic_output", &AlipMINLPFootstepController::CopyMpcOutput
+      ).get_index();
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm)
-      .get_index();
-  ankle_torque_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_saved_traj",
-      &AlipMINLPFootstepController::CopyAnkleTorque)
-      .get_index();
+      "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm
+      ).get_index();
+  fsm_output_port_ = DeclareVectorOutputPort(
+      "fsm", 1, &AlipMINLPFootstepController::CopyFsmOutput).get_index();
 }
 
 drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
@@ -300,14 +289,34 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void AlipMINLPFootstepController::CopyNextFootstepOutput(
-    const Context<double> &context, BasicVector<double> *p_B_FC) const {
+void AlipMINLPFootstepController::CopyFsmOutput(
+    const Context<double> &context, BasicVector<double> *fsm) const {
+  fsm->get_mutable_value() << GetFsmForOutput(context);
+}
+
+void AlipMINLPFootstepController::CopyMpcOutput(
+    const Context<double> &context, lcmt_alip_mpc_output* mpc_output) const {
+
+  // Copy next footstep
   const auto& pp = trajopt_.GetFootstepSolution();
-  const auto& xx = trajopt_.GetStateSolution();
-  Vector3d footstep_in_com_yaw_frame = trajopt_.SnapFootstepToTopFoothold(pp.at(1));
-  footstep_in_com_yaw_frame.head(2) =
-      (pp.at(1) - pp.at(0)).head(2) - xx.front().tail<4>().head(2);
-  p_B_FC->set_value(footstep_in_com_yaw_frame);
+  Vector3d footstep_in_stance_frame =
+      trajopt_.SnapFootstepToTopFoothold(pp.at(1)) - pp.at(0);
+  for (int i = 0; i < 3; i++) {
+    mpc_output->next_footstep_in_stance_frame[i] = footstep_in_stance_frame(i);
+  }
+
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+
+  // copy fsm info
+  mpc_output->fsm.fsm_state = GetFsmForOutput(context);
+  mpc_output->fsm.prev_switch_time_us = 1e6 * GetPrevImpactTimeForOutput(context);
+  mpc_output->fsm.timestamp_us = 1e6 * robot_output->get_timestamp();
+  mpc_output->fsm.next_switch_time_us = 1e6 *
+      context.get_discrete_state(next_impact_time_state_idx_).get_value()(0);
+
+  // copy ankle torque traj
+  CopyAnkleTorque(context, &(mpc_output->u_traj));
 }
 
 void AlipMINLPFootstepController::CopyMpcDebugToLcm(
@@ -399,8 +408,8 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
   solution->tt = CopyVectorXdToStdVector(tt);
 }
 
-void AlipMINLPFootstepController::CopyFsmOutput(
-    const Context<double> &context, BasicVector<double> *fsm) const {
+int AlipMINLPFootstepController::GetFsmForOutput(
+    const Context<double> &context) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
@@ -408,24 +417,22 @@ void AlipMINLPFootstepController::CopyFsmOutput(
   int fsm_idx = static_cast<int>(
       context.get_discrete_state(fsm_state_idx_).get_value()(0));
 
-  if(robot_output->get_timestamp() - t_prev < double_stance_duration_) {
-    fsm->set_value(VectorXd::Ones(1) * post_left_right_fsm_states_.at(fsm_idx));
-  } else {
-    fsm->set_value(VectorXd::Ones(1) * left_right_stance_fsm_states_.at(fsm_idx));
+  if (robot_output->get_timestamp() - t_prev < double_stance_duration_) {
+    return post_left_right_fsm_states_.at(fsm_idx);
   }
+  return left_right_stance_fsm_states_.at(fsm_idx);
 }
 
-void AlipMINLPFootstepController::CopyPrevImpactTimeOutput(
-    const Context<double> &context, BasicVector<double> *t) const {
+double AlipMINLPFootstepController::GetPrevImpactTimeForOutput(
+    const Context<double> &context) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
   if (robot_output->get_timestamp() - t_prev < double_stance_duration_) {
-    t->set_value(VectorXd::Ones(1) * t_prev);
-  } else {
-    t->set_value(VectorXd::Ones(1) * (t_prev + double_stance_duration_));
+    return t_prev;
   }
+ return t_prev + double_stance_duration_;
 }
 
 

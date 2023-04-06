@@ -79,7 +79,7 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   double remainder = fmod(current_time, period_);
 
   // Assign the blending function ptr
-  auto alpha_func = blend_func_ == SIGMOID ? &blend_sigmoid : &blend_exp;
+  auto alpha_func = blend_func_ == kSigmoid ? &blend_sigmoid : &blend_exp;
 
   near_impact->set_timestamp(current_time);
   near_impact->SetCurrentContactMode(0);
@@ -87,7 +87,7 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   // Get current finite state
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
-      double blend_window = blend_func_ == SIGMOID
+      double blend_window = blend_func_ == kSigmoid
                             ? 1.5 * near_impact_threshold_
                             : near_impact_threshold_;
       if (abs(remainder - impact_times_[i]) < blend_window) {

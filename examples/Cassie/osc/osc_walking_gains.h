@@ -1,4 +1,5 @@
 #pragma once
+
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
 
@@ -11,6 +12,7 @@ struct OSCWalkingGains {
   double w_accel;
   double w_soft_constraint;
   double w_input_reg;
+  double impact_threshold;
   bool relative_swing_ft;
   std::vector<double> pelvis_xyz_vel_filter_tau;
   std::vector<double> CoMW;
@@ -82,6 +84,11 @@ struct OSCWalkingGains {
   MatrixXd K_p_hip_yaw;
   MatrixXd K_d_hip_yaw;
 
+  std::vector<double> W_lambda_c_reg;
+  std::vector<double> W_lambda_h_reg;
+  MatrixXd W_lambda_c_regularization;
+  MatrixXd W_lambda_h_regularization;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(rows));
@@ -91,6 +98,7 @@ struct OSCWalkingGains {
     a->Visit(DRAKE_NVP(w_soft_constraint));
     a->Visit(DRAKE_NVP(w_input_reg));
     a->Visit(DRAKE_NVP(relative_swing_ft));
+    a->Visit(DRAKE_NVP(impact_threshold));
     a->Visit(DRAKE_NVP(pelvis_xyz_vel_filter_tau));
     a->Visit(DRAKE_NVP(CoMW));
     a->Visit(DRAKE_NVP(CoMKp));
@@ -190,5 +198,16 @@ struct OSCWalkingGains {
     W_hip_yaw = this->w_hip_yaw * MatrixXd::Identity(1, 1);
     K_p_hip_yaw = this->hip_yaw_kp * MatrixXd::Identity(1, 1);
     K_d_hip_yaw = this->hip_yaw_kd * MatrixXd::Identity(1, 1);
+
+    a->Visit(DRAKE_NVP(W_lambda_c_reg));
+    a->Visit(DRAKE_NVP(W_lambda_h_reg));
+    Eigen::VectorXd w_lambda_c_regularization =
+        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+            this->W_lambda_c_reg.data(), this->W_lambda_c_reg.size());
+    Eigen::VectorXd w_lambda_h_regularization =
+        Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+            this->W_lambda_h_reg.data(), this->W_lambda_h_reg.size());
+    W_lambda_c_regularization = w_lambda_c_regularization.asDiagonal();
+    W_lambda_h_regularization = w_lambda_h_regularization.asDiagonal();
   }
 };

@@ -8,11 +8,12 @@ cc_library(
         "//examples/Cassie/osc:heading_traj_generator",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:hip_yaw_traj_gen",
+        "//examples/Cassie/osc:osc_standing_gains",
         "//examples/Cassie/osc:osc_walking_gains",
         "//examples/Cassie/osc:osc_walking_gains_alip",
         "//examples/Cassie/osc:pelvis_pitch_traj_generator",
         "//examples/Cassie/osc:standing_com_traj",
-        "//examples/Cassie/osc:standing_pelvis_traj",
+        "//examples/Cassie/osc:standing_pelvis_orientation_traj",
         "//examples/Cassie/osc:swing_toe_traj",
         "//examples/Cassie/osc:walking_speed_control",
         "//systems/controllers:alip_swing_ft_traj_gen",
@@ -88,6 +89,7 @@ cc_library(
     srcs = ["standing_com_traj.cc"],
     hdrs = ["standing_com_traj.h"],
     deps = [
+        "//common",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/controllers:control_utils",
@@ -97,10 +99,11 @@ cc_library(
 )
 
 cc_library(
-    name = "standing_pelvis_traj",
+    name = "standing_pelvis_orientation_traj",
     srcs = ["standing_pelvis_orientation_traj.cc"],
     hdrs = ["standing_pelvis_orientation_traj.h"],
     deps = [
+        "//common",
         "//lcmtypes:lcmt_robot",
         "//systems/controllers:control_utils",
         "//systems/framework:vector",
@@ -131,6 +134,14 @@ cc_library(
 cc_library(
     name = "osc_walking_gains_alip",
     hdrs = ["osc_walking_gains_alip.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_standing_gains",
+    hdrs = ["osc_standing_gains.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],

@@ -90,7 +90,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   // The stance foot position in the beginning of the swing phase
   stance_foot_pos_idx_ = this->DeclareDiscreteState(3);
   // COM state at touchdown
-  touchdown_com_pos_idx_ = this->DeclareDiscreteState(3);
+  touchdown_com_pos_idx_ = this->DeclareDiscreteState(Vector3d(0, 0, 0.9));
   touchdown_com_vel_idx_ = this->DeclareDiscreteState(3);
   prev_fsm_idx_ = this->DeclareDiscreteState(-1 * VectorXd::Ones(1));
 }

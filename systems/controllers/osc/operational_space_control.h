@@ -377,7 +377,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_c_active_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
-  const multibody::KinematicEvaluatorSet<double>* kinematic_evaluators_;
+  const multibody::KinematicEvaluatorSet<double>* kinematic_evaluators_ = nullptr;
 
   // robot input limits
   Eigen::VectorXd u_min_;

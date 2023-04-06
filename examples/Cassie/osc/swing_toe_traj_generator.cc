@@ -31,6 +31,7 @@ SwingToeTrajGenerator::SwingToeTrajGenerator(
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
                     .get_index();
+  toe_angle_port_ = DeclareVectorInputPort("toe_angle", 1).get_index();
   PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("toe_angle", traj_inst,

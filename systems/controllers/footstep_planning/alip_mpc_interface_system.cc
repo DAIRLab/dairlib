@@ -355,7 +355,7 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
   double timestamp = robot_output->get_timestamp();
 
   // read in slope parameters
-  const Vector2d& kx_ky =
+  Vector2d kx_ky =
       EvalVectorInput(context, slope_params_port_)->get_value();
 
   bool is_ss = fsm_state <= 1;
@@ -381,6 +381,7 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
   auto exp_pp_traj =
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
+  kx_ky = is_ss ? kx_ky : Vector2d::Zero();
   *exp_pp_traj = ConstructAlipComTraj(
       stance_foot_pos, x_alip, kx_ky, t, end_time_offset);
 }

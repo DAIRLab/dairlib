@@ -66,8 +66,8 @@ def mpc_processing_callback(data, mpc_channel, footstep_channel, fsm_channel):
     mpc_debug.to_numpy()
 
     footsteps = []
-    for msg in data[footstep_channel]:
-        footsteps.append(msg.target)
+    # for msg in data[footstep_channel]:
+    #     footsteps.append(msg.target)
 
     return mpc_debug, footsteps
 

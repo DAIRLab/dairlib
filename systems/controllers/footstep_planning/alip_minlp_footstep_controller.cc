@@ -101,7 +101,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   }
 
   // State Update
-  this->DeclarePerStepUnrestrictedUpdateEvent(
+  this->DeclareForcedUnrestrictedUpdateEvent(
       &AlipMINLPFootstepController::UnrestrictedUpdate);
 
   // Input ports

@@ -2,7 +2,7 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include <dairlib/lcmt_fsm_info.hpp>
+#include <dairlib/lcmt_alip_mpc_output.hpp>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -27,7 +27,7 @@ DEFINE_string(switch_channel, "INPUT_SWITCH",
 DEFINE_string(new_channel, "OSC_WALKING",
               "The name of the new lcm channel that dispatcher_in listens to "
               "after switch");
-DEFINE_string(contact_schedule_channel, "FSM",
+DEFINE_string(contact_schedule_channel, "ALIP_MPC",
               "The name of the lcm channel that publishes contact timings");
 DEFINE_int32(trigger_state, 1,
               "finite state which triggers the countdown to switch");
@@ -67,7 +67,7 @@ int do_main(int argc, char* argv[]) {
   // Create subscriber for lcm driven loop
   drake::lcm::Subscriber<dairlib::lcmt_robot_output> state_sub(
       &lcm_local,FLAGS_channel_x);
-  drake::lcm::Subscriber<dairlib::lcmt_fsm_info> fsm_sub(
+  drake::lcm::Subscriber<dairlib::lcmt_alip_mpc_output> fsm_sub(
       &lcm_local, FLAGS_contact_schedule_channel);
 
   // Wait for the first message and initialize the context time..
@@ -82,7 +82,7 @@ int do_main(int argc, char* argv[]) {
   LcmHandleSubscriptionsUntil(&lcm_local,
                               [&]() { return fsm_sub.count() > 0; });
 
-  while(fsm_sub.message().fsm_state != FLAGS_trigger_state){
+  while(fsm_sub.message().fsm.fsm_state != FLAGS_trigger_state){
     fsm_sub.clear();
     LcmHandleSubscriptionsUntil(&lcm_local,
                                 [&]() { return fsm_sub.count() > 0; });
@@ -103,7 +103,7 @@ int do_main(int argc, char* argv[]) {
 
     // Get message time from the input channel
     int64_t t_current = state_sub.message().utime;
-    int64_t transition_time = fsm_sub.message().next_switch_time_us;
+    int64_t transition_time = fsm_sub.message().fsm.next_switch_time_us;
     if (t_current >= transition_time) {
       std::cout << "publish at t = " << t_current << std::endl;
 

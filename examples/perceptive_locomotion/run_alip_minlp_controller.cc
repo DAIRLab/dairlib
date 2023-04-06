@@ -235,12 +235,13 @@ int DoMain(int argc, char* argv[]) {
   auto mpc_output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_alip_mpc_output>(
           FLAGS_channel_mpc_output,
-          FLAGS_plan_offboard? &lcm_network : &lcm_local));
+          FLAGS_plan_offboard? &lcm_network : &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
 
-  auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
-      "ALIP_MINLP_DEBUG", &lcm_local, 0);
-  auto mpc_debug_pub = builder.AddSystem(std::move(mpc_debug_pub_ptr));
-
+  auto mpc_debug_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_mpc_debug>(
+          "ALIP_MINLP_DEBUG", &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
 
   // --- Add and connect the source of the foothold information --- //
   if ( !FLAGS_foothold_yaml.empty() ) {
@@ -330,7 +331,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
-      false);
+      true);
 
 #ifdef DAIR_ROS_ON
   spinner.start();

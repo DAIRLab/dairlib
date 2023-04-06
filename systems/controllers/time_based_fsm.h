@@ -86,7 +86,8 @@ class TimeBasedFiniteStateMachineWithTrigger :
   const drake::systems::OutputPort<double>& get_output_port_fsm() const {
     return this->get_output_port(fsm_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_global_fsm_idx() const {
+  const drake::systems::OutputPort<double>& get_output_port_global_fsm_idx()
+  const {
     return this->get_output_port(global_fsm_idx_port_);
   }
 

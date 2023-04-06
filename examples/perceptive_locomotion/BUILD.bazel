@@ -96,6 +96,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/controllers:lcm_trajectory_receiver",
         "//systems/controllers/footstep_planning:alip_mpc_interface_system",
+        "//systems/controllers/footstep_planning:alip_mpc_output_reciever",
         "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",

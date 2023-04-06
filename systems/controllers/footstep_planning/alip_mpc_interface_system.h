@@ -237,6 +237,10 @@ class AlipMPCInterfaceSystem : public drake::systems::Diagram<double> {
       ComTrajInterfaceParams com_params,
       SwingFootInterfaceSystemParams swing_params);
 
+  const drake::systems::InputPort<double>& get_input_port_slope_parameters()
+  const {
+    return this->get_input_port(slope_parameter_input_port_);
+  }
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
@@ -262,7 +266,6 @@ class AlipMPCInterfaceSystem : public drake::systems::Diagram<double> {
   const {
     return this->get_output_port(swing_traj_port_);
   }
-
  private:
 
   drake::systems::InputPortIndex ExportSharedInput(
@@ -270,6 +273,7 @@ class AlipMPCInterfaceSystem : public drake::systems::Diagram<double> {
       const drake::systems::InputPort<double>& p1,
       const drake::systems::InputPort<double>& p2, std::string name);
 
+  drake::systems::InputPortIndex slope_parameter_input_port_;
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::InputPortIndex next_touchdown_time_port_;

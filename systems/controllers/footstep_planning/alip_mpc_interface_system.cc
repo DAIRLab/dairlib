@@ -428,6 +428,8 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
 
   footstep_target_port_ =
       builder.ExportInput(swing_interface->get_input_port_footstep_target());
+  slope_parameter_input_port_ =
+      builder.ExportInput(com_interface->get_input_port_slope_params());
   com_traj_port_ = builder.ExportOutput(com_interface->get_output_port_com());
   swing_traj_port_ =
       builder.ExportOutput(swing_interface->get_output_port_swing_foot_traj());

@@ -2,6 +2,7 @@
 #include <iostream>
 
 // lcmtypes
+#include "dairlib/lcmt_alip_mpc_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
@@ -24,8 +25,7 @@
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
 #include "examples/perceptive_locomotion/systems/alip_input_receiver.h"
 #include "systems/primitives/fsm_lcm_systems.h"
-#include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
-#include "systems/controllers/lcm_trajectory_receiver.h"
+#include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
 
 // OSC
@@ -74,10 +74,8 @@ using drake::systems::TriggerTypeSet;
 
 using multibody::WorldYawViewFrame;
 using systems::FsmReceiver;
-using systems::controllers::LcmTrajectoryReceiver;
-using systems::controllers::TrajectoryType;
-using systems::controllers::FootstepReceiver;
 using systems::controllers::AlipMPCInterfaceSystem;
+using systems::controllers::AlipMpcOutputReceiver;
 using systems::controllers::ComTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
@@ -98,14 +96,6 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 DEFINE_string(channel_u, "OSC_WALKING",
               "The name of the channel which publishes command");
 
-DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
-              "LCM channel for footstep target");
-
-DEFINE_string(channel_com, "ALIP_COM_TRAJ",
-              "LCM channel for center of mass trajectory");
-
-DEFINE_string(channel_fsm, "FSM", "lcm channel for fsm");
-
 DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
@@ -118,7 +108,7 @@ DEFINE_string(minlp_gains_filename,
               "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
               "Filepath to alip minlp gains");
 
-DEFINE_string(channel_u_mpc, "ALIP_INPUT", "ankle torque lcm channel");
+DEFINE_string(channel_mpc, "ALIP_MPC", "alip mpc output lcm channel");
 
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
@@ -215,6 +205,13 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
 
+  // Create the MPC receiver.
+  auto mpc_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<lcmt_alip_mpc_output>(
+          FLAGS_channel_mpc, &lcm_local));
+  auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
+  builder.Connect(*mpc_subscriber, *mpc_receiver);
+
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -276,9 +273,7 @@ int DoMain(int argc, char* argv[]) {
   }
 
   auto fsm = builder.AddSystem<FsmReceiver>(plant_w_spr);
-  auto fsm_sub_ptr = LcmSubscriberSystem::Make<lcmt_fsm_info>(FLAGS_channel_fsm, &lcm_local);
-  auto fsm_sub = builder.AddSystem(std::move(fsm_sub_ptr));
-  builder.Connect(fsm_sub->get_output_port(),
+  builder.Connect(mpc_receiver->get_output_port_fsm(),
                   fsm->get_input_port_fsm_info());
   builder.Connect(state_receiver->get_output_port(),
                   fsm->get_input_port_state());
@@ -314,10 +309,6 @@ int DoMain(int argc, char* argv[]) {
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
 
-  auto footstep_sub_ptr = LcmSubscriberSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
-  auto footstep_sub = builder.AddSystem(std::move(footstep_sub_ptr));
-  auto footstep_receiver = builder.AddSystem<FootstepReceiver>();
-
   systems::controllers::SwingFootInterfaceSystemParams swing_params{
     left_right_support_fsm_states,
     left_right_foot,
@@ -340,7 +331,8 @@ int DoMain(int argc, char* argv[]) {
 
   auto mpc_interface = builder.AddSystem<AlipMPCInterfaceSystem>(
       plant_w_spr, context_w_spr.get(), com_params, swing_params);
-
+  builder.Connect(mpc_receiver->get_output_port_slope_parameters(),
+                  mpc_interface->get_input_port_slope_parameters());
   builder.Connect(fsm->get_output_port_fsm(),
                   mpc_interface->get_input_port_fsm());
   builder.Connect(fsm->get_output_port_prev_switch_time(),
@@ -349,8 +341,7 @@ int DoMain(int argc, char* argv[]) {
                   mpc_interface->get_input_port_next_fsm_switch_time());
   builder.Connect(state_receiver->get_output_port(0),
                   mpc_interface->get_input_port_state());
-  builder.Connect(*footstep_sub, *footstep_receiver);
-  builder.Connect(footstep_receiver->get_output_port(),
+  builder.Connect(mpc_receiver->get_output_port_footstep_target(),
                   mpc_interface->get_input_port_footstep_target());
 
   // Swing toe joint trajectory
@@ -372,10 +363,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_state_input_port());
 
-  // Stance toe torques
-  auto alip_input_subscriber = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_saved_traj>(FLAGS_channel_u_mpc,
-                                                 &lcm_local));
   auto alip_input_receiver =
       builder.AddSystem<perceptive_locomotion::AlipInputReceiver>(
           plant_w_spr,
@@ -627,7 +614,7 @@ int DoMain(int argc, char* argv[]) {
                     osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
   builder.Connect(fsm->get_output_port_fsm(),
                   alip_input_receiver->get_input_port_fsm());
-  builder.Connect(alip_input_subscriber->get_output_port(),
+  builder.Connect(mpc_receiver->get_output_port_ankle_torque(),
                   alip_input_receiver->get_input_port_u());
   builder.Connect(alip_input_receiver->get_output_port(),
                   osc->get_feedforward_input_port());
@@ -654,14 +641,10 @@ int DoMain(int argc, char* argv[]) {
   auto& loop_context = loop.get_diagram_mutable_context();
 
   LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return footstep_sub->GetInternalMessageCount() > 1; });
-  footstep_sub->ForcedPublish(loop.get_diagram()->
-      GetMutableSubsystemContext(*footstep_sub, &loop_context));
+    return mpc_subscriber->GetInternalMessageCount() > 1; });
+  mpc_subscriber->ForcedPublish(loop.get_diagram()->
+      GetMutableSubsystemContext(*mpc_subscriber, &loop_context));
 
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return fsm_sub->GetInternalMessageCount() > 1; });
-  fsm_sub->ForcedPublish(loop.get_diagram()->
-      GetMutableSubsystemContext(*fsm_sub, &loop_context));
 
   loop.Simulate();
 

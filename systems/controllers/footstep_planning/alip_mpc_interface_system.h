@@ -73,7 +73,8 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
 
   drake::trajectories::PathParameterizedTrajectory<double>
   CreateSplineForSwingFoot(
-      double start_time, double end_time, const Eigen::Vector3d &init_pos,
+      double start_time, double end_time,
+      const Eigen::Vector3d &init_pos,
       const Eigen::Vector3d &final_pos) const;
 
   void CalcSwingTraj(const drake::systems::Context<double> &context,
@@ -85,9 +86,7 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex liftoff_time_port_;
   drake::systems::InputPortIndex touchdown_time_port_;
   drake::systems::InputPortIndex footstep_target_port_;
-
   drake::systems::OutputPortIndex swing_foot_traj_output_port_;
-
   drake::systems::DiscreteStateIndex liftoff_swing_foot_pos_idx_;
   drake::systems::DiscreteStateIndex prev_fsm_state_idx_;
 
@@ -100,7 +99,6 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   // Parameters
   const double com_height_;
   const double mid_foot_height_;
-  const double foot_height_offset_;
   const double desired_final_foot_height_;
   const double desired_final_vertical_foot_velocity_;
   const bool relative_to_com_;

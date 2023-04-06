@@ -39,6 +39,16 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_mpc_output_reciever",
+    hdrs = ["alip_mpc_output_reciever.h"],
+    srcs = ["alip_mpc_output_reciever.cc"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library"
+    ],
+)
+
+cc_library(
     name = "alip_multiqp",
     srcs = ["alip_multiqp.cc"],
     hdrs = ["alip_multiqp.h"],

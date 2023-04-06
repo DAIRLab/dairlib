@@ -71,6 +71,18 @@ cc_library(
 )
 
 cc_library(
+    name = "pelvis_pitch_traj_generator",
+    srcs = ["pelvis_pitch_traj_generator.cc"],
+    hdrs = ["pelvis_pitch_traj_generator.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "standing_com_traj",
     srcs = ["standing_com_traj.cc"],
     hdrs = ["standing_com_traj.h"],

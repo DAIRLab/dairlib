@@ -1,0 +1,9 @@
+package dairlib;
+
+struct lcmt_alip_mpc_output
+{
+  double next_footstep_in_stance_frame[3];
+  double com_in_stance_frame_at_td;
+  lcmt_fsm_info fsm;
+  lcmt_saved_traj u_traj;
+}

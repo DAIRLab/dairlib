@@ -62,7 +62,6 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
       com_height_(params.com_height_),
       mid_foot_height_(params.mid_foot_height),
       desired_final_foot_height_(params.desired_final_foot_height),
-      foot_height_offset_(params.foot_height_offset_),
       desired_final_vertical_foot_velocity_(
           params.desired_final_vertical_foot_velocity),
       relative_to_com_(params.relative_to_com) {
@@ -210,48 +209,52 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
     const Context<double> &context,
     drake::trajectories::Trajectory<double> *traj) const {
 
-  // Get discrete states
+  int fsm_state = EvalVectorInput(context, fsm_port_)->get_value()(0);
+
+  if (not is_single_support(fsm_state)) {
+    auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
+    *pp_traj = PathParameterizedTrajectory<double>(
+        PiecewisePolynomial<double>(Vector3d::Zero()),
+        PiecewisePolynomial<double>(Vector1d::Ones()));
+    return;
+  }
+
+  auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, state_port_));
+
+  multibody::SetPositionsAndVelocitiesIfNew<double>(
+      plant_, robot_output->GetState(), plant_context_);
+
   auto swing_foot_pos_at_liftoff =
       context.get_discrete_state(liftoff_swing_foot_pos_idx_).CopyToVector();
-  // Read in finite state machine switch time
   double liftoff_time =
       EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
   double touchdown_time =
       EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+  const auto& com_traj = EvalAbstractInput(
+      context, com_traj_input_port_)->get_value<drake::trajectories::Trajectory<double>>();
+  Vector3d footstep_target_in_stance_frame =
+      EvalVectorInput(context, footstep_target_port_)->get_value();
 
-  // Read in finite state machine
-  int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
-
-  // Generate trajectory if it's currently in swing phase.
-  // Otherwise, generate a constant trajectory
-  if (is_single_support(fsm_state)) {
-    // Ensure current_time < end_time_of_this_interval to avoid error in
-    // creating trajectory.
-    double start_time_of_this_interval = std::clamp(
+  double start_time_of_this_interval = std::clamp(
         liftoff_time, -std::numeric_limits<double>::infinity(),
         touchdown_time - 0.001);
 
-    // Swing foot position at touchdown
-    Vector3d footstep_target =
-        this->EvalVectorInput(context, footstep_target_port_)->get_value();
+  Vector3d stance_foot_pos;
+  auto stance_foot = stance_foot_map_.at(fsm_state);
+  plant_.CalcPointsPositions(*plant_context_, stance_foot.second,
+                             stance_foot.first,world_, &stance_foot_pos);
+  stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
+      plant_, *plant_context_, "pelvis", stance_foot_pos);
 
-    if (relative_to_com_) {
-      footstep_target(2) = -com_height_;
-    }
-
+  Vector3d com_pos_at_td = com_traj.value(touchdown_time);
+  Vector3d stance_pos_in_com_frame_at_td =
+      stance_foot_pos + footstep_target_in_stance_frame - com_pos_at_td;
     // Assign traj
     auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
     *pp_traj = CreateSplineForSwingFoot(
         start_time_of_this_interval, touchdown_time,
-        swing_foot_pos_at_liftoff, footstep_target);
-  } else {
-    // Assign a constant traj
-    auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
-    *pp_traj = PathParameterizedTrajectory<double>(
-        PiecewisePolynomial<double>(Vector3d::Zero()),
-        PiecewisePolynomial<double>(Vector1d::Ones())
-    );
-  }
+        swing_foot_pos_at_liftoff, stance_pos_in_com_frame_at_td);
 }
 
 ComTrajInterfaceSystem::ComTrajInterfaceSystem(
@@ -394,6 +397,9 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
       builder.AddSystem<SwingFootInterfaceSystem>(plant, context, swing_params);
   auto com_interface =
       builder.AddSystem<ComTrajInterfaceSystem>(plant, context, com_params);
+
+  builder.Connect(com_interface->get_output_port_com(),
+                  swing_interface->get_input_port_com_traj());
 
   // Export ports
   state_port_ = ExportSharedInput(

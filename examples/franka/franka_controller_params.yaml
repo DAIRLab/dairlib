@@ -53,8 +53,8 @@ EndEffectorRotW:
     0, 10, 0,
     0, 0, 10 ]
 EndEffectorRotKp:
-  [ 500, 0, 0,
-    0, 500, 0,
+  [ 2000, 0, 0,
+    0, 2000, 0,
     0, 0, 500 ]
 EndEffectorRotKd:
   [ 40, 0, 0,

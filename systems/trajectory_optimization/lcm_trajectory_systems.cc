@@ -49,8 +49,14 @@ void LcmTrajectoryReceiver::OutputTrajectory(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
-  *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-      trajectory_block.time_vector, trajectory_block.datapoints);
+  if (trajectory_block.datapoints.rows() == 3) {
+    *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
+        trajectory_block.time_vector, trajectory_block.datapoints);
+  } else {
+    *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+        trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
+        trajectory_block.datapoints.bottomRows(3));
+  }
 }
 
 LcmTrajectoryDrawer::LcmTrajectoryDrawer(
@@ -87,8 +93,7 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   for (int i = 0; i < setpoints.cols(); ++i) {
     setpoints(2, i) += 0.7645;
   }
-  meshcat_->SetLine("/trajectories/" + trajectory_name_, setpoints, 100,
-                    rgba_);
+  meshcat_->SetLine("/trajectories/" + trajectory_name_, setpoints, 100, rgba_);
   return drake::systems::EventStatus::Succeeded();
 }
 

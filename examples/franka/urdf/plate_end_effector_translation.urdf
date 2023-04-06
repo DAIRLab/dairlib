@@ -28,25 +28,25 @@
 <!--      </drake:proximity_properties>-->
 <!--    </collision>-->
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.005"/>
+      <origin rpy="0 0 0" xyz="0 0 0.01"/>
       <geometry>
-        <box size="0.2 0.2 0.01"/>
+        <box size="1.0 1.0 0.02"/>
       </geometry>
     </visual>
-    <visual name="middle_right">
-      <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>
-      <geometry>
-        <sphere radius="0.001"/>
-      </geometry>
-    </visual>
-    <visual name="top_left">
-      <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>
+    <visual>
+      <origin rpy="0 0 0" xyz="0.1 0.0 0.02"/>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
     </visual>
-    <visual name="bottom_left">
-      <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.1 0.1 0.02"/>
+      <geometry>
+        <sphere radius="0.001"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin rpy="0 0 0" xyz="-0.1 -0.1 0.02"/>
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
@@ -71,21 +71,21 @@
 <!--    </collision>-->
     <collision name="middle_right">
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="1.0 0.0 0.01"/>
+      <origin rpy="0 0 0" xyz="5.0 0.0 0.02"/>
     </collision>
     <collision name="top_left">
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-1.0 1.0 0.01"/>
+      <origin rpy="0 0 0" xyz="-5.0 5.0 0.02"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-1.0 -1.0 0.01"/>
+      <origin rpy="0 0 0" xyz="-5.0 -5.0 0.02"/>
     </collision>
   </link>
   <joint name="plate_x" type="prismatic">

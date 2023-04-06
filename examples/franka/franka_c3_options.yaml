@@ -1,10 +1,10 @@
-admm_iter: 2
+admm_iter: 4
 rho: 0.1
 rho_scale: 2
 num_threads: 4
 delta_option: 1
 
-mu: 1.0
+mu: 0.1
 mu_plate: 1
 dt: 0.1
 solve_dt: 0.05
@@ -23,7 +23,7 @@ u_size: 40
 # State Tracking Error, assuming diagonal
 #q_vector: [100, 100, 100, 1, 1, 1, 1, 1, 1, 1,
 #           1, 1, 1, 1, 1, 1, 1, 1, 1]
-q_vector: [500, 500, 1000, 0, 0, 0, 0, 10000, 10000, 10000,
+q_vector: [200, 200, 500, 0, 0, 0, 0, 10000, 10000, 10000,
            0, 0, 0, 0, 0, 0, 1, 1, 1]
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1]

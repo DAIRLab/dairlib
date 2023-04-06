@@ -18,18 +18,21 @@
       <visual name="tray">
         <geometry>
           <box>
-            <size>0.3 0.6 0.02</size>
+            <size>0.15 0.3 0.02</size>
           </box>
         </geometry>
       </visual>
       <collision name="box">
         <geometry>
           <box>
-            <size>0.3 0.6 0.02</size>
+            <size>0.15 0.3 0.02</size>
           </box>
         </geometry>
         <drake:proximity_properties>
           <drake:rigid_hydroelastic/>
+<!--          <drake:compliant_hydroelastic/>-->
+<!--          <drake:hydroelastic_modulus> 3.0e4 </drake:hydroelastic_modulus>-->
+<!--          <drake:mesh_resolution_hint> 1.0 </drake:mesh_resolution_hint>-->
           <!-- geometry/box does not take mesh_resolution_hint into account
             because it always uses the coarsest mesh. We place it here in
             case you want to change the box to something else like capsules,
@@ -39,8 +42,8 @@
           <!-- Both mu_dynamic and mu_static are used in Continuous system.
             Only mu_dynamic is used in Discrete system.
           -->
-          <drake:mu_dynamic>1.0</drake:mu_dynamic>
-          <drake:mu_static>1.0</drake:mu_static>
+          <drake:mu_dynamic>0.2</drake:mu_dynamic>
+          <drake:mu_static>0.2</drake:mu_static>
         </drake:proximity_properties>
       </collision>
     </link>

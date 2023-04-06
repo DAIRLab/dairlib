@@ -111,8 +111,11 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   x_des[5] = 0;
   x_des[6] = 0;
   /// radio command
-  x_des[7] = 0.7;
-  x_des[8] = 0.02;
+//  x_des[7] = 0.7;
+//  x_des[8] = 0.02;
+//  x_des[9] = 0.45;
+  x_des[7] = 0.5;
+  x_des[8] = -0.2;
   x_des[9] = 0.45;
   x_des(7) += radio_out->channel[0] * 0.2;
   x_des(8) += radio_out->channel[1] * 0.2;
@@ -200,7 +203,9 @@ void C3Controller::OutputActorTrajectory(
   //  x_sol.col(0) = state_next;
   //  x_sol.col(0) = state_next;
 
-  MatrixXd knots = x_sol.topRows(3);
+  MatrixXd knots = MatrixXd::Zero(6, N_);
+  knots.topRows(3) = x_sol.topRows(3);
+  knots.bottomRows(3) = x_sol.bottomRows(n_v_).topRows(3);
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_traj";
   end_effector_traj.datatypes =

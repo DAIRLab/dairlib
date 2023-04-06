@@ -28,10 +28,10 @@ class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context);
 
   // Input/output ports
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_yaw_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_yaw() const {
     return this->get_input_port(des_yaw_port_);
   }
 

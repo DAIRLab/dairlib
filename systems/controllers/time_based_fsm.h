@@ -41,11 +41,11 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
       const std::vector<int>& states,
       const std::vector<double>& state_durations, double t0 = 0);
 
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_fsm_output_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_fsm() const {
     return this->get_output_port(fsm_port_);
   }
 

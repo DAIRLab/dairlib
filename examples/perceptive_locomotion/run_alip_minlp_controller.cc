@@ -79,13 +79,7 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
-DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
-              "LCM channel for footstep target");
-
-DEFINE_string(channel_u, "ALIP_INPUT",
-              "LCM channel for ankle torque trajectory");
-
-DEFINE_string(fsm_channel, "FSM", "lcm channel for fsm");
+DEFINE_string(channel_mpc_output, "ALIP_MPC", "LCM channel for mpc output");
 
 DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
@@ -240,7 +234,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto mpc_output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_alip_mpc_output>(
-          FLAGS_channel_foot,
+          FLAGS_channel_mpc_output,
           FLAGS_plan_offboard? &lcm_network : &lcm_local));
 
   auto mpc_debug_pub_ptr = LcmPublisherSystem::Make<lcmt_mpc_debug>(
@@ -299,12 +293,12 @@ int DoMain(int argc, char* argv[]) {
   // State Reciever connections
   builder.Connect(*state_receiver, *pelvis_filt);
   builder.Connect(pelvis_filt->get_output_port(0),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
   builder.Connect(pelvis_filt->get_output_port(0),
                   foot_placement_controller->get_input_port_state());
 
   // planner ports
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   foot_placement_controller->get_input_port_vdes());
 
   // planner out ports
@@ -314,7 +308,7 @@ int DoMain(int argc, char* argv[]) {
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
   builder.Connect(cassie_out_to_radio->get_output_port(),
-                  high_level_command->get_radio_port());
+                  high_level_command->get_input_port_radio());
 
 
   if (FLAGS_sim_delay > 0) {

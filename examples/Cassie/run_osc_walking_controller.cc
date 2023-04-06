@@ -198,9 +198,9 @@ int DoMain(int argc, char* argv[]) {
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
   builder.Connect(simulator_drift->get_output_port(0),
-                  head_traj_gen->get_state_input_port());
+                  head_traj_gen->get_input_port_state());
   builder.Connect(high_level_command->get_output_port_yaw(),
-                  head_traj_gen->get_yaw_input_port());
+                  head_traj_gen->get_input_port_yaw());
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -224,7 +224,7 @@ int DoMain(int argc, char* argv[]) {
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
   builder.Connect(simulator_drift->get_output_port(0),
-                  fsm->get_state_input_port());
+                  fsm->get_input_port_state());
 
   // Create leafsystem that record the switching time of the FSM
   std::vector<int> single_support_states = {left_stance_state,
@@ -585,7 +585,7 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_use_radio) {
     builder.Connect(cassie_out_to_radio->get_output_port(),
                     hip_yaw_traj_gen->get_radio_input_port());
-    builder.Connect(fsm->get_fsm_output_port(),
+    builder.Connect(fsm->get_output_port_fsm(),
                     hip_yaw_traj_gen->get_fsm_input_port());
     osc->AddTrackingData(std::move(swing_hip_yaw_traj));
   } else {

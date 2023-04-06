@@ -536,18 +536,18 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(
       contact_scheduler->get_output_port_contact_scheduler(),
-      pelvis_trans_traj_generator->get_contact_scheduler_input_port());
+      pelvis_trans_traj_generator->get_input_port_contact_scheduler());
   builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
                   l_foot_traj_generator->get_input_port_contact_scheduler());
   builder.Connect(contact_scheduler->get_output_port_contact_scheduler(),
                   r_foot_traj_generator->get_input_port_contact_scheduler());
 
   builder.Connect(state_receiver->get_output_port(0),
-                  pelvis_trans_traj_generator->get_state_input_port());
+                  pelvis_trans_traj_generator->get_input_port_state());
   builder.Connect(contact_scheduler->get_output_port_fsm(),
-                  pelvis_trans_traj_generator->get_fsm_input_port());
+                  pelvis_trans_traj_generator->get_input_port_fsm());
   builder.Connect(contact_scheduler->get_output_port_clock(),
-                  pelvis_trans_traj_generator->get_clock_input_port());
+                  pelvis_trans_traj_generator->get_input_port_clock());
   builder.Connect(high_level_command->get_output_port_xy(),
                   l_foot_traj_generator->get_input_port_target_vel());
   builder.Connect(high_level_command->get_output_port_xy(),
@@ -577,9 +577,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(pelvis_trans_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_trans_traj"));
   builder.Connect(state_receiver->get_output_port(0),
-                  heading_traj_generator->get_state_input_port());
+                  heading_traj_generator->get_input_port_state());
   builder.Connect(high_level_command->get_output_port_yaw(),
-                  heading_traj_generator->get_yaw_input_port());
+                  heading_traj_generator->get_input_port_yaw());
   builder.Connect(heading_traj_generator->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_rot_traj"));
   builder.Connect(l_foot_traj_generator->get_output_port(0),

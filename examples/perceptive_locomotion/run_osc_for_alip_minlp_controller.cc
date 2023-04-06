@@ -238,18 +238,18 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
   builder.Connect(cassie_out_to_radio->get_output_port(),
-                    high_level_command->get_radio_port());
+                    high_level_command->get_input_port_radio());
 
   builder.Connect(state_receiver->get_output_port(0),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
 
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
   builder.Connect(state_receiver->get_output_port(),
-                  head_traj_gen->get_state_input_port());
-  builder.Connect(high_level_command->get_yaw_output_port(),
-                  head_traj_gen->get_yaw_input_port());
+                  head_traj_gen->get_input_port_state());
+  builder.Connect(high_level_command->get_output_port_yaw(),
+                  head_traj_gen->get_input_port_yaw());
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -359,9 +359,9 @@ int DoMain(int argc, char* argv[]) {
           plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
           right_foot_points, "right_toe_angle_traj");
   builder.Connect(state_receiver->get_output_port(0),
-                  left_toe_angle_traj_gen->get_state_input_port());
+                  left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
-                  right_toe_angle_traj_gen->get_state_input_port());
+                  right_toe_angle_traj_gen->get_input_port_state());
 
   auto alip_input_receiver =
       builder.AddSystem<perceptive_locomotion::AlipInputReceiver>(

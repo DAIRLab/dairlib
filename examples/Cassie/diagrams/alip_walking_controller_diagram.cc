@@ -404,13 +404,13 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   builder.Connect(state_receiver->get_output_port(),
                   swing_ft_traj_generator->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
-                  left_toe_angle_traj_gen->get_state_input_port());
+                  left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
-                  right_toe_angle_traj_gen->get_state_input_port());
+                  right_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
-                  head_traj_gen->get_state_input_port());
+                  head_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
                   footstep_planner->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(),
@@ -436,7 +436,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
 
   // Connect radio
   builder.Connect(radio_parser->get_output_port(),
-                  high_level_command->get_radio_port());
+                  high_level_command->get_input_port_radio());
   builder.Connect(radio_parser->get_output_port(),
                   hip_yaw_traj_gen->get_radio_input_port());
 
@@ -445,7 +445,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
                   alip_traj_generator->get_input_port_touchdown_time());
   builder.Connect(alip_traj_generator->get_output_port_alip_state(),
                   footstep_planner->get_input_port_alip_state());
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   footstep_planner->get_input_port_vdes());
   builder.Connect(liftoff_event_time->get_output_port_event_time_of_interest(),
                   footstep_planner->get_input_port_fsm_switch_time());
@@ -461,8 +461,8 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   builder.Connect(stance_duration_adder->get_output_port(),
                   swing_ft_traj_generator->get_input_port_next_fsm_switch_time());
   //
-  builder.Connect(high_level_command->get_yaw_output_port(),
-                  head_traj_gen->get_yaw_input_port());
+  builder.Connect(high_level_command->get_output_port_yaw(),
+                  head_traj_gen->get_input_port_yaw());
 
 
   builder.Connect(alip_traj_generator->get_output_port_com(),

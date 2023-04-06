@@ -115,7 +115,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 
   // output ports
   mpc_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_alip_mpic_output", &AlipMINLPFootstepController::CopyMpcOutput
+      "lcmt_alip_mpc_output", &AlipMINLPFootstepController::CopyMpcOutput
       ).get_index();
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
       "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm

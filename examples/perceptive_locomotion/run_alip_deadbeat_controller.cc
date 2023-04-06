@@ -260,14 +260,14 @@ int DoMain(int argc, char* argv[]) {
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
   builder.Connect(state_receiver->get_output_port(0),
-                  high_level_command->get_state_input_port());
+                  high_level_command->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   foot_placement_controller->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   fsm_sender->get_input_port_state());
 
   // planner ports
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   foot_placement_controller->get_input_port_vdes());
 
   // planner out ports
@@ -283,7 +283,7 @@ int DoMain(int argc, char* argv[]) {
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
   builder.Connect(cassie_out_to_radio->get_output_port(),
-                  high_level_command->get_radio_port());
+                  high_level_command->get_input_port_radio());
 
 
   if (FLAGS_sim_delay > 0) {

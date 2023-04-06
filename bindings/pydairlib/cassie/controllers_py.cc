@@ -29,7 +29,7 @@ PYBIND11_MODULE(controllers, m) {
            py::arg("osc_gains_filename"), py::arg("osqp_settings_filename"))
       .def("get_plant", &AlipWalkingControllerDiagram::get_plant,
            py_rvp::reference_internal)
-      .def("get_state_input_port",
+      .def("get_input_port_state",
            &AlipWalkingControllerDiagram::get_state_input_port,
            py_rvp::reference_internal)
       .def("get_radio_input_port",
@@ -44,7 +44,7 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_controller_failure_output_port",
            &AlipWalkingControllerDiagram::get_controller_failure_output_port,
            py_rvp::reference_internal)
-      .def("get_fsm_output_port",
+      .def("get_output_port_fsm",
           &AlipWalkingControllerDiagram::get_fsm_output_port,
           py_rvp::reference_internal);
 
@@ -58,7 +58,7 @@ PYBIND11_MODULE(controllers, m) {
       py::arg("single_stance_time_override") = 0)
       .def("get_plant", &FootstepTargetControllerDiagram::get_plant,
           py_rvp::reference_internal)
-      .def("get_state_input_port",
+      .def("get_input_port_state",
           &FootstepTargetControllerDiagram::get_state_input_port,
           py_rvp::reference_internal)
       .def("get_radio_input_port",
@@ -76,7 +76,7 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_torque_output_port",
           &FootstepTargetControllerDiagram::get_torque_output_port,
           py_rvp::reference_internal)
-      .def("get_fsm_output_port",
+      .def("get_output_port_fsm",
           &FootstepTargetControllerDiagram::get_fsm_output_port,
           py_rvp::reference_internal)
       .def("get_alip_target_footstep_port",

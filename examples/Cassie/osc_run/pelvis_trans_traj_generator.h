@@ -19,16 +19,16 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
                                      const drake::multibody::Frame<double>&>>>&
           feet_contact_points);
 
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
-  const drake::systems::InputPort<double>& get_fsm_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_fsm() const {
     return this->get_input_port(fsm_port_);
   }
-  const drake::systems::InputPort<double>& get_clock_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_clock() const {
     return this->get_input_port(clock_port_);
   }
-  const drake::systems::InputPort<double>& get_contact_scheduler_input_port()
+  const drake::systems::InputPort<double>& get_input_port_contact_scheduler()
       const {
     return this->get_input_port(contact_scheduler_port_);
   }

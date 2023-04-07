@@ -138,7 +138,7 @@ int do_main(int argc, char* argv[]) {
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+//  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / 60.0;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
@@ -150,6 +150,8 @@ int do_main(int argc, char* argv[]) {
       meshcat, "object_traj");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+  trajectory_drawer_actor->SetNumSamples(20);
+  trajectory_drawer_object->SetNumSamples(20);
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));

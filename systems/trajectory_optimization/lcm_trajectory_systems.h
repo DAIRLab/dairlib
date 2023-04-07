@@ -58,6 +58,11 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
     rgba_ = rgba;
   }
 
+  void SetNumSamples(int N){
+    DRAKE_DEMAND(N > 1);
+    N_ = N;
+  }
+
  private:
   void OutputTrajectory(const drake::systems::Context<double>& context,
                         drake::trajectories::Trajectory<double>* traj) const;
@@ -72,6 +77,7 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
   mutable LcmTrajectory lcm_traj_;
   std::string default_trajectory_path_;
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
+  int N_ = 5;
 };
 
 }  // namespace systems

@@ -15,6 +15,8 @@ using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::Trajectory;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 LcmTrajectoryReceiver::LcmTrajectoryReceiver(std::string trajectory_name)
     : trajectory_name_(std::move(trajectory_name)) {
@@ -88,12 +90,33 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
             context, trajectory_input_port_);
     lcm_traj_ = LcmTrajectory(lcm_traj->saved_traj);
   }
-  Eigen::MatrixXd setpoints =
-      lcm_traj_.GetTrajectory(trajectory_name_).datapoints;
-  for (int i = 0; i < setpoints.cols(); ++i) {
-    setpoints(2, i) += 0.7645;
+  const auto trajectory_block = lcm_traj_.GetTrajectory(trajectory_name_);
+  MatrixXd line_points = MatrixXd::Zero(3, N_);
+  VectorXd breaks =
+      VectorXd::LinSpaced(N_, trajectory_block.time_vector[0],
+                          trajectory_block.time_vector.tail(1)[0]);
+//  std::cout << "rows: " << trajectory_block.datapoints.rows() << std::endl;
+//  std::cout << "cols: " << trajectory_block.datapoints.cols() << std::endl;
+  if (trajectory_block.datapoints.rows() == 3) {
+    auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+        trajectory_block.time_vector, trajectory_block.datapoints);
+    for (int i = 0; i < line_points.cols(); ++i) {
+      line_points.col(i) = trajectory.value(breaks(i));
+      line_points(2, i) += 0.7645;
+    }
+  } else {
+    auto trajectory = PiecewisePolynomial<double>::CubicHermite(
+        trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
+        trajectory_block.datapoints.bottomRows(3));
+    for (int i = 0; i < line_points.cols(); ++i) {
+      line_points.col(i) = trajectory.value(breaks(i));
+      line_points(2, i) += 0.7645;
+    }
   }
-  meshcat_->SetLine("/trajectories/" + trajectory_name_, setpoints, 100, rgba_);
+
+  DRAKE_DEMAND(line_points.rows() == 3);
+  meshcat_->SetLine("/trajectories/" + trajectory_name_, line_points, 100,
+                    rgba_);
   return drake::systems::EventStatus::Succeeded();
 }
 

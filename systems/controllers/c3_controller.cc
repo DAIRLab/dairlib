@@ -105,15 +105,13 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   x_des[1] = 0.02;
   //  x_des[2] = 0.35;
   /// center of plate
-  x_des[2] = 0.45 - 0.01 + radio_out->channel[2] * 0.2;
+  /// thickness of tray 0.5 * (0.02) + thickness of end effector 0.5 * (0.02)
+  x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
   x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
   x_des[6] = 0;
   /// radio command
-//  x_des[7] = 0.7;
-//  x_des[8] = 0.02;
-//  x_des[9] = 0.45;
   x_des[7] = 0.5;
   x_des[8] = -0.2;
   x_des[9] = 0.45;
@@ -237,7 +235,10 @@ void C3Controller::OutputObjectTrajectory(
     u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
   }
 
-  MatrixXd knots = x_sol.topRows(n_q_).bottomRows(3);
+//  MatrixXd knots = x_sol.topRows(n_q_).bottomRows(3);
+  MatrixXd knots = MatrixXd::Zero(6, N_);
+  knots.topRows(3) = x_sol.topRows(n_q_).bottomRows(3);
+  knots.bottomRows(3) = x_sol.bottomRows(n_v_).bottomRows(3);
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_traj";
   object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");

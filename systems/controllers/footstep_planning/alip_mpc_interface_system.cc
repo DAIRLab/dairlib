@@ -37,6 +37,7 @@ using drake::systems::Context;
 using drake::systems::ConstantVectorSource;
 using drake::systems::PassThrough;
 using drake::systems::Adder;
+using drake::systems::State;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
@@ -293,9 +294,25 @@ ComTrajInterfaceSystem::ComTrajInterfaceSystem(
       "alip_com_prediction", traj_inst,
       &ComTrajInterfaceSystem::CalcComTrajFromCurrent).get_index();
 
+  prev_slope_idx_ = DeclareDiscreteState(2);
   m_ = plant_.CalcTotalMass(*context);
+
+  DeclareForcedUnrestrictedUpdateEvent(
+      &ComTrajInterfaceSystem::UnrestrictedUpdate);
 }
 
+EventStatus ComTrajInterfaceSystem::UnrestrictedUpdate(
+    const Context<double> &context, State<double> *state) const {
+  auto fsm_state = static_cast<int>(
+      this->EvalVectorInput(context, fsm_port_)->value()(0));
+  bool is_ss = fsm_state <= 1;
+  if (!is_ss) {
+    return EventStatus::Succeeded();
+  }
+  state->get_mutable_discrete_state(prev_slope_idx_).get_mutable_value() =
+      EvalVectorInput(context, slope_params_port_)->get_value();
+  return EventStatus::Succeeded();
+}
 
 ExponentialPlusPiecewisePolynomial<double>
 ComTrajInterfaceSystem::ConstructAlipComTraj(
@@ -354,9 +371,6 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
       EvalVectorInput(context, prev_liftoff_time_port_)->get_value()(0);
   double timestamp = robot_output->get_timestamp();
 
-  // read in slope parameters
-  Vector2d kx_ky =
-      EvalVectorInput(context, slope_params_port_)->get_value();
 
   bool is_ss = fsm_state <= 1;
   double start_time_offset = is_ss ? start_time : start_time - 0.3;
@@ -381,7 +395,11 @@ void ComTrajInterfaceSystem::CalcComTrajFromCurrent(
   auto exp_pp_traj =
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
 
-  kx_ky = is_ss ? kx_ky : Vector2d::Zero();
+  // read in slope parameters
+  Vector2d kx_ky = is_ss ?
+      EvalVectorInput(context, slope_params_port_)->get_value() :
+      context.get_discrete_state(prev_slope_idx_).get_value();
+
   *exp_pp_traj = ConstructAlipComTraj(
       stance_foot_pos, x_alip, kx_ky, t, end_time_offset);
 }

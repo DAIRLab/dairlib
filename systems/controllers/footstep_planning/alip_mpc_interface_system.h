@@ -183,6 +183,9 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
 
  private:
 
+  drake::systems::EventStatus UnrestrictedUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::State<double>* state) const;
   void CalcAlipState(const Eigen::VectorXd& x, int mode_index,
                      const drake::EigenPtr<Eigen::Vector3d>& CoM,
                      const drake::EigenPtr<Eigen::Vector3d>& L,
@@ -215,6 +218,9 @@ class ComTrajInterfaceSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex next_touchdown_time_port_;
   drake::systems::InputPortIndex slope_params_port_;
   drake::systems::OutputPortIndex output_port_com_;
+
+  // States
+  drake::systems::DiscreteStateIndex prev_slope_idx_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;

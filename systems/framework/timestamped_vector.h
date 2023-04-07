@@ -5,26 +5,27 @@
 namespace dairlib {
 namespace systems {
 
-using drake::systems::BasicVector;
 using drake::VectorX;
+using drake::systems::BasicVector;
 
 /// TimestampedVector wraps a BasicVector along with a timestamp field
-/// The primary purpose of this is to pass-through a message (e.g. LCM) timestamp
-/// Uses a length N+1 BasicVector to store a vector of length N and a timestamp
-/// The timestamp is stored as the final element (Nth)
+/// The primary purpose of this is to pass-through a message (e.g. LCM)
+/// timestamp Uses a length N+1 BasicVector to store a vector of length N and a
+/// timestamp The timestamp is stored as the final element (Nth)
 template <typename T>
-class TimestampedVector : public drake::systems::BasicVector<T>  {
-public:
+class TimestampedVector : public drake::systems::BasicVector<T> {
+ public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(TimestampedVector)
 
   /// Constructs an empty TimestampedVector.
   TimestampedVector() = default;
 
-
   /// Initializes with the given @p size using the drake::dummy_value<T>, which
   /// is NaN when T = double.
   explicit TimestampedVector(int data_size)
-      : BasicVector<T>(data_size + 1), timestep_index_(data_size) {}
+      : BasicVector<T>(data_size + 1),
+        timestep_index_(data_size),
+        data_size_(data_size) {}
 
   /// Constructs a TimestampedVector with the specified @p data.
   explicit TimestampedVector(const VectorX<T>& data)
@@ -48,10 +49,10 @@ public:
     this->SetAtIndex(timestep_index_, timestamp);
   }
 
-  T get_timestamp() const {return this->GetAtIndex(timestep_index_);}
+  T get_timestamp() const { return this->GetAtIndex(timestep_index_); }
 
-  /// Copies the entire vector to a new TimestampedVector, with the same concrete
-  /// implementation type.
+  /// Copies the entire vector to a new TimestampedVector, with the same
+  /// concrete implementation type.
   ///
   /// Uses the Non-Virtual Interface idiom because smart pointers do not have
   /// type covariance.
@@ -77,27 +78,29 @@ public:
     return this->get_value().head(timestep_index_);
   }
 
-
-  //sets the data part of the vector (without timestamp)
+  // sets the data part of the vector (without timestamp)
   void SetDataVector(const Eigen::Ref<const VectorX<T>>& value) {
     this->get_mutable_data() = value;
   }
+
+  int data_size() const { return data_size_; }
 
  protected:
   /// Returns a new TimestampedVector containing a copy of the entire vector.
   /// Caller must take ownership, and may rely on the NVI wrapper to initialize
   /// the clone elementwise.
   ///
-  /// Subclasses of TimestampedVector must override DoClone to return their covariant
-  /// type.
+  /// Subclasses of TimestampedVector must override DoClone to return their
+  /// covariant type.
   ///
   virtual TimestampedVector<T>* DoClone() const {
     return new TimestampedVector<T>(timestep_index_);
   }
 
-  private:
-    const int timestep_index_;
-  };
+ private:
+  const int timestep_index_;
+  const int data_size_;
+};
 
 }  // namespace systems
 }  // namespace dairlib

@@ -3,8 +3,8 @@
 #include <gflags/gflags.h>
 
 #include "examples/franka/franka_c3_controller_params.h"
-#include "examples/franka/franka_kinematics.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
+#include "examples/franka/systems/franka_kinematics.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
@@ -29,9 +29,9 @@ using dairlib::solvers::LCSFactory;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
+using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -90,7 +90,8 @@ int DoMain(int argc, char* argv[]) {
   auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
-  auto [plant_plate, scene_graph] = AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
+  auto [plant_plate, scene_graph] =
+      AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_plate(&plant_plate);
   parser_plate.AddModelFromFile(controller_params.plate_model);
   parser_plate.AddModelFromFile(controller_params.tray_model);
@@ -102,8 +103,10 @@ int DoMain(int argc, char* argv[]) {
       drake::systems::System<double>::ToAutoDiffXd(plant_plate);
 
   auto plant_diagram = plant_builder.Build();
-  std::unique_ptr<drake::systems::Context<double>> diagram_context = plant_diagram->CreateDefaultContext();
-  auto& plate_context = plant_diagram->GetMutableSubsystemContext(plant_plate, diagram_context.get());
+  std::unique_ptr<drake::systems::Context<double>> diagram_context =
+      plant_diagram->CreateDefaultContext();
+  auto& plate_context = plant_diagram->GetMutableSubsystemContext(
+      plant_plate, diagram_context.get());
   auto plate_context_ad = plant_plate_ad->CreateDefaultContext();
 
   ///
@@ -136,13 +139,15 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(plant_tray);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_tray, tray_context.get(), "paddle", "tray");
-  auto actor_trajectory_sender =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          plant_franka, franka_context.get(), plant_tray, tray_context.get(),
+          "paddle", "tray", controller_params.include_end_effector_orientation);
+
+  auto actor_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel_actor, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto object_trajectory_sender =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+  auto object_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel_object, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
@@ -150,7 +155,8 @@ int DoMain(int argc, char* argv[]) {
           controller_params.radio_channel, &lcm));
 
   auto controller = builder.AddSystem<systems::C3Controller>(
-      plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(), contact_pairs, c3_options);
+      plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
+      contact_pairs, c3_options);
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -166,7 +172,6 @@ int DoMain(int argc, char* argv[]) {
                   actor_trajectory_sender->get_input_port());
   builder.Connect(controller->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
-
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

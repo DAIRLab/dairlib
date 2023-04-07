@@ -7,6 +7,7 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 
@@ -14,6 +15,7 @@
 
 namespace dairlib {
 
+using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
@@ -58,8 +60,12 @@ C3Controller::C3Controller(
                                                     BasicVector<double>(2 + 16))
                            .get_index();
   lcs_state_input_port_ =
-      this->DeclareVectorInputPort("x_lcs",
-                                   TimestampedVector<double>(n_q_ + n_v_))
+      this->DeclareVectorInputPort(
+              "x_lcs", FrankaKinematicsVector<double>(
+                           plant_.num_positions(ModelInstanceIndex(2)),
+                           plant_.num_positions(ModelInstanceIndex(3)),
+                           plant_.num_velocities(ModelInstanceIndex(2)),
+                           plant_.num_velocities(ModelInstanceIndex(3))))
           .get_index();
 
   radio_port_ =
@@ -87,16 +93,19 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-  const TimestampedVector<double>& x =
-      *this->template EvalVectorInput<TimestampedVector>(context,
-                                                         lcs_state_input_port_);
+  //  const TimestampedVector<double>& x =
+  //      *this->template EvalVectorInput<TimestampedVector>(context,
+  //                                                         lcs_state_input_port_);
+  const FrankaKinematicsVector<double>& lcs_x =
+      *this->template EvalVectorInput<FrankaKinematicsVector>(
+          context, lcs_state_input_port_);
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
-      x.get_timestamp();
+      lcs_x.get_timestamp();
 
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
-  q_v_u << x.get_data(), VectorXd::Zero(n_u_);
+  q_v_u << lcs_x.get_data(), VectorXd::Zero(n_u_);
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
   VectorXd x_des = VectorXd::Zero(n_q_ + n_v_);
@@ -107,17 +116,17 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   /// center of plate
   /// thickness of tray 0.5 * (0.02) + thickness of end effector 0.5 * (0.02)
   x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-//  x_des[3] = 1;
-//  x_des[4] = 0;
-//  x_des[5] = 0;
-//  x_des[6] = 0;
+  //  x_des[3] = 1;
+  //  x_des[4] = 0;
+  //  x_des[5] = 0;
+  //  x_des[6] = 0;
   x_des[3] = 0.707;
   x_des[4] = 0;
   x_des[5] = 0;
   x_des[6] = 0.707;
   /// radio command
   x_des[7] = 0.5;
-//  x_des[8] = -0.2;
+  //  x_des[8] = -0.2;
   x_des[8] = 0.2;
   x_des[9] = 0.45;
   x_des(7) += radio_out->channel[0] * 0.2;
@@ -126,12 +135,14 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
 
-//  std::cout << "plate_error: "
-//            << (x_des.segment(7, 3) - x.get_data().segment(7, 3)).transpose()
-//            << std::endl;
-//  std::cout << "end_effector_error: "
-//            << (x_des.segment(0, 3) - x.get_data().segment(0, 3)).transpose()
-//            << std::endl;
+  //  std::cout << "plate_error: "
+  //            << (x_des.segment(7, 3) - x.get_data().segment(7,
+  //            3)).transpose()
+  //            << std::endl;
+  //  std::cout << "end_effector_error: "
+  //            << (x_des.segment(0, 3) - x.get_data().segment(0,
+  //            3)).transpose()
+  //            << std::endl;
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -155,10 +166,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   c3_->SetOsqpSolverOptions(solver_options_);
 
   VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-  delta_init.head(n_x_) = x.get_data();
+  delta_init.head(n_x_) = lcs_x.get_data();
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-  auto z_sol = c3_->Solve(x.get_data(), delta, w);
+  auto z_sol = c3_->Solve(lcs_x.get_data(), delta, w);
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -214,7 +225,7 @@ void C3Controller::OutputObjectTrajectory(
     u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
   }
 
-//  MatrixXd knots = x_sol.topRows(n_q_).bottomRows(3);
+  //  MatrixXd knots = x_sol.topRows(n_q_).bottomRows(3);
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = x_sol.topRows(n_q_).bottomRows(3);
   knots.bottomRows(3) = x_sol.bottomRows(n_v_).bottomRows(3);

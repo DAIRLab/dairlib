@@ -4,6 +4,9 @@
   <link name="base_link"/>
   <link name="plate_x"/>
   <link name="plate_y"/>
+  <link name="plate_rx"/>
+  <link name="plate_ry"/>
+  <link name="plate_rz"/>
   <link name="plate">
     <inertial>
       <mass value="2"/>
@@ -88,6 +91,21 @@
   </joint>
   <joint name="plate_z" type="prismatic">
     <parent link="plate_y"/>
+    <child link="plate_rx"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <joint name="plate_rx" type="revolute">
+    <parent link="plate_rx"/>
+    <child link="plate_ry"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="plate_ry" type="revolute">
+    <parent link="plate_ry"/>
+    <child link="plate_rz"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <joint name="plate_rz" type="revolute">
+    <parent link="plate_rz"/>
     <child link="plate"/>
     <axis xyz="0 0 1"/>
   </joint>
@@ -103,6 +121,21 @@
   </transmission>
   <transmission name="plate_z" type="SimpleTransmission">
     <actuator name="plate_virtual_actuator_z"/>
+    <joint name="plate_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_rx" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_rx"/>
+    <joint name="plate_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_ry" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_ry"/>
+    <joint name="plate_z"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="plate_rz" type="SimpleTransmission">
+    <actuator name="plate_virtual_actuator_rz"/>
     <joint name="plate_z"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>

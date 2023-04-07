@@ -37,7 +37,7 @@ cc_binary(
     ],
     deps = [
         ":franka_controller_params",
-        "//examples/franka/systems:end_effector_trajectory",
+        "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -59,8 +59,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
-        ":franka_kinematics",
-        "//examples/franka/systems:end_effector_trajectory",
+        "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -109,18 +108,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "franka_kinematics",
-    srcs = ["franka_kinematics.cc"],
-    hdrs = ["franka_kinematics.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//common",
-        "//multibody:utils",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
 
 
 cc_library(

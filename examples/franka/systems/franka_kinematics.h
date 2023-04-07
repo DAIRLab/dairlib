@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <drake/multibody/plant/multibody_plant.h>
+#include "examples/franka/systems/franka_kinematics_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"
@@ -19,7 +20,8 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
                             const drake::multibody::MultibodyPlant<double>& object_plant,
                             drake::systems::Context<double>* object_context,
                             const std::string& end_effector_name,
-                            const std::string& object_name);
+                            const std::string& object_name,
+                            bool include_end_effector_orientation);
 
   const drake::systems::InputPort<double>& get_input_port_object_state() const {
     return this->get_input_port(object_state_port_);
@@ -36,11 +38,16 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
  private:
   void ComputeLCSState(
       const drake::systems::Context<double>& context,
-      TimestampedVector<double>* output_traj) const;
+      FrankaKinematicsVector<double>* output_traj) const;
 
   drake::systems::InputPortIndex franka_state_port_;
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex lcs_state_port_;
+
+  int num_end_effector_positions_;
+  int num_object_positions_;
+  int num_end_effector_velocities_;
+  int num_object_velocities_;
 
   const drake::multibody::MultibodyPlant<double>& franka_plant_;
   drake::systems::Context<double>* franka_context_;
@@ -49,6 +56,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   const drake::multibody::Frame<double>& world_;
   std::string end_effector_name_;
   std::string object_name_;
+  const bool include_end_effector_orientation_;
 };
 
 }  // namespace systems

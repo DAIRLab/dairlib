@@ -17,6 +17,7 @@ struct FrankaC3ControllerParams {
   std::string franka_model;
   std::string plate_model;
   std::string tray_model;
+  bool include_end_effector_orientation;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -28,5 +29,6 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(plate_model));
     a->Visit(DRAKE_NVP(tray_model));
+    a->Visit(DRAKE_NVP(include_end_effector_orientation));
   }
 };

@@ -61,6 +61,7 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
+        "//examples/franka/systems:franka_systems",
         "//lcmtypes:lcmt_robot",
         "//solvers:c3",
         "//common:find_resource",

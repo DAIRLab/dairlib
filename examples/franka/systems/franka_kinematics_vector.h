@@ -1,0 +1,175 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "systems/framework/timestamped_vector.h"
+
+namespace dairlib {
+namespace systems {
+
+using drake::VectorX;
+using std::string;
+using std::vector;
+
+/// FrankaKinematicsVector stores the robot output as a TimestampedVector
+///    * positions
+///    * velocities
+template <typename T>
+class FrankaKinematicsVector : public TimestampedVector<T> {
+ public:
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(FrankaKinematicsVector)
+
+  FrankaKinematicsVector() = default;
+
+  /// Initializes with the given @p size using the drake::dummy_value<T>, which
+  /// is NaN when T = double.
+  explicit FrankaKinematicsVector(int num_end_effector_positions,
+                                  int num_object_positions,
+                                  int num_end_effector_velocities,
+                                  int num_object_velocities)
+      : TimestampedVector<T>(num_end_effector_positions + num_object_positions +
+                             num_end_effector_velocities +
+                             num_object_velocities),
+        num_end_effector_positions_(num_end_effector_positions),
+        num_object_positions_(num_object_positions),
+        num_end_effector_velocities_(num_end_effector_velocities),
+        num_object_velocities_(num_object_velocities),
+        end_effector_positions_start_(0),
+        object_positions_start_(num_end_effector_positions_),
+        end_effector_velocities_start_(num_end_effector_positions_ +
+                                       num_object_positions_),
+        object_velocities_start_(num_end_effector_positions_ +
+                                 num_object_positions_ +
+                                 num_end_effector_velocities_),
+        num_positions_(num_end_effector_positions_ + num_object_positions_),
+        num_velocities_(num_end_effector_velocities_ + num_object_velocities_) {
+  }
+
+  /// Constructs a OutputVector with the specified positions and velocities.
+  explicit FrankaKinematicsVector(const VectorX<T>& end_effector_positions,
+                                  const VectorX<T>& object_positions,
+                                  const VectorX<T>& end_effector_velocities,
+                                  const VectorX<T>& object_velocities)
+      : FrankaKinematicsVector(
+            end_effector_positions.size(), object_positions.size(),
+            end_effector_velocities.size(), object_velocities.size()) {
+    this->SetEndEffectorPositions(end_effector_positions);
+    this->SetObjectPositions(object_positions);
+    this->SetEndEffectorVelocities(end_effector_velocities);
+    this->SetObjectVelocities(object_velocities);
+  }
+
+  void SetEndEffectorPositions(VectorX<T> positions) {
+    DRAKE_DEMAND(positions.size() == num_end_effector_positions_);
+    this->get_mutable_data().segment(end_effector_positions_start_,
+                                     num_end_effector_positions_) = positions;
+  }
+
+  void SetObjectPositions(VectorX<T> positions) {
+    DRAKE_DEMAND(positions.size() == num_object_positions_);
+    this->get_mutable_data().segment(object_positions_start_,
+                                     num_object_positions_) = positions;
+  }
+
+  void SetEndEffectorVelocities(VectorX<T> velocities) {
+    DRAKE_DEMAND(velocities.size() == num_end_effector_velocities_);
+    this->get_mutable_data().segment(end_effector_velocities_start_,
+                                     num_end_effector_velocities_) = velocities;
+  }
+
+  void SetObjectVelocities(VectorX<T> velocities) {
+    DRAKE_DEMAND(velocities.size() == num_object_velocities_);
+    this->get_mutable_data().segment(object_velocities_start_,
+                                     num_object_velocities_) = velocities;
+  }
+
+  void SetState(VectorX<T> state) {
+    DRAKE_DEMAND(state.size() == this->data_size());
+    this->get_mutable_data().segment(end_effector_positions_start_,
+                                     this->data_size()) = state;
+  }
+
+  /// Returns a const state vector
+  const VectorX<T> GetState() const {
+    return this->get_data().segment(end_effector_positions_start_,
+                                    this->data_size());
+  }
+
+  /// Returns a const positions vector for the end effector
+  const VectorX<T> GetEndEffectorPositions() const {
+    return this->get_data().segment(end_effector_positions_start_,
+                                    num_end_effector_positions_);
+  }
+
+  /// Returns a const positions vector for the object
+  const VectorX<T> GetObjectPositions() const {
+    return this->get_data().segment(object_positions_start_,
+                                    num_object_positions_);
+  }
+
+  /// Returns a const positions vector for the end effector
+  const VectorX<T> GetEndEffectorVelocities() const {
+    return this->get_data().segment(end_effector_velocities_start_,
+                                    num_end_effector_velocities_);
+  }
+
+  /// Returns a const positions vector for the object
+  const VectorX<T> GetObjectVelocities() const {
+    return this->get_data().segment(object_velocities_start_,
+                                    num_object_velocities_);
+  }
+
+  /// Returns a const velocities vector
+  const VectorX<T> GetVelocities() const {
+    return this->get_data().segment(
+        end_effector_velocities_start_,
+        num_end_effector_velocities_ + num_object_velocities_);
+  }
+
+  /// Returns a const positions vector
+  const VectorX<T> GetPositions() const {
+    return this->get_data().segment(
+        end_effector_positions_start_,
+        num_end_effector_positions_ + num_object_positions_);
+  }
+
+  /// Returns a mutable positions vector
+  Eigen::Map<VectorX<T>> GetMutablePositions() {
+    auto data = this->get_mutable_data().segment(
+        end_effector_positions_start_,
+        num_end_effector_positions_ + num_object_positions_);
+    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+  }
+
+  /// Returns a mutable velocities vector
+  Eigen::Map<VectorX<T>> GetMutableVelocities() {
+    auto data = this->get_mutable_data().segment(
+        end_effector_velocities_start_,
+        num_end_effector_velocities_ + num_object_velocities_);
+    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+  }
+
+  /// Returns a mutable state vector
+  Eigen::Map<VectorX<T>> GetMutableState() {
+    auto data = this->get_mutable_data().segment(end_effector_positions_start_,
+                                                 this->data_size());
+    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+  }
+
+ private:
+  const int num_end_effector_positions_;
+  const int num_object_positions_;
+  const int num_end_effector_velocities_;
+  const int num_object_velocities_;
+  const int end_effector_positions_start_;
+  const int object_positions_start_;
+  const int end_effector_velocities_start_;
+  const int object_velocities_start_;
+
+  const int num_positions_;
+  const int num_velocities_;
+};
+
+}  // namespace systems
+}  // namespace dairlib

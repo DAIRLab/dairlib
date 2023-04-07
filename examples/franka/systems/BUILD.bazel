@@ -1,6 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "franka_systems",
+    srcs = [],
+    deps = [":end_effector_trajectory",
+            ":franka_kinematics"],
+)
+
+cc_library(
     name = "end_effector_trajectory",
     srcs = ["end_effector_trajectory.cc"],
     hdrs = ["end_effector_trajectory.h"],
@@ -10,5 +17,31 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics",
+    srcs = ["franka_kinematics.cc"],
+    hdrs = ["franka_kinematics.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        ":franka_kinematics_vector",
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics_vector",
+    srcs = ["franka_kinematics_vector.cc"],
+    hdrs = ["franka_kinematics_vector.h"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
     ],
 )

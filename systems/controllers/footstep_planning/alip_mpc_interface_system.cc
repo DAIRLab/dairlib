@@ -99,7 +99,7 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
      "swing_foot_xyz", traj_instance, &SwingFootInterfaceSystem::CalcSwingTraj)
      .get_index();
 
-  DeclareForcedDiscreteUpdateEvent(
+  DeclarePerStepDiscreteUpdateEvent(
       &SwingFootInterfaceSystem::DiscreteVariableUpdate);
 
   // The swing foot position in the beginning of the swing phase
@@ -144,16 +144,13 @@ EventStatus SwingFootInterfaceSystem::DiscreteVariableUpdate(
         liftoff_swing_foot_pos_idx_).get_mutable_value();
 
     auto swing_foot = swing_foot_map_.at(fsm_state);
-    auto stance_foot = stance_foot_map_.at(fsm_state);
-    Vector3d stance_pos_at_liftoff;
     plant_.CalcPointsPositions(*plant_context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
-    plant_.CalcPointsPositions(*plant_context_, stance_foot.second, stance_foot.first,
-                               world_, &stance_pos_at_liftoff);
     swing_foot_pos_at_liftoff =
         multibody::ReExpressWorldVector3InBodyYawFrame(
             plant_, *plant_context_, "pelvis",
-            swing_foot_pos_at_liftoff - stance_pos_at_liftoff);
+            swing_foot_pos_at_liftoff -
+                plant_.CalcCenterOfMassPositionInWorld(*plant_context_));
   }
   return EventStatus::Succeeded();
 }
@@ -251,18 +248,14 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
   stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
       plant_, *plant_context_, "pelvis", stance_foot_pos);
 
-  Vector3d com_pos = com_traj.value(robot_output->get_timestamp());
-
-  Vector3d final_pos_in_com_frame =
-      stance_foot_pos + footstep_target_in_stance_frame - com_pos;
-
-  Vector3d init_pos_in_com_frame =
-      stance_foot_pos + swing_foot_pos_at_liftoff - com_pos;
-  // Assign traj
-  auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
-  *pp_traj = CreateSplineForSwingFoot(
+  Vector3d com_pos_at_td = com_traj.value(touchdown_time);
+  Vector3d stance_pos_in_com_frame_at_td =
+      stance_foot_pos + footstep_target_in_stance_frame - com_pos_at_td;
+    // Assign traj
+    auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
+    *pp_traj = CreateSplineForSwingFoot(
         start_time_of_this_interval, touchdown_time,
-        init_pos_in_com_frame, final_pos_in_com_frame);
+        swing_foot_pos_at_liftoff, stance_pos_in_com_frame_at_td);
 }
 
 ComTrajInterfaceSystem::ComTrajInterfaceSystem(

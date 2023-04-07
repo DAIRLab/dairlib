@@ -107,13 +107,18 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   /// center of plate
   /// thickness of tray 0.5 * (0.02) + thickness of end effector 0.5 * (0.02)
   x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-  x_des[3] = 1;
+//  x_des[3] = 1;
+//  x_des[4] = 0;
+//  x_des[5] = 0;
+//  x_des[6] = 0;
+  x_des[3] = 0.707;
   x_des[4] = 0;
   x_des[5] = 0;
-  x_des[6] = 0;
+  x_des[6] = 0.707;
   /// radio command
   x_des[7] = 0.5;
-  x_des[8] = -0.2;
+//  x_des[8] = -0.2;
+  x_des[8] = 0.2;
   x_des[9] = 0.45;
   x_des(7) += radio_out->channel[0] * 0.2;
   x_des(8) += radio_out->channel[1] * 0.2;
@@ -174,32 +179,6 @@ void C3Controller::OutputActorTrajectory(
     lambda_sol.col(i) = z_sol[i].segment(n_x_, n_lambda_);
     u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
   }
-
-//  auto second_lcs_pair = LCSFactory::LinearizePlantToLCS(
-//      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-//      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.solve_dt,
-//      c3_options_.N);
-//  auto second_lcs = second_lcs_pair.first;
-//  auto second_scale = second_lcs_pair.second;
-//  drake::solvers::MobyLCPSolver<double> LCPSolver;
-//  VectorXd force;
-//  auto flag = LCPSolver.SolveLcpLemkeRegularized(
-//      second_lcs.F_[0],
-//      second_lcs.E_[0] * second_scale * x_sol.col(0) +
-//          second_lcs.c_[0] * second_scale +
-//          second_lcs.H_[0] * second_scale * u_sol.col(0),
-//      &force);
-//
-//  (void)flag;  // suppress compiler unused variable warning
-//  VectorXd state_next =
-//      second_lcs.A_[0] * x_sol.col(0) + second_lcs.B_[0] * u_sol.col(0) +
-//      second_lcs.D_[0] * force / second_scale + second_lcs.d_[0];
-
-//  x_sol.col(0) = state_next;
-//  x_sol.col(1) = state_next;
-  //  x_sol.col(2) = state_next;
-  //  x_sol.col(0) = state_next;
-  //  x_sol.col(0) = state_next;
 
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = x_sol.topRows(3);

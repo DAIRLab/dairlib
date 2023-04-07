@@ -6,8 +6,8 @@ osc_debug_channel: OSC_DEBUG_FRANKA
 c3_channel: C3_TRAJECTORY_ACTOR
 
 w_input: 0.00
-w_input_reg: 0.0001
-w_accel: 0.1
+w_input_reg: 1
+w_accel: 1
 w_soft_constraint: 10000
 w_lambda: 0.1
 impact_threshold: 0.000

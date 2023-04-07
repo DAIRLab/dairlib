@@ -2,7 +2,7 @@ state_channel: FRANKA_OUTPUT
 controller_channel: FRANKA_INPUT
 tray_state_channel: TRAY_OUTPUT
 franka_model: examples/franka/urdf/franka_no_collision.urdf
-publish_rate: 1000
+publish_rate: 4000
 publish_efforts: true
 actuator_delay: 0.005
 visualize: true

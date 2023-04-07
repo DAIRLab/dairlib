@@ -513,12 +513,12 @@
             <origin rpy="0 0 0" xyz="0 0 0.01"/>
             <mass value="0.5"/>
             <inertia
-                    ixx="0.0067"
-                    ixy="0"
-                    ixz="0"
-                    iyy="0.0067"
-                    iyz="0"
-                    izz="0.013"/>
+                ixx="0.01043"
+                ixy="0"
+                ixz="0"
+                iyy="0.01043"
+                iyz="0"
+                izz="0.020833"/>
         </inertial>
         <collision name="collision">
             <origin rpy="0 0 0" xyz="0 0 0.01"/>

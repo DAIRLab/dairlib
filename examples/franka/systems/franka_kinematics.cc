@@ -85,8 +85,8 @@ void FrankaKinematics::ComputeLCSState(
 
   auto end_effector_pose = franka_plant_.EvalBodyPoseInWorld(
       *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
-//  auto object_pose = object_plant_.EvalBodyPoseInWorld(
-//      *object_context_, object_plant_.GetBodyByName(object_name_));
+  auto object_pose = object_plant_.EvalBodyPoseInWorld(
+      *object_context_, object_plant_.GetBodyByName(object_name_));
   auto end_effector_spatial_velocity =
       franka_plant_.EvalBodySpatialVelocityInWorld(
           *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
@@ -110,7 +110,8 @@ void FrankaKinematics::ComputeLCSState(
   }
 
   VectorXd object_position = q_object;
-  object_position(2) -= 0.7645;
+  object_position << q_object.head(4), object_pose.translation();
+  object_position.tail(1)(0) -= 0.7645;
 
   lcs_state->SetEndEffectorPositions(end_effector_positions);
   lcs_state->SetObjectPositions(object_position);

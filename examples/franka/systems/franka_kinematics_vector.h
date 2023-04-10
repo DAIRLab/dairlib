@@ -157,6 +157,13 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
+ protected:
+  virtual FrankaKinematicsVector<T>* DoClone() const {
+    return new FrankaKinematicsVector<T>(
+        num_end_effector_positions_, num_object_positions_,
+        num_end_effector_velocities_, num_object_velocities_);
+  }
+
  private:
   const int num_end_effector_positions_;
   const int num_object_positions_;

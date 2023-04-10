@@ -84,7 +84,6 @@ C3Controller::C3Controller(
                                       &C3Controller::OutputObjectTrajectory)
           .get_index();
   plan_start_time_index_ = DeclareDiscreteState(1);
-  // TODO:yangwill check to make sure C3 isn't computing twice here
   DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
 }
 
@@ -96,16 +95,16 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   //  const TimestampedVector<double>& x =
   //      *this->template EvalVectorInput<TimestampedVector>(context,
   //                                                         lcs_state_input_port_);
-  const FrankaKinematicsVector<double>& lcs_x =
-      *this->template EvalVectorInput<FrankaKinematicsVector>(
+  const FrankaKinematicsVector<double>* lcs_x =
+      (FrankaKinematicsVector<double>*)this->EvalVectorInput(
           context, lcs_state_input_port_);
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
-      lcs_x.get_timestamp();
-
+      lcs_x->get_timestamp();
+  std::cout << "lcs_x: " << lcs_x->get_data().transpose() << std::endl;
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
-  q_v_u << lcs_x.get_data(), VectorXd::Zero(n_u_);
+  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
   VectorXd x_des = VectorXd::Zero(n_q_ + n_v_);
@@ -116,33 +115,24 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   /// center of plate
   /// thickness of tray 0.5 * (0.02) + thickness of end effector 0.5 * (0.02)
   x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-  //  x_des[3] = 1;
-  //  x_des[4] = 0;
-  //  x_des[5] = 0;
-  //  x_des[6] = 0;
-  x_des[3] = 0.707;
+  x_des[3] = 1;
   x_des[4] = 0;
   x_des[5] = 0;
-  x_des[6] = 0.707;
+  x_des[6] = 0;
+  //  x_des[3] = 0.707;
+  //  x_des[4] = 0;
+  //  x_des[5] = 0;
+  //  x_des[6] = 0.707;
   /// radio command
   x_des[7] = 0.5;
-  //  x_des[8] = -0.2;
-  x_des[8] = 0.2;
+  x_des[8] = -0.2;
+  //  x_des[8] = 0.2;
   x_des[9] = 0.45;
   x_des(7) += radio_out->channel[0] * 0.2;
   x_des(8) += radio_out->channel[1] * 0.2;
   x_des(9) += radio_out->channel[2] * 0.2;
 
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
-
-  //  std::cout << "plate_error: "
-  //            << (x_des.segment(7, 3) - x.get_data().segment(7,
-  //            3)).transpose()
-  //            << std::endl;
-  //  std::cout << "end_effector_error: "
-  //            << (x_des.segment(0, 3) - x.get_data().segment(0,
-  //            3)).transpose()
-  //            << std::endl;
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -166,10 +156,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   c3_->SetOsqpSolverOptions(solver_options_);
 
   VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-  delta_init.head(n_x_) = lcs_x.get_data();
+  delta_init.head(n_x_) = lcs_x->get_data();
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-  auto z_sol = c3_->Solve(lcs_x.get_data(), delta, w);
+  auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   return drake::systems::EventStatus::Succeeded();
 }
 

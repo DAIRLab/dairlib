@@ -104,33 +104,36 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+  q_v_u << lcs_x->GetState(), VectorXd::Zero(n_u_);
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
   VectorXd x_des = VectorXd::Zero(n_q_ + n_v_);
   /// default position
-  x_des[0] = 0.7;
+  x_des[0] = 0.5;
   x_des[1] = 0.02;
   //  x_des[2] = 0.35;
   /// center of plate
   /// thickness of tray 0.5 * (0.02) + thickness of end effector 0.5 * (0.02)
   x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-  x_des[3] = 1;
+  x_des[3] = 0;
   x_des[4] = 0;
   x_des[5] = 0;
-  x_des[6] = 0;
+  x_des[6] = 1;
+  x_des[7] = 0;
+  x_des[8] = 0;
+  x_des[9] = 0;
   //  x_des[3] = 0.707;
   //  x_des[4] = 0;
   //  x_des[5] = 0;
   //  x_des[6] = 0.707;
   /// radio command
-  x_des[7] = 0.5;
-  x_des[8] = -0.2;
+  x_des[10] = 0.5;
+  x_des[11] = -0.2;
   //  x_des[8] = 0.2;
-  x_des[9] = 0.45;
-  x_des(7) += radio_out->channel[0] * 0.2;
-  x_des(8) += radio_out->channel[1] * 0.2;
-  x_des(9) += radio_out->channel[2] * 0.2;
+  x_des[12] = 0.45;
+  x_des(10) += radio_out->channel[0] * 0.2;
+  x_des(11) += radio_out->channel[1] * 0.2;
+  x_des(12) += radio_out->channel[2] * 0.2;
 
   std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
 

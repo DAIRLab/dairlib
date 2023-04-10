@@ -1,0 +1,16 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "test",
+    srcs = ["test.cc"],
+    deps = [":polypartition"],
+)
+
+cc_library(
+    name = "polypartition",
+    srcs = ["polypartition.cc"],
+    hdrs = ["polypartition.h"],
+    deps = []
+)

@@ -1,6 +1,7 @@
 #include "convex_foothold_receiver.h"
 #include "drake/geometry/optimization/vpolytope.h"
 #include "tf2_eigen/tf2_eigen.h"
+#include "geometry/polypartition/polypartition.h"
 #include <iostream>
 
 using Eigen::MatrixXd;
@@ -50,6 +51,27 @@ ConvexFoothold MakeFootholdFromPlanarRegion(
   }
   return converted_foothold;
 }
+
+void CopyPolygon(const convex_plane_decomposition_msgs::Polygon2d& poly_in,
+                 polypartition::TPPLPoly* poly_out,
+                 bool is_hole) {
+  poly_out->Init(poly_in.points.size());
+  for (int i = 0; i < poly_in.points.size(); i++) {
+    (*poly_out)[i].x = poly_in.points.at(i).x;
+    (*poly_out)[i].y = poly_in.points.at(i).y;
+  }
+}
+
+
+std::vector<MatrixXd> DecomposePolygon(const MatrixXd& verts,
+                                       std::vector<const MatrixXd&>& holes) {
+  polypartition::TPPLPoly poly;
+  poly.Init(verts.cols());
+  for(int i = 0; i < verts.cols(); i++) {
+
+  }
+}
+
 }
 
 ConvexFootholdReceiver::ConvexFootholdReceiver() {

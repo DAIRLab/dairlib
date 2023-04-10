@@ -9,6 +9,7 @@ cc_library(
     tags = ["ros"],
     deps = [
         ":convex_foothold_set",
+        "//geometry/polypartition",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@ros-local",

@@ -26,6 +26,9 @@ struct C3Options {
   std::vector<double> q_vector;
   std::vector<double> r_vector;
 
+  std::vector<double> q_des_vector;
+  std::vector<double> v_des_vector;
+
   double mu;
   double mu_plate;
   double dt;
@@ -36,6 +39,8 @@ struct C3Options {
   MatrixXd R;
   MatrixXd G;
   MatrixXd U;
+  VectorXd q_des;
+  VectorXd v_des;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -61,11 +66,17 @@ struct C3Options {
     a->Visit(DRAKE_NVP(u_size));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
+    a->Visit(DRAKE_NVP(q_des_vector));
+    a->Visit(DRAKE_NVP(v_des_vector));
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
+    q_des = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->q_des_vector.data(), this->q_des_vector.size());
+    v_des = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->v_des_vector.data(), this->v_des_vector.size());
 
     Q = w_Q * q.asDiagonal();
     R = w_R * r.asDiagonal();
@@ -73,5 +84,6 @@ struct C3Options {
     U = w_U * MatrixXd::Identity(u_size, u_size);
 
     U.block(0, 0, 19, 19) = 100 * MatrixXd::Identity(19, 19);
+
   }
 };

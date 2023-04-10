@@ -33,7 +33,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
           contact_geoms,
       C3Options c3_options);
 
-  const drake::systems::InputPort<double>& get_input_port_trajectory() const {
+  const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
   }
 

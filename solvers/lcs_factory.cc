@@ -124,6 +124,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   MatrixXd M_double = MatrixXd::Zero(n_v, n_v);
   plant.CalcMassMatrix(context, &M_double);
 
+//  std::cout << "AB_v_u: " << AB_v_u << std::endl;
+
   A.block(0, 0, n_q, n_q) =
       MatrixXd::Identity(n_q, n_q) + dt * dt * Nq * AB_v_q;
   A.block(0, n_q, n_q, n_v) = dt * Nq + dt * dt * Nq * AB_v_v;

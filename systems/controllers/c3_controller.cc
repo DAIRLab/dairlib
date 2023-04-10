@@ -56,9 +56,7 @@ C3Controller::C3Controller(
       2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
   n_u_ = plant_.num_actuators();
   Q_.back() = 100 * c3_options_.Q;
-  target_input_port_ = this->DeclareVectorInputPort("desired_position",
-                                                    BasicVector<double>(2 + 16))
-                           .get_index();
+
   lcs_state_input_port_ =
       this->DeclareVectorInputPort(
               "x_lcs", FrankaKinematicsVector<double>(
@@ -67,7 +65,12 @@ C3Controller::C3Controller(
                            plant_.num_velocities(ModelInstanceIndex(2)),
                            plant_.num_velocities(ModelInstanceIndex(3))))
           .get_index();
-
+  int x_des_size = plant_.num_positions(ModelInstanceIndex(2)) +
+                   plant_.num_positions(ModelInstanceIndex(3)) +
+                   plant_.num_velocities(ModelInstanceIndex(2)) +
+                   plant_.num_velocities(ModelInstanceIndex(3));
+  target_input_port_ =
+      this->DeclareVectorInputPort("desired_position", x_des_size).get_index();
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
@@ -92,50 +95,28 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-  //  const TimestampedVector<double>& x =
-  //      *this->template EvalVectorInput<TimestampedVector>(context,
-  //                                                         lcs_state_input_port_);
+  const BasicVector<double>& x_des =
+      *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const FrankaKinematicsVector<double>* lcs_x =
       (FrankaKinematicsVector<double>*)this->EvalVectorInput(
           context, lcs_state_input_port_);
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
-  std::cout << "lcs_x: " << lcs_x->get_data().transpose() << std::endl;
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
   q_v_u << lcs_x->GetState(), VectorXd::Zero(n_u_);
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
-  VectorXd x_des = VectorXd::Zero(n_q_ + n_v_);
-  /// default position
-  x_des[0] = 0.5;
-  x_des[1] = 0.02;
-  //  x_des[2] = 0.35;
-  /// center of plate
-  /// thickness of tray 0.5 * (0.02) + thickness of end effector 0.5 * (0.02)
-  x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-  x_des[3] = 0;
-  x_des[4] = 0;
-  x_des[5] = 0;
-  x_des[6] = 1;
-  x_des[7] = 0;
-  x_des[8] = 0;
-  x_des[9] = 0;
-  //  x_des[3] = 0.707;
-  //  x_des[4] = 0;
-  //  x_des[5] = 0;
-  //  x_des[6] = 0.707;
-  /// radio command
-  x_des[10] = 0.5;
-  x_des[11] = -0.2;
-  //  x_des[8] = 0.2;
-  x_des[12] = 0.45;
-  x_des(10) += radio_out->channel[0] * 0.2;
-  x_des(11) += radio_out->channel[1] * 0.2;
-  x_des(12) += radio_out->channel[2] * 0.2;
+  VectorXd x_des_adjusted = x_des.value();
+  VectorXd current = x_des_adjusted.head(n_q_).tail(3);
+  current(0) += radio_out->channel[0] * 0.2;
+  current(1) += radio_out->channel[1] * 0.2;
+  current(2) += radio_out->channel[2] * 0.2;
+  x_des_adjusted.head(n_q_).tail(3) = current;
+//  std::cout << x_des_adjusted.transpose() << std::endl;
 
-  std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des);
+  std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des_adjusted);
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();

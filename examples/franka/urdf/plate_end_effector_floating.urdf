@@ -9,19 +9,19 @@
   <link name="plate_rz"/>
   <link name="plate">
     <inertial>
-      <mass value="2"/>
+      <mass value="0.5"/>
       <inertia
-          ixx="0.0067"
+          ixx="0.01043"
           ixy="0"
           ixz="0"
-          iyy="0.0067"
+          iyy="0.01043"
           iyz="0"
-          izz="0.013"/>
+          izz="0.020833"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.01"/>
       <geometry>
-        <box size="1.0 1.0 0.02"/>
+        <box size="0.5 0.5 0.02"/>
       </geometry>
     </visual>
     <visual>
@@ -64,19 +64,19 @@
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="5.0 0.0 0.02"/>
+      <origin rpy="0 0 0" xyz="1.0 0.0 0.02"/>
     </collision>
     <collision name="top_left">
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-5.0 5.0 0.02"/>
+      <origin rpy="0 0 0" xyz="-1.0 1.0 0.02"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-5.0 -5.0 0.02"/>
+      <origin rpy="0 0 0" xyz="-1.0 -1.0 0.02"/>
     </collision>
   </link>
   <joint name="plate_x" type="prismatic">
@@ -126,17 +126,17 @@
   </transmission>
   <transmission name="plate_rx" type="SimpleTransmission">
     <actuator name="plate_virtual_actuator_rx"/>
-    <joint name="plate_z"/>
+    <joint name="plate_rx"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   <transmission name="plate_ry" type="SimpleTransmission">
     <actuator name="plate_virtual_actuator_ry"/>
-    <joint name="plate_z"/>
+    <joint name="plate_ry"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   <transmission name="plate_rz" type="SimpleTransmission">
     <actuator name="plate_virtual_actuator_rz"/>
-    <joint name="plate_z"/>
+    <joint name="plate_rz"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
 </robot>

@@ -66,8 +66,8 @@ class C3 {
   /// allow users to add constraints (adds for all timesteps)
   /// @param A, Lowerbound, Upperbound Lowerbound <= A^T x <= Upperbound
   /// @param constraint inputconstraint, stateconstraint, forceconstraint
-  void AddLinearConstraint(Eigen::RowVectorXd& A, double& Lowerbound,
-                           double& Upperbound, int& constraint);
+  void AddLinearConstraint(Eigen::RowVectorXd& A, double Lowerbound,
+                           double Upperbound, int constraint);
 
   /// allow user to remove all constraints
   void RemoveConstraints();

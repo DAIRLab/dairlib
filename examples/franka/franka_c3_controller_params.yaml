@@ -1,6 +1,6 @@
 c3_options_file: examples/franka/franka_c3_options_translation.yaml
 #c3_options_file: examples/franka/franka_c3_options_floating.yaml
-c3_channel_actor: C3_TRAJECTORY_ACTOR
+c3_channel_actor: C3_TRAJECTORY_ACTOR_POSITION
 c3_channel_object: C3_TRAJECTORY_TRAY
 state_channel: FRANKA_OUTPUT
 radio_channel: CASSIE_VIRTUAL_RADIO

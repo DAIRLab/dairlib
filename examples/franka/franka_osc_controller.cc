@@ -99,12 +99,27 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
+//  auto lcm_traj =
+//      LcmTrajectory("examples/franka/saved_trajectories/franka_defaults");
+//  auto orientation_traj = LcmTrajectory::Trajectory();
+//  orientation_traj.datapoints = MatrixXd::Zero(4, 2);
+//  orientation_traj.time_vector = Eigen::Vector2d(0.0, 1.0);
+//  orientation_traj.traj_name = "end_effector_orientation_target";
+//  orientation_traj.datatypes = std::vector<std::string>(2, "orientation");
+//  lcm_traj.AddTrajectory(orientation_traj.traj_name, orientation_traj);
+//  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
+
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto trajectory_sub = builder.AddSystem(
+  auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          controller_params.c3_channel, &lcm));
-  auto trajectory_receiver =
+          controller_params.c3_position_channel, &lcm));
+  auto end_effector_orientation_trajectory_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          controller_params.c3_orientation_channel, &lcm));
+  auto end_effector_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>("end_effector_traj");
+  auto end_effector_orientation_receiver =
+      builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>("end_effector_orientation_target");
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           controller_params.controller_channel, &lcm,
@@ -171,6 +186,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(wrist_relative_tracking_data),
                             wrist_down_target);
+//  osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddConstTrackingData(std::move(end_effector_orientation_tracking_data),
                             orientation_target);
 
@@ -192,12 +208,16 @@ int DoMain(int argc, char* argv[]) {
                   osc_debug_pub->get_input_port());
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
-  builder.Connect(trajectory_sub->get_output_port(),
-                  trajectory_receiver->get_input_port_trajectory());
-  builder.Connect(trajectory_receiver->get_output_port(0),
+  builder.Connect(end_effector_trajectory_sub->get_output_port(),
+                  end_effector_receiver->get_input_port_trajectory());
+  builder.Connect(end_effector_orientation_trajectory_sub->get_output_port(),
+                  end_effector_orientation_receiver->get_input_port_trajectory());
+  builder.Connect(end_effector_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_target"));
+//  builder.Connect(end_effector_orientation_receiver->get_output_port(0),
+//                  osc->get_input_port_tracking_data("end_effector_orientation_target"));
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));
   // Run lcm-driven simulation

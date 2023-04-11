@@ -259,8 +259,8 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   return *z_sol_;
 }
 
-void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double& Lowerbound,
-                             double& Upperbound, int& constraint) {
+void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double Lowerbound,
+                             double Upperbound, int constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; i++) {
       user_constraints_.push_back(

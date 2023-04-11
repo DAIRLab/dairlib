@@ -114,9 +114,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   current(1) += radio_out->channel[1] * 0.4;
   current(2) += radio_out->channel[2] * 0.4;
   x_des_adjusted.head(n_q_).tail(3) = current;
-//  std::cout << x_des_adjusted.transpose() << std::endl;
+  //  std::cout << x_des_adjusted.transpose() << std::endl;
 
-  std::vector<VectorXd> x_desired = std::vector<VectorXd>(N_ + 1, x_des_adjusted);
+  std::vector<VectorXd> x_desired =
+      std::vector<VectorXd>(N_ + 1, x_des_adjusted);
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -143,6 +144,11 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   delta_init.head(n_x_) = lcs_x->get_data();
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+  for (int i : vector<int>({0, 2})){
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 0.25, 0.75, 1);
+  }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   return drake::systems::EventStatus::Succeeded();
 }

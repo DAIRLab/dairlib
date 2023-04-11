@@ -9,6 +9,7 @@
 #include "lcm/lcm_trajectory.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -31,13 +32,41 @@ class LcmTrajectoryReceiver : public drake::systems::LeafSystem<double> {
  private:
   void OutputTrajectory(const drake::systems::Context<double>& context,
                         drake::trajectories::Trajectory<double>* traj) const;
+
   drake::systems::InputPortIndex trajectory_input_port_;
   drake::systems::OutputPortIndex trajectory_output_port_;
   const std::string trajectory_name_;
 
   mutable LcmTrajectory lcm_traj_;
-  std::string nominal_stand_path_ =
+  std::string default_trajectory_path_ =
       "examples/franka/saved_trajectories/default_end_effector_pose";
+};
+
+/// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
+/// and outputs it as a drake PiecewisePolynomial.
+class LcmOrientationTrajectoryReceiver
+    : public drake::systems::LeafSystem<double> {
+ public:
+  explicit LcmOrientationTrajectoryReceiver(std::string trajectory_name);
+
+  const drake::systems::InputPort<double>& get_input_port_trajectory() const {
+    return this->get_input_port(trajectory_input_port_);
+  }
+
+  const drake::systems::OutputPort<double>& get_output_port_trajectory() const {
+    return this->get_output_port(trajectory_output_port_);
+  }
+
+ private:
+  void OutputTrajectory(const drake::systems::Context<double>& context,
+                        drake::trajectories::Trajectory<double>* traj) const;
+  drake::systems::InputPortIndex trajectory_input_port_;
+  drake::systems::OutputPortIndex trajectory_output_port_;
+  const std::string trajectory_name_;
+
+  mutable LcmTrajectory lcm_traj_;
+  std::string default_trajectory_path_ =
+      "examples/franka/saved_trajectories/franka_defaults";
 };
 
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
@@ -54,11 +83,9 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(trajectory_input_port_);
   }
 
-  void SetLineColor(drake::geometry::Rgba rgba){
-    rgba_ = rgba;
-  }
+  void SetLineColor(drake::geometry::Rgba rgba) { rgba_ = rgba; }
 
-  void SetNumSamples(int N){
+  void SetNumSamples(int N) {
     DRAKE_DEMAND(N > 1);
     N_ = N;
   }

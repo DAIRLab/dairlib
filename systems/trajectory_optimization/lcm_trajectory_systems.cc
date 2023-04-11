@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
@@ -14,6 +15,7 @@ using drake::geometry::Rgba;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -33,7 +35,8 @@ LcmTrajectoryReceiver::LcmTrajectoryReceiver(std::string trajectory_name)
       this->DeclareAbstractOutputPort(trajectory_name_, traj_inst,
                                       &LcmTrajectoryReceiver::OutputTrajectory)
           .get_index();
-  lcm_traj_ = LcmTrajectory(dairlib::FindResourceOrThrow(nominal_stand_path_));
+  lcm_traj_ =
+      LcmTrajectory(dairlib::FindResourceOrThrow(default_trajectory_path_));
 }
 
 void LcmTrajectoryReceiver::OutputTrajectory(
@@ -59,6 +62,52 @@ void LcmTrajectoryReceiver::OutputTrajectory(
         trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
         trajectory_block.datapoints.bottomRows(3));
   }
+}
+
+LcmOrientationTrajectoryReceiver::LcmOrientationTrajectoryReceiver(
+    std::string trajectory_name)
+    : trajectory_name_(std::move(trajectory_name)) {
+  trajectory_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_timestamped_saved_traj",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
+          .get_index();
+
+  PiecewiseQuaternionSlerp<double> empty_slerp_traj;
+  Trajectory<double>& traj_inst = empty_slerp_traj;
+  this->set_name(trajectory_name_);
+  trajectory_output_port_ =
+      this->DeclareAbstractOutputPort(
+              trajectory_name_, traj_inst,
+              &LcmOrientationTrajectoryReceiver::OutputTrajectory)
+          .get_index();
+  lcm_traj_ =
+      LcmTrajectory(dairlib::FindResourceOrThrow(default_trajectory_path_));
+}
+
+void LcmOrientationTrajectoryReceiver::OutputTrajectory(
+    const drake::systems::Context<double>& context,
+    drake::trajectories::Trajectory<double>* traj) const {
+  if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+              context, trajectory_input_port_)
+          ->utime > 1e-3) {
+    const auto& lcm_traj =
+        this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+            context, trajectory_input_port_);
+    lcm_traj_ = LcmTrajectory(lcm_traj->saved_traj);
+  }
+  const auto trajectory_block = lcm_traj_.GetTrajectory(trajectory_name_);
+  auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
+      PiecewiseQuaternionSlerp<double>*>(traj);
+  std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
+  for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {
+    quaternion_datapoints.push_back(
+        drake::math::RollPitchYaw<double>(trajectory_block.datapoints.col(i))
+            .ToQuaternion());
+  }
+  *casted_traj = PiecewiseQuaternionSlerp(
+      CopyVectorXdToStdVector(trajectory_block.time_vector),
+      quaternion_datapoints);
 }
 
 LcmTrajectoryDrawer::LcmTrajectoryDrawer(
@@ -95,8 +144,8 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   VectorXd breaks =
       VectorXd::LinSpaced(N_, trajectory_block.time_vector[0],
                           trajectory_block.time_vector.tail(1)[0]);
-//  std::cout << "rows: " << trajectory_block.datapoints.rows() << std::endl;
-//  std::cout << "cols: " << trajectory_block.datapoints.cols() << std::endl;
+  //  std::cout << "rows: " << trajectory_block.datapoints.rows() << std::endl;
+  //  std::cout << "cols: " << trajectory_block.datapoints.cols() << std::endl;
   if (trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
         trajectory_block.time_vector, trajectory_block.datapoints);

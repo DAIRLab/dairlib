@@ -143,8 +143,10 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   dynamic_time_limit = True
   use_ipopt = True if hybrid_mpc else False
   knots_per_mode = 5  # can try smaller number like 3 or 5
-  feas_tol = 1e-2
+  feas_tol = 1e-2  #1e-4
+  opt_tol = 1e-2  #1e-4
   n_step = 2
+  min_mpc_thread_loop_duration = 0.0  # 0.05
   # time_limit is optional, set = 0 for realtime
   time_limit = 0.0 if dynamic_time_limit else 1.0 / target_realtime_rate * 0.2
   time_limit = 0.0 if get_init_file else time_limit
@@ -185,6 +187,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--knots_per_mode=%d' % knots_per_mode,
     '--n_step=%d' % n_step,
     '--feas_tol=%.6f' % feas_tol,
+    '--opt_tol=%.6f' % opt_tol,
     '--stride_length=%.3f' % task_sl,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--pelvis_height=%.3f' % task_ph,
@@ -202,6 +205,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--print_level=0',
     '--completely_use_trajs_from_model_opt_as_target=%s' % str(completely_use_trajs_from_model_opt_as_target).lower(),
     '--close_sim_gap=%s' % str(close_sim_gap).lower(),
+    '--min_mpc_thread_loop_duration=%.3f' % min_mpc_thread_loop_duration,
     ]
   controller_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_controller',
@@ -484,6 +488,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   n_max_thread = min(int(psutil.cpu_count() / 2), len(task_list)) if target_realtime_rate == 0.1 else n_max_thread
   if target_realtime_rate == 1:
     n_max_thread = 3
+  #n_max_thread = 1
 
   global thread_idx_set
   thread_idx_set = set()
@@ -1685,8 +1690,8 @@ if __name__ == "__main__":
   FOM_model_dir_for_sim = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"
   FOM_model_dir_for_planner = ""
 
-  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  # eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
+  # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1707,8 +1712,8 @@ if __name__ == "__main__":
   ### global parameters
   sim_end_time = 10.0
   t_no_logging_at_start = 6.0  # WARNING: only use this when we are confident that simulation is initialized correctly, and the controller behaves as we expect
-  spring_model = False
-  close_sim_gap = True
+  spring_model = True
+  close_sim_gap = False
   # Parameters that are modified often
   target_realtime_rate = 1  # 0.04
   foot_step_from_planner = True
@@ -1749,12 +1754,12 @@ if __name__ == "__main__":
   ### parameters for model, task, and log indices
   # Model iteration list
   model_iter_idx_start = 1  # 0
-  model_iter_idx_end = 500
-  idx_spacing = 100
+  model_iter_idx_end = 50
+  idx_spacing = 10
 
   # Task list
-  n_task_sl = 25 #10
-  n_task_ph = 25 #3
+  n_task_sl = 13 #25 #10
+  n_task_ph = 7  #25 #3
   tasks = Tasks()
   tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
@@ -1815,9 +1820,12 @@ if __name__ == "__main__":
   # model_slices = [1, 60]
   # model_slices = [1, 25, 50, 75, 100]
   # model_slices = list(range(1, 50, 5))
-  model_slices = [1, 100, 200, 300, 400, 500]
+  # model_slices = [1, 100, 200, 300, 400, 500]
   # model_slices = [500]
   # model_slices = [1, 100, 200, 300, 400, 450]
+  # model_slices = [1, 20, 40, 60, 80, 100]
+  model_slices = [1, 10, 20, 30, 40, 50]
+  #model_slices = [1, 60, 80, 100]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1828,9 +1836,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   # model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
-  model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500]
+  # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500]
   # model_slices_cost_landsacpe = [500]
-  model_slices_cost_landsacpe = [300, 400]
+  # model_slices_cost_landsacpe = [300, 400]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 450]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
   # model_slices_cost_landsacpe = [5, 50, 95]
@@ -1839,6 +1847,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 60]
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
+  # model_slices_cost_landsacpe = [1, 20, 40, 60, 80, 100]
+  model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
+  #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
   # task_grid_sl = np.linspace(-0.3, 0.3, 7)
@@ -1892,6 +1903,9 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 450]  # Overwrite
   # model_indices = [300, 400]  # Overwrite
   # model_indices = [500]  # Overwrite
+  # model_indices = [1, 20, 40, 60, 70, 80, 90, 100]  # Overwrite
+  # model_indices = [1, 10, 20, 30, 40, 50]  # Overwrite
+  #model_indices = [100]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -1935,9 +1949,12 @@ if __name__ == "__main__":
   visualize_training_task_range = True
   training_task_range = []
   if visualize_training_task_range:
-    nominal_task_ranges = np.loadtxt(model_dir + "task_ranges.csv", delimiter=',')
-    training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[0])[0][0]])
-    training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[1])[0][0]])
+    path = model_dir + "task_ranges.csv"
+    visualize_training_task_range = os.path.exists(path)
+    if visualize_training_task_range:
+      nominal_task_ranges = np.loadtxt(path, delimiter=',')
+      training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[0])[0][0]])
+      training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[1])[0][0]])
 
   ### Some other checks
   # duration in sim doesn't have to be the same as trajopt's, but I added a check here as a reminder.

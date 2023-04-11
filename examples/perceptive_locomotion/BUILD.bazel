@@ -32,13 +32,26 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//geometry:convex_foothold_receiver",
+                "//geometry:convex_foothold_lcm_systems",
                 "//systems/ros:dairlib_ros",
                 "//examples/perceptive_locomotion/systems:stance_foot_ros_sender",
             ],
             "//tools/workspace/ros:dair_ros_off": [],
         },
     ),
+)
+
+cc_binary(
+    name = "foothold_translator",
+    srcs = ["foothold_translator.cc"],
+    tags = ["ros"],
+    deps = [
+        "//geometry:convex_foothold_lcm_systems",
+        "//lcmtypes:lcmt_robot",
+        "//systems/ros:dairlib_ros",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
 cc_binary(
@@ -69,7 +82,7 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//geometry:convex_foothold_receiver",
+                "//geometry:convex_foothold_lcm_systems",
                 "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],

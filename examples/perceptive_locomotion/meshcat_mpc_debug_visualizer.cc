@@ -1,5 +1,4 @@
 #include <utility>
-
 #include "drake/geometry/shape_specification.h"
 #include "meshcat_mpc_debug_visualizer.h"
 #include "systems/framework/output_vector.h"
@@ -21,6 +20,11 @@ MeshcatMPCDebugVisualizer::MeshcatMPCDebugVisualizer(
   mpc_debug_input_port_ = DeclareAbstractInputPort(
       "mpc_debug", drake::Value<lcmt_mpc_debug>()
     ).get_index();
+
+  foothold_input_port_ = DeclareAbstractInputPort(
+      "terrain", drake::Value<lcmt_foothold_set>()
+  ).get_index();
+
 
   state_input_port_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(
@@ -81,7 +85,8 @@ void MeshcatMPCDebugVisualizer::DrawFootsteps(
 }
 
 void MeshcatMPCDebugVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
-                                              int n_prev) const {
+                                              int n_prev,
+                                              const std::string& prefix) const {
   std::vector<drake::geometry::Rgba> rgb = {
       drake::geometry::Rgba(1, 0, 0, 0.5),
       drake::geometry::Rgba(0, 1, 0, 0.5),
@@ -92,8 +97,8 @@ void MeshcatMPCDebugVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
     const auto [verts, faces] = foothold.GetSurfaceMesh();
     auto faces_reversed = faces;
     faces_reversed.row(0).swap(faces_reversed.row(2));
-    meshcat_->SetTriangleMesh(make_path(i) + "top", verts, faces, rgb.at(i % 3));
-    meshcat_->SetTriangleMesh(make_path(i) + "bottom", verts, faces_reversed, rgb.at(i % 3));
+    meshcat_->SetTriangleMesh(prefix + make_path(i) + "top", verts, faces, rgb.at(i % 3));
+    meshcat_->SetTriangleMesh(prefix + make_path(i) + "bottom", verts, faces_reversed, rgb.at(i % 3));
   }
   for (int i = foothold_set.size(); i < n_prev; i++) {
     meshcat_->Delete(make_path(i) + "top");
@@ -126,7 +131,15 @@ drake::systems::EventStatus MeshcatMPCDebugVisualizer::UnrestrictedUpdate(
 
   const auto& mpc_debug = EvalAbstractInput(
       context, mpc_debug_input_port_)->get_value<lcmt_mpc_debug>();
-  auto foothold_set = ConvexFootholdSet::CopyFromLcm(mpc_debug.footholds);
+
+  ConvexFootholdSet foothold_set;
+  if (get_input_port_terrain().HasValue(context)) {
+    auto foothold_set_msg = EvalAbstractInput(
+        context, foothold_input_port_)->get_value<lcmt_foothold_set>();
+    foothold_set = ConvexFootholdSet::CopyFromLcm(foothold_set_msg);
+  } else {
+    foothold_set = ConvexFootholdSet::CopyFromLcm(mpc_debug.footholds);
+  }
 
   DrawComTrajSolution("com_sol", mpc_debug.solution, R_yaw, 0.83);
   DrawFootsteps(mpc_debug.solution, R_yaw);

@@ -25,7 +25,7 @@
 #include "geometry/convex_foothold_set.h"
 
 #ifdef DAIR_ROS_ON
-#include "geometry/convex_foothold_receiver.h"
+#include "geometry/convex_foothold_lcm_systems.h"
 #include "systems/ros/ros_subscriber_system.h"
 #endif
 
@@ -240,7 +240,7 @@ int DoMain(int argc, char* argv[]) {
           systems::RosSubscriberSystem<
               convex_plane_decomposition_msgs::PlanarTerrain>::Make(
                   FLAGS_foothold_topic, &node_handle));
-      auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdReceiver>();
+      auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdRosReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());

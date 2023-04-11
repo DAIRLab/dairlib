@@ -13,11 +13,14 @@ class MeshcatMPCDebugVisualizer : public drake::systems::LeafSystem<double> {
   MeshcatMPCDebugVisualizer(
       std::shared_ptr<drake::geometry::Meshcat> meshcat,
       const drake::multibody::MultibodyPlant<double>& plant);
-  const drake::systems::InputPort<double>& get_input_port_state() {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_mpc() {
+  const drake::systems::InputPort<double>& get_input_port_mpc() const {
     return this->get_input_port(mpc_debug_input_port_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_terrain() const {
+    return this->get_input_port(foothold_input_port_);
   }
  private:
   static std::string make_path(int i) {
@@ -26,7 +29,8 @@ class MeshcatMPCDebugVisualizer : public drake::systems::LeafSystem<double> {
 
 
   void DrawFootholds(geometry::ConvexFootholdSet& footholds,
-                     int n_prev_footholds) const;
+                     int n_prev_footholds,
+                     const std::string& prefix="") const;
 
   // Matrix from robot yaw frame to world frame
   static Eigen::Matrix3d R_WB(const Eigen::Vector4d& wxyz);
@@ -46,6 +50,7 @@ class MeshcatMPCDebugVisualizer : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex state_input_port_;
   drake::systems::InputPortIndex mpc_debug_input_port_;
+  drake::systems::InputPortIndex foothold_input_port_;
   drake::systems::DiscreteStateIndex n_footholds_idx_;
   mutable std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 

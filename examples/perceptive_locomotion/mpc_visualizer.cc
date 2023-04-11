@@ -24,9 +24,8 @@ namespace dairlib {
 
 DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "State channel");
 DEFINE_string(channel_mpc, "ALIP_MINLP_DEBUG", "mpc_debug_channel");
-
-// Terrain
-DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
+DEFINE_string(channel_terrain, "", "lcm channel with processed footholds from "
+                                   "lcm translator");
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
@@ -77,7 +76,6 @@ int do_main(int argc, char* argv[]) {
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
-
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0/60.0;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
@@ -88,6 +86,16 @@ int do_main(int argc, char* argv[]) {
                   foothold_vis->get_input_port_mpc());
   builder.Connect(state_receiver->get_output_port(),
                   foothold_vis->get_input_port_state());
+
+  if (not FLAGS_channel_terrain.empty()) {
+    auto foothold_subscriber = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_foothold_set>(
+            FLAGS_channel_terrain, lcm));
+    builder.Connect(foothold_subscriber->get_output_port(),
+                    foothold_vis->get_input_port_terrain());
+  }
+
+
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 

@@ -110,9 +110,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   VectorXd x_des_adjusted = x_des.value();
   VectorXd current = x_des_adjusted.head(n_q_).tail(3);
-  current(0) += radio_out->channel[0] * 0.2;
-  current(1) += radio_out->channel[1] * 0.2;
-  current(2) += radio_out->channel[2] * 0.2;
+  current(0) += radio_out->channel[0] * 0.4;
+  current(1) += radio_out->channel[1] * 0.4;
+  current(2) += radio_out->channel[2] * 0.4;
   x_des_adjusted.head(n_q_).tail(3) = current;
 //  std::cout << x_des_adjusted.transpose() << std::endl;
 

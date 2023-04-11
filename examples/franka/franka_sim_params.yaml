@@ -9,5 +9,5 @@ visualize: true
 
 dt: 0.0001
 realtime_rate: 1.0
-q_init_franka: [-0.8, 1.4, 1.2, -1.4, 1.8, 1.2, -0.55]
-q_init_plate: [1, 0, 0, 0, 0.68, 0, 1.15]
+q_init_franka: [-0.85, 1.45, 1.25, -1.5, 1.70, 1.2, -0.6]
+q_init_plate: [1, 0, 0, 0, 0.68, 0, 1.16]

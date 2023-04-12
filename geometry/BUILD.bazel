@@ -35,6 +35,7 @@ cc_library(
     deps = [
         ":convex_foothold",
         ":convex_foothold_set",
+        "//solvers:fast_osqp_solver",
         "@ros-local",
     ],
 )

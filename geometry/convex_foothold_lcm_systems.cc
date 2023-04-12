@@ -33,7 +33,7 @@ void ConvexFootholdRosReceiver::CopyTerrain(
       EvalAbstractInput(context, 0)->get_value<PlanarTerrain>();
   for (const auto& planar_region : planes.planarRegions) {
     footholds->append(
-        MakeFootholdFromInnerApproximationWithIRIS(planar_region)
+        MakeFootholdFromInscribedConvexPolygon(planar_region)
     );
   }
 }

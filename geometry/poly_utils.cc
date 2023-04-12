@@ -1,27 +1,27 @@
 #include <iostream>
+#include <algorithm>
 #include "poly_utils.h"
-#include "drake/geometry/optimization/iris.h"
-#include "drake/geometry/optimization/point.h"
+#include "drake/solvers/osqp_solver.h"
 
 
 namespace dairlib::geometry {
 
 using Eigen::MatrixXd;
+using Eigen::Matrix2d;
 using Eigen::VectorXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
-
+using drake::Vector1d;
 using convex_plane_decomposition_msgs::PlanarRegion;
 using convex_plane_decomposition_msgs::PlanarTerrain;
 using convex_plane_decomposition_msgs::Point2d;
 using convex_plane_decomposition_msgs::Polygon2d;
-using drake::geometry::optimization::Iris;
-using drake::geometry::optimization::IrisOptions;
-using drake::geometry::optimization::Point;
 using drake::geometry::optimization::VPolytope;
 using drake::geometry::optimization::HPolyhedron;
-using drake::geometry::optimization::ConvexSet;
-using drake::geometry::optimization::ConvexSets;
+using drake::solvers::MathematicalProgram;
+using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::OsqpSolver;
+
 
 ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
     const PlanarRegion &foothold) {
@@ -61,43 +61,204 @@ ConvexFoothold MakeFootholdFromConvexPolytope(
   return foothold;
 }
 
-ConvexFoothold MakeFootholdFromInnerApproximationWithIRIS(
+
+HPolyhedron HPolyhedronFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
+  const auto& verts = poly_in.vertices();
+  DRAKE_DEMAND(verts.rows() == 2);
+  MatrixXd A = MatrixXd::Zero(verts.cols(), 2);
+  VectorXd b = VectorXd::Zero(verts.cols());
+  for (int i = 0; i < verts.cols(); i++) {
+    VectorXd v = verts.col((i + 1) % verts.cols()) - verts.col(i);
+    A(i, 0) = -v(1);
+    A(i, 1) = v(0);
+    A.row(i).normalize();
+    b.segment<1>(i) = A.row(i) * verts.col(i);
+  }
+  return HPolyhedron(A, b);
+}
+
+namespace {
+struct facet {
+  Vector2d a_;
+  double b_;
+  Vector2d v0_;
+  Vector2d v1_;
+
+  bool redundant(Vector2d a,  double b) {
+    return (a.dot(v0_) > b and a.dot(v1_) > b);
+  }
+
+  bool intersects(Vector2d a, double b) {
+    return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
+  }
+
+  // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
+  static facet intersect(facet f0, facet f1, Vector2d a, double b) {
+    Matrix2d A = Matrix2d::Zero();
+    A.row(0) = f0.a_.transpose();
+    A.row(1) = a.transpose();
+    Vector2d v0 = A.inverse() * Vector2d(f0.b_, b);
+    A.row(0) = f1.a_.transpose();
+    Vector2d v1 = A.inverse() * Vector2d(f1.b_, b);
+    return {a, b, v0, v1};
+  }
+};
+
+std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
+  const auto& verts = poly_in.vertices();
+  DRAKE_DEMAND(verts.rows() == 2);
+  std::vector<facet> facets;
+  const int n = verts.cols();
+  facets.reserve(n);
+  for (int i = 0; i < n; i++) {
+    VectorXd v = verts.col((i + 1) % n) - verts.col(i);
+    Vector2d a(-v(1), v(0));
+    a.normalize();
+    double b = a.dot(verts.col(i));
+    facets.push_back({a, b, verts.col(i), verts.col((i + 1) % n)});
+  }
+  return facets;
+}
+
+bool contained(const std::vector<facet>& facets, const Vector2d& v) {
+  for (const auto& f: facets) {
+    if (f.a_.dot(v) >= f.b_) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void insert(std::vector<facet>& facets, Vector2d& a, double b) {
+  std::vector<int> idx_redundant;
+  std::vector<int> idx_intersect;
+  for (int i = 0; i < facets.size(); i++) {
+    if (facets.at(i).redundant(a, b)) {
+      idx_redundant.push_back(i);
+    } else if (facets.at(i).intersects(a, b)) {
+      idx_intersect.push_back(i);
+    }
+  }
+  if (idx_redundant.empty()) {
+    int delta = idx_intersect.back() - idx_intersect.front();
+    DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
+  }
+  DRAKE_DEMAND(idx_intersect.size() == 2);
+
+  // TODO: update facet endpoints for intersecting facets
+  int ccw_facet_idx = 0;
+  int cw_facet_idx = 0;
+  if (a.dot(facets.at(idx_intersect.front()).v1_) > b) {
+    ccw_facet_idx = idx_intersect.front();
+    cw_facet_idx = idx_intersect.back();
+  } else {
+    ccw_facet_idx = idx_intersect.back();
+    cw_facet_idx = idx_intersect.front();
+  }
+
+  auto new_facet = facet::intersect(
+      facets.at(ccw_facet_idx), facets.at(cw_facet_idx), a, b);
+
+  facets.at(ccw_facet_idx).v1_ = new_facet.v0_;
+  facets.at(cw_facet_idx).v0_ = new_facet.v1_;
+
+  int new_facet_idx = ccw_facet_idx + 1;
+  facets.insert(facets.begin() + new_facet_idx, new_facet);
+  cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
+
+  for (int i = 0; i < idx_redundant.size(); i++) {
+    idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
+  }
+
+  for (const auto &i : {ccw_facet_idx, cw_facet_idx}) {
+    if (vertex_in_poly(facets.at(i).v0_, facets.at(i).v1_, 1e-5)) {
+      idx_redundant.push_back(i);
+    }
+  }
+  std::sort(idx_redundant.begin(), idx_redundant.end());
+  for (int i = 0; i < idx_redundant.size(); i++) {
+    idx_redundant.at(i) -= i;
+  }
+  for (const auto &i : idx_redundant) {
+    facets.erase(facets.begin() + i);
+  }
+}
+  std::pair<Vector2d, double> SolveForBestApproximateSupport(
+      Vector2d p, const std::vector<facet>& facets) {
+    MatrixXd points = MatrixXd::Zero(2, facets.size());
+    for (int i = 0; i < facets.size(); i++) {
+      points.col(i) = facets.at(i).v1_;
+    }
+    const int n = points.cols();
+    auto prog = MathematicalProgram();
+    auto solver = OsqpSolver();
+
+    auto a = prog.NewContinuousVariables(2);
+    auto u = prog.NewContinuousVariables(n);
+
+    prog.AddQuadraticErrorCost(MatrixXd::Identity(n,n), VectorXd::Zero(n), u);
+    prog.AddBoundingBoxConstraint(0, std::numeric_limits<double>::infinity(), u);
+    prog.AddLinearConstraint(
+        (p - centroid(points)).transpose(),
+        Vector1d::Constant(0.01),
+        Vector1d::Constant(std::numeric_limits<double>::infinity()),
+        a);
+    MatrixXd A = MatrixXd::Zero(n, n+2);
+    A.rightCols(n) = -MatrixXd::Identity(n, n);
+    for (int i = 0; i < points.cols(); i++) {
+      A.block<1,2>(i,0) = (points.col(i) - p).transpose();
+    }
+    prog.AddLinearConstraint(
+        A,
+        VectorXd::Constant(n, -std::numeric_limits<double>::infinity()),
+        VectorXd::Zero(n),
+        {a, u});
+    auto result = solver.Solve(prog);
+
+    DRAKE_DEMAND(result.is_success());
+
+    Vector2d a_sol = result.GetSolution(a);
+    a_sol.normalize();
+    return {a_sol, a_sol.dot(p)};
+  }
+
+  ConvexFoothold MakeFootholdFromFacetList(
+      std::vector<facet> f, const Eigen::Isometry3d& plane_pose) {
+    MatrixXd verts = MatrixXd::Zero(2, f.size());
+    for (int i = 0; i < f.size(); i++) {
+      verts.col(i) = f.at(i).v1_;
+    }
+    return MakeFootholdFromConvexPolytope(verts, plane_pose);
+  }
+}
+
+ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
     const PlanarRegion& foothold) {
 
-  IrisOptions opts;
-  opts.require_sample_point_is_contained = true;
-  opts.termination_threshold = 1e-1;
+  // get all of the input points and their convex hull
+  Eigen::MatrixXd verts = GetVerticesAsMatrix2Xd(
+      foothold.boundary.outer_boundary);
+  VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
 
-  Eigen::MatrixXd boundary_verts =
-      GetVerticesAsMatrix2Xd(foothold.boundary.outer_boundary);
-  VPolytope domain_v = VPolytope(boundary_verts).GetMinimalRepresentation();
-  ConvexFoothold domain_f = MakeFootholdFromConvexPolytope(
-      domain_v, Eigen::Isometry3d::Identity());
-  const auto& [A, b] = domain_f.GetConstraintMatrices();
+  Eigen::MatrixXd verts_hull = convex_hull_v.vertices();
 
-  HPolyhedron domain(A.leftCols<2>(), b);
-  ConvexSets obstacles;
-  for (int i = 0; i < boundary_verts.cols(); i++) {
-    obstacles.push_back(
-        drake::copyable_unique_ptr<ConvexSet>(
-            std::make_unique<Point>(boundary_verts.col(i))
-    ));
+  // initialize the inscribed polygon as the convex hull
+  auto facet_list = FacetsFrom2dSortedConvexVPolytope(convex_hull_v);
+
+  // For each point which is on the interior of the polygon, P, find a
+  // halfspace, H which contains as many vertices of P as possible
+  // (approximated with a squared hinge loss). Then update P <- intersect(P, H)
+  for (int i = 0; i < verts.cols(); i++) {
+    if ((not vertex_in_poly(verts.col(i), verts_hull)) and
+         contained(facet_list, verts.col(i))) {
+      auto [a, b] = SolveForBestApproximateSupport(verts.col(i), facet_list);
+      insert(facet_list, a, b);
+    }
   }
-  auto result = Iris(obstacles, centroid(boundary_verts), domain, opts);
 
   Eigen::Isometry3d X_WP;
   tf2::fromMsg(foothold.plane_parameters, X_WP);
-
-  ConvexFoothold output;
-  const MatrixXd& Aout = result.A();
-  const VectorXd& bout = result.b();
-  for(int i = 0; i < b.rows(); i++) {
-    Vector3d a = Vector3d::Zero();
-    a.head(2) = A.row(i).transpose();
-    output.AddHalfspace(a, b.segment(i, 1));
-  }
-  output.SetContactPlane(Vector3d::UnitZ(), Vector3d::Zero());
-  return output; // MakeFootholdFromConvexPolytope(VPolytope(domain), X_WP);
+  return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
 Eigen::MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
@@ -136,6 +297,9 @@ VectorXd centroid (const MatrixXd& verts) {
   }
   return (1.0 / static_cast<double>(n)) * center;
 }
+
+
+
 
 
 }

@@ -116,7 +116,7 @@ int do_main(int argc, char* argv[]) {
       // Force-publish via the diagram
       /// We don't need AdvanceTo(time) because we manually force publish lcm
       /// message, and there is nothing in the diagram that needs to be updated.
-      diagram_ptr->Publish(diagram_context);
+      diagram_ptr->ForcedPublish(diagram_context);
 
       pub_count++;
     }

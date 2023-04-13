@@ -131,7 +131,7 @@ int do_main(int argc, char* argv[]) {
 
   auto trajectory_sub_actor = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          "C3_TRAJECTORY_ACTOR_POSITION", lcm));
+          "C3_TRAJECTORY_ACTOR", lcm));
   auto trajectory_sub_object = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           "C3_TRAJECTORY_TRAY", lcm));

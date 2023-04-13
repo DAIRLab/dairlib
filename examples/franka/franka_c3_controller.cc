@@ -122,8 +122,8 @@ int DoMain(int argc, char* argv[]) {
   contact_geoms["TRAY"] = tray_geoms;
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  for (auto geom_id : contact_geoms["PLATE"]) {
-    contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
+  for (auto geom_id : contact_geoms["TRAY"]) {
+    contact_pairs.emplace_back(geom_id, contact_geoms["PLATE"][0]);
   }
 
   ///

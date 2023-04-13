@@ -116,7 +116,8 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>("end_effector_traj");
   auto end_effector_orientation_receiver =
-      builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>("end_effector_orientation_target");
+      builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
+          "end_effector_orientation_target");
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           controller_params.controller_channel, &lcm,
@@ -183,14 +184,23 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(wrist_relative_tracking_data),
                             wrist_down_target);
-  osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
-//  osc->AddConstTrackingData(std::move(end_effector_orientation_tracking_data),
-//                            orientation_target);
+  if (controller_params.track_end_effector_orientation) {
+    osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
+  } else {
+    osc->AddConstTrackingData(std::move(end_effector_orientation_tracking_data),
+                              orientation_target);
+  }
 
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();
+
+  if (controller_params.track_end_effector_orientation) {
+    builder.Connect(
+        end_effector_orientation_receiver->get_output_port(0),
+        osc->get_input_port_tracking_data("end_effector_orientation_target"));
+  }
 
   builder.Connect(state_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_state());
@@ -207,14 +217,14 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_robot_output());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
                   end_effector_receiver->get_input_port_trajectory());
-  builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_orientation_receiver->get_input_port_trajectory());
+  builder.Connect(
+      end_effector_trajectory_sub->get_output_port(),
+      end_effector_orientation_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_target"));
-  builder.Connect(end_effector_orientation_receiver->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_orientation_target"));
+
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));
   // Run lcm-driven simulation

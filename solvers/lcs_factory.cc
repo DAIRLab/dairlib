@@ -190,6 +190,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
       dt * J_t * AB_v_u;
 
   c = VectorXd::Zero(n_contact_vars);
+  // TODO(yangwill): check gap function to make sure it makes sense. Potential source of uncertainty
+//  std::cout << "phi: " << phi << std::endl;
   c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
 
   c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =

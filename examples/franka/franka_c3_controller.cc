@@ -128,14 +128,15 @@ int DoMain(int argc, char* argv[]) {
 
   ///
 
-  VectorXd x_des = VectorXd::Zero(plant_plate.num_positions() + plant_plate.num_velocities());
+  VectorXd x_des = VectorXd::Zero(plant_plate.num_positions() +
+                                  plant_plate.num_velocities());
   x_des << c3_options.q_des, c3_options.v_des;
-//  x_des
+  //  x_des
   /// default position
-//  x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-//  x_des(10) += radio_out->channel[0] * 0.2;
-//  x_des(11) += radio_out->channel[1] * 0.2;
-//  x_des(12) += radio_out->channel[2] * 0.2;
+  //  x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
+  //  x_des(10) += radio_out->channel[0] * 0.2;
+  //  x_des(11) += radio_out->channel[1] * 0.2;
+  //  x_des(12) += radio_out->channel[2] * 0.2;
 
   DiagramBuilder<double> builder;
 
@@ -182,7 +183,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(controller->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
 
-
+  controller->SetPublishEndEffectorOrientation(
+      controller_params.include_end_effector_orientation);
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
@@ -195,11 +197,9 @@ int DoMain(int argc, char* argv[]) {
       controller_params.state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
-      *controller,
-      &loop.get_diagram_mutable_context());
-//      loop.get_diagram_mutable_context()
-  controller->get_input_port_target().FixValue(&controller_context,
-                                               x_des);
+      *controller, &loop.get_diagram_mutable_context());
+  //      loop.get_diagram_mutable_context()
+  controller->get_input_port_target().FixValue(&controller_context, x_des);
   loop.Simulate();
   return 0;
 }

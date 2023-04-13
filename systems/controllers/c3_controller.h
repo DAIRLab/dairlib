@@ -58,6 +58,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     solver_options_ = options;
   }
 
+  void SetPublishEndEffectorOrientation(bool publish_end_effector_orientation) {
+    publish_end_effector_orientation_ = publish_end_effector_orientation;
+  }
+
  private:
   void OutputActorTrajectory(
       const drake::systems::Context<double>& context,
@@ -88,6 +92,9 @@ class C3Controller : public drake::systems::LeafSystem<double> {
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
+  //
+  bool publish_end_effector_orientation_ = false;
 
   // convenience for variable sizes
   int n_q_;

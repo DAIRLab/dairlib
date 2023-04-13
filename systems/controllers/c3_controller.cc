@@ -144,7 +144,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   delta_init.head(n_x_) = lcs_x->get_data();
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-  for (int i : vector<int>({0, 2})){
+  for (int i : vector<int>({0, 2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, 0.25, 0.75, 1);
@@ -182,6 +182,23 @@ void C3Controller::OutputActorTrajectory(
   end_effector_traj.time_vector = breaks;
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_traj"},
                          "end_effector_traj", "end_effector_traj", false);
+
+  if (publish_end_effector_orientation_) {
+    LcmTrajectory::Trajectory end_effector_orientation_traj;
+    // first 3 rows are rpy, last 3 rows are angular velocity
+    MatrixXd orientation_samples = MatrixXd::Zero(6, N_);
+    orientation_samples.topRows(3) = x_sol.topRows(6).bottomRows(3);
+    orientation_samples.bottomRows(3) =
+        x_sol.bottomRows(n_v_).topRows(6).bottomRows(3);
+    end_effector_orientation_traj.traj_name = "end_effector_orientation_target";
+    end_effector_orientation_traj.datatypes =
+        std::vector<std::string>(orientation_samples.rows(), "double");
+    end_effector_orientation_traj.datapoints = orientation_samples;
+    end_effector_orientation_traj.time_vector = breaks;
+    lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
+                           std::move(end_effector_orientation_traj));
+  }
+
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = t * 1e6;
 }

@@ -3,8 +3,7 @@ state_channel: FRANKA_OUTPUT
 controller_channel: FRANKA_INPUT
 radio_channel: CASSIE_VIRTUAL_RADIO
 osc_debug_channel: OSC_DEBUG_FRANKA
-c3_position_channel: C3_TRAJECTORY_ACTOR_POSITION
-c3_orientation_channel: C3_TRAJECTORY_ACTOR_ORIENTATION
+c3_channel: C3_TRAJECTORY_ACTOR
 
 w_input: 0.00
 w_input_reg: 0.001

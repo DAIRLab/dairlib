@@ -2,7 +2,7 @@ w_input: 0
 w_accel: 0.0
 w_soft_constraint: 1000000
 
-impact_threshold: 0.025
+impact_threshold: 0.000
 
 mu: 0.4
 

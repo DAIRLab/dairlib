@@ -9,7 +9,7 @@ radio_channel: CASSIE_VIRTUAL_RADIO
 franka_model: examples/franka/urdf/franka.urdf
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 #plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
-tray_model: examples/franka/urdf/tray.sdf
+tray_model: examples/franka/urdf/tray_lcs.sdf
 
 include_end_effector_orientation: false
 

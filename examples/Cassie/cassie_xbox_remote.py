@@ -79,10 +79,10 @@ def main():
         radio_msg = dairlib.lcmt_radio_out()
         radio_msg.channel[0] = -joystick.get_axis(1)
         radio_msg.channel[1] = -joystick.get_axis(0)
-        radio_msg.channel[2] = -joystick.get_axis(4)
-        radio_msg.channel[3] = joystick.get_axis(3)
-        # radio_msg.channel[2] = -joystick.get_axis(3)
-        # radio_msg.channel[3] = joystick.get_axis(2)
+        # radio_msg.channel[2] = -joystick.get_axis(4)
+        # radio_msg.channel[3] = joystick.get_axis(3)
+        radio_msg.channel[2] = -joystick.get_axis(3)
+        radio_msg.channel[3] = joystick.get_axis(2)
 
 
         radio_msg.channel[14] = latching_switch

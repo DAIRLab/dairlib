@@ -50,7 +50,7 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
           .get_index();
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
-  this->DeclareAbstractOutputPort("right_ft_traj", traj_inst,
+  this->DeclareAbstractOutputPort("end_effector_trajectory", traj_inst,
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
 }
 

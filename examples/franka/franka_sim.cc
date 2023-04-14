@@ -167,9 +167,6 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
-  for (auto pair : q_map){
-    std::cout << pair.first << pair.second << std::endl;
-  }
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
   q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
   q[q_map["panda_joint2"]] = sim_params.q_init_franka[1];

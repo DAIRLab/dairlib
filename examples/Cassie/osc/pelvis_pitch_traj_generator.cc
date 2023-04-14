@@ -44,15 +44,37 @@ PelvisPitchTrajGenerator::PelvisPitchTrajGenerator(
   drake::trajectories::Trajectory<double>& traj_inst = pp;
   this->DeclareAbstractOutputPort("pelvis_quat", traj_inst,
                                   &PelvisPitchTrajGenerator::CalcPitchTraj);
+
+  prev_timestamp_idx_ = DeclareDiscreteState(1);
+  filtered_pitch_idx_ = DeclareDiscreteState(1);
+
+  DeclareForcedUnrestrictedUpdateEvent(&PelvisPitchTrajGenerator::PitchFilterUpdate);
+}
+
+drake::systems::EventStatus PelvisPitchTrajGenerator::PitchFilterUpdate(
+    const Context<double> &context, drake::systems::State<double> *state) const {
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      EvalVectorInput(context, state_port_));
+  double t = robot_output->get_timestamp();
+  double t_prev = state->get_discrete_state(prev_timestamp_idx_).get_value()(0);
+  double prev_pitch = state->get_discrete_state(filtered_pitch_idx_).get_value()(0);
+  double des_pitch = EvalVectorInput(context, des_pitch_port_)->get_value()(0);
+  double dt = t - t_prev;
+  if (dt < 0.1) {
+    double tau = .075; // 50 ms time constant
+    double alpha = dt / (tau + dt);
+    des_pitch = alpha * des_pitch + (1.0 - alpha) * prev_pitch;
+  }
+  state->get_mutable_discrete_state(prev_timestamp_idx_).set_value(drake::Vector1d::Constant(t));
+  state->get_mutable_discrete_state(filtered_pitch_idx_).set_value(drake::Vector1d::Constant(des_pitch));
+  return drake::systems::EventStatus::Succeeded();
 }
 
 void PelvisPitchTrajGenerator::CalcPitchTraj(
     const Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
 
-  // Read in desired yaw angle
-  double des_pitch = EvalVectorInput(context, des_pitch_port_)->get_value()(0);
-
+  double des_pitch = context.get_discrete_state(filtered_pitch_idx_).get_value()(0);
   // Read in current state
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, state_port_));
@@ -63,7 +85,7 @@ void PelvisPitchTrajGenerator::CalcPitchTraj(
       plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation();
   RollPitchYawd rpy(R_WP);
   rpy.set_roll_angle(0);
-  rpy.set_pitch_angle(des_pitch);
+  rpy.set_pitch_angle(-des_pitch);
 
   Quaterniond quat = rpy.ToQuaternion();
   Eigen::Vector4d vec;

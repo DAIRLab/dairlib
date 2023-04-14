@@ -14,6 +14,7 @@
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/osc/hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
+#include "examples/Cassie/osc/pelvis_pitch_traj_generator.h"
 #include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
@@ -212,6 +213,7 @@ int DoMain(int argc, char* argv[]) {
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
   builder.Connect(*mpc_subscriber, *mpc_receiver);
 
+
   // Create command sender.
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -246,10 +248,16 @@ int DoMain(int argc, char* argv[]) {
   // Create heading traj generator
   auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
       plant_w_spr, context_w_spr.get());
+  auto pitch_traj_gen = builder.AddSystem
+      <cassie::osc::PelvisPitchTrajGenerator>(plant_w_spr, context_w_spr.get());
   builder.Connect(state_receiver->get_output_port(),
                   head_traj_gen->get_input_port_state());
   builder.Connect(high_level_command->get_output_port_yaw(),
                   head_traj_gen->get_input_port_yaw());
+  builder.Connect(state_receiver->get_output_port(),
+                  pitch_traj_gen->get_state_input_port());
+  builder.Connect(mpc_receiver->get_output_port_pitch(),
+                  pitch_traj_gen->get_pitch_input_port());
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -362,6 +370,11 @@ int DoMain(int argc, char* argv[]) {
                   left_toe_angle_traj_gen->get_input_port_state());
   builder.Connect(state_receiver->get_output_port(0),
                   right_toe_angle_traj_gen->get_input_port_state());
+  builder.Connect(mpc_receiver->get_output_port_pitch(),
+                  right_toe_angle_traj_gen->get_input_port_toe_angle());
+  builder.Connect(mpc_receiver->get_output_port_pitch(),
+                  left_toe_angle_traj_gen->get_input_port_toe_angle());
+
 
   auto alip_input_receiver =
       builder.AddSystem<perceptive_locomotion::AlipInputReceiver>(
@@ -605,7 +618,7 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("swing_ft_traj"));
   builder.Connect(head_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_heading_traj"));
-  builder.Connect(head_traj_gen->get_output_port(0),
+  builder.Connect(pitch_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("pelvis_balance_traj"));
   builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("left_toe_angle_traj"));

@@ -62,7 +62,7 @@ void AlipMpcOutputReceiver::CopyPitch(const Context<double> &context,
   A << p(0), p(1), -p(1), p(0);
   Vector2d kx_ky = A.inverse() * b;
   DRAKE_DEMAND(not kx_ky.hasNaN());
-  out->get_mutable_value() << acos(kx_ky(0));
+  out->get_mutable_value() << atan(kx_ky(0));
 }
 
 void AlipMpcOutputReceiver::CopyAnkleTorque(const Context<double> &context,

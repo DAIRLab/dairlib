@@ -35,6 +35,9 @@ class PelvisPitchTrajGenerator : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  drake::systems::EventStatus PitchFilterUpdate(
+      const drake::systems::Context<double>& context,
+                         drake::systems::State<double>* state) const;
   void CalcPitchTraj(const drake::systems::Context<double>& context,
                        drake::trajectories::Trajectory<double>* traj) const;
 
@@ -45,6 +48,9 @@ class PelvisPitchTrajGenerator : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex des_pitch_port_;
+
+  drake::systems::DiscreteStateIndex filtered_pitch_idx_;
+  drake::systems::DiscreteStateIndex prev_timestamp_idx_;
 };
 
 }  // namespace osc

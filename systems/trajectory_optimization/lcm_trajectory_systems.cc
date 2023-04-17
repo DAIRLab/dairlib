@@ -100,6 +100,7 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
       lcm_traj_.GetTrajectory(trajectory_name_);
     } catch (std::exception& e) {
       std::cerr << "Make sure the planner is sending orientation" << std::endl;
+      throw std::out_of_range("");
     }
   }
   const auto trajectory_block = lcm_traj_.GetTrajectory(trajectory_name_);

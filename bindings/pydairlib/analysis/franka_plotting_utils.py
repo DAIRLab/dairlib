@@ -7,68 +7,37 @@ import matplotlib.pyplot as plt
 import dairlib
 import drake
 
-# dairlib python binding imports
-from pydairlib.cassie.cassie_utils import AddCassieMultibody
-
 # drake imports
 from pydrake.multibody.plant import AddMultibodyPlantSceneGraph
 from pydrake.systems.framework import DiagramBuilder
+from pydrake.all import MultibodyPlant, Parser, RigidTransform
 
-cassie_urdf = "examples/Cassie/urdf/cassie_v2.urdf"
-cassie_urdf_no_springs = "examples/Cassie/urdf/cassie_fixed_springs.urdf"
-cassie_default_channels = \
-    {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
-     'CASSIE_STATE_DISPATCHER': dairlib.lcmt_robot_output,
-     'CASSIE_INPUT': dairlib.lcmt_robot_input,
-     'OSC_WALKING': dairlib.lcmt_robot_input,
-     'OSC_STANDING': dairlib.lcmt_robot_input,
-     'OSC_JUMPING': dairlib.lcmt_robot_input,
-     'OSC_RUNNING': dairlib.lcmt_robot_input,
-     'CASSIE_OUTPUT': dairlib.lcmt_cassie_out,
-     'OSC_DEBUG_STANDING': dairlib.lcmt_osc_output,
-     'OSC_DEBUG_WALKING': dairlib.lcmt_osc_output,
-     'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
-     'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
-
-cassie_default_channels_archive = \
-    {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
-     'CASSIE_STATE_DISPATCHER': dairlib.lcmt_robot_output,
-     'CASSIE_INPUT': dairlib.lcmt_robot_input,
-     'OSC_WALKING': dairlib.lcmt_robot_input,
-     'OSC_STANDING': dairlib.lcmt_robot_input,
-     'OSC_JUMPING': dairlib.lcmt_robot_input,
-     'OSC_RUNNING': dairlib.lcmt_robot_input,
-     'CASSIE_OUTPUT': dairlib.lcmt_cassie_out}
-
-cassie_contact_channels = \
-    {'CASSIE_CONTACT_DRAKE': drake.lcmt_contact_results_for_viz,
-     'CASSIE_GM_CONTACT_DISPATCHER': drake.lcmt_contact_results_for_viz}
+franka_urdf = "examples/franka/urdf/franka_no_collision.urdf"
+tray_model = "examples/franka/urdf/tray.sdf"
+franka_default_channels = \
+  {'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
+   'TRAY_OUTPUT': dairlib.lcmt_robot_output,
+   'FRANKA_INPUT': dairlib.lcmt_robot_input,
+   'C3_TRAJECTORY_ACTOR': dairlib.lcmt_timestamped_saved_traj,
+   'C3_TRAJECTORY_TRAY': dairlib.lcmt_timestamped_saved_traj,
+   'OSC_DEBUG_FRANKA': dairlib.lcmt_osc_output,
+   'CASSIE_VIRTUAL_RADIO': dairlib.lcmt_radio_out,
+   'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz}
 
 
-def make_plant_and_context(floating_base=True, springs=True):
-    builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
-    if springs:
-        AddCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf, True, True, True)
-    else:
-        AddCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf_no_springs, False, True, True)
+def make_plant_and_context():
+  builder = DiagramBuilder()
 
-    plant.Finalize()
-    return plant, plant.CreateDefaultContext()
+  franka_plant = MultibodyPlant(0.0)
+  franka_parser = Parser(franka_plant)
+  franka_parser.AddModelFromFile(franka_urdf)
 
+  tray_plant = MultibodyPlant(0.0)
+  tray_parser = Parser(tray_plant)
+  tray_parser.AddModelFromFile(tray_model)
 
-def get_toe_frames_and_points(plant):
-    front_contact_pt = np.array((-0.0457, 0.112, 0))
-    rear_contact_pt = np.array((0.088, 0, 0))
-    mid_contact_pt = 0.5 * (front_contact_pt + rear_contact_pt)
+  franka_plant.WeldFrames(franka_plant.world_frame(), franka_plant.GetFrameByName("panda_link0"), RigidTransform())
 
-    left_frame = plant.GetBodyByName("toe_left")
-    right_frame = plant.GetBodyByName("toe_right")
-
-    frames = {"left": left_frame, "right": right_frame}
-    pts = {"rear": rear_contact_pt, "mid": mid_contact_pt,
-           "front": front_contact_pt}
-
-    return frames, pts
+  franka_plant.Finalize()
+  tray_plant.Finalize()
+  return franka_plant, franka_plant.CreateDefaultContext(), tray_plant, tray_plant.CreateDefaultContext()

@@ -60,8 +60,6 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   double output_dt = sim_params.dt;
-  //  auto scene_graph =
-  //  builder.AddSystem(std::make_unique<SceneGraph<double>>());
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);

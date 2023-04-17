@@ -6,7 +6,7 @@
   <link name="plate_y"/>
   <link name="plate">
     <inertial>
-      <mass value="2"/>
+      <mass value="2.0"/>
       <inertia
           ixx="0.0067"
           ixy="0"

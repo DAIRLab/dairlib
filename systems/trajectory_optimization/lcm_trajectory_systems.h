@@ -39,7 +39,7 @@ class LcmTrajectoryReceiver : public drake::systems::LeafSystem<double> {
 
   mutable LcmTrajectory lcm_traj_;
   std::string default_trajectory_path_ =
-      "examples/franka/saved_trajectories/default_end_effector_pose";
+      "examples/franka/saved_trajectories/franka_defaults";
 };
 
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,

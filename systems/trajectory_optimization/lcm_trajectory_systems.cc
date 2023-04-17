@@ -95,6 +95,11 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
         this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
             context, trajectory_input_port_);
     lcm_traj_ = LcmTrajectory(lcm_traj->saved_traj);
+    try {
+      lcm_traj_.GetTrajectory(trajectory_name_);
+    } catch (std::exception& e) {
+      std::cerr << "Make sure the planner is sending orientation" << std::endl;
+    }
   }
   const auto trajectory_block = lcm_traj_.GetTrajectory(trajectory_name_);
   auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<

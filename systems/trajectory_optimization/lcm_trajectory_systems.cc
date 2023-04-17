@@ -83,6 +83,7 @@ LcmOrientationTrajectoryReceiver::LcmOrientationTrajectoryReceiver(
           .get_index();
   lcm_traj_ =
       LcmTrajectory(dairlib::FindResourceOrThrow(default_trajectory_path_));
+  lcm_traj_.GetTrajectory(trajectory_name_);
 }
 
 void LcmOrientationTrajectoryReceiver::OutputTrajectory(

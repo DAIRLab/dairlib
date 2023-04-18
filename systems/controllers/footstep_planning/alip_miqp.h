@@ -16,7 +16,9 @@ class AlipMIQP final : public AlipMPC {
            double H,
            int nknots,
            alip_utils::ResetDiscretization reset_discretization) :
-           AlipMPC(m, H, nknots, reset_discretization){}
+           AlipMPC(m, H, nknots, reset_discretization){
+    DRAKE_DEMAND(drake::solvers::GurobiSolver::is_available());
+  }
 
  AlipMIQP(double m,
           double H,

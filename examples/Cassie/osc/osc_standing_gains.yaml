@@ -1,4 +1,4 @@
-controller_frequency: 1000
+controller_frequency: 1500
 
 w_input: 0.000001
 w_accel: 0.000001
@@ -36,8 +36,8 @@ PelvisW:
     0,     5,    0,
     0,     0,   2 ]
 PelvisKp:
-  [ 75,   0,    0,
-    0,   50,    0,
+  [ 30,   0,    0,
+    0,   30,    0,
     0,    0,  40 ]
 PelvisKd:
   [ 2,    0,   0,

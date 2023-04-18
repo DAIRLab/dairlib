@@ -53,8 +53,8 @@ max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
 mid_foot_height: 0.15
-final_foot_height: 0.05
-final_foot_velocity_z: 0.5
+final_foot_height: 0.02
+final_foot_velocity_z: 0.9
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -122,8 +122,8 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 160,  0,     0,
-    0,   180,    0,
+  [ 200,  0,     0,
+    0,   185,    0,
     0,    0,    180]
 SwingFootKd:
   [2.5,  0,  0,

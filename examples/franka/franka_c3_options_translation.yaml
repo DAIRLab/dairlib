@@ -26,5 +26,5 @@ q_vector: [200, 200, 500, 0, 0, 0, 0, 10000, 10000, 10000,
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1]
 
-q_des_vector: [0.5, 0.02, 0.41, 1, 0, 0, 0, 0.5, 0.02, 0.45]
+q_des_vector: [0.5, 0.02, 0.43, 1, 0, 0, 0, 0.5, 0.02, 0.45]
 v_des_vector: [0, 0, 0, 0, 0, 0, 0, 0, 0]

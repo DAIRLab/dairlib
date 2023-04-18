@@ -122,8 +122,8 @@ int DoMain(int argc, char* argv[]) {
   contact_geoms["TRAY"] = tray_geoms;
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  for (auto geom_id : contact_geoms["TRAY"]) {
-    contact_pairs.emplace_back(geom_id, contact_geoms["PLATE"][0]);
+  for (auto geom_id : contact_geoms["PLATE"]) {
+    contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
 
   ///
@@ -155,11 +155,11 @@ int DoMain(int argc, char* argv[]) {
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel_actor, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          TriggerTypeSet({TriggerType::kPeriodic}), 0.2));
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel_object, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          TriggerTypeSet({TriggerType::kPeriodic}), 0.2));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           controller_params.radio_channel, &lcm));

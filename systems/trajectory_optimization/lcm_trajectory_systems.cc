@@ -173,20 +173,20 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   meshcat_->SetLine("/trajectories/" + trajectory_name_, line_points, 100,
                     rgba_);
 
-  if (lcm_traj_.HasTrajectory("end_effector_orientation_target")) {
-    const auto orientation_block =
-        lcm_traj_.GetTrajectory("end_effector_orientation_target");
-    auto trajectory = PiecewisePolynomial<double>::CubicHermite(
-        orientation_block.time_vector, orientation_block.datapoints.topRows(3),
-        orientation_block.datapoints.bottomRows(3));
-    for (int i = 0; i < line_points.cols(); ++i) {
-      auto pose = drake::math::RigidTransform<double>(
-          drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))), line_points.col(i));
-      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
-      meshcat_->SetObject("box" + std::to_string(i), box, rgba_);
-      meshcat_->SetTransform("box" + std::to_string(i), pose);
-    }
-  }
+//  if (lcm_traj_.HasTrajectory("end_effector_orientation_target")) {
+//    const auto orientation_block =
+//        lcm_traj_.GetTrajectory("end_effector_orientation_target");
+//    auto trajectory = PiecewisePolynomial<double>::CubicHermite(
+//        orientation_block.time_vector, orientation_block.datapoints.topRows(3),
+//        orientation_block.datapoints.bottomRows(3));
+//    for (int i = 0; i < line_points.cols(); ++i) {
+//      auto pose = drake::math::RigidTransform<double>(
+//          drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))), line_points.col(i));
+//      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
+//      meshcat_->SetObject("box" + std::to_string(i), box, rgba_);
+//      meshcat_->SetTransform("box" + std::to_string(i), pose);
+//    }
+//  }
 
   return drake::systems::EventStatus::Succeeded();
 }

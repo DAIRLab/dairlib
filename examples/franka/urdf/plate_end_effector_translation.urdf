@@ -21,54 +21,36 @@
         <box size="0.2 0.2 0.02"/>
       </geometry>
     </visual>
-    <collision name="collision">
-      <origin rpy="0 0 0" xyz="0 0 0.01"/>
+    <!--    <collision name="collision">-->
+    <!--      <origin rpy="0 0 0" xyz="0 0 0.01"/>-->
+    <!--      <geometry>-->
+    <!--        <box size="0.2 0.2 0.02"/>-->
+    <!--      </geometry>-->
+    <!--      <drake:proximity_properties>-->
+    <!--        <drake:rigid_hydroelastic/>-->
+    <!--        <drake:mesh_resolution_hint value="1"/>-->
+    <!--        <drake:mu_dynamic value="1.0"/>-->
+    <!--        <drake:mu_static value="1.0"/>-->
+    <!--      </drake:proximity_properties>-->
+    <!--    </collision>-->
+    <collision name="middle_right">
       <geometry>
-        <box size="0.2 0.2 0.02"/>
+        <sphere radius="0.01"/>
       </geometry>
-      <drake:proximity_properties>
-        <drake:rigid_hydroelastic/>
-        <drake:mesh_resolution_hint value="1"/>
-        <drake:mu_dynamic value="1.0"/>
-        <drake:mu_static value="1.0"/>
-      </drake:proximity_properties>
+      <origin rpy="0 0 0" xyz="0.2 0.0 0.01"/>
     </collision>
-<!--    <collision name="middle_right">-->
-<!--      <geometry>-->
-<!--        <sphere radius="0.01"/>-->
-<!--      </geometry>-->
-<!--      <origin rpy="0 0 0" xyz="0.1 0.0 0.01"/>-->
-<!--    </collision>-->
-<!--    <collision name="top_left">-->
-<!--      <geometry>-->
-<!--        <sphere radius="0.01"/>-->
-<!--      </geometry>-->
-<!--      <origin rpy="0 0 0" xyz="-0.1 0.1 0.01"/>-->
-<!--    </collision>-->
-<!--    <collision name="bottom_left">-->
-<!--      <geometry>-->
-<!--        <sphere radius="0.01"/>-->
-<!--      </geometry>-->
-<!--      <origin rpy="0 0 0" xyz="-0.1 -0.1 0.01"/>-->
-<!--    </collision>-->
-<!--    <collision name="middle_right">-->
-<!--      <geometry>-->
-<!--        <sphere radius="0.001"/>-->
-<!--      </geometry>-->
-<!--      <origin rpy="0 0 0" xyz="5.0 0.0 0.02"/>-->
-<!--    </collision>-->
-<!--    <collision name="top_left">-->
-<!--      <geometry>-->
-<!--        <sphere radius="0.001"/>-->
-<!--      </geometry>-->
-<!--      <origin rpy="0 0 0" xyz="-5.0 5.0 0.02"/>-->
-<!--    </collision>-->
-<!--    <collision name="bottom_left">-->
-<!--      <geometry>-->
-<!--        <sphere radius="0.001"/>-->
-<!--      </geometry>-->
-<!--      <origin rpy="0 0 0" xyz="-5.0 -5.0 0.02"/>-->
-<!--    </collision>-->
+    <collision name="top_left">
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.2 0.2 0.01"/>
+    </collision>
+    <collision name="bottom_left">
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="-0.2 -0.2 0.01"/>
+    </collision>
   </link>
   <joint name="plate_x" type="prismatic">
     <parent link="base_link"/>

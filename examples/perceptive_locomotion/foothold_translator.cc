@@ -7,6 +7,7 @@
 #include "geometry/convex_foothold_set.h"
 
 #include "geometry/convex_foothold_lcm_systems.h"
+#include "geometry/convex_foothold_ros_receiver.h"
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"
 
@@ -44,7 +45,7 @@ DEFINE_string(foothold_channel, "FOOTHOLDS_PROCESSED",
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  ros::init(argc, argv, "terrain_receiver");
+  ros::init(argc, argv, "planar_terrain_to_convex_foothold_lcm_bridge");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
   ros::AsyncSpinner spinner(1);
@@ -73,22 +74,23 @@ int DoMain(int argc, char* argv[]) {
   auto context = diagram->CreateDefaultContext();
 
   // Run lcm-driven simulation
-  auto stepper = std::make_unique<Simulator<double>>(*diagram, std::move(context));
-  stepper->reset_integrator<drake::systems::RungeKutta2Integrator<double>>(.05);
-  stepper->set_publish_every_time_step(true);
-  stepper->set_publish_at_initialization(false);
-  stepper->get_mutable_integrator().set_maximum_step_size(0.05);
-  stepper->set_target_realtime_rate(1.0);
-  stepper->Initialize();
+  auto simulator = std::make_unique<Simulator<double>>(*diagram, std::move(context));
+  ros::Rate r(100.0); // 50 Hz
 
   spinner.start();
-  std::cout << "starting simulation" << std::endl;
-  double t = 0;
-  while (t < std::numeric_limits<double>::infinity()) {
-    t += .000001;
-    stepper->AdvanceTo(t);
+  plane_subscriber->WaitForMessage(0);
+  spinner.stop();
+
+  double t_begin = ros::Time::now().toSec();
+
+  std::cout << "First message received, starting foothold translator\n";
+  while (true) {
+    ros::spinOnce();
+    double elapsed = ros::Time::now().toSec() - t_begin;
+    simulator->AdvanceTo(elapsed);
+    r.sleep();
   }
-  return 0;
+
 }
 
 }  // namespace dairlib

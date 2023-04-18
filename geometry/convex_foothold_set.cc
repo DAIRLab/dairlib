@@ -77,7 +77,7 @@ void ConvexFootholdSet::CopyToLcm(lcmt_foothold_set *set) const {
   }
 }
 
-ConvexFootholdSet ConvexFootholdSet::CopyFromLcm(lcmt_foothold_set set_lcm) {
+ConvexFootholdSet ConvexFootholdSet::CopyFromLcm(const lcmt_foothold_set& set_lcm) {
   ConvexFootholdSet set{};
   for (const auto& foothold_lcm : set_lcm.footholds) {
     ConvexFoothold foothold;

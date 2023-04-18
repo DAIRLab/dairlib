@@ -61,7 +61,7 @@ drake::systems::EventStatus PelvisPitchTrajGenerator::PitchFilterUpdate(
   double des_pitch = EvalVectorInput(context, des_pitch_port_)->get_value()(0);
   double dt = t - t_prev;
   if (dt < 0.1) {
-    double tau = .075; // 50 ms time constant
+    double tau = .200; // 200  ms time constant
     double alpha = dt / (tau + dt);
     des_pitch = alpha * des_pitch + (1.0 - alpha) * prev_pitch;
   }

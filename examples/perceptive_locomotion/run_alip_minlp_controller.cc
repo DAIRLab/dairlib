@@ -25,6 +25,7 @@
 #include "examples/perceptive_locomotion/systems/stance_foot_ros_sender.h"
 
 #include "geometry/convex_foothold_set.h"
+#include "geometry/convex_foothold_lcm_systems.h"
 
 #ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_lcm_systems.h"
@@ -91,14 +92,14 @@ DEFINE_string(minlp_gains_filename,
 
 DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
 
-DEFINE_string(foothold_topic, "", "ros topic containing the footholds");
+DEFINE_string(channel_terrain, "", "ros topic containing the footholds");
 
 DEFINE_string(stance_foot_topic, "/alip_mpc/stance_foot",
               "ros topic with frame id of stance foot");
 
 DEFINE_bool(spring_model, true, "");
 
-DEFINE_bool(use_perception, false, "get footholds from percption system");
+DEFINE_bool(use_perception, false, "get footholds from perception system");
 
 DEFINE_bool(plan_offboard, false,
             "Sets the planner lcm TTL to be 1. "
@@ -120,11 +121,10 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "alip_minlp_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
-  ros::AsyncSpinner spinner(2);
 #else
   if (FLAGS_use_perception) {
-    throw std::runtime_error(
-        "You cannot use perception without building against ROS.");
+    drake::log()->warn("Warning, using perception without building against ROS."
+                       " Did you mean to build with ros?");
   }
 #endif
 
@@ -243,6 +243,26 @@ int DoMain(int argc, char* argv[]) {
           "ALIP_MINLP_DEBUG", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
+#ifdef DAIR_ROS_ON
+  auto stance_publisher = builder.AddSystem(
+          systems::RosPublisherSystem<std_msgs::String>::Make(
+              FLAGS_stance_foot_topic, &node_handle));
+
+  std::unordered_map<int, std::string> stance_frames;
+  stance_frames[left_stance_state] = "toe_left";
+  stance_frames[right_stance_state] = "toe_right";
+  stance_frames[post_left_double_support_state] = "toe_left";
+  stance_frames[post_right_double_support_state] = "toe_right";
+
+  auto stance_sender =
+      builder.AddSystem<perceptive_locomotion::StanceFootRosSender>(stance_frames);
+
+  builder.Connect(foot_placement_controller->get_output_port_fsm(),
+                  stance_sender->get_input_port());
+  builder.Connect(*stance_sender, *stance_publisher);
+
+#endif
+
   // --- Add and connect the source of the foothold information --- //
   if ( !FLAGS_foothold_yaml.empty() ) {
     DRAKE_ASSERT(FLAGS_channel_x == "CASSIE_STATE_SIMULATION");
@@ -252,34 +272,15 @@ int DoMain(int argc, char* argv[]) {
   } else {
 
     if (FLAGS_use_perception) {
-#ifdef DAIR_ROS_ON
-      auto stance_publisher = builder.AddSystem(
-          systems::RosPublisherSystem<std_msgs::String>::Make(
-              FLAGS_stance_foot_topic, &node_handle));
-
-      std::unordered_map<int, std::string> stance_frames;
-      stance_frames[left_stance_state] = "toe_left";
-      stance_frames[right_stance_state] = "toe_right";
-      stance_frames[post_left_double_support_state] = "toe_left";
-      stance_frames[post_right_double_support_state] = "toe_right";
-
-      auto stance_sender =
-          builder.AddSystem<perceptive_locomotion::StanceFootRosSender>(stance_frames);
-
-      builder.Connect(foot_placement_controller->get_output_port_fsm(),
-                      stance_sender->get_input_port());
-      builder.Connect(*stance_sender, *stance_publisher);
 
       auto plane_subscriber = builder.AddSystem(
-          systems::RosSubscriberSystem<
-              convex_plane_decomposition_msgs::PlanarTerrain>::Make(
-                  FLAGS_foothold_topic, &node_handle));
-
-      auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdRosReceiver>();
+          LcmSubscriberSystem::Make<lcmt_foothold_set>(
+              FLAGS_channel_terrain, &lcm_local));
+      auto plane_receiver =
+          builder.AddSystem<geometry::ConvexFootholdReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
-#endif
     } else {
       auto foothold_oracle =
           builder.AddSystem<FlatTerrainFootholdSource>(
@@ -332,10 +333,6 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
       true);
-
-#ifdef DAIR_ROS_ON
-  spinner.start();
-#endif
 
   loop.Simulate();
   return 0;

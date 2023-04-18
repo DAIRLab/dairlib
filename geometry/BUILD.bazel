@@ -3,17 +3,27 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "convex_foothold_lcm_systems",
-    srcs = ["convex_foothold_lcm_systems.cc"],
-    hdrs = ["convex_foothold_lcm_systems.h"],
+    name = "convex_foothold_ros_receiver",
+    srcs = ["convex_foothold_ros_receiver.cc"],
+    hdrs = ["convex_foothold_ros_receiver.h"],
     tags = ["ros"],
     deps = [
         ":convex_foothold_set",
         ":poly_utils",
-        "//geometry/polypartition",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@ros-local",
+    ],
+)
+
+cc_library(
+    name = "convex_foothold_lcm_systems",
+    srcs = ["convex_foothold_lcm_systems.cc"],
+    hdrs = ["convex_foothold_lcm_systems.h"],
+    deps = [
+        ":convex_foothold_set",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
     ],
 )
 

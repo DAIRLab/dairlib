@@ -21,13 +21,8 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
-
-#include "geometry/convex_foothold_set.h"
-
-#ifdef DAIR_ROS_ON
 #include "geometry/convex_foothold_lcm_systems.h"
-#include "systems/ros/ros_subscriber_system.h"
-#endif
+#include "geometry/convex_foothold_set.h"
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -87,7 +82,8 @@ DEFINE_string(minlp_gains_filename,
 
 DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
 
-DEFINE_string(foothold_topic, "", "ros topic containing the footholds");
+DEFINE_string(channel_terrain, "FOOTHOLDS_PROCESSED",
+              "ros topic containing the footholds");
 
 DEFINE_bool(spring_model, true, "");
 
@@ -105,16 +101,6 @@ DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-#ifdef DAIR_ROS_ON
-  ros::init(argc, argv, "alip_minlp_controller");
-  ros::NodeHandle node_handle;
-#else
-  if (FLAGS_use_perception) {
-    throw std::runtime_error(
-        "You cannot use perception without building against ROS.");
-  }
-#endif
 
   auto gains_mpc =
       drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
@@ -235,16 +221,14 @@ int DoMain(int argc, char* argv[]) {
   } else {
 
     if (FLAGS_use_perception) {
-#ifdef DAIR_ROS_ON
       auto plane_subscriber = builder.AddSystem(
-          systems::RosSubscriberSystem<
-              convex_plane_decomposition_msgs::PlanarTerrain>::Make(
-                  FLAGS_foothold_topic, &node_handle));
-      auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdRosReceiver>();
+          LcmSubscriberSystem::Make<lcmt_foothold_set>(
+              FLAGS_channel_terrain, &lcm_local));
+      auto plane_receiver =
+          builder.AddSystem<geometry::ConvexFootholdReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
-#endif
     } else {
       auto foothold_oracle =
           builder.AddSystem<FlatTerrainFootholdSource>(
@@ -254,8 +238,6 @@ int DoMain(int argc, char* argv[]) {
                       foot_placement_controller->get_input_port_footholds());
   }
 }
-
-
 
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
@@ -302,9 +284,6 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(fsm_sender->get_output_port_fsm_info(),
                     fsm_pub->get_input_port());
   }
-
-
-
 
   // Create the diagram
   auto owned_diagram = builder.Build();

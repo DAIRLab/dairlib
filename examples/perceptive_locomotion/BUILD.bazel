@@ -17,6 +17,7 @@ cc_binary(
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/perceptive_locomotion/gains:alip_minlp_gains",
         "//geometry:convex_foothold",
+        "//geometry:convex_foothold_lcm_systems",
         "//lcmtypes:lcmt_robot",
         "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
@@ -32,7 +33,6 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//geometry:convex_foothold_lcm_systems",
                 "//systems/ros:dairlib_ros",
                 "//examples/perceptive_locomotion/systems:stance_foot_ros_sender",
             ],
@@ -47,6 +47,7 @@ cc_binary(
     tags = ["ros"],
     deps = [
         "//geometry:convex_foothold_lcm_systems",
+        "//geometry:convex_foothold_ros_receiver",
         "//lcmtypes:lcmt_robot",
         "//systems/ros:dairlib_ros",
         "@drake//:drake_shared_library",

@@ -18,8 +18,18 @@ namespace dairlib::geometry {
 ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
     const convex_plane_decomposition_msgs::PlanarRegion &foothold);
 
+void MaybeAddFootholdToSetFromRos(
+    ConvexFootholdSet& footholds,
+    const convex_plane_decomposition_msgs::PlanarRegion& foothold,
+    double minimum_area = 0.2*0.2);
+
 ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
     const convex_plane_decomposition_msgs::PlanarRegion& foothold);
+
+ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
+    const Eigen::MatrixXd& verts,
+    const drake::geometry::optimization::VPolytope& convex_hull,
+    const Eigen::Isometry3d& X_WP);
 
 // Very quickly construct a closed convex HPolyhedron from a VPolytope which is
 // known to be convex with its vertices sorted counterclockwise

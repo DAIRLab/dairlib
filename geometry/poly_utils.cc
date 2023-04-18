@@ -232,18 +232,42 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
   }
 }
 
-ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
-    const PlanarRegion& foothold) {
-
-  // get all of the input points and their convex hull
+void MaybeAddFootholdToSetFromRos(
+    ConvexFootholdSet& footholds, const PlanarRegion& foothold,
+    double minimum_area) {
   Eigen::MatrixXd verts = GetVerticesAsMatrix2Xd(
       foothold.boundary.outer_boundary);
   VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
 
-  Eigen::MatrixXd verts_hull = convex_hull_v.vertices();
+  if (convex_hull_v.CalcVolume() < minimum_area) { return; }
+
+  Eigen::Isometry3d X_WP;
+  tf2::fromMsg(foothold.plane_parameters, X_WP);
+  footholds.append(MakeFootholdFromInscribedConvexPolygon(
+      verts, convex_hull_v, X_WP));
+}
+
+ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
+    const PlanarRegion& foothold) {
+
+  MatrixXd verts = GetVerticesAsMatrix2Xd(
+      foothold.boundary.outer_boundary);
+  VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+
+  Eigen::Isometry3d X_WP;
+  tf2::fromMsg(foothold.plane_parameters, X_WP);
+
+  return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
+}
+
+ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
+    const MatrixXd& verts,
+    const drake::geometry::optimization::VPolytope& convex_hull_v,
+    const Eigen::Isometry3d& X_WP) {
 
   // initialize the inscribed polygon as the convex hull
   auto facet_list = FacetsFrom2dSortedConvexVPolytope(convex_hull_v);
+  auto verts_hull = convex_hull_v.vertices();
 
   // For each point which is on the interior of the polygon, P, find a
   // halfspace, H which contains as many vertices of P as possible
@@ -255,13 +279,10 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
       insert(facet_list, a, b);
     }
   }
-
-  Eigen::Isometry3d X_WP;
-  tf2::fromMsg(foothold.plane_parameters, X_WP);
   return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
-Eigen::MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
+MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
   int n = polygon.points.size();
   MatrixXd verts = MatrixXd::Zero(2, n);
   for (int i = 0; i < n; i++) {

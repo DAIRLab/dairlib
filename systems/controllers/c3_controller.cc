@@ -222,7 +222,6 @@ void C3Controller::OutputObjectTrajectory(
     u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
   }
 
-  //  MatrixXd knots = x_sol.topRows(n_q_).bottomRows(3);
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = x_sol.topRows(n_q_).bottomRows(3);
   knots.bottomRows(3) = x_sol.bottomRows(n_v_).bottomRows(3);

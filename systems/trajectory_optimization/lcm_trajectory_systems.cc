@@ -18,6 +18,7 @@ using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
+using Eigen::Quaterniond;
 using Eigen::VectorXd;
 
 LcmTrajectoryReceiver::LcmTrajectoryReceiver(std::string trajectory_name)
@@ -151,8 +152,6 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   VectorXd breaks =
       VectorXd::LinSpaced(N_, trajectory_block.time_vector[0],
                           trajectory_block.time_vector.tail(1)[0]);
-  //  std::cout << "rows: " << trajectory_block.datapoints.rows() << std::endl;
-  //  std::cout << "cols: " << trajectory_block.datapoints.cols() << std::endl;
   if (trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
         trajectory_block.time_vector, trajectory_block.datapoints);
@@ -173,6 +172,22 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   DRAKE_DEMAND(line_points.rows() == 3);
   meshcat_->SetLine("/trajectories/" + trajectory_name_, line_points, 100,
                     rgba_);
+
+  if (lcm_traj_.HasTrajectory("end_effector_orientation_target")) {
+    const auto orientation_block =
+        lcm_traj_.GetTrajectory("end_effector_orientation_target");
+    auto trajectory = PiecewisePolynomial<double>::CubicHermite(
+        orientation_block.time_vector, orientation_block.datapoints.topRows(3),
+        orientation_block.datapoints.bottomRows(3));
+    for (int i = 0; i < line_points.cols(); ++i) {
+      auto pose = drake::math::RigidTransform<double>(
+          drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))), line_points.col(i));
+      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
+      meshcat_->SetObject("box" + std::to_string(i), box, rgba_);
+      meshcat_->SetTransform("box" + std::to_string(i), pose);
+    }
+  }
+
   return drake::systems::EventStatus::Succeeded();
 }
 

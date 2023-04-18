@@ -100,15 +100,15 @@ int DoMain(int argc, char* argv[]) {
 
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
-//  auto lcm_traj =
-//      LcmTrajectory("examples/franka/saved_trajectories/franka_defaults");
-//  auto orientation_traj = LcmTrajectory::Trajectory();
-//  orientation_traj.datapoints = MatrixXd::Zero(4, 2);
-//  orientation_traj.time_vector = Eigen::Vector2d(0.0, 1.0);
-//  orientation_traj.traj_name = "end_effector_orientation_target";
-//  orientation_traj.datatypes = std::vector<std::string>(2, "orientation");
-//  lcm_traj.AddTrajectory(orientation_traj.traj_name, orientation_traj);
-//  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
+  auto lcm_traj =
+      LcmTrajectory("examples/franka/saved_trajectories/franka_defaults");
+  auto orientation_traj = LcmTrajectory::Trajectory();
+  orientation_traj.datapoints = MatrixXd::Zero(4, 2);
+  orientation_traj.time_vector = Eigen::Vector2d(0.0, 1.0);
+  orientation_traj.traj_name = "end_effector_orientation_target";
+  orientation_traj.datatypes = std::vector<std::string>(2, "orientation");
+  lcm_traj.AddTrajectory(orientation_traj.traj_name, orientation_traj);
+  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(

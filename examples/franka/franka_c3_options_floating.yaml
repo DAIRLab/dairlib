@@ -10,7 +10,7 @@ dt: 0.1
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
-N: 10
+N: 5
 w_Q: 10
 w_R: 0
 # Penalty on all decision variables, assuming scalar
@@ -23,7 +23,7 @@ u_size: 49
 # State Tracking Error, assuming diagonal
 #q_vector: [100, 100, 100, 1, 1, 1, 1, 1, 1, 1,
 #           1, 1, 1, 1, 1, 1, 1, 1, 1]
-q_vector: [200, 200, 500, 10, 10, 10, 0, 0, 0, 0, 10000, 10000, 10000,
+q_vector: [200, 200, 500, 50, 50, 50, 0, 0, 0, 0, 10000, 10000, 10000,
            0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1, 0.1, 0.1, 0.1]

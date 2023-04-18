@@ -98,11 +98,7 @@ int do_main(int argc, char* argv[]) {
                    R_X_W);
 
   plant.Finalize();
-  auto lcm_traj =
-      LcmTrajectory(dairlib::FindResourceOrThrow("examples/franka/saved_trajectories/default_end_effector_pose"));
-  auto traj = lcm_traj.GetTrajectory("end_effector_traj");
-  lcm_traj.AddTrajectory("object_traj", traj);
-  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
+
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
   // Create state receiver.
@@ -150,8 +146,8 @@ int do_main(int argc, char* argv[]) {
       meshcat, "object_traj");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
-  trajectory_drawer_actor->SetNumSamples(20);
-  trajectory_drawer_object->SetNumSamples(20);
+  trajectory_drawer_actor->SetNumSamples(5);
+  trajectory_drawer_object->SetNumSamples(5);
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));

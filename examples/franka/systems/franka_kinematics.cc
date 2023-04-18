@@ -97,14 +97,12 @@ void FrankaKinematics::ComputeLCSState(
       VectorXd::Zero(num_end_effector_velocities_);
 
   if (num_end_effector_positions_ > 3) {
-//    std::cout << "here: " << std::endl;
     end_effector_positions << end_effector_pose.translation(),
         end_effector_rotation_rpy;
   } else {
     end_effector_positions << end_effector_pose.translation();
   }
   if (num_end_effector_velocities_ > 3) {
-//    std::cout << "here: " << std::endl;
     end_effector_velocities << end_effector_spatial_velocity.rotational(),
         end_effector_spatial_velocity.translational();
   } else {

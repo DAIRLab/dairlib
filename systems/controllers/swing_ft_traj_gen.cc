@@ -6,7 +6,6 @@
 #include <fstream>
 #include <string>
 
-#include <drake/math/saturate.h>
 #include "systems/controllers/control_utils.h"
 
 using std::string;
@@ -427,7 +426,7 @@ void SwingFootTrajGenerator::CalcTrajs(
     // creating trajectory.
     // Ensure "current_time < end_time" to avoid error in
     // creating trajectory.
-    start_time_of_this_interval = drake::math::saturate(
+    start_time_of_this_interval = std::clamp(
         start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
         end_time_of_this_interval - 0.001);
 

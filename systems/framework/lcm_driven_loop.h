@@ -265,7 +265,7 @@ class LcmDrivenLoop {
             diagram_context, &diagram_context.get_mutable_state());
         diagram_ptr_->CalcForcedDiscreteVariableUpdate(diagram_context,
                                                        &diagram_context.get_mutable_discrete_state());
-         if (is_forced_publish_) {
+        if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
         }
@@ -293,6 +293,8 @@ class LcmDrivenLoop {
         // the LCM message used here successfully arrives at the input port of
         // the other LcmSubscriberSystem
         simulator_->AdvanceTo(time);
+        diagram_ptr_->CalcForcedDiscreteVariableUpdate(diagram_context,
+                                                       &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);

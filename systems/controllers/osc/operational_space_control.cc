@@ -86,7 +86,7 @@ OperationalSpaceControl::OperationalSpaceControl(
             .get_index();
 
     // Discrete update to record the last state event time
-    DeclarePerStepDiscreteUpdateEvent(
+    DeclareForcedDiscreteUpdateEvent(
         &OperationalSpaceControl::DiscreteVariableUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));

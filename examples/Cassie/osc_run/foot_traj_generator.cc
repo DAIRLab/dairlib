@@ -87,7 +87,7 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
   last_stance_timestamp_idx_ = this->DeclareDiscreteState(1);
 
   // State variables inside this controller block
-  DeclarePerStepDiscreteUpdateEvent(&FootTrajGenerator::DiscreteVariableUpdate);
+  DeclareForcedDiscreteUpdateEvent(&FootTrajGenerator::DiscreteVariableUpdate);
 
   m_ = plant_.CalcTotalMass(*context_);
 }
@@ -100,7 +100,6 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   // Read in finite state machine
   VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
-
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

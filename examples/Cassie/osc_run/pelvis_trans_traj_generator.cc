@@ -63,7 +63,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
   this->DeclareAbstractOutputPort("pelvis_trans_traj", traj_inst,
                                   &PelvisTransTrajGenerator::CalcTraj);
 
-  DeclarePerStepDiscreteUpdateEvent(
+  DeclareForcedDiscreteUpdateEvent(
       &PelvisTransTrajGenerator::DiscreteVariableUpdate);
 }
 

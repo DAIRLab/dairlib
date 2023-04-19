@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "poly_utils.h"
 #include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/gurobi_solver.h"
 
 
 namespace dairlib::geometry {
@@ -145,7 +146,6 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
   }
   DRAKE_DEMAND(idx_intersect.size() == 2);
 
-  // TODO: update facet endpoints for intersecting facets
   int ccw_facet_idx = 0;
   int cw_facet_idx = 0;
   if (a.dot(facets.at(idx_intersect.front()).v1_) > b) {
@@ -184,12 +184,12 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
   }
 }
   std::pair<Vector2d, double> SolveForBestApproximateSupport(
-      Vector2d p, const std::vector<facet>& facets) {
+      Vector2d p, const std::vector<facet>& facets, const MatrixXd& all_verts) {
     MatrixXd points = MatrixXd::Zero(2, facets.size());
     for (int i = 0; i < facets.size(); i++) {
       points.col(i) = facets.at(i).v1_;
     }
-    const int n = points.cols();
+    const int n = all_verts.cols();
     auto prog = MathematicalProgram();
     auto solver = OsqpSolver();
 
@@ -205,8 +205,8 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
         a);
     MatrixXd A = MatrixXd::Zero(n, n+2);
     A.rightCols(n) = -MatrixXd::Identity(n, n);
-    for (int i = 0; i < points.cols(); i++) {
-      A.block<1,2>(i,0) = (points.col(i) - p).transpose();
+    for (int i = 0; i < all_verts.cols(); i++) {
+      A.block<1,2>(i,0) = (all_verts.col(i) - p).transpose();
     }
     prog.AddLinearConstraint(
         A,
@@ -275,7 +275,8 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
   for (int i = 0; i < verts.cols(); i++) {
     if ((not vertex_in_poly(verts.col(i), verts_hull)) and
          contained(facet_list, verts.col(i))) {
-      auto [a, b] = SolveForBestApproximateSupport(verts.col(i), facet_list);
+      auto [a, b] = SolveForBestApproximateSupport(
+          verts.col(i), facet_list, verts);
       insert(facet_list, a, b);
     }
   }

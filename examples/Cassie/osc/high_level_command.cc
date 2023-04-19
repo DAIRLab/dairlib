@@ -8,7 +8,6 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/math/quaternion.h"
-#include "drake/math/saturate.h"
 
 using std::string;
 

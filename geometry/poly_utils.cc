@@ -292,7 +292,7 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
     if ((not vertex_in_poly(verts.col(i), verts_hull)) and
          contained(facet_list, verts.col(i))) {
       auto [a, b] = SolveForBestApproximateSupport(
-          verts.col(i), facet_list, get_vertices(facet_list));
+          verts.col(i), facet_list, verts);
       insert(facet_list, a, b);
     }
   }

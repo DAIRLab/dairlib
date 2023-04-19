@@ -137,6 +137,7 @@ int do_main(int argc, char* argv[]) {
 //  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / 60.0;
+  params.enable_alpha_slider = true;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));

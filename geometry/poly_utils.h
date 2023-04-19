@@ -18,6 +18,10 @@ namespace dairlib::geometry {
 ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
     const convex_plane_decomposition_msgs::PlanarRegion &foothold);
 
+// function to bind for testing entire polygon pipeline in python
+std::vector<ConvexFoothold> ProcessTerrain2d(
+    std::vector<Eigen::MatrixXd> terrain);
+
 void MaybeAddFootholdToSetFromRos(
     ConvexFootholdSet& footholds,
     const convex_plane_decomposition_msgs::PlanarRegion& foothold,

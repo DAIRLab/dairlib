@@ -12,6 +12,21 @@ load(
 )
 
 pybind_py_library(
+    name = "poly_utils_py",
+    cc_deps = [
+        "//geometry:poly_utils",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "poly_utils",
+    cc_srcs = ["poly_utils_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+    tags = ["ros"],
+)
+
+pybind_py_library(
     name = "convex_foothold_py",
     cc_deps = [
         "//geometry:convex_foothold",
@@ -42,6 +57,7 @@ py_library(
 
 PY_LIBRARIES = [
     ":convex_foothold_py",
+    ":poly_utils_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

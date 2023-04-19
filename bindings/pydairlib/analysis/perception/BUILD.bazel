@@ -26,3 +26,14 @@ py_binary(
         "@drake//bindings/pydrake",
     ],
 )
+
+py_binary(
+    name = "poly_pipeline_test",
+    srcs = ["poly_pipeline_test.py"],
+    deps = [
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/geometry:poly_utils_py",
+        "@drake//bindings/pydrake",
+    ],
+)

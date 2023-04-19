@@ -28,7 +28,8 @@ py::class_<ConvexFoothold>(m, "ConvexFoothold")
     .def("AddHalfspace", &ConvexFoothold::AddHalfspace)
     .def("AddFace", &ConvexFoothold::AddFace)
     .def("GetConstraintMatrices", &ConvexFoothold::GetConstraintMatrices)
-    .def("GetEqualityConstraintMatrices", &ConvexFoothold::GetEqualityConstraintMatrices);
+    .def("GetEqualityConstraintMatrices", &ConvexFoothold::GetEqualityConstraintMatrices)
+    .def("GetVertices", &ConvexFoothold::GetVertices);
 }
 
 }

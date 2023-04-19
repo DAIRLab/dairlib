@@ -222,13 +222,17 @@ void insert(std::vector<facet>& facets, Vector2d& a, double b) {
     return {a_sol, a_sol.dot(p)};
   }
 
-  ConvexFoothold MakeFootholdFromFacetList(
-      std::vector<facet> f, const Eigen::Isometry3d& plane_pose) {
+  MatrixXd get_vertices(const std::vector<facet>& f) {
     MatrixXd verts = MatrixXd::Zero(2, f.size());
     for (int i = 0; i < f.size(); i++) {
       verts.col(i) = f.at(i).v1_;
     }
-    return MakeFootholdFromConvexPolytope(verts, plane_pose);
+    return verts;
+  }
+  ConvexFoothold MakeFootholdFromFacetList(
+      std::vector<facet> f, const Eigen::Isometry3d& plane_pose) {
+    return MakeFootholdFromConvexPolytope(
+        get_vertices(f), plane_pose);
   }
 }
 
@@ -260,6 +264,18 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
   return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
 }
 
+std::vector<ConvexFoothold> ProcessTerrain2d(std::vector<MatrixXd> terrain) {
+  std::vector<ConvexFoothold> footholds;
+  for (const auto& planar_region : terrain) {
+    VPolytope convex_hull_v = VPolytope(planar_region).GetMinimalRepresentation();
+    footholds.push_back(
+        MakeFootholdFromInscribedConvexPolygon(
+            planar_region, convex_hull_v, Eigen::Isometry3d::Identity()
+    ));
+  }
+  return footholds;
+}
+
 ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
     const MatrixXd& verts,
     const drake::geometry::optimization::VPolytope& convex_hull_v,
@@ -276,7 +292,7 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
     if ((not vertex_in_poly(verts.col(i), verts_hull)) and
          contained(facet_list, verts.col(i))) {
       auto [a, b] = SolveForBestApproximateSupport(
-          verts.col(i), facet_list, verts);
+          verts.col(i), facet_list, get_vertices(facet_list));
       insert(facet_list, a, b);
     }
   }

@@ -3,5 +3,6 @@ topics: [
   "/tf_static",
   "/elevation_mapping/elevation_map_raw",
   "/convex_plane_decomposition_ros/filtered_map",
-  "/convex_plane_decomposition_ros/planar_terrain"
+  "/convex_plane_decomposition_ros/planar_terrain",
+  "/convex_plane_decomposition_ros/boundaries"
 ]

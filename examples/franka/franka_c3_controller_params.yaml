@@ -1,5 +1,5 @@
-c3_options_file: examples/franka/franka_c3_options_translation.yaml
-#c3_options_file: examples/franka/franka_c3_options_floating.yaml
+#c3_options_file: examples/franka/franka_c3_options_translation.yaml
+c3_options_file: examples/franka/franka_c3_options_floating.yaml
 c3_channel_actor: C3_TRAJECTORY_ACTOR
 c3_channel_object: C3_TRAJECTORY_TRAY
 state_channel: FRANKA_OUTPUT
@@ -7,10 +7,10 @@ radio_channel: CASSIE_VIRTUAL_RADIO
 
 
 franka_model: examples/franka/urdf/franka.urdf
-plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
-#plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
+#plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
+plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf
 
-include_end_effector_orientation: false
+include_end_effector_orientation: true
 
 

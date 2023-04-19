@@ -56,7 +56,8 @@ def main():
 
     done = False
     i = 0
-    latching_switch = 1
+    latching_switch_a = 1
+    latching_switch_b = 1
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -72,20 +73,23 @@ def main():
 
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 0:
-                    latching_switch = not latching_switch
+                    latching_switch_a = not latching_switch_a
+                if event.button == 1:
+                    latching_switch_b = not latching_switch_b
 
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
         radio_msg.channel[0] = -joystick.get_axis(1)
         radio_msg.channel[1] = -joystick.get_axis(0)
-        # radio_msg.channel[2] = -joystick.get_axis(4)
-        # radio_msg.channel[3] = joystick.get_axis(3)
-        radio_msg.channel[2] = -joystick.get_axis(3)
-        radio_msg.channel[3] = joystick.get_axis(2)
+        radio_msg.channel[2] = -joystick.get_axis(4)
+        radio_msg.channel[3] = joystick.get_axis(3)
+        # radio_msg.channel[2] = -joystick.get_axis(3)
+        # radio_msg.channel[3] = joystick.get_axis(2)
 
 
-        radio_msg.channel[14] = latching_switch
+        radio_msg.channel[13] = latching_switch_b
+        radio_msg.channel[14] = latching_switch_a
         # radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 

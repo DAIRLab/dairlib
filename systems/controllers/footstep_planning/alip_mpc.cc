@@ -104,7 +104,7 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
   for (int i = 1; i < nmodes_; i++){
     DRAKE_DEMAND(xd.at(i).size() == nx_ * nknots_);
     vector<Binding<QuadraticCost>> QQ;
-    for (int k = 0; k < nknots_ ; k++){
+    for (int k = 0; k < nknots_ - 1 ; k++){
       QQ.push_back(
           prog_->AddQuadraticErrorCost(
               Q,
@@ -322,7 +322,7 @@ void AlipMPC::UpdateMaximumCurrentStanceTime(double tmax) {
 
 void AlipMPC::UpdateTrackingCost(const vector<VectorXd>& xd) {
   for(int n = 0; n < nmodes_ - 1 ; n++) {
-    for (int k = 0; k < nknots_; k++) {
+    for (int k = 0; k < nknots_ - 1; k++) {
       tracking_costs_.at(n).at(k).evaluator()->
           UpdateCoefficients( 2.0*Q_,
                               -2.0*Q_ * GetStateAtKnot(xd.at(n+1), k));

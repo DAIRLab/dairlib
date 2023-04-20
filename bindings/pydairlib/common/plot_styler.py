@@ -33,6 +33,10 @@ class PlotStyler():
     # self.directory = None
     self.dpi = 200
     self.directory = '/home/yangwill/Pictures/plot_styler/'
+    plt.rc('legend', fontsize=14)
+    plt.rc('axes', labelsize=14, titlesize=14)
+    plt.rc('xtick', labelsize=14)
+    plt.rc('ytick', labelsize=14)
     matplotlib.rcParams['figure.figsize'] = 12, 7
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
@@ -111,5 +115,5 @@ class PlotStyler():
       plt.setp(self.axes, sharex=sharey)
 
   def tight_layout(self):
-    self.axes[0].autoscale(enable=True, axis='y', tight=True)
+    # self.axes[0].autoscale(enable=True, axis='y', tight=True)
     self.axes[0].autoscale(enable=True, axis='x', tight=True)

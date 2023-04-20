@@ -74,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-  parser.AddModelFromFile("examples/franka/urdf/franka.urdf");
+  parser.AddModelFromFile(controller_params.franka_model);
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);

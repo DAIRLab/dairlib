@@ -4,9 +4,9 @@ channel_u: "FRANKA_INPUT"
 channel_osc: "OSC_DEBUG_FRANKA"
 use_default_styling: false
 
-start_time: 2
+start_time: 0
 #duration: 0.47
-duration: 50
+duration: -1
 
 # Plant properties
 

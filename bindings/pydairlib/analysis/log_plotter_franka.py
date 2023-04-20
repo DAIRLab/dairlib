@@ -12,7 +12,7 @@ from pydairlib.common import plot_styler
 
 
 def main():
-    config_file = 'bindings/pydairlib/analysis/plot_configs/franka_translation.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/franka_translation_plot.yaml'
     plot_config = FrankaPlotConfig(config_file)
 
     channel_x = plot_config.channel_x

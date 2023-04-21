@@ -138,6 +138,7 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems/simulation:gps_receiver",
         "//systems/framework:vector",
         "//systems/primitives",
         "//systems/cameras:camera_utils",

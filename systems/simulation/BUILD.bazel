@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "gps_receiver",
+    srcs = ["gps_receiver.cc"],
+    hdrs = ["gps_receiver.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "state_to_height_map",
     srcs = ["state_to_height_map.cc"],
     hdrs = ["state_to_height_map.h"],

@@ -882,7 +882,7 @@ EventStatus CassieStateEstimator::Update(
     inekf::ExternalPositionMeasurement gps_measurement{
       p_W,
       p_B,
-      0.001 * Matrix3d::Identity()
+      0.000001 * Matrix3d::Identity()
     };
     ekf.CorrectExternalPositionMeasurement(gps_measurement);
   }

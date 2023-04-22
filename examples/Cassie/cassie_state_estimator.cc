@@ -881,8 +881,8 @@ EventStatus CassieStateEstimator::Update(
     Vector3d p_B = Vector3d::Map(gps.receiver_pos_in_parent_body);
     inekf::ExternalPositionMeasurement gps_measurement{
       p_W,
-      p_B,
-      0.000001 * Matrix3d::Identity()
+      p_B - imu_pos_,
+      0.01 * Matrix3d::Identity()
     };
     ekf.CorrectExternalPositionMeasurement(gps_measurement);
   }

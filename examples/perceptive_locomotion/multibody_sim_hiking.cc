@@ -181,10 +181,11 @@ int do_main(int argc, char* argv[]) {
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
       plant, FLAGS_publish_efforts);
 
+  Vector3d p_GB(0.1, 0, 0);
   auto gps = builder.AddSystem<GpsReceiver>(
-      plant, context.get(), plant.GetBodyByName("pelvis"), Vector3d(0, 0, 0));
+      plant, context.get(), plant.GetBodyByName("pelvis"), p_GB);
   auto gps_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_gps_signal>(FLAGS_channel_gps, lcm, 0.01));
+      LcmPublisherSystem::Make<lcmt_gps_signal>(FLAGS_channel_gps, lcm, 0.001));
 
   // Sensor aggregator and publisher of lcmt_cassie_out
   auto radio_sub =

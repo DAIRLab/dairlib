@@ -193,3 +193,13 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+py_binary(
+    name = "publish_vio",
+    srcs = ["publish_vio.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+        "//bindings/pydairlib/lcm",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

@@ -4,4 +4,5 @@ struct lcmt_gps_signal {
     string parent_body_name;
     double receiver_pos_in_world[3];
     double receiver_pos_in_parent_body[3];
+    double cov;
 }

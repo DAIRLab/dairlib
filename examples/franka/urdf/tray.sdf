@@ -3,22 +3,22 @@
   <model name="tray">
     <link name="tray">
       <inertial>
-        <mass>2.5</mass>
+        <mass>0.5</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-          <ixx>0.06</ixx>
+          <ixx>0.00668</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.06</iyy>
+          <iyy>0.00668</iyy>
           <iyz>0</iyz>
-          <izz>0.075</izz>
+          <izz>0.01333</izz>
         </inertia>
       </inertial>
       <visual name="tray">
         <geometry>
           <box>
-            <size>0.6 0.6 0.02</size>
+            <size>0.4 0.4 0.02</size>
           </box>
         </geometry>
         <material>
@@ -28,7 +28,7 @@
       <collision name="box">
         <geometry>
           <box>
-            <size>0.6 0.6 0.02</size>
+            <size>0.4 0.4 0.02</size>
           </box>
         </geometry>
         <drake:proximity_properties>
@@ -45,8 +45,8 @@
           <!-- Both mu_dynamic and mu_static are used in Continuous system.
             Only mu_dynamic is used in Discrete system.
           -->
-          <drake:mu_dynamic>0.3</drake:mu_dynamic>
-          <drake:mu_static>0.3</drake:mu_static>
+          <drake:mu_dynamic>0.4</drake:mu_dynamic>
+          <drake:mu_static>0.4</drake:mu_static>
         </drake:proximity_properties>
       </collision>
     </link>

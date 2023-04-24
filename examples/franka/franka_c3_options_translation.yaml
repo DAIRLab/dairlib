@@ -4,7 +4,7 @@ rho_scale: 2
 num_threads: 4
 delta_option: 1
 
-mu: 0.3
+mu: 0.4
 mu_plate: 1
 dt: 0.1
 solve_dt: 0.05

@@ -184,8 +184,8 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
           drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))),
           line_points.col(i));
       auto box = drake::geometry::Box(0.1, 0.1, 0.01);
-      meshcat_->SetObject("end_effector" + std::to_string(i), box, rgba_);
-      meshcat_->SetTransform("end_effector" + std::to_string(i), pose);
+      meshcat_->SetObject("/trajectories/end_effector" + std::to_string(i), box, rgba_);
+      meshcat_->SetTransform("/trajectories/end_effector" + std::to_string(i), pose);
     }
   }
 //  if (lcm_traj_.HasTrajectory("object_orientation_target")) {
@@ -199,8 +199,8 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
 //                      orientation_block.datapoints(3, i)),
 //          line_points.col(i));
 //      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
-//      meshcat_->SetObject("object" + std::to_string(i), box, rgba_);
-//      meshcat_->SetTransform("object" + std::to_string(i), pose);
+//      meshcat_->SetObject("/trajectories/object" + std::to_string(i), box, rgba_);
+//      meshcat_->SetTransform("/trajectories/object" + std::to_string(i), pose);
 //    }
 //  }
 

@@ -20,7 +20,7 @@ def make_solution_animation(mpc_debug):
             soln.pps[t],
             mpc_debug.fsm[t],
             mpc_debug.x0[t],
-            mpc_debug.p0[t]
+            mpc_debug.realsense_origin_in_world[t]
         )
 
     ani = animation.FuncAnimation(

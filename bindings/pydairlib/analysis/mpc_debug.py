@@ -100,7 +100,7 @@ class MpcDebug:
         self.t_mpc.append(t)
         self.solve_time.append(msg.solve_time_us / 1e6)
         self.x0[t] = msg.x0
-        self.p0[t] = msg.p0
+        self.p0[t] = msg.realsense_origin_in_world
         self.fsm[t] = msg.fsm_state
         self.mpc_trajs["solution"].append(t, msg.solution)
         self.mpc_trajs["guess"].append(t, msg.guess)

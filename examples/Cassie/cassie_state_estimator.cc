@@ -88,6 +88,7 @@ CassieStateEstimator::CassieStateEstimator(
 
   gps_input_port_ = DeclareAbstractInputPort(
       "Wp_gps, Bp_gps", drake::Value<lcmt_gps_signal>()).get_index();
+  prev_gps_time_idx_ = DeclareDiscreteState(1);
 
   // Initialize index maps
   actuator_idx_map_ = multibody::MakeNameToActuatorsMap(plant);
@@ -877,14 +878,22 @@ EventStatus CassieStateEstimator::Update(
 
   if (get_gps_input_port().HasValue(context)) {
     auto gps = EvalAbstractInput(context, gps_input_port_)->get_value<lcmt_gps_signal>();
-    Vector3d p_W = Vector3d::Map(gps.receiver_pos_in_world);
-    Vector3d p_B = Vector3d::Map(gps.receiver_pos_in_parent_body);
-    inekf::ExternalPositionMeasurement gps_measurement{
-      p_W,
-      p_B - imu_pos_,
-      0.01 * Matrix3d::Identity()
-    };
-    ekf.CorrectExternalPositionMeasurement(gps_measurement);
+    auto prev_gps_time = static_cast<long>(
+        state->get_discrete_state(prev_gps_time_idx_).get_value()(0)
+    );
+    if (gps.cov > 0 and gps.mtime != prev_gps_time) {
+      Vector3d p_W = Vector3d::Map(gps.receiver_pos_in_world);
+      Vector3d p_B = Vector3d::Map(gps.receiver_pos_in_parent_body);
+      inekf::ExternalPositionMeasurement gps_measurement{
+          p_W,
+          p_B - imu_pos_,
+          gps.cov * Matrix3d::Identity()
+      };
+      ekf.CorrectExternalPositionMeasurement(gps_measurement);
+      state->get_mutable_discrete_state(prev_gps_time_idx_).set_value(
+            drake::Vector1d::Constant(gps.mtime)
+          );
+    }
   }
 
   if (print_info_to_terminal_) {

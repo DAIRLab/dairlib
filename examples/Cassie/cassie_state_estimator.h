@@ -203,6 +203,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // A state which stores previous timestamp
   drake::systems::DiscreteStateIndex time_idx_;
   // States related to EKF
+  drake::systems::DiscreteStateIndex prev_gps_time_idx_;
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;

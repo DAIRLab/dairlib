@@ -32,6 +32,8 @@ void GpsReceiver::CalcReceiverPosition(const Context<double>& context,
     gps->receiver_pos_in_parent_body[i] = p_GB_(i);
   }
   gps->parent_body_name = receiver_body_.name();
+  gps->mtime = static_cast<long>(1000 * context.get_time());
+  gps->cov = 1e-3;
 }
 
 }

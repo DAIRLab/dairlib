@@ -112,4 +112,4 @@ def test():
         cam.publish_frame()
 
 
-if __name__ == '__main__': test()
+if __name__ == '__main__': vio_main()

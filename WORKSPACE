@@ -120,7 +120,7 @@ http_archive(
 # Choose a revision of InEKF to use.
 INEKF_COMMIT = "bazel-opt"
 
-INEKF_CHECKSUM = "bd2629368f48f920cd155263365374ee47c96f5a402ee48cccf05b6729663398"
+INEKF_CHECKSUM = "297ac0d64fd2c9e7fe36d01bd4b34db0592872234438f9ef4e3221ac2f0f5e40"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.

@@ -143,15 +143,18 @@ EventStatus SwingFootInterfaceSystem::DiscreteVariableUpdate(
     multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
     auto swing_foot_pos_at_liftoff = discrete_state->get_mutable_vector(
         liftoff_swing_foot_pos_idx_).get_mutable_value();
+    Vector3d stance_pos;
 
     auto swing_foot = swing_foot_map_.at(fsm_state);
+    auto stance_foot = stance_foot_map_.at(fsm_state);
     plant_.CalcPointsPositions(*plant_context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
+    plant_.CalcPointsPositions(*plant_context_, stance_foot.second, stance_foot.first,
+                               world_, &stance_pos);
     swing_foot_pos_at_liftoff =
         multibody::ReExpressWorldVector3InBodyYawFrame(
             plant_, *plant_context_, "pelvis",
-            swing_foot_pos_at_liftoff -
-                plant_.CalcCenterOfMassPositionInWorld(*plant_context_));
+            swing_foot_pos_at_liftoff - stance_pos);
   }
   return EventStatus::Succeeded();
 }
@@ -168,61 +171,28 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   auto time_scaling_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       time_scaling_breaks, Vector2d(0, 1).transpose());
 
-  int n = 100;
-  std::vector<double> path_breaks = polynomials::get_even_points(n);
-  std::vector<double> time_breaks = polynomials::get_chebyshev_points(n);
-
-  Eigen::MatrixXd control_points = MatrixXd::Zero(3, n);
+  std::vector<double> path_breaks = {0, 0.5, 1.0};
+  Eigen::Matrix3d control_points = Matrix3d::Zero();
   control_points.col(0) = init_pos;
   control_points.col(2) = final;
 
-  // get normal to vector from prev to new stance
+  // set midpoint similarly to https://arxiv.org/pdf/2206.14049.pdf
+  // (Section V/E)
   Vector3d swing_foot_disp = final - init_pos;
   if (swing_foot_disp(2) < 0.025) {
     swing_foot_disp(2) = 0;
   }
   double disp_yaw = atan2(swing_foot_disp(1), swing_foot_disp(0));
   Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0); // plane normal?
-  Vector3d n_hat = n_planar.cross(swing_foot_disp).normalized();
 
-  Vector2d swing_foot_disp_planar = Vector2d(
-      sqrt(swing_foot_disp.head<2>().dot(swing_foot_disp.head<2>())),
-      swing_foot_disp(2)
-  );
-  double a1 = 0;
-  double a2 = 0;
-  double a = 1.0;
-  if (swing_foot_disp(2) != 0) {
-    auto sigma = static_cast<double>(swing_foot_disp_planar(1) < 0);
-    Vector2d c = swing_foot_disp_planar(1) * Vector2d::UnitY() + sigma * swing_foot_disp_planar;
-    double cos_gamma = c.normalized().dot(swing_foot_disp_planar.normalized());
-    double sin_gamma = sqrt(1.0 - cos_gamma * cos_gamma);
-    a1 = sin_gamma / cos_gamma;
-    a2 = -cos_gamma / sin_gamma;
-    a = cos_gamma;
-  }
+  Vector3d n = n_planar.cross(swing_foot_disp).normalized();
+  control_points.col(1) = 0.5 * (init_pos + final) + mid_foot_height_ * n;
 
-  for (int i = 0; i < path_breaks.size(); i++) {
-    double s = path_breaks.at(i);
-    double h0 = a1 * s * (s <= a) + a2 * s * (s > a);
-    double h1 = 4 * mid_foot_height_ * s * (1.0 - s);
-    control_points.col(i) = (1.0 - s) * init_pos + s * final + (h0 + h1) * n_hat;
-  }
 
   double scaled_final_vel =
       desired_final_vertical_foot_velocity_ * (end_time - start_time);
-
-  VectorXd polybreaks = VectorXd::Map(time_breaks.data(), time_breaks.size());
-  auto swing_foot_path =
-      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          polybreaks,
-          control_points,
-          Vector3d::Zero(),
-          -scaled_final_vel * Vector3d::UnitZ()
-      );
-
-//  auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
-//      control_points, time_breaks, scaled_final_vel);
+  auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
+      control_points, path_breaks, scaled_final_vel);
 
   auto swing_foot_spline = PathParameterizedTrajectory<double>(
       swing_foot_path, time_scaling_trajectory);
@@ -273,20 +243,13 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
         liftoff_time, -std::numeric_limits<double>::infinity(),
         touchdown_time - 0.001);
 
-  Vector3d stance_foot_pos;
-  auto stance_foot = stance_foot_map_.at(fsm_state);
-  plant_.CalcPointsPositions(*plant_context_, stance_foot.second,
-                             stance_foot.first, world_, &stance_foot_pos);
-  stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
-      plant_, *plant_context_, "pelvis", stance_foot_pos);
-
     // Assign traj
     auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
     *pp_traj = CreateSplineForSwingFoot(
         start_time_of_this_interval,
         touchdown_time,
         swing_foot_pos_at_liftoff,
-        stance_foot_pos + footstep_target_in_stance_frame
+        footstep_target_in_stance_frame
     );
 }
 

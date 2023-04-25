@@ -512,16 +512,17 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
-  auto com_data = std::make_unique<ComTrackingData>("com_data", gains.K_p_swing_foot,
-                           gains.K_d_swing_foot, gains.W_swing_foot,
-                           plant_w_spr, plant_wo_spr);
-  com_data->AddFiniteStateToTrack(left_stance_state);
-  com_data->AddFiniteStateToTrack(right_stance_state);
+  auto stance_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
+      "com_data", gains.K_p_swing_foot,
+      gains.K_d_swing_foot, gains.W_swing_foot,
+      plant_w_spr, plant_wo_spr);
+  stance_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_left");
+  stance_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_right");
 
   auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_wo_spr, swing_foot_data.get(),
-      com_data.get());
+      stance_foot_data.get());
   swing_ft_traj_local->SetSpringsInKinematicCalculation(false);
 
   auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(

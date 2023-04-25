@@ -499,7 +499,7 @@
       <origin
         xyz="0.00474 0.02748 -0.00014"
         rpy="0 0 0" />
-      <mass value="0.1498" />
+      <mass value="0.8" />
       <inertia
         ixx=".000287"
         ixy="-.00009863"
@@ -552,7 +552,7 @@
       <origin
         xyz="0.00474 0.02748 0.00014"
         rpy="0 0 0" />
-      <mass value="0.1498" />
+      <mass value="0.8" />
       <inertia
         ixx=".000287"
         ixy="-.00009863"

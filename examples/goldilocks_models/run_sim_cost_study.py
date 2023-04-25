@@ -142,11 +142,11 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   realtime_rate_for_time_limit = target_realtime_rate
   dynamic_time_limit = True
   use_ipopt = True if hybrid_mpc else False
-  knots_per_mode = 5  # can try smaller number like 3 or 5
-  feas_tol = 1e-2  #1e-4
-  opt_tol = 1e-2  #1e-4
+  knots_per_mode = 4  # can try smaller number like 3 or 5
+  feas_tol = 1e-4  #1e-4 #1e-2
+  opt_tol = 1e-4  #1e-4 #1e-2
   n_step = 2
-  min_mpc_thread_loop_duration = 0.0  # 0.05
+  min_mpc_thread_loop_duration = 0.05  # 0.05  #0
   # time_limit is optional, set = 0 for realtime
   time_limit = 0.0 if dynamic_time_limit else 1.0 / target_realtime_rate * 0.2
   time_limit = 0.0 if get_init_file else time_limit
@@ -1687,6 +1687,8 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
   data_dir = parsed_yaml_file.get('dir_data')
 
+  # assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
+
   FOM_model_dir_for_sim = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"
   FOM_model_dir_for_planner = ""
 
@@ -1712,7 +1714,7 @@ if __name__ == "__main__":
   ### global parameters
   sim_end_time = 10.0
   t_no_logging_at_start = 6.0  # WARNING: only use this when we are confident that simulation is initialized correctly, and the controller behaves as we expect
-  spring_model = True
+  spring_model = False
   close_sim_gap = False
   # Parameters that are modified often
   target_realtime_rate = 1  # 0.04
@@ -1824,7 +1826,9 @@ if __name__ == "__main__":
   # model_slices = [500]
   # model_slices = [1, 100, 200, 300, 400, 450]
   # model_slices = [1, 20, 40, 60, 80, 100]
-  model_slices = [1, 10, 20, 30, 40, 50]
+  # model_slices = [1, 10, 20, 30, 40, 50]
+  # model_slices = [1, 30, 56]
+  # model_slices = [1, 50]
   #model_slices = [1, 60, 80, 100]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
@@ -1848,7 +1852,9 @@ if __name__ == "__main__":
   #model_slices_cost_landsacpe = [1, 11, 50, 70]
   # model_slices_cost_landsacpe = [75]
   # model_slices_cost_landsacpe = [1, 20, 40, 60, 80, 100]
-  model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
+  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
+  # model_slices_cost_landsacpe = [1, 30, 56]
+  # model_slices_cost_landsacpe = [1, 50]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1906,6 +1912,8 @@ if __name__ == "__main__":
   # model_indices = [1, 20, 40, 60, 70, 80, 90, 100]  # Overwrite
   # model_indices = [1, 10, 20, 30, 40, 50]  # Overwrite
   #model_indices = [100]  # Overwrite
+  # model_indices = [1, 30, 56]  # Overwrite
+  # model_indices = [1, 50]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

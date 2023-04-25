@@ -184,8 +184,14 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
           drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))),
           line_points.col(i));
       auto box = drake::geometry::Box(0.1, 0.1, 0.01);
-      meshcat_->SetObject("/trajectories/end_effector" + std::to_string(i), box, rgba_);
-      meshcat_->SetTransform("/trajectories/end_effector" + std::to_string(i), pose);
+      auto rgba_transparent = rgba_;
+      rgba_transparent.set(rgba_.r(),
+                           rgba_.g(),
+                           rgba_.b(),
+                           (line_points.cols() - double(i)) / line_points.cols()
+                               * rgba_.a());
+      meshcat_->SetObject("/trajectories/end_effector_pose/" + std::to_string(i), box, rgba_transparent);
+      meshcat_->SetTransform("/trajectories/end_effector_pose/" + std::to_string(i), pose);
     }
   }
 //  if (lcm_traj_.HasTrajectory("object_orientation_target")) {

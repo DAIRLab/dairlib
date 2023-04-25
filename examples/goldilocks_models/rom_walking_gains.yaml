@@ -51,9 +51,9 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"        # rom_option 27
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"    # rom_option 27
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
@@ -92,8 +92,8 @@ vel_scale_trans_lateral: -0.2
 # Pelvis height task (primarily used for sim cost eval)
 # Note: This pelvis height is not use in the default swing foot planner (i.e. when we don't use the foot step from the planner).
 #       The "pelvis height" for the default swing foot planner is set by the parameter below (lipm_height)
-pelvis_height: 1.0 #-1.0
-pelvis_com_height_diff_heuristic: 0.4  # 0.06 is a rough guess
+pelvis_height: -1.0 #-1.0
+pelvis_com_height_diff_heuristic: 0.06  # 0.06 is a rough guess
 
 
 ### For both planner and controller
@@ -105,14 +105,14 @@ post_left_double_support: 3
 post_right_double_support: 4
 
 # Decrease single_support_duration when using "LIPM MPC + IK" for planner helps
-left_support_duration: 0.35 #0.3   # 0.23 # 0.35 # 0.4
-right_support_duration: 0.35 #0.3  # 0.23 # 0.35 # 0.4
-double_support_duration: 0.0 #0.02
+left_support_duration: 0.3 #0.3   # 0.23 # 0.35 # 0.4
+right_support_duration: 0.3 #0.3  # 0.23 # 0.35 # 0.4
+double_support_duration: 0.1 #0.02
 
 
 ### For planner only
 
-constant_rom_vel_during_double_support: false
+constant_rom_vel_during_double_support: true
 
 # Parameters that affect the foot spread
 y_vel_offset: 0.15  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
@@ -134,9 +134,9 @@ max_lipm_step_length: 0.8
 
 back_limit_wrt_pelvis: -0.6   # -0.5
 front_limit_wrt_pelvis: 0.6   # 0.5
-right_limit_wrt_pelvis: 0.04  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
+right_limit_wrt_pelvis: 0.02  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
 left_limit_wrt_pelvis: 0.5    # 0.4
-right_limit_wrt_stance_ft: 0.04  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
+right_limit_wrt_stance_ft: 0.02  #0.02 # 0.06  # This cannot be too big if we want to get desired pose as close to FOM trajopt's as possible (used in planner's regularization cost)
 
 ### Planner cost weight
 use_lipm_mpc_and_ik: false

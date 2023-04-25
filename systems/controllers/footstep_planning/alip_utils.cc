@@ -2,6 +2,7 @@
 #include <iostream>
 #include "alip_utils.h"
 #include "multibody/multibody_utils.h"
+#include "drake/math/discrete_algebraic_riccati_equation.h"
 
 namespace dairlib::systems::controllers::alip_utils {
 
@@ -13,6 +14,7 @@ using drake::systems::Context;
 
 using Eigen::MatrixXd;
 using Eigen::Matrix4d;
+using Eigen::Matrix2d;
 using Eigen::VectorXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -175,7 +177,6 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
     }
   }
 
-
 //  for (const auto& x : gait) {
 //    if (x.hasNaN()) {
 //      std::cout << "Invalid gait generated for " << gait_params;
@@ -184,7 +185,38 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
 //  }
 
   return gait;
+}
 
+
+Matrix4d SolveDareTwoStep(
+    const Matrix4d& Q, double com_z, double m, double tss, double tds,
+    int knots_per_mode, ResetDiscretization discretization) {
+  int K = knots_per_mode;
+  double dt = tss / (K - 1.0);
+  Matrix<double, 4, 8> reset = CalcResetMap(com_z, m, tds, discretization);
+  Matrix4d I = Matrix4d::Identity();
+  Matrix<double, 4, 2> Br = reset.rightCols<2>();
+
+  // inexcusable notation here but that's a problem for future brian
+  Matrix4d P1 = I;
+  for (int i = 0; i < K - 1; i++) {
+    Matrix4d Ai = CalcAd(com_z, m, dt * (i + 1));
+    P1 += Ai;
+  }
+  Matrix4d Ak = CalcAd(com_z, m, dt * K);
+  Matrix4d P =
+      P1 + sqrt(static_cast<double>(K)) * (I + reset.leftCols<4>()) * Ak;
+  Matrix<double, 4, 2> M = P1 * Br;
+
+
+  Matrix4d A = reset.leftCols<4>() * Ak;
+  Matrix<double, 4, 2> B = Ak * Br;
+  Matrix4d Qp = P.transpose() * Q * P;
+  Matrix2d Qm = M.transpose() * Q * M;
+  Matrix<double, 4, 2> N = A.transpose() * Q * M;
+
+  Matrix4d S = drake::math::DiscreteAlgebraicRiccatiEquation(A, B, Qp, Qm, N);
+  return S;
 }
 
 double XImpactTime(double t_start, double H, double x, double Ly,

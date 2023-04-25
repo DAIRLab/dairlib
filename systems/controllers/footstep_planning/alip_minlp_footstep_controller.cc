@@ -74,15 +74,15 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
   next_impact_time_state_idx_ = DeclareDiscreteState(1);
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
   initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
-
+  trajopt_.UpdateNominalStanceTime(single_stance_duration_,
+                                   single_stance_duration_);
   trajopt_.SetDoubleSupportTime(double_stance_duration);
   auto xd = trajopt_.MakeXdesTrajForVdes(
       Vector2d::Zero(), gains_.stance_width, single_stance_duration_,
       gains_.knots_per_mode, alip_utils::Stance::kLeft);
   trajopt_.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt_.AddInputCost(gains_.R(0,0));
-  trajopt_.UpdateNominalStanceTime(single_stance_duration_,
-                                  single_stance_duration_);
+
   trajopt_.SetMinimumStanceTime(gains_.t_min);
   trajopt_.SetMaximumStanceTime(gains_.t_max);
   trajopt_.SetInputLimit(gains_.u_max);

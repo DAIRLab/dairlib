@@ -23,7 +23,7 @@ class TrackingCamera():
         self.pub_channel = "CASSIE_GPS_POSITION"
         self.sub_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
         self.start_time = -1
-        self.reset_position_threshold = 0.2
+        self.reset_position_threshold = 0.1
         self.vio_position = np.zeros((3,))
         self.dispatcher_position = np.zeros((3,))
 
@@ -67,7 +67,7 @@ class TrackingCamera():
         msg.mtime = int(timestamp - self.start_time)
 
         if pose.tracker_confidence > 0:
-            msg.cov = 10.0**(1 - pose.tracker_confidence)
+            msg.cov = 5.0**(1 - pose.tracker_confidence)
         else:
             msg.cov = -1
 

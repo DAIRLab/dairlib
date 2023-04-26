@@ -371,7 +371,7 @@ int do_main(int argc, char* argv[]) {
     bff.push_back({
       "map_center",
       drake::math::RigidTransformd(drake::math::RotationMatrixd(),
-                                   0.7 * Vector3d::UnitX())
+                                   0.5 * Vector3d::UnitX())
     });
     std::vector<std::string> frames = {"pelvis", "toe_left", "toe_right"};
 

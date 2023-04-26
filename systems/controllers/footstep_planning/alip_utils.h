@@ -114,6 +114,10 @@ Eigen::Vector4d CalcReset(double com_z, double m, double Tds,
 Eigen::Matrix4d CalcA(double com_z, double m);
 Eigen::Matrix4d CalcAd(double com_z, double m, double t);
 Eigen::Vector4d CalcBd(double com_z, double m, double t);
+Eigen::Matrix4d SolveDareTwoStep(
+    const Eigen::Matrix4d& Q,
+    double com_z, double m, double tss, double tds, int knots_per_mode,
+    ResetDiscretization discretization);
 
 std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params);

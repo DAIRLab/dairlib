@@ -101,6 +101,8 @@ void AlipMPC::Build(const drake::solvers::SolverOptions& options) {
 void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
                                 const Matrix4d &Q, const Eigen::MatrixXd& Qf) {
   DRAKE_DEMAND(xd.size() == nmodes_);
+  DRAKE_DEMAND(Tds_ > 0);
+  DRAKE_DEMAND(not td_.empty());
   for (int i = 1; i < nmodes_; i++){
     DRAKE_DEMAND(xd.at(i).size() == nx_ * nknots_);
     vector<Binding<QuadraticCost>> QQ;
@@ -115,7 +117,8 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
   }
   xd_ = xd;
   Q_ = Q;
-  Qf_ = Qf;
+  Qf_ = alip_utils::SolveDareTwoStep(
+      Q, H_, m_, td_.back(), Tds_, nknots_, reset_discretization_);
   MakeTerminalCost();
 }
 

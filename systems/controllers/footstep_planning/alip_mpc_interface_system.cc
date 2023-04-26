@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 
+#include "common/polynomial_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/minimum_snap_trajectory_generation.h"
 
@@ -142,15 +143,18 @@ EventStatus SwingFootInterfaceSystem::DiscreteVariableUpdate(
     multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
     auto swing_foot_pos_at_liftoff = discrete_state->get_mutable_vector(
         liftoff_swing_foot_pos_idx_).get_mutable_value();
+    Vector3d stance_pos;
 
     auto swing_foot = swing_foot_map_.at(fsm_state);
+    auto stance_foot = stance_foot_map_.at(fsm_state);
     plant_.CalcPointsPositions(*plant_context_, swing_foot.second, swing_foot.first,
                                world_, &swing_foot_pos_at_liftoff);
+    plant_.CalcPointsPositions(*plant_context_, stance_foot.second, stance_foot.first,
+                               world_, &stance_pos);
     swing_foot_pos_at_liftoff =
         multibody::ReExpressWorldVector3InBodyYawFrame(
             plant_, *plant_context_, "pelvis",
-            swing_foot_pos_at_liftoff -
-                plant_.CalcCenterOfMassPositionInWorld(*plant_context_));
+            swing_foot_pos_at_liftoff - stance_pos);
   }
   return EventStatus::Succeeded();
 }
@@ -232,8 +236,6 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
       EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
   double touchdown_time =
       EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
-  const auto& com_traj = EvalAbstractInput(
-      context, com_traj_input_port_)->get_value<drake::trajectories::Trajectory<double>>();
   Vector3d footstep_target_in_stance_frame =
       EvalVectorInput(context, footstep_target_port_)->get_value();
 
@@ -241,21 +243,14 @@ void SwingFootInterfaceSystem::CalcSwingTraj(
         liftoff_time, -std::numeric_limits<double>::infinity(),
         touchdown_time - 0.001);
 
-  Vector3d stance_foot_pos;
-  auto stance_foot = stance_foot_map_.at(fsm_state);
-  plant_.CalcPointsPositions(*plant_context_, stance_foot.second,
-                             stance_foot.first, world_, &stance_foot_pos);
-  stance_foot_pos = multibody::ReExpressWorldVector3InBodyYawFrame(
-      plant_, *plant_context_, "pelvis", stance_foot_pos);
-
-  Vector3d com_pos_at_td = com_traj.value(touchdown_time);
-  Vector3d stance_pos_in_com_frame_at_td =
-      stance_foot_pos + footstep_target_in_stance_frame - com_pos_at_td;
     // Assign traj
     auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
     *pp_traj = CreateSplineForSwingFoot(
-        start_time_of_this_interval, touchdown_time,
-        swing_foot_pos_at_liftoff, stance_pos_in_com_frame_at_td);
+        start_time_of_this_interval,
+        touchdown_time,
+        swing_foot_pos_at_liftoff,
+        footstep_target_in_stance_frame
+    );
 }
 
 ComTrajInterfaceSystem::ComTrajInterfaceSystem(

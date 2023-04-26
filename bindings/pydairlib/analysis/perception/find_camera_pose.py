@@ -369,7 +369,7 @@ def write_bag_for_calibration_playback(poses, X_PC, bag_path):
 def main():
     hardware_fname = sys.argv[1]
     time_offset = 0.0
-    cutoff_time = 45
+    cutoff_time = 100
     poses, data = extract_calibration_data(
         hardware_fname,
         CalibrationParams(),

@@ -17,6 +17,7 @@ using convex_plane_decomposition_msgs::PlanarRegion;
 using convex_plane_decomposition_msgs::PlanarTerrain;
 using convex_plane_decomposition_msgs::Point2d;
 using convex_plane_decomposition_msgs::Polygon2d;
+using convex_plane_decomposition_msgs::PolygonWithHoles2d;
 using drake::geometry::optimization::VPolytope;
 using drake::geometry::optimization::HPolyhedron;
 using drake::solvers::MathematicalProgram;
@@ -336,8 +337,33 @@ VectorXd centroid (const MatrixXd& verts) {
   return (1.0 / static_cast<double>(n)) * center;
 }
 
+acd2d::cd_poly MakeAcdPoly(const MatrixXd& verts) {
+  DRAKE_DEMAND(verts.rows() == 2);
+  acd2d::cd_poly poly(acd2d::cd_poly::POLYTYPE::POUT);
+  for(int i = 0; i < verts.cols(); i++) {
+    const auto& v = verts.col(i);
+    poly.addVertex(v(0), v(1));
+  }
+  poly.endPoly();
+  return poly;
+}
 
+acd2d::cd_poly MakeAcdPoly(
+    const Polygon2d& poly2d, acd2d::cd_poly::POLYTYPE type) {
+  acd2d::cd_poly poly(type);
+  for(const auto& p : poly2d.points) {
+    poly.addVertex(p.x, p.y);
+  }
+  poly.endPoly();
+  return poly;
+}
 
-
-
+acd2d::cd_polygon MakeAcdPolygon(const PolygonWithHoles2d& poly2d) {
+  acd2d::cd_polygon polygon{};
+  polygon.push_back(MakeAcdPoly(poly2d.outer_boundary));
+  for (const auto& h : poly2d.holes) {
+    polygon.push_back(MakeAcdPoly(h, acd2d::cd_poly::POLYTYPE::PIN));
+  }
+  return polygon;
+}
 }

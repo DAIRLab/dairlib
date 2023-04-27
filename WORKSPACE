@@ -91,6 +91,12 @@ new_local_repository(
     path = LOCAL_ROS_INSTALL_PATH,
 )
 
+new_local_repository(
+    name = "acd2d",
+    build_file = "tools/workspace/acd2d/acd2d.bazel",
+    path = "/home/brian/workspace/acd2d",
+)
+
 # Other catkin packages from source
 # TODO: generate this automatically from rosinstall_generator
 

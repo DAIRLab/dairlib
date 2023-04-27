@@ -12,6 +12,9 @@
 #include "drake/geometry/optimization/vpolytope.h"
 #include "drake/geometry/optimization/hpolyhedron.h"
 
+// acd2d
+#include "acd2d.h"
+
 namespace dairlib::geometry {
 // For now, ignore any non-convexity and take the convex hull of each region,
 // ignoring holes
@@ -67,6 +70,13 @@ inline bool vertex_in_poly(
   }
   return false;
 }
+
+acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd& verts);
+acd2d::cd_poly MakeAcdPoly(
+    const convex_plane_decomposition_msgs::Polygon2d& poly2d,
+    acd2d::cd_poly::POLYTYPE type  = acd2d::cd_poly::POLYTYPE::POUT);
+acd2d::cd_polygon MakeAcdPolygon(
+    const convex_plane_decomposition_msgs::PolygonWithHoles2d& poly2d);
 
 
 }

@@ -47,6 +47,7 @@ cc_library(
         ":convex_foothold_set",
         "//solvers:fast_osqp_solver",
         "@ros-local",
+        "@acd2d"
     ],
 )
 

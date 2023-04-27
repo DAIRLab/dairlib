@@ -5,18 +5,8 @@ package(default_visibility = ["//visibility:public"])
 # Prebuilt C++ and Python ROS libraries including local, unpublished packages
 
 cc_library(
-    name='fist',
-    hdrs=glob(['libs/FIST/*.h']),
-    srcs=glob(['libs/FIST/libFIST.linux64.a', 'libs/FIST/FISTd.lib']),
-    strip_include_prefix='libs/FIST',
-    deps=[]
+    name = "acd2d",
+    srcs = glob(["src/**/*.cpp"]),
+    hdrs = glob(["src/**/*.h", "src/**/*.hpp"]),
+    strip_include_prefix = "src",
 )
-
-cc_library(
-    name='acd2d',
-    srcs=glob(['src/**/*.cpp']),
-    hdrs=glob(['src/**/*.h']),
-    strip_include_prefix='src',
-    deps=['fist']
-)
-

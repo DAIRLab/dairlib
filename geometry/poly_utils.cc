@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include <memory>
+#include <chrono>
 #include "poly_utils.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
@@ -314,7 +315,6 @@ MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
 
 std::pair<MatrixXd, std::vector<MatrixXd>> GetPlanarBoundaryAndHolesFromRegion(
     const PlanarRegion &foothold) {
-
   std::vector<MatrixXd> holes{};
   for (const auto& hole: foothold.boundary.holes) {
     holes.push_back(
@@ -341,6 +341,7 @@ VectorXd centroid (const MatrixXd& verts) {
 acd2d::cd_poly MakeAcdPoly(const MatrixXd& verts) {
   DRAKE_DEMAND(verts.rows() == 2);
   acd2d::cd_poly poly(acd2d::cd_poly::POLYTYPE::POUT);
+  poly.beginPoly();
   for(int i = 0; i < verts.cols(); i++) {
     const auto& v = verts.col(i);
     poly.addVertex(v(0), v(1));
@@ -352,6 +353,7 @@ acd2d::cd_poly MakeAcdPoly(const MatrixXd& verts) {
 acd2d::cd_poly MakeAcdPoly(
     const Polygon2d& poly2d, acd2d::cd_poly::POLYTYPE type) {
   acd2d::cd_poly poly(type);
+  poly.beginPoly();
   for(const auto& p : poly2d.points) {
     poly.addVertex(p.x, p.y);
   }
@@ -369,17 +371,21 @@ acd2d::cd_polygon MakeAcdPolygon(const PolygonWithHoles2d& poly2d) {
 }
 
 std::vector<MatrixXd> TestAcd(const MatrixXd& verts) {
+  auto start = std::chrono::high_resolution_clock::now();
   auto acd_poly = MakeAcdPoly(verts);
   acd2d::cd_polygon polygon{};
   polygon.push_back(acd_poly);
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::ShortestPathMeasurement>();
   acd2d::cd_2d cd;
+  cd.addPolygon(polygon);
   cd.decomposeAll(0.1, measure.get());
 
   std::vector<MatrixXd> polylist;
   for (const auto& poly_out : cd.getDoneList()) {
     polylist.push_back(Acd2d2Eigen(poly_out.front()));
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "decomp took "<< static_cast<std::chrono::duration<double>>(end - start).count() << " sec.\n";
   return polylist;
 }
 
@@ -388,12 +394,15 @@ MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly) {
   DRAKE_DEMAND(n > 2);
   MatrixXd verts = MatrixXd::Zero(2, n);
   auto ptr = poly.getHead();
+  DRAKE_DEMAND(ptr != nullptr);
   int i = 0;
   do {
-    verts.col(i) = VectorXd::Map(ptr->getPos().get(), 2);
+    verts.col(i)(0) = ptr->getPos().get()[0];
+    verts.col(i)(1) = ptr->getPos().get()[1];
     i++;
     ptr = ptr->getNext();
   } while (ptr != poly.getHead());
+  return verts;
 }
 
 }

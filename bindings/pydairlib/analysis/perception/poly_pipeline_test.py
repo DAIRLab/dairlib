@@ -90,6 +90,7 @@ def test_acd():
          [0.0, 1.0, 1.0, 0.0, -1.0, -1.0]]
     )
     polys = TestAcd(bowtie)
+    import pdb; pdb.set_trace()
     plot_polygon(bowtie)
     for poly in polys:
         plot_polygon(poly, linestyle='dashed')

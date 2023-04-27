@@ -25,6 +25,8 @@ ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
 std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<Eigen::MatrixXd> terrain);
 
+std::vector<Eigen::MatrixXd> TestAcd(const Eigen::MatrixXd& verts);
+
 void MaybeAddFootholdToSetFromRos(
     ConvexFootholdSet& footholds,
     const convex_plane_decomposition_msgs::PlanarRegion& foothold,
@@ -78,5 +80,6 @@ acd2d::cd_poly MakeAcdPoly(
 acd2d::cd_polygon MakeAcdPolygon(
     const convex_plane_decomposition_msgs::PolygonWithHoles2d& poly2d);
 
+Eigen::MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly);
 
 }

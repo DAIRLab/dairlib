@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <memory>
 #include "poly_utils.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
@@ -366,4 +367,33 @@ acd2d::cd_polygon MakeAcdPolygon(const PolygonWithHoles2d& poly2d) {
   }
   return polygon;
 }
+
+std::vector<MatrixXd> TestAcd(const MatrixXd& verts) {
+  auto acd_poly = MakeAcdPoly(verts);
+  acd2d::cd_polygon polygon{};
+  polygon.push_back(acd_poly);
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::ShortestPathMeasurement>();
+  acd2d::cd_2d cd;
+  cd.decomposeAll(0.1, measure.get());
+
+  std::vector<MatrixXd> polylist;
+  for (const auto& poly_out : cd.getDoneList()) {
+    polylist.push_back(Acd2d2Eigen(poly_out.front()));
+  }
+  return polylist;
+}
+
+MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly) {
+  int n = poly.getSize();
+  DRAKE_DEMAND(n > 2);
+  MatrixXd verts = MatrixXd::Zero(2, n);
+  auto ptr = poly.getHead();
+  int i = 0;
+  do {
+    verts.col(i) = VectorXd::Map(ptr->getPos().get(), 2);
+    i++;
+    ptr = ptr->getNext();
+  } while (ptr != poly.getHead());
+}
+
 }

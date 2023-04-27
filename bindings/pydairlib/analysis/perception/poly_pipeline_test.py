@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 
 from pydairlib.geometry.convex_foothold import ConvexFoothold
-from pydairlib.geometry.poly_utils import ProcessTerrain2d
+from pydairlib.geometry.poly_utils import ProcessTerrain2d, TestAcd
 
 try:
     import rosbag
@@ -16,10 +16,10 @@ import os
 import sys
 
 
-def plot_polygon(verts):
+def plot_polygon(verts, linestyle='solid'):
     assert(verts.shape[0] == 2)
     tmp = np.vstack((verts.T, verts[:, 0]))
-    plt.plot(tmp[:, 0], tmp[:, 1])
+    plt.plot(tmp[:, 0], tmp[:, 1], linestyle=linestyle)
 
 
 def set_line_data_as_polygon(verts, line):
@@ -84,6 +84,17 @@ def make_animation(inner_boundaries, outer_boundaries, video_name):
     anim.save(video_name, writer='ffmpeg', dpi=300, fps=10)
 
 
+def test_acd():
+    bowtie = np.array(
+        [[0.1, 1.0, -1.0, -0.1, -1.0, 1.0],
+         [0.0, 1.0, 1.0, 0.0, -1.0, -1.0]]
+    )
+    polys = TestAcd(bowtie)
+    plot_polygon(bowtie)
+    for poly in polys:
+        plot_polygon(poly, linestyle='dashed')
+    plt.show()
+
 def main():
     fname = sys.argv[1]
     video_name = sys.argv[2]
@@ -102,5 +113,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    test_acd()
 

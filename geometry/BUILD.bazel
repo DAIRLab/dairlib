@@ -63,6 +63,13 @@ cc_library(
     ],
 )
 
+
+cc_binary(
+    name = "polytest",
+    srcs = ["test/polytest.cc"],
+    deps = [":poly_utils"],
+)
+
 cc_test(
     name = "convex_foothold_test",
     size = "small",

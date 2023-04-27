@@ -23,7 +23,7 @@ ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
 
 // function to bind for testing entire polygon pipeline in python
 std::vector<ConvexFoothold> ProcessTerrain2d(
-    std::vector<Eigen::MatrixXd> terrain);
+    std::vector<std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>> terrain);
 
 std::vector<Eigen::MatrixXd> TestAcd(const Eigen::MatrixXd& verts);
 
@@ -73,12 +73,15 @@ inline bool vertex_in_poly(
   return false;
 }
 
-acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd& verts);
+acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd& verts,
+                           acd2d::cd_poly::POLYTYPE type = acd2d::cd_poly::POLYTYPE::POUT);
 acd2d::cd_poly MakeAcdPoly(
     const convex_plane_decomposition_msgs::Polygon2d& poly2d,
     acd2d::cd_poly::POLYTYPE type  = acd2d::cd_poly::POLYTYPE::POUT);
 acd2d::cd_polygon MakeAcdPolygon(
     const convex_plane_decomposition_msgs::PolygonWithHoles2d& poly2d);
+acd2d::cd_polygon MakeAcdPolygon(
+    const std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>& poly_with_holes);
 
 Eigen::MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly);
 

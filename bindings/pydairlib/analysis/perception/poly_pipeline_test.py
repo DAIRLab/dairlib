@@ -40,9 +40,15 @@ def convert_terrain_msg(msg):
     polys = []
     for poly in msg.planarRegions:
         boundary_verts = []
+        holes = []
         for pt in poly.boundary.outer_boundary.points:
             boundary_verts.append([pt.x, pt.y])
-        polys.append(np.array(boundary_verts).T)
+        for hole in poly.boundary.holes:
+            hole_verts = []
+            for pt in hole.points:
+                hole_verts.append([pt.x, pt.y])
+            holes.append(np.array(hole_verts).T)
+        polys.append((np.array(boundary_verts).T, holes))
     return polys
 
 
@@ -55,24 +61,27 @@ def max_polys(boundary_list):
 
 
 def make_animation(inner_boundaries, outer_boundaries, video_name):
-    n = max_polys(outer_boundaries)
+    k = max(max_polys(inner_boundaries), max_polys(outer_boundaries))
 
     # create a blank window
     fig = plt.figure()
     ax = plt.axes(xlim=[-2.5, 2.5], ylim=[-2.5, 2.5])
     lines = [(ax.plot([], [], linewidth=1.5, linestyle='solid')[0],
-              ax.plot([], [], linewidth=1.5, linestyle='dashed')[0]) for _ in range(n)]
+              ax.plot([], [], linewidth=1.5, linestyle='dashed')[0]) for _ in range(k)]
 
     def anim_callback(i):
         inner_polys = inner_boundaries[i]
         outer_polys = outer_boundaries[i]
-        m = len(inner_polys)
-        for j in range(m):
-            set_line_data_as_polygon(outer_polys[j], lines[j][0])
+        m1 = len(inner_polys)
+        m2 = len(outer_polys)
+        for j in range(m1):
             set_line_data_as_polygon(inner_polys[j], lines[j][1])
-        for j in range(m, n):
-            for line in lines[j]:
-                line.set_data([], [])
+        for j in range(m1, k):
+            lines[j][1].set_data([], [])
+        for j in range(m2):
+            set_line_data_as_polygon(outer_polys[j], lines[j][0])
+        for j in range(m2, k):
+            lines[j][0].set_data([],[])
         return_data = []
         for line in lines:
             return_data.append(line[0])
@@ -105,8 +114,9 @@ def main():
 
     for poly_list in polys:
         boundaries = convert_terrain_msg(poly_list)
-        inner_boundaries.append(ProcessTerrain2d(boundaries))
-        outer_boundaries.append(boundaries)
+        inner_boundaries += ProcessTerrain2d(boundaries)
+        outer_boundaries += [boundary[0] for boundary in boundaries]
+        import pdb; pdb.set_trace()
     for poly in inner_boundaries:
         for i in range(len(poly)):
             poly[i] = poly[i].GetVertices()[:2]
@@ -114,5 +124,5 @@ def main():
 
 
 if __name__ == '__main__':
-    test_acd()
+    main()
 

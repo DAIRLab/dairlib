@@ -267,14 +267,21 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
   return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
 }
 
-std::vector<ConvexFoothold> ProcessTerrain2d(std::vector<MatrixXd> terrain) {
-  std::vector<ConvexFoothold> footholds;
+std::vector<ConvexFoothold> ProcessTerrain2d(
+    std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
+
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::ShortestPathMeasurement>();
+  acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
-    VPolytope convex_hull_v = VPolytope(planar_region).GetMinimalRepresentation();
-    footholds.push_back(
-        MakeFootholdFromInscribedConvexPolygon(
-            planar_region, convex_hull_v, Eigen::Isometry3d::Identity()
-    ));
+    auto poly = MakeAcdPolygon(planar_region);
+    cd.addPolygon(poly);
+  }
+  std::vector<ConvexFoothold> footholds;
+  for (const auto& poly_out : cd.getDoneList()) {
+    MatrixXd verts = Acd2d2Eigen(poly_out.front());
+    VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+    Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
+    footholds.push_back(MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP));
   }
   return footholds;
 }
@@ -338,9 +345,10 @@ VectorXd centroid (const MatrixXd& verts) {
   return (1.0 / static_cast<double>(n)) * center;
 }
 
-acd2d::cd_poly MakeAcdPoly(const MatrixXd& verts) {
+acd2d::cd_poly MakeAcdPoly(
+    const MatrixXd& verts, acd2d::cd_poly::POLYTYPE type) {
   DRAKE_DEMAND(verts.rows() == 2);
-  acd2d::cd_poly poly(acd2d::cd_poly::POLYTYPE::POUT);
+  acd2d::cd_poly poly(type);
   poly.beginPoly();
   for(int i = 0; i < verts.cols(); i++) {
     const auto& v = verts.col(i);
@@ -370,8 +378,17 @@ acd2d::cd_polygon MakeAcdPolygon(const PolygonWithHoles2d& poly2d) {
   return polygon;
 }
 
+acd2d::cd_polygon MakeAcdPolygon(
+    const std::pair<MatrixXd, std::vector<MatrixXd>>& poly2d) {
+  acd2d::cd_polygon polygon{};
+  polygon.push_back(MakeAcdPoly(poly2d.first, acd2d::cd_poly::POLYTYPE::POUT));
+  for (const auto& h : poly2d.second) {
+    polygon.push_back(MakeAcdPoly(h, acd2d::cd_poly::POLYTYPE::PIN));
+  }
+  return polygon;
+}
+
 std::vector<MatrixXd> TestAcd(const MatrixXd& verts) {
-  auto start = std::chrono::high_resolution_clock::now();
   auto acd_poly = MakeAcdPoly(verts);
   acd2d::cd_polygon polygon{};
   polygon.push_back(acd_poly);
@@ -384,8 +401,6 @@ std::vector<MatrixXd> TestAcd(const MatrixXd& verts) {
   for (const auto& poly_out : cd.getDoneList()) {
     polylist.push_back(Acd2d2Eigen(poly_out.front()));
   }
-  auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "decomp took "<< static_cast<std::chrono::duration<double>>(end - start).count() << " sec.\n";
   return polylist;
 }
 

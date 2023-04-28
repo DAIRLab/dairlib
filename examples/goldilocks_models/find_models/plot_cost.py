@@ -70,21 +70,16 @@ base = '../dairlib_data/goldilocks_models/find_models'
 
 directory_list = []
 ## Automatically add folders in `base` directory if on cluster
-if "/scratch/yminchen" in os.getcwd():
+if True:
     all_subfolders = [os.path.join(base, o) for o in os.listdir(base) if os.path.isdir(os.path.join(base, o))]
     for subfolder in all_subfolders:
         data_folder = '%s/robot_%d/' % (subfolder, robot_option)
         if os.path.exists(data_folder):
             directory_list.append(data_folder)
-else:
-    # directory_list.append('%s/robot_%d/' % (base if len(args.path) == 0 else args.path, robot_option))
-    #directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/robot_1/')
-    # directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/')
-    directory_list.append('/home/yuming/Downloads/model_opt/20220128_rom16_small_weight_and_grad_main_cost_and_big_range_and_high_order/robot_1/')
-    directory_list.append('/home/yuming/Downloads/model_opt/20220129_rom17_small_weight_and_grad_main_cost_and_big_range/robot_1/')
-    directory_list.append('/home/yuming/Downloads/model_opt/20220510_rom17_big_range_bigger_step_size_5e-3_torque_weight_dominate_4d_tasks_space/robot_1/')
 ## Manually add more folders here (note that the path needs to end with "/")
-# directory_list.append('/')
+# directory_list.append('%s/robot_%d/' % (base if len(args.path) == 0 else args.path, robot_option))
+# directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/models_20211229_3dlipm_fix_xy_big_w_vel_and_grad_main_cost_and_big_range/robot_1/')
+# directory_list.append('/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/')
 ## Sort and print
 directory_list.sort()
 [print(d) for d in directory_list]

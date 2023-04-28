@@ -1,7 +1,8 @@
-# This function search for the name of the variable and return its value
-# It assume it has the structure:
-#     variable_name = number
-# The number has to locate between the equal sign and newline
+# This function searches for the name of the variable and returns its value
+# Assumptions: 
+#   - The texts around the variable is in the following format:
+#         variable_name = number
+#   - The number has to locate between the equal sign and newline
 def FindVarValueInString(file_string, string_to_search):
   # We search from the end of the file
   word_location = file_string.rfind(string_to_search)

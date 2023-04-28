@@ -94,8 +94,8 @@ fi
 if [[ -n "$SLURM_JOB_ID" ]]; then
   folder_name=`squeue -h -j $SLURM_JOB_ID -o %o`
   folder_name=${folder_name%.bash}  # Get rid of suffix
-  folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/model_optimization_on_cluster2_}  # Get rid of prefix
-  folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/cluster_scripts/}  # Get rid of prefix
+  folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/model_optimization_scripts/cluster_scripts/model_optimization_on_cluster2_}  # Get rid of prefix
+  folder_name=${folder_name#/mnt/beegfs/scratch/yminchen/dairlib/examples/goldilocks_models/model_optimization_scripts/cluster_scripts/}  # Get rid of prefix
 fi
 
 # Prints

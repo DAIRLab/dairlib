@@ -278,18 +278,26 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
   }
   cd.decomposeAll(0.1, measure.get());
   std::vector<ConvexFoothold> footholds;
+  auto mid = std::chrono::high_resolution_clock::now();
+  int processed_count = 0;
   for (const auto& poly_out : cd.getDoneList()) {
-    if (poly_out.front().getSize() > 2) {
+    // very low probability that a triangle is a meaningful size
+    if (poly_out.front().getSize() > 3) {
       MatrixXd verts = Acd2d2Eigen(poly_out.front());
       VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
       Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
-      footholds.push_back(
-          MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
-      );
+      if (convex_hull_v.CalcVolume() > 0.2 * 0.1) {
+        footholds.push_back(
+            MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+        );
+        processed_count++;
+      }
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "processing took " << static_cast<std::chrono::duration<double>>(end - start).count() << " s\n";
+  auto split1 = static_cast<std::chrono::duration<double>>(mid - start).count();
+  auto split2 = static_cast<std::chrono::duration<double>>(end-mid).count();
+  std::cout << "processing took " << split1   << ", " << split2 << " s for " << processed_count << " final polys \n";
   return footholds;
 }
 

@@ -113,11 +113,11 @@ def main():
     inner_boundaries = []
     i = 0
     for poly_list in polys:
-        print(i)
-        boundaries = convert_terrain_msg(poly_list)
-        inner_boundaries.append(ProcessTerrain2d(boundaries))
-        outer_boundaries.append([boundary[0] for boundary in boundaries])
-        i+=1
+        if i % 10 == 0:
+            boundaries = convert_terrain_msg(poly_list)
+            inner_boundaries.append(ProcessTerrain2d(boundaries))
+            outer_boundaries.append([boundary[0] for boundary in boundaries])
+        i += 1
     for poly in inner_boundaries:
         for i in range(len(poly)):
             poly[i] = poly[i].GetVertices()[:2]

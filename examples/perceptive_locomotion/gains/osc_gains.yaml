@@ -52,9 +52,9 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.15
+mid_foot_height: 0.18
 final_foot_height: 0.02
-final_foot_velocity_z: 0.5
+final_foot_velocity_z: 0.9
 
 # LIPM trajectory
 lipm_height: 0.83
@@ -64,7 +64,7 @@ mu: 0.5
 
 w_accel: 0.0
 w_soft_constraint: 8000
-w_input_reg: 0.000001
+w_input_reg: 0.001
 w_input: 0.0000
 w_lambda: 0.0000
 impact_threshold: 0.025
@@ -122,13 +122,13 @@ SwingFootW:
     0,    4,     0,
     0,    0,     2]
 SwingFootKp:
-  [ 200,  0,     0,
-    0,   185,    0,
+  [ 220,  0,     0,
+    0,   180,    0,
     0,    0,    180]
 SwingFootKd:
-  [2.5,  0,  0,
-   0,  2.5,  0,
-   0,  0,    1.5]
+  [4,  0,  0,
+   0,  3.5,  0,
+   0,  0,  3.5]
 
 AlipKalmanQ:
   [.001, .001, .01, .01]

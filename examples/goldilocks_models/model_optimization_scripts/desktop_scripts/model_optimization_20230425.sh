@@ -95,7 +95,7 @@ n_thread_to_use=0
 # folder name (Create data folder's name automatically from this bash script's name)
 folder_name=$0
 folder_name=${folder_name%.bash}  # Get rid of suffix
-folder_name=${folder_name#model_optimization_}  # Get rid of prefix
+folder_name=${folder_name#examples/goldilocks_models/model_optimization_scripts/desktop_scripts/model_optimization_}  # Get rid of prefix
 #if [[ -n "$SLURM_JOB_ID" ]]; then
 #  folder_name=`squeue -h -j $SLURM_JOB_ID -o %o`
 #  folder_name=${folder_name%.bash}  # Get rid of suffix

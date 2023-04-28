@@ -32,7 +32,7 @@ def rosbagger_main(topics_filename):
     topic_data = load(io.open(topics_filename, 'r'), Loader=Loader)
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
+    logdir = f"{os.getenv('HOME')}/workspace/logs/ros"
 
     user = os.getenv('HOME').split('/')[-1]
     workspace_subdir = "" if user == 'brian' else "/brian"

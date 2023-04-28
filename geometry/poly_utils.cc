@@ -269,20 +269,27 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
 
 std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
-
+  auto start = std::chrono::high_resolution_clock::now();
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::ShortestPathMeasurement>();
   acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
     auto poly = MakeAcdPolygon(planar_region);
     cd.addPolygon(poly);
   }
+  cd.decomposeAll(0.1, measure.get());
   std::vector<ConvexFoothold> footholds;
   for (const auto& poly_out : cd.getDoneList()) {
-    MatrixXd verts = Acd2d2Eigen(poly_out.front());
-    VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-    Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
-    footholds.push_back(MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP));
+    if (poly_out.front().getSize() > 2) {
+      MatrixXd verts = Acd2d2Eigen(poly_out.front());
+      VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+      Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
+      footholds.push_back(
+          MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+      );
+    }
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  std::cout << "processing took " << static_cast<std::chrono::duration<double>>(end - start).count() << " s\n";
   return footholds;
 }
 

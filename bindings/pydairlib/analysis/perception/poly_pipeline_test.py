@@ -111,12 +111,13 @@ def main():
     polys = get_msgs(fname)
     outer_boundaries = []
     inner_boundaries = []
-
+    i = 0
     for poly_list in polys:
+        print(i)
         boundaries = convert_terrain_msg(poly_list)
-        inner_boundaries += ProcessTerrain2d(boundaries)
-        outer_boundaries += [boundary[0] for boundary in boundaries]
-        import pdb; pdb.set_trace()
+        inner_boundaries.append(ProcessTerrain2d(boundaries))
+        outer_boundaries.append([boundary[0] for boundary in boundaries])
+        i+=1
     for poly in inner_boundaries:
         for i in range(len(poly)):
             poly[i] = poly[i].GetVertices()[:2]

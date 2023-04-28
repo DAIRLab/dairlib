@@ -3,10 +3,7 @@
 namespace dairlib::geometry {
 
 int polytest_main(int argc, char** argv) {
-  Eigen::Matrix<double, 2, 6> bowtie;
-  bowtie << 0.1, 1.0, -1.0, -0.1, -1.0, 1.0, 0.0, 1.0, 1.0, 0.0, -1.0, -1.0;
-  auto out = TestAcd(bowtie);
-  return 0;
+
 }
 }
 

@@ -110,6 +110,8 @@ echo n_thread_to_use = $n_thread_to_use
 
 directory=../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/
 
+cp $0 $directory
+
 #cd /scratch/$USER/dairlib
 
 # Note that you need to bazel build the binary, because not all machines/nodes have it. (even though it's the same file path...)

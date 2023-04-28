@@ -111,6 +111,7 @@ echo n_thread_to_use = $n_thread_to_use
 
 directory=../dairlib_data/goldilocks_models/find_models/$folder_name/robot_$robot/
 
+mkdir $directory
 cp $0 $directory
 
 #cd /scratch/$USER/dairlib

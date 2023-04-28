@@ -95,7 +95,7 @@ class SubQpData {
 
 // Create MultibodyPlant
 void CreateMBP(drake::multibody::MultibodyPlant<double>* plant,
-               int robot_option, bool heavy_leg=false);
+               int robot_option, bool heavy_leg = false);
 
 // Create MultibodyPlant for visualization
 void CreateMBPForVisualization(drake::multibody::MultibodyPlant<double>* plant,
@@ -165,6 +165,8 @@ std::vector<std::string> ParseCsvToStringVec(const std::string& file_name,
 void SaveStringVecToCsv(const std::vector<std::string>& strings,
                         const std::string& file_name);
 
+std::string RunCmdAndGetOutput(const std::string& cmd_string);
+
 // Five link robot's left/right leg
 BodyPoint FiveLinkRobotLeftContact(
     const drake::multibody::MultibodyPlant<double>& plant);
@@ -222,11 +224,10 @@ struct PlannerSetting {
   bool unit_testing;
 };
 
-template<typename K, typename V>
+template <typename K, typename V>
 std::map<V, K> reverse_map(const std::map<K, V>& m) {
   std::map<V, K> r;
-  for (const auto& kv : m)
-    r[kv.second] = kv.first;
+  for (const auto& kv : m) r[kv.second] = kv.first;
   return r;
 }
 

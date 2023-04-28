@@ -9,6 +9,7 @@
 
 #include <Eigen/QR>       // CompleteOrthogonalDecomposition
 #include <bits/stdc++.h>  // system call
+#include <filesystem>
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -83,6 +84,29 @@ int run(int argc, char* argv[]) {
   cout << pp.value(2 - eps) << endl;
   cout << pp.value(2) << endl;
   cout << pp.value(2 + eps) << endl;*/
+
+  /// Checking C++ version
+  //  cout << __cplusplus << endl;
+
+  /// List files/folders
+  // https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
+  //  std::string path = "../dairlib_data/goldilocks_models/find_models";
+  //  for (const auto & entry : std::filesystem::directory_iterator(path))
+  //    std::cout << entry.path() << std::endl;
+
+  // clang-format off
+//  string output;
+  //  output = RunCmdAndGetOutput("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed
+  //  output = RunCmdAndGetOutput("top -bn2 | grep \"Cpu(s)\" | sed \"s/.*, *\\([0-9.]*\\)%* id.*/\1/\" | awk '{print 100 - $1\"%\"}'"); // print the CPU usage
+  //  output = RunCmdAndGetOutput("free -m"); // print memory usage
+//  output = RunCmdAndGetOutput("top -b -n 1 -u yuming | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+//  int num;
+//  if (!output.empty()) num = stoi(output);
+//  cout << "===== output =====\n" << output << endl;
+//  cout << "integer = " << num << endl;
+  // clang-format on
+
+  cout << int(8001) / 100 << endl;
 
   return 0;
 }  // int run

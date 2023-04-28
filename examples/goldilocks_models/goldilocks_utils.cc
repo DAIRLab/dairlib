@@ -684,6 +684,20 @@ void SaveStringVecToCsv(const vector<std::string>& strings,
   ofile.close();
 }
 
+std::string RunCmdAndGetOutput(const std::string& cmd_string) {
+  const char* cmd = cmd_string.c_str();
+
+  std::array<char, 128> buffer;
+  std::string result;
+  std::shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
+  if (!pipe) throw std::runtime_error("popen() failed!");
+  while (!feof(pipe.get())) {
+    if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
+      result += buffer.data();
+  }
+  return result;
+}
+
 BodyPoint FiveLinkRobotLeftContact(const MultibodyPlant<double>& plant) {
   return BodyPoint(Vector3d(0, 0, -0.5),
                    plant.GetFrameByName("left_lower_leg_mass"));

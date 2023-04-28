@@ -283,6 +283,29 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   }
 }
 
+void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // clang-format off
+  string output = RunCmdAndGetOutput("top -b -n 1 -u yuming | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+  // clang-format on
+
+  int current_cpu_load = output.empty()? -1 : stoi(output) / 100;
+  int counter = 0;
+  while((current_cpu_load >= max_cpu_load) || output.empty()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // clang-format off
+    output = RunCmdAndGetOutput("top -b -n 1 -u yuming | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+    // clang-format on
+    current_cpu_load = output.empty()? -1 : stoi(output) / 100;
+
+    counter++;
+    if (counter > 18000) {
+      cout << "Warning: output might be empty. Output = " << output << endl;
+      counter = 0;
+    }
+  }
+}
+
 int selectThreadIdxToWait(const vector<pair<int, int>>& assigned_thread_idx,
                           vector<std::shared_ptr<int>> thread_finished_vec) {
   int counter = 0;
@@ -824,6 +847,7 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
   cout << to_be_print;
 }
 
+// TODO: this function probably belongs to GridTasksGenerator
 MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen_grid,
                              vector<int> n_node_vec) {
   // Setup
@@ -2276,6 +2300,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
         // Evaluate a sample when there is an available thread. Otherwise, wait.
         if (!awaiting_sample_idx.empty() && !available_thread_idx.empty()) {
+          // An additional check in case there are other processes running, and
+          // we don't want to exceed a certain cpu load (e.g. for our server)
+          waitIfCpuLoadIsTooHigh(80);
+
           // Pick a sample to evaluate
           int sample_idx = awaiting_sample_idx.front();
           awaiting_sample_idx.pop_front();

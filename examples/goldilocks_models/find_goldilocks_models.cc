@@ -1917,7 +1917,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.zero_ending_pelvis_angular_vel =
       FLAGS_zero_ending_pelvis_angular_vel;  // for testing
   inner_loop_setting.com_at_center_of_support_polygon =
-      FLAGS_com_at_center_of_support_polygon;  // for testing
+      FLAGS_com_at_center_of_support_polygon;      // for testing
+  inner_loop_setting.heavy_toe = FLAGS_heavy_toe;  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint

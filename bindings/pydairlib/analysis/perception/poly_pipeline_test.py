@@ -52,6 +52,22 @@ def convert_terrain_msg(msg):
     return polys
 
 
+def clean_outline(poly):
+    n = poly.shape[1]
+    idx_delete = np.zeros(poly.shape, dtype=bool)
+    for i in range(n):
+        p = poly[:, i]
+        q = poly[:, (i+1) % n]
+        r = poly[:, (i+2) % n]
+        pq = q - p
+        qr = r - q
+
+        if abs(pq[0] * qr[1] - pq[1] * qr[0]) < 1e-10:
+            idx_delete[:, i+1 % n] = np.array([True, True])
+    poly = poly[~idx_delete].reshape((2,-1))
+    return poly
+
+
 def max_polys(boundary_list):
     max = 0
     for l in boundary_list:
@@ -112,8 +128,16 @@ def main():
     outer_boundaries = []
     inner_boundaries = []
     i = 0
+
+    for poly in convert_terrain_msg(polys[2053]):
+        plot_polygon(poly[0])
+        for p in poly[1]:
+            plot_polygon(p, linestyle='dashed')
+    plt.show()
+
     for poly_list in polys:
-        if i % 10 == 0:
+        if i % 1== 0:
+            print(i)
             boundaries = convert_terrain_msg(poly_list)
             inner_boundaries.append(ProcessTerrain2d(boundaries))
             outer_boundaries.append([boundary[0] for boundary in boundaries])

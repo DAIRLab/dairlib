@@ -91,13 +91,19 @@ new_local_repository(
     path = LOCAL_ROS_INSTALL_PATH,
 )
 
-http_archive(
+new_local_repository(
     name = "acd2d",
-    build_file = "@//tools/workspace/acd2d:acd2d.bazel",
-    sha256 = "31436798e42922f2691ba06fe4212b5c762a8e91685675dda5ac7629276f18ef",
-    strip_prefix = "acd2d-master",
-    urls=["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"]
+    build_file = "tools/workspace/acd2d/acd2d.bazel",
+    path = "/home/brian/workspace/acd2d",
 )
+#
+#http_archive(
+#    name = "acd2d",
+#    build_file = "@//tools/workspace/acd2d:acd2d.bazel",
+#    sha256 = "31436798e42922f2691ba06fe4212b5c762a8e91685675dda5ac7629276f18ef",
+#    strip_prefix = "acd2d-master",
+#    urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
+#)
 
 # Other catkin packages from source
 # TODO: generate this automatically from rosinstall_generator

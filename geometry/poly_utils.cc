@@ -270,16 +270,23 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
 std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
   auto start = std::chrono::high_resolution_clock::now();
-  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::ShortestPathMeasurement>();
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
   acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
     auto poly = MakeAcdPolygon(planar_region);
     cd.addPolygon(poly);
   }
-  cd.decomposeAll(0.1, measure.get());
+  try {
+    cd.decomposeAll(0.2, measure.get());
+  } catch (const std::exception& e) {
+    std::cout << e.what();
+    return {};
+  }
+
   std::vector<ConvexFoothold> footholds;
   auto mid = std::chrono::high_resolution_clock::now();
   int processed_count = 0;
+  std::cout << "finish acd\n";
   for (const auto& poly_out : cd.getDoneList()) {
     // very low probability that a triangle is a meaningful size
     if (poly_out.front().getSize() > 3) {

@@ -289,18 +289,19 @@ void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
   string output = RunCmdAndGetOutput("top -b -n 1 -u yuming | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
   // clang-format on
 
-  int current_cpu_load = output.empty()? -1 : stoi(output) / 100;
+  int current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
   int counter = 0;
-  while((current_cpu_load >= max_cpu_load) || output.empty()) {
+  while ((current_cpu_load >= max_cpu_load) || output.empty()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // clang-format off
     output = RunCmdAndGetOutput("top -b -n 1 -u yuming | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
     // clang-format on
-    current_cpu_load = output.empty()? -1 : stoi(output) / 100;
+    current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
 
     counter++;
     if (counter > 18000) {
-      cout << "Warning: output might be empty. Output = " << output << endl;
+      cout << "Warning: output might have been empty for a long time. Output = "
+           << output << endl;
       counter = 0;
     }
   }

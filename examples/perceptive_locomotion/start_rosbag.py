@@ -5,6 +5,7 @@ import codecs
 from datetime import date
 
 import io
+import sys
 from yaml import load, dump
 
 try:
@@ -32,7 +33,7 @@ def rosbagger_main(topics_filename):
     topic_data = load(io.open(topics_filename, 'r'), Loader=Loader)
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"{os.getenv('HOME')}/workspace/logs/ros"
+    logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
 
     user = os.getenv('HOME').split('/')[-1]
     workspace_subdir = "" if user == 'brian' else "/brian"
@@ -63,4 +64,7 @@ def rosbagger_main(topics_filename):
 
 
 if __name__ == "__main__":
-    rosbagger_main("examples/perceptive_locomotion/logtopics.yaml")
+    if len(sys.argv) > 1:
+        rosbagger_main(sys.argv[1])
+    else:
+        rosbagger_main("examples/perceptive_locomotion/logtopics.yaml")

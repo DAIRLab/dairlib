@@ -220,6 +220,8 @@ DEFINE_bool(com_at_center_of_support_polygon, false, "");
 DEFINE_bool(only_update_wrt_main_cost, false, "");
 DEFINE_bool(use_envelope_theorem_to_get_gradient, true, "");
 
+DEFINE_bool(heavy_toe, false, "experiment cassie with heavier legs");
+
 void setCostWeight(double* Q, double* R, double* w_joint_accel,
                    double* all_cost_scale, int robot_option) {
   if (robot_option == 0) {
@@ -1535,7 +1537,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Create MBP
   drake::logging::set_log_level("err");  // ignore warnings about joint limits
   MultibodyPlant<double> plant(0.0);
-  CreateMBP(&plant, FLAGS_robot_option);
+  CreateMBP(&plant, FLAGS_robot_option, FLAGS_heavy_toe);
 
   // Create autoDiff version of the plant
   MultibodyPlant<AutoDiffXd> plant_autoDiff(plant);

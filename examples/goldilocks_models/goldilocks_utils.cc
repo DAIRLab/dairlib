@@ -54,7 +54,8 @@ SubQpData::SubQpData(int N_sample) {
   }
 }
 
-void CreateMBP(MultibodyPlant<double>* plant, int robot_option) {
+void CreateMBP(MultibodyPlant<double>* plant, int robot_option,
+               bool heavy_leg) {
   if (robot_option == 0) {
     Parser parser(plant);
     string full_name = FindResourceOrThrow(
@@ -65,6 +66,9 @@ void CreateMBP(MultibodyPlant<double>* plant, int robot_option) {
     plant->Finalize();
 
   } else if (robot_option == 1) {
+    std::string urdf_path =
+        heavy_leg ? "examples/Cassie/urdf/cassie_fixed_springs_heavy_toe.urdf"
+                  : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
     addCassieMultibody(plant, nullptr, true,
                        "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
                        false);

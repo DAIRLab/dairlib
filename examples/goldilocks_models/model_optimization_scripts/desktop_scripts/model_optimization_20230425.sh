@@ -67,6 +67,7 @@ w_joint_accel=0.0001    # big: 0.002; small: 0.0001  # Final weight is w_joint_a
 zero_ending_pelvis_angular_vel=false
 com_at_center_of_support_polygon=false
 no_model_update=false  # used to re-evaluate different task while fixing model
+heavy_toe=false
 
 # Other parameters
 h_step=0.001
@@ -92,7 +93,9 @@ n_thread_to_use=0
 #fi
 
 # folder name (Create data folder's name automatically from this bash script's name)
-folder_name=
+folder_name=$0
+folder_name=${folder_name%.bash}  # Get rid of suffix
+folder_name=${folder_name#model_optimization_}  # Get rid of prefix
 #if [[ -n "$SLURM_JOB_ID" ]]; then
 #  folder_name=`squeue -h -j $SLURM_JOB_ID -o %o`
 #  folder_name=${folder_name%.bash}  # Get rid of suffix
@@ -170,7 +173,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --no_model_update=$no_model_update \
+   --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -182,7 +185,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --no_model_update=$no_model_update \
+   --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -198,7 +201,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -210,7 +213,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -226,7 +229,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -238,7 +241,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -251,7 +254,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=false --start_current_iter_as_rerun=false \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -263,7 +266,7 @@ then
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=true \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
@@ -285,7 +288,7 @@ else
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=$iter_start --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=false \
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
-   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update \
+   --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --delta_iter=$iter_delta \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \

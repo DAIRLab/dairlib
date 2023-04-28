@@ -93,7 +93,7 @@ class SubQpData {
 
 // Create MultibodyPlant
 void CreateMBP(drake::multibody::MultibodyPlant<double>* plant,
-               int robot_option);
+               int robot_option, bool heavy_leg=false);
 
 // Create MultibodyPlant for visualization
 void CreateMBPForVisualization(drake::multibody::MultibodyPlant<double>* plant,

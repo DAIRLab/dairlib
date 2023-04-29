@@ -12,6 +12,8 @@
 #include <filesystem>
 #include <gflags/gflags.h>
 
+#include <unistd.h>
+
 #include "common/file_utils.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -107,6 +109,10 @@ int run(int argc, char* argv[]) {
   // clang-format on
 
   cout << int(8001) / 100 << endl;
+
+  // Get username
+  std::string Username = getlogin();
+  std::cout << Username << std::endl;
 
   return 0;
 }  // int run

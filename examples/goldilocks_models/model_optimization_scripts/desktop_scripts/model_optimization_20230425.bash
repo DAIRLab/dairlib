@@ -47,7 +47,7 @@ n_tr=1
 n_ph=1
 n_sm=1
 # Set grid parameter
-stride_length_center=0.2
+stride_length_center=0
 ground_incline_center=0
 turning_rate_center=0
 pelvis_height_center=0.95

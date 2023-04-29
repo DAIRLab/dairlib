@@ -133,6 +133,45 @@ bool contained(const std::vector<facet>& facets, const Vector2d& v) {
   return true;
 }
 
+double distance_to_boundary(
+    const std::vector<facet>& facets, const Vector2d& v) {
+  double min_distance = std::numeric_limits<double>::max();
+  for (const auto& f : facets) {
+    double d = f.b_ - f.a_.dot(v);
+    if (d <= 0){
+      return -1;
+    }
+    if (d <= min_distance) {
+      min_distance = d;
+    }
+  }
+  return min_distance;
+}
+
+MatrixXd get_sorted_interior_points(
+    const std::vector<facet>& facets, const MatrixXd& verts) {
+  std::vector<std::pair<int, double>> vert_distances;
+  for (int j = 0; j < verts.cols(); j++) {
+    vert_distances.push_back(
+        {j, distance_to_boundary(facets,verts.col(j))});
+  }
+  std::sort(vert_distances.begin(), vert_distances.end(),
+            [](const std::pair<int, double>& p1, const std::pair<int, double>& p2) { return p1.second > p2.second; });
+
+  int i = 0;
+  while (i < vert_distances.size() and vert_distances.at(i).second > 0) {
+    i++;
+  }
+
+  // Create a new matrix with the sorted columns
+  MatrixXd verts_sorted(verts.rows(), i);
+  for (int j = 0; j < i; j++)
+  {
+    verts_sorted.col(j) = verts.col(vert_distances[j].first);
+  }
+  return verts_sorted;
+}
+
 void insert(std::vector<facet>& facets, Vector2d& a, double b) {
   std::vector<int> idx_redundant;
   std::vector<int> idx_intersect;
@@ -267,6 +306,80 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
   return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
 }
 
+ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
+    const MatrixXd& verts,
+    const drake::geometry::optimization::VPolytope& convex_hull_v,
+    const Eigen::Isometry3d& X_WP) {
+
+  // initialize the inscribed polygon as the convex hull
+  auto facet_list = FacetsFrom2dSortedConvexVPolytope(convex_hull_v);
+  auto verts_hull = convex_hull_v.vertices();
+
+  MatrixXd verts_sorted = get_sorted_interior_points(facet_list, verts);
+  // For each point which is on the interior of the polygon, P, find a
+  // halfspace, H which contains as many vertices of P as possible
+  // (approximated with a squared hinge loss). Then update P <- intersect(P, H)
+  for (int i = 0; i < verts_sorted.cols(); i++) {
+    if (contained(facet_list, verts_sorted.col(i))) {
+      auto [a, b] = SolveForBestApproximateSupport(
+          verts_sorted.col(i), facet_list, verts);
+      insert(facet_list, a, b);
+    }
+  }
+  return MakeFootholdFromFacetList(facet_list, X_WP);
+}
+
+std::vector<ConvexFoothold> DecomposeTerrain(const PlanarTerrain& terrain) {
+  auto start = std::chrono::high_resolution_clock::now();
+  std::vector<ConvexFoothold> all_footholds;
+  for (const auto& planar_region : terrain.planarRegions) {
+    std::vector<ConvexFoothold> decomposed_region = DecomposeTerrain(planar_region);
+    all_footholds.insert(
+        all_footholds.end(),decomposed_region.begin(), decomposed_region.end());
+  }
+  return all_footholds;
+}
+
+std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region) {
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
+  acd2d::cd_2d cd;
+  cd.addPolygon(MakeAcdPolygon(planar_region.boundary));
+  try {
+    cd.maybe_decomposeAll(0.1, measure.get());
+  } catch (const std::exception& e) {
+    return {};
+  }
+
+  // If ACD fails,
+  // backup by getting one polygon for the whole region ignoring holes
+  if (cd.getDoneList().empty()) {
+    MatrixXd verts = GetVerticesAsMatrix2Xd(planar_region.boundary.outer_boundary);
+    VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+    Eigen::Isometry3d X_WP;
+    tf2::fromMsg(planar_region.plane_parameters, X_WP);
+    return {
+      MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+    };
+  }
+
+  std::vector<ConvexFoothold> footholds;
+  for (const auto& poly_out : cd.getDoneList()) {
+    // low probability that a triangle is a meaningful size
+    if (poly_out.front().getSize() > 3) {
+      MatrixXd verts = Acd2d2Eigen(poly_out.front());
+      VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+      Eigen::Isometry3d X_WP;
+      tf2::fromMsg(planar_region.plane_parameters, X_WP);
+      if (convex_hull_v.CalcVolume() > 0.09) { // disqualify small polygons
+        footholds.push_back(
+            MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+        );
+      }
+    }
+  }
+  return footholds;
+}
+
 std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
   auto start = std::chrono::high_resolution_clock::now();
@@ -277,7 +390,7 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
     cd.addPolygon(poly);
   }
   try {
-    cd.decomposeAll(0.2, measure.get());
+    cd.maybe_decomposeAll(0.25, measure.get());
   } catch (const std::exception& e) {
     std::cout << e.what();
     return {};
@@ -286,14 +399,13 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
   std::vector<ConvexFoothold> footholds;
   auto mid = std::chrono::high_resolution_clock::now();
   int processed_count = 0;
-  std::cout << "finish acd\n";
   for (const auto& poly_out : cd.getDoneList()) {
     // very low probability that a triangle is a meaningful size
     if (poly_out.front().getSize() > 3) {
       MatrixXd verts = Acd2d2Eigen(poly_out.front());
       VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
       Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
-      if (convex_hull_v.CalcVolume() > 0.2 * 0.1) {
+      if (convex_hull_v.CalcVolume() > 0.15) {
         footholds.push_back(
             MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
         );
@@ -306,29 +418,6 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
   auto split2 = static_cast<std::chrono::duration<double>>(end-mid).count();
   std::cout << "processing took " << split1   << ", " << split2 << " s for " << processed_count << " final polys \n";
   return footholds;
-}
-
-ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
-    const MatrixXd& verts,
-    const drake::geometry::optimization::VPolytope& convex_hull_v,
-    const Eigen::Isometry3d& X_WP) {
-
-  // initialize the inscribed polygon as the convex hull
-  auto facet_list = FacetsFrom2dSortedConvexVPolytope(convex_hull_v);
-  auto verts_hull = convex_hull_v.vertices();
-
-  // For each point which is on the interior of the polygon, P, find a
-  // halfspace, H which contains as many vertices of P as possible
-  // (approximated with a squared hinge loss). Then update P <- intersect(P, H)
-  for (int i = 0; i < verts.cols(); i++) {
-    if ((not vertex_in_poly(verts.col(i), verts_hull)) and
-         contained(facet_list, verts.col(i))) {
-      auto [a, b] = SolveForBestApproximateSupport(
-          verts.col(i), facet_list, verts);
-      insert(facet_list, a, b);
-    }
-  }
-  return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
 MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
@@ -360,11 +449,17 @@ VectorXd centroid (const MatrixXd& verts) {
   DRAKE_DEMAND(verts.size() > 0);
   const int n = verts.cols();
   const int m = verts.rows();
+  double sum_weight = 0;
   VectorXd center = VectorXd::Zero(m);
   for(int i = 0; i < n; i++) {
-    center += verts.col(i);
+    int idx_prev = (i - 1 < 0) ? n - 1 : i - 1;
+    int idx_next = (i + 1) % n;
+    double w = (verts.col(i) - verts.col(idx_prev)).norm() +
+               (verts.col(i) - verts.col(idx_next)).norm();
+    center += w * verts.col(i);
+    sum_weight += w;
   }
-  return (1.0 / static_cast<double>(n)) * center;
+  return (1.0 / sum_weight) * center;
 }
 
 acd2d::cd_poly MakeAcdPoly(
@@ -384,8 +479,14 @@ acd2d::cd_poly MakeAcdPoly(
     const Polygon2d& poly2d, acd2d::cd_poly::POLYTYPE type) {
   acd2d::cd_poly poly(type);
   poly.beginPoly();
+  double prev_x = 1e6, prev_y = 1e6;
   for(const auto& p : poly2d.points) {
-    poly.addVertex(p.x, p.y);
+    double d = (prev_x - p.x) * (prev_x - p.x) + (prev_y - p.y) * (prev_y - p.y);
+    if (d > 1e-6) {
+      poly.addVertex(p.x, p.y);
+      prev_x = p.x;
+      prev_y = p.y;
+    }
   }
   poly.endPoly();
   return poly;

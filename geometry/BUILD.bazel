@@ -46,8 +46,8 @@ cc_library(
         ":convex_foothold",
         ":convex_foothold_set",
         "//solvers:fast_osqp_solver",
+        "@acd2d",
         "@ros-local",
-        "@acd2d"
     ],
 )
 
@@ -63,11 +63,15 @@ cc_library(
     ],
 )
 
-
 cc_binary(
     name = "polytest",
     srcs = ["test/polytest.cc"],
-    deps = [":poly_utils"],
+    tags = ["@ros"],
+    deps = [
+        ":poly_utils",
+        "@gflags",
+        "@ros",
+    ],
 )
 
 cc_test(

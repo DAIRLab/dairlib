@@ -52,6 +52,34 @@ def convert_terrain_msg(msg):
     return polys
 
 
+def pt_eq(p, q):
+    return p[0] == q[0] and p[1] == q[1]
+
+
+def resolve_holes(boundary, holes):
+    holes_to_resolve = []
+    idx_resolved = []
+    for vert in boundary:
+        for i, hole in enumerate(holes):
+            for h in hole:
+                if pt_eq(h, vert):
+                    holes_to_resolve.append(hole)
+                    idx_resolved.append(i)
+                    break
+
+    for hole in holes_to_resolve:
+        idx_h_overlap = []
+        idx_p_overlap = []
+        for i, vert in enumerate(boundary):
+            for j, h in enumerate(hole):
+                if pt_eq(vert, h):
+                    idx_p_overlap.append(i)
+                    idx_h_overlap.append(j)
+
+
+
+
+
 def clean_outline(poly):
     n = poly.shape[1]
     idx_delete = np.zeros(poly.shape, dtype=bool)
@@ -129,18 +157,17 @@ def main():
     inner_boundaries = []
     i = 0
 
-    for poly in convert_terrain_msg(polys[2053]):
+    for poly in convert_terrain_msg(polys[1198]):
         plot_polygon(poly[0])
         for p in poly[1]:
             plot_polygon(p, linestyle='dashed')
     plt.show()
 
     for poly_list in polys:
-        if i % 1== 0:
-            print(i)
-            boundaries = convert_terrain_msg(poly_list)
-            inner_boundaries.append(ProcessTerrain2d(boundaries))
-            outer_boundaries.append([boundary[0] for boundary in boundaries])
+        print(i)
+        boundaries = convert_terrain_msg(poly_list)
+        inner_boundaries.append(ProcessTerrain2d(boundaries))
+        outer_boundaries.append([boundary[0] for boundary in boundaries])
         i += 1
     for poly in inner_boundaries:
         for i in range(len(poly)):

@@ -299,7 +299,7 @@ void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
     current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
 
     counter++;
-    if (counter > 18000) {
+    if (counter > 18000) {  // about 30 mins
       cout << "Warning: output might have been empty for a long time. Output = "
            << output << endl;
       counter = 0;

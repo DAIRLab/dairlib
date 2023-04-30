@@ -69,9 +69,7 @@ void CreateMBP(MultibodyPlant<double>* plant, int robot_option,
     std::string urdf_path =
         heavy_leg ? "examples/Cassie/urdf/cassie_fixed_springs_heavy_toe.urdf"
                   : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-    addCassieMultibody(plant, nullptr, true,
-                       "examples/Cassie/urdf/cassie_fixed_springs.urdf", false,
-                       false);
+    addCassieMultibody(plant, nullptr, true, urdf_path, false, false);
     plant->Finalize();
   } else {
     throw std::runtime_error("robot_option " + to_string(robot_option) +

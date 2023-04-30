@@ -64,8 +64,8 @@ Eigen::MatrixXd GetVerticesAsMatrix2Xd(
     const convex_plane_decomposition_msgs::Polygon2d &polygon);
 
 std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>
-GetPlanarBoundaryAndHolesFromRegion(
-    const convex_plane_decomposition_msgs::PlanarRegion &foothold);
+GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(
+    const convex_plane_decomposition_msgs::PolygonWithHoles2d &foothold);
 
 Eigen::VectorXd centroid(const Eigen::MatrixXd& verts);
 
@@ -77,6 +77,25 @@ inline bool vertex_in_poly(
   }
   return false;
 }
+
+inline bool is_degenerate(const Eigen::MatrixXd& verts) {
+  int n = verts.cols();
+  for (int i = 0; i < n; i++) {
+    const auto& v = verts.col(i);
+    for (int j = i+1; j < n;  j++) {
+      const auto& p = verts.col(j);
+      if ((v - p).squaredNorm() < 1e-10) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool ValidateHoles(const Eigen::MatrixXd& boundary,
+                   const std::vector<Eigen::MatrixXd>& holes);
+
+Eigen::MatrixXd CleanOutline(const Eigen::MatrixXd& verts);
 
 acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd& verts,
                            acd2d::cd_poly::POLYTYPE type = acd2d::cd_poly::POLYTYPE::POUT);

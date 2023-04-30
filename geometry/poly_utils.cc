@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <memory>
 #include <chrono>
+#include <cmath>
 #include "poly_utils.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
@@ -148,7 +149,7 @@ double distance_to_boundary(
   return min_distance;
 }
 
-MatrixXd get_sorted_interior_points(
+std::vector<Vector2d> get_sorted_interior_points(
     const std::vector<facet>& facets, const MatrixXd& verts) {
   std::vector<std::pair<int, double>> vert_distances;
   for (int j = 0; j < verts.cols(); j++) {
@@ -164,10 +165,11 @@ MatrixXd get_sorted_interior_points(
   }
 
   // Create a new matrix with the sorted columns
-  MatrixXd verts_sorted(verts.rows(), i);
+  std::vector<Vector2d> verts_sorted;
+  verts_sorted.reserve(i);
   for (int j = 0; j < i; j++)
   {
-    verts_sorted.col(j) = verts.col(vert_distances[j].first);
+    verts_sorted.push_back(verts.col(vert_distances[j].first));
   }
   return verts_sorted;
 }
@@ -315,22 +317,20 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
   auto facet_list = FacetsFrom2dSortedConvexVPolytope(convex_hull_v);
   auto verts_hull = convex_hull_v.vertices();
 
-  MatrixXd verts_sorted = get_sorted_interior_points(facet_list, verts);
+  auto verts_sorted = get_sorted_interior_points(facet_list, verts);
   // For each point which is on the interior of the polygon, P, find a
   // halfspace, H which contains as many vertices of P as possible
   // (approximated with a squared hinge loss). Then update P <- intersect(P, H)
-  for (int i = 0; i < verts_sorted.cols(); i++) {
-    if (contained(facet_list, verts_sorted.col(i))) {
-      auto [a, b] = SolveForBestApproximateSupport(
-          verts_sorted.col(i), facet_list, verts);
+  while (not verts_sorted.empty()) {
+    auto [a, b] = SolveForBestApproximateSupport(
+        verts_sorted.front(), facet_list, verts);
       insert(facet_list, a, b);
-    }
+    verts_sorted = get_sorted_interior_points(facet_list, verts);
   }
   return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
 std::vector<ConvexFoothold> DecomposeTerrain(const PlanarTerrain& terrain) {
-  auto start = std::chrono::high_resolution_clock::now();
   std::vector<ConvexFoothold> all_footholds;
   for (const auto& planar_region : terrain.planarRegions) {
     std::vector<ConvexFoothold> decomposed_region = DecomposeTerrain(planar_region);
@@ -343,9 +343,18 @@ std::vector<ConvexFoothold> DecomposeTerrain(const PlanarTerrain& terrain) {
 std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region) {
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
   acd2d::cd_2d cd;
-  cd.addPolygon(MakeAcdPolygon(planar_region.boundary));
+
+  auto planar_region_eigen = GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(planar_region.boundary);
+  if (is_degenerate(planar_region_eigen.first)) {
+    return {};
+  }
+  acd2d::cd_polygon poly =
+      ValidateHoles(planar_region_eigen.first, planar_region_eigen.second) ?
+      MakeAcdPolygon(planar_region_eigen) : MakeAcdPolygon({planar_region_eigen.first, {}});
+  cd.addPolygon(poly);
+
   try {
-    cd.maybe_decomposeAll(0.1, measure.get());
+    cd.maybe_decomposeAll(0.15, measure.get());
   } catch (const std::exception& e) {
     return {};
   }
@@ -386,11 +395,19 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
   acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
-    auto poly = MakeAcdPolygon(planar_region);
+    if (is_degenerate(planar_region.first)) {
+      continue;
+    }
+    acd2d::cd_polygon poly;
+    if (ValidateHoles(planar_region.first, planar_region.second)) {
+      poly = MakeAcdPolygon(planar_region);
+    } else {
+      poly = MakeAcdPolygon({planar_region.first, {}});
+    }
     cd.addPolygon(poly);
   }
   try {
-    cd.maybe_decomposeAll(0.25, measure.get());
+    cd.maybe_decomposeAll(0.15, measure.get());
   } catch (const std::exception& e) {
     std::cout << e.what();
     return {};
@@ -431,16 +448,16 @@ MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
   return verts;
 }
 
-std::pair<MatrixXd, std::vector<MatrixXd>> GetPlanarBoundaryAndHolesFromRegion(
-    const PlanarRegion &foothold) {
+std::pair<MatrixXd, std::vector<MatrixXd>> GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(
+    const PolygonWithHoles2d &foothold) {
   std::vector<MatrixXd> holes{};
-  for (const auto& hole: foothold.boundary.holes) {
+  for (const auto& hole: foothold.holes) {
     holes.push_back(
         GetVerticesAsMatrix2Xd(hole)
     );
   }
   return {
-    GetVerticesAsMatrix2Xd(foothold.boundary.outer_boundary),
+    GetVerticesAsMatrix2Xd(foothold.outer_boundary),
     holes
   };
 }
@@ -493,18 +510,14 @@ acd2d::cd_poly MakeAcdPoly(
 }
 
 acd2d::cd_polygon MakeAcdPolygon(const PolygonWithHoles2d& poly2d) {
-  acd2d::cd_polygon polygon{};
-  polygon.push_back(MakeAcdPoly(poly2d.outer_boundary));
-  for (const auto& h : poly2d.holes) {
-    polygon.push_back(MakeAcdPoly(h, acd2d::cd_poly::POLYTYPE::PIN));
-  }
-  return polygon;
+  return MakeAcdPolygon(GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(poly2d));
 }
 
 acd2d::cd_polygon MakeAcdPolygon(
     const std::pair<MatrixXd, std::vector<MatrixXd>>& poly2d) {
   acd2d::cd_polygon polygon{};
-  polygon.push_back(MakeAcdPoly(poly2d.first, acd2d::cd_poly::POLYTYPE::POUT));
+  polygon.push_back(MakeAcdPoly(
+      CleanOutline(poly2d.first), acd2d::cd_poly::POLYTYPE::POUT));
   for (const auto& h : poly2d.second) {
     polygon.push_back(MakeAcdPoly(h, acd2d::cd_poly::POLYTYPE::PIN));
   }
@@ -541,6 +554,44 @@ MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly) {
     ptr = ptr->getNext();
   } while (ptr != poly.getHead());
   return verts;
+}
+
+bool ValidateHoles(const MatrixXd& boundary, const std::vector<MatrixXd>& holes) {
+  for (const auto& hole : holes) {
+    auto v = VPolytope(hole).GetMinimalRepresentation();
+    auto facets = FacetsFrom2dSortedConvexVPolytope(v);
+    for (int i  = 0; i < boundary.cols(); i++) {
+      if (contained(facets, boundary.col(i))) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+MatrixXd CleanOutline(const MatrixXd& verts) {
+  const int n = verts.cols();
+
+  std::vector<int> idx_keep;
+  idx_keep.reserve(n);
+  for (int i = 0; i < n; i++) {
+    const auto& p = verts.col(i);
+    const auto& q = verts.col((i+1) % n);
+    const auto& r = verts.col((i+2) % n);
+    const VectorXd pq = q - p;
+    const VectorXd qr = r - q;
+    if (fabs(pq(0) * qr(1) - pq(1) * qr(0)) > 1e-12 ) {
+      idx_keep.push_back((i+1) % n);
+    }
+  }
+  if (idx_keep.size() == n) {
+    return verts;
+  }
+  MatrixXd cleaned = MatrixXd::Zero(2, idx_keep.size());
+  for (int i = 0; i < idx_keep.size(); i++) {
+    cleaned.col(i) = verts.col(idx_keep.at(i));
+  }
+  return cleaned;
 }
 
 }

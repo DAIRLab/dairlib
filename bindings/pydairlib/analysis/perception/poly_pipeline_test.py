@@ -48,7 +48,8 @@ def convert_terrain_msg(msg):
             for pt in hole.points:
                 hole_verts.append([pt.x, pt.y])
             holes.append(np.array(hole_verts).T)
-        polys.append((np.array(boundary_verts).T, holes))
+        poly = np.array(boundary_verts).T
+        polys.append((poly, holes))
     return polys
 
 
@@ -77,23 +78,6 @@ def resolve_holes(boundary, holes):
                     idx_h_overlap.append(j)
 
 
-
-
-
-def clean_outline(poly):
-    n = poly.shape[1]
-    idx_delete = np.zeros(poly.shape, dtype=bool)
-    for i in range(n):
-        p = poly[:, i]
-        q = poly[:, (i+1) % n]
-        r = poly[:, (i+2) % n]
-        pq = q - p
-        qr = r - q
-
-        if abs(pq[0] * qr[1] - pq[1] * qr[0]) < 1e-10:
-            idx_delete[:, i+1 % n] = np.array([True, True])
-    poly = poly[~idx_delete].reshape((2,-1))
-    return poly
 
 
 def max_polys(boundary_list):
@@ -157,11 +141,12 @@ def main():
     inner_boundaries = []
     i = 0
 
-    for poly in convert_terrain_msg(polys[1198]):
+    for poly in convert_terrain_msg(polys[1653]):
         plot_polygon(poly[0])
         for p in poly[1]:
             plot_polygon(p, linestyle='dashed')
     plt.show()
+
 
     for poly_list in polys:
         print(i)
@@ -172,6 +157,7 @@ def main():
     for poly in inner_boundaries:
         for i in range(len(poly)):
             poly[i] = poly[i].GetVertices()[:2]
+    print('done')
     make_animation(inner_boundaries, outer_boundaries, video_name)
 
 

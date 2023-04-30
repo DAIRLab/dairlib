@@ -21,13 +21,16 @@ int polytest_main(int argc, char** argv) {
   bag.open(FLAGS_bagpath, rosbag::bagmode::Read);
   rosbag::View view(bag, rosbag::TopicQuery("/convex_plane_decomposition_ros/planar_terrain"));
 
+  int i = 0;
   for (const auto& m : view) {
     const PlanarTerrain::ConstPtr terrain = m.instantiate<PlanarTerrain>();
     if (terrain != nullptr) {
+      std::cout << i << ": ";
       auto begin  = std::chrono::high_resolution_clock::now();
       auto footholds = DecomposeTerrain(*terrain);
       auto end = std::chrono::high_resolution_clock::now();
       std::cout << static_cast<std::chrono::duration<double>>(end - begin).count() << std::endl;
+      i++;
     }
   }
   return 0;

@@ -139,7 +139,7 @@ def main():
     inner_boundaries = []
     i = 0
 
-    for poly in convert_terrain_msg(polys[1653]):
+    for poly in convert_terrain_msg(polys[171]):
         plot_polygon(poly[0])
         for p in poly[1]:
             plot_polygon(p, linestyle='dashed')

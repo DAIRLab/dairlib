@@ -95,6 +95,8 @@ inline bool is_degenerate(const Eigen::MatrixXd& verts) {
 bool ValidateHoles(const Eigen::MatrixXd& boundary,
                    const std::vector<Eigen::MatrixXd>& holes);
 
+
+
 Eigen::MatrixXd CleanOutline(const Eigen::MatrixXd& verts);
 
 acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd& verts,
@@ -112,5 +114,6 @@ acd2d::cd_polygon MakeAcdPolygon(
     acd2d::cd_databuffer& buf);
 
 Eigen::MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly);
-
+double Area(const Eigen::MatrixXd& verts);
+double Area(const convex_plane_decomposition_msgs::Polygon2d& poly);
 }

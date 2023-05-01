@@ -31,8 +31,9 @@ void ConvexFootholdRosReceiver::CopyTerrain(
   footholds->clear();
   const auto &planes =
       EvalAbstractInput(context, 0)->get_value<PlanarTerrain>();
-  for (const auto &planar_region : planes.planarRegions) {
-    MaybeAddFootholdToSetFromRos(*footholds, planar_region);
+  std::vector<ConvexFoothold> footholds_processed = DecomposeTerrain(planes);
+  for (const auto &f : footholds_processed) {
+    footholds->append(f);
   }
 }
 }

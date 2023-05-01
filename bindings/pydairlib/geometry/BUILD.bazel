@@ -15,6 +15,7 @@ pybind_py_library(
     name = "poly_utils_py",
     cc_deps = [
         "//geometry:poly_utils",
+        "@acd2d",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "poly_utils",

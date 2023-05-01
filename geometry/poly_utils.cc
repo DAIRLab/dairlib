@@ -83,150 +83,151 @@ HPolyhedron HPolyhedronFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
 }
 
 namespace {
-struct facet {
-  Vector2d a_;
-  double b_;
-  Vector2d v0_;
-  Vector2d v1_;
+  struct facet {
+    Vector2d a_;
+    double b_;
+    Vector2d v0_;
+    Vector2d v1_;
 
-  bool redundant(Vector2d a,  double b) {
-    return (a.dot(v0_) > b and a.dot(v1_) > b);
+    bool redundant(Vector2d a,  double b) {
+      return (a.dot(v0_) > b and a.dot(v1_) > b);
+    }
+
+    bool intersects(Vector2d a, double b) {
+      return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
+    }
+
+    // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
+    static facet intersect(facet f0, facet f1, Vector2d a, double b) {
+      Matrix2d A = Matrix2d::Zero();
+      A.row(0) = f0.a_.transpose();
+      A.row(1) = a.transpose();
+      Vector2d v0 = A.inverse() * Vector2d(f0.b_, b);
+      A.row(0) = f1.a_.transpose();
+      Vector2d v1 = A.inverse() * Vector2d(f1.b_, b);
+      return {a, b, v0, v1};
+    }
+  };
+
+  std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
+    const auto& verts = poly_in.vertices();
+    DRAKE_DEMAND(verts.rows() == 2);
+    std::vector<facet> facets;
+    const int n = verts.cols();
+    facets.reserve(n);
+    for (int i = 0; i < n; i++) {
+      VectorXd v = verts.col((i + 1) % n) - verts.col(i);
+      Vector2d a(-v(1), v(0));
+      a.normalize();
+      double b = a.dot(verts.col(i));
+      facets.push_back({a, b, verts.col(i), verts.col((i + 1) % n)});
+    }
+    return facets;
   }
 
-  bool intersects(Vector2d a, double b) {
-    return (a.dot(v0_) > b or a.dot(v1_) > b) and not redundant(a, b);
+  bool contained(const std::vector<facet>& facets, const Vector2d& v) {
+    for (const auto& f: facets) {
+      if (f.a_.dot(v) >= f.b_) {
+        return false;
+      }
+    }
+    return true;
   }
 
-  // Should only be called when f0.intersects(a, b) and f1.intersects(a, b)
-  static facet intersect(facet f0, facet f1, Vector2d a, double b) {
-    Matrix2d A = Matrix2d::Zero();
-    A.row(0) = f0.a_.transpose();
-    A.row(1) = a.transpose();
-    Vector2d v0 = A.inverse() * Vector2d(f0.b_, b);
-    A.row(0) = f1.a_.transpose();
-    Vector2d v1 = A.inverse() * Vector2d(f1.b_, b);
-    return {a, b, v0, v1};
+  double distance_to_boundary(
+      const std::vector<facet>& facets, const Vector2d& v) {
+    double min_distance = std::numeric_limits<double>::max();
+    for (const auto& f : facets) {
+      double d = f.b_ - f.a_.dot(v);
+      if (d <= 0){
+        return -1;
+      }
+      if (d <= min_distance) {
+        min_distance = d;
+      }
+    }
+    return min_distance;
   }
-};
 
-std::vector<facet> FacetsFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
-  const auto& verts = poly_in.vertices();
-  DRAKE_DEMAND(verts.rows() == 2);
-  std::vector<facet> facets;
-  const int n = verts.cols();
-  facets.reserve(n);
-  for (int i = 0; i < n; i++) {
-    VectorXd v = verts.col((i + 1) % n) - verts.col(i);
-    Vector2d a(-v(1), v(0));
-    a.normalize();
-    double b = a.dot(verts.col(i));
-    facets.push_back({a, b, verts.col(i), verts.col((i + 1) % n)});
+  std::vector<Vector2d> get_sorted_interior_points(
+      const std::vector<facet>& facets, const MatrixXd& verts) {
+    std::vector<std::pair<int, double>> vert_distances;
+    for (int j = 0; j < verts.cols(); j++) {
+      vert_distances.push_back(
+          {j, distance_to_boundary(facets,verts.col(j))});
+    }
+    std::sort(vert_distances.begin(), vert_distances.end(),
+              [](const std::pair<int, double>& p1, const std::pair<int, double>& p2) { return p1.second > p2.second; });
+
+    int i = 0;
+    while (i < vert_distances.size() and vert_distances.at(i).second > 0) {
+      i++;
+    }
+
+    // Create a new matrix with the sorted columns
+    std::vector<Vector2d> verts_sorted;
+    verts_sorted.reserve(i);
+    for (int j = 0; j < i; j++)
+    {
+      verts_sorted.push_back(verts.col(vert_distances[j].first));
+    }
+    return verts_sorted;
   }
-  return facets;
-}
 
-bool contained(const std::vector<facet>& facets, const Vector2d& v) {
-  for (const auto& f: facets) {
-    if (f.a_.dot(v) >= f.b_) {
-      return false;
+  void insert(std::vector<facet>& facets, Vector2d& a, double b) {
+    std::vector<int> idx_redundant;
+    std::vector<int> idx_intersect;
+    for (int i = 0; i < facets.size(); i++) {
+      if (facets.at(i).redundant(a, b)) {
+        idx_redundant.push_back(i);
+      } else if (facets.at(i).intersects(a, b)) {
+        idx_intersect.push_back(i);
+      }
+    }
+    if (idx_redundant.empty()) {
+      int delta = idx_intersect.back() - idx_intersect.front();
+      DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
+    }
+    DRAKE_DEMAND(idx_intersect.size() == 2);
+
+    int ccw_facet_idx = 0;
+    int cw_facet_idx = 0;
+    if (a.dot(facets.at(idx_intersect.front()).v1_) > b) {
+      ccw_facet_idx = idx_intersect.front();
+      cw_facet_idx = idx_intersect.back();
+    } else {
+      ccw_facet_idx = idx_intersect.back();
+      cw_facet_idx = idx_intersect.front();
+    }
+
+    auto new_facet = facet::intersect(
+        facets.at(ccw_facet_idx), facets.at(cw_facet_idx), a, b);
+
+    facets.at(ccw_facet_idx).v1_ = new_facet.v0_;
+    facets.at(cw_facet_idx).v0_ = new_facet.v1_;
+
+    int new_facet_idx = ccw_facet_idx + 1;
+    facets.insert(facets.begin() + new_facet_idx, new_facet);
+    cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
+
+    for (int i = 0; i < idx_redundant.size(); i++) {
+      idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
+    }
+
+    for (const auto &i : {ccw_facet_idx, cw_facet_idx}) {
+      if (vertex_in_poly(facets.at(i).v0_, facets.at(i).v1_, 1e-5)) {
+        idx_redundant.push_back(i);
+      }
+    }
+    std::sort(idx_redundant.begin(), idx_redundant.end());
+    for (int i = 0; i < idx_redundant.size(); i++) {
+      idx_redundant.at(i) -= i;
+    }
+    for (const auto &i : idx_redundant) {
+      facets.erase(facets.begin() + i);
     }
   }
-  return true;
-}
 
-double distance_to_boundary(
-    const std::vector<facet>& facets, const Vector2d& v) {
-  double min_distance = std::numeric_limits<double>::max();
-  for (const auto& f : facets) {
-    double d = f.b_ - f.a_.dot(v);
-    if (d <= 0){
-      return -1;
-    }
-    if (d <= min_distance) {
-      min_distance = d;
-    }
-  }
-  return min_distance;
-}
-
-std::vector<Vector2d> get_sorted_interior_points(
-    const std::vector<facet>& facets, const MatrixXd& verts) {
-  std::vector<std::pair<int, double>> vert_distances;
-  for (int j = 0; j < verts.cols(); j++) {
-    vert_distances.push_back(
-        {j, distance_to_boundary(facets,verts.col(j))});
-  }
-  std::sort(vert_distances.begin(), vert_distances.end(),
-            [](const std::pair<int, double>& p1, const std::pair<int, double>& p2) { return p1.second > p2.second; });
-
-  int i = 0;
-  while (i < vert_distances.size() and vert_distances.at(i).second > 0) {
-    i++;
-  }
-
-  // Create a new matrix with the sorted columns
-  std::vector<Vector2d> verts_sorted;
-  verts_sorted.reserve(i);
-  for (int j = 0; j < i; j++)
-  {
-    verts_sorted.push_back(verts.col(vert_distances[j].first));
-  }
-  return verts_sorted;
-}
-
-void insert(std::vector<facet>& facets, Vector2d& a, double b) {
-  std::vector<int> idx_redundant;
-  std::vector<int> idx_intersect;
-  for (int i = 0; i < facets.size(); i++) {
-    if (facets.at(i).redundant(a, b)) {
-      idx_redundant.push_back(i);
-    } else if (facets.at(i).intersects(a, b)) {
-      idx_intersect.push_back(i);
-    }
-  }
-  if (idx_redundant.empty()) {
-    int delta = idx_intersect.back() - idx_intersect.front();
-    DRAKE_DEMAND(delta == 1 or delta == facets.size() - 1);
-  }
-  DRAKE_DEMAND(idx_intersect.size() == 2);
-
-  int ccw_facet_idx = 0;
-  int cw_facet_idx = 0;
-  if (a.dot(facets.at(idx_intersect.front()).v1_) > b) {
-    ccw_facet_idx = idx_intersect.front();
-    cw_facet_idx = idx_intersect.back();
-  } else {
-    ccw_facet_idx = idx_intersect.back();
-    cw_facet_idx = idx_intersect.front();
-  }
-
-  auto new_facet = facet::intersect(
-      facets.at(ccw_facet_idx), facets.at(cw_facet_idx), a, b);
-
-  facets.at(ccw_facet_idx).v1_ = new_facet.v0_;
-  facets.at(cw_facet_idx).v0_ = new_facet.v1_;
-
-  int new_facet_idx = ccw_facet_idx + 1;
-  facets.insert(facets.begin() + new_facet_idx, new_facet);
-  cw_facet_idx += (cw_facet_idx > ccw_facet_idx);
-
-  for (int i = 0; i < idx_redundant.size(); i++) {
-    idx_redundant.at(i) += (idx_redundant.at(i) >= new_facet_idx);
-  }
-
-  for (const auto &i : {ccw_facet_idx, cw_facet_idx}) {
-    if (vertex_in_poly(facets.at(i).v0_, facets.at(i).v1_, 1e-5)) {
-      idx_redundant.push_back(i);
-    }
-  }
-  std::sort(idx_redundant.begin(), idx_redundant.end());
-  for (int i = 0; i < idx_redundant.size(); i++) {
-    idx_redundant.at(i) -= i;
-  }
-  for (const auto &i : idx_redundant) {
-    facets.erase(facets.begin() + i);
-  }
-}
   std::pair<Vector2d, double> SolveForBestApproximateSupport(
       Vector2d p, const std::vector<facet>& facets, const MatrixXd& all_verts) {
     MatrixXd points = MatrixXd::Zero(2, facets.size());
@@ -345,9 +346,16 @@ std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region) 
   acd2d::cd_2d cd;
 
   auto planar_region_eigen = GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(planar_region.boundary);
+  planar_region_eigen.first = CleanOutline(planar_region_eigen.first);
   if (is_degenerate(planar_region_eigen.first)) {
     return {};
   }
+
+  double area = Area(planar_region_eigen.first);
+  if (area < 0.1) {
+    return {};
+  }
+
   acd2d::cd_polygon poly =
       ValidateHoles(planar_region_eigen.first, planar_region_eigen.second) ?
       MakeAcdPolygon(planar_region_eigen, cd.buf()) : MakeAcdPolygon({planar_region_eigen.first, {}}, cd.buf());
@@ -376,10 +384,10 @@ std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region) 
     // low probability that a triangle is a meaningful size
     if (poly_out.front().getSize() > 3) {
       MatrixXd verts = Acd2d2Eigen(poly_out.front());
-      VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-      Eigen::Isometry3d X_WP;
-      tf2::fromMsg(planar_region.plane_parameters, X_WP);
-      if (convex_hull_v.CalcVolume() > 0.09) { // disqualify small polygons
+      if (Area(verts) > 0.1) {
+        VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+        Eigen::Isometry3d X_WP;
+        tf2::fromMsg(planar_region.plane_parameters, X_WP);
         footholds.push_back(
             MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
         );
@@ -522,7 +530,7 @@ acd2d::cd_polygon MakeAcdPolygon(
     acd2d::cd_databuffer& buf) {
   acd2d::cd_polygon polygon{};
   polygon.push_back(MakeAcdPoly(
-      CleanOutline(poly2d.first), buf, acd2d::cd_poly::POLYTYPE::POUT));
+      poly2d.first, buf, acd2d::cd_poly::POLYTYPE::POUT));
   for (const auto& h : poly2d.second) {
     polygon.push_back(std::move(MakeAcdPoly(h, buf, acd2d::cd_poly::POLYTYPE::PIN)));
   }
@@ -598,5 +606,29 @@ MatrixXd CleanOutline(const MatrixXd& verts) {
   }
   return cleaned;
 }
+
+double Area(const MatrixXd& verts) {
+  double a_sum = 0;
+  int n = verts.cols();
+  Vector2d c = centroid(verts);
+  for (int i = 0; i < n; i++) {
+    Vector2d p = verts.col(i) - c;
+    Vector2d q = verts.col((i+1) % n) - c;
+    a_sum += p(0) * q(1) - p(1) * q(0);
+  }
+  return 0.5 * a_sum;
+}
+
+double Area(const Polygon2d& poly) {
+  double a_sum = 0;
+  int n = poly.points.size();
+  for (int i = 0; i < n; i++) {
+    int im1 = i > 0 ? i - 1 : n-1;
+    int ip1 = i % n;
+    a_sum += poly.points.at(i).x * (poly.points.at(ip1).y - poly.points.at(im1).y);
+  }
+  return 0.5 * a_sum;
+}
+
 
 }

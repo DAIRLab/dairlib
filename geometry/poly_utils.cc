@@ -350,7 +350,7 @@ std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region) 
   }
   acd2d::cd_polygon poly =
       ValidateHoles(planar_region_eigen.first, planar_region_eigen.second) ?
-      MakeAcdPolygon(planar_region_eigen) : MakeAcdPolygon({planar_region_eigen.first, {}});
+      MakeAcdPolygon(planar_region_eigen, cd.buf()) : MakeAcdPolygon({planar_region_eigen.first, {}}, cd.buf());
   cd.addPolygon(poly);
 
   try {
@@ -400,9 +400,9 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
     }
     acd2d::cd_polygon poly;
     if (ValidateHoles(planar_region.first, planar_region.second)) {
-      poly = MakeAcdPolygon(planar_region);
+      poly = MakeAcdPolygon(planar_region, cd.buf());
     } else {
-      poly = MakeAcdPolygon({planar_region.first, {}});
+      poly = MakeAcdPolygon({planar_region.first, {}}, cd.buf());
     }
     cd.addPolygon(poly);
   }
@@ -480,27 +480,29 @@ VectorXd centroid (const MatrixXd& verts) {
 }
 
 acd2d::cd_poly MakeAcdPoly(
-    const MatrixXd& verts, acd2d::cd_poly::POLYTYPE type) {
+    const MatrixXd& verts,
+    acd2d::cd_databuffer& buf, acd2d::cd_poly::POLYTYPE type) {
   DRAKE_DEMAND(verts.rows() == 2);
   acd2d::cd_poly poly(type);
   poly.beginPoly();
   for(int i = 0; i < verts.cols(); i++) {
     const auto& v = verts.col(i);
-    poly.addVertex(v(0), v(1));
+    poly.addVertex(buf, v(0), v(1));
   }
   poly.endPoly();
   return poly;
 }
 
 acd2d::cd_poly MakeAcdPoly(
-    const Polygon2d& poly2d, acd2d::cd_poly::POLYTYPE type) {
+    const Polygon2d& poly2d,
+    acd2d::cd_databuffer& buf, acd2d::cd_poly::POLYTYPE type) {
   acd2d::cd_poly poly(type);
   poly.beginPoly();
   double prev_x = 1e6, prev_y = 1e6;
   for(const auto& p : poly2d.points) {
     double d = (prev_x - p.x) * (prev_x - p.x) + (prev_y - p.y) * (prev_y - p.y);
     if (d > 1e-6) {
-      poly.addVertex(p.x, p.y);
+      poly.addVertex(buf, p.x, p.y);
       prev_x = p.x;
       prev_y = p.y;
     }
@@ -509,27 +511,30 @@ acd2d::cd_poly MakeAcdPoly(
   return poly;
 }
 
-acd2d::cd_polygon MakeAcdPolygon(const PolygonWithHoles2d& poly2d) {
-  return MakeAcdPolygon(GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(poly2d));
+acd2d::cd_polygon MakeAcdPolygon(
+    const PolygonWithHoles2d& poly2d, acd2d::cd_databuffer& buf) {
+  return MakeAcdPolygon(
+      GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(poly2d), buf);
 }
 
 acd2d::cd_polygon MakeAcdPolygon(
-    const std::pair<MatrixXd, std::vector<MatrixXd>>& poly2d) {
+    const std::pair<MatrixXd, std::vector<MatrixXd>>& poly2d,
+    acd2d::cd_databuffer& buf) {
   acd2d::cd_polygon polygon{};
   polygon.push_back(MakeAcdPoly(
-      CleanOutline(poly2d.first), acd2d::cd_poly::POLYTYPE::POUT));
+      CleanOutline(poly2d.first), buf, acd2d::cd_poly::POLYTYPE::POUT));
   for (const auto& h : poly2d.second) {
-    polygon.push_back(MakeAcdPoly(h, acd2d::cd_poly::POLYTYPE::PIN));
+    polygon.push_back(std::move(MakeAcdPoly(h, buf, acd2d::cd_poly::POLYTYPE::PIN)));
   }
   return polygon;
 }
 
 std::vector<MatrixXd> TestAcd(const MatrixXd& verts) {
-  auto acd_poly = MakeAcdPoly(verts);
+  acd2d::cd_2d cd;
+  auto acd_poly = MakeAcdPoly(verts, cd.buf());
   acd2d::cd_polygon polygon{};
   polygon.push_back(acd_poly);
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::ShortestPathMeasurement>();
-  acd2d::cd_2d cd;
   cd.addPolygon(polygon);
   cd.decomposeAll(0.1, measure.get());
 

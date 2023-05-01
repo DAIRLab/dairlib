@@ -98,14 +98,18 @@ bool ValidateHoles(const Eigen::MatrixXd& boundary,
 Eigen::MatrixXd CleanOutline(const Eigen::MatrixXd& verts);
 
 acd2d::cd_poly MakeAcdPoly(const Eigen::MatrixXd& verts,
+                           acd2d::cd_databuffer& buf,
                            acd2d::cd_poly::POLYTYPE type = acd2d::cd_poly::POLYTYPE::POUT);
 acd2d::cd_poly MakeAcdPoly(
     const convex_plane_decomposition_msgs::Polygon2d& poly2d,
+    acd2d::cd_databuffer& buf,
     acd2d::cd_poly::POLYTYPE type  = acd2d::cd_poly::POLYTYPE::POUT);
 acd2d::cd_polygon MakeAcdPolygon(
-    const convex_plane_decomposition_msgs::PolygonWithHoles2d& poly2d);
+    const convex_plane_decomposition_msgs::PolygonWithHoles2d& poly2d,
+    acd2d::cd_databuffer& buf);
 acd2d::cd_polygon MakeAcdPolygon(
-    const std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>& poly_with_holes);
+    const std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>& poly_with_holes,
+    acd2d::cd_databuffer& buf);
 
 Eigen::MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly);
 

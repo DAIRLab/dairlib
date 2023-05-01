@@ -78,8 +78,6 @@ def resolve_holes(boundary, holes):
                     idx_h_overlap.append(j)
 
 
-
-
 def max_polys(boundary_list):
     max = 0
     for l in boundary_list:

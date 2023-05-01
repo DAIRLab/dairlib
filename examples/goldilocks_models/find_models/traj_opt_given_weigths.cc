@@ -1974,11 +1974,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // double walking_vel = stride_length / duration;
   double turning_angle = turning_rate * duration;
 
-  if (ground_incline != 0 && turning_angle != 0) {
-    cout << "WARNING: current constraint formulation doesn't allow the "
-            "combination of non-zero ground incline and non-zero runing rate\n";
-  }
-
   double all_cost_scale = setting.all_cost_scale;
 
   int n_q = plant.num_positions();
@@ -2202,19 +2197,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   vector<string> sym_joint_names;
   if (turning_rate == 0) {
     asy_joint_names = {"hip_roll", "hip_yaw"};
-    if (remove_ankle_joint_from_periodicity) {
-      sym_joint_names = {"hip_pitch", "knee", "toe"};
-    } else {
-      sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
-    }
   } else {
     asy_joint_names = {"hip_roll"};
-    //    sym_joint_names = {"hip_pitch"};
-    if (remove_ankle_joint_from_periodicity) {
-      sym_joint_names = {"hip_pitch", "knee", "toe"};
-    } else {
-      sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
-    }
+  }
+  if (remove_ankle_joint_from_periodicity) {
+    sym_joint_names = {"hip_pitch", "knee", "toe"};
+  } else {
+    sym_joint_names = {"hip_pitch", "knee", "ankle_joint", "toe"};
+  }
+  if (ground_incline != 0 && turning_angle != 0) {
+    // We assume the ground incline = 0, when the turning rate is not 0.
+    // Otherwise, we cannot add "knee" and "toe" to `sym_joint_names`
+    cout << "WARNING: current constraint formulation doesn't allow the "
+            "combination of non-zero ground incline & non-zero turning rate\n";
+    DRAKE_UNREACHABLE();
   }
 
   /*vector<string> joint_names{};
@@ -2621,12 +2617,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Ending floating base position constraints
   // Velocity level is imposed by periodicity constraints
   if (!only_one_mode) {
-    // Ending floating base x positions
+    // Ending floating base x and y positions
     if (turning_rate == 0) {
       // x position constraint
       trajopt.AddBoundingBoxConstraint(stride_length, stride_length,
                                        xf(pos_map.at("base_x")));
-      // We don't impose y position constraint.
+      // We impose periodicity constrainst on y position here, because we
+      // also relax the joint periodic cosntraints by eps.
+      trajopt.AddLinearConstraint(x0(pos_map.at("base_y")) ==
+                                  -xf(pos_map.at("base_y")));
     } else {
       // x y position constraint
       double radius = stride_length / abs(turning_angle);
@@ -2645,19 +2644,30 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       //  rotation matrix and mirror around the x-z plane of local frame
       //  (however, the downside is the potential complexity of constraint)
       if (turning_rate == 0) {
-        trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
-                                         cos(turning_angle / 2),
-                                         xf(pos_map.at("base_qw")));
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
         trajopt.AddBoundingBoxConstraint(sin(turning_angle / 2),
                                          sin(turning_angle / 2),
                                          xf(pos_map.at("base_qz")));
+        trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
+                                         cos(turning_angle / 2),
+                                         xf(pos_map.at("base_qw")));
       } else {
-        // We don't need to impose pelvis yaw constriant, because we have left
-        // hip yaw start and end constraints
+        // We don't need to impose pelvis yaw constraint, because we have left
+        // hip yaw start and end constraints. I.e. we don't need to impose
+        // constraint on qw and qz elements.
+        // However, we still impose constraint on qw and qz so that because our
+        // pelvis yaw constraint is relaxed by eps. (and I have tested the
+        // trajopt -- it didn't seem to be overconstrained with the following
+        // constriants)
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
+        trajopt.AddBoundingBoxConstraint(sin(turning_angle / 2),
+                                         sin(turning_angle / 2),
+                                         xf(pos_map.at("base_qz")));
+        trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
+                                         cos(turning_angle / 2),
+                                         xf(pos_map.at("base_qw")));
       }
     }
   }
@@ -2704,6 +2714,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       // probably ok because we relax the starting/ending constraint by eps).
       // Currently the trajopt doesn't seem to be over constrained (even with
       // LIP embedding), so we are fine.
+      // It seems fine to impose constraints on base_wz here, probably because
+      // we don't have periodicity constraint on hip yaw velocity? (need to
+      // count number of constraints to be certain)
       trajopt.AddBoundingBoxConstraint(turning_rate, turning_rate,
                                        x0(n_q + vel_map.at("base_wz")));
       trajopt.AddBoundingBoxConstraint(turning_rate, turning_rate,
@@ -2732,20 +2745,21 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     }
   }
 
-  // Testing -- other floating base constriants
-  if (!only_one_mode) {
+  // Testing -- other floating base constraints
+  /*if (!only_one_mode) {
     if (turning_rate != 0) {
       // floating base velocity constraint at mid point
-      // TODO: double check that the floating base velocity is wrt local frame
-      /* trajopt.AddBoundingBoxConstraint(stride_length / duration,
-                                        stride_length / duration,
-                                        x_mid(n_q + vel_map.at("base_vx")));
-      trajopt.AddBoundingBoxConstraint(0, 0, x_mid(n_q +
-      vel_map.at("base_vy"))); trajopt.AddBoundingBoxConstraint(turning_rate,
-                                        turning_rate,
-                                        x_mid(n_q + vel_map.at("base_wz")));*/
+      // TODO: the floating base velocity is wrt global frame, so the following
+      //  constraints is just an approximation
+      trajopt.AddBoundingBoxConstraint(stride_length / duration,
+                                       stride_length / duration,
+                                       x_mid(n_q + vel_map.at("base_vx")));
+      trajopt.AddBoundingBoxConstraint(0, 0,
+                                       x_mid(n_q + vel_map.at("base_vy")));
+      trajopt.AddBoundingBoxConstraint(turning_rate, turning_rate,
+                                       x_mid(n_q + vel_map.at("base_wz")));
     }
-  }
+  }*/
 
   // Testing -- set the end pelvis angular vel to be 0 (OSC heuristics)
   if (setting.zero_ending_pelvis_angular_vel) {
@@ -2764,8 +2778,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     }
   }
-
-  DRAKE_UNREACHABLE();  // TODO: check leg crossing constraints
 
   // The legs joint positions/velocities/torque should be mirrored between legs
   // (notice that hip yaw and roll should be asymmetric instead of symmetric.)
@@ -2979,30 +2991,42 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   VectorXd one = VectorXd::Ones(1);
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
-  if (swing_leg_collision_avoidance && (turning_rate == 0)) {
-    double margin = swing_margin;
-    auto left_foot_constraint =
-        std::make_shared<PointPositionConstraint<double>>(
-            plant, "toe_left", Vector3d::Zero(),
-            MatrixXd::Identity(3, 3).row(1), margin * one,
-            std::numeric_limits<double>::infinity() * one,
-            "left_foot_constraint_y");
-    auto right_foot_constraint =
-        std::make_shared<PointPositionConstraint<double>>(
-            plant, "toe_right", Vector3d::Zero(),
-            MatrixXd::Identity(3, 3).row(1),
-            -std::numeric_limits<double>::infinity() * one, -margin * one,
-            "right_foot_constraint_y");
-    // scaling
-    left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-    right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
-    for (int index = 0; index < num_time_samples[0]; index++) {
-      auto x = trajopt.state(index);
-      trajopt.AddConstraint(left_foot_constraint, x.head(n_q));
-      trajopt.AddConstraint(right_foot_constraint, x.head(n_q));
+  if (swing_leg_collision_avoidance) {
+    if (turning_rate == 0) {
+      double margin = swing_margin;
+      auto left_foot_constraint =
+          std::make_shared<PointPositionConstraint<double>>(
+              plant, "toe_left", Vector3d::Zero(),
+              MatrixXd::Identity(3, 3).row(1), margin * one,
+              std::numeric_limits<double>::infinity() * one,
+              "left_foot_constraint_y");
+      auto right_foot_constraint =
+          std::make_shared<PointPositionConstraint<double>>(
+              plant, "toe_right", Vector3d::Zero(),
+              MatrixXd::Identity(3, 3).row(1),
+              -std::numeric_limits<double>::infinity() * one, -margin * one,
+              "right_foot_constraint_y");
+      // scaling
+      left_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+      right_foot_constraint->SetConstraintScaling(odbp_constraint_scale);
+      for (int index = 0; index < num_time_samples[0]; index++) {
+        auto xi = trajopt.state(index);
+        trajopt.AddConstraint(left_foot_constraint, xi.head(n_q));
+        trajopt.AddConstraint(right_foot_constraint, xi.head(n_q));
+      }
+    } else {
+      // Impose constraint directly on hip roll angle (approximation)
+      double angle = 0.135 / 1;  // 13.5cm / 1m
+      for (int index = 0; index < num_time_samples[0]; index++) {
+        auto xi = trajopt.state(index);
+        trajopt.AddBoundingBoxConstraint(
+            -angle, std::numeric_limits<double>::infinity(),
+            xi.segment<1>(pos_map.at("hip_roll_left")));
+        trajopt.AddBoundingBoxConstraint(
+            -std::numeric_limits<double>::infinity(), angle,
+            xi.segment<1>(pos_map.at("hip_roll_right")));
+      }
     }
-  } else {
-    swing_leg_collision_avoidance = false;
   }
 
   // testing - toe height constraint at mid stance (avoid foot scuffing)
@@ -3356,9 +3380,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }
   if (w_q_hip_yaw) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt.state(i).segment(9, 2);
-      trajopt.cost_q_hip_yaw_bindings_.push_back(
-          trajopt.AddCost(w_q_hip_yaw * q.transpose() * q));
+      // get desired yaw angle at knot point i
+      double desired_hip_yaw_right =
+          -turning_angle / 2 + turning_angle * i / (N - 1);
+      double desired_hip_yaw_left =
+          turning_angle / 2 - turning_angle * i / (N - 1);
+
+      auto q_hip_yaw_right = trajopt.state(i)(pos_map.at("hip_yaw_right"));
+      auto q_hip_yaw_left = trajopt.state(i)(pos_map.at("hip_yaw_left"));
+      trajopt.cost_q_hip_yaw_bindings_.push_back(trajopt.AddCost(
+          w_q_hip_yaw * (q_hip_yaw_right - desired_hip_yaw_right) *
+          (q_hip_yaw_right - desired_hip_yaw_right)));
+      trajopt.cost_q_hip_yaw_bindings_.push_back(trajopt.AddCost(
+          w_q_hip_yaw * (q_hip_yaw_left - desired_hip_yaw_left) *
+          (q_hip_yaw_left - desired_hip_yaw_left)));
     }
   }
   if (w_q_quat) {

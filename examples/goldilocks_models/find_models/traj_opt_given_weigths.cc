@@ -2848,6 +2848,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Treat hip yaw manually when turning rate is non-zero
   if (turning_rate != 0) {
+    //  It might be hard to understanding the constraints on the hip yaw and
+    //  pelvis yaw, so think about the following example:
+    //  - Pelvis turn pi/4 per foot step.
+    //  - Right yaw goes from -pi/8 to pi/8
+    //  - Left yaw goes from pi/8 to -pi/8
+    //  I have a drawing of this in my google slides notes.
+
     // 1. check that `asy_joint_names` doesn't include "hip_yaw"
     DRAKE_DEMAND((std::find(asy_joint_names.begin(), asy_joint_names.end(),
                             "hip_yaw") == asy_joint_names.end()));

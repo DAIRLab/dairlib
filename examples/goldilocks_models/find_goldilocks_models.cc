@@ -288,11 +288,12 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
 }
 
 void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
-  std::string username = getlogin();
+  // std::string username = getlogin();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   // clang-format off
-  string output = RunCmdAndGetOutput("top -b -n 1 -u " + username + " | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+  //string output = RunCmdAndGetOutput("top -b -n 1 -u " + username + " | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+  string output = RunCmdAndGetOutput("top -b -n 1 | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
   // clang-format on
 
   int current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
@@ -300,7 +301,7 @@ void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
   while ((current_cpu_load >= max_cpu_load) || output.empty()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // clang-format off
-    output = RunCmdAndGetOutput("top -b -n 1 -u " + username + " | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+    output = RunCmdAndGetOutput("top -b -n 1 | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
     // clang-format on
     current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
 

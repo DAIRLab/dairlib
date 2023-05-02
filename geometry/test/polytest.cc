@@ -27,7 +27,7 @@ int polytest_main(int argc, char** argv) {
     if (terrain != nullptr) {
       std::cout << i << ": ";
       auto begin  = std::chrono::high_resolution_clock::now();
-      auto footholds = DecomposeTerrain(*terrain);
+      auto footholds = DecomposeTerrain(*terrain, 0.15);
       auto end = std::chrono::high_resolution_clock::now();
       std::cout << static_cast<std::chrono::duration<double>>(end - begin).count() << std::endl;
       i++;

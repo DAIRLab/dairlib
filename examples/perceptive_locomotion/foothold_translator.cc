@@ -36,10 +36,10 @@ using drake::systems::lcm::LcmPublisherSystem;
 
 
 DEFINE_string(foothold_topic, "", "ros topic containing the incoming footholds");
-
-
 DEFINE_string(foothold_channel, "FOOTHOLDS_PROCESSED",
               "lcm channel for the outgoing processed footholds");
+
+DEFINE_double(conv_thresh, 0.15, "Convexity threshold for ACD");
 
 
 int DoMain(int argc, char* argv[]) {
@@ -58,7 +58,8 @@ int DoMain(int argc, char* argv[]) {
           convex_plane_decomposition_msgs::PlanarTerrain>::Make(
                   FLAGS_foothold_topic, &node_handle));
 
-  auto plane_receiver = builder.AddSystem<geometry::ConvexFootholdRosReceiver>();
+  auto plane_receiver =
+      builder.AddSystem<geometry::ConvexFootholdRosReceiver>(FLAGS_conv_thresh);
   auto foothold_sender = builder.AddSystem<geometry::ConvexFootholdSender>();
   auto foothold_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_foothold_set>(

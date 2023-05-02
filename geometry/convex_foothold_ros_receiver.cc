@@ -17,7 +17,8 @@ using convex_plane_decomposition_msgs::Point2d;
 
 namespace dairlib::geometry {
 
-ConvexFootholdRosReceiver::ConvexFootholdRosReceiver() {
+ConvexFootholdRosReceiver::ConvexFootholdRosReceiver(double convex_threshold) :
+  convexity_threshold_(convex_threshold){
   PlanarTerrain terrain_msg;
   DeclareAbstractInputPort(
       "PlanarTerrainRosMsg", drake::Value<PlanarTerrain>(terrain_msg));
@@ -31,7 +32,8 @@ void ConvexFootholdRosReceiver::CopyTerrain(
   footholds->clear();
   const auto &planes =
       EvalAbstractInput(context, 0)->get_value<PlanarTerrain>();
-  std::vector<ConvexFoothold> footholds_processed = DecomposeTerrain(planes);
+  std::vector<ConvexFoothold> footholds_processed =
+      DecomposeTerrain(planes, convexity_threshold_);
   for (const auto &f : footholds_processed) {
     footholds->append(f);
   }

@@ -331,45 +331,50 @@ ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
   return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
-std::vector<ConvexFoothold> DecomposeTerrain(const PlanarTerrain& terrain) {
+std::vector<ConvexFoothold> DecomposeTerrain(const PlanarTerrain& terrain,
+                                             double convexity_threshold) {
   std::vector<ConvexFoothold> all_footholds;
   for (const auto& planar_region : terrain.planarRegions) {
-    std::vector<ConvexFoothold> decomposed_region = DecomposeTerrain(planar_region);
-    all_footholds.insert(
-        all_footholds.end(),decomposed_region.begin(), decomposed_region.end());
+    auto regions = DecomposeTerrain(planar_region, convexity_threshold);
+    all_footholds.insert(all_footholds.end(), regions.begin(), regions.end());
   }
   return all_footholds;
 }
 
-std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region) {
+std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region,
+                                             double convexity_threshold) {
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
   acd2d::cd_2d cd;
 
   auto planar_region_eigen = GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(planar_region.boundary);
   planar_region_eigen.first = CleanOutline(planar_region_eigen.first);
-  if (is_degenerate(planar_region_eigen.first)) {
-    return {};
-  }
 
   double area = Area(planar_region_eigen.first);
   if (area < 0.1) {
     return {};
   }
 
+  bool fail_check = is_degenerate(planar_region_eigen.first);
+
   acd2d::cd_polygon poly =
       ValidateHoles(planar_region_eigen.first, planar_region_eigen.second) ?
-      MakeAcdPolygon(planar_region_eigen, cd.buf()) : MakeAcdPolygon({planar_region_eigen.first, {}}, cd.buf());
+      MakeAcdPolygon(planar_region_eigen, cd.buf()) :
+      MakeAcdPolygon({planar_region_eigen.first, {}}, cd.buf());
   cd.addPolygon(poly);
 
-  try {
-    cd.maybe_decomposeAll(0.15, measure.get());
-  } catch (const std::exception& e) {
-    return {};
+  if (not fail_check) {
+    try {
+      cd.maybe_decomposeAll(convexity_threshold, measure.get());
+    } catch (const std::exception &e) {
+      fail_check = true;
+    }
   }
 
-  // If ACD fails,
+  fail_check = fail_check or cd.getDoneList().empty();
+
+  // If ACD or polygon validation fails,
   // backup by getting one polygon for the whole region ignoring holes
-  if (cd.getDoneList().empty()) {
+  if (fail_check) {
     MatrixXd verts = GetVerticesAsMatrix2Xd(planar_region.boundary.outer_boundary);
     VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
     Eigen::Isometry3d X_WP;

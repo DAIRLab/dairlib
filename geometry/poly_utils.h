@@ -26,9 +26,11 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>> terrain);
 
 std::vector<ConvexFoothold> DecomposeTerrain(
-    const convex_plane_decomposition_msgs::PlanarTerrain& terrain);
+    const convex_plane_decomposition_msgs::PlanarTerrain& terrain,
+    double convexity_threshold);
 std::vector<ConvexFoothold> DecomposeTerrain(
-    const convex_plane_decomposition_msgs::PlanarRegion& planar_region);
+    const convex_plane_decomposition_msgs::PlanarRegion& planar_region,
+    double convexity_threshold);
 
 std::vector<Eigen::MatrixXd> TestAcd(const Eigen::MatrixXd& verts);
 

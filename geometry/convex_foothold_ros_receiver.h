@@ -9,10 +9,10 @@ namespace dairlib::geometry {
 
 class ConvexFootholdRosReceiver : public drake::systems::LeafSystem<double> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ConvexFootholdRosReceiver)
-  ConvexFootholdRosReceiver();
-
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ConvexFootholdRosReceiver);
+  ConvexFootholdRosReceiver(double convexity_threshold);
  private:
+  double convexity_threshold_;
   void CopyTerrain(const drake::systems::Context<double> &context,
                    ConvexFootholdSet *footholds) const;
 

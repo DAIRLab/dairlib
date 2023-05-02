@@ -1,3 +1,5 @@
+#include <unistd.h>  // get username
+
 #include <chrono>
 #include <cmath>
 #include <ctime>
@@ -6,7 +8,6 @@
 #include <thread>  // multi-threading
 #include <tuple>
 #include <utility>  // std::pair, std::make_pair
-#include <unistd.h>  // get username
 
 #include <Eigen/QR>       // CompleteOrthogonalDecomposition
 #include <bits/stdc++.h>  // system call
@@ -83,11 +84,13 @@ DEFINE_double(sm_min, 0.0, "min stance width");
 DEFINE_double(sm_max, 0.15, "max stance width");
 DEFINE_double(stride_length_center, 0.0, "stride length center for grid method");
 DEFINE_double(ground_incline_center, 0.0, "ground incline center for grid method");
+DEFINE_double(duration_center, 0.35, "duration center for grid method");
 DEFINE_double(turning_rate_center, 0.0, "turning rate center for grid method");
 DEFINE_double(pelvis_height_center, 0.95, "pelvis height center for grid method");
 DEFINE_double(swing_margin_center, 0.03, "swing margin center for grid method");
 DEFINE_double(stride_length_delta, 0.03, "stride length delta for grid method");
 DEFINE_double(ground_incline_delta, 0.05, "ground incline delta for grid method");
+DEFINE_double(duration_delta, 0.05, "duration delta for grid method");
 DEFINE_double(turning_rate_delta, 0.125, "turning rate delta for grid method");
 DEFINE_double(pelvis_height_delta, 0.05, "pelvis height delta for grid method");
 DEFINE_double(swing_margin_delta, 0.02, "swing margin delta for grid method");
@@ -285,11 +288,12 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
 }
 
 void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
-  std::string username = getlogin();
+  // std::string username = getlogin();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   // clang-format off
-  string output = RunCmdAndGetOutput("top -b -n 1 -u " + username + " | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+  //string output = RunCmdAndGetOutput("top -b -n 1 -u " + username + " | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+  string output = RunCmdAndGetOutput("top -b -n 1 | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
   // clang-format on
 
   int current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
@@ -297,7 +301,7 @@ void waitIfCpuLoadIsTooHigh(int max_cpu_load) {
   while ((current_cpu_load >= max_cpu_load) || output.empty()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // clang-format off
-    output = RunCmdAndGetOutput("top -b -n 1 -u " + username + " | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
+    output = RunCmdAndGetOutput("top -b -n 1 | awk 'NR>7 { sum += $9; } END { print sum; }'"); // print the CPU usage
     // clang-format on
     current_cpu_load = output.empty() ? -1 : stoi(output) / 100;
 
@@ -1508,12 +1512,12 @@ class SampleSuccessMonitor {
     return no_fail;
   }
   bool IsSuccessRateHighEnough(double fail_rate_threshold,
-                               bool is_get_nominal) {
+                               bool zero_tolerance) {
     bool success_rate_is_high_enough = true;
     double fail_rate = double(GetNumberOfFailedSamples()) / double(n_sample_);
     if (fail_rate > fail_rate_threshold) {
       success_rate_is_high_enough = false;
-    } else if ((fail_rate > 0) && is_get_nominal) {
+    } else if ((fail_rate > 0) && zero_tolerance) {
       success_rate_is_high_enough = false;
     }
     return success_rate_is_high_enough;
@@ -1606,12 +1610,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
            "pelvis_height", "swing_margin"},
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
            FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
-          {FLAGS_stride_length_center, FLAGS_ground_incline_center, 0.35,
-           FLAGS_turning_rate_center, FLAGS_pelvis_height_center,
-           FLAGS_swing_margin_center},
-          {FLAGS_stride_length_delta, FLAGS_ground_incline_delta, 0.05,
-           FLAGS_turning_rate_delta, FLAGS_pelvis_height_delta,
-           FLAGS_swing_margin_delta},
+          {FLAGS_stride_length_center, FLAGS_ground_incline_center,
+           FLAGS_duration_center, FLAGS_turning_rate_center,
+           FLAGS_pelvis_height_center, FLAGS_swing_margin_center},
+          {FLAGS_stride_length_delta, FLAGS_ground_incline_delta,
+           FLAGS_duration_delta, FLAGS_turning_rate_delta,
+           FLAGS_pelvis_height_delta, FLAGS_swing_margin_delta},
           {(FLAGS_N_sample_sl > 1) && is_stochastic,
            (FLAGS_N_sample_gi > 1) && is_stochastic,
            (FLAGS_N_sample_du > 1) && is_stochastic,
@@ -2506,8 +2510,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Logic of fail or success
           bool no_sample_failed_so_far = sample_monitor.IsNoFail();
           bool success_rate_is_high_enough =
-              sample_monitor.IsSuccessRateHighEnough(FLAGS_fail_threshold,
-                                                     is_get_nominal);
+              sample_monitor.IsSuccessRateHighEnough(
+                  FLAGS_fail_threshold,
+                  false);  // we don't want zero tolerance because we want the
+                           // trajopt to continue rerun with adjacent sample
+                           // helps
           cout << "Update success/fail flags after sample_idx #" << sample_idx
                << "... ";
           cout << "(no_sample_failed_so_far, "

@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include <Eigen/Dense>
 
 #include "drake/common/drake_assert.h"
@@ -49,6 +50,22 @@ class Task {
   void set(const std::vector<double>& values) {
     DRAKE_DEMAND(values.size() == (unsigned)task_dim_);
     task_ = values;
+
+    // Hacks -- forbid "non-zero turning rate + non-zero ground incline"
+    {
+      double duration = values.at(name_to_index_map_.at("duration"));
+      double ground_incline = values.at(name_to_index_map_.at("ground_incline"));
+      double turning_rate = values.at(name_to_index_map_.at("turning_rate"));
+
+      double turning_angle = turning_rate * duration;
+      if (ground_incline != 0 && turning_angle != 0) {
+        if (ground_incline > turning_angle) {
+          task_.at(name_to_index_map_.at("turning_rate")) = 0;
+        } else {
+          task_.at(name_to_index_map_.at("ground_incline")) = 0;
+        }
+      }
+    }
   }
   // Other getters
   const std::unordered_map<string, int>& name_to_index_map() {

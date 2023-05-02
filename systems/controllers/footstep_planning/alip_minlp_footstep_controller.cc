@@ -82,6 +82,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       gains_.knots_per_mode, alip_utils::Stance::kLeft);
   trajopt_.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt_.AddInputCost(gains_.R(0,0));
+  trajopt_.AddFootholdRegularization(Matrix3d::Identity());
 
   trajopt_.SetMinimumStanceTime(gains_.t_min);
   trajopt_.SetMaximumStanceTime(gains_.t_max);
@@ -263,6 +264,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     trajopt_.UpdateModeTimingsOnTouchdown();
   }
   trajopt_.UpdateModeTiming((!(committed || fsm_switch)) && warmstart);
+
+  double foothold_reg_scaling = std::clamp(
+      1.5 * (t - t_prev_impact - double_stance_duration_) / single_stance_duration_,
+      0.0, 1.0);
+  auto pp = trajopt_.GetFootstepSolution();
+  trajopt_.UpdateFootholdRegularization(foothold_reg_scaling, pp.at(1) - pp.at(0));
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));

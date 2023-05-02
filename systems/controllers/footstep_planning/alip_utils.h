@@ -9,7 +9,7 @@ namespace dairlib::systems::controllers::alip_utils {
 // a nominal footstep during that stance period
 // (So during left stance, the next footstep will be in the -y direction)
 enum class Stance { kLeft = -1, kRight = 1 };
-enum class ResetDiscretization{ kZOH, kFOH };
+enum class ResetDiscretization{ kZOH, kFOH, kSPLIT };
 
 struct AlipGaitParams {
   double height;

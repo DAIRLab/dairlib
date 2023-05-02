@@ -11,7 +11,12 @@ using std::vector;
 using std::to_string;
 using std::numeric_limits;
 
+
 using Eigen::Matrix;
+
+template <typename T, size_t N>
+using Vector = Matrix<T, N, 1>;
+
 using Eigen::VectorXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -122,6 +127,18 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
   MakeTerminalCost();
 }
 
+void AlipMPC::AddFootholdRegularization(const MatrixXd &W_footstep_reg) {
+  DRAKE_DEMAND(W_footstep_reg.rows() == 3);
+  DRAKE_DEMAND(W_footstep_reg.cols() == 3);
+  DRAKE_DEMAND(nmodes_ >= 2);
+  W_footstep_reg_ = W_footstep_reg;
+  footstep_position_regularization_ = prog_->AddQuadraticCost(
+      MatrixXd::Zero(6,6),
+      VectorXd::Zero(6),
+      {pp_.at(0), pp_.at(1)}
+    ).evaluator();
+}
+
 vector<VectorXd> AlipMPC::ExtractDynamicsConstraintDual(
     const drake::solvers::MathematicalProgramResult& sol) {
   DRAKE_ASSERT(sol.is_success());
@@ -141,6 +158,16 @@ vector<VectorXd> AlipMPC::ExtractDynamicsConstraintDual(
     }
   }
   return dual_solutions;
+}
+
+void AlipMPC::UpdateFootholdRegularization(double scale, const Vector3d &pST_SW) {
+  Matrix<double, 3, 6> A = Matrix<double, 3, 6>::Zero();
+  A.leftCols<3>() = -Matrix3d::Identity();
+  A.rightCols<3>() = Matrix3d::Identity();
+  Matrix<double, 6, 6> Q = 2.0 * scale * A.transpose() * W_footstep_reg_ * A;
+  Vector<double, 6> b = -2.0 * scale * A.transpose() * W_footstep_reg_ * pST_SW;
+  double c = scale * pST_SW.transpose() * W_footstep_reg_ * pST_SW;
+  footstep_position_regularization_->UpdateCoefficients(Q, b, c);
 }
 
 void AlipMPC::AddInputCost(double R) {

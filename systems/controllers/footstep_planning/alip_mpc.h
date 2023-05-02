@@ -130,6 +130,8 @@ class AlipMPC {
   void AddFootholds(const vector<geometry::ConvexFoothold> &footholds) {
     footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
   }
+  void AddFootholdRegularization(const Eigen::MatrixXd& W_footstep_reg);
+  void UpdateFootholdRegularization(double scale, const Eigen::Vector3d& pST_SW);
 
   virtual void Build(const drake::solvers::SolverOptions &solver_options);
   virtual void Build() = 0;
@@ -227,6 +229,7 @@ class AlipMPC {
   vector<double> tmax_{};
   Eigen::MatrixXd Q_;
   Eigen::MatrixXd Qf_;
+  Eigen::MatrixXd W_footstep_reg_;
   vector<double> td_;
   vector<Eigen::VectorXd> xd_;
   vector<vector<int>> mode_sequnces_{};
@@ -284,6 +287,7 @@ class AlipMPC {
 
   // costs
   std::shared_ptr<QuadraticCost> terminal_cost_;
+  std::shared_ptr<QuadraticCost> footstep_position_regularization_ = nullptr;
   vector<Binding<QuadraticCost>> input_costs_{};
   vector<vector<Binding<QuadraticCost>>> tracking_costs_{};
 

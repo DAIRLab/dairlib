@@ -69,9 +69,15 @@ struct AlipMINLPGainsImport {
     Rfilt_diagonal = Eigen::Vector4d::Map(this->rfilt.data());
 
     DRAKE_DEMAND(reset_discretization_method == "ZOH" ||
-                 reset_discretization_method == "FOH");
-    const auto reset_disc = (reset_discretization_method == "ZOH") ?
-        ResetDiscretization::kZOH : ResetDiscretization::kFOH;
+                 reset_discretization_method == "FOH" ||
+                 reset_discretization_method == "SPLIT");
+    ResetDiscretization reset_disc = ResetDiscretization::kZOH;
+    if (reset_discretization_method == "FOH") {
+      reset_disc = ResetDiscretization::kFOH;
+    }
+    if (reset_discretization_method == "SPLIT") {
+      reset_disc = ResetDiscretization::kSPLIT;
+    }
 
     this->gains = dairlib::systems::controllers::AlipMINLPGains {
         this->t_commit,

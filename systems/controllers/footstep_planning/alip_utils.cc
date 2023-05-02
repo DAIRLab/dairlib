@@ -62,10 +62,20 @@ Matrix<double, 4, 8> CalcResetMap(
   B(3,0) = -m * 9.81;
 
   Matrix<double, 4, 2> Bd = Matrix<double, 4, 2>::Zero();
-  if (discretization == ResetDiscretization::kFOH) {
-    Bd = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
-  } else {
-    Bd = Ainv * (Ad - I) * B;
+  switch (discretization) {
+    case ResetDiscretization::kZOH:
+      Bd = Ainv * (Ad - I) * B;
+      break;
+    case ResetDiscretization::kFOH:
+      Bd = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
+      break;
+    case ResetDiscretization::kSPLIT:
+      Matrix<double, 4, 2> Bd_ZOH = Ainv * (Ad - I) * B;
+      Matrix<double, 4, 2> Bd_FOH = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
+      Bd.row(0) = Bd_FOH.row(0);
+      Bd.row(1) = Bd_ZOH.row(1);
+      Bd.row(2) = Bd_ZOH.row(2);
+      Bd.row(3) = Bd_FOH.row(3);
   }
   Matrix<double, 4, 2> Bs = Matrix<double, 4, 2>::Zero();
   Bs.topRows(2) = -Eigen::Matrix2d::Identity();

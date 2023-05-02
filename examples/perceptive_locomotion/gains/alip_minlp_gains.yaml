@@ -22,7 +22,7 @@ q:
    0, 0, 0.02, 0,
    0, 0, 0, 0.02]
 r: [100.0]
-reset_discretization_method: 'ZOH'
+reset_discretization_method: 'SPLIT'
 filter_alip_state: false
 qfilt: [.001, .001, .01, .01]
 rfilt: [.0001, .0001, .01, .01]

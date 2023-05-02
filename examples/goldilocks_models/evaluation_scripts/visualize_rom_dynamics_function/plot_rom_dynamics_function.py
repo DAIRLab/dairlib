@@ -1,7 +1,7 @@
 # When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
 # uncomment the following two lines code (or just restart computer because it has something to do with ssh)
-# import matplotlib
-# matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 import sys
 import subprocess
@@ -30,7 +30,7 @@ if __name__ == "__main__":
   # Read the controller parameters
   a_yaml_file = open(
     "examples/goldilocks_models/evaluation_scripts/visualize_rom_dynamics_function/settings_for_rom_dyn_eval.yaml")
-  parsed_yaml_file = yaml.load(a_yaml_file)
+  parsed_yaml_file = yaml.safe_load(a_yaml_file)
   dir_script_backup = parsed_yaml_file.get('dir_script_backup')
   dir_model = parsed_yaml_file.get('dir_model')
   dir_data = parsed_yaml_file.get('dir_data')
@@ -172,5 +172,56 @@ if __name__ == "__main__":
     if plot_magnitude_field:
       # (Not implemented yet; it should be pretty much just copy and paste the x-z plane version)
       pass
+
+    # Heatmap of the vector's magnitude
+    if plot_magnitude_field:
+      y_samples_ticks = ["%.2f" % val for val in y_samples]
+      z_samples_ticks = ["%.2f" % val for val in z_samples]
+      z_samples_ticks = np.flip(z_samples_ticks)
+      for i in range(n_samples_x):
+        x_val = x_samples[i]
+
+        y_accel = np.loadtxt("%sy_accel_%d.csv" % (dir_data, i), delimiter=',')
+        z_accel = np.loadtxt("%sz_accel_%d.csv" % (dir_data, i), delimiter=',')
+
+        mag_map = np.sqrt(np.square(y_accel) + np.square(z_accel))
+        mag_map = np.flip(mag_map, axis=0)
+
+        # if manual_color_scale:
+        #   , vmin=0, vmax=10
+        vmin = None
+        vmax = None
+        if manual_color_scale:
+          vmin = 0
+          vmax = 5
+
+        plt.rcParams.update({'font.size': 12})
+        fig, ax = plt.subplots(figsize=(6.4, 4.8))
+        im = ax.imshow(mag_map, vmin=vmin, vmax=vmax)
+        # Show all ticks and label them with the respective list entries
+        ax.set_xticks(np.arange(len(y_samples_ticks)))
+        ax.set_yticks(np.arange(len(z_samples_ticks)))
+        ax.set_xticklabels(y_samples_ticks)
+        ax.set_yticklabels(z_samples_ticks)
+        # Rotate the tick labels and set their alignment.
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+        # Loop over data dimensions and create text annotations.
+        for j in range(len(z_samples_ticks)):
+          for k in range(len(y_samples_ticks)):
+            text = ax.text(k, j, "%.1f" % mag_map[j, k],
+              ha="center", va="center", color="w")
+        if show_title:
+          ax.set_title("CoM accel vector magnitude field (CoM x=%.2fm; iter%d)" % (x_val, model_iter))
+        fig.tight_layout()
+        plt.xlabel('CoM y (m)')
+        plt.ylabel('CoM z (m)')
+        # ax.xaxis.set_label_coords(1.1,-0.02)
+        ax.xaxis.set_label_coords(0.5,-0.16)
+        plt.gcf().subplots_adjust(bottom=0.18)
+        if save_fig:
+          plt.savefig("%s%d_CoM_accel_vector_magnitude_field__CoM_x=%dcm__iter%d.png" % (dir_plots, i, x_val*100, model_iter))
+
+
 
   # plt.show()

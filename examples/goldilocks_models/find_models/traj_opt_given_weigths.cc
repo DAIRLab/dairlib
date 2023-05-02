@@ -2587,10 +2587,6 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   //    trajopt.AddBoundingBoxConstraint(1, 1, x0(6));
   //      trajopt.AddBoundingBoxConstraint(0.98, 0.98, x0(6));
 
-  // Floating base x, y, z constraint
-
-  // Floating base yaw constraint
-
   // Initial floating base position constraint (need to impose constraints on
   // all elements)
   // We relax the problem by not imposing initial vel constraint.
@@ -2659,15 +2655,15 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         // However, we still impose constraint on qw and qz so that because our
         // pelvis yaw constraint is relaxed by eps. (and I have tested the
         // trajopt -- it didn't seem to be overconstrained with the following
-        // constriants)
+        // constraints)
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
-        trajopt.AddBoundingBoxConstraint(sin(turning_angle / 2),
-                                         sin(turning_angle / 2),
-                                         xf(pos_map.at("base_qz")));
-        trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
-                                         cos(turning_angle / 2),
-                                         xf(pos_map.at("base_qw")));
+        //        trajopt.AddBoundingBoxConstraint(sin(turning_angle / 2),
+        //                                         sin(turning_angle / 2),
+        //                                         xf(pos_map.at("base_qz")));
+        //        trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
+        //                                         cos(turning_angle / 2),
+        //                                         xf(pos_map.at("base_qw")));
       }
     }
   }
@@ -2710,25 +2706,28 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                     xf(n_q + vel_map.at("base_vz")));
       }
     } else {
-      // We impose base_wz constraint here (might be over-constraining, but it's
-      // probably ok because we relax the starting/ending constraint by eps).
-      // Currently the trajopt doesn't seem to be over constrained (even with
-      // LIP embedding), so we are fine.
-      // It seems fine to impose constraints on base_wz here, probably because
-      // we don't have periodicity constraint on hip yaw velocity? (need to
-      // count number of constraints to be certain)
-      trajopt.AddBoundingBoxConstraint(turning_rate, turning_rate,
+      // I have tested. We cannot impose 2 constraints on base_wz here (would be
+      // be over-constraining).
+      /*trajopt.AddBoundingBoxConstraint(turning_rate, turning_rate,
                                        x0(n_q + vel_map.at("base_wz")));
       trajopt.AddBoundingBoxConstraint(turning_rate, turning_rate,
-                                       xf(n_q + vel_map.at("base_wz")));
+                                       xf(n_q + vel_map.at("base_wz")));*/
+      // Looks like we can only impose 1 constraint, so instead of imposing the
+      // following two constraint, we set the average of the start and end to be
+      // `turning_rate`. However, I tried the following constraint. It turned
+      // out to be overconstraining for some reason.
+      /*trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) +
+                                      xf(n_q + vel_map.at("base_wz")) ==
+                                  2 * turning_rate);*/
 
       // TODO: the floating base velocity is wrt world frame, so the following
-      //  code is just an approximation (which might be fine because Cassie
-      //  cannot turn quickly in practice anyway)
+      //  code is just an approximation (which is only true if we don't make
+      //  Cassie turn quickly)
       // We cannot impose constraint on base_vy, because we already
       // have starting and ending constraints for base_y (we only have one-DoF
-      // left becuase of joint periodic constraints)
-      /*trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
+      // left because of joint periodic constraints)
+      /*DRAKE_DEMAND(abs(turning_rate) < 0.2);
+      trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
                                   -xf(n_q + vel_map.at("base_vy")));*/
       if (!one_dof_periodic_floating_base_vel) {
         trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==

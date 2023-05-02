@@ -1512,12 +1512,12 @@ class SampleSuccessMonitor {
     return no_fail;
   }
   bool IsSuccessRateHighEnough(double fail_rate_threshold,
-                               bool is_get_nominal) {
+                               bool zero_tolerance) {
     bool success_rate_is_high_enough = true;
     double fail_rate = double(GetNumberOfFailedSamples()) / double(n_sample_);
     if (fail_rate > fail_rate_threshold) {
       success_rate_is_high_enough = false;
-    } else if ((fail_rate > 0) && is_get_nominal) {
+    } else if ((fail_rate > 0) && zero_tolerance) {
       success_rate_is_high_enough = false;
     }
     return success_rate_is_high_enough;
@@ -2510,8 +2510,11 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Logic of fail or success
           bool no_sample_failed_so_far = sample_monitor.IsNoFail();
           bool success_rate_is_high_enough =
-              sample_monitor.IsSuccessRateHighEnough(FLAGS_fail_threshold,
-                                                     is_get_nominal);
+              sample_monitor.IsSuccessRateHighEnough(
+                  FLAGS_fail_threshold,
+                  false);  // we don't want zero tolerance because we want the
+                           // trajopt to continue rerun with adjacent sample
+                           // helps
           cout << "Update success/fail flags after sample_idx #" << sample_idx
                << "... ";
           cout << "(no_sample_failed_so_far, "

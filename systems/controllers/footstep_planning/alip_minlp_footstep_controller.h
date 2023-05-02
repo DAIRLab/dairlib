@@ -30,6 +30,7 @@ struct AlipMINLPGains {
   bool filter_alip_state;
   Eigen::Matrix4d Q;
   Eigen::Matrix4d Qf;
+  Eigen::Matrix3d W_footstep_reg;
   Eigen::MatrixXd R;
   S2SKalmanFilterData filter_data;
 };

@@ -22,6 +22,7 @@ struct AlipMINLPGainsImport {
   std::vector<double> qf;
   std::vector<double> q;
   std::vector<double> r;
+  std::vector<double> w_footstep_reg;
   int pelvis_vel_butter_order;
   std::vector<double> pelvis_vel_butter_wc;
   std::string reset_discretization_method;
@@ -33,6 +34,7 @@ struct AlipMINLPGainsImport {
   Eigen::MatrixXd R;
   Eigen::Vector4d Qfilt_diagonal;
   Eigen::Vector4d Rfilt_diagonal;
+  Eigen::Matrix3d W_footstep_reg;
 
   dairlib::systems::controllers::AlipMINLPGains gains;
 
@@ -58,6 +60,7 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(pelvis_vel_butter_order));
     a->Visit(DRAKE_NVP(pelvis_vel_butter_wc));
     a->Visit(DRAKE_NVP(solver_threads));
+    a->Visit(DRAKE_NVP(w_footstep_reg));
 
     Qf = Eigen::Map<
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->qf.data());
@@ -65,6 +68,8 @@ struct AlipMINLPGainsImport {
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->q.data());
     R = Eigen::Map<
         Eigen::Matrix<double, 1, 1, Eigen::RowMajor>>(this->r.data());
+    W_footstep_reg = Eigen::Map<
+        Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>(this->w_footstep_reg.data());
     Qfilt_diagonal = Eigen::Vector4d::Map(this->qfilt.data());
     Rfilt_diagonal = Eigen::Vector4d::Map(this->rfilt.data());
 
@@ -92,6 +97,7 @@ struct AlipMINLPGainsImport {
         this->filter_alip_state,
         this->Q,
         this->Qf,
+        this->W_footstep_reg,
         this->R
     };
   }

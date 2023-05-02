@@ -82,7 +82,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
       gains_.knots_per_mode, alip_utils::Stance::kLeft);
   trajopt_.AddTrackingCost(xd, gains_.Q, gains_.Qf);
   trajopt_.AddInputCost(gains_.R(0,0));
-  trajopt_.AddFootholdRegularization(Matrix3d::Identity());
+  trajopt_.AddFootholdRegularization(gains.W_footstep_reg);
 
   trajopt_.SetMinimumStanceTime(gains_.t_min);
   trajopt_.SetMaximumStanceTime(gains_.t_max);

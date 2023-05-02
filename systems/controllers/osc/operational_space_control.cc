@@ -726,23 +726,22 @@ VectorXd OperationalSpaceControl::SolveQp(
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
     if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
         ds_states_.end()) {
+
+      double s = std::clamp(t_since_last_state_switch / ds_duration_, 0.0, 1.0);
       double alpha_left = 0;
       double alpha_right = 0;
       if (prev_distinct_fsm_state_ == right_support_state_) {
         // We want left foot force to gradually increase
-        alpha_left = -1;
-        alpha_right = t_since_last_state_switch /
-                      (ds_duration_ - t_since_last_state_switch);
-
+        alpha_left = 1.0 - s;
+        alpha_right = -s;
       } else if (prev_distinct_fsm_state_ == left_support_state_) {
-        alpha_left = t_since_last_state_switch /
-                     (ds_duration_ - t_since_last_state_switch);
-        alpha_right = -1;
+        alpha_left = -s;
+        alpha_right = 1.0 - s;
       }
-      A(0, 0) = alpha_left / 2;
-      A(0, 1) = alpha_left / 2;
-      A(0, 2) = alpha_right / 2;
-      A(0, 3) = alpha_right / 2;
+      A(0, 0) = alpha_left;
+      A(0, 1) = alpha_left;
+      A(0, 2) = alpha_right;
+      A(0, 3) = alpha_right;
       A(0, 4) = 1;
       A(0, 5) = 1;
       A(0, 6) = 1;

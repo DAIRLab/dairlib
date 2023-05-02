@@ -1,6 +1,6 @@
 cassie_plot_config_filename:
   "bindings/pydairlib/analysis/plot_configs/mpc_cassie_plot_config.yaml"
 
-start_time: 0
+start_time: 4.5
 end_time: -1
 make_animation: false

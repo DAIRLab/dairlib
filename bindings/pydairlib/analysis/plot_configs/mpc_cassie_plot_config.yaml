@@ -5,22 +5,22 @@ channel_osc: "OSC_DEBUG_WALKING"
 use_archived_lcmtypes: false
 
 # Approximate log time to start at relative to the first timestamp in the log
-start_time: 2
+start_time: 4.5
 # Duration of time to plot (seconds, -1 for whole log)
-duration: 5
+duration: -1
 
 # Plant properties
 use_springs: false
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: false
-plot_floating_base_velocities: false
+plot_floating_base_positions: true
+plot_floating_base_velocities: true
 plot_floating_base_velocity_body_frame: false
-plot_joint_positions: false
-plot_joint_velocities: false
-plot_measured_efforts: false
-plot_commanded_efforts: false
+plot_joint_positions: true
+plot_joint_velocities: true
+plot_measured_efforts: true
+plot_commanded_efforts: true
 plot_contact_forces: false
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
@@ -39,13 +39,13 @@ foot_xyz_to_plot: { 'right': [ 2 ], 'left': [ 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
-plot_qp_costs: false
-plot_tracking_costs: false
-plot_qp_solve_time: false
+plot_qp_costs: true
+plot_tracking_costs: true
+plot_qp_solve_time: true
 tracking_datas_to_plot:
 #  right_toe_angle_traj: {'dims': [0], 'derivs': ['accel']}
-#  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-  swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+  alip_com_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+#  swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
 #  pelvis_heading_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-#  pelvis_balance_traj: { 'dims': [ 0, 1 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+  pelvis_balance_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
 #  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['accel']}

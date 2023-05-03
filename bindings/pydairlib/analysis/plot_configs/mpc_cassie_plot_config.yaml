@@ -34,8 +34,8 @@ fsm_state_names: [ 'Left Stance (LS)',
                    'Double Support Post Right (DSPR)' ]
 
 # Foot position plots
-foot_positions_to_plot: ['right']
-foot_xyz_to_plot: { 'right': [ 0, 1, 2 ], 'left': [ 2 ] }
+foot_positions_to_plot: ['right', 'left']
+foot_xyz_to_plot: { 'right': [ 0, 2 ], 'left': [ 0, 2 ] }
 pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
@@ -43,8 +43,9 @@ plot_qp_costs: true
 plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
-#  right_toe_angle_traj: {'dims': [0], 'derivs': ['accel']}
-#  alip_com_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+  right_toe_angle_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'accel']}
+  left_toe_angle_traj: {'dims': [0], 'derivs': ['pos', 'vel', 'accel']}
+  alip_com_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
   swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
 #  pelvis_heading_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
 #  pelvis_balance_traj: { 'dims': [ 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

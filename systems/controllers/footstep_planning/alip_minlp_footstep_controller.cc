@@ -246,6 +246,10 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   // Update the trajopt_ problem data and solve
   //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
+  if (time_left_in_this_mode < single_stance_duration_) {
+    auto footstep_sol = trajopt_.GetFootholdSequence();
+    foothold_set.append(footstep_sol.front());
+  }
   if (!foothold_set.empty()) {
     trajopt_.UpdateFootholds(foothold_set.GetSubsetCloseToPoint(p_b, 1.8).footholds());
   } else {

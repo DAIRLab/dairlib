@@ -15,6 +15,7 @@ using Eigen::RowVector3d;
 using Eigen::RowVectorXd;
 
 using drake::solvers::GurobiSolver;
+using geometry::ConvexFoothold;
 using solvers::LinearBigMConstraint;
 using solvers::LinearBigMEqualityConstraint;
 
@@ -168,6 +169,22 @@ Vector3d AlipMIQP::SnapFootstepToTopFoothold(const Vector3d& p) const {
   return pnew;
 }
 
+
+vector<ConvexFoothold> AlipMIQP::GetFootholdSequence() const {
+  auto integer_sol = GetFootholdSelection();
+
+  std::vector<ConvexFoothold> footholds_sol;
+  for (const auto& z : integer_sol) {
+    for (int i = 0; i < z.rows(); i++) {
+      if (z(i) > 0.9) {
+        DRAKE_ASSERT(footholds_.size() > i);
+        footholds_sol.push_back(footholds_.at((i)));
+        break;
+      }
+    }
+  }
+  return footholds_sol;
+}
 
 void AlipMIQP::UpdateInitialGuess() {
   prog_->SetInitialGuessForAllVariables(solution_.first.GetSolution());

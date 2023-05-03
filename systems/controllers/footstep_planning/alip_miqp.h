@@ -30,11 +30,12 @@ class AlipMIQP final : public AlipMPC {
     }
   }
 
+  std::vector<geometry::ConvexFoothold> GetFootholdSequence() const;
   void AddMode() final;
   void Build(const drake::solvers::SolverOptions &solver_options) final;
   void Build() final;
 
-  std::vector<Eigen::VectorXd> GetFootholdSelection() {
+  std::vector<Eigen::VectorXd> GetFootholdSelection() const {
     std::vector<Eigen::VectorXd> zz{};
     for (const auto& z : zz_) {
       zz.push_back(solution_.first.GetSolution(z));

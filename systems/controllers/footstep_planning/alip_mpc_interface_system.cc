@@ -198,11 +198,14 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   Vector3d final_vel = -desired_final_vertical_foot_velocity_ * (end_time - start_time) * Vector3d::UnitZ();
 
   if (step_type != kFlat) {
-    control_points.col(1) += 0.3 * mid_foot_height_ * n;
-    Vector3d retract_vel = swing_foot_disp;
+    control_points.col(1) += step_type == kUp ?
+        0.4 * mid_foot_height_ * n : 0.2 * mid_foot_height_ * n;
+    Vector3d retract_vel = -swing_foot_disp;
     retract_vel(2) = 0;
-    retract_vel = 0.75 * (end_time - start_time) * retract_vel.normalized();
+    retract_vel = 0.25 * (end_time - start_time) * retract_vel.normalized();
     final_vel += retract_vel;
+    Vector3d retract_delta = 0.03 * retract_vel.normalized();
+    control_points.col(2) += retract_delta;
   }
   auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
       control_points, path_breaks, Vector3d::Zero(), final_vel);

@@ -195,16 +195,13 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   Vector3d n = n_planar.cross(swing_foot_disp).normalized();
   control_points.col(1) = 0.5 * (init_pos + final) + mid_foot_height_ * n;
 
-  // extra clearance for stepping up
-  if (step_type == kUp) {
-    control_points.col(1) += 0.2 * mid_foot_height_ * n;
-  }
-
   Vector3d final_vel = -desired_final_vertical_foot_velocity_ * (end_time - start_time) * Vector3d::UnitZ();
+
   if (step_type != kFlat) {
+    control_points.col(1) += 0.3 * mid_foot_height_ * n;
     Vector3d retract_vel = swing_foot_disp;
     retract_vel(2) = 0;
-    retract_vel = 0.5 * (end_time - start_time) * retract_vel.normalized();
+    retract_vel = 0.75 * (end_time - start_time) * retract_vel.normalized();
     final_vel += retract_vel;
   }
   auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(

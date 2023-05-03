@@ -2249,11 +2249,8 @@ inline drake::trajectories::PiecewisePolynomial<double>
 MakeMinSnapTrajFromWaypoints(
     const Eigen::Matrix3Xd& waypoints,
     const std::vector<double>& breaks,
-    double des_final_vertical_velocity=0) {
-
-  // Convention: positive numer represents velocity toward the ground
-  DRAKE_DEMAND(des_final_vertical_velocity >= 0);
-  DRAKE_DEMAND(waypoints.cols() == breaks.size());
+    const Eigen::Vector3d& initial_velocity,
+    const Eigen::Vector3d& final_velocity) {
 
   int N = waypoints.cols();
 
@@ -2262,26 +2259,16 @@ MakeMinSnapTrajFromWaypoints(
   Eigen::Matrix<double, 3, 4> init_state = Eigen::Matrix<double, 3, 4>::Zero();
   Eigen::Matrix<double, 3, 4> final_state = Eigen::Matrix<double, 3, 4>::Zero();
   init_state.col(0) = waypoints.col(0);
+  init_state.col(1) = initial_velocity;
   final_state.col(0) = waypoints.rightCols<1>();
-  final_state(2, 1) = -des_final_vertical_velocity;
-
-
+  final_state.col(1) = final_velocity;
   Eigen::VectorXd durations = Eigen::VectorXd::Zero(N-1);
   for (int i = 0; i < N-1; i++) {
     durations(i) = breaks.at(i+1) - breaks.at(i);
   }
 
-  // Set the initial acceleration and jerk to be relatively large in the
-  // direction of the first intermediate waypoint
-//  init_state.col(1)(2) = 0; // set some initial velocity
-//  init_state.col(2) = 2.0 * (waypoints.col(1) - waypoints.col(0)) /
-//                          (durations(0) * durations(0));
-//  init_state.col(2)(2) *= 2.5;
-//  init_state.col(3) =  3 * init_state.col(2) / durations(0);
   final_state.col(2) = -2 * (waypoints.col(N-1) - waypoints.col(N-2)) /
                             (durations(N-2) * durations(N-2));
-//  final_state.col(2)(1) *= 0.5;
-//  final_state.col(2)(0) = 0;
   final_state.col(3) =  3 * final_state.col(2) / durations(0);
 
   opt.reset(init_state, final_state, N-1);

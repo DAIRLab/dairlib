@@ -70,7 +70,7 @@ PYBIND11_MODULE(controllers, m) {
 
   m.def("MakeMinSnapTrajFromWaypoints",
         &minsnap::MakeMinSnapTrajFromWaypoints, py::arg("waypoints"),
-        py::arg("breaks"), py::arg("des_final_vertical_velocity"));
+        py::arg("breaks"), py::arg("initial_velocity"), py::arg("final_velocity"));
 }
 
 

@@ -153,8 +153,10 @@ def plotter_main(plot_config, log):
             dims['toe_' + pos] = plot_config.foot_xyz_to_plot[pos]
             pts['toe_' + pos] = pts_map[plot_config.pt_on_foot_to_plot]
 
-        mbp_plots.plot_points_positions(robot_output, t_x_slice, plant, context,
-            foot_frames, pts, dims)
+        plot = mbp_plots.plot_points_positions(
+            robot_output, t_x_slice, plant, context, foot_frames, pts, dims)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
+            plot_config.fsm_state_names)
 
     ''' Plot IMU acceleration '''
     if True:

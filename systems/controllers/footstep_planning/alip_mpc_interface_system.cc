@@ -176,23 +176,39 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
   control_points.col(0) = init_pos;
   control_points.col(2) = final;
 
+  enum StepType { kFlat, kUp, kDown };
+  StepType step_type = kFlat;
+
   // set midpoint similarly to https://arxiv.org/pdf/2206.14049.pdf
   // (Section V/E)
   Vector3d swing_foot_disp = final - init_pos;
-  if (swing_foot_disp(2) < 0.025) {
+  if (abs(swing_foot_disp(2)) < 0.025){
     swing_foot_disp(2) = 0;
+  } else if (swing_foot_disp(2) > 0) {
+    step_type = kUp;
+  } else {
+    step_type = kDown;
   }
-  double disp_yaw = atan2(swing_foot_disp(1), swing_foot_disp(0));
-  Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0); // plane normal?
 
+  double disp_yaw = atan2(swing_foot_disp(1), swing_foot_disp(0));
+  Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0);
   Vector3d n = n_planar.cross(swing_foot_disp).normalized();
   control_points.col(1) = 0.5 * (init_pos + final) + mid_foot_height_ * n;
 
+  // extra clearance for stepping up
+  if (step_type == kUp) {
+    control_points.col(1) += 0.2 * mid_foot_height_ * n;
+  }
 
-  double scaled_final_vel =
-      desired_final_vertical_foot_velocity_ * (end_time - start_time);
+  Vector3d final_vel = -desired_final_vertical_foot_velocity_ * (end_time - start_time) * Vector3d::UnitZ();
+  if (step_type != kFlat) {
+    Vector3d retract_vel = swing_foot_disp;
+    retract_vel(2) = 0;
+    retract_vel = 0.5 * (end_time - start_time) * retract_vel.normalized();
+    final_vel += retract_vel;
+  }
   auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
-      control_points, path_breaks, scaled_final_vel);
+      control_points, path_breaks, Vector3d::Zero(), final_vel);
 
   auto swing_foot_spline = PathParameterizedTrajectory<double>(
       swing_foot_path, time_scaling_trajectory);

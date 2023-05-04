@@ -2544,9 +2544,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // iteration
           /*if ((has_been_all_success && !no_sample_failed_so_far) ||
               (!has_been_all_success && (!success_rate_is_high_enough))) {*/
-          if ((has_been_all_success && !no_sample_failed_so_far &&
+          /*if ((has_been_all_success && !no_sample_failed_so_far &&
                (n_shrink_step < 3)) ||
-              !success_rate_is_high_enough) {
+              !success_rate_is_high_enough) {*/
+          // 20230504 Update: I relax the condition by only checking if the
+          // success rate if high enough, so that we can get all samples a
+          // change to get help by the neighboering successful samples
+          if (!success_rate_is_high_enough) {
             // Wait for the assigned threads to join, and then break;
             cout << "(has_been_all_success, no_sample_failed_so_far, "
                     "success_rate_is_high_enough) = ("

@@ -2231,7 +2231,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
     }
 
     // setup for each iteration
-    int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
     bool extend_model_this_iter = extend_model && (iter == extend_model_iter) &&
                                   !has_visit_this_iter_for_model_extension;
     if (iter == extend_model_iter)
@@ -2361,7 +2360,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           int sample_idx_to_help = -1;
           if (get_good_sol_from_adjacent_sample && !FLAGS_is_debug) {
             if ((n_rerun[sample_idx] > N_rerun) &&
-                (sample_monitor.Read(sample_idx) != 0.5)) {
+                (sample_monitor.Read(sample_idx) !=
+                 SAMPLE_STATUS_CODE::ITERATION_LIMIT)) {
               sample_monitor.Print();
               GetAdjacentHelper(sample_idx, sample_idx_waiting_to_help,
                                 sample_idx_that_helped, sample_idx_to_help,
@@ -2389,6 +2389,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
                                   to_string(sample_idx) + string("_w.csv");
             }
             cout << "init_file_pass_in = " << init_file_pass_in << endl;
+          }
+
+          // Set max iteration limit
+          int max_inner_iter_pass_in = is_get_nominal ? 200 : max_inner_iter;
+          // Increase max iteration limit if it's a local sample rerun and
+          // previous trajopt result was ITERATION_LIMIT
+          if ((n_rerun[sample_idx] >= 0) &&
+              (sample_monitor.Read(sample_idx) ==
+               SAMPLE_STATUS_CODE::ITERATION_LIMIT)) {
+            max_inner_iter_pass_in *= 2;
           }
 
           // Set up feasibility and optimality tolerance

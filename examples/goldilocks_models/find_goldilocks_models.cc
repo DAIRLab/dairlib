@@ -2972,6 +2972,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
       rom->SetTheta(rom->theta() + current_iter_step_size * step_direction);
 
       // For message printed to the terminal
+      writeCSV(dir + prefix + string("n_shrink_step.csv"),
+               n_shrink_step * VectorXd::Ones(1));
       n_shrink_step = 0;
 
       // cout << '\a';  // making noise to notify the user the iteration ends

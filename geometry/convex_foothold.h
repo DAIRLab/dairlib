@@ -48,6 +48,12 @@ class ConvexFoothold {
    * checked.
    */
   void AddVertices(const Eigen::Vector3d& v1, const Eigen::Vector3d& v2);
+
+  /*
+   * Get the violation of the inequality constraints
+   */
+  double Get2dViolation(const Eigen::Vector3d& pt) const;
+
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetConstraintMatrices() const;
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetEqualityConstraintMatrices() const;
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);

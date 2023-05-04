@@ -10,7 +10,10 @@
 using Eigen::Matrix3d;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::Vector2d;
+using Eigen::Matrix2d;
+using Eigen::Matrix;
 
 using std::numeric_limits;
 
@@ -46,6 +49,50 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetCloseToPoint(
     }
   }
   return close;
+}
+
+
+ConvexFootholdSet ConvexFootholdSet::GetSubsetInForwardLookingCone(
+    const Vector3d &query_pt, double cone_angle) const {
+  Matrix2d Aq;
+  Aq << cos(cone_angle), sin(cone_angle), cos(cone_angle), -sin(cone_angle);
+  Vector2d bq = Aq * query_pt.head<2>();
+  Matrix<double, 2, 4> pq;
+  pq.leftCols<2>() = Matrix2d::Identity();
+  pq.rightCols<2>() = -Matrix2d::Identity();
+  Matrix<double, 4, 4> Q = pq.transpose() * pq;
+
+  drake::solvers::MathematicalProgram prog;
+  std::vector<drake::solvers::VectorXDecisionVariable> pp;
+  std::vector<drake::solvers::VectorXDecisionVariable> qq;
+  for (int i = 0; i < set_.size(); i++) {
+    auto p = prog.NewContinuousVariables(2);
+    auto q = prog.NewContinuousVariables(2);
+    const auto& [A, b] = set_.at(i).GetConstraintMatrices();
+    prog.AddLinearConstraint(
+        A.leftCols<2>(),
+        VectorXd::Constant(A.rows(), -numeric_limits<double>::infinity()),
+        b, p);
+    prog.AddLinearConstraint(
+        Aq, bq, Vector2d::Constant(std::numeric_limits<double>::infinity()), q);
+    prog.AddQuadraticCost(Q, Vector4d::Zero(), {p, q});
+    pp.push_back(p);
+    qq.push_back(q);
+  }
+
+  drake::solvers::OsqpSolver solver;
+  const auto result = solver.Solve(prog);
+  DRAKE_ASSERT(result.is_success());
+
+  ConvexFootholdSet ret;
+  for (int i = 0; i < set_.size(); i++) {
+    auto p = result.GetSolution(pp.at(i));
+    auto q = result.GetSolution(qq.at(i));
+    if ((p - q).norm() < 1e-3) {
+      ret.append(set_.at(i));
+    }
+  }
+  return ret;
 }
 
 void ConvexFootholdSet::ReExpressInNewFrame(const Matrix3d &R_WF) {
@@ -92,6 +139,14 @@ ConvexFootholdSet ConvexFootholdSet::CopyFromLcm(const lcmt_foothold_set& set_lc
     set.append(foothold);
   }
   return set;
+}
+
+bool ConvexFootholdSet::Feasible2d(const Vector3d& pt, double tol) const {
+  return std::any_of(
+      set_.begin(), set_.end(),
+      [&tol, &pt](const ConvexFoothold& f) {
+        return f.Get2dViolation(pt) < tol;
+      });
 }
 
 }

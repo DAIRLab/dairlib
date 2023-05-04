@@ -246,12 +246,14 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   // Update the trajopt_ problem data and solve
   //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
-  if (time_left_in_this_mode < single_stance_duration_) {
-    auto footstep_sol = trajopt_.GetFootholdSequence();
-    foothold_set.append(footstep_sol.front());
-  }
   if (!foothold_set.empty()) {
-    trajopt_.UpdateFootholds(foothold_set.GetSubsetCloseToPoint(p_b, 1.8).footholds());
+    auto foothold_set_filtered = foothold_set.GetSubsetCloseToPoint(p_b, 1.8);
+    if ((t - t_prev_impact > double_stance_duration_) and not
+        foothold_set_filtered.Feasible2d(p_b, -2e-2)) {
+      foothold_set_filtered =
+          foothold_set_filtered.GetSubsetInForwardLookingCone(p_b, 0.3 * M_PI_4);
+    }
+    trajopt_.UpdateFootholds(foothold_set_filtered.footholds());
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }

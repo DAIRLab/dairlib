@@ -54,6 +54,12 @@ std::pair<MatrixXd, VectorXd> ConvexFoothold::GetEqualityConstraintMatrices() co
   return {A_eq_, b_eq_};
 }
 
+double ConvexFoothold::Get2dViolation(const Eigen::Vector3d &pt) const {
+  const auto& [A, b] = GetConstraintMatrices();
+  const auto viol = A * pt - b;
+  return viol.maxCoeff();
+}
+
 Matrix3d ConvexFoothold::R_WF() const {
   Vector3d b_z = A_eq_.transpose().normalized();
   Vector3d b_x (b_z(2), 0, -b_z(0));

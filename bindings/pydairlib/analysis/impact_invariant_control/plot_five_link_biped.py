@@ -157,11 +157,11 @@ def main():
     t = np.linspace(start_time, end_time, 1000)
     v_samples = []
     for i in t:
-      v_samples.append(state_traj.value(i)[10:14, 0])
+      v_samples.append(state_traj.value(i)[7:14, 0])
     joint_vel_plot.plot(t, v_samples, xlabel='Time (s)', ylabel='Velocity (rad/s)', grid=False)
-    joint_vel_plot.add_legend(["Left Hip", "Right Hip", "Left Knee", "Right Knee"])
+    # joint_vel_plot.add_legend(["Left Hip", "Right Hip", "Left Knee", "Right Knee"])
     joint_vel_plot.tight_layout()
-    joint_vel_plot.save_fig('rabbit_joint_vel.png')
+    joint_vel_plot.save_fig('rabbit_gen_vel.png')
     plt.show()
 
     start_time = t_impact - 2 * window_length

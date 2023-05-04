@@ -51,6 +51,20 @@ cc_library(
 )
 
 cc_library(
+    name = "franka_sim_controls",
+    srcs = ["franka_sim_controls.cc"],
+    hdrs = ["franka_sim_controls.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        ":franka_kinematics_vector",
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "franka_kinematics_vector",
     srcs = ["franka_kinematics_vector.cc"],
     hdrs = ["franka_kinematics_vector.h"],

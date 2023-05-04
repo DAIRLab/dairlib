@@ -11,6 +11,7 @@ struct FrankaSimParams {
   std::string state_channel;
   std::string controller_channel;
   std::string tray_state_channel;
+  std::string box_state_channel;
   std::string franka_model;
 
   double dt;
@@ -23,12 +24,14 @@ struct FrankaSimParams {
 
   std::vector<double> q_init_franka;
   std::vector<double> q_init_plate;
+  std::vector<double> q_init_box;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(state_channel));
     a->Visit(DRAKE_NVP(controller_channel));
     a->Visit(DRAKE_NVP(tray_state_channel));
+    a->Visit(DRAKE_NVP(box_state_channel));
     a->Visit(DRAKE_NVP(franka_model));
 
     a->Visit(DRAKE_NVP(dt));
@@ -41,6 +44,7 @@ struct FrankaSimParams {
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));
+    a->Visit(DRAKE_NVP(q_init_box));
 
   }
 };

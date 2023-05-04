@@ -80,6 +80,9 @@ int do_main(int argc, char* argv[]) {
           "table1");
   drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(
       FindResourceOrThrow("examples/franka/urdf/tray.sdf"));
+  drake::multibody::ModelInstanceIndex box_index =
+      parser.AddModelFromFile(FindResourceOrThrow(
+          "examples/franka/urdf/default_box.urdf"));
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
@@ -108,10 +111,15 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           "TRAY_OUTPUT", lcm));
+  auto box_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          "BOX_OUTPUT", lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, tray_index);
+  auto box_state_receiver =
+      builder.AddSystem<RobotOutputReceiver>(plant, box_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
@@ -119,9 +127,13 @@ int do_main(int argc, char* argv[]) {
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(tray_index));
+  auto box_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      tray_state_receiver->get_output_port(0).size(), 0,
+      plant.num_positions(box_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(tray_index)};
+                                  plant.num_positions(tray_index),
+                                  plant.num_positions(box_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
@@ -153,6 +165,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
+  builder.Connect(box_passthrough->get_output_port(), mux->get_input_port(2));
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   trajectory_drawer_actor->get_input_port_trajectory());
   builder.Connect(trajectory_sub_object->get_output_port(),
@@ -163,9 +176,11 @@ int do_main(int argc, char* argv[]) {
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*tray_state_receiver, *tray_passthrough);
+  builder.Connect(*box_state_receiver, *box_passthrough);
 
   builder.Connect(*franka_state_sub, *franka_state_receiver);
   builder.Connect(*tray_state_sub, *tray_state_receiver);
+  builder.Connect(*box_state_sub, *box_state_receiver);
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
@@ -174,10 +189,14 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   auto& tray_state_sub_context =
       diagram->GetMutableSubsystemContext(*tray_state_sub, context.get());
+  auto& box_state_sub_context =
+      diagram->GetMutableSubsystemContext(*box_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
   tray_state_receiver->InitializeSubscriberPositions(plant,
                                                      tray_state_sub_context);
+  box_state_receiver->InitializeSubscriberPositions(plant,
+                                                     box_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

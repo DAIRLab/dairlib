@@ -9,7 +9,6 @@
 
 #include <Eigen/QR>       // CompleteOrthogonalDecomposition
 #include <bits/stdc++.h>  // system call
-//#include <filesystem>
 #include <gflags/gflags.h>
 
 #include <unistd.h>
@@ -96,6 +95,7 @@ int run(int argc, char* argv[]) {
   //  for (const auto & entry : std::filesystem::directory_iterator(path))
   //    std::cout << entry.path() << std::endl;
 
+  /// Show CPU usage
   // clang-format off
 //  string output;
   //  output = RunCmdAndGetOutput("lscpu | grep CPU\\ MHz"); // print the current cpu clock speed

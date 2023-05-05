@@ -205,8 +205,19 @@ void LocalLIPMTrajGenerator::CalcTraj(
   auto exp_on_flag_ground =
       ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
   // adjust the height for slope
-  // TODO: finish this
-
+  // Note that the following algorithm is just approximiation (assuming the
+  // global yaw is very close to 0)
+  // TODO: finish this (make sure that the math is correct; the time is correct)
+  Y[0](2, 0) = desired_com_height_ +
+               (CoM - stance_foot_pos)(0, 0) * tan(ground_incline_);
+  Y[1](2, 0) = desired_com_height_ +
+               exp_on_flag_ground.value(end_time_of_this_fsm_state)(0, 0) *
+                   tan(ground_incline_);
+  Y_dot_start(2, 0) =
+      (Y[1](2, 0) - Y[0](2, 0)) / (end_time_of_this_fsm_state - current_time);
+  Y_dot_end(2, 0) = Y_dot_start(2, 0);
+  pp_part = PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+      T_waypoint_com, Y, Y_dot_start, Y_dot_end);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<

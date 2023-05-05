@@ -39,6 +39,10 @@ class LocalLIPMTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_switch_time_port_);
   }
 
+  void SetGroundIncline(double ground_incline) {
+    ground_incline_ = ground_incline;
+  }
+
  private:
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
@@ -64,6 +68,9 @@ class LocalLIPMTrajGenerator : public drake::systems::LeafSystem<double> {
   const std::vector<bool>& flip_in_y_;
 
   const drake::multibody::BodyFrame<double>& world_;
+
+  //
+  double ground_incline_;
 };
 
 }  // namespace systems

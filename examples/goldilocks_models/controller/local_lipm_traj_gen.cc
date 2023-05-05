@@ -201,6 +201,13 @@ void LocalLIPMTrajGenerator::CalcTraj(
   A << omega, 0, 0, -omega;
   alpha << 1, 1;
 
+  // construct exp traj
+  auto exp_on_flag_ground =
+      ExponentialPlusPiecewisePolynomial<double>(K, A, alpha, pp_part);
+  // adjust the height for slope
+  // TODO: finish this
+
+
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<
       ExponentialPlusPiecewisePolynomial<double>*>(traj);

@@ -176,11 +176,17 @@ DEFINE_bool(
     "if true, we have the mid contact point to track the swing foot traj. "
     " Doesn't seem to work well when turning this flag on for some reason.");
 
+DEFINE_double(ground_incline, 0.0, "ground incline");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   if (FLAGS_broadcast) {
     DRAKE_DEMAND(FLAGS_lcm_url_port == "7667");
+  }
+
+  if (FLAGS_ground_incline != 0) {
+    DRAKE_UNREACHABLE();  // TODO: need to servo global yaw to 0
   }
 
   // Read-in the parameters
@@ -738,6 +744,7 @@ int DoMain(int argc, char* argv[]) {
             plant_w_spr, context_w_spr.get(), desired_com_height,
             unordered_fsm_states, unordered_state_durations,
             contact_points_in_each_state, flip_in_y);
+    local_lipm_traj_generator->SetGroundIncline(FLAGS_ground_incline);
     builder.Connect(fsm->get_output_port(0),
                     local_lipm_traj_generator->get_input_port_fsm());
     builder.Connect(event_time->get_output_port_event_time(),

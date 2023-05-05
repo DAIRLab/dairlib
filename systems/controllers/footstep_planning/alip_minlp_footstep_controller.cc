@@ -277,7 +277,7 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
   if (committed){
-    double c = 0.2;
+    double c = gains_.next_footstep_constraint_radius;
     workspace.AddFace( Vector3d::UnitY(),  query_pt + c * Vector3d::UnitY());
     workspace.AddFace(-Vector3d::UnitY(), query_pt - c * Vector3d::UnitY());
     workspace.AddFace(Vector3d::UnitX(), query_pt + c * Vector3d::UnitX());

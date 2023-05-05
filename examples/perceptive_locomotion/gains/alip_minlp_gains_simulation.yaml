@@ -26,6 +26,7 @@ w_footstep_reg:
   [ 1, 0, 0,
     0, 1, 0,
     0, 0, 4 ]
+r_foostep_const: 0.1
 reset_discretization_method: 'FOH'
 filter_alip_state: false
 qfilt: [.001, .001, .01, .01]

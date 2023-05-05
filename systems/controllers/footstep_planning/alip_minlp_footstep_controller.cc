@@ -246,14 +246,11 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   // Update the trajopt_ problem data and solve
   //  trajopt_.set_H(h);
   trajopt_.UpdateTrackingCost(xd);
+
+  Vector3d query_pt = trajopt_.GetFootstepSolution().at(1);
   if (!foothold_set.empty()) {
-    auto foothold_set_filtered = foothold_set.GetSubsetCloseToPoint(p_b, 1.8);
-    if ((t - t_prev_impact > double_stance_duration_) and not
-        foothold_set_filtered.Feasible2d(p_b, -2e-2)) {
-      foothold_set_filtered =
-          foothold_set_filtered.GetSubsetInForwardLookingCone(p_b, 0.3 * M_PI_4);
-    }
-    trajopt_.UpdateFootholds(foothold_set_filtered.footholds());
+    auto footholds_filt = foothold_set.GetSubsetCloseToPoint(query_pt, 1.8);
+    trajopt_.UpdateFootholds(footholds_filt.footholds());
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }
@@ -279,11 +276,19 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
 
   ConvexFoothold workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
+  if (committed){
+    double c = 0.2;
+    workspace.AddFace( Vector3d::UnitY(),  query_pt + c * Vector3d::UnitY());
+    workspace.AddFace(-Vector3d::UnitY(), query_pt - c * Vector3d::UnitY());
+    workspace.AddFace(Vector3d::UnitX(), query_pt + c * Vector3d::UnitX());
+    workspace.AddFace(-Vector3d::UnitX(), query_pt - c * Vector3d::UnitX());
+  } else {
+    workspace.AddFace( Vector3d::UnitY(),  com_xy + 10 * Vector3d::UnitY());
+    workspace.AddFace(-Vector3d::UnitY(), com_xy -10 * Vector3d::UnitY());
+    workspace.AddFace(Vector3d::UnitX(), com_xy + 10 * Vector3d::UnitX());
+    workspace.AddFace(-Vector3d::UnitX(), com_xy - 10 * Vector3d::UnitX());
+  }
 
-  workspace.AddFace( Vector3d::UnitY(),  com_xy + 10 * Vector3d::UnitY());
-  workspace.AddFace(-Vector3d::UnitY(), com_xy -10 * Vector3d::UnitY());
-  workspace.AddFace(Vector3d::UnitX(), com_xy + 10 * Vector3d::UnitX());
-  workspace.AddFace(-Vector3d::UnitX(), com_xy - 10 * Vector3d::UnitX());
 
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
   trajopt_.CalcOptimalFootstepPlan(x, p_b, false);

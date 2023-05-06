@@ -407,10 +407,13 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd RL_state_;
   mutable Eigen::VectorXd RL_action_prev_;
   mutable Eigen::VectorXd RL_action_;
+  mutable Eigen::VectorXd RL_task_prev_;
+  mutable Eigen::VectorXd RL_task_;
   mutable double prev_time_;
   int n_knots_used_for_RL_action_;
   int a_dim_rom_state_part_;
   int a_dim_rom_input_part_;
+  int task_dim_;
   // randomize output of MPC for RL
   std::unordered_map<int, int> map_from_RL_action_to_MPC_sol_;
   Eigen::VectorXd RL_policy_output_variances_;

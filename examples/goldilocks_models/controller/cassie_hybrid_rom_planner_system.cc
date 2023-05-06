@@ -674,11 +674,14 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   a_dim_rom_state_part_ = n_z_ * n_knots_used_for_RL_action_;
   a_dim_rom_input_part_ = 2 * param_.n_step;
   int a_dim = a_dim_rom_state_part_ + a_dim_rom_input_part_ + 1;
+  task_dim_ = task_dim;
   RL_state_prev_ = VectorXd::Zero(s_dim);
   RL_state_ = VectorXd::Zero(s_dim);
   RL_action_prev_ = VectorXd::Zero(a_dim);
   RL_action_ = VectorXd::Zero(a_dim);
   RL_action_noise_prev_ = VectorXd::Zero(a_dim);
+  RL_task_prev_ = VectorXd::Zero(task_dim);
+  RL_task_ = VectorXd::Zero(task_dim);
 
   // Save the action and state name
   auto mbp_state_name = multibody::createStateNameVectorFromMap(plant_feedback);
@@ -703,6 +706,8 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   }
   RL_action_names.push_back("dt");
   vector<string> RL_addtl_info_names;
+  RL_addtl_info_names.push_back("com_vel_x");
+  RL_addtl_info_names.push_back("com_height");
   RL_addtl_info_names.push_back("s_prime_time");
 
   SaveStringVecToCsv(RL_state_names,
@@ -2082,6 +2087,17 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   ExtractAndReorderFromMpcSolToRlAction(trajopt, mpc_sol_noise,
                                         RL_action_noise);*/
 
+  // Get tasks (For RL, we use CoM instead of pelvis. Because this is what the
+  // planner is using)
+  plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
+                                           robot_output->GetState());
+  RL_task_ << plant_control_
+                  .CalcCenterOfMassTranslationalVelocityInWorld(
+                      *context_plant_control_)
+                  .head<1>(),
+      plant_control_.CalcCenterOfMassPositionInWorld(*context_plant_control_)
+          .tail<1>();
+
   // Save data
   if (single_eval_mode_) {
     string dir_pref = dir_data + to_string(counter_) + "_";
@@ -2095,8 +2111,9 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
       writeCSV(dir_pref + string("s_prime.csv"), RL_state_, true);
       writeCSV(dir_pref + string("a.csv"), RL_action_prev_, true);
       writeCSV(dir_pref + string("a_noise.csv"), RL_action_noise_prev_, true);
-      writeCSV(dir_pref + string("RL_addtl_info.csv"),
-               current_time * VectorXd::Ones(1), true);
+      VectorXd RL_addtl_info(task_dim_ + 1);
+      RL_addtl_info << RL_task_prev_, current_time;
+      writeCSV(dir_pref + string("RL_addtl_info.csv"), RL_addtl_info, true);
       // Initial guess of the MPC is in: <idx>_init_file.csv
     }
   }
@@ -2105,6 +2122,7 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   RL_state_prev_ = RL_state_;
   RL_action_prev_ = RL_action_;
   RL_action_noise_prev_ = RL_action_noise;
+  RL_task_prev_ = RL_task_;
   prev_time_ = current_time;
 
   auto finish = std::chrono::high_resolution_clock::now();

@@ -142,6 +142,7 @@ DEFINE_double(yaw_disturbance, 0,
 
 // RL training
 DEFINE_bool(is_RL_training, false, "");
+DEFINE_bool(include_previous_vel_in_rl_state, false, "");
 DEFINE_bool(only_construct_to_get_RL_problem_size_so_do_not_simulate, false,
             "");
 DEFINE_bool(get_RL_gradient_offline, false,
@@ -240,6 +241,9 @@ int DoMain(int argc, char* argv[]) {
       // doesn't matter)
       DRAKE_DEMAND(FLAGS_min_mpc_thread_loop_duration > 0);
     }
+  }
+  if (FLAGS_include_previous_vel_in_rl_state) {
+    DRAKE_DEMAND(FLAGS_is_RL_training);
   }
 
   if (FLAGS_completely_use_trajs_from_model_opt_as_target) {
@@ -529,7 +533,8 @@ int DoMain(int argc, char* argv[]) {
       FLAGS_print_level);
   if (FLAGS_is_RL_training) {
     int task_dim = 2;
-    hybrid_rom_planner->InitializeForRL(plant_feedback, task_dim);
+    hybrid_rom_planner->InitializeForRL(plant_feedback, task_dim,
+                                        FLAGS_include_previous_vel_in_rl_state);
   }
   if (gains.use_hybrid_rom_mpc) {
     if (FLAGS_completely_use_trajs_from_model_opt_as_target)

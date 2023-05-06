@@ -652,7 +652,10 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
 }
 
 void CassiePlannerWithOnlyRom::InitializeForRL(
-    const MultibodyPlant<double>& plant_feedback, int task_dim) {
+    const MultibodyPlant<double>& plant_feedback, int task_dim,
+    bool include_previous_vel_in_rl_state) {
+  include_previous_vel_in_rl_state_ = include_previous_vel_in_rl_state;
+
   // Create an input port for logging robot output
   robot_output_port_ =
       this->DeclareVectorInputPort(
@@ -665,6 +668,9 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   /// Initialization for RL training
   int s_dim = plant_feedback.num_positions() + plant_feedback.num_velocities() +
               plant_feedback.num_actuators() + task_dim + 2;
+  if (include_previous_vel_in_rl_state) {
+    s_dim += plant_feedback.num_velocities();
+  }
   if (only_use_rom_state_in_near_future_for_RL_) {
     // We cut off the rom state in the far future that we don't use
     n_knots_used_for_RL_action_ = param_.knots_per_mode * 1;
@@ -682,6 +688,7 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   RL_action_noise_prev_ = VectorXd::Zero(a_dim);
   RL_task_prev_ = VectorXd::Zero(task_dim);
   RL_task_ = VectorXd::Zero(task_dim);
+  RL_vel_prev_ = VectorXd::Zero(plant_feedback.num_velocities());
 
   // Save the action and state name
   auto mbp_state_name = multibody::createStateNameVectorFromMap(plant_feedback);
@@ -690,6 +697,12 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   vector<string> RL_state_names;
   RL_state_names.insert(RL_state_names.end(), mbp_state_name.begin(),
                         mbp_state_name.end());
+  if (include_previous_vel_in_rl_state) {
+    for (int i = 0; i < plant_feedback.num_velocities(); i++) {
+      RL_state_names.push_back(
+          mbp_state_name.at(plant_feedback.num_positions() + i) + "_prev");
+    }
+  }
   RL_state_names.insert(RL_state_names.end(), mbp_act_name.begin(),
                         mbp_act_name.end());
   RL_state_names.push_back("des_com_vel_x");
@@ -2047,8 +2060,16 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   RL_action_prev_.tail<1>() << current_time - prev_time_;
 
   // Assign new state and action
-  RL_state_ << robot_output->GetState(), robot_output->GetEfforts(), dex_x_vel,
-      des_com_height, start_with_left_stance, init_phase;
+  if (include_previous_vel_in_rl_state_) {
+    RL_state_ << robot_output->GetState(),
+        (RL_vel_prev_.norm() == 0) ? robot_output->GetVelocities()
+                                   : RL_vel_prev_,
+        robot_output->GetEfforts(), dex_x_vel, des_com_height,
+        start_with_left_stance, init_phase;
+  } else {
+    RL_state_ << robot_output->GetState(), robot_output->GetEfforts(),
+        dex_x_vel, des_com_height, start_with_left_stance, init_phase;
+  }
   if (only_use_rom_state_in_near_future_for_RL_) {
     RL_action_.segment(0, saved_traj.GetStateSamples(0).size()) =
         Eigen::Map<const VectorXd>(saved_traj.GetStateSamples(0).data(),
@@ -2125,6 +2146,7 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
   RL_action_prev_ = RL_action_;
   RL_action_noise_prev_ = RL_action_noise;
   RL_task_prev_ = RL_task_;
+  RL_vel_prev_ = robot_output->GetVelocities();
   prev_time_ = current_time;
 
   auto finish = std::chrono::high_resolution_clock::now();

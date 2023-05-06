@@ -91,7 +91,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   // For RL training
   void InitializeForRL(
       const drake::multibody::MultibodyPlant<double>& plant_feedback,
-      int task_dim);
+      int task_dim, bool include_previous_vel_in_rl_state);
 
  private:
   void SolveTrajOpt(const drake::systems::Context<double>& context,
@@ -382,6 +382,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   // For RL training
   bool is_RL_training_;
   bool only_use_rom_state_in_near_future_for_RL_ = true;
+  bool include_previous_vel_in_rl_state_;
   void SaveStateAndActionIntoFilesForRLTraining(
       const drake::systems::Context<double>& context, double dex_x_vel,
       double des_com_height, bool start_with_left_stance, double init_phase,
@@ -409,6 +410,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd RL_action_;
   mutable Eigen::VectorXd RL_task_prev_;
   mutable Eigen::VectorXd RL_task_;
+  mutable Eigen::VectorXd RL_vel_prev_;
   mutable double prev_time_;
   int n_knots_used_for_RL_action_;
   int a_dim_rom_state_part_;

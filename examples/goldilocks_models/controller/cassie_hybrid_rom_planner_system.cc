@@ -2089,8 +2089,10 @@ void CassiePlannerWithOnlyRom::SaveStateAndActionIntoFilesForRLTraining(
 
   // Get tasks (For RL, we use CoM instead of pelvis. Because this is what the
   // planner is using)
+  const OutputVector<double>* robot_output_control =
+      (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   plant_control_.SetPositionsAndVelocities(context_plant_control_.get(),
-                                           robot_output->GetState());
+                                           robot_output_control->GetState());
   RL_task_ << plant_control_
                   .CalcCenterOfMassTranslationalVelocityInWorld(
                       *context_plant_control_)

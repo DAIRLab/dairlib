@@ -14,6 +14,7 @@ struct AlipMINLPGainsImport {
   double u_max;
   double h_des;
   double stance_width;
+  double r_foostep_const;
   double ss_time;
   double ds_time;
   int nmodes;
@@ -46,6 +47,7 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(u_max));
     a->Visit(DRAKE_NVP(h_des));
     a->Visit(DRAKE_NVP(stance_width));
+    a->Visit(DRAKE_NVP(r_foostep_const));
     a->Visit(DRAKE_NVP(ss_time));
     a->Visit(DRAKE_NVP(ds_time));
     a->Visit(DRAKE_NVP(nmodes));
@@ -91,6 +93,7 @@ struct AlipMINLPGainsImport {
         this->u_max,
         this->h_des,
         this->stance_width,
+        this->r_foostep_const,
         this->nmodes,
         this->knots_per_mode,
         reset_disc,

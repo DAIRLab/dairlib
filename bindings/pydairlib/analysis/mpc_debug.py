@@ -30,6 +30,7 @@ class LcmTrajectoryBlock:
         )
         return self.sample(pp_traj, npoints)
 
+
 class LcmTrajectory:
     def __init__(self, msg):
         self.trajectories = {}
@@ -87,6 +88,7 @@ class MpcDebug:
             "guess": MpcSolution(),
             "desired": MpcSolution()
         }
+        self.nfootholds = {}
 
     def to_numpy(self):
         for t in self.t_mpc:
@@ -102,6 +104,7 @@ class MpcDebug:
         self.x0[t] = msg.x0
         self.p0[t] = msg.p0
         self.fsm[t] = msg.fsm_state
+        self.nfootholds[t] = msg.footholds.n
         self.mpc_trajs["solution"].append(t, msg.solution)
         self.mpc_trajs["guess"].append(t, msg.guess)
         self.mpc_trajs["desired"].append(t, msg.desired)

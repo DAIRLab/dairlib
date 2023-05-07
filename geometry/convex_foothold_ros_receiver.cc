@@ -22,10 +22,26 @@ ConvexFootholdRosReceiver::ConvexFootholdRosReceiver(double convex_threshold) :
   PlanarTerrain terrain_msg;
   DeclareAbstractInputPort(
       "PlanarTerrainRosMsg", drake::Value<PlanarTerrain>(terrain_msg));
-  DeclareAbstractOutputPort(
-      "foolholds", &ConvexFootholdRosReceiver::CopyTerrain);
+  foothold_output_port_ = DeclareAbstractOutputPort(
+      "foolholds", &ConvexFootholdRosReceiver::CopyTerrain).get_index();
+  debug_output_port_ = DeclareAbstractOutputPort(
+      "profiling_info", &ConvexFootholdRosReceiver::CopyDebug).get_index();
 }
 
+drake::systems::EventStatus UnrestrictedUpdate(
+    const drake::systems::Context<double>& context,
+    drake::systems::State<double>* state) {
+
+  return drake::systems::EventStatus::Succeeded();
+}
+
+void ConvexFootholdRosReceiver::CopyDebug(
+    const drake::systems::Context<double>& context,
+    lcmt_convex_decomposition_debug *debug) const {
+  *debug = context.get_abstract_state<lcmt_convex_decomposition_debug>(
+      debug_state_idx_
+      );
+}
 void ConvexFootholdRosReceiver::CopyTerrain(
     const drake::systems::Context<double> &context,
     ConvexFootholdSet *footholds) const {

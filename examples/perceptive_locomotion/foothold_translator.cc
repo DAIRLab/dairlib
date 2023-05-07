@@ -64,7 +64,7 @@ int DoMain(int argc, char* argv[]) {
   auto foothold_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_foothold_set>(
           FLAGS_foothold_channel, &lcm_local,
-          TriggerTypeSet{TriggerType::kPerStep})
+          TriggerTypeSet{TriggerType::kForced})
       );
   builder.Connect(*plane_subscriber, *plane_receiver);
   builder.Connect(*plane_receiver, *foothold_sender);
@@ -76,6 +76,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Run lcm-driven simulation
   auto simulator = std::make_unique<Simulator<double>>(*diagram, std::move(context));
+  auto& sim_context = simulator->get_mutable_context();
+
   ros::Rate r(100.0); // 50 Hz
 
   spinner.start();
@@ -89,6 +91,9 @@ int DoMain(int argc, char* argv[]) {
     ros::spinOnce();
     double elapsed = ros::Time::now().toSec() - t_begin;
     simulator->AdvanceTo(elapsed);
+    diagram->CalcForcedUnrestrictedUpdate(
+        sim_context, &sim_context.get_mutable_state());
+    diagram->ForcedPublish(sim_context);
     r.sleep();
   }
 

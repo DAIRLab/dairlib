@@ -130,6 +130,7 @@ class AlipMPC {
   void AddFootholds(const vector<geometry::ConvexFoothold> &footholds) {
     footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
   }
+  std::vector<geometry::ConvexFoothold> footholds() const {return footholds_;}
   void AddFootholdRegularization(const Eigen::MatrixXd& W_footstep_reg);
   void UpdateFootholdRegularization(double scale, const Eigen::Vector3d& pST_SW);
 

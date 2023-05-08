@@ -1,7 +1,18 @@
+
+
+
+# This script is just a copy-and-paste from plot_cost.py.
+# TODO: modify this script to plot 1D cost.
+
+
+
+
+
+
 # When seeing "_tkinter.TclError: no display name and no $DISPLAY environment variable",
 # uncomment the following two lines code (or just restart computer because it has something to do with ssh)
-# import matplotlib
-# matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -184,7 +195,6 @@ for i in range(len(directory_list)):
             sum_cost_accel = [0] * iteration_length
             sum_cost_main = [0] * iteration_length
             n_successful_sample_each_iter = [0] * iteration_length
-            best_improvement_per_sample = [0] * N_sample
 
             # 1. Plot each sample
             for sample_i in range(N_sample):
@@ -251,9 +261,6 @@ for i in range(len(directory_list)):
                 # import pdb;pdb.set_trace()
                 sum_cost_main = [x + y for x, y in zip(sum_cost_main, filtered_cost_main[0:iteration_length])]
 
-                # Others - Update best_improvement_per_sample
-                best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
-
             # 2. Plot average cost
             # Average cost
             average_cost_all = [x / y for x, y in zip(sum_cost_all, n_successful_sample_each_iter)]
@@ -288,9 +295,7 @@ for i in range(len(directory_list)):
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]))
-            f.write("  best_improvement_per_sample = " + str(best_improvement_per_sample))
             f.close()
-            print("  best_improvement_per_sample = " + str(best_improvement_per_sample))
             print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')
 
             # labels

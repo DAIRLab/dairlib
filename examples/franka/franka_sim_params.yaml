@@ -9,7 +9,7 @@ actuator_delay: 0.000
 visualize: false
 
 dt: 0.0001
-realtime_rate: 0.5
+realtime_rate: 1.0
 q_init_franka: [-0.85, 1.45, 1.25, -1.5, 1.70, 1.2, -0.6]
 q_init_plate: [1, 0, 0, 0, 0.68, 0, 1.16]
 q_init_box: [1, 0, 0, 0, 0.8, 0, 0.1]

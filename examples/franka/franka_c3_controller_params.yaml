@@ -14,6 +14,6 @@ tray_model: examples/franka/urdf/tray.sdf
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
-target_frequency: 5
+target_frequency: 2
 
 

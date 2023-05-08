@@ -179,36 +179,56 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
         orientation_block.time_vector, orientation_block.datapoints.topRows(3),
         orientation_block.datapoints.bottomRows(3));
-    for (int i = 0; i < line_points.cols(); ++i) {
-      auto pose = drake::math::RigidTransform<double>(
-          drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))),
-          line_points.col(i));
-      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
-      auto rgba_transparent = rgba_;
-      rgba_transparent.set(rgba_.r(),
-                           rgba_.g(),
-                           rgba_.b(),
-                           (line_points.cols() - double(i)) / line_points.cols()
-                               * rgba_.a());
-      meshcat_->SetObject("/trajectories/end_effector_pose/" + std::to_string(i), box, rgba_transparent);
-      meshcat_->SetTransform("/trajectories/end_effector_pose/" + std::to_string(i), pose);
-    }
-  }
-//  if (lcm_traj_.HasTrajectory("object_orientation_target")) {
-//    const auto orientation_block =
-//        lcm_traj_.GetTrajectory("object_orientation_target");
-//    for (int i = 0; i < orientation_block.datapoints.cols(); ++i) {
+//    for (int i = line_points.cols() - 2; i < line_points.cols(); ++i) {
 //      auto pose = drake::math::RigidTransform<double>(
-//          Quaterniond(orientation_block.datapoints(0, i),
-//                      orientation_block.datapoints(1, i),
-//                      orientation_block.datapoints(2, i),
-//                      orientation_block.datapoints(3, i)),
+//          drake::math::RollPitchYaw<double>(trajectory.value(breaks(i))),
 //          line_points.col(i));
 //      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
-//      meshcat_->SetObject("/trajectories/object" + std::to_string(i), box, rgba_);
-//      meshcat_->SetTransform("/trajectories/object" + std::to_string(i), pose);
+//      auto rgba_transparent = rgba_;
+//      rgba_transparent.set(
+//          rgba_.r(), rgba_.g(), rgba_.b(),
+//          (line_points.cols() - double(i)) / line_points.cols() * rgba_.a());
+//      meshcat_->SetObject(
+//          "/trajectories/end_effector_pose/" + std::to_string(i), box,
+//          rgba_transparent);
+//      meshcat_->SetTransform(
+//          "/trajectories/end_effector_pose/" + std::to_string(i), pose);
 //    }
-//  }
+  } else {
+    auto trajectory = PiecewisePolynomial<double>::CubicHermite(
+        trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
+        trajectory_block.datapoints.bottomRows(3));
+    auto pose = drake::math::RigidTransform<double>(line_points.col(line_points.cols() - 1));
+    double side_length = 0.2;
+    if (trajectory_name_ == "object_traj"){
+      side_length = 0.4;
+    }
+    auto box = drake::geometry::Box(side_length, side_length, 0.01);
+    auto rgba_transparent = rgba_;
+    rgba_transparent.set(
+        rgba_.r(), rgba_.g(), rgba_.b(),
+        0.3 * rgba_.a());
+    meshcat_->SetObject("/trajectories/" + trajectory_name_ + "/end",
+                        box, rgba_transparent);
+    meshcat_->SetTransform(
+        "/trajectories/" + trajectory_name_ + "/end", pose);
+  }
+  //  if (lcm_traj_.HasTrajectory("object_orientation_target")) {
+  //    const auto orientation_block =
+  //        lcm_traj_.GetTrajectory("object_orientation_target");
+  //    for (int i = 0; i < orientation_block.datapoints.cols(); ++i) {
+  //      auto pose = drake::math::RigidTransform<double>(
+  //          Quaterniond(orientation_block.datapoints(0, i),
+  //                      orientation_block.datapoints(1, i),
+  //                      orientation_block.datapoints(2, i),
+  //                      orientation_block.datapoints(3, i)),
+  //          line_points.col(i));
+  //      auto box = drake::geometry::Box(0.1, 0.1, 0.01);
+  //      meshcat_->SetObject("/trajectories/object" + std::to_string(i), box,
+  //      rgba_); meshcat_->SetTransform("/trajectories/object" +
+  //      std::to_string(i), pose);
+  //    }
+  //  }
 
   return drake::systems::EventStatus::Succeeded();
 }

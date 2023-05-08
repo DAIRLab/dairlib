@@ -511,7 +511,7 @@
     <link name="paddle">
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 0.01"/>
-            <mass value="0.5"/>
+            <mass value="1.0"/>
             <inertia
                 ixx="0.01043"
                 ixy="0"

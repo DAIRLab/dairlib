@@ -253,6 +253,16 @@ for i in range(len(directory_list)):
 
                 # Others - Update best_improvement_per_sample
                 best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
+                # best_improvement_per_sample[sample_i] = round((cost_main[0] - cost_main[-1]) / cost_main[0], 2)
+            # Reshape `best_improvement_per_sample`
+            task_grid_dim = np.loadtxt(directory + 'n_samples.csv').astype(int)
+            task_ranges = np.loadtxt(directory + 'task_ranges.csv', delimiter=',')
+            task_names = np.loadtxt(directory + 'task_names.csv', dtype=str, delimiter=',')
+            non_degenerate_dim_indices = [i for i in range(len(task_grid_dim)) if task_grid_dim[i] != 1]
+            task_grid_dim = task_grid_dim[non_degenerate_dim_indices]
+            task_ranges = task_ranges[non_degenerate_dim_indices]
+            task_names = task_names[non_degenerate_dim_indices]
+            best_improvement_per_sample = np.array(best_improvement_per_sample).reshape(task_grid_dim)
 
             # 2. Plot average cost
             # Average cost
@@ -288,10 +298,12 @@ for i in range(len(directory_list)):
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]))
-            f.write("  best_improvement_per_sample = " + str(best_improvement_per_sample))
+            f.write("  tasks with non-zero range = " + str([task_names[i] + ' ' + str(task_ranges[i]) for i in range(len(task_names))]))
+            f.write("  best_improvement_per_sample = \n" + str(best_improvement_per_sample))
             f.close()
-            print("  best_improvement_per_sample = " + str(best_improvement_per_sample))
-            print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')
+            print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')
+            print("  tasks with non-zero range = " + str([task_names[i] + ' ' + str(task_ranges[i]) for i in range(len(task_names))]))
+            print("  best_improvement_per_sample = \n" + str(best_improvement_per_sample))
 
             # labels
             plt.xlabel('Iteration')

@@ -2,6 +2,8 @@ topics: [
   "/tf",
   "/tf_static",
   "/elevation_mapping/elevation_map_raw",
+  "/elevation_mapping/statistics",
+  "/convex_plane_decomposition_ros/timing_statistics",
   "/convex_plane_decomposition_ros/filtered_map",
   "/convex_plane_decomposition_ros/planar_terrain",
   "/convex_plane_decomposition_ros/boundaries"

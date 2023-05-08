@@ -150,6 +150,8 @@ DEFINE_bool(get_RL_gradient_offline, false,
 DEFINE_double(min_mpc_thread_loop_duration, 0,
               "limits how fast the MPC should run; default to 0 which doesn't "
               "impose any limit");
+DEFINE_double(policy_output_noise_bound, 0.001,
+              "in meters. this is directly on noise not the variance");
 DEFINE_string(path_model_params, "", "file path of the rom params");
 DEFINE_string(path_var, "", "file path of the mpc output variance");
 
@@ -343,6 +345,7 @@ int DoMain(int argc, char* argv[]) {
   param.is_RL_training = FLAGS_is_RL_training;
   param.get_RL_gradient_offline = FLAGS_get_RL_gradient_offline;
   param.min_mpc_thread_loop_duration = FLAGS_min_mpc_thread_loop_duration;
+  param.policy_output_noise_bound = FLAGS_policy_output_noise_bound;
   param.path_model_params = FLAGS_path_model_params;
   param.path_var = FLAGS_path_var;
   param.solve_idx_for_read_from_file = FLAGS_solve_idx_for_read_from_file;

@@ -214,6 +214,7 @@ struct PlannerSetting {
   bool is_RL_training;
   bool get_RL_gradient_offline;
   double min_mpc_thread_loop_duration;
+  double policy_output_noise_bound;
   std::string path_model_params;
   std::string path_var;
 

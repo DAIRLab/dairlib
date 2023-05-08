@@ -1354,7 +1354,8 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
     for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
       double rand = (distributions_->at(i))(*generator_);
       // Heurisitics -- clamp it to avoid tail distribution
-      RL_action_noise(i) = std::clamp(rand, -0.001, 0.001);
+      RL_action_noise(i) = std::clamp(rand, -param_.policy_output_noise_bound,
+                                      param_.policy_output_noise_bound);
     }
     // Last row (zeros) is the gradient of delta_t, which we don't randomize
     RL_action_noise.bottomRows<1>().setZero();

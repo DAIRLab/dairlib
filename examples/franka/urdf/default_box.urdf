@@ -15,7 +15,7 @@
         <collision name="collision">
             <origin rpy="0 0 0" xyz="0 0 0.0"/>
             <geometry>
-                <box size="0.2 0.2 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
             <drake:proximity_properties>
                 <drake:rigid_hydroelastic/>
@@ -27,7 +27,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0.005"/>
             <geometry>
-                <box size="0.2 0.2 0.2"/>
+                <box size="0.1 0.1 0.1"/>
             </geometry>
         </visual>
     </link>

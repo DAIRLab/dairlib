@@ -3,8 +3,7 @@ package dairlib;
 struct lcmt_convex_decomposition_debug
 {
   int16_t n_poly_in;
+  int16_t n_poly_out;
   int64_t utime;
   int64_t decomposition_time_us;
-  int64_t convexification_time_us;
-  int64_t total_time_us;
 }

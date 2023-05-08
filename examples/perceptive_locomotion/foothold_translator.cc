@@ -38,6 +38,7 @@ using drake::systems::lcm::LcmPublisherSystem;
 DEFINE_string(foothold_topic, "", "ros topic containing the incoming footholds");
 DEFINE_string(foothold_channel, "FOOTHOLDS_PROCESSED",
               "lcm channel for the outgoing processed footholds");
+DEFINE_string(debug_channel, "FOOTHOLD_PROCESS_DEBUG", "dbg lcm channel");
 
 DEFINE_double(conv_thresh, 0.15, "Convexity threshold for ACD");
 
@@ -66,8 +67,16 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_foothold_channel, &lcm_local,
           TriggerTypeSet{TriggerType::kForced})
       );
+  auto debug_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_convex_decomposition_debug>(
+          FLAGS_debug_channel, &lcm_local,
+          TriggerTypeSet{TriggerType::kForced})
+      );
   builder.Connect(*plane_subscriber, *plane_receiver);
-  builder.Connect(*plane_receiver, *foothold_sender);
+  builder.Connect(plane_receiver->get_output_port_footholds(),
+                  foothold_sender->get_input_port());
+  builder.Connect(plane_receiver->get_output_port_debug(),
+                  debug_publisher->get_input_port());
   builder.Connect(*foothold_sender, *foothold_publisher);
 
   // Create the diagram

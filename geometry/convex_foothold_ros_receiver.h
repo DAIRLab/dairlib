@@ -23,7 +23,7 @@ class ConvexFootholdRosReceiver : public drake::systems::LeafSystem<double> {
   double convexity_threshold_;
   drake::systems::EventStatus UnrestrictedUpdate(
       const drake::systems::Context<double>& context,
-      drake::systems::State<double>* state);
+      drake::systems::State<double>* state) const;
   void CopyTerrain(const drake::systems::Context<double> &context,
                    ConvexFootholdSet *footholds) const;
   void CopyDebug(const drake::systems::Context<double>& context,
@@ -31,7 +31,7 @@ class ConvexFootholdRosReceiver : public drake::systems::LeafSystem<double> {
 
   // TODO (@Brian-Acosta) Declare these states in the constructor and move
   //  computation to the unrestricted update
-  drake::systems::AbstractStateIndex foothold_state_dx_;
+  drake::systems::AbstractStateIndex foothold_state_idx_;
   drake::systems::AbstractStateIndex debug_state_idx_;
 
   drake::systems::OutputPortIndex foothold_output_port_;

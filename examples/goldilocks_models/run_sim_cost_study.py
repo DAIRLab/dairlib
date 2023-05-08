@@ -141,12 +141,6 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # planner arguments
   realtime_rate_for_time_limit = target_realtime_rate
   dynamic_time_limit = True
-  use_ipopt = True if hybrid_mpc else False
-  knots_per_mode = 4  # can try smaller number like 3 or 5
-  feas_tol = 1e-4  #1e-4 #1e-2
-  opt_tol = 1e-4  #1e-4 #1e-2
-  n_step = 2
-  min_mpc_thread_loop_duration = 0.05  # 0.05  #0
   # time_limit is optional, set = 0 for realtime
   time_limit = 0.0 if dynamic_time_limit else 1.0 / target_realtime_rate * 0.2
   time_limit = 0.0 if get_init_file else time_limit
@@ -164,6 +158,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   # Extract tasks
   task_sl = task[tasks.GetDimIdxByName("stride_length")]
   task_ph = task[tasks.GetDimIdxByName("pelvis_height")]
+  task_gi = task[tasks.GetDimIdxByName("ground_incline")]
   task_du = task[tasks.GetDimIdxByName("duration")]
 
   dir_and_prefix_FOM_reg = "" if len(FOM_model_dir_for_planner) == 0 else "%s0_%d_" % (FOM_model_dir_for_planner, trajopt_sample_idx_for_planner)
@@ -488,7 +483,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   n_max_thread = min(int(psutil.cpu_count() / 2), len(task_list)) if target_realtime_rate == 0.1 else n_max_thread
   if target_realtime_rate == 1:
     n_max_thread = 3
-  #n_max_thread = 1
+  if use_ipopt:
+    n_max_thread = 1
 
   global thread_idx_set
   thread_idx_set = set()
@@ -1687,13 +1683,11 @@ if __name__ == "__main__":
   model_dir = parsed_yaml_file.get('dir_model')
   data_dir = parsed_yaml_file.get('dir_data')
 
-  # assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
-
   FOM_model_dir_for_sim = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"
   FOM_model_dir_for_planner = ""
 
-  # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
-  eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
+  eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  # eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"
@@ -1712,9 +1706,10 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/temp/sim_cost_eval/"
 
   ### global parameters
+  eval_for_RL = False
   sim_end_time = 10.0
   t_no_logging_at_start = 6.0  # WARNING: only use this when we are confident that simulation is initialized correctly, and the controller behaves as we expect
-  spring_model = False
+  spring_model = True
   close_sim_gap = False
   # Parameters that are modified often
   target_realtime_rate = 1  # 0.04
@@ -1726,6 +1721,14 @@ if __name__ == "__main__":
   use_single_cost_function_for_all_tasks = False
   hybrid_mpc = parsed_yaml_file.get('use_hybrid_rom_mpc')
   simulation_initialization_mode = 2
+
+  # ROM Planner parameters (moved here since they are modified often)
+  use_ipopt = True if hybrid_mpc else False
+  knots_per_mode = 4  # can try smaller number like 3 or 5
+  feas_tol = 1e-4  #1e-4 #1e-2
+  opt_tol = 1e-4  #1e-4 #1e-2
+  n_step = 2
+  min_mpc_thread_loop_duration = 0.05  # 0.05  #0
 
   # Parameter adjustment
   if t_no_logging_at_start + 4 > sim_end_time:
@@ -1785,16 +1788,17 @@ if __name__ == "__main__":
   log_idx_offset = 0  # 0
 
   ### Parameters for plotting
-  log_indices_for_plot = []
-  # log_indices_for_plot = list(range(log_idx_offset + tasks.get_n_task()))
-  # log_indices_for_plot = list(range(240))
   save_fig = True
   plot_nominal = True
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
   cost_choice = 2  # 0: all cost including regularization cost
                    # 1: main cost (v cost, vdot cost and torque cost); Btw, main cost is the cost of which we take gradient during model optimization
                    # 2: only torque cost (this is a hack to ignore vdot cost, since vdot cost is too noisy)
-  # for cost landscape comparison
+  max_cost_to_ignore = 2  # 1.15  # 2
+  log_indices_for_plot = []
+  # log_indices_for_plot = list(range(log_idx_offset + tasks.get_n_task()))
+  # log_indices_for_plot = list(range(240))
+  # For cost landscape comparison
   interpolate_across_iterations = False  # Do NOT do this for final figure. Interpolate across iterations creates weird artifacts (e.g. makes the level sets choppy in some cases)
   filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts = False
   tail_percentile = 1   # only applied to the overlapped area; get rid of occasional edge cases (either extremely good or bad periodic gait)
@@ -1828,7 +1832,7 @@ if __name__ == "__main__":
   # model_slices = [1, 20, 40, 60, 80, 100]
   # model_slices = [1, 10, 20, 30, 40, 50]
   # model_slices = [1, 30, 56]
-  # model_slices = [1, 50]
+  model_slices = [1, 50]
   #model_slices = [1, 60, 80, 100]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
@@ -1854,7 +1858,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 20, 40, 60, 80, 100]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
   # model_slices_cost_landsacpe = [1, 30, 56]
-  # model_slices_cost_landsacpe = [1, 50]
+  model_slices_cost_landsacpe = [1, 50]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1913,7 +1917,7 @@ if __name__ == "__main__":
   # model_indices = [1, 10, 20, 30, 40, 50]  # Overwrite
   #model_indices = [100]  # Overwrite
   # model_indices = [1, 30, 56]  # Overwrite
-  # model_indices = [1, 50]  # Overwrite
+  model_indices = [1, 50]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -1972,6 +1976,10 @@ if __name__ == "__main__":
     # raise ValueError("Reminder: you are setting a different duration in sim than in trajopt")
     print("Warning: duration in sim is different from in trajopt")
     input("type anything to confirm and continue")
+  if eval_for_RL:
+    assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
+    print("Warning: remember to set eval_for_RL=True in `eval_single-closedloop_performance.py`")
+    input("type anything to confirm and continue")
 
   ### Construct log indices
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
@@ -2016,7 +2024,6 @@ if __name__ == "__main__":
   RunCommand("rm " + eval_dir + "costs_info.txt")
 
   # Parameters for visualization
-  max_cost_to_ignore = 2  # 1.15  # 2
   # mean_sl = 0.2
   # delta_sl = 0.1  # 0.1 #0.005
   # min_sl = mean_sl - delta_sl

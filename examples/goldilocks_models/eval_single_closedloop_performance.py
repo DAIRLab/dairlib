@@ -314,6 +314,8 @@ def GetCostWeight(nq, nv, nu):
   w_Q_v_swing_toe = FindVarValueInString(contents, "w_Q_v_swing_toe =")
   w_R = FindVarValueInString(contents, "w_R =")
   w_R_swing_toe = FindVarValueInString(contents, "w_R_swing_toe =")
+  # w_R = 0
+  # w_R_swing_toe = 0
   w_lambda = FindVarValueInString(contents, "w_lambda =")
   w_lambda_diff = FindVarValueInString(contents, "w_lambda_diff =")
   w_q_diff = FindVarValueInString(contents, "w_q_diff =")
@@ -326,6 +328,7 @@ def GetCostWeight(nq, nv, nu):
   w_q_hip_yaw = FindVarValueInString(contents, "w_q_hip_yaw =")
   w_q_quat = FindVarValueInString(contents, "w_q_quat =")
   w_joint_accel = FindVarValueInString(contents, "w_joint_accel =")
+  # w_joint_accel = 0.002  # big accel weight
   w_reg = FindVarValueInString(contents, "w_reg =")
 
   W_Q_ls = w_Q * np.identity(nv)
@@ -385,7 +388,7 @@ def GetCostWeight(nq, nv, nu):
   return weight_dict
 
 
-def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
+def CalcCostInTrajoptStyle(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
     u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict):
   cost_dict = {}
 
@@ -424,10 +427,6 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
 
   cost_accel = 0.0
   for k in range(len(x_data_knot_idx)):
-    # Testing code
-    # if k == 0 or k == 1:
-    #   continue  # dt = 0
-    
     i = int(x_data_knot_idx[k])
     vdot_i = vdot_numerical[i, :]
     if ls_tx[i]:
@@ -546,6 +545,88 @@ def CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
   return cost_dict
 
 
+def CalcCostInRLStyle(x_extracted, u_extracted, vdot_numerical):
+  cost_dict = {}
+
+  w_Q = 0.005  # big weight: 0.1; small weight 0.005
+  w_R = 0  #0.0002
+  w_joint_accel = 0.0001  # big: 0.002; small: 0.0001
+  W_Q = w_Q * np.identity(nv)
+  W_R = w_R * np.identity(nu)
+  W_joint_accel = w_joint_accel * W_Q
+
+  x_extracted = x_extracted[0::50]  # RL runs at 20Hz
+  u_extracted = u_extracted[0::50]  # RL runs at 20Hz
+
+  cost_x = 0.0
+  for i in range(len(x_extracted)):
+    v_i = x_extracted[i, nq:]
+    cost_x += (v_i.T @ W_Q @ v_i)
+  cost_dict["cost_x"] = cost_x
+
+  cost_u = 0.0
+  for i in range(len(u_extracted)):
+    u_i = u_extracted[i, :]
+    cost_u += (u_i.T @ W_R @ u_i)
+  cost_dict["cost_u"] = cost_u
+
+  cost_accel = 0.0
+  for i in range(len(vdot_numerical)):
+    vdot_i = vdot_numerical[i, :]
+    cost_accel += (vdot_i.T @ W_joint_accel @ vdot_i)
+  cost_dict["cost_accel"] = cost_accel
+
+  cost_pos_diff = 0.0
+  cost_dict["cost_pos_diff"] = cost_pos_diff
+
+  cost_vel_diff = 0.0
+  cost_dict["cost_vel_diff"] = cost_vel_diff
+
+  cost_u_diff = 0.0
+  cost_dict["cost_u_diff"] = cost_u_diff
+
+  cost_q_hip_roll = 0.0
+  cost_q_hip_yaw = 0.0
+  cost_dict["cost_q_hip_roll"] = cost_q_hip_roll
+  cost_dict["cost_q_hip_yaw"] = cost_q_hip_yaw
+
+  cost_q_quat_xyz = 0.0
+  cost_dict["cost_q_quat_xyz"] = cost_q_quat_xyz
+
+  cost_regularization = 0.0
+  cost_dict["cost_regularization"] = cost_regularization
+
+  cost_lambda_x_diff = 0.0
+  cost_lambda_diff = 0.0
+  cost_lambda = 0.0
+  cost_collocation_lambda = 0.0
+  cost_tau = 0.0
+
+  # Get total cost
+  total_cost = 0.0
+  for key in cost_dict:
+    total_cost += cost_dict[key]
+  cost_dict["total_cost"] = total_cost
+
+  # Get main total cost (excluding regularization cost)
+  total_main_cost = cost_x + cost_u + cost_accel
+  cost_dict["total_main_cost"] = total_main_cost
+
+  # Get total reg cost
+  total_reg_cost = total_cost - total_main_cost
+  cost_dict["total_reg_cost"] = total_reg_cost
+
+  # Divide every cost by n_step at the end
+  for key in cost_dict:
+    cost_dict[key] /= n_step
+
+  # Printing
+  # for key in cost_dict:
+  #   print(key, " = ", cost_dict[key])
+
+  return cost_dict
+
+
 def EnforceSlashEnding(dir):
   if len(dir) > 0 and dir[-1] != "/":
     raise ValueError("Directory path name should end with slash")
@@ -613,6 +694,8 @@ def main():
 
   # Some parameters
   low_pass_filter = True
+  global eval_for_RL
+  eval_for_RL = False
 
   # Read the controller parameters
   global parsed_yaml, stride_period
@@ -665,7 +748,7 @@ def main():
     -9.81 * np.array([0, 0, 1]))
   plant.Finalize()
 
-  global nq, nv, nx
+  global nq, nv, nx, nu
   global pos_map, vel_map, act_map
 
   # relevant MBP parameters
@@ -780,10 +863,10 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
     low_pass_filter, n_step,
     x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map):
   ### Get indices from time
-  global t_slice, t_u_slice
+  global t_x_slice, t_u_slice
   t_start_idx = np.argwhere(np.abs(t_x - t_start) < 1e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_x - t_end) < 1e-3)[0][0]
-  t_slice = slice(t_start_idx, t_end_idx)
+  t_x_slice = slice(t_start_idx, t_end_idx)
   t_start_idx = np.argwhere(np.abs(t_u - t_start) < 3e-3)[0][0]
   t_end_idx = np.argwhere(np.abs(t_u - t_end) < 3e-3)[0][0]
   t_u_slice = slice(t_start_idx, t_end_idx)
@@ -792,9 +875,9 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
   t_fsm_slice = slice(t_start_idx, t_end_idx)
 
   # Extract the trajectories that we use to calculate the cost
-  t_x_extracted = t_x[t_slice]
+  t_x_extracted = t_x[t_x_slice]
   t_u_extracted = t_u[t_u_slice]
-  x_extracted = x[t_slice, :]
+  x_extracted = x[t_x_slice, :]
   u_extracted = u[t_u_slice, :]
   n_x_data = x_extracted.shape[0]
   n_u_data = u_extracted.shape[0]
@@ -820,50 +903,22 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
 
   # Apply low pass filter to velocity
   cutoff_freq = 100 #100
-  if is_hardware:
-    if low_pass_filter:
-      x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted,
-        cutoff_freq)
+  if is_hardware and low_pass_filter:
+    x_extracted[:, nq:] = ApplyLowPassFilter(x_extracted[:, nq:], t_x_extracted, cutoff_freq)
 
   # Get joint acceleration
-  dx = np.diff(x_extracted, axis=0)
-  vdot_numerical = dx[:, nq:]
-  for i in range(len(dt_x)):
-    vdot_numerical[i, :] /= dt_x[i]
-
-  # Remove the spikes in the acceleration (IMPORTANT: we assume the velocity is not filtered)
-  if not is_hardware:
-    row_wise_maximum = np.amax(vdot_numerical, axis=1)
-    big_value_occurances = row_wise_maximum > 500
-    for i in range(len(big_value_occurances)):
-      if (big_value_occurances[i]):
-        if i == 0:
-          vdot_numerical[i,:] = 0
-        else:
-          vdot_numerical[i,:] = vdot_numerical[i-1,:]
-
-  if low_pass_filter:
-    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], cutoff_freq)
-    # vdot_numerical[:, vel_map["ankle_joint_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_rightdot"]], t_x_extracted[1:], cutoff_freq)
-    # vdot_numerical[:, vel_map["ankle_joint_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_leftdot"]], t_x_extracted[1:], cutoff_freq)
-    # vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], cutoff_freq)
-    # vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], cutoff_freq)
-
-  # import pdb; pdb.set_trace()
-  # Testing -- set the toe vel to 0
-  # x_extracted[:, nq + vel_map["toe_leftdot"]] = 0
-  # x_extracted[:, nq + vel_map["toe_rightdot"]] = 0
-  # Testing -- set the toe acceleration to 0
-  # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
-  # vdot_numerical[:, vel_map["toe_rightdot"]] = 0
-
-  # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
-  # max_accel = 750
-  # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
+  if eval_for_RL:
+    vdot_numerical = ComputeVdotInRLStyle(nq, t_x_extracted, x_extracted)
+  else:
+    vdot_numerical = ComputeVdotByNumericalDiff(dt_x, is_hardware,
+      low_pass_filter, nq, t_x_extracted, x_extracted)
 
   # Compute all costs
-  cost_dict = CalcCost(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
-    u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict)
+  if eval_for_RL:
+    cost_dict = CalcCostInRLStyle(x_extracted, u_extracted, vdot_numerical)
+  else:
+    cost_dict = CalcCostInTrajoptStyle(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
+      u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict)
 
   # # Testing ankle and toe accleration
   # vdot_numerical_copy1 = np.copy(vdot_numerical)
@@ -886,6 +941,64 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
   # print("cost_accel_except_toe_ankle = " + str(cost_accel_except_toe_ankle))
 
   return cost_dict
+
+
+def ComputeVdotInRLStyle(nq, t_x_extracted, x_extracted):
+  x_extracted_for_RL = x_extracted[0::50]  # 20Hz
+  t_x_extracted_for_RL = t_x_extracted[0::50]  # 20Hz
+
+  dt_x_for_RL = np.diff(t_x_extracted_for_RL)
+  dx = np.diff(x_extracted_for_RL, axis=0)
+
+  vdot_numerical = dx[:, nq:]
+  for i in range(len(dt_x_for_RL)):
+    vdot_numerical[i, :] /= dt_x_for_RL[i]
+
+  return vdot_numerical
+
+
+def ComputeVdotByNumericalDiff(dt_x, is_hardware, low_pass_filter, nq,
+    t_x_extracted, x_extracted):
+
+  # Numerical differentiation
+  dx = np.diff(x_extracted, axis=0)
+  vdot_numerical = dx[:, nq:]
+  for i in range(len(dt_x)):
+    vdot_numerical[i, :] /= dt_x[i]
+
+  # Remove the spikes in the acceleration (IMPORTANT: we assume the velocity is not filtered)
+  if not is_hardware:
+    row_wise_maximum = np.amax(vdot_numerical, axis=1)
+    big_value_occurances = row_wise_maximum > 500  # 500
+    for i in range(len(big_value_occurances)):
+      if (big_value_occurances[i]):
+        if i == 0:
+          vdot_numerical[i, :] = 0
+        else:
+          vdot_numerical[i, :] = vdot_numerical[i - 1, :]
+
+  # Low pass filtering
+  if low_pass_filter:
+    cutoff_freq = 100  # 100
+    vdot_numerical = ApplyLowPassFilter(vdot_numerical, t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["ankle_joint_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_rightdot"]], t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["ankle_joint_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["ankle_joint_leftdot"]], t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["toe_rightdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_rightdot"]], t_x_extracted[1:], cutoff_freq)
+    # vdot_numerical[:, vel_map["toe_leftdot"]] = ApplyLowPassFilter(vdot_numerical[:, vel_map["toe_leftdot"]], t_x_extracted[1:], cutoff_freq)
+
+  # import pdb; pdb.set_trace()
+  # Testing -- set the toe vel to 0
+  # x_extracted[:, nq + vel_map["toe_leftdot"]] = 0
+  # x_extracted[:, nq + vel_map["toe_rightdot"]] = 0
+
+  # Testing -- set the toe acceleration to 0
+  # vdot_numerical[:, vel_map["toe_leftdot"]] = 0
+  # vdot_numerical[:, vel_map["toe_rightdot"]] = 0
+
+  # Testing (hacks) -- cap the acceleration within 500 to avoid contact spikes
+  # max_accel = 750
+  # vdot_numerical = np.clip(vdot_numerical, -max_accel, max_accel)
+  return vdot_numerical
 
 
 def SaveData(cost_dict, file_prefix, ave_tasks, start_time, start_time_rt_walking_controller_switch_time):

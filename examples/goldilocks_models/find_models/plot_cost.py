@@ -298,7 +298,7 @@ for i in range(len(directory_list)):
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]))
-            f.write("  tasks with non-zero range = " + str([task_names[i] + ' ' + str(task_ranges[i]) for i in range(len(task_names))]))
+            f.write("  tasks with non-zero range = " + str([task_names[i] + ' ' + str(task_ranges[i]) for i in range(len(task_names))]) + "\n")
             f.write("  best_improvement_per_sample = \n" + str(best_improvement_per_sample))
             f.close()
             print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')

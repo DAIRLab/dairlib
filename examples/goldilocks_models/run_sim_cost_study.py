@@ -1832,7 +1832,7 @@ if __name__ == "__main__":
   # model_slices = [1, 20, 40, 60, 80, 100]
   # model_slices = [1, 10, 20, 30, 40, 50]
   # model_slices = [1, 30, 56]
-  model_slices = [1, 50]
+  model_slices = [1, 30, 40, 50]
   #model_slices = [1, 60, 80, 100]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
@@ -1858,7 +1858,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 20, 40, 60, 80, 100]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
   # model_slices_cost_landsacpe = [1, 30, 56]
-  model_slices_cost_landsacpe = [1, 50]
+  model_slices_cost_landsacpe = [1, 30, 40, 50]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1917,7 +1917,7 @@ if __name__ == "__main__":
   # model_indices = [1, 10, 20, 30, 40, 50]  # Overwrite
   #model_indices = [100]  # Overwrite
   # model_indices = [1, 30, 56]  # Overwrite
-  model_indices = [1, 50]  # Overwrite
+  model_indices = [1, 30, 40, 50]  # Overwrite
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -2051,7 +2051,7 @@ if __name__ == "__main__":
   # cmt is a list of (model index, task value, and cost)
   cmt = GetSamplesToPlot(model_indices, log_indices)
   nominal_cmt = GetNominalSamplesToPlot(model_indices)
-  if len(nominal_cmt) == 0:
+  if (len(nominal_cmt) == 0) or eval_for_RL:
     plot_nominal = False
 
   # Adjust slices value (for 2D plots)

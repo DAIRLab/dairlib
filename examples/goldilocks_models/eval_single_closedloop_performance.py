@@ -550,10 +550,11 @@ def CalcCostInRLStyle(x_extracted, u_extracted, vdot_numerical):
 
   w_Q = 0.005  # big weight: 0.1; small weight 0.005
   w_R = 0  #0.0002
-  w_joint_accel = 0.0001  # big: 0.002; small: 0.0001
+  w_joint_accel = 0.002  # big: 0.002; small: 0.0001
   W_Q = w_Q * np.identity(nv)
   W_R = w_R * np.identity(nu)
   W_joint_accel = w_joint_accel * W_Q
+  W_Q *= 0
 
   x_extracted = x_extracted[0::50]  # RL runs at 20Hz
   u_extracted = u_extracted[0::50]  # RL runs at 20Hz

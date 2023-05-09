@@ -1048,9 +1048,9 @@ void InitialStateForPlanner::CheckAdjustemnt(
   double right_vel_error_improved =
       (right_foot_vel_w_spr - right_foot_vel_wo_spr_improved).norm();
   bool left_vel_did_not_improve =
-      left_vel_error_improved > left_vel_error_original;
+      left_vel_error_improved > left_vel_error_original + 1e-15;
   bool right_vel_did_not_improve =
-      right_vel_error_improved > right_vel_error_original;
+      right_vel_error_improved > right_vel_error_original + 1e-15;
   bool left_vel_error_still_too_large = left_vel_error_improved > 0.03;
   bool right_vel_error_still_too_large = right_vel_error_improved > 0.03;
   bool stance_foot_vel_too_big =

@@ -587,7 +587,11 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("MPC");
 
-  DrawAndSaveDiagramGraph(*owned_diagram);
+  if (!FLAGS_is_RL_training) {
+    // This is not thread safe, so we avoid doing this in RL.
+    // It's not necessary anyway, so I'm commenting it out.
+    //DrawAndSaveDiagramGraph(*owned_diagram);
+  }
 
   if (FLAGS_only_construct_to_get_RL_problem_size_so_do_not_simulate &&
       !FLAGS_unit_testing) {

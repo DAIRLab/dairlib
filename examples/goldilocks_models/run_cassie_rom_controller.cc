@@ -1157,7 +1157,11 @@ int DoMain(int argc, char* argv[]) {
     auto owned_diagram = builder.Build();
     owned_diagram->set_name("rom_walking_controller");
 
-    DrawAndSaveDiagramGraph(*owned_diagram);
+    if (!FLAGS_is_RL_training) {
+      // This is not thread safe, so we avoid doing this in RL.
+      // It's not necessary anyway, so I'm commenting it out.
+      //DrawAndSaveDiagramGraph(*owned_diagram);
+    }
 
     // Run lcm-driven simulation
     systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

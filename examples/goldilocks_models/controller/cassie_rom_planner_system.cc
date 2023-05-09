@@ -612,10 +612,13 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
   }
 
   /// Save data for (offline) debug mode
-  writeCSV(param.dir_data + "rom_option.csv",
-           param.rom_option * VectorXd::Ones(1));
-  writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
-  writeCSV(param.dir_data + "sample_idx.csv", param.sample * VectorXd::Ones(1));
+  if (!param_.get_RL_gradient_offline) {
+    writeCSV(param.dir_data + "rom_option.csv",
+             param.rom_option * VectorXd::Ones(1));
+    writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
+    writeCSV(param.dir_data + "sample_idx.csv",
+             param.sample * VectorXd::Ones(1));
+  }
 }
 
 void CassiePlannerWithMixedRomFom::SolveTrajOpt(

@@ -645,10 +645,13 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   }
 
   /// Save data for (offline) debug mode
-  writeCSV(param.dir_data + "rom_option.csv",
-           param.rom_option * VectorXd::Ones(1));
-  writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
-  writeCSV(param.dir_data + "sample_idx.csv", param.sample * VectorXd::Ones(1));
+  if (!param_.get_RL_gradient_offline) {
+    writeCSV(param.dir_data + "rom_option.csv",
+             param.rom_option * VectorXd::Ones(1));
+    writeCSV(param.dir_data + "model_iter.csv", param.iter * VectorXd::Ones(1));
+    writeCSV(param.dir_data + "sample_idx.csv",
+             param.sample * VectorXd::Ones(1));
+  }
 }
 
 void CassiePlannerWithOnlyRom::InitializeForRL(
@@ -723,12 +726,14 @@ void CassiePlannerWithOnlyRom::InitializeForRL(
   RL_addtl_info_names.push_back("com_height");
   RL_addtl_info_names.push_back("s_prime_time");
 
-  SaveStringVecToCsv(RL_state_names,
-                     param_.dir_data + string("RL_state_names.csv"));
-  SaveStringVecToCsv(RL_action_names,
-                     param_.dir_data + string("RL_action_names.csv"));
-  SaveStringVecToCsv(RL_addtl_info_names,
-                     param_.dir_data + string("RL_addtl_info_names.csv"));
+  if (!param_.get_RL_gradient_offline) {
+    SaveStringVecToCsv(RL_state_names,
+                       param_.dir_data + string("RL_state_names.csv"));
+    SaveStringVecToCsv(RL_action_names,
+                       param_.dir_data + string("RL_action_names.csv"));
+    SaveStringVecToCsv(RL_addtl_info_names,
+                       param_.dir_data + string("RL_addtl_info_names.csv"));
+  }
 
   // Initialize gaussian distribution for RL policy noise
   if (!param_.path_var.empty()) {

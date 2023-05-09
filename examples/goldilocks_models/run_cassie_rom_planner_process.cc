@@ -375,10 +375,12 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Store data
-  writeCSV(param.dir_data + string("n_step.csv"),
-           param.n_step * VectorXd::Ones(1));
-  writeCSV(param.dir_data + string("nodes_per_step.csv"),
-           param.knots_per_mode * VectorXd::Ones(1));
+  if (!FLAGS_get_RL_gradient_offline) {
+    writeCSV(param.dir_data + string("n_step.csv"),
+             param.n_step * VectorXd::Ones(1));
+    writeCSV(param.dir_data + string("nodes_per_step.csv"),
+             param.knots_per_mode * VectorXd::Ones(1));
+  }
 
   //
   PiecewisePolynomial<double> x_traj;

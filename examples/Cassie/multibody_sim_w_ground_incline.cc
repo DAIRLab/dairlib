@@ -108,6 +108,9 @@ DEFINE_string(path_init_state, "", "");
 // Testing
 DEFINE_string(path_init_pose_success, "", "");
 
+// RL training
+DEFINE_bool(is_RL_training, false, "");
+
 class SimTerminator : public drake::systems::LeafSystem<double> {
  public:
   SimTerminator(const drake::multibody::MultibodyPlant<double>& plant,
@@ -405,20 +408,23 @@ int do_main(int argc, char* argv[]) {
   std::cout << "status.return_time() = " << status.return_time() << std::endl;
   std::cout << "status.message() = " << status.message() << std::endl;
 
-  if (!status.succeeded()) {
-    std::ofstream outfile;
-    outfile.open(
-        "../dairlib_data/goldilocks_models/sim_cost_eval/sim_status.txt",
-        std::ios_base::app);
-    outfile << "(succeeded, return_time, message) = ";
-    outfile << status.succeeded() << ", " << status.return_time() << ", "
-            << status.message() << "\n";
-    outfile.close();
-  }
+  if (!FLAGS_is_RL_training) {
+    // avoid writing this in case it's not thread safe
+    if (!status.succeeded()) {
+      std::ofstream outfile;
+      outfile.open(
+          "../dairlib_data/goldilocks_models/sim_cost_eval/sim_status.txt",
+          std::ios_base::app);
+      outfile << "(succeeded, return_time, message) = ";
+      outfile << status.succeeded() << ", " << status.return_time() << ", "
+              << status.message() << "\n";
+      outfile.close();
+    }
 
-  // pause a second for lcm-logger to finish logging (when running
-  // run_sim_cost_study)
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    // pause a second for lcm-logger to finish logging (when running
+    // run_sim_cost_study)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
 
   return 0;
 }

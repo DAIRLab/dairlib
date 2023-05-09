@@ -97,6 +97,13 @@ DEFINE_bool(use_ipopt, false, "use ipopt instead of snopt");
 DEFINE_bool(switch_to_snopt_after_first_loop, true,
             "use snopt after the first loop");
 
+// Other planner setting
+DEFINE_double(min_mpc_thread_loop_duration, 0,
+              "limits how fast the MPC should run; default to 0 which doesn't "
+              "impose any limit; we use this for two situations: 1) fixing "
+              "planner rate for RL 2) reducing the rate because sometimes it's "
+              "too fast. e.g. hybrid_rom_mpc with snopt solves at 1kHz");
+
 // LCM channels (non debug mode)
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -147,9 +154,6 @@ DEFINE_bool(only_construct_to_get_RL_problem_size_so_do_not_simulate, false,
             "");
 DEFINE_bool(get_RL_gradient_offline, false,
             "true if we don't want to compute the policy gradient online");
-DEFINE_double(min_mpc_thread_loop_duration, 0,
-              "limits how fast the MPC should run; default to 0 which doesn't "
-              "impose any limit");
 DEFINE_double(policy_output_noise_bound, 0.001,
               "in meters. this is directly on noise not the variance");
 DEFINE_string(path_model_params, "", "file path of the rom params");
@@ -338,13 +342,13 @@ int DoMain(int argc, char* argv[]) {
   param.log_solver_info = FLAGS_log_solver_info;
   param.time_limit = FLAGS_time_limit;
   param.realtime_rate_for_time_limit = FLAGS_realtime_rate_for_time_limit;
+  param.min_mpc_thread_loop_duration = FLAGS_min_mpc_thread_loop_duration;
   param.dir_model = gains.dir_model;
   param.dir_data = gains.dir_data;
   param.init_file = FLAGS_init_file;
   param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
   param.is_RL_training = FLAGS_is_RL_training;
   param.get_RL_gradient_offline = FLAGS_get_RL_gradient_offline;
-  param.min_mpc_thread_loop_duration = FLAGS_min_mpc_thread_loop_duration;
   param.policy_output_noise_bound = FLAGS_policy_output_noise_bound;
   param.path_model_params = FLAGS_path_model_params;
   param.path_var = FLAGS_path_var;
@@ -603,8 +607,7 @@ int DoMain(int argc, char* argv[]) {
                             dairlib::lcmt_robot_output>
       loop(FLAGS_broadcast ? &lcm_network : &lcm_local,
            std::move(owned_diagram), lcm_parsers, input_channels, true,
-           FLAGS_is_RL_training ? FLAGS_min_mpc_thread_loop_duration : 0,
-           max_n_loop);
+           FLAGS_min_mpc_thread_loop_duration, max_n_loop);
   if (!FLAGS_debug_mode) {
     // Create the file to indicate that the planner thread is listening
     if (!FLAGS_path_wait_identifier.empty()) {

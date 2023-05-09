@@ -198,6 +198,8 @@ struct PlannerSetting {
   double time_limit;
   double realtime_rate_for_time_limit;
 
+  double min_mpc_thread_loop_duration;
+
   // gains includes cost weights
   RomWalkingGains gains;
 
@@ -213,7 +215,6 @@ struct PlannerSetting {
   // RL
   bool is_RL_training;
   bool get_RL_gradient_offline;
-  double min_mpc_thread_loop_duration;
   double policy_output_noise_bound;
   std::string path_model_params;
   std::string path_var;

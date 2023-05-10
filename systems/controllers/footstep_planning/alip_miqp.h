@@ -44,7 +44,9 @@ class AlipMIQP final : public AlipMPC {
   }
 
   Eigen::Vector3d SnapFootstepToTopFoothold(const Eigen::Vector3d& p) const;
+  bool success() const {return success_;}
  private:
+  bool success_ = false;
   static constexpr int kMaxFootholds = 20;
   std::vector<VectorXDecisionVariable> zz_{};
   std::vector<Binding<LinearEqualityConstraint>> integer_sum_constraints_;

@@ -3,7 +3,8 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 
 from pydairlib.geometry.convex_foothold import ConvexFoothold
-from pydairlib.geometry.poly_utils import ProcessTerrain2d, TestAcd
+from pydairlib.geometry.poly_utils import ProcessTerrain2d, TestAcd, GetAcdComponents
+from pydairlib.common import plot_styler as ps
 
 try:
     import rosbag
@@ -19,7 +20,7 @@ import sys
 def plot_polygon(verts, linestyle='solid'):
     assert(verts.shape[0] == 2)
     tmp = np.vstack((verts.T, verts[:, 0]))
-    plt.plot(tmp[:, 0], tmp[:, 1], linestyle=linestyle)
+    plt.plot(-tmp[:, 1], tmp[:, 0], linestyle=linestyle, color='grey')
 
 
 def set_line_data_as_polygon(verts, line):
@@ -91,9 +92,10 @@ def make_animation(inner_boundaries, outer_boundaries, video_name):
 
     # create a blank window
     fig = plt.figure()
-    ax = plt.axes(xlim=[-2.5, 2.5], ylim=[-2.5, 2.5])
+    ax = plt.axes(xlim=[-2, 3], ylim=[-1, 5])
     lines = [(ax.plot([], [], linewidth=1.5, linestyle='solid')[0],
               ax.plot([], [], linewidth=1.5, linestyle='dashed')[0]) for _ in range(k)]
+    label = ax.annotate('0', xy=(0, 0))
 
     def anim_callback(i):
         inner_polys = inner_boundaries[i]
@@ -112,11 +114,14 @@ def make_animation(inner_boundaries, outer_boundaries, video_name):
         for line in lines:
             return_data.append(line[0])
             return_data.append(line[1])
+
+        label.set_text(f'{i}')
+        return_data.append(label)
         return return_data
 
     anim = animation.FuncAnimation(fig, anim_callback,
                                    frames=len(outer_boundaries), blit=True)
-    anim.save(video_name, writer='ffmpeg', dpi=300, fps=10)
+    anim.save(video_name, writer='ffmpeg', dpi=300, fps=15)
 
 
 def test_acd():
@@ -131,6 +136,43 @@ def test_acd():
         plot_polygon(poly, linestyle='dashed')
     plt.show()
 
+
+def make_acd_plots(polygons):
+    ps.PlotStyler().set_default_styling()
+    plot = ps.PlotStyler()
+
+    for poly in polygons:
+        plot_polygon(poly[0])
+        for h in poly[1]:
+            plot_polygon(h, linestyle='dashed')
+
+    plot2 = ps.PlotStyler()
+    for poly in polygons:
+        components = GetAcdComponents(poly)
+        for component in components:
+            plot_polygon(component)
+
+    plot3 = ps.PlotStyler()
+    for poly in ProcessTerrain2d(polygons):
+        poly = poly.GetVertices()[:2]
+        plot_polygon(poly)
+
+    plt.show()
+
+
+def acd_plots_main():
+    fname = sys.argv[1]
+    poly_idx = int(sys.argv[2])
+    polys = get_msgs(fname)
+    # for i, msg in enumerate(polys):
+    #     for poly in  msg.planarRegions:
+    #         if poly.boundary.holes:
+    #             print(i)
+
+    polys_np = convert_terrain_msg(polys[poly_idx])
+    make_acd_plots(polys_np)
+
+
 def main():
     fname = sys.argv[1]
     video_name = sys.argv[2]
@@ -139,7 +181,7 @@ def main():
     inner_boundaries = []
     i = 0
 
-    for poly in convert_terrain_msg(polys[171]):
+    for poly in convert_terrain_msg(polys[252]):
         plot_polygon(poly[0])
         for p in poly[1]:
             plot_polygon(p, linestyle='dashed')
@@ -160,5 +202,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    acd_plots_main()
 

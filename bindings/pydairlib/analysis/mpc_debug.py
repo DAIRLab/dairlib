@@ -1,3 +1,5 @@
+import pdb
+
 import numpy as np
 
 from pydrake.trajectories import PiecewisePolynomial
@@ -76,6 +78,19 @@ class MpcSolution:
         return lst
 
 
+def foothold_constraint_active(msg):
+    footholds = [
+        (np.array(f.A), np.array(f.b)) for f in msg.footholds.footholds
+    ]
+
+    p1 = np.array(msg.solution.pp[1])
+    p2 = np.array(msg.solution.pp[2])
+    viol_p1 = np.array([np.max(A @ p1 - b) for (A, b) in footholds])
+    viol_p2 = np.array([np.max(A @ p2 - b) for (A, b) in footholds])
+
+    return np.min(viol_p1) > -1e-5 or np.min(viol_p2) > -1e-5
+
+
 class MpcDebug:
     def __init__(self):
         self.t_mpc = []
@@ -89,6 +104,7 @@ class MpcDebug:
             "desired": MpcSolution()
         }
         self.nfootholds = {}
+        self.constraint_activation = {}
 
     def to_numpy(self):
         for t in self.t_mpc:
@@ -108,3 +124,4 @@ class MpcDebug:
         self.mpc_trajs["solution"].append(t, msg.solution)
         self.mpc_trajs["guess"].append(t, msg.guess)
         self.mpc_trajs["desired"].append(t, msg.desired)
+        self.constraint_activation[t] = foothold_constraint_active(msg)

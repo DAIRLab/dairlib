@@ -113,7 +113,8 @@ void AlipMIQP::SolveOCProblemAsIs() {
   solve_time_.start_ = std::chrono::steady_clock::now();
   UpdateFootholdConstraints();
   auto result =  solver_.Solve(*prog_);
-  if (result.is_success()) {
+  success_ = result.is_success();
+  if (success_) {
     solution_.first = result;
     solution_.second = ExtractDynamicsConstraintDual(result);
   } else {

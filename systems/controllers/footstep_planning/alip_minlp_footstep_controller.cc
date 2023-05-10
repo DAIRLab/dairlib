@@ -289,7 +289,6 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
     workspace.AddFace(-Vector3d::UnitX(), com_xy - 10 * Vector3d::UnitX());
   }
 
-
   trajopt_.UpdateNextFootstepReachabilityConstraint(workspace);
   trajopt_.CalcOptimalFootstepPlan(x, p_b, false);
 
@@ -340,6 +339,7 @@ void AlipMINLPFootstepController::CopyMpcOutput(
 void AlipMINLPFootstepController::CopyMpcDebugToLcm(
     const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
 
+  mpc_debug->success = trajopt_.success();
   const auto& ic =
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
@@ -351,6 +351,7 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
   int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);
   double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
   int fsm = curr_fsm(static_cast<int>(fsmd));
+
 
   CopyMpcSolutionToLcm(trajopt_.GetFootstepSolution(),
                        trajopt_.GetStateSolution(),

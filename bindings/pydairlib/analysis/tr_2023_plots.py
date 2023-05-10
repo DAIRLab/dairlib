@@ -44,6 +44,13 @@ def collect_solve_time_vs_num_footholds(mpc_debug, data=None):
     return data
 
 
+def collect_solve_time_vs_constraint_activation(mpc_debug, data=None):
+    data = { True: [], False: [] } if data is None else data
+    for i, t in enumerate(mpc_debug.t_mpc):
+        data[mpc_debug.constraint_activation[t]].append(mpc_debug.solve_time[i])
+    return data
+
+
 def plot_solve_time_vs_nfootholds(logs):
     data = {}
     for log in logs.values():
@@ -72,6 +79,23 @@ def plot_solve_time_vs_nfootholds(logs):
         title='MPC Solve Time vs. Number of Footholds'
     )
     ps.add_legend(['min', 'max', 'mean', '90th Percentile'])
+
+
+def plot_solve_time_vs_constraint_activation(logs):
+    data = { False: [], True: [] }
+
+    for log in logs.values():
+        data = collect_solve_time_vs_constraint_activation(log["mpc_debug"], data)
+    for key in data:
+        data[key] = 1000 * np.array(data[key])
+
+    ps = PlotStyler()
+    plt.boxplot(data.values())
+    plt.gca().set_xticklabels(
+        ['Foothold Constraint Slack', 'Foothold Constraint Active']
+    )
+    plt.ylabel('MPC Solve Time (ms)')
+    plt.title('MPC Solve Time vs. Foothold Constraint Activation')
 
 
 def main():
@@ -104,6 +128,7 @@ def main():
         logs[key] = logs_key
 
     plot_solve_time_vs_nfootholds(logs["solve_time_vs_num_footholds"])
+    plot_solve_time_vs_constraint_activation(logs["solve_time_vs_constraint_activation"])
     plt.show()
 
 

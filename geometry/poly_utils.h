@@ -25,6 +25,9 @@ ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
 std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>> terrain);
 
+std::vector<Eigen::MatrixXd> GetAcdComponents(
+    std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>> planar_region);
+
 std::vector<ConvexFoothold> DecomposeTerrain(
     const convex_plane_decomposition_msgs::PlanarTerrain& terrain,
     double convexity_threshold);

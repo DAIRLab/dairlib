@@ -6,6 +6,7 @@ struct lcmt_mpc_debug
   int32_t fsm_state;
 
   int64_t solve_time_us;
+  boolean success;
 
   double x0[4];
   double p0[3];

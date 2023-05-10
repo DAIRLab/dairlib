@@ -402,6 +402,26 @@ std::vector<ConvexFoothold> DecomposeTerrain(const PlanarRegion& planar_region,
   return footholds;
 }
 
+std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>> planar_region) {
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
+  acd2d::cd_2d cd;
+
+  if (is_degenerate(planar_region.first)) {
+    return {};
+  }
+
+  acd2d::cd_polygon poly = MakeAcdPolygon(planar_region, cd.buf());
+  cd.addPolygon(poly);
+  cd.maybe_decomposeAll(0.15, measure.get());
+
+  std::vector<MatrixXd> poly_out_list;
+  for (const auto& poly_out : cd.getDoneList()) {
+    // low probability that a triangle is a meaningful size
+    poly_out_list.push_back(Acd2d2Eigen(poly_out.front()));
+  }
+  return poly_out_list;
+}
+
 std::vector<ConvexFoothold> ProcessTerrain2d(
     std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
   auto start = std::chrono::high_resolution_clock::now();
@@ -435,7 +455,7 @@ std::vector<ConvexFoothold> ProcessTerrain2d(
       MatrixXd verts = Acd2d2Eigen(poly_out.front());
       VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
       Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
-      if (convex_hull_v.CalcVolume() > 0.15) {
+      if (Area(verts) > 0.04) {
         footholds.push_back(
             MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
         );

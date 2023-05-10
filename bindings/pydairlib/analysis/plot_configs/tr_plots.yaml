@@ -2,8 +2,8 @@
 # reported in mpc_debug
 
 solve_time_vs_constraint_activation: [
-  {'date': '05_05_23', 'lognum': '10', 'start_time': 0.0, 'end_time': 10.0 },
-  {'date': '05_05_23', 'lognum': '06', 'start_time': 0.0, 'end_time': 15.0 }
+  {'date': '05_08_23', 'lognum': '04', 'start_time': 0.0, 'end_time': 5.0 },
+  {'date': '05_08_23', 'lognum': '00', 'start_time': 0.0, 'end_time': 10.0 }
 ]
 
 solve_time_vs_num_footholds: [

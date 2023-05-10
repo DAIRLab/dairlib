@@ -209,7 +209,7 @@ class AlipMPC {
   int nknots() const { return nknots_; }
 
   drake::solvers::MathematicalProgram *get_prog() { return prog_.get_mutable(); }
-  drake::solvers::MathematicalProgramResult &get_solution() { return solution_.first; }
+  const drake::solvers::MathematicalProgramResult& get_solution() const { return solution_.first; }
 
  protected:
 

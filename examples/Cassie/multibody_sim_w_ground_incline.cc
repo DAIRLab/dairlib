@@ -420,11 +420,13 @@ int do_main(int argc, char* argv[]) {
               << status.message() << "\n";
       outfile.close();
     }
-
-    // pause a second for lcm-logger to finish logging (when running
-    // run_sim_cost_study)
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
+
+  // Pause a second for lcm-logger to finish logging (when running
+  // run_sim_cost_study)
+  // 20230511: it's probably also important to give time for the planner to save
+  // files for RL training, so I'm also pausing it for RL.
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   return 0;
 }

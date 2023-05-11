@@ -102,7 +102,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
 
   // print level
   print_level_ = print_level;
-  if (single_eval_mode_) {
+  if (single_eval_mode_ && print_level_ > 0) {
     print_level_ = 2;
     cout.precision(dbl::max_digits10);
   }

@@ -10,6 +10,27 @@ cc_library(
     ]),
 )
 
+cc_library(
+    name = "franka_hardware",
+    deps = [],
+)
+
+cc_library(
+    name = "franka_dispatcher_in",
+    srcs = ["franka_dispatcher_in.cc"],
+    deps = [
+        "//systems/ros:ros_pubsub_systems"
+    ],
+)
+
+cc_library(
+    name = "franka_dispatcher_out",
+    srcs = ["franka_dispatcher_out.cc"],
+    deps = [
+        "//systems/ros:ros_pubsub_systems"
+    ],
+)
+
 cc_binary(
     name = "franka_sim",
     srcs = ["franka_sim.cc"],

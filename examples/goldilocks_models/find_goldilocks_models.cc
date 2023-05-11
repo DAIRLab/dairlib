@@ -225,6 +225,11 @@ DEFINE_bool(only_update_wrt_main_cost, false, "");
 DEFINE_bool(use_envelope_theorem_to_get_gradient, true, "");
 
 DEFINE_bool(heavy_toe, false, "experiment cassie with heavier legs");
+DEFINE_bool(
+    cubic_spline_in_joint_space, false,
+    "impose cubic spline in swing hip pitch and constrain hip roll close to 0 "
+    "instead of the regular cubic spline for swing foot task space traj; this "
+    "is probably (need to test it) useful for big turning");
 
 void setCostWeight(double* Q, double* R, double* w_joint_accel,
                    double* all_cost_scale, int robot_option) {
@@ -1951,6 +1956,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.com_at_center_of_support_polygon =
       FLAGS_com_at_center_of_support_polygon;      // for testing
   inner_loop_setting.heavy_toe = FLAGS_heavy_toe;  // for testing
+  inner_loop_setting.cubic_spline_in_joint_space =
+      FLAGS_cubic_spline_in_joint_space;  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint
@@ -1963,9 +1970,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << inner_loop_setting.zero_ending_pelvis_angular_vel << endl;
   cout << "com_at_center_of_support_polygon = "
        << inner_loop_setting.com_at_center_of_support_polygon << endl;
+  cout << "heavy_toe = " << inner_loop_setting.heavy_toe << endl;
+  cout << "cubic_spline_in_joint_space = "
+       << inner_loop_setting.cubic_spline_in_joint_space << endl;
   if (inner_loop_setting.snopt_log) {
     cout << "WARNING: you are printing snopt log for Cassie (could slow down "
             "the optimization)!\n";
+  }
+  if (inner_loop_setting.cubic_spline_in_joint_space) {
+    DRAKE_DEMAND(inner_loop_setting.swing_foot_cublic_spline_constraint);
   }
 
   // Construct reduced order model

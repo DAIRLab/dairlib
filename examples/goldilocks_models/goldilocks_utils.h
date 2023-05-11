@@ -58,6 +58,7 @@ class InnerLoopSetting {
   bool com_at_center_of_support_polygon;
 
   bool heavy_toe;
+  bool cubic_spline_in_joint_space;
 };
 
 // SubQpData stores all the data about the QPs in the SQP algorithm

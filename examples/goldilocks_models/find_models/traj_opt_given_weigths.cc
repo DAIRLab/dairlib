@@ -41,6 +41,7 @@ using std::vector;
 
 using Eigen::Matrix3Xd;
 using Eigen::MatrixXd;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -410,10 +411,10 @@ class JointAccelConstraint : public solvers::NonlinearConstraint<double> {
   int n_lambda_;
 };
 
-class SwingFootCubicSplineConstraint
+class SwingFootCubicSplineTaskSpaceConstraint
     : public solvers::NonlinearConstraint<double> {
  public:
-  SwingFootCubicSplineConstraint(
+  SwingFootCubicSplineTaskSpaceConstraint(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::multibody::Frame<double>& body_frame,
       Vector3d point_wrt_body, double t_f, double t_eval,
@@ -507,6 +508,50 @@ class SwingFootCubicSplineConstraint
   int n_q_;
   int n_v_;
   int n_x_;
+};
+
+class SwingFootCubicSplineJointSpaceConstraint
+    : public solvers::NonlinearConstraint<double> {
+ public:
+  SwingFootCubicSplineJointSpaceConstraint(
+      double t_f, double t_eval, double mid_foot_joint_offset,
+      const std::string& description = "swing_foot_cubic_spline_joint_space")
+      : solvers::NonlinearConstraint<double>(2, 2 * 3, VectorXd::Zero(2),
+                                             VectorXd::Zero(2), description),
+        T_waypoint_({0, t_f / 2, t_f}),
+        t_eval_(t_eval),
+        mid_foot_joint_offset_(mid_foot_joint_offset){};
+
+ private:
+  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& x,
+                          drake::VectorX<double>* y) const override {
+    y->resize(2);
+
+    // Extract our input variables:
+    const auto q0 = x.segment<2>(0);
+    const auto qf = x.segment<2>(2);
+    const auto q_eval = x.segment<2>(4);
+
+    // Construct cubic spline
+    // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to make
+    // the traj smooth at the mid point
+    std::vector<MatrixXd> Y(3, MatrixXd::Zero(2, 1));
+    Y[0] = q0;
+    Y[1] = (q0 + qf) / 2;
+    Y[2] = qf;
+    // mid foot height
+    Y[1](1, 0) += mid_foot_joint_offset_;
+    PiecewisePolynomial<double> swing_foot_spline =
+        PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+            T_waypoint_, Y, Vector2d::Zero(), Vector2d::Zero());
+
+    // Assignment
+    y->head<2>() = swing_foot_spline.value(t_eval_) - q_eval;
+  };
+
+  std::vector<double> T_waypoint_;
+  double t_eval_;
+  double mid_foot_joint_offset_;
 };
 
 bool IsMainCost(
@@ -2972,20 +3017,50 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing -- swing foot cubic spline constraint
   if (setting.swing_foot_cublic_spline_constraint) {
-    // Cubic spline constraint
-    double mid_foot_height = 0.05;
-    bool include_vel = false;  // we don't need to impose constraint on vel
-                               // because the way points are timestamped.
     int constraint_sample_spacing = 2;
-    for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
-      auto xi = trajopt.state(i);
-      double t_eval = duration / (setting.n_node - 1) * i;
-      auto cubic_spline_constraint =
-          std::make_shared<SwingFootCubicSplineConstraint>(
-              plant, plant.GetBodyByName("toe_right").body_frame(),
-              Vector3d::Zero(), duration, t_eval, mid_foot_height, include_vel);
-      trajopt.AddConstraint(cubic_spline_constraint,
-                            {x0.head(n_q), xf.head(n_q), xi});
+    if (setting.cubic_spline_in_joint_space) {
+      // 1. hip pitch and knee
+      double mid_knee_joint_offset =
+          -0.3;  // negative joint angle means retraction
+      int swing_hip_pitch_joint_idx = pos_map.at("hip_pitch_right");
+      int swing_knee_joint_idx = pos_map.at("knee_right");
+      for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
+        auto xi = trajopt.state(i);
+        double t_eval = duration / (setting.n_node - 1) * i;
+        auto swing_foot_cubic_spline_constraint =
+            std::make_shared<SwingFootCubicSplineJointSpaceConstraint>(
+                duration, t_eval, mid_knee_joint_offset);
+        trajopt.AddConstraint(swing_foot_cubic_spline_constraint,
+                              {x0.segment<1>(swing_hip_pitch_joint_idx),
+                               x0.segment<1>(swing_knee_joint_idx),
+                               xf.segment<1>(swing_hip_pitch_joint_idx),
+                               xf.segment<1>(swing_knee_joint_idx),
+                               xi.segment<1>(swing_hip_pitch_joint_idx),
+                               xi.segment<1>(swing_knee_joint_idx)});
+      }
+      // 2. hip roll (constrained close to 0)
+      double eps = 0.01;
+      for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
+        auto xi = trajopt.state(i);
+        trajopt.AddBoundingBoxConstraint(-eps, eps,
+                                         xi(pos_map.at("hip_roll_right")));
+      }
+    } else {
+      // Cubic spline constraint in task space (3D cosntraint)
+      double mid_foot_height = 0.05;
+      bool include_vel = false;  // we don't need to impose constraint on vel
+      // because the way points are timestamped.
+      for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
+        auto xi = trajopt.state(i);
+        double t_eval = duration / (setting.n_node - 1) * i;
+        auto swing_foot_cubic_spline_constraint =
+            std::make_shared<SwingFootCubicSplineTaskSpaceConstraint>(
+                plant, plant.GetBodyByName("toe_right").body_frame(),
+                Vector3d::Zero(), duration, t_eval, mid_foot_height,
+                include_vel);
+        trajopt.AddConstraint(swing_foot_cubic_spline_constraint,
+                              {x0.head(n_q), xf.head(n_q), xi});
+      }
     }
 
     // zero impact

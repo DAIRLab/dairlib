@@ -182,7 +182,7 @@ then
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --no_model_update=$no_model_update --is_stochastic=$is_stochastic \
-   --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
+   --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --duration_center=$duration_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \
@@ -195,7 +195,7 @@ then
    --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --no_model_update=$no_model_update --is_stochastic=$is_stochastic \
-   --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
+   --heavy_toe=$heavy_toe \
    --rom_option=$model --robot_option=$robot \
    --N_sample_sl=$n_sl --N_sample_gi=$n_gi --N_sample_du=$n_du --N_sample_tr=$n_tr --N_sample_ph=$n_ph --N_sample_sm=$n_sm \
    --stride_length_center=$stride_length_center --ground_incline_center=$ground_incline_center --duration_center=$duration_center --turning_rate_center=$turning_rate_center --pelvis_height_center=$pelvis_height_center --swing_margin_center=$swing_margin_center \

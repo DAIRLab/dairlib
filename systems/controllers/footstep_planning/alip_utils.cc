@@ -201,31 +201,11 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
 Matrix4d SolveDareTwoStep(
     const Matrix4d& Q, double com_z, double m, double tss, double tds,
     int knots_per_mode, ResetDiscretization discretization) {
-  int K = knots_per_mode;
-  double dt = tss / (K - 1.0);
-  Matrix<double, 4, 8> reset = CalcResetMap(com_z, m, tds, discretization);
-  Matrix4d I = Matrix4d::Identity();
-  Matrix<double, 4, 2> Br = reset.rightCols<2>();
-
-  // inexcusable notation here but that's a problem for future brian
-  Matrix4d P1 = I;
-  for (int i = 0; i < K - 1; i++) {
-    Matrix4d Ai = CalcAd(com_z, m, dt * (i + 1));
-    P1 += Ai;
-  }
-  Matrix4d Ak = CalcAd(com_z, m, dt * K);
-  Matrix4d P =
-      P1 + sqrt(static_cast<double>(K)) * (I + reset.leftCols<4>()) * Ak;
-  Matrix<double, 4, 2> M = P1 * Br;
-
-
-  Matrix4d A = reset.leftCols<4>() * Ak;
-  Matrix<double, 4, 2> B = Ak * Br;
-  Matrix4d Qp = P.transpose() * Q * P;
-  Matrix2d Qm = M.transpose() * Q * M;
-  Matrix<double, 4, 2> N = A.transpose() * Q * M;
-
-  Matrix4d S = drake::math::DiscreteAlgebraicRiccatiEquation(A, B, Qp, Qm, N);
+  Matrix4d A = CalcAd(com_z, m, tss + tds);
+  Matrix<double, 4, 2> B = CalcResetMap(com_z, tds, tds).rightCols<2>();
+  Matrix2d R = 0.01 * Matrix2d::Identity();
+  Matrix4d S = drake::math::DiscreteAlgebraicRiccatiEquation(A, B, Q, R);
+  std::cout << "S: \n" << S << std::endl;
   return S;
 }
 

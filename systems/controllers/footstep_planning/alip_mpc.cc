@@ -275,7 +275,7 @@ void AlipMPC::MakeInputBoundConstaints() {
 }
 
 void AlipMPC::MakeWorkspaceConstraints() {
-  Vector2d bb(0.6, 0.35);
+  Vector2d bb(xlim_, ylim_);
 
   MatrixXd I1 = MatrixXd::Zero(2, 4);
   MatrixXd I2 = MatrixXd::Zero(2, 4);
@@ -288,7 +288,7 @@ void AlipMPC::MakeWorkspaceConstraints() {
     ee_.push_back(prog_->NewContinuousVariables(2 * nknots_));
     for (int k = 0; k < nknots_; k++) {
       const auto& ee = ee_.at(n-1).segment(2*k, 2);
-      prog_->AddQuadraticErrorCost(1000 * MatrixXd::Identity(2,2), bb, ee);
+      prog_->AddQuadraticErrorCost(50000 * MatrixXd::Identity(2,2), bb, ee);
       prog_->AddLinearConstraint(
           I1,
           -numeric_limits<double>::infinity() * Vector2d::Ones(),

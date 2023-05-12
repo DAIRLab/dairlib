@@ -2,9 +2,11 @@ t_commit: 0.25
 t_min: 0.24
 t_max: 0.5
 u_max: 4
-h_des: 0.83
+h_des: 0.9
 stance_width: 0.4
-ss_time: 0.3
+retraction_dist: 0.07
+xlim: 0.4
+ss_time: 0.32
 ds_time: 0.1
 nmodes: 3
 knots_per_mode: 5
@@ -17,7 +19,7 @@ qf:
    0, 0, 100.0, 0,
    0, 0, 0, 100.0]
 q:
-  [2, 0, 0, 0,
+  [1, 0, 0, 0,
    0, 2, 0, 0,
    0, 0, 0.02, 0,
    0, 0, 0, 0.02]

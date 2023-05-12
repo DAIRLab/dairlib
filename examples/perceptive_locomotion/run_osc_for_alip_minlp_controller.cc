@@ -326,6 +326,7 @@ int DoMain(int argc, char* argv[]) {
     0.05608,
     gains.final_foot_height,
     gains.final_foot_velocity_z,
+    gains_mpc.retraction_dist,
     true
   };
 
@@ -523,7 +524,7 @@ int DoMain(int argc, char* argv[]) {
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_wo_spr, swing_foot_data.get(),
       stance_foot_data.get());
-  swing_ft_traj_local->SetSpringsInKinematicCalculation(false);
+  swing_ft_traj_local->SetSpringsInKinematicCalculation(FLAGS_use_spring_model);
 
   auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
       plant_w_spr.GetBodyByName("pelvis"));

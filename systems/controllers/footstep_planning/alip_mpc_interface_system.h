@@ -27,6 +27,7 @@ struct SwingFootInterfaceSystemParams {
   double foot_height_offset_;
   double desired_final_foot_height;
   double desired_final_vertical_foot_velocity;
+  double retraction_dist = 0.07;
   bool relative_to_com = true;
 };
 
@@ -97,6 +98,7 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
   std::vector<int> left_right_support_fsm_states_;
 
   // Parameters
+  const double retraction_dist_;
   const double com_height_;
   const double mid_foot_height_;
   const double desired_final_foot_height_;

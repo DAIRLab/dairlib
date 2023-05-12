@@ -61,6 +61,7 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
       plant_context_(context),
       world_(plant_.world_frame()),
       left_right_support_fsm_states_(params.left_right_support_fsm_states),
+      retraction_dist_(params.retraction_dist),
       com_height_(params.com_height_),
       mid_foot_height_(params.mid_foot_height),
       desired_final_foot_height_(params.desired_final_foot_height),
@@ -204,7 +205,7 @@ SwingFootInterfaceSystem::CreateSplineForSwingFoot(
     retract_vel(2) = 0;
     retract_vel = 0.25 * (end_time - start_time) * retract_vel.normalized();
     final_vel += retract_vel;
-    Vector3d retract_delta = 0.03 * retract_vel.normalized();
+    Vector3d retract_delta = retraction_dist_ * retract_vel.normalized();
     control_points.col(2) += retract_delta;
   }
   auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(

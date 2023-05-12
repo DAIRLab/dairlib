@@ -25,6 +25,7 @@ struct AlipMINLPGains {
   double hdes;
   double stance_width;
   double next_footstep_constraint_radius;
+  double xlim;
   int nmodes;
   int knots_per_mode;
   alip_utils::ResetDiscretization reset_discretization_method;

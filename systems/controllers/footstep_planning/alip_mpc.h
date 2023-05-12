@@ -203,6 +203,8 @@ class AlipMPC {
 
   void set_m(double m) { m_ = m; }
   void set_H(double H) { H_ = H; }
+  void set_xlim(double xlim) {xlim_ = xlim;}
+  void set_ylim(double ylim) {ylim_ = ylim;}
   double H() const {return H_;}
   double m() const {return m_;}
   int nmodes() const { return nmodes_; }
@@ -226,6 +228,8 @@ class AlipMPC {
   double Tds_ = 0;
   double R_ = 0;
   double umax_ = -1;
+  double ylim_ = 0.35;
+  double xlim_ = 0.4;
   vector<double> tmin_{};
   vector<double> tmax_{};
   Eigen::MatrixXd Q_;

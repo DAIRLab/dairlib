@@ -8,6 +8,7 @@ using Eigen::Matrix4d;
 using dairlib::systems::controllers::alip_utils::ResetDiscretization;
 
 struct AlipMINLPGainsImport {
+  double retraction_dist;
   double t_commit;
   double t_min;
   double t_max;
@@ -17,6 +18,7 @@ struct AlipMINLPGainsImport {
   double r_foostep_const;
   double ss_time;
   double ds_time;
+  double xlim;
   int nmodes;
   int knots_per_mode;
   int solver_threads;
@@ -63,6 +65,8 @@ struct AlipMINLPGainsImport {
     a->Visit(DRAKE_NVP(pelvis_vel_butter_wc));
     a->Visit(DRAKE_NVP(solver_threads));
     a->Visit(DRAKE_NVP(w_footstep_reg));
+    a->Visit(DRAKE_NVP(xlim));
+    a->Visit(DRAKE_NVP(retraction_dist));
 
     Qf = Eigen::Map<
         Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(this->qf.data());
@@ -94,6 +98,7 @@ struct AlipMINLPGainsImport {
         this->h_des,
         this->stance_width,
         this->r_foostep_const,
+        this->xlim,
         this->nmodes,
         this->knots_per_mode,
         reset_disc,

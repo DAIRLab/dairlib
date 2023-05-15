@@ -76,6 +76,10 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
     completely_use_trajs_from_model_opt_as_target_ = true;
   }
 
+  Eigen::VectorXd RunIkForCoMHeight(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      double pelvis_height);
+
   // Made this function public for testing
   int DetermineNumberOfKnotPoints(
       double init_phase, double first_mode_duration,

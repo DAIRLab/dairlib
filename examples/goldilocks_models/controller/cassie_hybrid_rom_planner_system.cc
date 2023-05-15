@@ -45,6 +45,7 @@ using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 
+using drake::math::RotationMatrix;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
@@ -379,8 +380,19 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
   // (if "pelvis_height" is not set, we default com height to `y_reg_`)
   desired_com_height_ = y_reg_.col(0)(2);
   if (param_.gains.pelvis_height > 0) {
+    // Method #1 -- use heuristics (cannot really use this one if we make the
+    // toe very heavy)
     desired_com_height_ = param_.gains.pelvis_height -
                           param_.gains.pelvis_com_height_diff_heuristic;
+    // Method #2 -- use IK to get desired standing pose given pelivs height,
+    // then compute the CoM height
+    VectorXd q_ik =
+        RunIkForCoMHeight(plant_control, param_.gains.pelvis_height);
+    plant_control_.SetPositions(context_plant_control_.get(), q_ik);
+    desired_com_height_ =
+        plant_control_.CalcCenterOfMassPositionInWorld(*context_plant_control_)
+            .tail<1>()(0);
+    cout << "desired_com_height_ from IK = " << desired_com_height_ << endl;
   }
 
   //   cout << "initial guess duration ~ " << duration << endl;
@@ -2903,6 +2915,75 @@ void CassiePlannerWithOnlyRom::PrintTrajMsg(
     cout << endl;
   }
   cout << "END;\n";
+}
+
+VectorXd CassiePlannerWithOnlyRom::RunIkForCoMHeight(
+    const MultibodyPlant<double>& plant, double pelvis_height) {
+  int n_q = plant.num_positions();
+  int n_v = plant.num_velocities();
+  int n_x = n_q + n_v;
+  std::map<string, int> positions_map =
+      multibody::makeNameToPositionsMap(plant);
+
+  VectorXd q_init_guess;
+  VectorXd q_ik_guess = VectorXd::Zero(n_q);
+  Eigen::Vector4d quat(2000.06, -0.339462, -0.609533, -0.760854);
+  q_ik_guess << quat.normalized(), 0.000889849, 0.000626865, 1.0009, -0.0112109,
+      0.00927845, -0.000600725, -0.000895805, 1.15086, 0.610808, -1.38608,
+      -1.35926, 0.806192, 1.00716, -M_PI / 2, -M_PI / 2;
+
+  double eps = 1e-3;
+  Vector3d eps_vec = eps * VectorXd::Ones(3);
+  Vector3d pelvis_pos(0.0, 0.0, pelvis_height);
+  double stance_toe_pos_x = 0;
+  Vector3d stance_toe_pos(stance_toe_pos_x, 0.12, 0.05);
+  double swing_toe_pos_x = 0;
+  Vector3d swing_toe_pos(swing_toe_pos_x, -0.12, 0.05);
+  // cout << "swing foot height = " <<
+  //      0.05 + 0.1 * (-abs((i - N / 2.0) / (N / 2.0)) + 1);
+
+  const auto& world_frame = plant.world_frame();
+  const auto& pelvis_frame = plant.GetFrameByName("pelvis");
+  const auto& toe_left_frame = plant.GetFrameByName("toe_left");
+  const auto& toe_right_frame = plant.GetFrameByName("toe_right");
+
+  drake::multibody::InverseKinematics ik(plant);
+  ik.AddPositionConstraint(pelvis_frame, Vector3d(0, 0, 0), world_frame,
+                           pelvis_pos - eps * VectorXd::Ones(3),
+                           pelvis_pos + eps * VectorXd::Ones(3));
+  ik.AddOrientationConstraint(pelvis_frame, RotationMatrix<double>(),
+                              world_frame, RotationMatrix<double>(), eps);
+  ik.AddPositionConstraint(toe_left_frame, Vector3d(0, 0, 0), world_frame,
+                           stance_toe_pos - eps_vec, stance_toe_pos + eps_vec);
+  ik.AddPositionConstraint(toe_right_frame, Vector3d(0, 0, 0), world_frame,
+                           swing_toe_pos - eps_vec, swing_toe_pos + eps_vec);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("hip_yaw_left")) == 0);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("hip_yaw_right")) == 0);
+  // Four bar linkage constraint (without spring)
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("knee_left")) +
+          (ik.q())(positions_map.at("ankle_joint_left")) ==
+      M_PI * 13 / 180.0);
+  ik.get_mutable_prog()->AddLinearConstraint(
+      (ik.q())(positions_map.at("knee_right")) +
+          (ik.q())(positions_map.at("ankle_joint_right")) ==
+      M_PI * 13 / 180.0);
+
+  ik.get_mutable_prog()->SetInitialGuess(ik.q(), q_ik_guess);
+  const auto result = Solve(ik.prog());
+  // SolutionResult solution_result = result.get_solution_result();
+  // cout << "\n" << to_string(solution_result) << endl;
+  // cout << "  Cost:" << result.get_optimal_cost() << std::endl;
+  const auto q_sol = result.GetSolution(ik.q());
+  // cout << "  q_sol = " << q_sol.transpose() << endl;
+  VectorXd q_sol_normd(n_q);
+  q_sol_normd << q_sol.head(4).normalized(), q_sol.tail(n_q - 4);
+  // cout << "  q_sol_normd = " << q_sol_normd << endl;
+  q_ik_guess = q_sol_normd;
+  q_init_guess = q_sol_normd;
+  return q_init_guess;
 }
 
 }  // namespace goldilocks_models

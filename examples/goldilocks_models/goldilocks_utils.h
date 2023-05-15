@@ -50,6 +50,7 @@ class InnerLoopSetting {
   std::string init_file;
 
   bool com_accel_constraint;
+  double mid_foot_height;
 
   // For testing
   bool cubic_spline_in_rom_constraint;

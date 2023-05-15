@@ -220,6 +220,7 @@ DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
 DEFINE_bool(swing_foot_cublic_spline, false, "");
 DEFINE_bool(zero_ending_pelvis_angular_vel, false, "");
 DEFINE_bool(com_at_center_of_support_polygon, false, "");
+DEFINE_double(mid_foot_height, 0.05, "");
 
 DEFINE_bool(only_update_wrt_main_cost, false, "");
 DEFINE_bool(use_envelope_theorem_to_get_gradient, true, "");
@@ -1947,6 +1948,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.use_ipopt = FLAGS_ipopt;
   inner_loop_setting.directory = dir;
   inner_loop_setting.com_accel_constraint = FLAGS_com_accel_constraint;
+  inner_loop_setting.mid_foot_height = FLAGS_mid_foot_height;
   inner_loop_setting.cubic_spline_in_rom_constraint =
       FLAGS_cubic_spline_in_rom_constraint;  // for testing
   inner_loop_setting.swing_foot_cublic_spline_constraint =

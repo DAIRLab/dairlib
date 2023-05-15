@@ -3021,7 +3021,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     if (setting.cubic_spline_in_joint_space) {
       // 1. hip pitch and knee
       double mid_knee_joint_offset =
-          -0.3;  // negative joint angle means retraction
+          -setting.mid_foot_height *
+          6;  // negative joint angle means retraction
+              // The number 6 is a very rough guess
       int swing_hip_pitch_joint_idx = pos_map.at("hip_pitch_right");
       int swing_knee_joint_idx = pos_map.at("knee_right");
       for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
@@ -3047,7 +3049,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       }
     } else {
       // Cubic spline constraint in task space (3D cosntraint)
-      double mid_foot_height = 0.05;
+      double mid_foot_height = setting.mid_foot_height;
       bool include_vel = false;  // we don't need to impose constraint on vel
       // because the way points are timestamped.
       for (int i = 1; i < setting.n_node - 1; i += constraint_sample_spacing) {
@@ -3128,7 +3130,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     for (int index = 0; index < num_time_samples[0] - 1; index++) {
       double h_min = 0;
       if (index == int(num_time_samples[0] / 2)) {
-        h_min = 0.05;  // 5 centimeter high in the mid point
+        h_min = setting.mid_foot_height;  // 5 centimeter high in the mid point
       }
 
       double h_max = std::numeric_limits<double>::infinity();

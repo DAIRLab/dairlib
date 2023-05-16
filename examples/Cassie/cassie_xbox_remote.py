@@ -66,7 +66,7 @@ def main():
     joystick.init()
 
     done = False
-    max_speed = 1.5
+    max_speed = 2.5
     ramp_up = np.arange(0, max_speed, 0.025)
     stay = max_speed * np.ones(500)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01))
@@ -112,7 +112,7 @@ def main():
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        radio_msg.channel[0] = -joystick.get_axis(1)
+        radio_msg.channel[0] = speeds[i]
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)

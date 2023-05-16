@@ -17,11 +17,11 @@ def main():
     clock = pygame.time.Clock()
 
     done = False
-    max_speed = 1.4
+    max_speed = 1.6
     dt = .020
-    acceleration = 2.0 # m/s^2
+    acceleration = 1.0 # m/s^2
     deceleration = 0.5 # m/s^2
-    max_speed_duration = 9
+    max_speed_duration = 10
     velocity_step_up = acceleration * dt
     velocity_step_down = deceleration * dt
     ramp_up = np.arange(0, max_speed, velocity_step_up)

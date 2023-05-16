@@ -96,7 +96,7 @@ def main():
             robot_output, t_x_slice, plant, context, "pelvis")
         mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
         plot.tight_layout()
-        # plot.save_fig('running_speed_plot_kd0.png')
+        plot.save_fig('running_speed_plot_ii.png')
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:

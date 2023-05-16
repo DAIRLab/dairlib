@@ -1,22 +1,22 @@
 # LCM channels to read data from
-channel_x: "CASSIE_STATE_DISPATCHER"
-#channel_x: "CASSIE_STATE_SIMULATION"
+#channel_x: "CASSIE_STATE_DISPATCHER"
+channel_x: "CASSIE_STATE_SIMULATION"
 channel_u: "OSC_RUNNING"
 channel_osc: "OSC_DEBUG_RUNNING"
 use_archived_lcmtypes: false
-use_default_styling: false
+use_default_styling: true
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 2
+start_time: 3
 #duration: 0.47
-duration: 50
+duration: 20
 
 # Plant properties
 use_springs: true
 use_floating_base: true
 
 # Desired RobotOutput plots
-plot_floating_base_positions: true
+plot_floating_base_positions: false
 plot_floating_base_velocities: false
 plot_floating_base_velocity_body_frame: true
 plot_joint_positions: false

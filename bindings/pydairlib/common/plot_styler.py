@@ -12,7 +12,7 @@ class PlotStyler():
   def set_default_styling():
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 6
+    matplotlib.rcParams['figure.figsize'] = 4, 6
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 20}
     matplotlib.rc('font', **font)
@@ -33,7 +33,7 @@ class PlotStyler():
     # self.directory = None
     self.dpi = 200
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    matplotlib.rcParams['figure.figsize'] = 12, 7
+    matplotlib.rcParams['figure.figsize'] = 10, 8
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
     if figure is None:

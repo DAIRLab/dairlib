@@ -221,27 +221,28 @@ def main():
         taskspace_vel_error_osc[i] = J_y @ (vel_desired[i] - vel_corrected[i])
         vel_corrected_blend[i] = vel_actual[i] + alpha * vel_correction[i]
     # t_plot = robot_output['t_x'][start_idx:end_idx]
-
+    plot_styler.PlotStyler.set_default_styling()
     gen_vel_plot = plot_styler.PlotStyler()
     gen_vel_plot.plot(t, vel_desired[:, selected_joint_idxs],
+                      title='Desired Velocities',
                       xlabel='time (s)', ylabel='velocity (m/s)')
-    gen_vel_plot.plot(t, vel_actual[:, selected_joint_idxs],
-                      xlabel='time (s)', ylabel='velocity (m/s)')
-    gen_vel_plot.plot(t, vel_desired[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
-                      xlabel='time (s)', ylabel='velocity (m/s)', grid=False)
-    gen_vel_plot.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
+    # gen_vel_plot.plot(t, vel_actual[:, selected_joint_idxs],
+    #                   xlabel='time (s)', ylabel='velocity (m/s)')
+    # gen_vel_plot.plot(t, vel_desired[:, selected_joint_idxs] - vel_actual[:, selected_joint_idxs],
+    #                   xlabel='time (s)', ylabel='velocity (m/s)', grid=False)
+    # gen_vel_plot.add_legend(['Desired Velocity', 'Measured Velocity', 'Velocity Error'])
     ylim = gen_vel_plot.fig.gca().get_ylim()
-    # gen_vel_plot.save_fig('gen_vel_plot.png')
+    gen_vel_plot.save_fig('gen_vel_plot.png')
     # ps.save_fig('generalized_velocities_around_impact.png')
 
     proj_vel_plot = plot_styler.PlotStyler()
     proj_vel_plot.plot(t, vel_proj_desired,
-                       title='Constant Impact-Invariant Projection',
+                       title='Projected Desired Velocities',
                        xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
-    proj_vel_plot.plot(t, vel_proj_actual,
-                       title='Constant Impact-Invariant Projection',
-                       xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
-    # proj_vel_plot.save_fig('proj_vel_plot.png')
+    # proj_vel_plot.plot(t, vel_proj_actual,
+    #                    title='Constant Impact-Invariant Projection',
+    #                    xlabel='time (s)', ylabel='velocity (m/s)', ylim=ylim)
+    proj_vel_plot.save_fig('proj_vel_plot.png')
 
     corrected_vel_plot = plot_styler.PlotStyler()
     corrected_vel_plot.plot(t, vel_corrected,

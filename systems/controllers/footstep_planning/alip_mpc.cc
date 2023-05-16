@@ -245,6 +245,55 @@ void AlipMPC::MakeDynamicsConstraints() {
   }
 }
 
+
+double AlipMPC::GetTerminalCost() const {
+  VectorXd res = VectorXd::Zero(1);
+  terminal_cost_->Eval(
+      solution_.first.GetSolution(xx_.back().tail<4>()),
+      &res
+  );
+  return res(0);
+}
+
+double AlipMPC::GetRunningCost() const {
+  VectorXd res = VectorXd::Zero(1);
+  double cost = 0;
+  for (int i = 1; i < nmodes_; i++) {
+    auto xx = solution_.first.GetSolution(xx_.at(i));
+    for (int k = 0; k < nknots_ - 1; k++) {
+      tracking_costs_.at(i-1).at(k).evaluator()->Eval(
+          GetStateAtKnot(xx, k), &res);
+      cost += res(0);
+    }
+  }
+  return cost;
+}
+
+double AlipMPC::GetInputCost() const {
+  VectorXd res = VectorXd::Zero(1);
+  double cost = 0;
+  for (int i = 0; i < nmodes_; i++) {
+    input_costs_.at(i).evaluator()->Eval(
+        solution_.first.GetSolution(uu_.at(i)), &res);
+    cost += res(0);
+  }
+  return cost;
+}
+
+double AlipMPC::GetSoftConstraintCost() const {
+  VectorXd res = VectorXd::Zero(1);
+  double cost = 0;
+  for (int i = 1; i < nmodes_; i++) {
+    auto ee = solution_.first.GetSolution(ee_.at(i-1));
+    for (int k = 0; k < nknots_; k++) {
+      soft_constraint_cost_.at(i-1).at(k).evaluator()->Eval(
+          ee.segment<2>(2*k), &res);
+      cost += res(0);
+    }
+  }
+  return cost;
+}
+
 void AlipMPC::MakeInitialFootstepConstraint() {
   initial_foot_c_ = prog_->AddLinearEqualityConstraint(
       Matrix3d::Identity(), Vector3d::Zero(), pp_.at(0)).evaluator();
@@ -285,10 +334,13 @@ void AlipMPC::MakeWorkspaceConstraints() {
   I2.rightCols(2) = -MatrixXd::Identity(2, 2);
 
   for (int n = 1; n < nmodes_; n++) {
+    vector<Binding<QuadraticCost>> soft_constraint_this_mode;
     ee_.push_back(prog_->NewContinuousVariables(2 * nknots_));
     for (int k = 0; k < nknots_; k++) {
       const auto& ee = ee_.at(n-1).segment(2*k, 2);
-      prog_->AddQuadraticErrorCost(50000 * MatrixXd::Identity(2,2), bb, ee);
+      soft_constraint_this_mode.push_back(
+          prog_->AddQuadraticErrorCost(50000 * MatrixXd::Identity(2,2), bb, ee)
+      );
       prog_->AddLinearConstraint(
           I1,
           -numeric_limits<double>::infinity() * Vector2d::Ones(),
@@ -300,6 +352,7 @@ void AlipMPC::MakeWorkspaceConstraints() {
           Vector2d::Zero(),
           {GetStateAtKnot(xx_.at(n), k).head<2>(), ee});
     }
+    soft_constraint_cost_.push_back(soft_constraint_this_mode);
   }
 }
 

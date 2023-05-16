@@ -213,6 +213,11 @@ class AlipMPC {
   drake::solvers::MathematicalProgram *get_prog() { return prog_.get_mutable(); }
   const drake::solvers::MathematicalProgramResult& get_solution() const { return solution_.first; }
 
+  double GetTerminalCost() const;
+  double GetRunningCost() const;
+  double GetInputCost() const;
+  double GetSoftConstraintCost() const;
+
  protected:
 
   // problem data:
@@ -294,6 +299,7 @@ class AlipMPC {
   std::shared_ptr<QuadraticCost> terminal_cost_;
   std::shared_ptr<QuadraticCost> footstep_position_regularization_ = nullptr;
   vector<Binding<QuadraticCost>> input_costs_{};
+  vector<vector<Binding<QuadraticCost>>> soft_constraint_cost_{};
   vector<vector<Binding<QuadraticCost>>> tracking_costs_{};
 
   // Bookkeeping

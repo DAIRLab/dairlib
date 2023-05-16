@@ -122,7 +122,7 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
   }
   xd_ = xd;
   Q_ = Q;
-  Qf_ = alip_utils::SolveDareTwoStep(
+  Qf_ = 0.5 * alip_utils::SolveDareTwoStep(
       Q, H_, m_, td_.back(), Tds_, nknots_, reset_discretization_);
   MakeTerminalCost();
 }

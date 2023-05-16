@@ -824,8 +824,13 @@ def main():
       return
 
   # Pick the start and end time
-  check_only_one_window = not is_hardware
-  list_of_start_time_end_time_pair, list_of_ave_tasks, list_of_start_time = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, check_only_one_window)
+  if is_hardware:
+    list_of_start_time_end_time_pair, list_of_ave_tasks, list_of_start_time = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, False)
+  else:
+    # 1. check_only_one_window_for_sim
+    # list_of_start_time_end_time_pair, list_of_ave_tasks, list_of_start_time = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, True)
+    # 2. pick the best window for sim
+    list_of_start_time_end_time_pair, list_of_ave_tasks, list_of_start_time = GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug, False, True)
 
   # Set start and end time manually
   # list_of_start_time_end_time_pair = [(0.001, 0.35)]

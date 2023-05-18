@@ -1,0 +1,325 @@
+group "2.0.default-controller" {
+    cmd "1.original-walking-controller" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller(with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with radio" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with virtual radio" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_SIMULATION --channel_u=ROM_WALKING --spring_model=true --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
+        host = "localhost";
+    }
+    cmd "1.original-walking-controller; with virtual radio (with dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/run_osc_walking_controller  --channel_x=CASSIE_STATE_DISPATCHER --channel_u=ROM_WALKING --spring_model=true --gains_filename=\"examples/Cassie/osc/osc_walking_gains_mujoco.yaml\"  --use_radio=true --cassie_out_channel=CASSIE_OUTPUT_ONLY_RADIO";
+        host = "localhost";
+    }
+}
+
+group "1.rom-space-controller" {
+    cmd "2.1.rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false";
+        host = "localhost";
+    }
+    cmd "3.2.rom-planner" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --n_step=2 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --log_solver_info=false  --knots_per_mode=4";
+        host = "localhost";
+    }
+    cmd "3.1.rom-planner (short time limit)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5 --spring_model=false";
+        host = "localhost";
+    }
+    cmd "3.3.rom-planner (debug a given solve_idx)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --zero_touchdown_impact=true --feas_tol=1e-2 --n_step=2 --log_solver_info=true --debug_mode=true --opt_tol=1e-2 --use_ipopt=false --knots_per_mode=10  --solve_idx_for_read_from_file=80";
+        host = "localhost";
+    }
+    cmd "2.2.rom-walking-controller(with dispatcher)" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --channel_x=CASSIE_STATE_DISPATCHER  --close_sim_gap=false";
+        host = "localhost";
+    }
+    cmd "3.1.rom-planner (short time limit)(with dispatcher)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=5";
+        host = "localhost";
+    }
+    cmd "3.2.rom-planner (with dispatcher)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --n_step=2 --zero_touchdown_impact=true --feas_tol=1e-2 --use_ipopt=true --log_solver_info=false  --channel_x=CASSIE_STATE_DISPATCHER  --knots_per_mode=10";
+        host = "localhost";
+    }
+}
+
+group "1.0.dispatchers" {
+    cmd "2.dispatcher-robot-out (lcm, floating-base)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true";
+        host = "localhost";
+    }
+    cmd "1.dispatcher-robot-in" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --control_channel_name_1=ROM_WALKING";
+        host = "localhost";
+    }
+    cmd "2.dispatcher-robot-out (lcm, floating-base) (w init pelvis vel)" {
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_out --port 25001 --simulation=true --pelvis_y_vel=0.3";
+        host = "localhost";
+    }
+}
+
+group "2.1.ik-controller" {
+    cmd "1.1.optimal-rom-walking-controller" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=true";
+        host = "localhost";
+    }
+    cmd "1.2.rom-planner" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=3 --time_limit=2 ";
+        host = "localhost";
+    }
+    cmd "1.2.rom-planner (short time limit)" {
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --use_ipopt=false --fix_duration=true --knots_per_mode=10 --n_step=2 --time_limit=0.21 --log_solver_info=false";
+        host = "localhost";
+    }
+    cmd "1.3.ik_process" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_ik_process";
+        host = "localhost";
+    }
+}
+
+group "6.attic" {
+    cmd "1.simulator (with init state)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false";
+        host = "localhost";
+    }
+    cmd "2.simulator (with init state, mirrored robot)" {
+        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false --start_with_right_stance=true";
+        host = "localhost";
+    }
+}
+
+group "3.drake-simulator" {
+    cmd "0.simulator" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim_w_ground_incline --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=0 --target_realtime_rate=1 --pelvis_y_vel=0 --toe_spread=0.05 --init_yaw=0 --spring_model=false";
+        host = "localhost";
+    }
+    cmd "0.simulator(realtime)" {
+        exec = "bazel-bin/examples/Cassie/multibody_sim_w_ground_incline --floating_base=true --channel_u=ROM_WALKING --init_height=1 --pause_second=4 --target_realtime_rate=1 --spring_model=true --end_time=10000 --pelvis_y_vel=0 --toe_spread=0.05";
+        host = "localhost";
+    }
+    cmd "1.joystick" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
+}
+
+group "0.operator" {
+    cmd "1.state-visualizer-floating (from simulation)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_SIMULATION --lcm_url_port=7667";
+        host = "localhost";
+    }
+    cmd "0.drake-director" {
+        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image   --script examples/Cassie/director_scripts/show_time.py";
+        host = "localhost";
+    }
+    cmd "2.0. cassie planner pose (multi-pose)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=0";
+        host = "localhost";
+    }
+    cmd "2.2. cassie planner pose (multi-pose); files with debug_ prefix" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --solve_idx=-1  --global=true";
+        host = "localhost";
+    }
+    cmd "2.1. cassie planner pose (multi-pose); files with snopt suffix" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false  --snopt_suffix=true --solve_idx=126";
+        host = "localhost";
+    }
+    cmd "2.0. cassie planner pose (multi-pose); global frame (1 solve)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --solve_idx=0";
+        host = "localhost";
+    }
+    cmd "2.0. cassie planner pose (multi-pose); global frame (multiple solves)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=.1 --solve_idx=200 --solve_idx_end=1000";
+        host = "localhost";
+    }
+    cmd "2.4. cassie planner pose (multi-pose); regularization poses" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --regularization_pose=true --only_start_and_end_poses=false --view_multipose_at_once=true --global=true --solve_idx=0";
+        host = "localhost";
+    }
+    cmd "2.3. lipm state and input (need to run outside procman)" {
+        exec = "python examples/goldilocks_models/planning/visualization/draw_lipm.py 0";
+        host = "localhost";
+    }
+    cmd "1.state-visualizer-floating (from dispatcher)" {
+        exec = "bazel-bin/examples/Cassie/visualizer --floating_base=true --channel=CASSIE_STATE_DISPATCHER";
+        host = "localhost";
+    }
+    cmd "2.0. cassie planner pose (multi-pose); global frame (all solves)" {
+        exec = "./bazel-bin/examples/goldilocks_models/planning/visualization/visualize_FoM_pose_MBP --robot_option=1 --view_multipose_at_once=true --only_start_and_end_poses=false --global=true --realtime_rate=1 --solve_idx=200 --visualize_all_solves=true";
+        host = "localhost";
+    }
+    cmd "3.0. ROM traj visualizer" {
+        exec = "bazel-bin/examples/goldilocks_models/planning/rom_trajopt_plotter 567";
+        host = "localhost";
+    }
+    cmd "4.1. cassie init pose visualizer" {
+        exec = "bazel-bin/examples/goldilocks_models/planning/visualization/visualize_single_FoM_pose --file_name=80_x_init.csv";
+        host = "localhost";
+    }
+    cmd "4.0. hybrid ROM traj visualizer" {
+        exec = "bazel-bin/examples/goldilocks_models/planning/visualization/hybrid_rom_trajopt_plotter 0";
+        host = "localhost";
+    }
+}
+
+group "5.lcm-tools" {
+    cmd "1.signal-scope" {
+        exec = "bazel-bin/signalscope/signal-scope";
+        host = "localhost";
+    }
+    cmd "0.lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy  --lcm-url=udpm://239.255.76.67:7667";
+        host = "localhost";
+    }
+    cmd "2. lcm-logger" {
+        exec = "lcm-logger --lcm-url=udpm://239.255.76.67:7667 -f /home/yuming/Desktop/temp/log";
+        host = "localhost";
+    }
+}
+
+group "1.rom-space-controller-with-init-traj" {
+    cmd "2.1.rom-walking-controller (w init)" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --init_traj_file_name=0_rom_trajectory --get_swing_foot_from_planner=true --close_sim_gap=false";
+        host = "localhost";
+    }
+    cmd "2.2.rom-planner (w init)" {
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=true --knots_per_mode=4 --time_limit=0.1 --switch_to_snopt_after_first_loop=false";
+        host = "localhost";
+    }
+    cmd "2.1.rom-walking-controller (w init) (with dispatcher)" {
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --init_traj_file_name=0_rom_trajectory --channel_x=CASSIE_STATE_DISPATCHER --get_swing_foot_from_planner=true --close_sim_gap=false";
+        host = "localhost";
+    }
+    cmd "2.2.rom-planner (w init) (with dispatcher)" {
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true  --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=true --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=4 --time_limit=0.1 --switch_to_snopt_after_first_loop=false";
+        host = "localhost";
+    }
+    cmd "2.2.rom-planner (w init) (with dispatcher) (test RL rollout)" {
+        exec = " ./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --fix_duration=true  --zero_touchdown_impact=true --feas_tol=1e-2  --n_step=2 --log_solver_info=false --log_data=true --init_file=0_z.csv --use_ipopt=true --channel_x=CASSIE_STATE_DISPATCHER --knots_per_mode=4 --time_limit=0.1 --switch_to_snopt_after_first_loop=false --is_RL_training=true --pelvis_height=0.95 --path_model_params=/home/yuming/workspace/dairlib_data/goldilocks_models/test/1_theta_yddot.csv --path_var=/home/yuming/workspace/dairlib_data/goldilocks_models/test/1_var.csv";
+        host = "localhost";
+    }
+}
+
+group "4.mujoco-simulator" {
+    cmd "0. cassie-mujoco" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -v -s";
+        host = "localhost";
+    }
+    cmd "0. cassie-mujoco (no mujoco window)" {
+        exec = "./../cassie-mujoco-sim/test/cassiesim -r -s";
+        host = "localhost";
+    }
+}
+
+
+script "run-original-walking" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.original-walking-controller";
+    start cmd "0.simulator";
+}
+
+script "run-original-walking-w-virtual-radio" {
+    stop cmd "1.original-walking-controller; with virtual radio";
+    stop cmd "0.simulator";
+    stop cmd "1.joystick";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "1.original-walking-controller; with virtual radio";
+    start cmd "0.simulator";
+    start cmd "1.joystick";
+}
+
+script "run-rom-walking-drake" {
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.1.rom-planner (short time limit)";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+}
+
+script "run-rom-walking-fast-turning" {
+    stop group "0.operator";
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "3.drake-simulator";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.1.rom-planner (short time limit)";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    start cmd "1.joystick";
+}
+
+script "run-rom-walking-mujoco" {
+    stop group "0.operator";
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "4.mujoco-simulator";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.2.rom-planner";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    wait ms 500;
+    stop cmd "3.2.rom-planner";
+    stop cmd "2.1.rom-walking-controller";
+    stop cmd "0.simulator";
+    stop group "0.operator";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "2.1.rom-walking-controller (w init) (with dispatcher)";
+    start cmd "2.2.rom-planner (w init) (with dispatcher)";
+    start cmd "1.joystick";
+    wait ms 500;
+    start cmd "0. cassie-mujoco";
+}
+
+script "run-rom-walking-mujoco-test-RL" {
+    stop group "0.operator";
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "4.mujoco-simulator";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.2.rom-planner";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    wait ms 500;
+    stop cmd "3.2.rom-planner";
+    stop cmd "2.1.rom-walking-controller";
+    stop cmd "0.simulator";
+    stop group "0.operator";
+    start cmd "1.dispatcher-robot-in";
+    start cmd "2.dispatcher-robot-out (lcm, floating-base)";
+    start cmd "2.1.rom-walking-controller (w init) (with dispatcher)";
+    start cmd "2.2.rom-planner (w init) (with dispatcher) (test RL rollout)";
+    start cmd "1.joystick";
+    wait ms 500;
+    start cmd "0. cassie-mujoco";
+}
+
+script "run-rom-walking-test" {
+    restart cmd "2.1.optimal-rom-walking-controller";
+    wait ms 200;
+    restart cmd "2. lcm-logger";
+    start cmd "0.simulator";
+}
+
+script "start-operator-simulation-floating-base" {
+    stop cmd "1.state-visualizer-floating (from simulation)";
+    stop cmd "0.drake-director";
+    start cmd "0.drake-director";
+    wait ms 3000;
+    start cmd "1.state-visualizer-floating (from simulation)";
+}

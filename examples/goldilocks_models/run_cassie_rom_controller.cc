@@ -234,6 +234,13 @@ int DoMain(int argc, char* argv[]) {
     }
   }
 
+  if (gains.use_radio && FLAGS_hardware) {
+    // Just in case
+    DRAKE_DEMAND(std::abs(gains.vel_scale_rot) <= 0.5);
+    DRAKE_DEMAND(std::abs(gains.vel_scale_trans_sagital) < 0.6);
+    DRAKE_DEMAND(std::abs(gains.vel_scale_trans_lateral) < 0.2);
+  }
+
   if (FLAGS_stride_length > -100) {
     gains.set_constant_walking_speed = true;
     gains.constant_step_length_x = FLAGS_stride_length;

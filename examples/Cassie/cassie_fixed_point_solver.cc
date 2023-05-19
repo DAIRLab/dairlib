@@ -333,7 +333,7 @@ void BodyPointVelConstraint::EvaluateConstraint(
 
 bool CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const VectorXd& pelvis_xy_vel, double height, double mu,
+    const VectorXd& pelvis_xy_vel, double height, double yaw_rate, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,
     double ground_incline, const VectorXd& q_desired, const VectorXd& u_desired,
     const VectorXd& lambda_desired, VectorXd* q_result, VectorXd* v_result,
@@ -439,7 +439,8 @@ bool CassieInitStateSolver(
 
   program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
   program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wz")));
+  program.AddBoundingBoxConstraint(yaw_rate, yaw_rate,
+                                   v(vel_map.at("base_wz")));
 
   program.AddBoundingBoxConstraint(pelvis_xy_vel(0), pelvis_xy_vel(0),
                                    v(vel_map.at("base_vx")));

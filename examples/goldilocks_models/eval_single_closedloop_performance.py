@@ -187,7 +187,7 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
 
 
 def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
-    check_only_one_window=False, pick_single_best_window=False):
+    check_only_one_window=False, pick_single_most_steady_window=False):
   list_of_start_time_end_time_pair = []
   list_of_ave_tasks = []
   list_of_start_time = []
@@ -272,7 +272,7 @@ def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
   is_steady_state = len(start_end_time_list) > 0
   if is_steady_state:
     print("best start time = ", start_time_list[np.argmin(max_diff_list).item()])
-    if pick_single_best_window:
+    if pick_single_most_steady_window:
       # We pick the window that has the smallest steady state error
       idx = np.argmin(max_diff_list).item()
       list_of_start_time_end_time_pair.append(start_end_time_list[idx])

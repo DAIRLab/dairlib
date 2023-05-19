@@ -291,7 +291,7 @@ int do_main(int argc, char* argv[]) {
 
     VectorXd pelvis_xy_vel(2);
     pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
-    CassieInitStateSolver(plant_for_solver, pelvis_xy_vel, FLAGS_init_height,
+    CassieInitStateSolver(plant_for_solver, pelvis_xy_vel, FLAGS_init_height, 0,
                           mu_fp, min_normal_fp, true, toe_spread,
                           FLAGS_ground_incline, q_init, u_init, lambda_init,
                           &q_init, &v_init, &u_init, &lambda_init);

@@ -96,6 +96,7 @@ DEFINE_double(init_yaw, 0,
               "Initial starting yaw angle of the pelvis (in degrees)");
 DEFINE_double(pelvis_x_vel, 0, "external disturbance for testing");
 DEFINE_double(pelvis_y_vel, 0.3, "for stability");
+DEFINE_double(turning_rate, 0, "");
 DEFINE_double(toe_spread, 0.15, "");
 
 // Terrain
@@ -328,9 +329,10 @@ int do_main(int argc, char* argv[]) {
       VectorXd pelvis_xy_vel(2);
       pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
       bool success = CassieInitStateSolver(
-          plant_for_solver, pelvis_xy_vel, FLAGS_init_height, mu_fp,
-          min_normal_fp, true, toe_spread, FLAGS_ground_incline, q_init, u_init,
-          lambda_init, &q_init, &v_init, &u_init, &lambda_init);
+          plant_for_solver, pelvis_xy_vel, FLAGS_init_height,
+          FLAGS_turning_rate, mu_fp, min_normal_fp, true, toe_spread,
+          FLAGS_ground_incline, q_init, u_init, lambda_init, &q_init, &v_init,
+          &u_init, &lambda_init);
       if (!FLAGS_path_init_pose_success.empty()) {
         std::cout << "q_init = \n" << q_init.transpose() << std::endl;
         std::cout << "v_init = \n" << v_init.transpose() << std::endl;

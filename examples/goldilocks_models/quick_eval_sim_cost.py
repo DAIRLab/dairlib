@@ -38,7 +38,7 @@ print("temp_output_dir = ", temp_output_dir)
 cmd = "rm -rf " + temp_output_dir
 RunCommand(cmd, True)
 
-cmd = "bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance %s%s ROM_WALKING true %s %d" % (temp_log_path, log_name, temp_output_dir, rom_idx)
+cmd = "bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path=%s --controller_channel=ROM_WALKING --hardware --eval_dir=%s --rom_iter_idx=%d" % (temp_log_path + log_name, temp_output_dir, rom_idx)
 RunCommand(cmd, True)
 
 # print("\n(t, t_rt_walking_switch): (stride_length, pelvis_height, torque_cost, cost)")

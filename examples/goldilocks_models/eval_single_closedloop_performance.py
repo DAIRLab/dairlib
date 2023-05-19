@@ -3,6 +3,7 @@ import os
 
 import yaml
 import lcm
+import argparse
 import math
 import scipy
 from scipy.interpolate import interp1d
@@ -22,6 +23,8 @@ from pydairlib.common import FindResourceOrThrow
 import pydrake.common as mut
 
 from py_utils import FindVarValueInString
+
+from scipy.spatial.transform import Rotation as R
 
 
 # WorldYawViewFrame is directly translated from c++ code
@@ -95,9 +98,7 @@ def GetWalkingControllerSwitchTime(fsm, t_osc_debug):
 
 
 ### Check if it's close to steady state
-def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
-    Print=True):
-  is_steady_state = True
+def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance):
 
   t_x_touchdown_indices = []
   for time in td_times:
@@ -113,47 +114,71 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
     raise ValueError("there is a bug somewhere")
 
   # 1. stride length (expressed wrt pelvis frame)
-  pelvis_xy_at_td = np.zeros((n_poses, 2))
-  for i in range(n_poses):
-    pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
-
-  step_lengths = np.diff(pelvis_xy_at_td, axis=0)
-  for i in range(n_step):
-    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
-    step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant, context) @ step_lengths[i, :]
-  step_lengths_x = step_lengths[:, 0]
-  step_lengths_y = step_lengths[:, 1]
-
-  # 1a. stride length in x
-  min_step_length = min(step_lengths_x)
-  max_step_length = max(step_lengths_x)
-  max_step_diff = abs(max_step_length - min_step_length)
-  if abs(max_step_length - min_step_length) > step_length_variation_tol:
-    is_steady_state = False
-    if Print:
-      msg = msg_first_column + \
-            ": not close to steady state. min and max stride length are " + \
-            "%.3f, %.3f. " % (min_step_length, max_step_length) + \
-            "tolerance is " + str(step_length_variation_tol) + "\n"
-      PrintAndLogStatus(msg)
-
-  # 1b. stride length in y
-  # Since the period in the y direction is 2 step, we should compare two steps
-  # instead of single step
-  step_lengths_y_2steps = np.zeros(n_step - 1)
-  for i in range(n_step - 1):
-    step_lengths_y_2steps[i] = step_lengths_y[i] + step_lengths_y[i+1]
-  max_side_stepping = max(abs(step_lengths_y_2steps))
-  if max_side_stepping > side_stepping_tol:
-    is_steady_state = False
-    if Print:
-      msg = msg_first_column + \
-            ": not close to steady state. max side stepping is " + \
-            "%.3f. " % max_side_stepping + \
-            "tolerance is " + str(side_stepping_tol) + "\n"
-      PrintAndLogStatus(msg)
+  is_steady_state, max_pelvis_xy_diff, stride_lengths = CheckSteadyStateStrideLengthWithTurning(n_poses, t_x_touchdown_indices, x) if turning else CheckSteadyStateStrideLengthWithoutTurning(n_poses, t_x_touchdown_indices, x)
+  if not is_steady_state:
+    return False, None, None
 
   # 2. pelvis height
+  is_steady_state, max_pelvis_height_diff, pelvis_z_at_td = CheckSteadyStatePelvisHeight(
+    n_poses, start_with_left_stance, t_x_touchdown_indices, x)
+  if not is_steady_state:
+    return False, None, None
+
+  # 3. turning angles
+  is_steady_state, max_pelvis_yaw_diff, turning_rates = CheckSteadyStateTurningRate(
+    n_poses, t_x_touchdown_indices, x)
+  if not is_steady_state:
+    return False, None, None
+
+  # Save average tasks
+  ave_stride_length = np.average(stride_lengths)
+  ave_pelvis_height = np.average(pelvis_z_at_td)
+  ave_turning_rate = np.average(turning_rates)
+  ave_tasks = {"ave_stride_length": ave_stride_length,
+               "ave_pelvis_height": ave_pelvis_height,
+               "ave_turning_rate": ave_turning_rate}
+
+  return is_steady_state, max_pelvis_xy_diff + max_pelvis_height_diff + max_pelvis_yaw_diff, ave_tasks
+
+
+
+  # TODO: still need to test `CheckSteadyStateTurningRate`
+def CheckSteadyStateTurningRate(n_poses, t_x_touchdown_indices, x):
+  is_steady_state = True
+
+  pelvis_quat_at_td = np.zeros((n_poses, 4))
+  for i in range(n_poses):
+    pelvis_quat_at_td[i] = x[t_x_touchdown_indices[i], 0:4]
+
+  # We assume small roll and pitch
+  yaw_angles = np.zeros(n_step)
+  for i in range(n_step):
+    r1 = R.from_quat([pelvis_quat_at_td[i,1], pelvis_quat_at_td[i,2], pelvis_quat_at_td[i,3], pelvis_quat_at_td[i,0]])
+    r2 = R.from_quat([pelvis_quat_at_td[i+1,1], pelvis_quat_at_td[i+1,2], pelvis_quat_at_td[i+1,3], pelvis_quat_at_td[i+1,0]])
+    yaw_angles[i] = (r2 * r1.inv()).as_rotvec()[2]
+
+  # Since the period in the y direction is 2 step, we should compare two steps
+  # instead of single step
+  yaw_angles_2steps = np.zeros(n_step - 1)
+  for i in range(n_step - 1):
+    yaw_angles_2steps[i] = yaw_angles[i] + yaw_angles[i + 1]
+  max_pelvis_yaw_diff = abs(max(yaw_angles_2steps) - min(yaw_angles_2steps))
+  if max_pelvis_yaw_diff > pelvis_yaw_variation_tol:
+    is_steady_state = False
+    if log_status:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max yaw_angles are " + \
+            "%.3f, %.3f. " % (min(yaw_angles_2steps), max(yaw_angles_2steps)) + \
+            "tolerance is " + str(pelvis_yaw_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  return is_steady_state, max_pelvis_yaw_diff, yaw_angles_2steps / (2 * stride_period)
+
+
+def CheckSteadyStatePelvisHeight(n_poses, start_with_left_stance,
+    t_x_touchdown_indices, x):
+  is_steady_state = True
+
   pelvis_z_at_td = np.zeros(n_poses)
   left_stance = start_with_left_stance
   for i in range(n_poses):
@@ -165,25 +190,125 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance,
     pelvis_z_at_td[i] = x[t_x_touchdown_indices[i], 6] - foot_pos[2]
 
     left_stance = not left_stance
+
   min_pelvis_height = min(pelvis_z_at_td)
   max_pelvis_height = max(pelvis_z_at_td)
   max_pelvis_height_diff = abs(max_pelvis_height - min_pelvis_height)
   if abs(max_pelvis_height - min_pelvis_height) > pelvis_height_variation_tol:
     is_steady_state = False
-    if Print:
+    if log_status:
       msg = msg_first_column + \
             ": not close to steady state. min and max pelvis height are " + \
             str(min_pelvis_height) + ", " + str(max_pelvis_height) + \
             "tolerance is " + str(pelvis_height_variation_tol) + "\n"
       PrintAndLogStatus(msg)
 
-  # Save average tasks
-  ave_stride_length = np.average(step_lengths_x)
-  ave_pelvis_height = np.average(pelvis_z_at_td)
-  ave_tasks = {"ave_stride_length": ave_stride_length,
-               "ave_pelvis_height": ave_pelvis_height}
+  return is_steady_state, max_pelvis_height_diff, pelvis_z_at_td
 
-  return is_steady_state, max_step_diff + max_side_stepping + max_pelvis_height_diff, ave_tasks
+
+def CheckSteadyStateStrideLengthWithoutTurning(n_poses, t_x_touchdown_indices, x):
+  is_steady_state = True
+
+  pelvis_xy_at_td = np.zeros((n_poses, 2))
+  for i in range(n_poses):
+    pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
+
+  step_lengths = np.diff(pelvis_xy_at_td, axis=0)
+  for i in range(n_step):
+    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
+    step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
+      context) @ step_lengths[i, :]
+  step_lengths_x = step_lengths[:, 0]
+  step_lengths_y = step_lengths[:, 1]
+
+  # 1a. stride length in x
+  min_step_length = min(step_lengths_x)
+  max_step_length = max(step_lengths_x)
+  max_step_diff = abs(max_step_length - min_step_length)
+  if abs(max_step_length - min_step_length) > step_length_variation_tol:
+    is_steady_state = False
+    if log_status:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max stride length are " + \
+            "%.3f, %.3f. " % (min_step_length, max_step_length) + \
+            "tolerance is " + str(step_length_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  # 1b. stride length in y
+  # Since the period in the y direction is 2 step, we should compare two steps
+  # instead of single step
+  step_lengths_y_2steps = np.zeros(n_step - 1)
+  for i in range(n_step - 1):
+    step_lengths_y_2steps[i] = step_lengths_y[i] + step_lengths_y[i + 1]
+  max_side_stepping = max(abs(step_lengths_y_2steps))
+  if max_side_stepping > side_stepping_tol:
+    is_steady_state = False
+    if log_status:
+      msg = msg_first_column + \
+            ": not close to steady state. max side stepping is " + \
+            "%.3f. " % max_side_stepping + \
+            "tolerance is " + str(side_stepping_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  # `max_side_stepping` is the deviation from straight line walking
+  return is_steady_state, max_side_stepping + max_step_diff, step_lengths_x
+
+
+def CheckSteadyStateStrideLengthWithTurning(n_poses, t_x_touchdown_indices, x):
+  is_steady_state = True
+
+  pelvis_xy_at_td = np.zeros((n_poses, 2))
+  for i in range(n_poses):
+    pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
+
+  step_lengths = np.diff(pelvis_xy_at_td, axis=0)
+  for i in range(n_step):
+    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
+    step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
+      context) @ step_lengths[i, :]
+  step_lengths_x = step_lengths[:, 0]
+  step_lengths_y = step_lengths[:, 1]
+
+  # Since the period in the y direction is 2 step, we should compare two steps
+  # instead of single step
+  step_lengths_x_2steps = np.zeros(n_step - 1)
+  step_lengths_y_2steps = np.zeros(n_step - 1)
+  for i in range(n_step - 1):
+    step_lengths_x_2steps[i] = step_lengths_x[i] + step_lengths_x[i + 1]
+    step_lengths_y_2steps[i] = step_lengths_y[i] + step_lengths_y[i + 1]
+  difference_of_delta_pelvis_x = abs(max(step_lengths_x_2steps) - min(step_lengths_x_2steps))
+  difference_of_delta_pelvis_y = abs(max(step_lengths_y_2steps) - min(step_lengths_y_2steps))
+  if difference_of_delta_pelvis_x > step_length_variation_tol:
+    is_steady_state = False
+    if log_status:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max delta_pelvis_x are " + \
+            "%.3f, %.3f. " % (min(step_lengths_x_2steps), max(step_lengths_x_2steps)) + \
+            "tolerance is " + str(step_length_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+  if difference_of_delta_pelvis_y > step_length_variation_tol:
+    is_steady_state = False
+    if log_status:
+      msg = msg_first_column + \
+            ": not close to steady state. min and max delta_pelvis_y are " + \
+            "%.3f, %.3f. " % (min(step_lengths_y_2steps), max(step_lengths_y_2steps)) + \
+            "tolerance is " + str(step_length_variation_tol) + "\n"
+      PrintAndLogStatus(msg)
+
+  # Derive step length along the arc of turning and walking
+  delta_xy_local = np.diff(x[:, 4:6], axis=0)
+  for i in range(len(x)):
+    plant.SetPositionsAndVelocities(context, x[i, :])
+    delta_xy_local[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
+      context) @ delta_xy_local[i, :]
+
+  list_of_sum_delta_x_local = np.zeros(n_step)
+  for i in range(n_step):
+    list_of_sum_delta_x_local[i] = np.sum(delta_xy_local[t_x_touchdown_indices[i]:t_x_touchdown_indices[i+1]-1, 0])  # -1 in case the last index points to the last element of x (so would be out-of-index error for diff_x)
+
+  # TODO: still need to test `list_of_sum_delta_x_local` is computed correctly
+
+  return is_steady_state, difference_of_delta_pelvis_x + difference_of_delta_pelvis_y, list_of_sum_delta_x_local
 
 
 def GetSteadyStateWindows(x, t_x, u, t_u, fsm, t_osc_debug,
@@ -634,56 +759,64 @@ def EnforceSlashEnding(dir):
 
 
 def main():
-  # Script input arguments
-  global is_hardware
-  rom_iter_idx = -1
-  log_idx = -1
-  desried_sim_end_time = -1.0
-  spring_model = True
+  ### argument parser
+  parser = argparse.ArgumentParser()
 
-  file_path = sys.argv[1]
-  controller_channel = sys.argv[2]
-  is_hardware = (sys.argv[3].lower() == "true")
-  if is_hardware:
-    spring_model = True
-  else:
-    rom_iter_idx = int(sys.argv[3])  # doesn't affect cost calculation
-    log_idx = int(sys.argv[4])       # doesn't affect cost calculation
-    desried_sim_end_time = float(sys.argv[5])
-    spring_model = (sys.argv[6].lower() == "true")
+  # File I/O
+  parser.add_argument("--file_path", help="", default="", type=str, required=True)
+  parser.add_argument("--eval_dir", help="", default="", type=str)
 
-  global eval_dir
-  if is_hardware:
-    if len(sys.argv) >= 5:
-      eval_dir = sys.argv[4]
-    else:
-      eval_dir = "../dairlib_data/goldilocks_models/hardware_cost_eval/"
-  else:
-    if len(sys.argv) >= 8:
-      eval_dir = sys.argv[7]
-    else:
-      eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  parser.add_argument("--rom_iter_idx", help="", default=-1, type=int)  # doesn't affect cost calculation
+  parser.add_argument("--log_idx", help="", default=-1, type=int)       # doesn't affect cost calculation
 
-  if is_hardware:
-    if len(sys.argv) >= 6:
-      rom_iter_idx = int(sys.argv[5])
+  # Settings
+  parser.add_argument("--controller_channel", help="", default="", type=str, required=True)
+
+  parser.add_argument('--hardware', action='store_true')
+  parser.add_argument('--no-hardware', dest='hardware', action='store_false')
+  parser.set_defaults(hardware=False)
+
+  parser.add_argument('--spring_model', action='store_true')
+  parser.add_argument('--no-spring_model', dest='spring_model', action='store_false')
+  parser.set_defaults(spring_model=False)
+
+  parser.add_argument('--eval_for_RL', action='store_true')
+  parser.add_argument('--no-eval_for_RL', dest='eval_for_RL', action='store_false')
+  parser.set_defaults(eval_for_RL=False)
+
+  parser.add_argument('--turning', action='store_true')
+  parser.add_argument('--no-turning', dest='turning', action='store_false')
+  parser.set_defaults(turning=False)
+
+  # Steady state check (specific to simulation)
+  parser.add_argument("--desried_sim_end_time", help="", default=-1.0, type=float)
+
+  # Some parameters
+  parser.add_argument('--low_pass_filter', action='store_true')
+  parser.add_argument('--no-low_pass_filter', dest='low_pass_filter', action='store_false')
+  parser.set_defaults(low_pass_filter=True)
+
+  args = parser.parse_args()
+
 
   # Parameters
   global n_step
   n_step = 4  #1  # steps to average over
 
   # Steady state parameters
-  global step_length_variation_tol, side_stepping_tol, pelvis_height_variation_tol
-  if is_hardware:
+  global step_length_variation_tol, side_stepping_tol, pelvis_height_variation_tol, pelvis_yaw_variation_tol
+  if args.hardware:
     tighter_tolerance = True
     tol = 0.03 if tighter_tolerance else 0.05
     step_length_variation_tol = tol
     side_stepping_tol = tol
     pelvis_height_variation_tol = tol
+    pelvis_yaw_variation_tol = tol
   else:
     step_length_variation_tol = 0.02
     side_stepping_tol = 0.02
     pelvis_height_variation_tol = 0.05
+    pelvis_yaw_variation_tol = 0.05
 
   # Valid windows for hardware logs where the hoist did not pull on pelvis
   # The time is relative to when the walking controller starts walking (fsm >= 0)
@@ -693,10 +826,29 @@ def main():
   # windows_without_disturbances.append([70, 109])
   # windows_without_disturbances.append([111, 115])
 
-  # Some parameters
-  low_pass_filter = True
-  global eval_for_RL
-  eval_for_RL = False
+  global log_status
+  log_status = True
+
+  # Assign to local variables
+  global is_hardware, eval_dir, eval_for_RL, turning
+  is_hardware = args.hardware
+  eval_dir = args.eval_dir
+  eval_for_RL = args.eval_for_RL
+  file_path = args.file_path
+  controller_channel = args.controller_channel
+  spring_model = args.spring_model
+  rom_iter_idx = args.rom_iter_idx
+  log_idx = args.log_idx
+  desried_sim_end_time = args.desried_sim_end_time
+  low_pass_filter = args.low_pass_filter
+  turning = args.turning
+
+  # Some setups
+  if len(eval_dir) == 0:
+    if is_hardware:
+      eval_dir = "../dairlib_data/goldilocks_models/hardware_cost_eval/"
+    else:
+      eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
 
   # Read the controller parameters
   global parsed_yaml, stride_period
@@ -1048,6 +1200,12 @@ def SaveData(cost_dict, file_prefix, ave_tasks, start_time, start_time_rt_walkin
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str(ave_tasks["ave_pelvis_height"]))
+  f.close()
+
+  path = eval_dir + "%s_ave_turning_rate.csv" % file_prefix
+  # print("writing to " + path)
+  f = open(path, "w")
+  f.write(str(ave_tasks["ave_turning_rate"]))
   f.close()
 
   path = eval_dir + "%s_start_time.csv" % file_prefix

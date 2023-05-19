@@ -16,24 +16,24 @@ log_dir4=/home/yuming/Desktop/data_on_desktop/20220519_hardware_rom/yuming_rom_w
 output_dir=../dairlib_data/goldilocks_models/hardware_cost_eval/
 rm -rf $output_dir
 
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir0"lcmlog-05 ROM_WALKING true $output_dir 1
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir0"lcmlog-06 ROM_WALKING true $output_dir 1
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir0"lcmlog-13 ROM_WALKING true $output_dir 100
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir0"lcmlog-15 ROM_WALKING true $output_dir 60
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir0"lcmlog-05 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir0"lcmlog-06 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir0"lcmlog-13 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=100
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir0"lcmlog-15 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=60
 
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir1"lcmlog-01 ROM_WALKING true $output_dir 1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir1"lcmlog-01 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
 
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir2"lcmlog-03 ROM_WALKING true $output_dir 1
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir2"lcmlog-04 ROM_WALKING true $output_dir 1
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir2"lcmlog-05 ROM_WALKING true $output_dir 1
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir2"lcmlog-08 ROM_WALKING true $output_dir 100
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir2"lcmlog-03 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir2"lcmlog-04 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir2"lcmlog-05 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir2"lcmlog-08 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=100
 
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir3"lcmlog-01 ROM_WALKING true $output_dir 60
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir3"lcmlog-02 ROM_WALKING true $output_dir 60
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir3"lcmlog-03 ROM_WALKING true $output_dir 60
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir3"lcmlog-01 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=60
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir3"lcmlog-02 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=60
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir3"lcmlog-03 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=60
 
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir4"lcmlog-01 ROM_WALKING true $output_dir 1
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir4"lcmlog-02 ROM_WALKING true $output_dir 100
-bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance "$log_dir4"lcmlog-03 ROM_WALKING true $output_dir 100
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir4"lcmlog-01 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=1
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir4"lcmlog-02 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=100
+bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance --file_path="$log_dir4"lcmlog-03 --controller_channel=ROM_WALKING --hardware --eval_dir=$output_dir --rom_iter_idx=100
 
 # Note we you plot the cost, slice at pelvis height = 0.935

@@ -305,13 +305,15 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
 def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance',
-    LcmlogFilePath(rom_iter_idx, log_idx),
-    'ROM_WALKING',
-    str(rom_iter_idx),
-    str(log_idx),
-    str(sim_end_time),
-    str(spring_model),
-    eval_dir,
+    '--file_path=' + LcmlogFilePath(rom_iter_idx, log_idx),
+    '--controller_channel=ROM_WALKING',
+    '--rom_iter_idx=' + str(rom_iter_idx),
+    '--log_idx=' + str(log_idx),
+    '--sim_end_time=' + str(sim_end_time),
+    '--spring_model' if spring_model else '--no-spring_model',
+    '--eval_dir=' + eval_dir,
+    '--eval_for_RL' if eval_for_RL else '--no-eval_for_RL',
+    '--turning' if nonzero_turning else '--no-turning',
   ]
   print(' '.join(eval_cost_cmd))
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
@@ -1841,7 +1843,6 @@ if __name__ == "__main__":
                     'turning_rate': "turning rate (rad/s)"}  # Note that I remove hyphen in `name_with_unit`
 
 
-
   # 2D plot (cost vs task)
   # model_slices = []
   # model_slices = [1, 50, 100, 150]
@@ -1958,7 +1959,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   # model_indices = [1, 200, 400, 600, 800]
   # model_indices = [1, 200, 300, 400, 500, 600]
-  # model_indices = [1, 200]
+  model_indices = [1, 200]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -1980,6 +1981,8 @@ if __name__ == "__main__":
   # Construct task object
   tasks.Construct()
   task_list = tasks.GetTaskList()
+
+  nonzero_turning = "turning_rate" in tasks.GetVaryingTaskElementName()
 
   # Make sure the dimension is correct
   if len(nominal_task_names) != tasks.get_task_dim():
@@ -2019,8 +2022,6 @@ if __name__ == "__main__":
     input("type anything to confirm and continue")
   if eval_for_RL:
     assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
-    print("Warning: remember to set eval_for_RL=True in `eval_single-closedloop_performance.py`")
-    input("type anything to confirm and continue")
   if len(tasks.GetVaryingTaskElementName()) > 2:
     raise ValueError("We probably don't want to run 3D sim task. Not necessary.")
 

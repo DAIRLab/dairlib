@@ -19,6 +19,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/heading_traj_generator.h"
 #include "examples/Cassie/osc/high_level_command.h"
+#include "examples/Cassie/osc/swing_hip_yaw_traj_gen.h"
 #include "examples/Cassie/osc/swing_toe_traj_generator.h"
 #include "examples/Cassie/osc/walking_speed_control.h"
 #include "examples/Cassie/simulator_drift.h"
@@ -175,6 +176,9 @@ DEFINE_bool(
     track_mid_contact_pt, false,
     "if true, we have the mid contact point to track the swing foot traj. "
     " Doesn't seem to work well when turning this flag on for some reason.");
+DEFINE_bool(offset_swing_hip_yaw_for_heading, false,
+            "If false, then we always regulate swing hip yaw to 0 (in the case "
+            "that we don't use desired hip yaw from the planner)");
 
 DEFINE_double(ground_incline, 0.0, "ground incline");
 
@@ -186,7 +190,7 @@ int DoMain(int argc, char* argv[]) {
   }
 
   if (FLAGS_ground_incline != 0) {
-    DRAKE_UNREACHABLE();  // TODO: need to servo global yaw to 0
+    DRAKE_UNREACHABLE();  // TODO: need to servo global yaw to 0 for sim eval
   }
 
   // Read-in the parameters
@@ -255,11 +259,6 @@ int DoMain(int argc, char* argv[]) {
     DRAKE_DEMAND(gains.relative_swing_ft);
   }
 
-  // TODO: (low priority) Check why it can only turn 180 degree with constant
-  //  walking turning rate.
-  //  20220103 Update: There were two causes. Fixed in master.
-  // DRAKE_DEMAND(!gains.set_constant_turning_rate);
-
   // Some checks for sim gap heurisitc
   bool close_sim_gap = FLAGS_close_sim_gap;
   if (FLAGS_hardware) {
@@ -315,6 +314,10 @@ int DoMain(int argc, char* argv[]) {
         "the controller thread)\n";
     cout << msg;
     DRAKE_DEMAND(FLAGS_get_swing_foot_from_planner);
+  }
+
+  if (FLAGS_offset_swing_hip_yaw_for_heading) {
+    DRAKE_DEMAND(!FLAGS_get_swing_hip_angle_from_planner);
   }
 
   // Build Cassie MBP
@@ -434,6 +437,7 @@ int DoMain(int argc, char* argv[]) {
     // blending)
     DRAKE_DEMAND(!is_two_phase);
   }
+  DRAKE_DEMAND(gains.left_support_duration == gains.right_support_duration);
   vector<int> fsm_states;
   vector<double> state_durations;
   double stride_period = left_support_duration + double_support_duration;
@@ -637,6 +641,33 @@ int DoMain(int argc, char* argv[]) {
                       head_traj_gen->get_yaw_input_port());
     }
 
+    // Create swing hip yaw traj generator
+    std::map<std::string, int> pos_map =
+        multibody::makeNameToPositionsMap(plant_w_spr);
+    std::unordered_map<int, int> fsm_to_joint_idx_map = {
+        {left_stance_state, pos_map.at("hip_yaw_right")},
+        {right_stance_state, pos_map.at("hip_yaw_left")}};
+    auto swing_hip_yaw_traj_gen =
+        builder.AddSystem<cassie::osc::SwingHipYawTrajGenerator>(
+            plant_w_spr, fsm_to_joint_idx_map,
+            left_support_duration + double_support_duration);
+    if (FLAGS_offset_swing_hip_yaw_for_heading) {
+      // The desired trajectory creates a position error jump, so probably not
+      // good for the hardware.
+      // TODO: will need to modify this des traj profile if we want to use it on
+      //  hardware
+      DRAKE_DEMAND(!FLAGS_hardware);
+
+      builder.Connect(simulator_drift->get_output_port(0),
+                      swing_hip_yaw_traj_gen->get_state_input_port());
+      builder.Connect(fsm->get_output_port(0),
+                      swing_hip_yaw_traj_gen->get_input_port_fsm());
+      if (!gains.set_constant_turning_rate) {
+        builder.Connect(high_level_command->get_yaw_output_port(),
+                        swing_hip_yaw_traj_gen->get_yaw_input_port());
+      }
+    }
+
     // Create CoM trajectory generator
     double desired_com_height = gains.lipm_height;
     vector<int> unordered_fsm_states;
@@ -713,8 +744,6 @@ int DoMain(int argc, char* argv[]) {
                     swing_ft_traj_generator->get_input_port_sc());
 
     // Swing toe joint trajectory
-    std::map<std::string, int> pos_map =
-        multibody::makeNameToPositionsMap(plant_w_spr);
     vector<std::pair<const Vector3d, const Frame<double>&>> left_foot_points = {
         left_heel, left_toe};
     vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points =
@@ -1075,10 +1104,14 @@ int DoMain(int argc, char* argv[]) {
         PiecewisePolynomial<double>::FirstOrderHold(hip_yaw_ratio_breaks,
                                                     hip_yaw_ratio_samples);
     swing_hip_yaw_traj.SetTimeVaryingGains(hip_yaw_gain_ratio);
-    if (!FLAGS_get_swing_hip_angle_from_planner) {
-      osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
-    } else {
+    if (FLAGS_get_swing_hip_angle_from_planner) {
       osc->AddTrackingData(&swing_hip_yaw_traj);
+    } else {
+      if (FLAGS_offset_swing_hip_yaw_for_heading) {
+        osc->AddTrackingData(&swing_hip_yaw_traj);
+      } else {
+        osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+      }
     }
 
     // Swing toe joint tracking
@@ -1136,6 +1169,12 @@ int DoMain(int argc, char* argv[]) {
     if (FLAGS_get_swing_hip_angle_from_planner) {
       builder.Connect(planner_traj_receiver->get_output_port_swing_hip(),
                       osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
+    } else {
+      if (FLAGS_offset_swing_hip_yaw_for_heading) {
+        builder.Connect(
+            swing_hip_yaw_traj_gen->get_output_port(0),
+            osc->get_tracking_data_input_port("swing_hip_yaw_traj"));
+      }
     }
 
     builder.Connect(left_toe_angle_traj_gen->get_output_port(0),
@@ -1160,7 +1199,7 @@ int DoMain(int argc, char* argv[]) {
     if (!FLAGS_is_RL_training) {
       // This is not thread safe, so we avoid doing this in RL.
       // It's not necessary anyway, so I'm commenting it out.
-      //DrawAndSaveDiagramGraph(*owned_diagram);
+      // DrawAndSaveDiagramGraph(*owned_diagram);
     }
 
     // Run lcm-driven simulation
@@ -1228,6 +1267,14 @@ int DoMain(int argc, char* argv[]) {
       head_traj_gen->get_yaw_input_port().FixValue(
           &head_traj_gen_context,
           drake::systems::BasicVector<double>({gains.constant_turning_rate}));
+      if (FLAGS_offset_swing_hip_yaw_for_heading) {
+        auto& swing_hip_yaw_traj_gen_context =
+            loop.get_diagram()->GetMutableSubsystemContext(
+                *swing_hip_yaw_traj_gen, &diagram_context);
+        swing_hip_yaw_traj_gen->get_yaw_input_port().FixValue(
+            &swing_hip_yaw_traj_gen_context,
+            drake::systems::BasicVector<double>({gains.constant_turning_rate}));
+      }
       cout << "Set constant turning rate " << gains.constant_turning_rate
            << endl;
     }

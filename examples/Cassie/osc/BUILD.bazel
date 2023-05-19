@@ -6,6 +6,7 @@ cc_library(
     name = "osc",
     deps = [
         "//examples/Cassie/osc:heading_traj_generator",
+        "//examples/Cassie/osc:swing_hip_yaw_traj_gen",
         "//examples/Cassie/osc:high_level_command",
         "//examples/Cassie/osc:osc_walking_gains",
         "//examples/Cassie/osc:standing_com_traj",
@@ -47,6 +48,18 @@ cc_library(
     name = "heading_traj_generator",
     srcs = ["heading_traj_generator.cc"],
     hdrs = ["heading_traj_generator.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/controllers:control_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "swing_hip_yaw_traj_gen",
+    srcs = ["swing_hip_yaw_traj_gen.cc"],
+    hdrs = ["swing_hip_yaw_traj_gen.h"],
     deps = [
         "//multibody:utils",
         "//systems/controllers:control_utils",

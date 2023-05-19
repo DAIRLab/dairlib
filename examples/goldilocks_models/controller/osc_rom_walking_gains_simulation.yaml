@@ -16,7 +16,7 @@ swing_toe_kp: 1500
 swing_toe_kd: 10
 
 w_hip_yaw: 0.5
-hip_yaw_kp: 40
+hip_yaw_kp: 80
 hip_yaw_kd: 0.5
 
 ################## Tuned with dispatchers in both simulation ###################

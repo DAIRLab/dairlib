@@ -95,9 +95,11 @@ def main():
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
         radio_msg.channel[0] = -joystick.get_axis(1)
+        # radio_msg.channel[0] = 1  # full going forward
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)
+        # radio_msg.channel[3] = 1  # full turning right
         radio_msg.channel[6] = radio_channel_6_pos
 
         # Method 1 -- send radio message to cassie simultion which packs the message into lcmt_cassie_out

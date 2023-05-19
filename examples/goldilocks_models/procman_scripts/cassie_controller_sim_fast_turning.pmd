@@ -23,7 +23,7 @@ group "2.0.default-controller" {
 
 group "1.rom-space-controller" {
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --offset_swing_hip_yaw_for_heading=true";
         host = "localhost";
     }
     cmd "3.2.rom-planner" {
@@ -31,7 +31,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.1.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5 --spring_model=false";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5 --spring_model=false --min_mpc_thread_loop_duration=0.04";
         host = "localhost";
     }
     cmd "3.3.rom-planner (debug a given solve_idx)" {

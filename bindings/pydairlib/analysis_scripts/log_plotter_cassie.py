@@ -186,7 +186,7 @@ def main():
   # PlotCenterOfMassAceel(x, t_x, plant_w_spr, t_osc_debug, fsm)
   # PlotVdot(x, t_x, x_datatypes, True)
 
-  PlotOscQpSol(t_osc_debug, osc_output, fsm)
+  # PlotOscQpSol(t_osc_debug, osc_output, fsm)
 
   # PlotSwingFootData(t_osc_debug, fsm)
   # PlotCentroidalAngularMomentum(t_osc_debug, fsm)
@@ -869,10 +869,10 @@ def plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out
   plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
 
   ###
-  # plot_osc(osc_debug, osc_traj4, 0, "pos")
-  # plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
-  # plot_osc(osc_debug, osc_traj4, 0, "vel")
-  # plot_osc(osc_debug, osc_traj4, 0, "accel")
+  plot_osc(osc_debug, osc_traj4, 0, "pos")
+  plt.plot(t_osc_debug[t_osc_debug_slice], fsm[t_osc_debug_slice])
+  plot_osc(osc_debug, osc_traj4, 0, "vel")
+  plot_osc(osc_debug, osc_traj4, 0, "accel")
 
 
 def plot_osc(osc_debug, osc_traj, dim, derivative):

@@ -166,7 +166,8 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
   if simulation_initialization_mode == 1:
     path_simulation_init_state = "%s%d_%d_x_samples0.csv" % (model_dir, rom_iter_idx, trajopt_sample_idx_for_sim)
   elif simulation_initialization_mode == 2:
-    path_simulation_init_state = "%s%d_%d_x_samples0.csv" % (FOM_model_dir_for_sim, 0, trajopt_sample_idx_for_sim)
+    # path_simulation_init_state = "%s%d_%d_x_samples0.csv" % (FOM_model_dir_for_sim, 0, trajopt_sample_idx_for_sim)
+    path_simulation_init_state = "%s%d_%d_x_samples0.csv" % (FOM_model_dir_for_sim, 1, trajopt_sample_idx_for_sim)
 
   planner_cmd = [
     'bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process',
@@ -1766,13 +1767,18 @@ if __name__ == "__main__":
   n_task_sl = 13 #25 #10
   n_task_ph = 7  #25 #3
   tasks = Tasks()
-  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.4, -0.4, 1), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.3, 0.3, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.2, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
   # stride_length = np.linspace(0.4, 0.5, n_task)
+  # tasks.AddTaskDim(np.linspace(0.3, 0.4, n_task_sl), "stride_length")
   # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")
@@ -1780,8 +1786,8 @@ if __name__ == "__main__":
   tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
-  tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
-  # tasks.AddTaskDim([0.95], "pelvis_height")
+  # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
+  tasks.AddTaskDim([0.95], "pelvis_height")
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
   # log indices
@@ -1832,8 +1838,10 @@ if __name__ == "__main__":
   # model_slices = [1, 20, 40, 60, 80, 100]
   # model_slices = [1, 10, 20, 30, 40, 50]
   # model_slices = [1, 30, 56]
-  model_slices = [1, 30, 40, 50]
-  #model_slices = [1, 60, 80, 100]
+  # model_slices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
+  model_slices = [1, 200, 400, 600, 800]
+  model_slices = [1, 200, 300, 400, 500, 600]
+  model_slices = [1, 400]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1844,7 +1852,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
   # model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
-  # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500]
+  # model_slices_cost_landsacpe = [1, 100]
   # model_slices_cost_landsacpe = [500]
   # model_slices_cost_landsacpe = [300, 400]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 450]
@@ -1858,7 +1866,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 20, 40, 60, 80, 100]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
   # model_slices_cost_landsacpe = [1, 30, 56]
-  model_slices_cost_landsacpe = [1, 30, 40, 50]
+  # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
+  model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
+  model_slices_cost_landsacpe = [1, 400]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1909,7 +1919,7 @@ if __name__ == "__main__":
   # model_indices = [1, 60]  # Overwrite
   # model_indices = [1, 100]  # Overwrite
   # model_indices = [1, 100, 200, 300, 400]  # Overwrite
-  # model_indices = [1, 100, 200, 300, 400, 500]  # Overwrite
+  # model_indices = [1, 100]  # Overwrite
   # model_indices = [1, 100, 200, 300, 400, 450]  # Overwrite
   # model_indices = [300, 400]  # Overwrite
   # model_indices = [500]  # Overwrite
@@ -1917,7 +1927,13 @@ if __name__ == "__main__":
   # model_indices = [1, 10, 20, 30, 40, 50]  # Overwrite
   #model_indices = [100]  # Overwrite
   # model_indices = [1, 30, 56]  # Overwrite
-  model_indices = [1, 30, 40, 50]  # Overwrite
+  # model_indices = [1, 100]  # Overwrite
+  # model_indices = [200, 300, 400]
+  # model_indices = [500]
+  # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
+  # model_indices = [1, 200, 400, 600, 800]
+  # model_indices = [1, 200, 300, 400, 500, 600]
+  # model_indices = [1, 400]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

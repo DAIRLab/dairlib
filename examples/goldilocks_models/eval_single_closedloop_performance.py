@@ -297,7 +297,7 @@ def CheckSteadyStateStrideLengthWithTurning(n_poses, t_x_touchdown_indices, x):
 
   # Derive step length along the arc of turning and walking
   delta_xy_local = np.diff(x[:, 4:6], axis=0)
-  for i in range(len(x)):
+  for i in range(len(x)-1):
     plant.SetPositionsAndVelocities(context, x[i, :])
     delta_xy_local[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
       context) @ delta_xy_local[i, :]

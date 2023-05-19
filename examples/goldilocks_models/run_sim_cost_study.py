@@ -309,7 +309,7 @@ def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
     '--controller_channel=ROM_WALKING',
     '--rom_iter_idx=' + str(rom_iter_idx),
     '--log_idx=' + str(log_idx),
-    '--sim_end_time=' + str(sim_end_time),
+    '--desried_sim_end_time=' + str(sim_end_time),
     '--spring_model' if spring_model else '--no-spring_model',
     '--eval_dir=' + eval_dir,
     '--eval_for_RL' if eval_for_RL else '--no-eval_for_RL',
@@ -1788,13 +1788,13 @@ if __name__ == "__main__":
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
-  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_tr), "turning_rate")
-  tasks.AddTaskDim([0.0], "turning_rate")
+  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_tr), "turning_rate")
+  # tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
-  tasks.AddTaskDim(np.linspace(0.8, 1.0, n_task_ph), "pelvis_height")
-  # tasks.AddTaskDim([0.95], "pelvis_height")
+  # tasks.AddTaskDim(np.linspace(0.8, 1.0, n_task_ph), "pelvis_height")
+  tasks.AddTaskDim([0.95], "pelvis_height")
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
   # log indices
@@ -1818,13 +1818,14 @@ if __name__ == "__main__":
 
 
   # 2D plot (cost vs model)
-  task_to_plot = ['stride_length', 'pelvis_height']
+  # task_to_plot = ['stride_length', 'pelvis_height']
+  task_to_plot = ['stride_length', 'turning_rate']
   # task_to_plot = ['ground_incline', 'turning_rate']
   all_task_slice_value_map = {}
   # all_task_slice_value_map['stride_length'] = [-0.16, 0, 0.16]
   # all_task_slice_value_map['stride_length'] = [-0.2, -0.1, 0, 0.1, 0.2]
-  # all_task_slice_value_map['stride_length'] = [-0.4, -0.2, 0, 0.2, 0.4]
-  all_task_slice_value_map['stride_length'] = [-0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4]
+  all_task_slice_value_map['stride_length'] = [-0.4, -0.2, 0, 0.2, 0.4]
+  # all_task_slice_value_map['stride_length'] = [-0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4]
   all_task_slice_value_map['pelvis_height'] = [0.95]
   all_task_slice_value_map['ground_incline'] = [0.0]
   all_task_slice_value_map['turning_rate'] = [0.0]
@@ -1897,6 +1898,7 @@ if __name__ == "__main__":
   task_grid_for_cost_improvement = {}
   task_grid_for_cost_improvement["stride_length"] = np.linspace(-0.6, 0.6, 13)
   task_grid_for_cost_improvement["pelvis_height"] = np.linspace(1.1, 0.6, 11)
+  task_grid_for_cost_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 15)
   x_1, y_1 = np.meshgrid(task_grid_for_cost_improvement[task_to_plot[0]], task_grid_for_cost_improvement[task_to_plot[1]])
   task_value_grid_for_computing_cost_improvement = [x_1, y_1]
 
@@ -1986,6 +1988,8 @@ if __name__ == "__main__":
 
   # Make sure the dimension is correct
   if len(nominal_task_names) != tasks.get_task_dim():
+    print("nominal_task_names = ", nominal_task_names)
+    print("tasks_info = ", tasks.tasks_info())
     raise ValueError("sim eval task dimension is different from trajopt dim. "
                      "We want them to be the same becasue we use the same code "
                      "to plot sim cost and trajopt cost")

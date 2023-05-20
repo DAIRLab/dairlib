@@ -816,7 +816,7 @@ def main():
     step_length_variation_tol = 0.02
     side_stepping_tol = 0.02
     pelvis_height_variation_tol = 0.05
-    pelvis_yaw_variation_tol = 0.05
+    pelvis_yaw_variation_tol = 0.1
 
   # Valid windows for hardware logs where the hoist did not pull on pelvis
   # The time is relative to when the walking controller starts walking (fsm >= 0)

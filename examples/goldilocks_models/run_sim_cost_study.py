@@ -734,14 +734,14 @@ def PlotNominalCost(model_indices, trajopt_sample_indices_for_viz):
 
 def GetSamplesToPlot(model_indices, log_indices):
   # cmt_l stores cost, model index, task value, and log index
-  cmt = np.zeros((0, 2 + len(varying_task_element_indices)))
+  cmt = np.zeros((0, 2 + len(name_of_task_value_to_be_read)))
   log = np.zeros((0, 1))
   for rom_iter in model_indices:
     for idx in log_indices:
       path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
       path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, idx)
       if os.path.exists(path0):
-        current_cmt = np.zeros((1, 2 + len(varying_task_element_indices)))
+        current_cmt = np.zeros((1, 2 + len(name_of_task_value_to_be_read)))
         ### Read cost
         cost = np.loadtxt(path1, delimiter=',')[idx_closedloop_cost_element]
         current_cmt[0, 0] = cost
@@ -752,11 +752,11 @@ def GetSamplesToPlot(model_indices, log_indices):
         ### Read actual task
         add_this_element = True
         col = 2
-        for key in varying_task_element_indices:
-          path_task = eval_dir + '%d_%d_ave_%s.csv' % (rom_iter, idx, key)
+        for task_name in name_of_task_value_to_be_read:
+          path_task = eval_dir + '%d_%d_ave_%s.csv' % (rom_iter, idx, task_name)
           task = np.loadtxt(path_task, delimiter=',').item()  # 0-dim scalar
           current_cmt[0, col] = task
-          if (task < min_max_task_filter_for_viz[key][0]) or (task > min_max_task_filter_for_viz[key][1]):
+          if (task < min_max_task_filter_for_viz[task_name][0]) or (task > min_max_task_filter_for_viz[task_name][1]):
             add_this_element = False
           col += 1
         if not add_this_element:
@@ -799,10 +799,10 @@ def GetNominalSamplesToPlot(model_indices):
 
   ### Get the samples to plot
   # nominal_cmt stores cost from trajopt, model index, and task value
-  nominal_cmt = np.zeros((0, 2 + len(varying_task_element_indices)))
+  nominal_cmt = np.zeros((0, 2 + len(idx_map_for_name_of_trajopt_task_value_to_be_read)))
   for rom_iter in model_indices:
     for i in range(len(trajopt_sample_indices_for_viz)):
-      sub_cmt = np.zeros((1, 2 + len(varying_task_element_indices)))
+      sub_cmt = np.zeros((1, 2 + len(idx_map_for_name_of_trajopt_task_value_to_be_read)))
       ### Read cost
       cost = PlotNominalCost([rom_iter], trajopt_sample_indices_for_viz[i])[0][0]
       sub_cmt[0, 0] = cost
@@ -813,10 +813,10 @@ def GetNominalSamplesToPlot(model_indices):
       ### Read nominal task
       col = 2
       add_this_sample = True
-      for key in varying_task_element_indices:
+      for key in idx_map_for_name_of_trajopt_task_value_to_be_read:  # note that dict's key is ordered
         path = model_dir + "%d_%d_task.csv" % (rom_iter, trajopt_sample_indices_for_viz[i])
         if os.path.exists(path):
-          task = np.loadtxt(path)[varying_task_element_indices[key]]
+          task = np.loadtxt(path)[idx_map_for_name_of_trajopt_task_value_to_be_read[key]]
           sub_cmt[0, col] = task
           if (task < min_max_task_filter_for_viz[key][0]) or (task > min_max_task_filter_for_viz[key][1]):
             add_this_sample = False
@@ -1096,10 +1096,14 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     if model_slice_value == 1:
       continue
     superimposed_data = InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value)
-    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, True)
-    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, True)
-    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
-    Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
+    if len(superimposed_data[0]) == 0:
+      print("`WARNING: superimposed_data` is empty. It's possible that the grid is not dense enough.")
+      print("Skip plotting landscape comparison because there is no data.")
+    else:
+      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, True)
+      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, True)
+      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
+      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
 
 
 big_val = 1000000
@@ -1575,9 +1579,8 @@ def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
   f.close()
 
 
-def GetVaryingTaskElementIdx(tasks, nominal_task_names):
+def GetTrajoptTaskElementIdx(names, nominal_task_names):
   indices = {}
-  names = tasks.GetVaryingTaskElementName()
   for name in names:
     indices[name] = nominal_task_names.index(name)
   return indices
@@ -1817,11 +1820,12 @@ if __name__ == "__main__":
   filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts = False
   tail_percentile = 1   # only applied to the overlapped area; get rid of occasional edge cases (either extremely good or bad periodic gait)
 
+  # Select two tasks to plot
+  # task_to_plot = ['stride_length', 'pelvis_height']  # order matters
+  # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
+  task_to_plot = ['stride_length', 'turning_rate']  # order matters
 
   # 2D plot (cost vs model)
-  # task_to_plot = ['stride_length', 'pelvis_height']
-  task_to_plot = ['stride_length', 'turning_rate']
-  # task_to_plot = ['ground_incline', 'turning_rate']
   all_task_slice_value_map = {}
   # all_task_slice_value_map['stride_length'] = [-0.16, 0, 0.16]
   # all_task_slice_value_map['stride_length'] = [-0.2, -0.1, 0, 0.1, 0.2]
@@ -1916,6 +1920,7 @@ if __name__ == "__main__":
   # Task range improvement for each value of the second task
   task_grid_for_range_improvement = {}
   task_grid_for_range_improvement["pelvis_height"] = np.linspace(1.0, 0.5, 6)
+  task_grid_for_range_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 7)
 
   ### Set up environment
 
@@ -1995,9 +2000,14 @@ if __name__ == "__main__":
                      "We want them to be the same becasue we use the same code "
                      "to plot sim cost and trajopt cost")
 
-  # Index of task vector where we sweep through
-  varying_task_element_indices = GetVaryingTaskElementIdx(tasks, list(nominal_task_names))
-  print("varying_task_element_indices = " + str(varying_task_element_indices))
+  # Plotting setup -- picking two task elements to show
+  name_of_task_value_to_be_read = task_to_plot
+  # Append more task value in case we want the info in the future (currently the extra tasks value are not being used in plotting)
+  for name in tasks.GetVaryingTaskElementName():
+    if name not in name_of_task_value_to_be_read:
+      name_of_task_value_to_be_read.append(name)
+
+  idx_map_for_name_of_trajopt_task_value_to_be_read = GetTrajoptTaskElementIdx(name_of_task_value_to_be_read, list(nominal_task_names))
 
   # Plotting setups
   idx_closedloop_cost_element = -1
@@ -2036,10 +2046,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  EvalCostInMultithread(model_indices, log_indices)
+  # EvalCostInMultithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
   # DeleteMostLogs(model_indices, log_indices)

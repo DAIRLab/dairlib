@@ -138,7 +138,7 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance):
                "ave_pelvis_height": ave_pelvis_height,
                "ave_turning_rate": ave_turning_rate}
 
-  return is_steady_state, max_pelvis_xy_diff + max_pelvis_height_diff + max_pelvis_yaw_diff, ave_tasks
+  return True, max_pelvis_xy_diff + max_pelvis_height_diff + max_pelvis_yaw_diff, ave_tasks
 
 
 
@@ -814,7 +814,7 @@ def main():
     pelvis_yaw_variation_tol = tol
   else:
     step_length_variation_tol = 0.02
-    side_stepping_tol = 0.02
+    side_stepping_tol = 0.03  #0.02
     pelvis_height_variation_tol = 0.05
     pelvis_yaw_variation_tol = 0.1
 

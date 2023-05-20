@@ -224,6 +224,22 @@ int DoMain(int argc, char* argv[]) {
       YAML::LoadFile(FindResourceOrThrow(osc_gains_filename));
   drake::yaml::YamlReadArchive(root2).Accept(&osc_gains);
 
+  if (FLAGS_get_swing_foot_from_planner) {
+    if (FLAGS_turning_rate > -100) {
+      cout << "WARNING: Set `use_radio` to false because `FLAGS_stride_length` "
+              "or `FLAGS_turning_rate` was set\n\n";
+      gains.use_virtual_radio = false;
+      gains.use_radio = false;
+    }
+  } else {
+    if ((FLAGS_stride_length > -100) || (FLAGS_turning_rate > -100)) {
+      cout << "WARNING: Set `use_radio` to false because `FLAGS_stride_length` "
+              "or `FLAGS_turning_rate` was set\n\n";
+      gains.use_virtual_radio = false;
+      gains.use_radio = false;
+    }
+  }
+
   if (gains.use_virtual_radio) {
     cout << "Set `use_radio` to true because `use_virtual_radio` = true\n\n";
     gains.use_radio = true;
@@ -249,11 +265,6 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_turning_rate > -100) {
     gains.set_constant_turning_rate = true;
     gains.constant_turning_rate = FLAGS_turning_rate;
-  }
-
-  if (gains.use_radio) {
-    gains.set_constant_walking_speed = false;
-    gains.set_constant_turning_rate = false;
   }
 
   if (gains.set_constant_walking_speed && !gains.set_constant_turning_rate) {

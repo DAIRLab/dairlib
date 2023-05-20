@@ -51,14 +51,15 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220323_rom27_big_range_bigger_step_size_5e-3/robot_1/"                      # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220417_rom27_big_range_bigger_step_size_6e-3_torque_weight_dominate/robot_1/"                      # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"        # rom_option 27
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"    # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230427_4kg_toe_with_task_range/robot_1/"                                    # rom_option 27
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"                                    # rom_option 27
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
-rom_option: 30  # 4, 9
+rom_option: 27  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
@@ -76,7 +77,7 @@ vel_command_offset_x: 0.  #0.1  # hack: help rom_iter=300 walk in place at start
 global_target_position_x: 10000
 global_target_position_y: 0
 
-set_constant_walking_speed: true
+set_constant_walking_speed: false
 constant_step_length_x: 0
 constant_step_length_y: 0
 

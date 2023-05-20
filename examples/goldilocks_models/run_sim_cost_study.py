@@ -1768,15 +1768,15 @@ if __name__ == "__main__":
   idx_spacing = 10
 
   # Task list
-  n_task_sl = 3 #25 #10
+  n_task_sl = 25 #25 #10
   n_task_ph = 3  #25 #3
-  n_task_tr = 3  #25 #3
+  n_task_tr = 25  #25 #3
   tasks = Tasks()
-  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, -0.4, 1), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.3, 0.3, n_task_sl), "stride_length")
-  tasks.AddTaskDim(np.linspace(-0.2, 0.2, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.2, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
@@ -1788,13 +1788,14 @@ if __name__ == "__main__":
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
-  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_tr), "turning_rate")
+  tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
   # tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.8, 1.0, n_task_ph), "pelvis_height")
-  tasks.AddTaskDim([0.95], "pelvis_height")
+  # tasks.AddTaskDim([0.95], "pelvis_height")
+  tasks.AddTaskDim([0.85], "pelvis_height")
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
   # log indices
@@ -1864,7 +1865,7 @@ if __name__ == "__main__":
   # model_slices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices = [1, 200, 400, 600, 800]
   model_slices = [1, 200, 300, 400, 500, 600]
-  model_slices = [1, 200]
+  model_slices = [1, 200, 400]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1891,7 +1892,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 30, 56]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
-  model_slices_cost_landsacpe = [1, 200]
+  model_slices_cost_landsacpe = [1, 200, 400]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1961,7 +1962,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   # model_indices = [1, 200, 400, 600, 800]
   # model_indices = [1, 200, 300, 400, 500, 600]
-  model_indices = [1, 200]
+  model_indices = [1, 200, 400]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -2035,10 +2036,10 @@ if __name__ == "__main__":
 
   ### Toggle the functions here to run simulation or evaluate cost
   # Simulation
-  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  # EvalCostInMultithread(model_indices, log_indices)
+  EvalCostInMultithread(model_indices, log_indices)
 
   # Delete all logs but a few successful ones (for analysis later)
   # DeleteMostLogs(model_indices, log_indices)

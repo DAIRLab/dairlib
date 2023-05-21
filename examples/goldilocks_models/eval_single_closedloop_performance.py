@@ -215,7 +215,7 @@ def CheckSteadyStateStrideLengthWithoutTurning(n_poses, t_x_touchdown_indices, x
 
   step_lengths = np.diff(pelvis_xy_at_td, axis=0)
   for i in range(n_step):
-    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
+    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[i], :])
     step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
       context) @ step_lengths[i, :]
   step_lengths_x = step_lengths[:, 0]
@@ -261,9 +261,10 @@ def CheckSteadyStateStrideLengthWithTurning(n_poses, t_x_touchdown_indices, x):
   for i in range(n_poses):
     pelvis_xy_at_td[i] = x[t_x_touchdown_indices[i], 4:6]
 
+  # Method 1, rotate each step first and then sum adjacent pair up
   step_lengths = np.diff(pelvis_xy_at_td, axis=0)
   for i in range(n_step):
-    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[0], :])
+    plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[i], :])
     step_lengths[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
       context) @ step_lengths[i, :]
   step_lengths_x = step_lengths[:, 0]
@@ -276,6 +277,18 @@ def CheckSteadyStateStrideLengthWithTurning(n_poses, t_x_touchdown_indices, x):
   for i in range(n_step - 1):
     step_lengths_x_2steps[i] = step_lengths_x[i] + step_lengths_x[i + 1]
     step_lengths_y_2steps[i] = step_lengths_y[i] + step_lengths_y[i + 1]
+
+  # Method 2, sum adjacent pair up first and then rotate
+  # step_lengths_2steps = np.zeros((n_step - 1, 2))
+  # for i in range(n_step - 1):
+  #   step_lengths_2steps[i] = pelvis_xy_at_td[i+2] - pelvis_xy_at_td[i]
+  #   plant.SetPositionsAndVelocities(context, x[t_x_touchdown_indices[i], :])
+  #   step_lengths_2steps[i, :] = view_frame.CalcWorldToFrameRotation2D(plant,
+  #     context) @ step_lengths_2steps[i, :]
+  # step_lengths_x_2steps = step_lengths_2steps[:, 0]
+  # step_lengths_y_2steps = step_lengths_2steps[:, 1]
+
+  # Check differences
   difference_of_delta_pelvis_x = abs(max(step_lengths_x_2steps) - min(step_lengths_x_2steps))
   difference_of_delta_pelvis_y = abs(max(step_lengths_y_2steps) - min(step_lengths_y_2steps))
   if difference_of_delta_pelvis_x > step_length_variation_tol:
@@ -305,8 +318,6 @@ def CheckSteadyStateStrideLengthWithTurning(n_poses, t_x_touchdown_indices, x):
   list_of_sum_delta_x_local = np.zeros(n_step)
   for i in range(n_step):
     list_of_sum_delta_x_local[i] = np.sum(delta_xy_local[t_x_touchdown_indices[i]:t_x_touchdown_indices[i+1]-1, 0])  # -1 in case the last index points to the last element of x (so would be out-of-index error for diff_x)
-
-  # TODO: still need to test `list_of_sum_delta_x_local` is computed correctly
 
   return is_steady_state, difference_of_delta_pelvis_x + difference_of_delta_pelvis_y, list_of_sum_delta_x_local
 

@@ -5,8 +5,8 @@ py_library(
     deps = [
         "//bindings/pydairlib:log_plotter_cassie",
         "//examples/goldilocks_models/find_models:dircon_traj_plotter",
-        "//examples/goldilocks_models/planning/visualization:rom_trajopt_plotter",
         "//examples/goldilocks_models/planning/visualization:hybrid_rom_trajopt_plotter",
+        "//examples/goldilocks_models/planning/visualization:rom_trajopt_plotter",
     ],
 )
 
@@ -40,6 +40,7 @@ cc_library(
         ":run_cassie_rom_controller",
         ":run_cassie_rom_planner_process",
         "//examples/Cassie:multibody_sim",
+        "//examples/Cassie:multibody_sim_w_boxes",
         "//examples/Cassie:multibody_sim_w_ground_incline",
         "//examples/Cassie:visualizer",
         "//examples/goldilocks_models/planning/visualization:visualize_FoM_pose_MBP",

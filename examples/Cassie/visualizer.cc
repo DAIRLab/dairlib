@@ -4,11 +4,10 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
+#include "multibody/stepping_stone_utils.h"
 #include "multibody/visualization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
-
-#include "multibody/stepping_stone_utils.h"
 
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/analysis/simulator.h"
@@ -31,9 +30,9 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
-DEFINE_string(stepping_stone_filename,
-              "examples/goldilocks_models/terrains/stones.yaml",
-              "YAML file defining stepping stones");
+DEFINE_string(stepping_stone_filename, "",
+              "YAML file defining stepping stones. Example: "
+              "examples/goldilocks_models/terrains/stones.yaml");
 
 // Testing
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
@@ -76,10 +75,7 @@ int do_main(int argc, char* argv[]) {
     if (!FLAGS_stepping_stone_filename.empty()) {
       DRAKE_DEMAND(FLAGS_ground_incline == 0);
       multibody::AddSteppingStonesToSimFromYaml(
-          &plant,
-          &scene_graph,
-          FLAGS_stepping_stone_filename,
-          1.0);
+          &plant, &scene_graph, FLAGS_stepping_stone_filename, 1.0);
     } else {
       // Ground direction
       Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,

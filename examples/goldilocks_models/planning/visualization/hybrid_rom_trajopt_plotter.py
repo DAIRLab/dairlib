@@ -70,7 +70,7 @@ def main():
   parser.add_argument("--end_idx", help="", default=-1, type=int)
   # parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fixed_spring", default=1, type=int, choices=[0, 1])
   parser.add_argument("--path", help="", default="", type=str)
-  parser.add_argument("--folder_path", help="../dairlib_data/goldilocks_models/planning/robot_1/data/", default="", type=str)
+  parser.add_argument("--folder_path", help="", default="../dairlib_data/goldilocks_models/planning/robot_1/data/", type=str)
   args = parser.parse_args()
 
   debug = args.debug

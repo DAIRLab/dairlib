@@ -63,7 +63,7 @@ rom_option: 27  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
 model_iter: 1 #150  #1 #30
 #The sample that we use to initialize planner
-sample_idx: 40 #19 #58 #40
+sample_idx: 40 #19 #58 for 117 (9x13)   #40 for 81 (3x27)
 
 
 ###

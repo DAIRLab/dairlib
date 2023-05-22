@@ -13,9 +13,12 @@ using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::geometry::HalfSpace;
+using drake::geometry::Box;
+using drake::geometry::GeometryId;
 using drake::geometry::SceneGraph;
 using drake::math::autoDiffToGradientMatrix;
 using drake::math::autoDiffToValueMatrix;
+using drake::math::RigidTransform;
 using drake::multibody::BodyIndex;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -23,6 +26,10 @@ using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
+using Eigen::Vector2d;
+using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 using std::map;
 using std::string;
 using std::vector;
@@ -140,6 +147,30 @@ void addFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
   // Add visual for the ground.
   plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
                                 "visual");
+}
+
+template <typename T>
+std::vector<GeometryId> AddBox(
+    MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
+    const RigidTransform<T>& X_WB, const Vector3d& len_xyz, double mu) {
+  if (!plant->geometry_source_is_registered()) {
+    plant->RegisterAsSourceForSceneGraph(scene_graph);
+  }
+
+  static int boxnum = 0;
+  drake::multibody::CoulombFriction<T> friction(mu, mu);
+  std::vector<GeometryId> ids;
+
+  Box box(len_xyz(0), len_xyz(1), len_xyz(2));
+  ids.push_back(
+      plant->RegisterCollisionGeometry(
+          plant->world_body(), X_WB, box,
+          "box collision" + std::to_string(boxnum++), friction));
+  ids.push_back(
+      plant->RegisterVisualGeometry(
+          plant->world_body(), X_WB, box,
+          "box visual"+ std::to_string(boxnum++)));
+  return ids;
 }
 
 /// Construct a map between joint names and position indices
@@ -485,6 +516,7 @@ template vector<string> createActuatorNameVectorFromMap(const MultibodyPlant<Aut
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template void addFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W);   // NOLINT
+template std::vector<GeometryId> AddBox<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, const RigidTransform<double>& X_WB, const Vector3d& len_xyz, double mu);   // NOLINT
 template VectorX<double> getInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> getInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT
 template std::unique_ptr<Context<double>> createContext(const MultibodyPlant<double>& plant, const Eigen::Ref<const VectorXd>& state, const Eigen::Ref<const VectorXd>& input);  // NOLINT

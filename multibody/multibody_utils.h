@@ -69,6 +69,15 @@ void addFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     double mu_static, double mu_kinetic,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1));
 
+/// Add a box and return a vector of GeometryIds representing the visual and
+/// collision geometries
+template <typename T>
+std::vector<drake::geometry::GeometryId>
+AddBox(drake::multibody::MultibodyPlant<T>* plant,
+       drake::geometry::SceneGraph<T>* scene_graph,
+       const drake::math::RigidTransform<T>& X_WB,
+       const Eigen::Vector3d& len_xyz, double mu);
+
 /// Given a MultiBodyTree, builds a map from position name to position index
 template <typename T>
 std::map<std::string, int> makeNameToPositionsMap(

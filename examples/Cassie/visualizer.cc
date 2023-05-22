@@ -8,6 +8,8 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "multibody/stepping_stone_utils.h"
+
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -29,6 +31,9 @@ DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 // Terrain
 DEFINE_double(ground_incline, 0, "in radians. Positive is walking downhill");
+DEFINE_string(stepping_stone_filename,
+              "examples/goldilocks_models/terrains/stones.yaml",
+              "YAML file defining stepping stones");
 
 // Testing
 DEFINE_string(lcm_url_port, "7667", "port number. Should be > 1024");
@@ -52,6 +57,13 @@ using std::endl;
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  if (!FLAGS_stepping_stone_filename.empty()) {
+    DRAKE_DEMAND(FLAGS_ground_incline == 0);
+  }
+  if (FLAGS_ground_incline != 0) {
+    DRAKE_DEMAND(FLAGS_stepping_stone_filename.empty());
+  }
+
   drake::systems::DiagramBuilder<double> builder;
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -61,10 +73,19 @@ int do_main(int argc, char* argv[]) {
 
   addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
   if (FLAGS_floating_base) {
-    // Ground direction
-    Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
-                                  cos(FLAGS_ground_incline));
-    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    if (!FLAGS_stepping_stone_filename.empty()) {
+      DRAKE_DEMAND(FLAGS_ground_incline == 0);
+      multibody::AddSteppingStonesToSimFromYaml(
+          &plant,
+          &scene_graph,
+          FLAGS_stepping_stone_filename,
+          1.0);
+    } else {
+      // Ground direction
+      Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
+                                    cos(FLAGS_ground_incline));
+      multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    }
   }
 
   plant.Finalize();

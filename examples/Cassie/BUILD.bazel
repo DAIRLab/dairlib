@@ -274,6 +274,25 @@ cc_binary(
 )
 
 cc_binary(
+    name = "multibody_sim_w_boxes",
+    srcs = ["multibody_sim_w_boxes.cc"],
+    deps = [
+        ":cassie_encoder",
+        ":cassie_fixed_point_solver",
+        ":cassie_urdf",
+        ":cassie_utils",
+        "//multibody:utils",
+        "//solvers:optimization_utils",
+        "//systems:dairlib_signal_lcm_systems",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "parse_log_test",
     srcs = ["test/parse_log_test.cc"],
     deps = [

@@ -517,6 +517,12 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
       # if not (rom_iter == 1):
       #   continue
 
+      # have trained until model 200 and task 566
+      # if rom_iter == 1:
+      #   continue
+      # if (rom_iter == 200) and (j <566):
+      #   continue
+
       # skip_this_eval_loop = True
       # if rom_iter == 201 and log_idx == 138:
       #   skip_this_eval_loop = False
@@ -603,7 +609,7 @@ def EvalCostInMultithread(model_indices, log_indices):
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
       print("run sim for model %d and log %d" % (rom_iter, idx))
 
-      # if not (rom_iter == 1 and idx == 70):
+      # if not (rom_iter == 400 and idx == 590):
       #   continue
 
       # Evaluate the cost
@@ -1397,19 +1403,19 @@ def ComputeCostImprovementForIndividualTask(model_indices, cmt):
       masked_z = z[~np.isnan(z)]
       message = ""
       if len(masked_z) == 0:
-        message = "Max cost improvement for task (%s, %s) = (%.2f, %.2f) m is NaN, because len(masked_z) = 0\n" % (name_abbrev[task_to_plot[0]], name_abbrev[task_to_plot[1]], task_slice_value[0], task_slice_value[1])
+        message = "Max cost improvement for task (%s, %s) = (%.2f, %.2f) is NaN, because len(masked_z) = 0\n" % (name_abbrev[task_to_plot[0]], name_abbrev[task_to_plot[1]], task_slice_value[0], task_slice_value[1])
         cost_improvement_grid[row_idx, col_idx] = np.nan
       else:
         improvement_percentage = round(float((masked_z[0] - min(masked_z)) / masked_z[0] * 100) , 2)
         cost_improvement_grid[row_idx, col_idx] = improvement_percentage
-        message = "Max cost improvement for task (%s, %s) = (%.2f, %.2f) m is %.1f %%\n" % (name_abbrev[task_to_plot[0]], name_abbrev[task_to_plot[1]], task_slice_value[0], task_slice_value[1], improvement_percentage)
+        message = "Max cost improvement for task (%s, %s) = (%.2f, %.2f) is %.1f %%\n" % (name_abbrev[task_to_plot[0]], name_abbrev[task_to_plot[1]], task_slice_value[0], task_slice_value[1], improvement_percentage)
       print(message, end="")
       f = open(eval_dir + "costs_info.txt", "a")
       f.write(message)
       f.close()
 
   np.set_printoptions(linewidth=100)  # number of characters per line for wrapping
-  msg = "\ncost_improvement_grid = \n" + str(cost_improvement_grid)
+  msg = "\ncost_improvement_grid = \n" + str(cost_improvement_grid) + "\n"
   print(msg)
   f = open(eval_dir + "costs_info.txt", "a")
   f.write(msg)
@@ -1869,7 +1875,7 @@ if __name__ == "__main__":
   # model_slices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices = [1, 200, 400, 600, 800]
   model_slices = [1, 200, 300, 400, 500, 600]
-  model_slices = [1, 200, 400]
+  model_slices = [1, 200, 400, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1896,7 +1902,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 30, 56]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
-  model_slices_cost_landsacpe = [1, 200, 400]
+  model_slices_cost_landsacpe = [1, 200, 400, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1967,7 +1973,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   # model_indices = [1, 200, 400, 600, 800]
   # model_indices = [1, 200, 300, 400, 500, 600]
-  model_indices = [1, 200, 400]
+  model_indices = [1, 200, 400, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -2039,6 +2045,12 @@ if __name__ == "__main__":
     assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
   if len(tasks.GetVaryingTaskElementName()) > 2:
     raise ValueError("We probably don't want to run 3D sim task. Not necessary.")
+
+  # Plotting parameter checks
+  for model_idx in model_slices:
+    assert model_idx in model_indices  # we read csv data according to model_indices
+  for model_idx in model_slices_cost_landsacpe:
+    assert model_idx in model_indices  # we read csv data according to model_indices
 
   ### Construct log indices
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))

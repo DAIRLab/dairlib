@@ -138,6 +138,11 @@ def CheckSteadyStateAndSaveTasks(x, t_x, td_times, start_with_left_stance):
                "ave_pelvis_height": ave_pelvis_height,
                "ave_turning_rate": ave_turning_rate}
 
+  # print("max_pelvis_xy_diff = ", max_pelvis_xy_diff)
+  # print("max_pelvis_height_diff = ", max_pelvis_height_diff)
+  # print("max_pelvis_yaw_diff = ", max_pelvis_yaw_diff)
+  # import pdb;pdb.set_trace()
+
   return True, max_pelvis_xy_diff + max_pelvis_height_diff + max_pelvis_yaw_diff, ave_tasks
 
 

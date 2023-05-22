@@ -239,6 +239,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--turning_rate=%.3f' % task_tr,
     '--path_init_state=%s' % path_simulation_init_state,
     '--path_init_pose_success=%s' % path_init_pose_success,
+    '--solve_again_with_desired_turning_rate=%s' % solve_init_state_again_for_turning_rate,
     ]
   lcm_logger_cmd = [
     'sleep %.1f && ' % t_no_logging_at_start,
@@ -1740,6 +1741,10 @@ if __name__ == "__main__":
   use_single_cost_function_for_all_tasks = False
   hybrid_mpc = parsed_yaml_file.get('use_hybrid_rom_mpc')
   simulation_initialization_mode = 2
+  # Testing
+  solve_init_state_again_for_turning_rate = False
+  if solve_init_state_again_for_turning_rate:
+    assert simulation_initialization_mode != 0
 
   # ROM Planner parameters (moved here since they are modified often)
   use_ipopt = True if hybrid_mpc else False

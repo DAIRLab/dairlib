@@ -53,6 +53,13 @@ bool CassieInitStateSolver(
     Eigen::VectorXd* q_result, Eigen::VectorXd* v_result,
     Eigen::VectorXd* u_result, Eigen::VectorXd* lambda_result);
 
+/// Solve for a kinematically feasible state
+bool CassieInitStateSolverGivenQ(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Eigen::VectorXd& pelvis_xy_vel, double yaw_rate,
+    const Eigen::VectorXd& q_desired, const Eigen::VectorXd& v_desired,
+    Eigen::VectorXd* q_result, Eigen::VectorXd* v_result);
+
 /// Constraint for CassieInitStateSolver
 class VdotConstraint : public dairlib::solvers::NonlinearConstraint<double> {
  public:

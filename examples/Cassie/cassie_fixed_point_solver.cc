@@ -569,4 +569,117 @@ bool CassieInitStateSolver(
   return result.is_success();
 }
 
+bool CassieInitStateSolverGivenQ(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Eigen::VectorXd& pelvis_xy_vel, double yaw_rate,
+    const Eigen::VectorXd& q_desired, const Eigen::VectorXd& v_desired,
+    Eigen::VectorXd* q_result, Eigen::VectorXd* v_result) {
+  auto program = multibody::MultibodyProgram(plant);
+
+  int n_v = plant.num_velocities();
+  auto pos_map = multibody::makeNameToPositionsMap(plant);
+  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+  auto q = program.AddPositionVariables();
+  auto v = program.NewContinuousVariables(n_v, "v");
+
+  program.AddBoundingBoxConstraint(q_desired, q_desired, q);
+
+  // Zero velocity on feet contacts and fourbars
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+  // Add loop closures
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+  // Add contact points
+  auto left_toe = LeftToeFront(plant);
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, left_toe.first, left_toe.second, Eigen::Matrix3d::Identity(),
+      Eigen::Vector3d::Zero(), {1, 2});
+  evaluators.add_evaluator(&left_toe_evaluator);
+  auto left_heel = LeftToeRear(plant);
+  auto left_heel_evaluator =
+      multibody::WorldPointEvaluator(plant, left_heel.first, left_heel.second);
+  evaluators.add_evaluator(&left_heel_evaluator);
+  auto right_toe = RightToeFront(plant);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, right_toe.first, right_toe.second, Eigen::Matrix3d::Identity(),
+      Eigen::Vector3d::Zero(), {1, 2});
+  evaluators.add_evaluator(&right_toe_evaluator);
+  auto right_heel = RightToeRear(plant);
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second);
+  evaluators.add_evaluator(&right_heel_evaluator);
+  // Add constraint
+  auto kinematic_constraint =
+      std::make_shared<dairlib::multibody::KinematicVelocityConstraint<double>>(
+          plant, evaluators, program.get_context());
+  program.AddConstraint(kinematic_constraint, {q, v});
+
+  // Floating base velcoity constraints
+  program.AddBoundingBoxConstraint(-10, 10, v);
+
+  program.AddBoundingBoxConstraint(yaw_rate, yaw_rate,
+                                   v(vel_map.at("base_wz")));
+
+  program.AddBoundingBoxConstraint(pelvis_xy_vel(0), pelvis_xy_vel(0),
+                                   v(vel_map.at("base_vx")));
+  program.AddBoundingBoxConstraint(pelvis_xy_vel(1), pelvis_xy_vel(1),
+                                   v(vel_map.at("base_vy")));
+
+  // Take care of springs
+  bool spring_model = pos_map.find("ankle_spring_joint_left") != pos_map.end();
+  if (spring_model) {
+    program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("knee_joint_leftdot")));
+    program.AddBoundingBoxConstraint(0, 0,
+                                     v(vel_map.at("knee_joint_rightdot")));
+    program.AddBoundingBoxConstraint(
+        0, 0, v(vel_map.at("ankle_spring_joint_leftdot")));
+    program.AddBoundingBoxConstraint(
+        0, 0, v(vel_map.at("ankle_spring_joint_rightdot")));
+  }
+
+  // Add costs
+  double s = 1;
+  auto v_cost_binding = program.AddQuadraticErrorCost(
+      s * MatrixXd::Identity(v.size(), v.size()), v_desired, v);
+
+  // Initial guesses
+  program.SetInitialGuess(q, q_desired);
+  program.SetInitialGuess(v, v_desired);
+
+  // Snopt settings
+  // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+  //                         "../snopt_test.out");
+  // std::cout << "Save log to ../snopt_test.out\n";
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major optimality tolerance", 1e-2);
+  program.SetSolverOption(drake::solvers::SnoptSolver::id(),
+                          "Major feasibility tolerance", 1e-4);
+
+  std::cout << "Start solving" << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  //  drake::solvers::IpoptSolver ipopt_solver;
+  //  const auto result = ipopt_solver.Solve(program, guess);
+  const auto result = drake::solvers::Solve(program, program.initial_guess());
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+
+  std::cout << to_string(result.get_solution_result()) << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
+
+  *q_result = result.GetSolution(q);
+  *v_result = result.GetSolution(v);
+
+  //  std::cout << "q = " << *q_result << std::endl;
+  //  std::cout << "v = " << *v_result << std::endl;
+
+  //  std::cout << "v_cost_binding = "
+  //            << solvers::EvalCostGivenSolution(result, v_cost_binding)
+  //            << std::endl;
+  return result.is_success();
+}
+
 }  // namespace dairlib

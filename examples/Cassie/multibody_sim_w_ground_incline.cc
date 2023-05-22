@@ -109,6 +109,10 @@ DEFINE_string(path_init_state, "", "");
 // Testing
 DEFINE_string(path_init_pose_success, "", "");
 
+DEFINE_bool(solve_again_with_desired_turning_rate, false,
+            "to improve the initial guess on turning rate when reading init "
+            "state directly from file");
+
 // RL training
 DEFINE_bool(is_RL_training, false, "");
 
@@ -154,6 +158,11 @@ class SimTerminator : public drake::systems::LeafSystem<double> {
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  // Some checks
+  if (FLAGS_solve_again_with_desired_turning_rate) {
+    DRAKE_DEMAND(!FLAGS_path_init_state.empty());
+  }
 
   // Ground direction
   DRAKE_DEMAND(abs(FLAGS_ground_incline) <= 0.3);
@@ -296,10 +305,49 @@ int do_main(int argc, char* argv[]) {
       x_init = x_init_wo_spr;
     }
 
-    std::ofstream outfile;
-    outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
-    outfile << "1";
-    outfile.close();
+    if (FLAGS_solve_again_with_desired_turning_rate &&
+        (FLAGS_turning_rate != 0)) {
+      // Create a plant for CassieFixedPointSolver.
+      // Note that we cannot use the plant from the above diagram, because after
+      // the diagram is built,
+      // plant.get_actuation_input_port().HasValue(*context) throws a segfault
+      // error
+      drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+      addCassieMultibody(&plant_for_solver, nullptr,
+                         FLAGS_floating_base /*floating base*/, urdf,
+                         FLAGS_spring_model, true);
+      plant_for_solver.Finalize();
+      VectorXd pelvis_xy_vel(2);
+      pelvis_xy_vel << FLAGS_pelvis_x_vel, FLAGS_pelvis_y_vel;
+      VectorXd q_init, v_init;
+      q_init = x_init.head(plant.num_positions());
+      v_init = x_init.tail(plant.num_velocities());
+      bool success = CassieInitStateSolverGivenQ(
+          plant_for_solver, pelvis_xy_vel, FLAGS_turning_rate, q_init, v_init,
+          &q_init, &v_init);
+      if (!FLAGS_path_init_pose_success.empty()) {
+        std::cout << "q_init = \n" << q_init.transpose() << std::endl;
+        std::cout << "v_init = \n" << v_init.transpose() << std::endl;
+
+        std::string msg = success ? "0" : "1";
+        std::ofstream outfile;
+        outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
+        outfile << msg;
+        outfile.close();
+
+        if (!success) {
+          std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
+          return 0;
+        }
+      }
+      x_init << q_init, v_init;
+    } else {
+      std::ofstream outfile;
+      outfile.open(FLAGS_path_init_pose_success, std::ios_base::trunc);
+      outfile << "1";
+      outfile.close();
+    }
+
   } else {
     VectorXd q_init, v_init, u_init, lambda_init;
     v_init = VectorXd::Zero(plant.num_velocities());

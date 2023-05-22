@@ -1236,7 +1236,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   levels = []
   for i in range(n_level)[::-1]:
     levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, n_decimal))
-  levels[0] = levels[0] - 0.1**n_decimal
+  levels[0] = round(levels[0] - 0.1**n_decimal, n_decimal)
   # levels[-1] = levels[-1] + 0.1**n_decimal
 
   colors = [tuple(color_improved_high + (color_improved_low - color_improved_high) * i / (n_level - 2)) for i in range(n_level - 1)]
@@ -1267,9 +1267,14 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plt.rcParams.update({'font.size': 14})
   fig, ax = plt.subplots()
 
-  surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
-  ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # we plot again but only the overlapped area to cover up the artifact of lost/acquired area
-  # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+  # Plotting all
+  # # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+  # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')  # all
+  # Plotting all at the same time can creat artifacts. E.g. when plotting lost area, it actually use all data to plot convex hull
+  # Therefore, we plot each are separately
+  ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
+  ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
+  surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines
   ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
@@ -1312,7 +1317,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
 
     # Visualize iter 1's samples for debugging
     cmt_to_visualize = cmt[cmt[:, 1] == 1]
-    plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'wx', markersize=3)
+    plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'rx', markersize=3)
 
   limit_margin = 0.01
   plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
@@ -1578,7 +1583,7 @@ def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
     plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value))
 
   # Log the improvement percentage into a file
-  message = "Max achievable task space improvement = %.1f %%\n" % float((max(task_range) - task_range[0]) / task_range[0] * 100)
+  message = "Max achievable task space improvement = %.1f %% (at %s=%.2f)\n" % (float((max(task_range) - task_range[0]) / task_range[0] * 100), task_to_plot[1], second_task_value)
   print(message)
   f = open(eval_dir + "costs_info.txt", "a")
   f.write(message)
@@ -1779,7 +1784,7 @@ if __name__ == "__main__":
   # Task list
   n_task_sl = 25 #25 #10
   n_task_ph = 3  #25 #3
-  n_task_tr = 25  #25 #3
+  n_task_tr = 30  #25 #3
   tasks = Tasks()
   tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
@@ -1797,7 +1802,7 @@ if __name__ == "__main__":
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
-  tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
+  tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
   # tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
@@ -1821,15 +1826,38 @@ if __name__ == "__main__":
   log_indices_for_plot = []
   # log_indices_for_plot = list(range(log_idx_offset + tasks.get_n_task()))
   # log_indices_for_plot = list(range(240))
-  # For cost landscape comparison
-  interpolate_across_iterations = False  # Do NOT do this for final figure. Interpolate across iterations creates weird artifacts (e.g. makes the level sets choppy in some cases)
-  filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts = False
-  tail_percentile = 1   # only applied to the overlapped area; get rid of occasional edge cases (either extremely good or bad periodic gait)
 
   # Select two tasks to plot
   # task_to_plot = ['stride_length', 'pelvis_height']  # order matters
   # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
   task_to_plot = ['stride_length', 'turning_rate']  # order matters
+
+  # Parameters for setting the task range for data collection filtering
+  # mean_sl = 0.2
+  # delta_sl = 0.1  # 0.1 #0.005
+  # min_sl = mean_sl - delta_sl
+  # max_sl = mean_sl + delta_sl
+  min_sl = -100
+  max_sl = 100
+  min_max_task_filter_for_viz = {}
+  min_max_task_filter_for_viz['stride_length'] = (min_sl, max_sl)
+  # min_max_task_filter_for_viz['stride_length'] = (-0.05, max_sl)
+  min_max_task_filter_for_viz['pelvis_height'] = (0, 2)
+  min_max_task_filter_for_viz['ground_incline'] = (-2, 2)
+  min_max_task_filter_for_viz['turning_rate'] = (-5, 5)
+
+  # Parameters for cost landscape grid range
+  task_boundary_outer_box = {}
+  task_boundary_outer_box['stride_length'] = (-0.8, 0.8)
+  task_boundary_outer_box['pelvis_height'] = (0.3, 1.3)
+  # task_boundary_outer_box['pelvis_height'] = (0.9, 1.)
+  task_boundary_outer_box['ground_incline'] = (-2, 2)
+  task_boundary_outer_box['turning_rate'] = (-5, 5)
+
+  # For cost landscape comparison
+  interpolate_across_iterations = False  # Do NOT do this for final figure. Interpolate across iterations creates weird artifacts (e.g. makes the level sets choppy in some cases)
+  filter_out_cost_bigger_than_1_caused_by_edge_case_artifacts = False
+  tail_percentile = 1   # only applied to the overlapped area; get rid of occasional edge cases (either extremely good or bad periodic gait)
 
   # 2D plot (cost vs model)
   all_task_slice_value_map = {}
@@ -1875,7 +1903,7 @@ if __name__ == "__main__":
   # model_slices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices = [1, 200, 400, 600, 800]
   model_slices = [1, 200, 300, 400, 500, 600]
-  model_slices = [1, 200, 400, 500]
+  model_slices = [1, 300, 400, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1902,7 +1930,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 30, 56]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
-  model_slices_cost_landsacpe = [1, 200, 400, 500]
+  model_slices_cost_landsacpe = [1, 300, 400, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -1973,7 +2001,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   # model_indices = [1, 200, 400, 600, 800]
   # model_indices = [1, 200, 300, 400, 500, 600]
-  model_indices = [1, 200, 400, 500]
+  model_indices = [1, 300, 400, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -2093,25 +2121,6 @@ if __name__ == "__main__":
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
   RunCommand("rm " + eval_dir + "costs_info.txt")
-
-  # Parameters for visualization
-  # mean_sl = 0.2
-  # delta_sl = 0.1  # 0.1 #0.005
-  # min_sl = mean_sl - delta_sl
-  # max_sl = mean_sl + delta_sl
-  min_sl = -100
-  max_sl = 100
-  min_max_task_filter_for_viz = {}
-  min_max_task_filter_for_viz['stride_length'] = (min_sl, max_sl)
-  min_max_task_filter_for_viz['pelvis_height'] = (0, 2)
-  min_max_task_filter_for_viz['ground_incline'] = (-2, 2)
-  min_max_task_filter_for_viz['turning_rate'] = (-5, 5)
-  task_boundary_outer_box = {}
-  task_boundary_outer_box['stride_length'] = (-0.8, 0.8)
-  task_boundary_outer_box['pelvis_height'] = (0.3, 1.3)
-  # task_boundary_outer_box['pelvis_height'] = (0.9, 1.)
-  task_boundary_outer_box['ground_incline'] = (-2, 2)
-  task_boundary_outer_box['turning_rate'] = (-5, 5)
 
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:

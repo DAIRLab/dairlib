@@ -457,14 +457,14 @@ void OperationalSpaceControl::Build() {
             .get();
   }
   // 3. external force cost
-  for (auto& force_tracking_data: *force_tracking_data_vec_){
-    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
-    lambda_ee_cost_ =
-        prog_
-            ->AddQuadraticCost(, VectorXd::Zero(n_h_), lambda_h_)
-            .evaluator()
-            .get();
-  }
+//  for (auto& force_tracking_data: *force_tracking_data_vec_){
+//    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
+//    lambda_ee_cost_ =
+//        prog_
+//            ->AddQuadraticCost(, VectorXd::Zero(n_h_), lambda_h_)
+//            .evaluator()
+//            .get();
+//  }
   // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     soft_constraint_cost_ =

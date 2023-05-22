@@ -3,7 +3,7 @@
   <model name="tray">
     <link name="tray">
       <inertial>
-        <mass>0.5</mass>
+        <mass>0.25</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>

@@ -202,6 +202,8 @@ int DoMain(int argc, char* argv[]) {
       *controller, &loop.get_diagram_mutable_context());
   //      loop.get_diagram_mutable_context()
   controller->get_input_port_target().FixValue(&controller_context, x_des);
+  LcmHandleSubscriptionsUntil(&lcm, [&]() {
+    return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

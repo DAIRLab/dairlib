@@ -15,7 +15,7 @@ w_lambda: 0.1
 impact_threshold: 0.000
 impact_tau: 0.000
 mu: 0.6
-end_effector_acceleration: 200.0
+end_effector_acceleration: 5.0
 track_end_effector_orientation: false
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -32,9 +32,9 @@ EndEffectorW:
    0, 1, 0,
    0, 0, 1]
 EndEffectorKp:
-  [ 2000, 0, 0,
-    0, 1000, 0,
-    0, 0, 2000 ]
+  [ 1000, 0, 0,
+    0, 500, 0,
+    0, 0, 1000 ]
 EndEffectorKd:
   [ 125, 0, 0,
     0, 70, 0,

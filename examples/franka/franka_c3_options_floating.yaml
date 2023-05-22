@@ -23,7 +23,7 @@ u_size: 49
 # State Tracking Error, assuming diagonal
 #q_vector: [100, 100, 100, 1, 1, 1, 1, 1, 1, 1,
 #           1, 1, 1, 1, 1, 1, 1, 1, 1]
-q_vector: [200, 200, 500, 1, 1, 1, 0, 0, 0, 0, 10000, 10000, 10000,
+q_vector: [200, 200, 500, 0, 0, 0, 0, 0, 0, 0, 10000, 10000, 10000,
            0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1, 0.1, 0.1, 0.1]

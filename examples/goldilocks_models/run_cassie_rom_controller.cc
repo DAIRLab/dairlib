@@ -182,6 +182,13 @@ DEFINE_bool(offset_swing_hip_yaw_for_heading, false,
 
 DEFINE_double(ground_incline, 0.0, "ground incline");
 
+// Testing -- to create different behavior for Cassie
+DEFINE_string(high_level_traj_mode, "default",
+              "Options:"
+              "default"
+              "open_loop_desired_vel_command"
+              "desired_x_y_yaw_path");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -513,30 +520,43 @@ int DoMain(int argc, char* argv[]) {
   Eigen::Vector2d params_of_no_turning(gains.yaw_deadband_blur,
                                        gains.yaw_deadband_radius);
   cassie::osc::HighLevelCommand* high_level_command;
-  if (gains.use_radio) {
-    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
-        gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
-    auto cassie_out_receiver =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
-            gains.use_virtual_radio ? "CASSIE_OUTPUT_ONLY_RADIO"
-                                    : FLAGS_cassie_out_channel,
-            &lcm_local));
-    builder.Connect(cassie_out_receiver->get_output_port(),
-                    high_level_command->get_cassie_output_port());
+  if (FLAGS_high_level_traj_mode == "default") {
+    if (gains.use_radio) {
+      high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+          plant_w_spr, context_w_spr.get(), gains.vel_scale_rot,
+          gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
+      auto cassie_out_receiver =
+          builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
+              gains.use_virtual_radio ? "CASSIE_OUTPUT_ONLY_RADIO"
+                                      : FLAGS_cassie_out_channel,
+              &lcm_local));
+      builder.Connect(cassie_out_receiver->get_output_port(),
+                      high_level_command->get_cassie_output_port());
 
-    // hack: help rom_iter=300 walk in place at start
-    if (!FLAGS_close_sim_gap) {
-      high_level_command->vel_command_offset_x_ =
-          gains.vel_command_offset_x * ((model_iter - 1) / 300);
+      // hack: help rom_iter=300 walk in place at start
+      if (!FLAGS_close_sim_gap) {
+        high_level_command->vel_command_offset_x_ =
+            gains.vel_command_offset_x * ((model_iter - 1) / 300);
+      }
+    } else {
+      high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+          plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
+          gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
+          gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
+          gains.vel_max_lateral, gains.target_pos_offset,
+          global_target_position, params_of_no_turning);
     }
-  } else {
+  } else if (FLAGS_high_level_traj_mode == "open_loop_desired_vel_command") {
+    // hack -- testing desired command velocity traj
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-        plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
-        gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
-        gains.vel_max_sagital, gains.kp_pos_lateral, gains.kd_pos_lateral,
-        gains.vel_max_lateral, gains.target_pos_offset, global_target_position,
-        params_of_no_turning);
+        plant_w_spr, context_w_spr.get());
+    high_level_command->SetOpenLoopVelCommandTraj();
+  } else if (FLAGS_high_level_traj_mode == "desired_x_y_yaw_path") {
+    high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+        plant_w_spr, context_w_spr.get());
+    high_level_command->SetDesiredXYTraj();
+  } else {
+    DRAKE_UNREACHABLE();
   }
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_state_input_port());

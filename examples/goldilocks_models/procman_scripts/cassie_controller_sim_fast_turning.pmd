@@ -31,7 +31,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.1.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5 --spring_model=false --min_mpc_thread_loop_duration=0.04";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5 --spring_model=false --min_mpc_thread_loop_duration=0.04 --pelvis_height=0.9";
         host = "localhost";
     }
     cmd "3.3.rom-planner (debug a given solve_idx)" {

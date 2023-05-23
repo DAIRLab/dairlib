@@ -177,7 +177,7 @@ group "5.lcm-tools" {
 
 group "1.rom-space-controller-with-init-traj" {
     cmd "2.1.rom-walking-controller (w init)" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --init_traj_file_name=0_rom_trajectory --offset_swing_hip_yaw_for_heading=true ";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --init_traj_file_name=0_rom_trajectory --offset_swing_hip_yaw_for_heading=true  --high_level_traj_mode=open_loop_desired_vel_command";
         host = "localhost";
     }
     cmd "2.2.rom-planner (w init)" {

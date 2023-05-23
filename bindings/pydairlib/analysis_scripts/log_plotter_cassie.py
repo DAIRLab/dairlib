@@ -170,7 +170,7 @@ def main():
 
   plot_state(x, t_x, u, t_u, x_datatypes, u_datatypes, t_osc_debug, fsm)
 
-  plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out, estop_signal, osc_output)
+  # plot_osc_debug(t_osc_debug, fsm, osc_debug, osc_debug_reg_cost, t_cassie_out, estop_signal, osc_output)
 
   # plot_feet_positions(plant_w_spr, context, x, l_toe_frame, mid_contact_disp, world,
   #   t_x, t_slice, t_osc_debug, fsm, "left foot", True)
@@ -224,6 +224,15 @@ def main():
   # cmd = "python3 examples/goldilocks_models/quick_eval_sim_cost.py --dir_path=%s --file_name=%s" % (path, filename)
   # print("shell command = ", cmd)
   # RunCommand(cmd, True)
+
+  ### Compute torque square
+  # # u_cost = 0.0
+  # # for i in range(len(u)):
+  # #   u_cost += u[i].T @ u[i]
+  # u_cost = np.sum(u**2)
+  # u_cost /= len(u)
+  # print(u_cost)
+  # import pdb;pdb.set_trace()
 
   plt.show()
 

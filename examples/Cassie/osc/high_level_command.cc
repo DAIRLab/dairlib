@@ -34,6 +34,8 @@ using drake::systems::LeafSystem;
 using drake::multibody::JacobianWrtVariable;
 using drake::trajectories::PiecewisePolynomial;
 
+using drake::MatrixX;
+
 namespace dairlib {
 namespace cassie {
 namespace osc {
@@ -47,7 +49,8 @@ HighLevelCommand::HighLevelCommand(
       this->DeclareAbstractInputPort("lcmt_cassie_output",
                                      drake::Value<dairlib::lcmt_cassie_out>{})
           .get_index();
-  use_radio_command_ = true;
+  //  use_radio_command_ = true;
+  high_level_mode_ = radio;
 
   vel_scale_rot_ = vel_scale_rot;
   vel_scale_trans_sagital_ = vel_scale_trans_sagital;
@@ -63,7 +66,9 @@ HighLevelCommand::HighLevelCommand(
     const Vector2d& global_target_position,
     const Vector2d& params_of_no_turning)
     : HighLevelCommand(plant, context) {
-  use_radio_command_ = false;
+  //  use_radio_command_ = false;
+  high_level_mode_ = desired_xy_position;
+
   kp_yaw_ = kp_yaw;
   kd_yaw_ = kd_yaw;
   vel_max_yaw_ = vel_max_yaw;
@@ -107,10 +112,51 @@ HighLevelCommand::HighLevelCommand(
   des_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(3));
 }
 
+void HighLevelCommand::SetOpenLoopVelCommandTraj() {
+  high_level_mode_ = open_loop_vel_command_traj;
+
+  std::vector<double> breaks = {0};
+  std::vector<MatrixXd> knots = {(MatrixX<double>(3, 1) << 0, 0, 0).finished()};
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(3, 1) << 0, 0, 0).finished());
+  breaks.push_back(breaks.back() + 5);
+  knots.push_back((MatrixX<double>(3, 1) << 0, 2, 0).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(3, 1) << 0.7, 2, 0).finished());
+  breaks.push_back(breaks.back() + 1.5);
+  knots.push_back((MatrixX<double>(3, 1) << 0.7, 2, 0).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(3, 1) << 0, 2, 0).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(3, 1) << 0, 2, 0).finished());
+  breaks.push_back(breaks.back() + 1);
+  knots.push_back((MatrixX<double>(3, 1) << 0, 0, 0).finished());
+  breaks.push_back(breaks.back() + 10000000);
+  knots.push_back((MatrixX<double>(3, 1) << 0, 0, 0).finished());
+
+  // Construct the PiecewisePolynomial.
+  desired_vel_command_traj_ =
+      PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
+};
+
+void HighLevelCommand::SetDesiredXYTraj() {
+  high_level_mode_ = desired_xy_traj;
+
+  std::vector<double> breaks = {0};
+  std::vector<MatrixXd> knots = {(MatrixX<double>(3, 1) << 0, 0, 0).finished()};
+
+  // TODO: finish this
+  DRAKE_UNREACHABLE();
+
+  // Construct the PiecewisePolynomial.
+  desired_xy_traj_ =
+      PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
+};
+
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  if (use_radio_command_) {
+  if (high_level_mode_ == radio) {
     const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
         context, cassie_out_port_);
     // TODO(yangwill) make sure there is a message available
@@ -123,9 +169,15 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
         vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
     des_vel(1) += vel_command_offset_x_;  //hack: help rom_iter=300 walk in place at start
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
-  } else {
+  } else if (high_level_mode_ == desired_xy_position) {
     discrete_state->get_mutable_vector(des_vel_idx_)
         .set_value(CalcCommandFromTargetPosition(context));
+  } else if (high_level_mode_ == open_loop_vel_command_traj) {
+    discrete_state->get_mutable_vector(des_vel_idx_)
+        .set_value(desired_vel_command_traj_.value(context.get_time()));
+  } else if (high_level_mode_ == desired_xy_traj) {
+    discrete_state->get_mutable_vector(des_vel_idx_)
+        .set_value(CalcCommandFromDesiredXYTraj(context));
   }
 
   return EventStatus::Succeeded();
@@ -225,6 +277,14 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   Vector3d des_vel;
   des_vel << desired_filtered_yaw_vel, des_sagital_vel, des_lateral_vel;
 
+  return des_vel;
+}
+
+VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
+    const Context<double>& context) const {
+  Vector3d des_vel;
+
+  DRAKE_UNREACHABLE();
   return des_vel;
 }
 

@@ -52,7 +52,12 @@ JetBrains IDEs have worked well for us and are available for free to students. F
 These dependencies are necessary for some advanced visualization and process management. Many examples will work without a full installation of Director or libbot, but (for lab members), these are ultimately recommended. 
 
 #### LCM and libbot
-Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation (option 1.a) should add the proper apt repo for these.
+Install a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation (option 1.a) should add the proper apt repo for these. You may have to add the installed binaries to your `PATH` variable:
+i.e. 
+```
+export PATH=$PATH:/opt/libbot2/0.0.1.20200422/bin
+export PATH=$PATH:/opt/lcm/1.4.0/bin
+```
 
 #### ROS
 To integrate with ROS (tested on ROS Noetic with 20.04), the following steps are required.

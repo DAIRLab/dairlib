@@ -137,7 +137,7 @@ bazel build --jobs=$n_thread_to_use examples/goldilocks_models:find_goldilocks_m
 #rm $bazel_flag
 
 ### Count the lastest iteration (I wrote this becasuse the job can get preempted if run at low QOS
-iter_max=1000  # The code is untested. Just in case we created an infinity loop
+iter_max=2000  # The code is untested. Just in case we created an infinity loop
 if [ $no_model_update ]; then
   FILE=_0_c.csv
 else

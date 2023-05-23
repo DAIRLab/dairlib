@@ -435,7 +435,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   levels = []
   for i in range(n_level)[::-1]:
     levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, n_decimal))
-  levels[0] = levels[0] - 0.1**n_decimal
+  levels[0] = round(levels[0] - 0.1**n_decimal, n_decimal)
   # levels[-1] = levels[-1] + 0.1**n_decimal
 
   colors = [tuple(color_improved_high + (color_improved_low - color_improved_high) * i / (n_level - 2)) for i in range(n_level - 1)]
@@ -463,9 +463,13 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plt.rcParams.update({'font.size': 14})
   fig, ax = plt.subplots()
 
-  surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')
-  ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # we plot again but only the overlapped area to cover up the artifact of lost/acquired area
-  # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+  # # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
+  # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')  # all
+  # Plotting all at the same time can creat artifacts. E.g. when plotting lost area, it actually use all data to plot convex hull
+  # Therefore, we plot each are separately
+  ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
+  ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
+  surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines
   ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
@@ -737,7 +741,7 @@ def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
     plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value))
 
   # Log the improvement percentage into a file
-  message = "Max achievable task space improvement = %.1f %%\n" % float((max(task_range) - task_range[0]) / task_range[0] * 100)
+  message = "Max achievable task space improvement = %.1f %% (at %s=%.2f)\n" % (float((max(task_range) - task_range[0]) / task_range[0] * 100), task_to_plot[1], second_task_value)
   print(message)
 
 
@@ -760,6 +764,7 @@ if __name__ == "__main__":
   # trajopt_base_dir = "/home/yuming/Desktop/data_on_desktop/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   # trajopt_base_dir = "/home/yuming/Desktop/temp/1221/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
+  trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -795,6 +800,7 @@ if __name__ == "__main__":
   # 2D plot (cost vs model)
   task_to_plot = ['stride_length', 'pelvis_height']
   # task_to_plot = ['ground_incline', 'turning_rate']
+  task_to_plot = ['stride_length', 'turning_rate']
   all_task_slice_value_map = {}
   # all_task_slice_value_map['stride_length'] = [-0.16, 0, 0.16]
   # all_task_slice_value_map['stride_length'] = [-0.2, -0.1, 0, 0.1, 0.2]
@@ -837,11 +843,14 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400]
   # model_slices_cost_landsacpe = model_indices
   model_slices_cost_landsacpe = [401]
+  model_slices_cost_landsacpe = [401, 501]
+  model_slices_cost_landsacpe = [400, 500]
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}
   task_grid_for_cost_improvement["stride_length"] = np.linspace(-0.7, 0.7, 15)
   task_grid_for_cost_improvement["pelvis_height"] = np.linspace(1.1, 0.6, 11)
+  task_grid_for_cost_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 15)
   x_1, y_1 = np.meshgrid(task_grid_for_cost_improvement[task_to_plot[0]], task_grid_for_cost_improvement[task_to_plot[1]])
   task_value_grid_for_computing_cost_improvement = [x_1, y_1]
 
@@ -858,6 +867,7 @@ if __name__ == "__main__":
   # Task range improvement for each value of the second task
   task_grid_for_range_improvement = {}
   task_grid_for_range_improvement["pelvis_height"] = np.linspace(1.0, 0.5, 6)
+  task_grid_for_range_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 7)
 
   # Parameters for visualization
   max_cost_to_ignore = 2  # 2
@@ -892,6 +902,13 @@ if __name__ == "__main__":
     nominal_task_ranges = np.loadtxt(trajopt_data_dir + "task_ranges.csv", delimiter=',')
     training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[0])[0][0]])
     training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[1])[0][0]])
+
+  # Plotting parameter checks
+  # We can commnent the following checks out, if we allow doing interpolation
+  # for model_idx in model_slices:
+  #   assert model_idx in model_indices  # we read csv data according to model_indices
+  # for model_idx in model_slices_cost_landsacpe:
+  #   assert model_idx in model_indices  # we read csv data according to model_indices
 
   ### Get samples to plot
   print("model_indices = ", model_indices)

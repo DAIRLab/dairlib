@@ -1807,6 +1807,7 @@ if __name__ == "__main__":
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
+  # tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
   tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
   # tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
@@ -1908,7 +1909,7 @@ if __name__ == "__main__":
   # model_slices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices = [1, 200, 400, 600, 800]
   model_slices = [1, 200, 300, 400, 500, 600]
-  model_slices = [1, 300, 400, 500]
+  model_slices = [1, 200, 300, 400, 500, 600, 700]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1935,7 +1936,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 30, 56]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
-  model_slices_cost_landsacpe = [1, 300, 400, 500]
+  model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -2006,7 +2007,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   # model_indices = [1, 200, 400, 600, 800]
   # model_indices = [1, 200, 300, 400, 500, 600]
-  model_indices = [1, 300, 400, 500]
+  model_indices = [1, 200, 300, 400, 500, 600, 700]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

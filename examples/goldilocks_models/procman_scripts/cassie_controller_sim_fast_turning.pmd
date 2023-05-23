@@ -86,17 +86,6 @@ group "2.1.ik-controller" {
     }
 }
 
-group "6.attic" {
-    cmd "1.simulator (with init state)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false";
-        host = "localhost";
-    }
-    cmd "2.simulator (with init state, mirrored robot)" {
-        exec = "bazel-bin/examples/goldilocks_models/multibody_sim_with_init_state --floating_base=true --init_height=1.0 --pause_second=1 --simulate_about_one_step_time=false --start_with_right_stance=true";
-        host = "localhost";
-    }
-}
-
 group "3.drake-simulator" {
     cmd "0.simulator" {
         exec = "bazel-bin/examples/Cassie/multibody_sim_w_ground_incline --floating_base=true --channel_u=ROM_WALKING --init_height=1.0 --pause_second=0 --target_realtime_rate=1 --pelvis_y_vel=0 --toe_spread=0.05 --init_yaw=0 --spring_model=false";

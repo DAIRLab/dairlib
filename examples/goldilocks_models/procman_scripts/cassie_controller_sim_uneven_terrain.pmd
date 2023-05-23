@@ -23,7 +23,7 @@ group "2.0.default-controller" {
 
 group "1.rom-space-controller" {
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --offset_swing_hip_yaw_for_heading=true";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --offset_swing_hip_yaw_for_heading=true  --high_level_traj_mode=open_loop_desired_vel_command";
         host = "localhost";
     }
     cmd "3.2.rom-planner" {
@@ -31,7 +31,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.1.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=4 --spring_model=false --min_mpc_thread_loop_duration=0.04 --pelvis_height=0.9";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=4 --spring_model=false --min_mpc_thread_loop_duration=0.04 --pelvis_height=0.9  --switch_to_snopt_after_first_loop=false";
         host = "localhost";
     }
     cmd "3.3.rom-planner (debug a given solve_idx)" {
@@ -305,6 +305,29 @@ script "run-rom-walking-test" {
     start cmd "0.simulator";
 }
 
+script "run-rom-walking-uneven-terrain-create-init-file" {
+    stop group "0.operator";
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "3.drake-simulator";
+    run_script "start-operator-simulation-floating-base";
+    start cmd "3.1.rom-planner (short time limit)";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    wait ms 500;
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "3.drake-simulator";
+    start cmd "2.2.rom-planner (w init)";
+    start cmd "2.1.rom-walking-controller (w init)";
+    wait ms 200;
+    start cmd "0.simulator";
+    start cmd "1.joystick";
+}
+
 script "run-rom-walking-uneven-terrain-w-init-file" {
     stop group "0.operator";
     stop group "1.0.dispatchers";
@@ -328,15 +351,6 @@ script "run-rom-walking-uneven-terrain-wo-init-file" {
     run_script "start-operator-simulation-floating-base";
     start cmd "3.1.rom-planner (short time limit)";
     start cmd "2.1.rom-walking-controller";
-    wait ms 200;
-    start cmd "0.simulator";
-    wait ms 500;
-    stop group "1.0.dispatchers";
-    stop group "1.rom-space-controller";
-    stop group "1.rom-space-controller-with-init-traj";
-    stop group "3.drake-simulator";
-    start cmd "2.2.rom-planner (w init)";
-    start cmd "2.1.rom-walking-controller (w init)";
     wait ms 200;
     start cmd "0.simulator";
     start cmd "1.joystick";

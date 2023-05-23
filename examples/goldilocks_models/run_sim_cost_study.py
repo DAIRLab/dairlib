@@ -1048,6 +1048,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   plt.legend()
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
+  plt.title('slice at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
   if save_fig:
     plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value))
 
@@ -1086,7 +1087,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     # plt.xlim([0, 135])
     plt.xlabel('model iterations')
     plt.ylabel(name_with_unit[task_to_plot[0]])
-    plt.title('1D cost landscape at %s %.2f m ' % (task_to_plot[1], second_task_value) + title_list[i])
+    plt.title('1D cost landscape at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]) + title_list[i])
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
@@ -1887,6 +1888,10 @@ if __name__ == "__main__":
                     'pelvis_height': "pelvis height (m)",
                     'ground_incline': "ground incline (rad)",
                     'turning_rate': "turning rate (rad/s)"}  # Note that I remove hyphen in `name_with_unit`
+  units = {'stride_length': "(m)",
+           'pelvis_height': "(m)",
+           'ground_incline': "(rad)",
+           'turning_rate': "(rad/s)"}
 
 
   # 2D plot (cost vs task)

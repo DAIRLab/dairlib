@@ -249,6 +249,7 @@ def Generate2dPlots(model_indices, cmt):
   plt.legend()
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
+  plt.title('slice at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
   if save_fig:
     plt.savefig("%scost_vs_task_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value))
 
@@ -287,7 +288,7 @@ def Generate2dPlots(model_indices, cmt):
     # plt.xlim([0, 135])
     plt.xlabel('model iterations')
     plt.ylabel(name_with_unit[task_to_plot[0]])
-    plt.title('1D cost landscape at %s %.2f m ' % (task_to_plot[1], second_task_value) + title_list[i])
+    plt.title('1D cost landscape at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]) + title_list[i])
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
@@ -801,6 +802,7 @@ if __name__ == "__main__":
   task_to_plot = ['stride_length', 'pelvis_height']
   # task_to_plot = ['ground_incline', 'turning_rate']
   task_to_plot = ['stride_length', 'turning_rate']
+  # task_to_plot = ['turning_rate', 'stride_length']
   all_task_slice_value_map = {}
   # all_task_slice_value_map['stride_length'] = [-0.16, 0, 0.16]
   # all_task_slice_value_map['stride_length'] = [-0.2, -0.1, 0, 0.1, 0.2]
@@ -808,7 +810,8 @@ if __name__ == "__main__":
   all_task_slice_value_map['stride_length'] = [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]
   all_task_slice_value_map['pelvis_height'] = [0.95]
   all_task_slice_value_map['ground_incline'] = [0.0]
-  all_task_slice_value_map['turning_rate'] = [0.0]
+  # all_task_slice_value_map['turning_rate'] = [0.0]
+  all_task_slice_value_map['turning_rate'] = [0.5]
   # Setup
   if len(task_to_plot) != 2:
     raise ValueError("task_to_plot needs to have length of 2")
@@ -822,6 +825,10 @@ if __name__ == "__main__":
                     'pelvis_height': "pelvis height (m)",
                     'ground_incline': "ground incline (rad)",
                     'turning_rate': "turning rate (rad/s)"}  # Note that I remove hyphen in `name_with_unit`
+  units = {'stride_length': "(m)",
+           'pelvis_height': "(m)",
+           'ground_incline': "(rad)",
+           'turning_rate': "(rad/s)"}
 
   # 2D plot (cost vs task)
   # model_slices = []
@@ -844,7 +851,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = model_indices
   model_slices_cost_landsacpe = [401]
   model_slices_cost_landsacpe = [401, 501]
-  model_slices_cost_landsacpe = [400, 500]
+  model_slices_cost_landsacpe = [401, 500]
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}

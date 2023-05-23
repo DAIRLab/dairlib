@@ -887,8 +887,10 @@ def main():
 
   # Message first column
   global msg_first_column
-  msg_first_column = "hardware_" + filename if is_hardware else \
-    "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx)
+  if is_hardware:
+    msg_first_column = "hardware_" + filename
+  else:
+    msg_first_column = "iteration #" + str(rom_iter_idx) + "log #" + str(log_idx)
 
   # File prefix
   file_prefix = ""
@@ -1015,6 +1017,7 @@ def main():
   # Weight used in model optimization
   weight_dict = GetCostWeight(nq, nv, nu)
 
+  costs = []
   for i in range(len(list_of_start_time_end_time_pair)):
     t_start, t_end = list_of_start_time_end_time_pair[i]
     ave_tasks = list_of_ave_tasks[i]
@@ -1023,6 +1026,7 @@ def main():
     cost_dict = ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict,
       is_hardware, spring_model, low_pass_filter, n_step,
       x, u, fsm, t_x, t_u, t_osc_debug, nq, nu, nv, vel_map)
+    costs.append(cost_dict)
 
     # Get a file_prefix name
     file_prefix_this_loop = file_prefix
@@ -1032,6 +1036,8 @@ def main():
 
     SaveData(cost_dict, file_prefix_this_loop, ave_tasks, start_time, start_time - t_walking_controller_switch_time)
 
+  # Testing -- just printing infos
+  # print("average cost_u = ", sum([cost_dict['cost_u'] for cost_dict in costs])/len(costs))
 
 def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware, spring_model,
     low_pass_filter, n_step,

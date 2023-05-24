@@ -139,18 +139,44 @@ void HighLevelCommand::SetOpenLoopVelCommandTraj() {
       PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 };
 
-void HighLevelCommand::SetDesiredXYTraj() {
+void HighLevelCommand::SetDesiredXYTraj(
+    const multibody::ViewFrame<double>* view_frame) {
   high_level_mode_ = desired_xy_traj;
+  view_frame_ = view_frame;
 
+  // Set x y set points
   std::vector<double> breaks = {0};
-  std::vector<MatrixXd> knots = {(MatrixX<double>(3, 1) << 0, 0, 0).finished()};
+  std::vector<MatrixXd> knots = {(MatrixX<double>(2, 1) << 0, 0).finished()};
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 0, 0).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 2, 0).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 4, 2).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 4, 4).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 2, 6).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 0, 6).finished());
+  breaks.push_back(breaks.back() + 2);
+  knots.push_back((MatrixX<double>(2, 1) << 0, 6).finished());
+  breaks.back() = 10000000;
 
-  // TODO: finish this
-  DRAKE_UNREACHABLE();
+  // Construct the cubic splines for x y trajectory.
+  desired_xy_traj_ = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
+  //  desired_xy_traj_ =
+  //      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+  //          breaks, knots, MatrixX<double>::Zero(2, 1),
+  //          MatrixX<double>::Zero(2, 1));
 
-  // Construct the PiecewisePolynomial.
-  desired_xy_traj_ =
-      PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
+  /*for (int i = 0; i < breaks.size(); i++) {
+    cout << breaks.at(i) << ", " << knots.at(i).transpose() << endl;
+  }
+  cout << "desired_xy_traj_ = \n";
+  for (int i = 0; i < 60; i++) {
+    cout << desired_xy_traj_.value(i * 0.1).transpose() << endl;
+  }*/
 };
 
 EventStatus HighLevelCommand::DiscreteVariableUpdate(
@@ -282,9 +308,95 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
 VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
     const Context<double>& context) const {
-  Vector3d des_vel;
+  VectorXd q = dynamic_cast<const OutputVector<double>*>(
+                   this->EvalVectorInput(context, state_port_))
+                   ->GetPositions();
+  VectorXd v = dynamic_cast<const OutputVector<double>*>(
+                   this->EvalVectorInput(context, state_port_))
+                   ->GetVelocities();
+  Eigen::Matrix2d view_frame_rot_T_ =
+      view_frame_->CalcWorldToFrameRotation(plant_, *context_)
+          .topLeftCorner<2, 2>();
 
-  DRAKE_UNREACHABLE();
+  // Compute desired x y vel
+  Vector2d des_xy = desired_xy_traj_.value(context.get_time());
+  Vector2d cur_xy = q.segment<2>(4);
+  Vector2d local_delta_xy = view_frame_rot_T_ * (des_xy - cur_xy);
+
+  Vector2d des_xy_dot =
+      desired_xy_traj_.has_derivative()
+          ? desired_xy_traj_.EvalDerivative(context.get_time(), 1)
+          : desired_xy_traj_.MakeDerivative(1)->value(context.get_time());
+  Vector2d local_des_xy_dot = view_frame_rot_T_ * des_xy_dot;
+
+  Vector2d command_xy_vel = 2 * local_delta_xy + local_des_xy_dot;
+
+  // Compute yaw traj by taking derivaties of x y traj
+  // yaw = arctan(dy,dx)
+  Quaterniond cur_quat(q(0), q(1), q(2), q(3));
+  Quaterniond des_quat =
+      des_xy_dot.norm() < 0.01
+          ? cur_quat
+          : Quaterniond::FromTwoVectors(
+                Vector3d(1, 0, 0), Vector3d(des_xy_dot(0), des_xy_dot(1), 0));
+  Eigen::AngleAxis<double> angle_axis_err(des_quat * cur_quat.inverse());
+  double yaw_err = (angle_axis_err.angle() * angle_axis_err.axis())(2);
+
+  double delta_t = 0.001;
+  Vector2d des_xy_dot_dt_later =
+      desired_xy_traj_.has_derivative()
+          ? desired_xy_traj_.EvalDerivative(context.get_time() + delta_t, 1)
+          : desired_xy_traj_.MakeDerivative(1)->value(context.get_time() +
+                                                      delta_t);
+  Quaterniond des_quat_dt_later =
+      des_xy_dot_dt_later.norm() < 0.01
+          ? cur_quat
+          : Quaterniond::FromTwoVectors(
+
+                Vector3d(1, 0, 0),
+                Vector3d(des_xy_dot_dt_later(0), des_xy_dot_dt_later(1), 0));
+  Eigen::AngleAxis<double> angle_axis_delta(des_quat_dt_later *
+                                            des_quat.inverse());
+  double delta_yaw = (angle_axis_delta.angle() * angle_axis_delta.axis())(2);
+  double des_yaw_dot = delta_yaw / delta_t;
+
+  double command_yaw_vel = 10 * yaw_err + des_yaw_dot;
+
+  // Assign x, y and yaw vel
+  Vector3d des_vel;
+  // des_vel << command_yaw_vel, command_xy_vel(0), 0;
+
+  // Instead of tracking des_vel_y here, we change the orientation to get closer
+  // to the trajectory "center line"
+  /*if (std::abs(command_xy_vel(1)) > 1) {
+    command_yaw_vel += 0.2 * command_xy_vel(1);
+  }*/
+  des_vel << command_yaw_vel, command_xy_vel(0), 0;
+
+  /*cout << "t = " << context.get_time() << endl;
+  cout << "des_xy = " << des_xy.transpose() << endl;
+  cout << "local_delta_xy = " << local_delta_xy.transpose() << endl;
+  cout << "local_des_xy_dot = " << local_des_xy_dot.transpose() << endl;
+
+  cout << "des_xy_dot = " << des_xy_dot.transpose() << endl;
+  cout << "des_xy_dot_dt_later = " << des_xy_dot_dt_later.transpose() << endl;
+  cout << "---\n";
+  cout << "cur_quat = " << cur_quat.w() << " " << cur_quat.vec().transpose()
+       << endl;
+  cout << "des_quat = " << des_quat.w() << " " << des_quat.vec().transpose()
+       << endl;
+  cout << "des_quat_dt_later = " << des_quat_dt_later.w() << " "
+       << des_quat_dt_later.vec().transpose() << endl;
+  cout << "angle_axis_err = " << angle_axis_err.angle() << ", "
+       << angle_axis_err.axis().transpose() << endl;
+  cout << "angle_axis_delta = " << angle_axis_delta.angle() << ", "
+       << angle_axis_delta.axis().transpose() << endl;
+  cout << "yaw_err = " << yaw_err << endl;
+  cout << "des_yaw_dot = " << des_yaw_dot << endl;
+
+  cout << "des_vel = " << des_vel.transpose() << endl;
+  cout << "=============\n";*/
+
   return des_vel;
 }
 

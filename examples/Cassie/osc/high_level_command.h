@@ -6,6 +6,7 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "multibody/view_frame.h"
 
 namespace dairlib {
 namespace cassie {
@@ -91,7 +92,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 
   // Hacks -- setting desired command trajectory
   void SetOpenLoopVelCommandTraj();
-  void SetDesiredXYTraj();
+  void SetDesiredXYTraj(const multibody::ViewFrame<double>* view_frame);
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -157,6 +158,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   int high_level_mode_;
   drake::trajectories::PiecewisePolynomial<double> desired_vel_command_traj_;
   drake::trajectories::PiecewisePolynomial<double> desired_xy_traj_;
+  const multibody::ViewFrame<double>* view_frame_;
   Eigen::VectorXd CalcCommandFromDesiredXYTraj(
       const drake::systems::Context<double>& context) const;
 };

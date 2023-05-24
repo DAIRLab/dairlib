@@ -373,6 +373,13 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_wo_springs);
   auto right_heel = RightToeRear(plant_wo_springs);
 
+  multibody::WorldYawViewFrame view_frame(
+      plant_wo_springs.GetBodyByName("pelvis"));
+  multibody::WorldYawViewFrame view_frame_w_spring(
+      plant_w_spr.GetBodyByName("pelvis"));
+  multibody::MirroredWorldYawViewFrame mirrored_view_frame_w_spring(
+      plant_w_spr.GetBodyByName("pelvis"));
+
   // Reduced order model
   int model_iter = FLAGS_iter > 0 ? FLAGS_iter : gains.model_iter;
   if (FLAGS_is_RL_training) {
@@ -554,7 +561,7 @@ int DoMain(int argc, char* argv[]) {
   } else if (FLAGS_high_level_traj_mode == "desired_x_y_yaw_path") {
     high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
         plant_w_spr, context_w_spr.get());
-    high_level_command->SetDesiredXYTraj();
+    high_level_command->SetDesiredXYTraj(&view_frame_w_spring);
   } else {
     DRAKE_UNREACHABLE();
   }
@@ -619,12 +626,6 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);*/
   // 3. Contact points (The position doesn't matter. It's not used in OSC)
-  multibody::WorldYawViewFrame view_frame(
-      plant_wo_springs.GetBodyByName("pelvis"));
-  multibody::WorldYawViewFrame view_frame_w_spring(
-      plant_w_spr.GetBodyByName("pelvis"));
-  multibody::MirroredWorldYawViewFrame mirrored_view_frame_w_spring(
-      plant_w_spr.GetBodyByName("pelvis"));
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_wo_springs, left_toe.first, left_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});

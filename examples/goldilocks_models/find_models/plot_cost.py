@@ -116,22 +116,21 @@ for i in range(len(directory_list)):
         print("Warning: didn't extract unique_folder_name correctly")
     print("(%s)" % unique_folder_name)
 
-    # Set N_sample
-    # n_sampel_sl = 13  # should be > 0
-    # n_sampel_gi = 1  # should be > 0
-    # n_sampel_v = 1  # should be > 0
-    # n_sampel_tr = 1  # should be > 0
-    # n_sampel_ph = 3  # should be > 0
-    # N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr * n_sampel_ph
-    # print('n_sampel_sl = ' + str(n_sampel_sl))
-    # print('n_sampel_gi = ' + str(n_sampel_gi))
-    # print('n_sampel_v = ' + str(n_sampel_v))
-    # print('n_sampel_tr = ' + str(n_sampel_tr))
-    # print('n_sampel_ph = ' + str(n_sampel_ph))
-    N_sample = int(np.loadtxt(directory + "n_sample.csv"))
-
     # Use try-catch, so that the script doesn't stop to continue to the next ROM optimization folder
     try:
+        # Set N_sample
+        # n_sampel_sl = 13  # should be > 0
+        # n_sampel_gi = 1  # should be > 0
+        # n_sampel_v = 1  # should be > 0
+        # n_sampel_tr = 1  # should be > 0
+        # n_sampel_ph = 3  # should be > 0
+        # N_sample = n_sampel_sl * n_sampel_gi * n_sampel_v * n_sampel_tr * n_sampel_ph
+        # print('n_sampel_sl = ' + str(n_sampel_sl))
+        # print('n_sampel_gi = ' + str(n_sampel_gi))
+        # print('n_sampel_v = ' + str(n_sampel_v))
+        # print('n_sampel_tr = ' + str(n_sampel_tr))
+        # print('n_sampel_ph = ' + str(n_sampel_ph))
+        N_sample = int(np.loadtxt(directory + "n_sample.csv"))
 
         # get nomial cost
         nominal_cost = 0.0

@@ -23,7 +23,7 @@ group "2.0.default-controller" {
 
 group "1.rom-space-controller" {
     cmd "2.1.rom-walking-controller" {
-        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --offset_swing_hip_yaw_for_heading=true  --high_level_traj_mode=open_loop_desired_vel_command";
+        exec = "bazel-bin/examples/goldilocks_models/run_cassie_rom_controller --channel_u=ROM_WALKING --use_IK=false --get_swing_foot_from_planner=true --close_sim_gap=false --spring_model=false --offset_swing_hip_yaw_for_heading=true  --high_level_traj_mode=desired_x_y_yaw_path";
         host = "localhost";
     }
     cmd "3.2.rom-planner" {

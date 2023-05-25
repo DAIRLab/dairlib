@@ -49,19 +49,53 @@ def CreateOneBlock(init_x, init_y, init_yaw, length, outputs):
   return final_x, final_y, final_yaw
 
 
+def CreateEndpointBlock(init_x, init_y, init_yaw, length, width, outputs):
+  height = 0.0 # Fixed
+  normal = [0.0, 0.0, 1.0] # Fixed
+
+  thinkness = 0.1  # doesn't really matter
+  block_dimension = [length, width, thinkness]
+
+  # Compute x y and yaw
+  outputs.append({"xyz": [init_x, init_y, height], "normal": normal, "dim": block_dimension, "yaw": [init_yaw]})
+
+  return init_x, init_y, init_yaw
+
+
+
 outputs = []
 
 current_x = 0
 current_y = 0
 current_yaw = 0
 
+current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, outputs)
 current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, outputs)
 current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, outputs)
 current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, outputs)
+current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, outputs)
 
-# Print
+# Print to create stones
 for i in range(len(outputs)):
   print(" - [", outputs[i]["xyz"], ", ", outputs[i]["normal"], ", ", outputs[i]["dim"], ", ", outputs[i]["yaw"], "]")
+
+print("\n\n\n")
+
+# Print to create trajectory to track
+desired_speed = 1
+t = 0
+print("std::vector<double> breaks = {")
+for i in range(len(outputs)):
+  print("%.3f%s" % (t, ", " if i < len(outputs) - 1 else ""))
+  t += outputs[i]["dim"][0] / desired_speed
+print("};")
+print("std::vector<std::vector<double>> knots_vec = {")
+for i in range(len(outputs)):
+  print("{%.3f, %.3f}%s" % (outputs[i]["xyz"][0], outputs[i]["xyz"][1], ", " if i < len(outputs) - 1 else ""))
+print("};")
+
+
+
 
 
 

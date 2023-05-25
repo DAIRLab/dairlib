@@ -145,23 +145,41 @@ void HighLevelCommand::SetDesiredXYTraj(
   view_frame_ = view_frame;
 
   // Set x y set points
-  std::vector<double> breaks = {0};
-  std::vector<MatrixXd> knots = {(MatrixX<double>(2, 1) << 0, 0).finished()};
+  /*std::vector<double> breaks = {0};
+  std::vector<std::vector<double>> knots_vec = {{0, 0}};
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 0, 0).finished());
+  knots_vec.push_back({0, 0});
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 2, 0).finished());
+  knots_vec.push_back({2, 0});
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 4, 2).finished());
+  knots_vec.push_back({4, 2});
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 4, 4).finished());
+  knots_vec.push_back({4, 4});
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 2, 6).finished());
+  knots_vec.push_back({2, 6});
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 0, 6).finished());
+  knots_vec.push_back({0, 6});
   breaks.push_back(breaks.back() + 2);
-  knots.push_back((MatrixX<double>(2, 1) << 0, 6).finished());
-  breaks.back() = 10000000;
+  knots_vec.push_back({0, 6});
+  breaks.back() = 10000000;*/
+
+  std::vector<double> breaks = {0.000,  1.000,  1.437,  1.875,  2.312,  2.750,
+                                3.187,  3.625,  4.062,  4.500,  4.937,  5.374,
+                                10.374, 10.812, 11.249, 11.687, 12.124, 12.562,
+                                12.999, 13.437, 13.874, 14.311, 14.749};
+  std::vector<std::vector<double>> knots_vec = {
+      {0.000, 0.000}, {0.000, 0.000}, {0.347, 0.030}, {0.684, 0.121},
+      {1.000, 0.268}, {1.286, 0.468}, {1.532, 0.714}, {1.732, 1.000},
+      {1.879, 1.316}, {1.970, 1.653}, {2.000, 2.000}, {2.000, 4.500},
+      {2.000, 7.000}, {1.970, 7.347}, {1.879, 7.684}, {1.732, 8.000},
+      {1.532, 8.286}, {1.286, 8.532}, {1.000, 8.732}, {0.684, 8.879},
+      {0.347, 8.970}, {0.000, 9.000}, {0.000, 9.000}};
+
+  // Convert vector to MatrixXd
+  std::vector<MatrixXd> knots(knots_vec.size(), MatrixX<double>(2, 1));
+  for (int i = 0; i < knots_vec.size(); i++) {
+    knots.at(i) << knots_vec.at(i)[0], knots_vec.at(i)[1];
+  }
 
   // Construct the cubic splines for x y trajectory.
   desired_xy_traj_ = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
@@ -352,7 +370,6 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
       des_xy_dot_dt_later.norm() < 0.01
           ? cur_quat
           : Quaterniond::FromTwoVectors(
-
                 Vector3d(1, 0, 0),
                 Vector3d(des_xy_dot_dt_later(0), des_xy_dot_dt_later(1), 0));
   Eigen::AngleAxis<double> angle_axis_delta(des_quat_dt_later *

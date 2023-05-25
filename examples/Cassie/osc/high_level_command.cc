@@ -163,7 +163,8 @@ void HighLevelCommand::SetDesiredXYTraj(
   knots_vec.push_back({0, 6});
   breaks.back() = 10000000;*/
 
-  std::vector<double> breaks = {0.000,  1.000,  1.437,  1.875,  2.312,  2.750,
+  // Traj: turn -> long strech -> turn
+  /*std::vector<double> breaks = {0.000,  1.000,  1.437,  1.875,  2.312,  2.750,
                                 3.187,  3.625,  4.062,  4.500,  4.937,  5.374,
                                 10.374, 10.812, 11.249, 11.687, 12.124, 12.562,
                                 12.999, 13.437, 13.874, 14.311, 14.749};
@@ -173,7 +174,21 @@ void HighLevelCommand::SetDesiredXYTraj(
       {1.879, 1.316}, {1.970, 1.653}, {2.000, 2.000}, {2.000, 4.500},
       {2.000, 7.000}, {1.970, 7.347}, {1.879, 7.684}, {1.732, 8.000},
       {1.532, 8.286}, {1.286, 8.532}, {1.000, 8.732}, {0.684, 8.879},
-      {0.347, 8.970}, {0.000, 9.000}, {0.000, 9.000}};
+      {0.347, 8.970}, {0.000, 9.000}, {0.000, 9.000}};*/
+
+  // Traj:  long strech -> 180 turn -> long strech
+  std::vector<double> breaks = {
+      0.000,  2.000,  5.500,  8.207,  8.621,  9.036,  9.450,  9.864,  10.279,
+      10.693, 11.107, 11.522, 11.936, 12.350, 12.765, 13.179, 13.593, 14.008,
+      14.422, 14.836, 15.250, 15.665, 16.079, 18.786, 22.286};
+  std::vector<std::vector<double>> knots_vec = {
+      {0.000, 0.000}, {0.000, 0.000}, {2.500, 0.000}, {5.000, 0.000},
+      {5.329, 0.027}, {5.649, 0.108}, {5.952, 0.241}, {6.228, 0.422},
+      {6.471, 0.645}, {6.674, 0.906}, {6.832, 1.197}, {6.939, 1.509},
+      {6.993, 1.835}, {6.993, 2.165}, {6.939, 2.491}, {6.832, 2.803},
+      {6.674, 3.094}, {6.471, 3.355}, {6.228, 3.578}, {5.952, 3.759},
+      {5.649, 3.892}, {5.329, 3.973}, {5.000, 4.000}, {2.500, 4.000},
+      {0.000, 4.000}};
 
   // Convert vector to MatrixXd
   std::vector<MatrixXd> knots(knots_vec.size(), MatrixX<double>(2, 1));
@@ -360,7 +375,8 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   Eigen::AngleAxis<double> angle_axis_err(des_quat * cur_quat.inverse());
   double yaw_err = (angle_axis_err.angle() * angle_axis_err.axis())(2);
 
-  double delta_t = 0.001;
+  double delta_t =
+      0.5;  // dt cannot be small, because our desired xy traj is not smooth
   Vector2d des_xy_dot_dt_later =
       desired_xy_traj_.has_derivative()
           ? desired_xy_traj_.EvalDerivative(context.get_time() + delta_t, 1)
@@ -414,7 +430,18 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   cout << "des_vel = " << des_vel.transpose() << endl;
   cout << "=============\n";*/
 
-  return des_vel;
+  if (context.get_time() == 0) {
+    filtered_vel_command_ = des_vel;
+  } else {
+    double alpha =
+        2 * M_PI * (context.get_time() - prev_t_) * cutoff_freq_ /
+        (2 * M_PI * (context.get_time() - prev_t_) * cutoff_freq_ + 1);
+    filtered_vel_command_ =
+        alpha * des_vel + (1 - alpha) * filtered_vel_command_;
+    prev_t_ = context.get_time();
+  }
+
+  return filtered_vel_command_;
 }
 
 void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,

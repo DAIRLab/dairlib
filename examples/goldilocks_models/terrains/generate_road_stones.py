@@ -69,13 +69,24 @@ current_x = 0
 current_y = 0
 current_yaw = 0
 
-current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, outputs)
-current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, outputs)
+# name = "turn -> long strech -> turn"
+# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, outputs)
+# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, outputs)
+# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, outputs)
+# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, outputs)
+# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, outputs)
+
+name = "long strech -> 180 turn -> long strech"
+current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, outputs)
+current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, outputs)
 current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, outputs)
-current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, outputs)
-current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, outputs)
+current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, 20, outputs)
+current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, outputs)
+current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, outputs)
+
 
 # Print to create stones
+print("# ", name)
 for i in range(len(outputs)):
   print(" - [", outputs[i]["xyz"], ", ", outputs[i]["normal"], ", ", outputs[i]["dim"], ", ", outputs[i]["yaw"], "]")
 
@@ -84,10 +95,13 @@ print("\n\n\n")
 # Print to create trajectory to track
 desired_speed = 1
 t = 0
+print("// Traj: ", name)
 print("std::vector<double> breaks = {")
 for i in range(len(outputs)):
   print("%.3f%s" % (t, ", " if i < len(outputs) - 1 else ""))
-  t += outputs[i]["dim"][0] / desired_speed
+  t += (outputs[i]["dim"][0] / 2) / desired_speed  # second half of the current block
+  if i < len(outputs) - 1:
+    t += (outputs[i+1]["dim"][0] / 2) / desired_speed  # first half of the next block
 print("};")
 print("std::vector<std::vector<double>> knots_vec = {")
 for i in range(len(outputs)):

@@ -93,20 +93,39 @@ for i in range(len(outputs)):
 print("\n\n\n")
 
 # Print to create trajectory to track
-desired_speed = 1
+desired_speed = 0.5
 t = 0
+t_breaks = []
+# Method 1
+# for i in range(len(outputs)):
+#   t_breaks.append(t)
+#   t += (outputs[i]["dim"][0] / 2) / desired_speed  # second half of the current block
+#   if i < len(outputs) - 1:
+#     t += (outputs[i+1]["dim"][0] / 2) / desired_speed  # first half of the next block
+# Method 2
+for i in range(len(outputs)):
+  t_breaks.append(t)
+  if i < len(outputs) - 1:
+    distance = np.linalg.norm(np.array(outputs[i+1]["xyz"]) - np.array(outputs[i]["xyz"]))
+    t += (distance) / desired_speed if distance > 0 else 2  # if the way point is the same, it means we want to stay there for a bit. Here is give it 2 seconds
+  else:
+    t += (outputs[i]["dim"][0] / 2) / desired_speed
+  
 print("// Traj: ", name)
 print("std::vector<double> breaks = {")
 for i in range(len(outputs)):
-  print("%.3f%s" % (t, ", " if i < len(outputs) - 1 else ""))
-  t += (outputs[i]["dim"][0] / 2) / desired_speed  # second half of the current block
-  if i < len(outputs) - 1:
-    t += (outputs[i+1]["dim"][0] / 2) / desired_speed  # first half of the next block
+  print("%.3f%s" % (t_breaks[i], ", " if i < len(outputs) - 1 else ""))
 print("};")
 print("std::vector<std::vector<double>> knots_vec = {")
 for i in range(len(outputs)):
   print("{%.3f, %.3f}%s" % (outputs[i]["xyz"][0], outputs[i]["xyz"][1], ", " if i < len(outputs) - 1 else ""))
 print("};")
+
+# For better reading
+print("\n\n\n")
+for i in range(len(outputs)):
+  # print("%.3f: {%.3f, %.3f}%s" % (t_breaks[i], outputs[i]["xyz"][0], outputs[i]["xyz"][1], ", " if i < len(outputs) - 1 else ""))
+  print("%.3f, dt=%.3f: {%.3f, %.3f}%s" % (t_breaks[i], t_breaks[i+1]-t_breaks[i] if i < len(outputs) - 1 else 0, outputs[i]["xyz"][0], outputs[i]["xyz"][1], ", " if i < len(outputs) - 1 else ""))
 
 
 

@@ -2341,7 +2341,16 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Generate a new task or use the same task if this is a rerun
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
-          if (!FLAGS_is_debug) {
+          if (FLAGS_is_debug || FLAGS_no_model_update) {
+            task.set(task_gen_grid.NewNominalTask(sample_idx));
+            /*task.set(CopyVectorXdToStdVector(
+                readCSV(dir + prefix + string("task.csv")).col(0)));*/
+
+            task.Print();
+            writeCSV(dir + prefix + string("task.csv"),
+                     Eigen::Map<const VectorXd>(task.get().data(),
+                                                task.get().size()));
+          } else {
             if (current_sample_is_a_rerun || step_size_shrinked_last_loop) {
               task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
             } else {
@@ -2357,15 +2366,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
               // Store task in files
               writeCSV(dir + prefix + string("task.csv"), task_vectorxd);
             }
-          } else {
-            task.set(task_gen_grid.NewNominalTask(sample_idx));
-            /*task.set(CopyVectorXdToStdVector(
-                readCSV(dir + prefix + string("task.csv")).col(0)));*/
-
-            task.Print();
-            writeCSV(dir + prefix + string("task.csv"),
-                     Eigen::Map<const VectorXd>(task.get().data(),
-                                                task.get().size()));
           }
 
           // (Feature -- get initial guess from adjacent successful samples)

@@ -134,7 +134,10 @@ print("};")
 print("\n\n\n")
 for i in range(len(stones)):
   # print("%.3f: {%.3f, %.3f}%s" % (t_breaks[i], stones[i]["xyz"][0], stones[i]["xyz"][1], ", " if i < len(stones) - 1 else ""))
-  print("%.3f, dt=%.3f: {%.3f, %.3f}%s" % (t_breaks[i], t_breaks[i+1]-t_breaks[i] if i < len(stones) - 1 else 0, stones[i]["xyz"][0], stones[i]["xyz"][1], ", " if i < len(stones) - 1 else ""))
+  print("%.3f, dt=%.3f, dx/dt=%.1f: {%.3f, %.3f}%s" % (t_breaks[i], 
+    t_breaks[i+1]-t_breaks[i] if i < len(stones) - 1 else -1, 
+    np.linalg.norm(np.array(stones[i+1]["xyz"]) - np.array(stones[i]["xyz"]))/(t_breaks[i+1]-t_breaks[i]) if i < len(stones) - 1 else -1, 
+    stones[i]["xyz"][0], stones[i]["xyz"][1], ", " if i < len(stones) - 1 else ""))
 
 
 

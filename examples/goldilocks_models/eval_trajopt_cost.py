@@ -468,8 +468,10 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')  # all
   # Plotting all at the same time can creat artifacts. E.g. when plotting lost area, it actually use all data to plot convex hull
   # Therefore, we plot each are separately
-  ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
-  ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
+  if np.sum(z == small_val) != 0:  # if-condition makes sure that the index selection are not emtpy
+    ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
+  if np.sum(z == big_val) != 0:  # if-condition makes sure that the index selection are not emtpy
+    ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
   surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines
@@ -562,6 +564,13 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     fig, ax = plt.subplots()
     surf = ax.tricontourf(data[:, 2], data[:, 3], z, levels=levels, cmap='coolwarm')
     fig.colorbar(surf, shrink=0.9, aspect=15)
+
+    visualize_datapoints_on_landscape = True
+    if visualize_datapoints_on_landscape:
+      # We only plot samples of the optimized model and not the initial model
+      cmt_to_visualize = cmt[cmt[:, 1] == model_slice_value]
+      plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'k.')
+      # plt.scatter(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], c=cmt_to_visualize[:, 0])
 
     # plt.xlim([0, 135])
     plt.xlabel(name_with_unit[task_to_plot[0]])
@@ -766,6 +775,7 @@ if __name__ == "__main__":
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   # trajopt_base_dir = "/home/yuming/Desktop/temp/1221/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -780,7 +790,7 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   model_iter_idx_start = 1
-  model_iter_idx_end = 500
+  model_iter_idx_end = 401
   model_iter_idx_delta = 100
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
   # Manually overwrite
@@ -831,17 +841,18 @@ if __name__ == "__main__":
            'turning_rate': "(rad/s)"}
 
   # 2D plot (cost vs task)
-  # model_slices = []
-  model_slices = [1, 50, 100, 150, 200]
-  # model_slices = [1, 25, 50, 75, 100]
-  # model_slices = list(range(1, 50, 5))
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
+  # model_slices = []
+  # model_slices = [1, 50, 100, 150, 200]
+  # model_slices = [1, 25, 50, 75, 100]
+  # model_slices = list(range(1, 50, 5))
+  model_slices = model_indices
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  model_slices_cost_landsacpe = [1, 2, 11, 110]
-  model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
+  # model_slices_cost_landsacpe = [1, 2, 11, 110]
+  # model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
   # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
   # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
   # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
@@ -849,9 +860,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 100, 150, 200, 250, 300, 320, 350, 400, 450, 500]
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400]
   # model_slices_cost_landsacpe = model_indices
-  model_slices_cost_landsacpe = [401]
-  model_slices_cost_landsacpe = [401, 501]
-  model_slices_cost_landsacpe = [401, 500]
+  # model_slices_cost_landsacpe = [401, 501]
+  # model_slices_cost_landsacpe = [401, 501]
+  model_slices_cost_landsacpe = model_indices
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}

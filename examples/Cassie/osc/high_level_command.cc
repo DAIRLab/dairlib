@@ -163,7 +163,7 @@ void HighLevelCommand::SetDesiredXYTraj(
   knots_vec.push_back({0, 6});
   breaks.back() = 10000000;*/
 
-  // Traj: turn -> long strech -> turn
+  // Traj: turn -> long stretch -> turn
   /*std::vector<double> breaks = {0.000,  1.000,  1.437,  1.875,  2.312,  2.750,
                                 3.187,  3.625,  4.062,  4.500,  4.937,  5.374,
                                 10.374, 10.812, 11.249, 11.687, 12.124, 12.562,
@@ -176,7 +176,7 @@ void HighLevelCommand::SetDesiredXYTraj(
       {1.532, 8.286}, {1.286, 8.532}, {1.000, 8.732}, {0.684, 8.879},
       {0.347, 8.970}, {0.000, 9.000}, {0.000, 9.000}};*/
 
-  // Traj:  long strech -> 180 turn -> long strech
+  // Traj:  long stretch -> 180 turn -> long stretch
   //  0.000, dt=2.000: {0.000, 0.000},
   //  2.000, dt=3.500: {0.000, 0.000},
   //  5.500, dt=2.707: {2.500, 0.000},
@@ -215,7 +215,7 @@ void HighLevelCommand::SetDesiredXYTraj(
       {5.649, 3.892}, {5.329, 3.973}, {5.000, 4.000}, {2.500, 4.000},
       {0.000, 4.000}};*/
 
-  // Traj:  long strech -> 180 turn -> long strech
+  // Traj:  long stretch -> 180 turn -> long stretch
   // LIP cannot keep up the speed of this
   //    0.000, dt=2.000: {0.000, 0.000},
   //    2.000, dt=2.500: {0.000, 0.000},
@@ -242,7 +242,7 @@ void HighLevelCommand::SetDesiredXYTraj(
   //    13.276, dt=2.500: {5.000, 4.000},
   //    15.776, dt=2.500: {2.500, 4.000},
   //    18.276, dt=0.000: {0.000, 4.000}
-  std::vector<double> breaks = {
+  /*std::vector<double> breaks = {
       0.000,  2.000,  4.500,  7.000,  7.330,  7.661,  7.991,  8.321,  8.652,
       8.982,  9.312,  9.643,  9.973,  10.303, 10.633, 10.964, 11.294, 11.624,
       11.955, 12.285, 12.615, 12.946, 13.276, 15.776, 18.276};
@@ -253,7 +253,7 @@ void HighLevelCommand::SetDesiredXYTraj(
       {6.993, 1.835}, {6.993, 2.165}, {6.939, 2.491}, {6.832, 2.803},
       {6.674, 3.094}, {6.471, 3.355}, {6.228, 3.578}, {5.952, 3.759},
       {5.649, 3.892}, {5.329, 3.973}, {5.000, 4.000}, {2.500, 4.000},
-      {0.000, 4.000}};
+      {0.000, 4.000}};*/
 
   /*std::vector<double> breaks = {
       0.000,  2.000,  7.000,  12.000, 12.661, 13.321, 13.982, 14.643, 15.303,
@@ -267,6 +267,20 @@ void HighLevelCommand::SetDesiredXYTraj(
       {6.674, 3.094}, {6.471, 3.355}, {6.228, 3.578}, {5.952, 3.759},
       {5.649, 3.892}, {5.329, 3.973}, {5.000, 4.000}, {2.500, 4.000},
       {0.000, 4.000}};*/
+
+  // Traj:  20230526 long stretch -> 180 turn -> long stretch
+  std::vector<double> breaks = {
+      0.000,  2.000,  7.000,  10.333, 11.583, 11.914, 12.244, 12.574, 12.905,
+      13.235, 13.565, 13.896, 14.226, 14.556, 14.887, 15.217, 15.547, 15.877,
+      16.208, 16.538, 16.868, 17.199, 17.529, 17.859, 19.109, 22.443, 27.443};
+  std::vector<std::vector<double>> knots_vec = {
+      {0.000, 0.000}, {0.000, 0.000}, {1.250, 0.000}, {3.750, 0.000},
+      {5.000, 0.000}, {5.329, 0.027}, {5.649, 0.108}, {5.952, 0.241},
+      {6.228, 0.422}, {6.471, 0.645}, {6.674, 0.906}, {6.832, 1.197},
+      {6.939, 1.509}, {6.993, 1.835}, {6.993, 2.165}, {6.939, 2.491},
+      {6.832, 2.803}, {6.674, 3.094}, {6.471, 3.355}, {6.228, 3.578},
+      {5.952, 3.759}, {5.649, 3.892}, {5.329, 3.973}, {5.000, 4.000},
+      {3.750, 4.000}, {1.250, 4.000}, {0.000, 4.000}};
 
   // Convert vector to MatrixXd
   std::vector<MatrixXd> knots(knots_vec.size(), MatrixX<double>(2, 1));
@@ -484,31 +498,37 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   double command_yaw_vel = 10 * yaw_err + des_yaw_dot;
 
   // Assign x, y and yaw vel
-  Vector3d des_vel;
-  // des_vel << command_yaw_vel, command_xy_vel(0), 0;
+  Vector3d command_vel;
+  // command_vel << command_yaw_vel, command_xy_vel(0), 0;
 
   // Instead of tracking des_vel_y here, we change the orientation to get closer
   // to the trajectory "center line"
   if (std::abs(command_xy_vel(1)) > 1) {
     command_yaw_vel += 0.4 * command_xy_vel(1);
   }
-  des_vel << command_yaw_vel, command_xy_vel(0), 0;
+  command_vel << command_yaw_vel, command_xy_vel(0), 0;
 
   // Add low pass filter to the command
   if (prev_t_ == 0) {
     filtered_vel_command_.setZero();
-    //    filtered_vel_command_ = des_vel;
+    //    filtered_vel_command_ = command_vel;
   } else {
-    //cutoff_freq_ = (t_traj_ < 4) ? 0.1 : 1;
+    // cutoff_freq_ = (t_traj_ < 4) ? 0.1 : 1;
     if (reach_the_end_of_traj) {
-      cutoff_freq_ = 0.1;
+      //      cutoff_freq_xy_ = 0.1;
       //      filtered_vel_command_.setZero();
     }
 
-    double alpha = 2 * M_PI * dt_sim * cutoff_freq_ /
-                   (2 * M_PI * dt_sim * cutoff_freq_ + 1);
-    filtered_vel_command_ =
-        alpha * des_vel + (1 - alpha) * filtered_vel_command_;
+    double alpha_yaw = 2 * M_PI * dt_sim * cutoff_freq_yaw_ /
+                       (2 * M_PI * dt_sim * cutoff_freq_yaw_ + 1);
+    double alpha_xy = 2 * M_PI * dt_sim * cutoff_freq_xy_ /
+                      (2 * M_PI * dt_sim * cutoff_freq_xy_ + 1);
+    filtered_vel_command_.head<1>() =
+        (alpha_yaw * command_vel + (1 - alpha_yaw) * filtered_vel_command_)
+            .head<1>();
+    filtered_vel_command_.tail<2>() =
+        (alpha_xy * command_vel + (1 - alpha_xy) * filtered_vel_command_)
+            .tail<2>();
   }
 
   // Update the flag `tracking_error_too_big_`
@@ -539,14 +559,14 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   cout << "yaw_err = " << yaw_err << endl;
   cout << "des_yaw_dot = " << des_yaw_dot << endl;
 
-  cout << "des_vel = " << des_vel.transpose() << endl;
+  cout << "command_vel = " << command_vel.transpose() << endl;
   cout << "filtered_vel_command_ = " << filtered_vel_command_.transpose()
        << endl;
   cout << "=============\n";*/
 
-  //  return des_vel;
+  //  return command_vel;
   return filtered_vel_command_;
-  //  return Vector3d(filtered_vel_command_(0), des_vel(1), 0);
+  //  return Vector3d(filtered_vel_command_(0), command_vel(1), 0);
 }
 
 void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,

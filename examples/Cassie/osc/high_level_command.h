@@ -1,12 +1,12 @@
 #pragma once
 
+#include "multibody/view_frame.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "multibody/view_frame.h"
 
 namespace dairlib {
 namespace cassie {

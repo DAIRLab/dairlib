@@ -91,16 +91,16 @@ HighLevelCommand::HighLevelCommand(
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
-          .get_index();
+                    .get_index();
 
-  yaw_port_ = this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
-                                            &HighLevelCommand::CopyHeadingAngle)
-                  .get_index();
+  yaw_port_ =
+      this->DeclareVectorOutputPort("pelvis_yaw", BasicVector<double>(1),
+                                    &HighLevelCommand::CopyHeadingAngle)
+          .get_index();
   xy_port_ =
       this->DeclareVectorOutputPort("pelvis_xy", BasicVector<double>(2),
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
@@ -304,7 +304,8 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     des_vel << vel_scale_rot_ * cassie_out->pelvis.radio.channel[3],
         vel_scale_trans_sagital_ * cassie_out->pelvis.radio.channel[0],
         vel_scale_trans_lateral_ * cassie_out->pelvis.radio.channel[1];
-    des_vel(1) += vel_command_offset_x_;  //hack: help rom_iter=300 walk in place at start
+    des_vel(1) += vel_command_offset_x_;  // hack: help rom_iter=300 walk in
+                                          // place at start
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else if (high_level_mode_ == desired_xy_position) {
     discrete_state->get_mutable_vector(des_vel_idx_)

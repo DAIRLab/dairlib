@@ -159,6 +159,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   drake::trajectories::PiecewisePolynomial<double> desired_vel_command_traj_;
   mutable double t_traj_ = 0;
   mutable bool tracking_error_too_big_ = false;
+  mutable bool much_far_ahead_ = false;
   drake::trajectories::PiecewisePolynomial<double> desired_xy_traj_;
   const multibody::ViewFrame<double>* view_frame_;
   Eigen::VectorXd CalcCommandFromDesiredXYTraj(

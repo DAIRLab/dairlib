@@ -476,8 +476,12 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   if (!tracking_error_too_big_) {
     t_traj_ += dt_sim;
   }
+  if (much_far_ahead_) {
+    t_traj_ += dt_sim;
+  }
 
   bool reach_the_end_of_traj = desired_xy_traj_.end_time() <= t_traj_;
+  bool close_to_the_end_of_traj = desired_xy_traj_.end_time() - 1.5 <= t_traj_;
 
   // Compute desired x y vel
   Vector2d des_xy = desired_xy_traj_.value(t_traj_);
@@ -490,7 +494,7 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
           : desired_xy_traj_.MakeDerivative(1)->value(t_traj_);
   Vector2d local_des_xy_dot = view_frame_rot_T_ * des_xy_dot;
 
-  if (reach_the_end_of_traj) local_des_xy_dot.setZero();
+  if (close_to_the_end_of_traj) local_des_xy_dot.setZero();
   Vector2d command_xy_vel = 2 * local_delta_xy + local_des_xy_dot;
 
   // Compute yaw traj by taking derivaties of x y traj
@@ -558,10 +562,11 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
             .tail<2>();
   }
 
-  // Update the flag `tracking_error_too_big_`
-  tracking_error_too_big_ = (local_delta_xy(0) > 0.3);
+  // Update the flags
   //  tracking_error_too_big_ =
   //      ((local_delta_xy(0) > 0.3) || (yaw_err > M_PI / 4));
+  tracking_error_too_big_ = (local_delta_xy(0) > 0.3);
+  much_far_ahead_ = (local_delta_xy(0) < -0.2);
 
   prev_t_ = context.get_time();
 

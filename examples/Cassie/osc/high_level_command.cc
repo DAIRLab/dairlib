@@ -477,6 +477,9 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
     t_traj_ += dt_sim;
   }
   if (much_far_ahead_) {
+    // We advance time faster than realtime if the current position is much
+    // ahead of desired traj. This should be turn off if we want actual position
+    // traj tracking.
     t_traj_ += dt_sim;
   }
 

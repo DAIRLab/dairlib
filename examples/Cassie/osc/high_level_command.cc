@@ -532,8 +532,9 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   }
 
   // Update the flag `tracking_error_too_big_`
-  tracking_error_too_big_ =
-      ((local_delta_xy.norm() > 0.3) || (yaw_err > M_PI / 4));
+  tracking_error_too_big_ = (local_delta_xy(0) > 0.3);
+  //  tracking_error_too_big_ =
+  //      ((local_delta_xy(0) > 0.3) || (yaw_err > M_PI / 4));
 
   prev_t_ = context.get_time();
 

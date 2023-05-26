@@ -36,7 +36,7 @@ def GetSamplesToPlot(model_indices, log_indices):
   print("log_indices = ", log_indices)
 
   # cmt_l stores cost, model index, task value, and log index
-  cmt = np.zeros((0, 2 + len(varying_task_element_indices)))
+  cmt = np.zeros((0, 2 + len(idx_map_for_name_of_trajopt_task_value_to_be_read)))
   log = np.zeros((0, 1))
   for rom_iter in model_indices:
     for idx in log_indices:
@@ -46,7 +46,7 @@ def GetSamplesToPlot(model_indices, log_indices):
       # print("path0 = ", path0)
       if os.path.exists(path0):
         # print("%s exists" % path0)
-        current_cmt = np.zeros((1, 2 + len(varying_task_element_indices)))
+        current_cmt = np.zeros((1, 2 + len(idx_map_for_name_of_trajopt_task_value_to_be_read)))
         ### Read cost
         cost = np.loadtxt(path1, delimiter=',').item()   # 0-dim scalar
         current_cmt[0, 0] = cost
@@ -55,14 +55,19 @@ def GetSamplesToPlot(model_indices, log_indices):
         ### model iteration
         current_cmt[0, 1] = rom_iter
         ### Read actual task
+        task = np.loadtxt(path_task, delimiter=',')
         add_this_element = True
         col = 2
-        for key in varying_task_element_indices:
-          task = np.loadtxt(path_task, delimiter=',')[varying_task_element_indices[key]]
-          current_cmt[0, col] = task
-          if (task < min_max_task_filter_for_viz[key][0]) or (task > min_max_task_filter_for_viz[key][1]):
+        for key in idx_map_for_name_of_trajopt_task_value_to_be_read:
+          task_element = task[idx_map_for_name_of_trajopt_task_value_to_be_read[key]]
+          current_cmt[0, col] = task_element
+          if (task_element < min_max_task_filter_for_viz[key][0]) or (task_element > min_max_task_filter_for_viz[key][1]):
             add_this_element = False
           col += 1
+        # task_element = task[idx_map_for_name_of_trajopt_task_value_to_be_read['turning_rate']]
+        # # if (task_element <= 0) and (task_element >= -0.2):
+        # if (task_element == 0):
+        #   add_this_element = False
         if not add_this_element:
           continue
         ### Assign values -- cmt
@@ -775,7 +780,7 @@ if __name__ == "__main__":
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   # trajopt_base_dir = "/home/yuming/Desktop/temp/1221/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/"
-  trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -910,8 +915,8 @@ if __name__ == "__main__":
   ### Create task list
   nominal_task_names = np.loadtxt(trajopt_data_dir + "task_names.csv", dtype=str, delimiter=',')
   # Index of task vector where we sweep through
-  varying_task_element_indices = GetVaryingTaskElementIdx(list(nominal_task_names))
-  print("varying_task_element_indices = " + str(varying_task_element_indices))
+  idx_map_for_name_of_trajopt_task_value_to_be_read = GetVaryingTaskElementIdx(list(nominal_task_names))
+  print("idx_map_for_name_of_trajopt_task_value_to_be_read = " + str(idx_map_for_name_of_trajopt_task_value_to_be_read))
 
   ### Box visualization for training task range
   visualize_training_task_range = True

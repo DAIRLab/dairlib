@@ -429,17 +429,26 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
       view_frame_->CalcWorldToFrameRotation(plant_, *context_)
           .topLeftCorner<2, 2>();
 
+  // Advance the time for desired traj if the tracking error is not too big
+  double dt_sim = (prev_t_ == 0) ? 0 : context.get_time() - prev_t_;
+  if (!tracking_error_too_big_) {
+    t_traj_ += dt_sim;
+  }
+
+  bool reach_the_end_of_traj = desired_xy_traj_.end_time() <= t_traj_;
+
   // Compute desired x y vel
-  Vector2d des_xy = desired_xy_traj_.value(context.get_time());
+  Vector2d des_xy = desired_xy_traj_.value(t_traj_);
   Vector2d cur_xy = q.segment<2>(4);
   Vector2d local_delta_xy = view_frame_rot_T_ * (des_xy - cur_xy);
 
   Vector2d des_xy_dot =
       desired_xy_traj_.has_derivative()
-          ? desired_xy_traj_.EvalDerivative(context.get_time(), 1)
-          : desired_xy_traj_.MakeDerivative(1)->value(context.get_time());
+          ? desired_xy_traj_.EvalDerivative(t_traj_, 1)
+          : desired_xy_traj_.MakeDerivative(1)->value(t_traj_);
   Vector2d local_des_xy_dot = view_frame_rot_T_ * des_xy_dot;
 
+  if (reach_the_end_of_traj) local_des_xy_dot.setZero();
   Vector2d command_xy_vel = 2 * local_delta_xy + local_des_xy_dot;
 
   // Compute yaw traj by taking derivaties of x y traj
@@ -457,9 +466,8 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
       0.5;  // dt cannot be small, because our desired xy traj is not smooth
   Vector2d des_xy_dot_dt_later =
       desired_xy_traj_.has_derivative()
-          ? desired_xy_traj_.EvalDerivative(context.get_time() + delta_t, 1)
-          : desired_xy_traj_.MakeDerivative(1)->value(context.get_time() +
-                                                      delta_t);
+          ? desired_xy_traj_.EvalDerivative(t_traj_ + delta_t, 1)
+          : desired_xy_traj_.MakeDerivative(1)->value(t_traj_ + delta_t);
   Quaterniond des_quat_dt_later =
       des_xy_dot_dt_later.norm() < 0.01
           ? cur_quat
@@ -471,6 +479,7 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   double delta_yaw = (angle_axis_delta.angle() * angle_axis_delta.axis())(2);
   double des_yaw_dot = delta_yaw / delta_t;
 
+  if (reach_the_end_of_traj) des_yaw_dot = 0;
   double command_yaw_vel = 10 * yaw_err + des_yaw_dot;
 
   // Assign x, y and yaw vel
@@ -484,7 +493,31 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   }
   des_vel << command_yaw_vel, command_xy_vel(0), 0;
 
-  /*cout << "t = " << context.get_time() << endl;
+  // Add low pass filter to the command
+  if (prev_t_ == 0) {
+    filtered_vel_command_.setZero();
+    //    filtered_vel_command_ = des_vel;
+  } else {
+    //cutoff_freq_ = (t_traj_ < 4) ? 0.1 : 1;
+    if (reach_the_end_of_traj) {
+      cutoff_freq_ = 0.1;
+      //      filtered_vel_command_.setZero();
+    }
+
+    double alpha = 2 * M_PI * dt_sim * cutoff_freq_ /
+                   (2 * M_PI * dt_sim * cutoff_freq_ + 1);
+    filtered_vel_command_ =
+        alpha * des_vel + (1 - alpha) * filtered_vel_command_;
+  }
+
+  // Update the flag `tracking_error_too_big_`
+  tracking_error_too_big_ =
+      ((local_delta_xy.norm() > 0.3) || (yaw_err > M_PI / 4));
+
+  prev_t_ = context.get_time();
+
+  /*cout << "t sime = " << context.get_time() << endl;
+  cout << "t traj = " << t_traj_ << endl;
   cout << "des_xy = " << des_xy.transpose() << endl;
   cout << "local_delta_xy = " << local_delta_xy.transpose() << endl;
   cout << "local_des_xy_dot = " << local_des_xy_dot.transpose() << endl;
@@ -506,27 +539,13 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   cout << "des_yaw_dot = " << des_yaw_dot << endl;
 
   cout << "des_vel = " << des_vel.transpose() << endl;
+  cout << "filtered_vel_command_ = " << filtered_vel_command_.transpose()
+       << endl;
   cout << "=============\n";*/
 
-  if (context.get_time() == 0) {
-    filtered_vel_command_ = des_vel;
-  } else {
-    if (desired_xy_traj_.end_time() < context.get_time()) {
-      filtered_vel_command_.setZero();
-      cutoff_freq_ = 0.1;
-    }
-
-    double alpha =
-        2 * M_PI * (context.get_time() - prev_t_) * cutoff_freq_ /
-        (2 * M_PI * (context.get_time() - prev_t_) * cutoff_freq_ + 1);
-    filtered_vel_command_ =
-        alpha * des_vel + (1 - alpha) * filtered_vel_command_;
-    prev_t_ = context.get_time();
-  }
-
-//  return des_vel;
+  //  return des_vel;
   return filtered_vel_command_;
-//  return Vector3d(filtered_vel_command_(0), des_vel(1), 0);
+  //  return Vector3d(filtered_vel_command_(0), des_vel(1), 0);
 }
 
 void HighLevelCommand::CopyHeadingAngle(const Context<double>& context,

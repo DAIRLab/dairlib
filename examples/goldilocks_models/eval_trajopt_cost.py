@@ -59,6 +59,7 @@ def GetSamplesToPlot(model_indices, log_indices):
         add_this_element = True
         col = 2
         for key in idx_map_for_name_of_trajopt_task_value_to_be_read:
+          assert key == task_to_plot[col-2]  # Just in case the keys are not ordered; I suspect `idx_map_for_name_of_trajopt_task_value_to_be_read` is not in the same order as the order of them being added to the dict
           task_element = task[idx_map_for_name_of_trajopt_task_value_to_be_read[key]]
           current_cmt[0, col] = task_element
           if (task_element < min_max_task_filter_for_viz[key][0]) or (task_element > min_max_task_filter_for_viz[key][1]):

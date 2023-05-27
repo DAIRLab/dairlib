@@ -821,6 +821,7 @@ def GetNominalSamplesToPlot(model_indices):
       col = 2
       add_this_sample = True
       for key in idx_map_for_name_of_trajopt_task_value_to_be_read:  # note that dict's key is ordered
+        assert key == task_to_plot[col-2]  # Just in case the keys are not ordered; I suspect `idx_map_for_name_of_trajopt_task_value_to_be_read` is not in the same order as the order of them being added to the dict
         path = model_dir + "%d_%d_task.csv" % (rom_iter, trajopt_sample_indices_for_viz[i])
         if os.path.exists(path):
           task = np.loadtxt(path)[idx_map_for_name_of_trajopt_task_value_to_be_read[key]]

@@ -241,20 +241,20 @@ for i in range(len(stones)):
 print("};")
 
 # Code gen (python) for exit conditions
-print("\n\n")
+assert "Endpoint" in exit_conditions[0][0]
+assert np.sum(["Endpoint" in name for name, _ in exit_conditions]) == 1
 exit_conditions[0][0] = "start"
+print("\n\n")
 print("# " + name)
 code = "self.terrain_state_list = ["
 for pair in exit_conditions:
-  if "Endpoint" not in pair[0]:
-    code += '\'' + pair[0] + '\', '
+  code += '\'' + pair[0] + '\', '
 code += "'end']\n"
 print(code, end="")
 print("self.exit_conditions = {}")
 code = ""
 for name, condition in exit_conditions:
-  if "Endpoint" not in name:
-    code += "self.exit_conditions[\'%s\'] = [%.3f, %.3f, %.3f, np.inf]\n" % (name, condition[0], condition[1], condition[2])
+  code += "self.exit_conditions[\'%s\'] = [%.3f, %.3f, %.3f, np.inf]\n" % (name, condition[0], condition[1], condition[2])
 print(code)
 
 # Sanity check

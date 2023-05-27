@@ -63,6 +63,9 @@ class TimeVisualizer(object):
 
         self.timer_start = 0
 
+        self.total_duration = 0
+        self.first_timer_start = -1
+
 
     def add_subscriber(self):
         if (self._subscriber is not None):
@@ -110,8 +113,9 @@ class TimeVisualizer(object):
             dt_real_time = self._real_time[-1] - self._real_time[0]
 
             rt_ratio = dt / dt_real_time
-            my_text = my_text + ', real time factor: %.2f' % rt_ratio
+            # my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
+        my_text += "\n"
         my_text = self.update_state_and_time(msg, my_text)
 
         self.text_box.setProperty('Text', my_text)
@@ -124,18 +128,21 @@ class TimeVisualizer(object):
         # State transition
         if self.terrain_state != 'end':
             self.duration_list[self.terrain_state] = msg_time - self.timer_start
+            self.total_duration = msg_time - self.first_timer_start
 
             lb, a, b, ub = self.exit_conditions[self.terrain_state]
             if lb < a*pelvis_xy[0] + b*pelvis_xy[1] < ub:
                 self.terrain_state = self.next_terrain_state[self.terrain_state]
                 self.timer_start = msg_time
+                if self.first_timer_start < 0:
+                    self.first_timer_start = msg_time
 
         for key in self.duration_list:
-            # if key == 'start' or key == 'end':
-            #     continue
-            if key == 'end':
-                continue
-            my_text += "\n%s: %.2f" % (key, self.duration_list[key]) if self.duration_list[key] > 0 else "\n"
+            if key != 'start' and key != 'end':
+            # if key != 'end':
+                my_text += "\n%s: %.2f" % (key, self.duration_list[key]) if self.duration_list[key] > 0 else "\n"
+        my_text += ("\nTotal time: %.2f" % self.total_duration) if self.first_timer_start > 0 else "\n"
+
 
         return my_text
 

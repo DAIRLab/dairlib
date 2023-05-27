@@ -37,7 +37,7 @@ class TimeVisualizer(object):
         # self.exit_conditions['start'] = [1, 1, 0, np.inf]
         # self.exit_conditions['U-turn'] = [-np.inf, 1, 0, 1]
         ######
-        # 2023-05-27 15:58:38.245735Straight 2.5 meters -> Straight 2.5 meters #2 -> Turn 180 degrees -> Straight 2.5 meters #3 -> Straight 2.5 meters #4
+        # 2023-05-27 17h34m44s: Straight 2.5 meters -> Straight 2.5 meters #2 -> Turn 180 degrees -> Straight 2.5 meters #3 -> Straight 2.5 meters #4
         self.terrain_state_list = ['start', 'Straight 2.5 meters', 'Straight 2.5 meters #2', 'Turn 180 degrees', 'Straight 2.5 meters #3', 'Straight 2.5 meters #4', 'end']
         self.exit_conditions = {}
         self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]

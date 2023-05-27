@@ -4,7 +4,7 @@ from director import lcmUtils
 from director import applogic
 import time
 import dairlib.lcmt_robot_output
-
+import numpy as np
 
 class TimeVisualizer(object):
 
@@ -17,6 +17,40 @@ class TimeVisualizer(object):
         self._num_msg_for_average = 50
 
         self.set_enabled(True)
+
+        # Text box
+        self.text_box = vis.TextItem('', '', view)
+        self.text_box.setProperty('Position', [10, 600])
+        self.text_box.setProperty('Font Size', 24)
+        self.text_box.setProperty('Bold', True)
+
+        # Set state and exit condition
+        # The exit condition is composed of 4 numbers (lb, a, b, ub) representing
+        #     lb < a*x + b*y < ub
+        # where (x,y) is the pelvis x y position.
+        # We transition to the next state, when this inequality holds.
+
+        self.terrain_state_list = ['start', 'U-turn', 'end']
+
+        self.exit_conditions = {}
+        self.exit_conditions['start'] = [1, 1, 0, np.inf]
+        self.exit_conditions['U-turn'] = [-np.inf, 1, 0, 1]
+
+        assert self.terrain_state_list[0] == 'start'
+        assert self.terrain_state_list[-1] == 'end'
+
+        self.next_terrain_state = {}
+        for i in range(len(self.terrain_state_list) - 1):
+            self.next_terrain_state[self.terrain_state_list[i]] = self.terrain_state_list[i+1]
+
+        self.duration_list = {}
+        for state in self.terrain_state_list:
+            self.duration_list[state] = 0
+
+        self.terrain_state = 'start'
+
+        self.timer_start = 0
+
 
     def add_subscriber(self):
         if (self._subscriber is not None):
@@ -54,7 +88,7 @@ class TimeVisualizer(object):
         self._real_time.append(time.time())
         self._msg_time.append(msg_time)
 
-        my_text = 'time: %.3f' % msg_time
+        my_text = 'current time: %.3f' % msg_time
 
         if (len(self._real_time) >= self._num_msg_for_average):
             self._real_time.pop(0)
@@ -64,10 +98,36 @@ class TimeVisualizer(object):
             dt_real_time = self._real_time[-1] - self._real_time[0]
 
             rt_ratio = dt / dt_real_time
+            my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
-            #my_text = my_text + ', real time factor: %.2f' % rt_ratio
+        my_text = self.update_state_and_time(msg, my_text)
 
-        vis.updateText(my_text, 'text')
+        self.text_box.setProperty('Text', my_text)
+        # vis.updateText(my_text, 'text')
+
+    def update_state_and_time(self, msg, my_text):
+        msg_time = msg.utime * 1e-6  # convert from microseconds
+        pelvis_xy = (msg.position)[4:6]
+
+        # State transition
+        if self.terrain_state != 'end':
+            self.duration_list[self.terrain_state] = msg_time - self.timer_start
+
+            lb, a, b, ub = self.exit_conditions[self.terrain_state]
+            if lb < a*pelvis_xy[0] + b*pelvis_xy[1] < ub:
+                self.terrain_state = self.next_terrain_state[self.terrain_state]
+                self.timer_start = msg_time
+
+        for key in self.duration_list:
+            # if key == 'start' or key == 'end':
+            #     continue
+            if key == 'end':
+                continue
+            my_text += "\n%s: %.2f" % (key, self.duration_list[key]) if self.duration_list[key] > 0 else "\n"
+
+        return my_text
+
+
 
 
 def init_visualizer():

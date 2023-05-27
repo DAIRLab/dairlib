@@ -10,6 +10,7 @@
 import numpy as np
 import math
 import datetime
+import matplotlib.pyplot as plt
 
 def CreateExitConditionGivenYawAndEndPoint(yaw, exit_pos):
   # Let last stone heading vector be (a, b), and the exit position be (x0, y0)
@@ -119,6 +120,46 @@ def CreateEndpointBlock(init_x, init_y, init_yaw, length, width, speed, center_a
   return final_x, final_y, init_yaw
 
 
+def PlotBlocks(stones, t_breaks):
+  stone_traj_start = np.array([stone["traj_data"]["start_pos"] for stone in stones])
+  stone_center = np.array([stone["xyz"][:2] for stone in stones])
+  stone_traj_end = np.array([stone["traj_data"]["end_pos"] for stone in stones])
+
+  plt.figure("Blocks positions", figsize=(6.4, 4.8))
+
+  dummy_binary = True
+  for i in range(len(stones)):
+    dummy_binary = not dummy_binary
+    plt.title("stone idx=%d" % i)
+
+    plt.plot(stone_traj_start[i][0],stone_traj_start[i][1], 'rx' if dummy_binary else 'b+')
+    plt.plot(stone_center[i][0],stone_center[i][1], 'go', mfc='none')
+    plt.plot(stone_traj_end[i][0],stone_traj_end[i][1], 'b+' if dummy_binary else 'rx')
+
+    # Labels and stuffs
+    plt.xlabel('x (m)')
+    plt.ylabel('y (m)')
+    lb = np.min(np.vstack([stone_traj_start, stone_traj_end]), 0)
+    ub = np.max(np.vstack([stone_traj_start, stone_traj_end]), 0)
+    plt.xlim([lb[0] - 1, ub[0] + 1])
+    plt.ylim([lb[1] - 1, ub[1] + 1])
+    # Manually overwrite
+    # plt.xlim([-0.2, 3])
+    # plt.ylim([-1, 1])
+
+    ax = plt.gca()
+    ax.set_aspect('equal', adjustable='box')
+
+    plt.draw()
+    if i == len(stones) - 1:
+      plt.show()
+    else:
+      # plt.pause(0.01)
+      # plt.pause(1)
+      plt.pause(t_breaks[i+1]-t_breaks[i])
+      # import pdb; pdb.set_trace()
+      plt.clf()
+
 
 stones = []
 exit_conditions = []  # I want to keep the order, that's why it's a list instead of a dictionary
@@ -216,7 +257,7 @@ for name, condition in exit_conditions:
     code += "self.exit_conditions[\'%s\'] = [%.3f, %.3f, %.3f, np.inf]\n" % (name, condition[0], condition[1], condition[2])
 print(code)
 
-# print("// Traj: ", name)
-# print(exit_conditions)
+# Sanity check
+PlotBlocks(stones, t_breaks)
 
 

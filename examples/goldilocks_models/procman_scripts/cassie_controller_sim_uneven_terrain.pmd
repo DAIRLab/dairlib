@@ -356,6 +356,18 @@ script "run-rom-walking-uneven-terrain-wo-init-file" {
     start cmd "1.joystick";
 }
 
+script "run-rom-walking-uneven-terrain-wo-init-file-no-director" {
+    stop group "1.0.dispatchers";
+    stop group "1.rom-space-controller";
+    stop group "1.rom-space-controller-with-init-traj";
+    stop group "3.drake-simulator";
+    start cmd "3.1.rom-planner (short time limit)";
+    start cmd "2.1.rom-walking-controller";
+    wait ms 200;
+    start cmd "0.simulator";
+    start cmd "1.joystick";
+}
+
 script "start-operator-simulation-floating-base" {
     stop cmd "1.state-visualizer-floating (from simulation)";
     stop cmd "0.drake-director";

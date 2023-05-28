@@ -66,6 +66,18 @@ class TimeVisualizer(object):
         self.total_duration = 0
         self.first_timer_start = -1
 
+        self.initialize_terrain_variables()
+
+    def reset_terrain_variables(self):
+        for state in self.terrain_state_list:
+            self.duration_list[state] = 0
+
+        self.terrain_state = 'start'
+
+        self.timer_start = 0
+
+        self.total_duration = 0
+        self.first_timer_start = -1
 
     def add_subscriber(self):
         if (self._subscriber is not None):
@@ -114,6 +126,9 @@ class TimeVisualizer(object):
 
             rt_ratio = dt / dt_real_time
             # my_text = my_text + ', real time factor: %.2f' % rt_ratio
+
+        if msg_time == 0:
+            self.reset_terrain_variables()
 
         my_text += "\n"
         my_text = self.update_state_and_time(msg, my_text)

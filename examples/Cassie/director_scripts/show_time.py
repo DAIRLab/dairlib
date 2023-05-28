@@ -127,7 +127,7 @@ class TimeVisualizer(object):
             rt_ratio = dt / dt_real_time
             # my_text = my_text + ', real time factor: %.2f' % rt_ratio
 
-        if msg_time == 0:
+        if msg_time < 0.05:  # give it a margin so it's more robust
             self.reset_terrain_variables()
 
         my_text += "\n"

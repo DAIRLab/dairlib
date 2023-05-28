@@ -166,9 +166,10 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context) const;
   mutable double prev_t_ = 0;
   mutable Eigen::Vector3d filtered_vel_command_ = Eigen::Vector3d::Zero();
-  mutable double cutoff_freq_yaw_ = 1;
+  mutable double filtered_local_delta_y_ = 0;
+  mutable double cutoff_freq_yaw_ = 0.5;
   mutable double cutoff_freq_xy_ = 0.1;
-  // mutable double cutoff_freq_y_deviation_ = 0.1;
+  mutable double cutoff_freq_y_deviation_ = 0.1;
 };
 
 }  // namespace osc

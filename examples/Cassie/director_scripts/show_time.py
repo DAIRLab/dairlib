@@ -38,14 +38,42 @@ class TimeVisualizer(object):
         # self.exit_conditions['U-turn'] = [-np.inf, 1, 0, 1]
         ######
         # 2023-05-27 17h34m44s: Straight 2.5 meters -> Straight 2.5 meters #2 -> Turn 180 degrees -> Straight 2.5 meters #3 -> Straight 2.5 meters #4
-        self.terrain_state_list = ['start', 'Straight 2.5 meters', 'Straight 2.5 meters #2', 'Turn 180 degrees', 'Straight 2.5 meters #3', 'Straight 2.5 meters #4', 'end']
+        # self.terrain_state_list = ['start', 'Straight 2.5 meters', 'Straight 2.5 meters #2', 'Turn 180 degrees', 'Straight 2.5 meters #3', 'Straight 2.5 meters #4', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 2.5 meters'] = [3.500, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 2.5 meters #2'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn 180 degrees'] = [-6.000, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 2.5 meters #3'] = [-3.500, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 2.5 meters #4'] = [-1.000, -1.000, 0.000, np.inf]
+        ######
+        # 2023-05-28 12h46m42s: Straight 5.0 meters -> Turn 180 degrees (1.0 m radius)  -> Straight 5.0 meters #2
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 180 degrees (1.0 m radius) ', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn 180 degrees (1.0 m radius) '] = [-6.000, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, 0.000, np.inf]
+        ######
+        # 2023-05-28 13h01m16s: Straight 5.0 meters -> Turn -180 degrees (2.0 m radius)  -> Straight 5.0 meters #2
+        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn -180 degrees (2.0 m radius) ', 'Straight 5.0 meters #2', 'end']
         self.exit_conditions = {}
         self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 2.5 meters'] = [3.500, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 2.5 meters #2'] = [6.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Turn 180 degrees'] = [-6.000, -1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 2.5 meters #3'] = [-3.500, -1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 2.5 meters #4'] = [-1.000, -1.000, 0.000, np.inf]
+        self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Turn -180 degrees (2.0 m radius) '] = [-6.000, -1.000, -0.000, np.inf]
+        self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, -0.000, np.inf]
+        ######
+
+        # 2023-05-28 12h53m09s: Straight 5.0 meters -> Turn 180 degrees (2.0 m radius)  -> Turn -180 degrees (2.0 m radius)  -> Turn 180 degrees (2.0 m radius)  #2 -> Straight 5.0 meters #2
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 180 degrees (2.0 m radius) ', 'Turn -180 degrees (2.0 m radius) ', 'Turn 180 degrees (2.0 m radius)  #2', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn 180 degrees (2.0 m radius) '] = [-6.000, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn -180 degrees (2.0 m radius) '] = [6.000, 1.000, -0.000, np.inf]
+        # self.exit_conditions['Turn 180 degrees (2.0 m radius)  #2'] = [-6.000, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, 0.000, np.inf]
+
         ####################################
 
         assert self.terrain_state_list[0] == 'start'

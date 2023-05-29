@@ -350,12 +350,22 @@ current_pose = Config()
 # current_pose = CreateOneBlock(current_pose, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
 # current_pose = CreateEndpointBlock(current_pose, 2.5, 1.2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
-course_name = "Straight line 50% ramp; slow speed"
+# course_name = "Straight line 50% ramp; slow speed"
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateRamp(current_pose, 0.5, 10, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2.5, 1.2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+
+course_name = "20% ramp down"
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateRamp(current_pose, 0.5, 10, speed=0.5, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 2.5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateRamp(current_pose, -0.2, 2.5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateRamp(current_pose, -0.2, 10, speed=2, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateRamp(current_pose, -0.2, 2.5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 2.5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
 current_pose = CreateEndpointBlock(current_pose, 2.5, 1.2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 ###################################
@@ -419,8 +429,8 @@ for i in range(len(stones)):
 # Code gen C++
 print("\n\n")
 print("//////////////////////////////////////////////////////////////////////////////")
-print("// Traj: ", description)
-print("// ", course_name)
+print("// Traj:", description)
+print("//", course_name)
 for i in range(len(stones)):
   print("// %.3f: {%.3f, %.3f, %.3f}" % (t_breaks[i], stones[i]["traj_data"]["start_pos"][0], stones[i]["traj_data"]["start_pos"][1], stones[i]["traj_data"]["start_pos"][2]), end="")
   print(";   dt=%.3f, dx/dt=%.1f" % (t_breaks[i+1]-t_breaks[i], stones[i]["traj_data"]["speed"]))

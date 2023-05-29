@@ -170,6 +170,9 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   mutable double cutoff_freq_yaw_ = 0.5;
   mutable double cutoff_freq_xy_ = 0.1;
   mutable double cutoff_freq_y_deviation_ = 0.1;
+  mutable std::vector<double> dt_buffer_sim_ = std::vector<double>(1000, 1e-3);
+  mutable std::vector<double> dt_buffer_traj_ = std::vector<double>(1000, 1e-3);
+  mutable int dt_buffer_idx_ = 0;
 };
 
 }  // namespace osc

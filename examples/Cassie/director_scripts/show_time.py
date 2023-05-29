@@ -113,15 +113,45 @@ class TimeVisualizer(object):
         # self.exit_conditions['Ramp 20.0% slope and 10 m'] = [16.000, 1.000, 0.000, np.inf]
         # self.exit_conditions['Straight 5.0 meters #2'] = [21.000, 1.000, 0.000, np.inf]
         ######
-        # 2023-05-29 15h00m57s: Straight 5.0 meters -> Ramp 10.0% slope and 10 m -> Ramp 20.0% slope and 10 m -> Straight 5.0 meters #2
-        # Two ramps with progressive incline; higher speed
-        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Ramp 10.0% slope and 10 m', 'Ramp 20.0% slope and 10 m', 'Straight 5.0 meters #2', 'end']
+        # 2023-05-29 15h24m37s: Straight 5.0 meters -> Ramp 35.0% slope and 10 m -> Straight 5.0 meters #2
+        # Straight line 35% ramp; higher speed
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Ramp 35.0% slope and 10 m', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp 35.0% slope and 10 m'] = [16.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [21.000, 1.000, 0.000, np.inf]
+        ######
+        # 2023-05-29 16h04m07s: Straight 5.0 meters -> Ramp 50% slope (base 10.0m) -> Straight 5.0 meters #2
+        # Straight line 50% ramp
+        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Ramp 50% slope (base 10.0m)', 'Straight 5.0 meters #2', 'end']
         self.exit_conditions = {}
         self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
         self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Ramp 10.0% slope and 10 m'] = [16.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Ramp 20.0% slope and 10 m'] = [26.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 5.0 meters #2'] = [31.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Ramp 50% slope (base 10.0m)'] = [16.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Straight 5.0 meters #2'] = [21.000, 1.000, 0.000, np.inf]
+        ######
+        # 2023-05-29 15h00m57s: Straight 5.0 meters -> Ramp 10.0% slope and 10 m -> Ramp 20.0% slope and 10 m -> Straight 5.0 meters #2
+        # Two ramps with progressive incline; higher speed
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Ramp 10.0% slope and 10 m', 'Ramp 20.0% slope and 10 m', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp 10.0% slope and 10 m'] = [16.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp 20.0% slope and 10 m'] = [26.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [31.000, 1.000, 0.000, np.inf]
+        ######
+        # 2023-05-29 15h43m14s: Straight 5.0 meters -> Ramp 10.0% slope and 5 m -> Ramp 20.0% slope and 10 m -> Ramp 10.0% slope and 5 m #2 -> Straight 5.0 meters #2
+        # 10-20-10% ramps; high speed
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Ramp 10.0% slope and 5 m', 'Ramp 20.0% slope and 10 m', 'Ramp 10.0% slope and 5 m #2', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp 10.0% slope and 5 m'] = [11.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp 20.0% slope and 10 m'] = [21.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp 10.0% slope and 5 m #2'] = [26.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [31.000, 1.000, 0.000, np.inf]
+
         ####################################
 
         assert self.terrain_state_list[0] == 'start'

@@ -23,7 +23,7 @@ def CreateExitConditionGivenYawAndEndPoint(yaw, exit_pos):
 
 
 # CreateBlocksForTurning computes the blocks configurations to create an arc
-def CreateBlocksForTurning(init_x, init_y, init_yaw, radius, delta_yaw, n_segment, speed, both_start_and_end_at_block_center, exit_conditions, stones):
+def CreateBlocksForTurning(init_pose, radius, delta_yaw, n_segment, speed, both_start_and_end_at_block_center, exit_conditions, stones):
   terrain_name = "Turn %d degrees (%.1f m radius) " % (int(delta_yaw * 180 / np.pi), radius)
   idx = np.sum([(terrain_name in name) for name, _ in exit_conditions])
   terrain_name += " #%d" % (idx+1) if idx > 0 else ""
@@ -44,9 +44,9 @@ def CreateBlocksForTurning(init_x, init_y, init_yaw, radius, delta_yaw, n_segmen
   block_dimension = [length_per_segment + width * math.tan(abs(delta_yaw_per_box)/2), width, thinkness]
 
   # Compute x y and yaw
-  traj_start_x = init_x
-  traj_start_y = init_y
-  yaw = init_yaw
+  traj_start_x = init_pose.x
+  traj_start_y = init_pose.y
+  yaw = init_pose.yaw
   x = traj_start_x if both_start_and_end_at_block_center else traj_start_x + (length_per_segment / 2) * math.cos(yaw)
   y = traj_start_y if both_start_and_end_at_block_center else traj_start_y + (length_per_segment / 2) * math.sin(yaw)
   traj_end_x = x + (length_per_segment / 2) * math.cos(yaw)
@@ -67,10 +67,10 @@ def CreateBlocksForTurning(init_x, init_y, init_yaw, radius, delta_yaw, n_segmen
   # Update exit condition
   exit_conditions.append([terrain_name, CreateExitConditionGivenYawAndEndPoint(yaw, np.array([traj_end_x, traj_end_y]))])
 
-  return traj_end_x, traj_end_y, yaw
+  return Config(traj_end_x, traj_end_y, init_pose.z, yaw)
 
 
-def CreateOneBlock(init_x, init_y, init_yaw, length, speed, exit_conditions, stones):
+def CreateOneBlock(init_pose, length, speed, exit_conditions, stones):
   terrain_name = "Straight %.1f meters" % length
   idx = np.sum([(terrain_name in name) for name, _ in exit_conditions])
   terrain_name += " #%d" % (idx+1) if idx > 0 else ""
@@ -83,19 +83,21 @@ def CreateOneBlock(init_x, init_y, init_yaw, length, speed, exit_conditions, sto
   block_dimension = [length, width, thinkness]
 
   # Compute x y and yaw
+  init_x = init_pose.x
+  init_y = init_pose.y
+  init_yaw = init_pose.yaw
   final_x = init_x + length * math.cos(init_yaw)
   final_y = init_y + length * math.sin(init_yaw)
-  final_yaw = init_yaw
-  stones.append({"xyz": [(init_x + final_x)/2, (init_y + final_y)/2, height], "normal": normal, "dim": block_dimension, "yaw": [final_yaw],
+  stones.append({"xyz": [(init_x + final_x)/2, (init_y + final_y)/2, height], "normal": normal, "dim": block_dimension, "yaw": [init_yaw],
                  "traj_data": {"start_pos": [init_x, init_y], "end_pos": [final_x, final_y], "speed": speed}})
 
   # Update exit condition
-  exit_conditions.append([terrain_name, CreateExitConditionGivenYawAndEndPoint(final_yaw, np.array([final_x, final_y]))])
+  exit_conditions.append([terrain_name, CreateExitConditionGivenYawAndEndPoint(init_yaw, np.array([final_x, final_y]))])
 
-  return final_x, final_y, final_yaw
+  return Config(final_x, final_y, init_pose.z, init_yaw)
 
 
-def CreateEndpointBlock(init_x, init_y, init_yaw, length, width, speed, center_at_current_pos, final_at_center_pos, exit_conditions, stones):
+def CreateEndpointBlock(init_pose, length, width, speed, center_at_current_pos, final_at_center_pos, exit_conditions, stones):
   terrain_name = "Endpoint"
   idx = np.sum([(terrain_name in name) for name, _ in exit_conditions])
   terrain_name += " #%d" % (idx+1) if idx > 0 else ""
@@ -107,6 +109,9 @@ def CreateEndpointBlock(init_x, init_y, init_yaw, length, width, speed, center_a
   block_dimension = [length, width, thinkness]
 
   # Compute x y and yaw
+  init_x = init_pose.x
+  init_y = init_pose.y
+  init_yaw = init_pose.yaw
   center_x = init_x if center_at_current_pos else init_x + (length/2) * math.cos(init_yaw)
   center_y = init_y if center_at_current_pos else init_y + (length/2) * math.sin(init_yaw)
   final_x = center_x if final_at_center_pos else center_x + (length/2) * math.cos(init_yaw)
@@ -118,7 +123,7 @@ def CreateEndpointBlock(init_x, init_y, init_yaw, length, width, speed, center_a
   if not final_at_center_pos:
     exit_conditions.append([terrain_name, CreateExitConditionGivenYawAndEndPoint(init_yaw, np.array([final_x, final_y]))])
 
-  return final_x, final_y, init_yaw
+  return Config(final_x, final_y, init_pose.z, init_yaw)
 
 
 def PlotBlocks(stones, t_breaks):
@@ -161,96 +166,100 @@ def PlotBlocks(stones, t_breaks):
       # import pdb; pdb.set_trace()
       plt.clf()
 
+class Config:
+  def __init__(self, x=0.0, y=0.0, z=0.0, yaw=0.0):
+    self.x = x
+    self.y = y
+    self.z = z
+    self.yaw = yaw
 
 stones = []
 exit_conditions = []  # I want to keep the order, that's why it's a list instead of a dictionary
 
-current_x = 0
-current_y = 0
-current_yaw = 0
+current_pose = Config()
 
 # name = "turn -> long stretch -> turn"
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi/2, 10, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 1, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 1, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi/2, 10, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi/2, 10, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 1, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # name = "long stretch -> 180 turn -> long stretch"
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, n_segment=20, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi, n_segment=20, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # name = "20230526 long stretch -> 180 turn -> long stretch "
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=0.75, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, n_segment=20, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=0.75, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=0.75, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi, n_segment=20, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=0.75, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # 20230528 long stretch -> 180 turn -> long stretch; faster ramp up/dowm
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, n_segment=20, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi, n_segment=20, speed=1, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 2, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # 20230528 long stretch -> 180 turn -> long stretch; faster speed
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # 20230528 long stretch -> -180 turn -> long stretch; faster speed; turn right
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, -np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, -np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 ###################################
 # 20230528 long stretch -> 180 turn -> long stretch; faster speed and smaller radius
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 1, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 1, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # 20230528 long stretch -> 90 turn -> long stretch; faster speed and smaller radius
-current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 1, np.pi/2, n_segment=10, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateBlocksForTurning(current_pose, 1, np.pi/2, n_segment=10, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 ###################################
 # S turn
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, -np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateBlocksForTurning(current_x, current_y, current_yaw, 2, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateOneBlock(current_x, current_y, current_yaw, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-# current_x, current_y, current_yaw = CreateEndpointBlock(current_x, current_y, current_yaw, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, -np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi, n_segment=20, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # Create name automatically
 name = " -> ".join([name for name, _ in exit_conditions if "Endpoint" not in name])

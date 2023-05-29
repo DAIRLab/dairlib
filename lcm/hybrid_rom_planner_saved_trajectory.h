@@ -111,6 +111,10 @@ class HybridRomPlannerTrajectory : public LcmTrajectory {
   drake::trajectories::PiecewisePolynomial<double> ConstructPositionTrajectory()
       const;
 
+  // A hack
+  drake::trajectories::PiecewisePolynomial<double> ConstructPositionTrajectory(
+      double slope) const;
+
  private:
   static Eigen::VectorXd GetCollocationPoints(
       const Eigen::VectorXd& time_vector);

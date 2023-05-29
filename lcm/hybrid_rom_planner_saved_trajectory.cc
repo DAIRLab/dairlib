@@ -308,6 +308,34 @@ Eigen::VectorXd HybridRomPlannerTrajectory::GetCollocationPoints(
                 time_vector.head(num_knotpoints - 1));
 }
 
+// A hack
+PiecewisePolynomial<double>
+HybridRomPlannerTrajectory::ConstructPositionTrajectory(double slope) const {
+  int n_y = x_[0]->datatypes.size() / 2;
+
+  //  std::cout << "==================\n";
+  //  std::cout << "slope = " << slope << std::endl;
+  PiecewisePolynomial<double> pp;
+  for (int mode = 0; mode < num_modes_; ++mode) {
+    const LcmTrajectory::Trajectory* traj_i = x_[mode];
+    int n_cols = traj_i->datapoints.cols();
+    MatrixXd pos = traj_i->datapoints.topRows(n_y);
+    MatrixXd vel = traj_i->datapoints.bottomRows(n_y);
+    //    std::cout << "=== before ===\n";
+    //    std::cout << "pos = " << pos.bottomRows<1>() << std::endl;
+    //    std::cout << "vel = " << vel.bottomRows<1>() << std::endl;
+    pos.bottomRows<1>() += slope * pos.topRows<1>();
+    vel.bottomRows<1>() =
+        slope * vel.topRows<1>()(n_cols / 2) * MatrixXd::Ones(1, n_cols);
+    //    std::cout << "=== after ===\n";
+    //    std::cout << "pos = " << pos.bottomRows<1>() << std::endl;
+    //    std::cout << "vel = " << vel.bottomRows<1>() << std::endl;
+    pp.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
+        traj_i->time_vector, pos, vel));
+  }
+  return pp;
+}
+
 PiecewisePolynomial<double>
 HybridRomPlannerTrajectory::ConstructPositionTrajectory() const {
   int n_y = x_[0]->datatypes.size() / 2;

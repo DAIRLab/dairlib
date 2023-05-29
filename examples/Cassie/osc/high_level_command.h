@@ -86,6 +86,10 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
     return this->get_output_port(xy_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_slope_output_port() const {
+    return this->get_output_port(slope_port_);
+  }
+
   /// For optimal ROM
   double vel_command_offset_x_ = 0;
   /// ///
@@ -109,6 +113,9 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* output) const;
 
+  void CopyFeedforwardSlope(const drake::systems::Context<double>& context,
+                            drake::systems::BasicVector<double>* output) const;
+
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::BodyFrame<double>& world_;
@@ -120,6 +127,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   int yaw_port_;
   int xy_port_;
   int cassie_out_port_ = -1;
+  int slope_port_;
 
   // Indices for the discrete states of this leafsystem
   drake::systems::DiscreteStateIndex des_vel_idx_;
@@ -161,6 +169,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   mutable bool tracking_error_too_big_ = false;
   mutable bool much_far_ahead_ = false;
   drake::trajectories::PiecewisePolynomial<double> desired_xy_traj_;
+  drake::trajectories::PiecewisePolynomial<double> desired_z_traj_;
   const multibody::ViewFrame<double>* view_frame_;
   Eigen::VectorXd CalcCommandFromDesiredXYTraj(
       const drake::systems::Context<double>& context) const;
@@ -173,6 +182,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   mutable std::vector<double> dt_buffer_sim_ = std::vector<double>(1000, 1e-3);
   mutable std::vector<double> dt_buffer_traj_ = std::vector<double>(1000, 1e-3);
   mutable int dt_buffer_idx_ = 0;
+  mutable double feedforward_slope_ = 0;
 };
 
 }  // namespace osc

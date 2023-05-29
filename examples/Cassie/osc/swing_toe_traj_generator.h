@@ -25,6 +25,11 @@ class SwingToeTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(state_port_);
   }
 
+  void CreateGroundInclineInputPort();
+  const drake::systems::InputPort<double>& get_input_port_slope() const {
+    return this->get_input_port(slope_port_);
+  }
+
  private:
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
@@ -40,5 +45,9 @@ class SwingToeTrajGenerator : public drake::systems::LeafSystem<double> {
       feet_contact_points_;
 
   int state_port_;
+
+  // Testing slope
+  bool use_slope_ = false;
+  int slope_port_;
 };
 }  // namespace dairlib::cassie::osc

@@ -669,6 +669,11 @@ int DoMain(int argc, char* argv[]) {
                     planner_traj_receiver->get_input_port_fsm());
     builder.Connect(simulator_drift->get_output_port(0),
                     planner_traj_receiver->get_input_port_state());
+    if (FLAGS_high_level_traj_mode == "desired_x_y_yaw_path") {
+      planner_traj_receiver->UseXYZtrajInHighLevelCommand();
+      builder.Connect(high_level_command->get_slope_output_port(),
+                      planner_traj_receiver->get_input_port_slope());
+    }
 
     // Create heading traj generator
     auto head_traj_gen = builder.AddSystem<cassie::osc::HeadingTrajGenerator>(
@@ -795,6 +800,14 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem<cassie::osc::SwingToeTrajGenerator>(
             plant_w_spr, context_w_spr.get(), pos_map["toe_right"],
             right_foot_points, "right_toe_angle_traj");
+    if (FLAGS_high_level_traj_mode == "desired_x_y_yaw_path") {
+      left_toe_angle_traj_gen->CreateGroundInclineInputPort();
+      right_toe_angle_traj_gen->CreateGroundInclineInputPort();
+      builder.Connect(high_level_command->get_slope_output_port(),
+                      left_toe_angle_traj_gen->get_input_port_slope());
+      builder.Connect(high_level_command->get_slope_output_port(),
+                      right_toe_angle_traj_gen->get_input_port_slope());
+    }
     builder.Connect(state_receiver->get_output_port(0),
                     left_toe_angle_traj_gen->get_state_input_port());
     builder.Connect(state_receiver->get_output_port(0),

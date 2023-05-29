@@ -35,8 +35,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
       const StateMirror& state_mirror /*Only use for sim gap testing*/,
       const multibody::WorldYawViewFrame<double>& view_frame_feedback,
       const multibody::WorldYawViewFrame<double>& view_frame_control,
-      bool wrt_com_in_local_frame,
-      bool use_hybrid_rom_mpc);
+      bool wrt_com_in_local_frame, bool use_hybrid_rom_mpc);
 
   const drake::systems::InputPort<double>& get_input_port_lcm_traj() const {
     return this->get_input_port(saved_traj_lcm_port_);
@@ -60,6 +59,11 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   }
   const drake::systems::OutputPort<double>& get_output_port_swing_hip() const {
     return this->get_output_port(swing_hip_yaw_traj_port_);
+  }
+
+  void UseXYZtrajInHighLevelCommand();
+  const drake::systems::InputPort<double>& get_input_port_slope() const {
+    return this->get_input_port(slope_port_);
   }
 
  private:
@@ -156,6 +160,10 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   // Heuristic
   double swing_foot_target_offset_x_;
   double final_foot_height_offset_for_right_leg_;
+
+  // Testing slope
+  bool use_slope_ = false;
+  int slope_port_;
 };
 
 // We have IKTrajReceiver beside SavedTrajReceiver, because it also extracts the

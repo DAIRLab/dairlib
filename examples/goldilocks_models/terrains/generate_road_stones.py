@@ -73,10 +73,11 @@ def CreateBlocksForTurning(init_pose, radius, delta_yaw, n_segment, speed, both_
   return Config(traj_end_x, traj_end_y, init_z, yaw)
 
 # slope is y/x
-# Assume we don't concatenate two ramp together
 def CreateRamp(init_pose, slope, base_length, speed, exit_conditions, stones):
   terrain_name = AddIndexToNameIfRepeated("Ramp %.1f%% slope and %.0f m" % (slope * 100, base_length), exit_conditions)
   assert base_length > 0
+  if slope >= 1:
+    raise ValueError("The slope should be y/x, so most likely the value should be smaller than 1. If the user insists, command out this check.")
 
   width = 1
   thinkness = 0.1  # doesn't really matter
@@ -85,8 +86,7 @@ def CreateRamp(init_pose, slope, base_length, speed, exit_conditions, stones):
   block_dimension = [base_length/math.cos(math.atan(slope)), width, thinkness]
 
   # Compute normal
-  previous_slope_angle = 0.0  # Assume we don't concatenate two ramps together
-  local_normal_dir = [math.cos(previous_slope_angle + math.atan(slope) + np.pi/2), 0.0, math.sin(previous_slope_angle + math.atan(slope) + np.pi/2)]
+  local_normal_dir = [math.cos(math.atan(slope) + np.pi/2), 0.0, math.sin(math.atan(slope) + np.pi/2)]
   local_x_dir = [math.cos(init_pose.yaw), math.sin(init_pose.yaw)]
   normal = [local_x_dir[0] * local_normal_dir[0], local_x_dir[1] * local_normal_dir[0], local_normal_dir[2]]
 
@@ -318,20 +318,31 @@ current_pose = Config()
 # current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
 # current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
-course_name = "Straight line 20% ramp"
+# course_name = "Straight line 20% ramp; low speed"
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateRamp(current_pose, 0.2, 10, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+
+# course_name = "Straight line 20% ramp; higher speed"
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateRamp(current_pose, 0.2, 10, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+
+course_name = "Two ramps with progressive incline; higher speed"
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateRamp(current_pose, 0.2, 10, speed=0.5, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateRamp(current_pose, 0.1, 10, speed=1, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateRamp(current_pose, 0.2, 10, speed=1, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 5, speed=1, exit_conditions=exit_conditions, stones=stones)
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
-
-# Some assertions
-# Assertion 1: currently CreateRamp() assumes we don't concatenate two ramps together
-for i in range(len(stones)):
-  if stones[i]['normal'][2] != 1:
-    assert stones[i+1]['normal'][2] == 1
 
 
 # Create description automatically
@@ -368,20 +379,21 @@ print("/////////////////////////////////////////////////////////////////////////
 print("// Traj: ", description)
 print("// ", course_name)
 for i in range(len(stones)):
-  print("// %.3f: {%.3f, %.3f}" % (t_breaks[i], stones[i]["traj_data"]["start_pos"][0], stones[i]["traj_data"]["start_pos"][1]), end="")
+  print("// %.3f: {%.3f, %.3f, %.3f}" % (t_breaks[i], stones[i]["traj_data"]["start_pos"][0], stones[i]["traj_data"]["start_pos"][1], stones[i]["traj_data"]["start_pos"][2]), end="")
   print(";   dt=%.3f, dx/dt=%.1f" % (t_breaks[i+1]-t_breaks[i], stones[i]["traj_data"]["speed"]))
   if i == len(stones) - 1:
-    print("// %.3f: {%.3f, %.3f}" % (t_breaks[i], stones[i]["traj_data"]["end_pos"][0], stones[i]["traj_data"]["end_pos"][1]))
+    print("// %.3f: {%.3f, %.3f, %.3f}" % (t_breaks[i], stones[i]["traj_data"]["end_pos"][0], stones[i]["traj_data"]["end_pos"][1], stones[i]["traj_data"]["end_pos"][2]))
 print("std::vector<double> breaks = {", end="")
 for i in range(len(t_breaks)):
   print("%.3f%s" % (t_breaks[i], ", " if i < len(t_breaks) - 1 else ""), end="")
 print("};")
 print("std::vector<std::vector<double>> knots_vec = {", end="")
-print("{%.3f, %.3f}%s" % (stones[0]["traj_data"]["start_pos"][0], stones[0]["traj_data"]["start_pos"][1], ", "), end="")
+print("{%.3f, %.3f, %.3f}%s" % (stones[0]["traj_data"]["start_pos"][0], stones[0]["traj_data"]["start_pos"][1], stones[0]["traj_data"]["start_pos"][2], ", "), end="")
 for i in range(len(stones)):
-  print("{%.3f, %.3f}%s" % (stones[i]["traj_data"]["end_pos"][0], stones[i]["traj_data"]["end_pos"][1], ", " if i < len(stones) - 1 else ""), end="")
+  print("{%.3f, %.3f, %.3f}%s" % (stones[i]["traj_data"]["end_pos"][0], stones[i]["traj_data"]["end_pos"][1], stones[i]["traj_data"]["end_pos"][2], ", " if i < len(stones) - 1 else ""), end="")
 print("};")
 
+### 3. Conditions for python timer
 # Code gen (python) for exit conditions
 assert "Endpoint" in exit_conditions[0][0]
 assert np.sum(["Endpoint" in name for name, _ in exit_conditions]) == 1

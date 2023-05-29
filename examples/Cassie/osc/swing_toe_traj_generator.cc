@@ -39,6 +39,12 @@ SwingToeTrajGenerator::SwingToeTrajGenerator(
                                   &SwingToeTrajGenerator::CalcTraj);
 }
 
+void SwingToeTrajGenerator::CreateGroundInclineInputPort() {
+  use_slope_ = true;
+  slope_port_ =
+      this->DeclareVectorInputPort("slope", BasicVector<double>(1)).get_index();
+}
+
 void SwingToeTrajGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     Trajectory<double>* traj) const {
@@ -64,6 +70,11 @@ void SwingToeTrajGenerator::CalcTraj(
   // Get current difference between
   VectorXd des_swing_toe_angle = VectorXd(1);
   des_swing_toe_angle << swing_toe_angle + deviation_from_ground_plane;
+
+  if (use_slope_) {
+    des_swing_toe_angle(0) +=
+        std::atan(this->EvalVectorInput(context, slope_port_)->get_value()(0));
+  }
 
   auto* pp_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(

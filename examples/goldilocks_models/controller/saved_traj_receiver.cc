@@ -237,6 +237,16 @@ SavedTrajReceiver::SavedTrajReceiver(
   //  stance_foot_ << 0, 1;  // left is 0, right is 1
 }
 
+void SavedTrajReceiver::UseXYZtrajInHighLevelCommand() {
+  use_slope_ = true;
+  slope_port_ =
+      this->DeclareVectorInputPort("slope", BasicVector<double>(1)).get_index();
+
+  // We assume `end_foot_pos` is relative to CoM and in pelvis frame when
+  // adjusting the swing foot height for slope
+  DRAKE_DEMAND(wrt_com_in_local_frame_);
+}
+
 void SavedTrajReceiver::CalcRomTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
@@ -273,6 +283,12 @@ void SavedTrajReceiver::CalcRomTraj(
     // cout << "current context time / traj start time / traj end time\n";
     cout << context.get_time() << " / " << pp.start_time() << " / "
          << pp.end_time() << endl;
+  }
+
+  // Testing -- Adjust the traj by the slope
+  if (use_slope_) {
+    pp = HybridRomPlannerTrajectory(*lcm_traj).ConstructPositionTrajectory(
+        this->EvalVectorInput(context, slope_port_)->get_value()(0));
   }
 
   // Assign traj
@@ -484,6 +500,17 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           }
           if (left_stance) {
             Y.at(2)(2) += final_foot_height_offset_for_right_leg_;
+          }
+          if (use_slope_) {
+            // We assume end_foot_pos is relative to CoM and in pelvis frame
+            double slope =
+                this->EvalVectorInput(context, slope_port_)->get_value()(0);
+            //  cout << "=======\n";
+            //  cout << "end_foot_pos(0) = " << end_foot_pos(0) << endl;
+            //  cout << "slope = " << slope << endl;
+            //  cout << "before, Y.at(2)(2) = " << Y.at(2)(2) << endl;
+            Y.at(2)(2) += end_foot_pos(0) * slope;
+            //  cout << "after, Y.at(2)(2) = " << Y.at(2)(2) << endl;
           }
 
           // Use CubicWithContinuousSecondDerivatives instead of CubicHermite to

@@ -144,6 +144,12 @@ void HighLevelCommand::SetDesiredXYTraj(
   high_level_mode_ = desired_xy_traj;
   view_frame_ = view_frame;
 
+  // Set output port for Z traj
+  slope_port_ =
+      this->DeclareVectorOutputPort("slope", BasicVector<double>(1),
+                                    &HighLevelCommand::CopyFeedforwardSlope)
+          .get_index();
+
   // Set x y set points
   /*std::vector<double> breaks = {0};
   std::vector<std::vector<double>> knots_vec = {{0, 0}};
@@ -457,7 +463,7 @@ void HighLevelCommand::SetDesiredXYTraj(
       {1.000, 12.000}, {0.000, 12.000}};*/
 
   //////////////////////////////////////////////////////////////////////////////
-  // Traj:  2023-05-28 22h07m31s: Straight 5.0 meters -> Ramp 0.1% slope and 5.0
+  // Traj:  2023-05-28 22h07m31s: Straight 5.0 meters -> Ramp 10% slope and 5.0
   // m -> Straight 5.0 meters #2
   // 0.000: {0.000, 0.000};   dt=2.000, dx/dt=0.0
   // 2.000: {0.000, 0.000};   dt=2.000, dx/dt=0.5
@@ -503,21 +509,22 @@ void HighLevelCommand::SetDesiredXYTraj(
       {8.000, 10.500}};*/
 
   //////////////////////////////////////////////////////////////////////////////
-  // Traj:  2023-05-28 22h50m23s: Straight 5.0 meters -> Ramp 20.0% slope and 10
+  // Traj:  2023-05-29 14h45m38s: Straight 5.0 meters -> Ramp 20.0% slope and 10
   // m -> Straight 5.0 meters #2
-  // Straight line 20% ramp
-  // 0.000: {0.000, 0.000};   dt=2.000, dx/dt=0.0
-  // 2.000: {0.000, 0.000};   dt=2.000, dx/dt=0.5
-  // 4.000: {1.000, 0.000};   dt=2.500, dx/dt=2.0
-  // 6.500: {6.000, 0.000};   dt=5.099, dx/dt=2.0
-  // 11.599: {16.000, 0.000};   dt=2.500, dx/dt=2.0
-  // 14.099: {21.000, 0.000};   dt=2.000, dx/dt=0.5
-  // 14.099: {22.000, 0.000}
+  // Straight line 20% ramp; high speed
+  // 0.000: {0.000, 0.000, 0.000};   dt=2.000, dx/dt=0.0
+  // 2.000: {0.000, 0.000, 0.000};   dt=2.000, dx/dt=0.5
+  // 4.000: {1.000, 0.000, 0.000};   dt=2.500, dx/dt=2.0
+  // 6.500: {6.000, 0.000, 0.000};   dt=5.099, dx/dt=2.0
+  // 11.599: {16.000, 0.000, 2.000};   dt=2.500, dx/dt=2.0
+  // 14.099: {21.000, 0.000, 2.000};   dt=2.000, dx/dt=0.5
+  // 14.099: {22.000, 0.000, 2.000}
   /*std::vector<double> breaks = {0.000,  2.000,  4.000, 6.500,
                                 11.599, 14.099, 16.099};
   std::vector<std::vector<double>> knots_vec = {
-      {0.000, 0.000},  {0.000, 0.000},  {1.000, 0.000}, {6.000, 0.000},
-      {16.000, 0.000}, {21.000, 0.000}, {22.000, 0.000}};*/
+      {0.000, 0.000, 0.000}, {0.000, 0.000, 0.000},  {1.000, 0.000, 0.000},
+      {6.000, 0.000, 0.000}, {16.000, 0.000, 2.000}, {21.000, 0.000, 2.000},
+      {22.000, 0.000, 2.000}};*/
 
   // Traj:  2023-05-28 22h58m51s: Straight 5.0 meters -> Ramp 20.0% slope and 10
   // m -> Straight 5.0 meters #2
@@ -529,11 +536,47 @@ void HighLevelCommand::SetDesiredXYTraj(
   // 34.396: {16.000, 0.000};   dt=10.000, dx/dt=0.5
   // 44.396: {21.000, 0.000};   dt=2.000, dx/dt=0.5
   // 44.396: {22.000, 0.000}
-  std::vector<double> breaks = {0.000,  2.000,  4.000, 14.000,
+  /*std::vector<double> breaks = {0.000,  2.000,  4.000, 14.000,
                                 34.396, 44.396, 46.396};
   std::vector<std::vector<double>> knots_vec = {
       {0.000, 0.000},  {0.000, 0.000},  {1.000, 0.000}, {6.000, 0.000},
-      {16.000, 0.000}, {21.000, 0.000}, {22.000, 0.000}};
+      {16.000, 0.000}, {21.000, 0.000}, {22.000, 0.000}};*/
+
+  // Traj:  2023-05-29 00h04m31s: Straight 5.0 meters -> Ramp 20.0% slope and 10
+  // m -> Straight 5.0 meters #2
+  // Straight line 20% ramp; slower speed; 3D waypoint specification
+  // 0.000: {0.000, 0.000, 0.000};   dt=2.000, dx/dt=0.0
+  // 2.000: {0.000, 0.000, 0.000};   dt=2.000, dx/dt=0.5
+  // 4.000: {1.000, 0.000, 0.000};   dt=10.000, dx/dt=0.5
+  // 14.000: {6.000, 0.000, 0.000};   dt=20.396, dx/dt=0.5
+  // 34.396: {16.000, 0.000, 2.000};   dt=10.000, dx/dt=0.5
+  // 44.396: {21.000, 0.000, 2.000};   dt=2.000, dx/dt=0.5
+  // 44.396: {22.000, 0.000, 2.000}
+  /*std::vector<double> breaks = {0.000,  2.000,  4.000, 14.000,
+                                34.396, 44.396, 46.396};
+  std::vector<std::vector<double>> knots_vec = {
+      {0.000, 0.000, 0.000}, {0.000, 0.000, 0.000},  {1.000, 0.000, 0.000},
+      {6.000, 0.000, 0.000}, {16.000, 0.000, 2.000}, {21.000, 0.000, 2.000},
+      {22.000, 0.000, 2.000}};*/
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Traj:  2023-05-29 15h00m57s: Straight 5.0 meters -> Ramp 10.0% slope and 10
+  // m -> Ramp 20.0% slope and 10 m -> Straight 5.0 meters #2
+  //  Two ramps with progressive incline; higher speed
+  // 0.000: {0.000, 0.000, 0.000};   dt=2.000, dx/dt=0.0
+  // 2.000: {0.000, 0.000, 0.000};   dt=2.000, dx/dt=0.5
+  // 4.000: {1.000, 0.000, 0.000};   dt=5.000, dx/dt=1.0
+  // 9.000: {6.000, 0.000, 0.000};   dt=10.050, dx/dt=1.0
+  // 19.050: {16.000, 0.000, 1.000};   dt=10.198, dx/dt=1.0
+  // 29.248: {26.000, 0.000, 3.000};   dt=5.000, dx/dt=1.0
+  // 34.248: {31.000, 0.000, 3.000};   dt=2.000, dx/dt=0.5
+  // 34.248: {32.000, 0.000, 3.000}
+  std::vector<double> breaks = {0.000,  2.000,  4.000,  9.000,
+                                19.050, 29.248, 34.248, 36.248};
+  std::vector<std::vector<double>> knots_vec = {
+      {0.000, 0.000, 0.000},  {0.000, 0.000, 0.000},  {1.000, 0.000, 0.000},
+      {6.000, 0.000, 0.000},  {16.000, 0.000, 1.000}, {26.000, 0.000, 3.000},
+      {31.000, 0.000, 3.000}, {32.000, 0.000, 3.000}};
 
   // Convert vector to MatrixXd
   std::vector<MatrixXd> knots(knots_vec.size(), MatrixX<double>(2, 1));
@@ -547,6 +590,15 @@ void HighLevelCommand::SetDesiredXYTraj(
   //      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
   //          breaks, knots, MatrixX<double>::Zero(2, 1),
   //          MatrixX<double>::Zero(2, 1));
+
+  // Construct the cubic splines for z trajectory.
+  knots = std::vector<MatrixXd>(knots_vec.size(), MatrixX<double>::Zero(1, 1));
+  if (knots_vec.at(0).size() > 2) {
+    for (int i = 0; i < knots_vec.size(); i++) {
+      knots.at(i) << knots_vec.at(i)[2];
+    }
+  }
+  desired_z_traj_ = PiecewisePolynomial<double>::FirstOrderHold(breaks, knots);
 
   /*for (int i = 0; i < breaks.size(); i++) {
     cout << breaks.at(i) << ", " << knots.at(i).transpose() << endl;
@@ -696,6 +748,7 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   Eigen::Matrix2d view_frame_rot_T_ =
       view_frame_->CalcWorldToFrameRotation(plant_, *context_)
           .topLeftCorner<2, 2>();
+  Vector2d local_cur_xy_dot = view_frame_rot_T_ * v.segment<2>(3);
 
   // Advance the time for desired traj if the tracking error is not too big
   double dt_sim = (prev_t_ == 0) ? 0 : context.get_time() - prev_t_;
@@ -716,7 +769,7 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   if (dt_buffer_idx_ == dt_buffer_sim_.size()) {
     dt_buffer_idx_ = 0;
   }
-  double time_ratio_of_traj_to_sim =
+  double time_rate_ratio_of_traj_to_sim =
       std::accumulate(dt_buffer_traj_.begin(), dt_buffer_traj_.end(), 0.0) /
       std::accumulate(dt_buffer_sim_.begin(), dt_buffer_sim_.end(), 0.0);
 
@@ -763,7 +816,7 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   Eigen::AngleAxis<double> angle_axis_delta(des_quat_dt_later *
                                             des_quat.inverse());
   double delta_yaw = (angle_axis_delta.angle() * angle_axis_delta.axis())(2);
-  double des_yaw_dot = time_ratio_of_traj_to_sim * (delta_yaw / delta_t);
+  double des_yaw_dot = time_rate_ratio_of_traj_to_sim * (delta_yaw / delta_t);
 
   if (reach_the_end_of_traj) des_yaw_dot = 0;
   double command_yaw_vel = 3 * yaw_err + des_yaw_dot;
@@ -809,8 +862,9 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   }
 
   // Update the flags
+  double tol_lagging_behind_traj = 0.3;
   // Note that this parameter cannot be too big, it would affect des_yaw
-  tracking_error_too_big_ = (local_delta_xy(0) > 0.3);
+  tracking_error_too_big_ = (local_delta_xy(0) > tol_lagging_behind_traj);
   //  tracking_error_too_big_ = false;
 
   much_far_ahead_ = (local_delta_xy(0) < -0.2);
@@ -843,8 +897,41 @@ VectorXd HighLevelCommand::CalcCommandFromDesiredXYTraj(
   cout << "command_vel = " << command_vel.transpose() << endl;
   cout << "filtered_vel_command_ = " << filtered_vel_command_.transpose()
        << endl;
-  cout << "time_ratio_of_traj_to_sim = " << time_ratio_of_traj_to_sim << endl;
+  cout << "time_ratio_of_traj_to_sim_ = " << time_ratio_of_traj_to_sim_ << endl;
   cout << "=============\n";*/
+
+  // Update for z trajectory (I wrote it here just to quickly code this up)
+  // The second term below adjusts the time to account for lagging behind traj
+  // (rough estimate). I don't add this estimate for now, since I can see in
+  // some situation they can be very inaccurate (maybe I can just bound them)
+  // double t_now = t_traj_ - (local_delta_xy(0) / local_des_xy_dot(0));
+  double t_now =
+      t_traj_ - std::clamp(local_cur_xy_dot(0) == 0
+                               ? 0
+                               : local_delta_xy(0) / local_cur_xy_dot(0),
+                           -0.3, 0.3);
+  double duration = 0.35;  // Stride duration
+  double t_start = std::max(t_now - duration / 2, desired_z_traj_.start_time());
+  double t_end = std::min(t_now + duration / 2, desired_z_traj_.end_time());
+  double dx = (view_frame_rot_T_ * (desired_xy_traj_.value(t_end) -
+                                    desired_xy_traj_.value(t_start)))(0);
+  feedforward_slope_ =
+      dx == 0
+          ? 0
+          : (desired_z_traj_.value(t_end) - desired_z_traj_.value(t_start))(0) /
+                dx;
+  /*cout << "t_now = " << t_now << endl;
+  cout << "t_traj_ = " << t_traj_ << endl;
+  cout << "local_delta_xy = " << local_delta_xy.transpose() << endl;
+  cout << "local_des_xy_dot = " << local_des_xy_dot.transpose() << endl;
+  cout << "local_cur_xy_dot = " << local_cur_xy_dot.transpose() << endl;
+  cout << "desired_z_traj_.start_time() = " << desired_z_traj_.start_time()
+       << endl;
+  cout << "desired_z_traj_.end_time() = " << desired_z_traj_.end_time() << endl;
+  cout << "t_now = " << t_now << endl;
+  cout << "t_start = " << t_start << endl;
+  cout << "t_end = " << t_end << endl;
+  cout << "feedforward_slope_ = " << feedforward_slope_ << endl;*/
 
   //  return command_vel;
   return filtered_vel_command_;
@@ -866,6 +953,12 @@ void HighLevelCommand::CopyDesiredHorizontalVel(
 
   // Assign
   output->get_mutable_value() = delta_CP_3D_global;
+}
+
+void HighLevelCommand::CopyFeedforwardSlope(const Context<double>& context,
+                                            BasicVector<double>* output) const {
+  // Assign
+  output->get_mutable_value() << feedforward_slope_;
 }
 
 }  // namespace osc

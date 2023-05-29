@@ -309,30 +309,44 @@ current_pose = Config()
 # current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
 # Turn then ramp
-course_name = "Turn then ramp"
+# course_name = "Turn then ramp"
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateBlocksForTurning(current_pose, 2, np.pi/2, n_segment=10, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateRamp(current_pose, 0.1, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+# current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
+
+course_name = "Straight line 20% ramp"
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.0, center_at_current_pos=True, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=True, final_at_center_pos=False, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateBlocksForTurning(current_pose, 2, np.pi/2, n_segment=10, speed=2, both_start_and_end_at_block_center=True, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateRamp(current_pose, 0.1, 2.5, speed=2, exit_conditions=exit_conditions, stones=stones)
-current_pose = CreateOneBlock(current_pose, 5, speed=2, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateRamp(current_pose, 0.2, 10, speed=0.5, exit_conditions=exit_conditions, stones=stones)
+current_pose = CreateOneBlock(current_pose, 5, speed=0.5, exit_conditions=exit_conditions, stones=stones)
 current_pose = CreateEndpointBlock(current_pose, 2, 1, speed=0.5, center_at_current_pos=False, final_at_center_pos=True, exit_conditions=exit_conditions, stones=stones)
 
+
+# Some assertions
+# Assertion 1: currently CreateRamp() assumes we don't concatenate two ramps together
+for i in range(len(stones)):
+  if stones[i]['normal'][2] != 1:
+    assert stones[i+1]['normal'][2] == 1
 
 
 # Create description automatically
 description = " -> ".join([name for name, _ in exit_conditions if "Endpoint" not in name])
 description = datetime.datetime.now().strftime("%Y-%m-%d %Hh%Mm%Ss") + ": " + description
 
+### 1. Create stones
 # Code gen stone.yaml
 print("# ", description)
 print("# ", course_name)
 for i in range(len(stones)):
   print(" - [", stones[i]["xyz"], ", ", stones[i]["normal"], ", ", stones[i]["dim"], ", ", stones[i]["yaw"], "]")
 
-print("\n\n")
 
-# Print to create trajectory to track
+### 2. Create trajectory waypoints for tracking
 t_breaks = []
 t_breaks.append(0.0)
 for i in range(len(stones)):
@@ -349,9 +363,10 @@ for i in range(len(stones)):
     assert stones[i]["traj_data"]["end_pos"] == stones[i+1]["traj_data"]["start_pos"]
 
 # Code gen C++
+print("\n\n")
 print("//////////////////////////////////////////////////////////////////////////////")
 print("// Traj: ", description)
-print("// Traj: ", course_name)
+print("// ", course_name)
 for i in range(len(stones)):
   print("// %.3f: {%.3f, %.3f}" % (t_breaks[i], stones[i]["traj_data"]["start_pos"][0], stones[i]["traj_data"]["start_pos"][1]), end="")
   print(";   dt=%.3f, dx/dt=%.1f" % (t_breaks[i+1]-t_breaks[i], stones[i]["traj_data"]["speed"]))
@@ -385,6 +400,7 @@ code = ""
 for name, condition in exit_conditions:
   code += "self.exit_conditions[\'%s\'] = [%.3f, %.3f, %.3f, np.inf]\n" % (name, condition[0], condition[1], condition[2])
 print(code)
+
 
 # Sanity check
 PlotBlocks(stones, t_breaks)

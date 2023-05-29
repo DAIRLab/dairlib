@@ -59,12 +59,12 @@ class TimeVisualizer(object):
         # 2023-05-28 20h47m49s: Straight 5.0 meters -> Turn 90 degrees (1.0 m radius)  -> Straight 5.0 meters #2
         ######
         # Left turn fast turning 90 degrees
-        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 90 degrees (1.0 m radius) ', 'Straight 5.0 meters #2', 'end']
-        self.exit_conditions = {}
-        self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Turn 90 degrees (1.0 m radius) '] = [1.000, 0.000, 1.000, np.inf]
-        self.exit_conditions['Straight 5.0 meters #2'] = [6.000, 0.000, 1.000, np.inf]
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 90 degrees (1.0 m radius) ', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn 90 degrees (1.0 m radius) '] = [1.000, 0.000, 1.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [6.000, 0.000, 1.000, np.inf]
         ######
         # 2023-05-28 13h01m16s: Straight 5.0 meters -> Turn -180 degrees (2.0 m radius)  -> Straight 5.0 meters #2
         # Right turn
@@ -96,13 +96,22 @@ class TimeVisualizer(object):
         ######
         # 2023-05-28 22h28m27s: Straight 5.0 meters -> Turn 90 degrees (2.0 m radius)  -> Ramp 10% slope and 2.5 m -> Straight 5.0 meters #2
         # Turn then ramp
-        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 90 degrees (2.0 m radius) ', 'Ramp 0.1% slope and 2.5 m', 'Straight 5.0 meters #2', 'end']
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 90 degrees (2.0 m radius) ', 'Ramp 0.1% slope and 2.5 m', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn 90 degrees (2.0 m radius) '] = [2.000, 0.000, 1.000, np.inf]
+        # self.exit_conditions['Ramp 0.1% slope and 2.5 m'] = [4.500, 0.000, 1.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [9.500, 0.000, 1.000, np.inf]
+        ######
+        # 2023-05-28 22h50m23s: Straight 5.0 meters -> Ramp 20.0% slope and 10 m -> Straight 5.0 meters #2
+        # straight line 20% ramp
+        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Ramp 20.0% slope and 10 m', 'Straight 5.0 meters #2', 'end']
         self.exit_conditions = {}
         self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
         self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Turn 90 degrees (2.0 m radius) '] = [2.000, 0.000, 1.000, np.inf]
-        self.exit_conditions['Ramp 0.1% slope and 2.5 m'] = [4.500, 0.000, 1.000, np.inf]
-        self.exit_conditions['Straight 5.0 meters #2'] = [9.500, 0.000, 1.000, np.inf]
+        self.exit_conditions['Ramp 20.0% slope and 10 m'] = [16.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Straight 5.0 meters #2'] = [21.000, 1.000, 0.000, np.inf]
         ####################################
 
         assert self.terrain_state_list[0] == 'start'

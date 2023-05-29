@@ -49,13 +49,22 @@ class TimeVisualizer(object):
         # self.exit_conditions['Straight 2.5 meters #4'] = [-1.000, -1.000, 0.000, np.inf]
         ######
         # 2023-05-28 12h46m42s: Straight 5.0 meters -> Turn 180 degrees (1.0 m radius)  -> Straight 5.0 meters #2
-        # Left turn fast turning
+        # Left turn fast turning 180 degrees
         # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 180 degrees (1.0 m radius) ', 'Straight 5.0 meters #2', 'end']
         # self.exit_conditions = {}
         # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
         # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
         # self.exit_conditions['Turn 180 degrees (1.0 m radius) '] = [-6.000, -1.000, 0.000, np.inf]
         # self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, 0.000, np.inf]
+        # 2023-05-28 20h47m49s: Straight 5.0 meters -> Turn 90 degrees (1.0 m radius)  -> Straight 5.0 meters #2
+        ######
+        # Left turn fast turning 90 degrees
+        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 90 degrees (1.0 m radius) ', 'Straight 5.0 meters #2', 'end']
+        self.exit_conditions = {}
+        self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Turn 90 degrees (1.0 m radius) '] = [1.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Straight 5.0 meters #2'] = [6.000, 0.000, 1.000, np.inf]
         ######
         # 2023-05-28 13h01m16s: Straight 5.0 meters -> Turn -180 degrees (2.0 m radius)  -> Straight 5.0 meters #2
         # Right turn
@@ -67,14 +76,14 @@ class TimeVisualizer(object):
         # self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, -0.000, np.inf]
         ######
         # 2023-05-28 20h21m30s: Straight 5.0 meters -> Turn 180 degrees (2.0 m radius)  -> Turn -180 degrees (2.0 m radius)  -> Turn 180 degrees (2.0 m radius)  #2 -> Straight 5.0 meters #2
-        self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 180 degrees (2.0 m radius) ', 'Turn -180 degrees (2.0 m radius) ', 'Turn 180 degrees (2.0 m radius)  #2', 'Straight 5.0 meters #2', 'end']
-        self.exit_conditions = {}
-        self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Turn 180 degrees (2.0 m radius) '] = [-6.000, -1.000, 0.000, np.inf]
-        self.exit_conditions['Turn -180 degrees (2.0 m radius) '] = [6.000, 1.000, -0.000, np.inf]
-        self.exit_conditions['Turn 180 degrees (2.0 m radius)  #2'] = [-6.000, -1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, 0.000, np.inf]
+        # self.terrain_state_list = ['start', 'Straight 5.0 meters', 'Turn 180 degrees (2.0 m radius) ', 'Turn -180 degrees (2.0 m radius) ', 'Turn 180 degrees (2.0 m radius)  #2', 'Straight 5.0 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn 180 degrees (2.0 m radius) '] = [-6.000, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Turn -180 degrees (2.0 m radius) '] = [6.000, 1.000, -0.000, np.inf]
+        # self.exit_conditions['Turn 180 degrees (2.0 m radius)  #2'] = [-6.000, -1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 5.0 meters #2'] = [-1.000, -1.000, 0.000, np.inf]
         ####################################
 
         assert self.terrain_state_list[0] == 'start'
@@ -95,7 +104,10 @@ class TimeVisualizer(object):
         self.total_duration = 0
         self.first_timer_start = -1
 
-        self.initialize_terrain_variables()
+        self.reset_terrain_variables()
+
+        #self.name_col_size = max([len(name) for name in self.terrain_state_list]) + 1
+
 
     def reset_terrain_variables(self):
         for state in self.terrain_state_list:
@@ -181,15 +193,13 @@ class TimeVisualizer(object):
                 if self.first_timer_start < 0:
                     self.first_timer_start = msg_time
 
+        my_text += ("\nTotal time: %.2f" % self.total_duration) if self.first_timer_start > 0 else "\n"
         for key in self.duration_list:
             if key != 'start' and key != 'end':
             # if key != 'end':
                 my_text += "\n%s: %.2f" % (key, self.duration_list[key]) if self.duration_list[key] > 0 else "\n"
-        my_text += ("\nTotal time: %.2f" % self.total_duration) if self.first_timer_start > 0 else "\n"
-
 
         return my_text
-
 
 
 

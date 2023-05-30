@@ -1559,7 +1559,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   //                           // plots look better (with interpolation func)
   TasksGenerator* task_gen;
   GridTasksGenerator task_gen_grid;
+  MultiGridTasksGenerator task_gen_multigrid;
   UniformTasksGenerator task_gen_uniform;
+  bool multi_grid = (FLAGS_N_sample_gi != 1 && FLAGS_N_sample_tr != 1);
   if (is_grid_task) {
     if (FLAGS_robot_option == 0) {
       task_gen_grid = GridTasksGenerator(
@@ -1567,30 +1569,73 @@ int findGoldilocksModels(int argc, char* argv[]) {
           {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du},
           {0.25, 0, 0.4}, {0.015, 0.05, 0.05},
           std::vector<bool>(3, is_stochastic));
+      task_gen = &task_gen_grid;
     } else if (FLAGS_robot_option == 1) {
-      task_gen_grid = GridTasksGenerator(
-          6,
-          {"stride_length", "ground_incline", "duration", "turning_rate",
-           "pelvis_height", "swing_margin"},
-          {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
-           FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
-          {FLAGS_stride_length_center, FLAGS_ground_incline_center,
-           FLAGS_duration_center, FLAGS_turning_rate_center,
-           FLAGS_pelvis_height_center, FLAGS_swing_margin_center},
-          {FLAGS_stride_length_delta, FLAGS_ground_incline_delta,
-           FLAGS_duration_delta, FLAGS_turning_rate_delta,
-           FLAGS_pelvis_height_delta, FLAGS_swing_margin_delta},
-          {(FLAGS_N_sample_sl > 1) && is_stochastic,
-           (FLAGS_N_sample_gi > 1) && is_stochastic,
-           (FLAGS_N_sample_du > 1) && is_stochastic,
-           (FLAGS_N_sample_tr > 1) && is_stochastic,
-           (FLAGS_N_sample_ph > 1) && is_stochastic,
-           (FLAGS_N_sample_sm > 1) && is_stochastic});
+      if (multi_grid) {
+        GridTasksGenerator task_gen_grid1 = GridTasksGenerator(
+            6,
+            {"stride_length", "ground_incline", "duration", "turning_rate",
+             "pelvis_height", "swing_margin"},
+            {FLAGS_N_sample_sl, 1, FLAGS_N_sample_du, FLAGS_N_sample_tr,
+             FLAGS_N_sample_ph, FLAGS_N_sample_sm},
+            {FLAGS_stride_length_center, FLAGS_ground_incline_center,
+             FLAGS_duration_center, FLAGS_turning_rate_center,
+             FLAGS_pelvis_height_center, FLAGS_swing_margin_center},
+            {FLAGS_stride_length_delta, FLAGS_ground_incline_delta,
+             FLAGS_duration_delta, FLAGS_turning_rate_delta,
+             FLAGS_pelvis_height_delta, FLAGS_swing_margin_delta},
+            {(FLAGS_N_sample_sl > 1) && is_stochastic, false,
+             (FLAGS_N_sample_du > 1) && is_stochastic,
+             (FLAGS_N_sample_tr > 1) && is_stochastic,
+             (FLAGS_N_sample_ph > 1) && is_stochastic,
+             (FLAGS_N_sample_sm > 1) && is_stochastic});
+        GridTasksGenerator task_gen_grid2 = GridTasksGenerator(
+            6,
+            {"stride_length", "ground_incline", "duration", "turning_rate",
+             "pelvis_height", "swing_margin"},
+            {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du, 1,
+             FLAGS_N_sample_ph, FLAGS_N_sample_sm},
+            {FLAGS_stride_length_center, FLAGS_ground_incline_center,
+             FLAGS_duration_center, FLAGS_turning_rate_center,
+             FLAGS_pelvis_height_center, FLAGS_swing_margin_center},
+            {FLAGS_stride_length_delta, FLAGS_ground_incline_delta,
+             FLAGS_duration_delta, FLAGS_turning_rate_delta,
+             FLAGS_pelvis_height_delta, FLAGS_swing_margin_delta},
+            {(FLAGS_N_sample_sl > 1) && is_stochastic,
+             (FLAGS_N_sample_gi > 1) && is_stochastic,
+             (FLAGS_N_sample_du > 1) && is_stochastic, false,
+             (FLAGS_N_sample_ph > 1) && is_stochastic,
+             (FLAGS_N_sample_sm > 1) && is_stochastic});
+        task_gen_multigrid =
+            MultiGridTasksGenerator(task_gen_grid1, task_gen_grid2);
+        task_gen = &task_gen_multigrid;
+
+      } else {
+        task_gen_grid = GridTasksGenerator(
+            6,
+            {"stride_length", "ground_incline", "duration", "turning_rate",
+             "pelvis_height", "swing_margin"},
+            {FLAGS_N_sample_sl, FLAGS_N_sample_gi, FLAGS_N_sample_du,
+             FLAGS_N_sample_tr, FLAGS_N_sample_ph, FLAGS_N_sample_sm},
+            {FLAGS_stride_length_center, FLAGS_ground_incline_center,
+             FLAGS_duration_center, FLAGS_turning_rate_center,
+             FLAGS_pelvis_height_center, FLAGS_swing_margin_center},
+            {FLAGS_stride_length_delta, FLAGS_ground_incline_delta,
+             FLAGS_duration_delta, FLAGS_turning_rate_delta,
+             FLAGS_pelvis_height_delta, FLAGS_swing_margin_delta},
+            {(FLAGS_N_sample_sl > 1) && is_stochastic,
+             (FLAGS_N_sample_gi > 1) && is_stochastic,
+             (FLAGS_N_sample_du > 1) && is_stochastic,
+             (FLAGS_N_sample_tr > 1) && is_stochastic,
+             (FLAGS_N_sample_ph > 1) && is_stochastic,
+             (FLAGS_N_sample_sm > 1) && is_stochastic});
+        task_gen = &task_gen_grid;
+      }
     } else {
       throw std::runtime_error("Should not reach here");
       task_gen_grid = GridTasksGenerator();
+      task_gen = &task_gen_grid;
     }
-    task_gen = &task_gen_grid;
   } else {
     if (FLAGS_robot_option == 0) {
       task_gen_uniform = UniformTasksGenerator(
@@ -1873,8 +1918,10 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "n_node for each sample = \n";
   vector<int> n_node_vec(N_sample, 20);
   if (!FLAGS_fix_node_number) {
+    // Note -- It's always grid task if FLAGS_fix_node_number == false
     for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
-      task.set(task_gen_grid.NewNominalTask(sample_idx));
+      task.set(multi_grid ? task_gen_multigrid.NewNominalTask(sample_idx)
+                          : task_gen_grid.NewNominalTask(sample_idx));
       double duration = task.get("duration");
       n_node_vec[sample_idx] = int(FLAGS_node_density * duration);
       cout << n_node_vec[sample_idx] << ", ";
@@ -2163,7 +2210,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   MatrixXi adjacent_sample_indices;
   if (is_grid_task) {
     adjacent_sample_indices =
-        task_gen_grid.CreateSampleIdxAdjacentMatrix(n_node_vec);
+        multi_grid
+            ? task_gen_multigrid.CreateSampleIdxAdjacentMatrix(n_node_vec)
+            : task_gen_grid.CreateSampleIdxAdjacentMatrix(n_node_vec);
     cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
   }
 
@@ -2301,7 +2350,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // (You need step_size_shrinked_last_loop because you might start the
           // program with shrinking step size)
           if (FLAGS_is_debug || FLAGS_no_model_update) {
-            task.set(task_gen_grid.NewNominalTask(sample_idx));
+            task.set(multi_grid ? task_gen_multigrid.NewNominalTask(sample_idx)
+                                : task_gen_grid.NewNominalTask(sample_idx));
             /*task.set(CopyVectorXdToStdVector(
                 readCSV(dir + prefix + string("task.csv")).col(0)));*/
 
@@ -2314,7 +2364,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
               task.set(CopyVectorXdToStdVector(previous_task[sample_idx]));
             } else {
               if (is_grid_task && is_get_nominal) {
-                task.set(task_gen_grid.NewNominalTask(sample_idx));
+                task.set(multi_grid
+                             ? task_gen_multigrid.NewNominalTask(sample_idx)
+                             : task_gen_grid.NewNominalTask(sample_idx));
               } else {
                 task.set(task_gen->NewTask(sample_idx));
               }

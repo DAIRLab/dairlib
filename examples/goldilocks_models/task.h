@@ -54,7 +54,8 @@ class Task {
     // Hacks -- forbid "non-zero turning rate + non-zero ground incline"
     {
       double duration = values.at(name_to_index_map_.at("duration"));
-      double ground_incline = values.at(name_to_index_map_.at("ground_incline"));
+      double ground_incline =
+          values.at(name_to_index_map_.at("ground_incline"));
       double turning_rate = values.at(name_to_index_map_.at("turning_rate"));
 
       double turning_angle = turning_rate * duration;
@@ -147,7 +148,8 @@ class GridTasksGenerator : public TasksGenerator {
 
   // Specialized method -- create adjacent matrix
   // n_node_vec is used for extra check on number of nodes for each sample
-  Eigen::MatrixXi CreateSampleIdxAdjacentMatrix(std::vector<int> n_node_vec = {}) const;
+  Eigen::MatrixXi CreateSampleIdxAdjacentMatrix(
+      std::vector<int> n_node_vec = {}) const;
 
   // Printing message
   void PrintInfo() const override;
@@ -165,6 +167,34 @@ class GridTasksGenerator : public TasksGenerator {
 
   std::map<int, vector<int>> forward_task_idx_map_;
   std::map<vector<int>, int> inverse_task_idx_map_;
+};
+
+// TODO(yminchen): Currently it only takes two grid. We can generalize this
+//  class to more then 2 grids.
+class MultiGridTasksGenerator : public TasksGenerator {
+ public:
+  MultiGridTasksGenerator(GridTasksGenerator task_gen1,
+                          GridTasksGenerator task_gen2);
+
+  // Default constructor
+  MultiGridTasksGenerator() = default;
+
+  // Generator
+  vector<double> NewNominalTask(int sample_idx);
+  vector<double> NewTask(int sample_idx) final;
+
+  // Specialized method -- create adjacent matrix
+  // n_node_vec is used for extra check on number of nodes for each sample
+  Eigen::MatrixXi CreateSampleIdxAdjacentMatrix(
+      std::vector<int> n_node_vec = {}) const;
+
+  // Printing message
+  void PrintInfo() const override;
+
+ private:
+  GridTasksGenerator task_gen1_;
+  GridTasksGenerator task_gen2_;
+  std::vector<int> N_sample_of_each_grid_;
 };
 
 class UniformTasksGenerator : public TasksGenerator {

@@ -22,12 +22,12 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
-#include "examples/perceptive_locomotion/systems/stance_foot_ros_sender.h"
 
 #include "geometry/convex_foothold_set.h"
 #include "geometry/convex_foothold_lcm_systems.h"
 
 #ifdef DAIR_ROS_ON
+#include "examples/perceptive_locomotion/systems/stance_foot_ros_sender.h"
 #include "geometry/convex_foothold_lcm_systems.h"
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"

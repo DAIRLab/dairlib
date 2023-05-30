@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+using Eigen::MatrixXi;
+
 namespace dairlib {
 namespace goldilocks_models {
 
@@ -117,6 +119,50 @@ vector<double> GridTasksGenerator::NewTask(int sample_idx) {
     }
   }
   return ret;
+}
+
+Eigen::MatrixXi GridTasksGenerator::CreateSampleIdxAdjacentMatrix(
+    vector<int> n_node_vec) const {
+  // Setup
+  int task_dim = this->dim_nondeg();
+  int N_sample = this->total_sample_number();
+
+  if (n_node_vec.empty()) {
+    n_node_vec = std::vector<int>(N_sample, 1);
+  }
+
+  // cout << "Constructing adjacent index list...\n";
+  MatrixXi adjacent_sample_indices =
+      -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
+  MatrixXi delta_idx = MatrixXi::Identity(3, 3);
+  for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
+    for (int i = 0; i < task_dim; i++) {
+      vector<int> new_index_tuple = forward_task_idx_map_.at(sample_idx);
+      new_index_tuple[i] += 1;
+
+      // The new index tuple has to be valid
+      if (new_index_tuple[i] < this->sample_numbers()[i]) {
+        int adjacent_sample_idx = inverse_task_idx_map_.at(new_index_tuple);
+        // Number of nodes should be the same so that we can set initial guess
+        if (n_node_vec[sample_idx] == n_node_vec[adjacent_sample_idx]) {
+          // Add to adjacent_sample_idx (both directions)
+          for (int l = 0; l < 2 * task_dim; l++) {
+            if (adjacent_sample_indices(sample_idx, l) < 0) {
+              adjacent_sample_indices(sample_idx, l) = adjacent_sample_idx;
+              break;
+            }
+          }
+          for (int l = 0; l < 2 * task_dim; l++) {
+            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
+              adjacent_sample_indices(adjacent_sample_idx, l) = sample_idx;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  return adjacent_sample_indices;
 }
 
 void GridTasksGenerator::RunThroughIndex(

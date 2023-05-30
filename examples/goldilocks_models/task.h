@@ -134,16 +134,20 @@ class GridTasksGenerator : public TasksGenerator {
   GridTasksGenerator() = default;
 
   // Getters
-  const std::map<int, std::vector<int>>& get_forward_map() {
+  const std::map<int, std::vector<int>>& get_forward_map() const {
     return forward_task_idx_map_;
   };
-  const std::map<std::vector<int>, int>& get_inverse_map() {
+  const std::map<std::vector<int>, int>& get_inverse_map() const {
     return inverse_task_idx_map_;
   };
 
   // Generator
   vector<double> NewNominalTask(int sample_idx);
   vector<double> NewTask(int sample_idx) final;
+
+  // Specialized method -- create adjacent matrix
+  // n_node_vec is used for extra check on number of nodes for each sample
+  Eigen::MatrixXi CreateSampleIdxAdjacentMatrix(std::vector<int> n_node_vec = {}) const;
 
   // Printing message
   void PrintInfo() const override;

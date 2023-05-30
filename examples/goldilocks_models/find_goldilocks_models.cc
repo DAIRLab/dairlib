@@ -861,48 +861,6 @@ void calcWInTermsOfTheta(int sample, const string& dir, const SubQpData& QPs,
   cout << to_be_print;
 }
 
-// TODO: this function probably belongs to GridTasksGenerator
-MatrixXi GetAdjSampleIndices(GridTasksGenerator task_gen_grid,
-                             vector<int> n_node_vec) {
-  // Setup
-  int task_dim = task_gen_grid.dim_nondeg();
-  int N_sample = task_gen_grid.total_sample_number();
-
-  // cout << "Constructing adjacent index list...\n";
-  MatrixXi adjacent_sample_indices =
-      -1 * MatrixXi::Ones(N_sample, 2 * task_dim);
-  MatrixXi delta_idx = MatrixXi::Identity(3, 3);
-  for (int sample_idx = 0; sample_idx < N_sample; sample_idx++) {
-    for (int i = 0; i < task_dim; i++) {
-      vector<int> new_index_tuple =
-          task_gen_grid.get_forward_map().at(sample_idx);
-      new_index_tuple[i] += 1;
-
-      // The new index tuple has to be valid
-      if (new_index_tuple[i] < task_gen_grid.sample_numbers()[i]) {
-        int adjacent_sample_idx =
-            task_gen_grid.get_inverse_map().at(new_index_tuple);
-        // Number of nodes should be the same so that we can set initial guess
-        if (n_node_vec[sample_idx] == n_node_vec[adjacent_sample_idx]) {
-          // Add to adjacent_sample_idx (both directions)
-          for (int l = 0; l < 2 * task_dim; l++) {
-            if (adjacent_sample_indices(sample_idx, l) < 0) {
-              adjacent_sample_indices(sample_idx, l) = adjacent_sample_idx;
-              break;
-            }
-          }
-          for (int l = 0; l < 2 * task_dim; l++) {
-            if (adjacent_sample_indices(adjacent_sample_idx, l) < 0) {
-              adjacent_sample_indices(adjacent_sample_idx, l) = sample_idx;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-  return adjacent_sample_indices;
-}
 bool IsSampleBeingEvaluated(const vector<pair<int, int>>& assigned_thread_idx,
                             int sample_idx) {
   for (auto& member : assigned_thread_idx) {
@@ -2204,7 +2162,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   // Setup for getting good solution from adjacent samples
   MatrixXi adjacent_sample_indices;
   if (is_grid_task) {
-    adjacent_sample_indices = GetAdjSampleIndices(task_gen_grid, n_node_vec);
+    adjacent_sample_indices =
+        task_gen_grid.CreateSampleIdxAdjacentMatrix(n_node_vec);
     cout << "adjacent_sample_indices = \n" << adjacent_sample_indices << endl;
   }
 

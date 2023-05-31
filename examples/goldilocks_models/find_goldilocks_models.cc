@@ -1987,11 +1987,6 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (inner_loop_setting.cubic_spline_in_joint_space) {
     DRAKE_DEMAND(inner_loop_setting.swing_foot_cublic_spline_constraint);
   }
-  // Small number time limit seems buggy. I tried 60seconds, but snopt solver
-  // stopped after 6 seconds. Need to find out why
-  // It seems like time_limit scale with `n_thread_to_use`?
-  // Doesn't use time limit for now unless tested.
-  // DRAKE_DEMAND(FLAGS_solver_time_limit == 0);
 
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";
@@ -2441,15 +2436,22 @@ int findGoldilocksModels(int argc, char* argv[]) {
               (sample_monitor.Read(sample_idx) ==
                SAMPLE_STATUS_CODE::ITERATION_LIMIT)) {
             max_inner_iter_pass_in *= 2;
+
+            if (FLAGS_no_model_update) {
+              max_inner_iter_pass_in = 200;  // to save time
+            }
           }
 
           // Test -- adjust time limit
-          // The time seems to scale with number of cpu in use (not sure yet)
-          inner_loop_setting.solver_time_limit =
-              FLAGS_solver_time_limit * CORES;
-          if (awaiting_sample_idx.empty()) {
+          // Snopt's timer seems to scale with number of cpu in use in this
+          // process, so we multiply it with number of predicted active cores
+          if (!FLAGS_ipopt) {
             inner_loop_setting.solver_time_limit =
-                FLAGS_solver_time_limit * (assigned_thread_idx.size() + 1);
+                FLAGS_solver_time_limit * CORES;
+            if (awaiting_sample_idx.empty()) {
+              inner_loop_setting.solver_time_limit =
+                  FLAGS_solver_time_limit * (assigned_thread_idx.size() + 1);
+            }
           }
 
           // Set up feasibility and optimality tolerance

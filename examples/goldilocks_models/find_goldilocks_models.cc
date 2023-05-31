@@ -1989,7 +1989,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   // Small number time limit seems buggy. I tried 60seconds, but snopt solver
   // stopped after 6 seconds. Need to find out why
-  DRAKE_DEMAND(FLAGS_solver_time_limit >= 600);
+  // It seems like time_limit scale with `n_thread_to_use`?
+  // Doesn't use time limit for now unless tested.
+  // DRAKE_DEMAND(FLAGS_solver_time_limit == 0);
 
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";
@@ -2314,14 +2316,25 @@ int findGoldilocksModels(int argc, char* argv[]) {
 
       // Evaluate samples
       while (!awaiting_sample_idx.empty() || !assigned_thread_idx.empty()) {
+        int num_element_printed = 10;
+        int i_element_printed = 0;
         cout << "awaiting_sample_idx = ";
         for (auto mem : awaiting_sample_idx) {
           cout << mem << ", ";
+          i_element_printed++;
+          if (i_element_printed == num_element_printed) {
+            break;
+          }
         }
         cout << endl;
         cout << "assigned_sample_idx = ";
+        i_element_printed = 0;
         for (auto mem : assigned_thread_idx) {
           cout << mem.second << ", ";
+          i_element_printed++;
+          if (i_element_printed == num_element_printed) {
+            break;
+          }
         }
         cout << endl;
 
@@ -2358,7 +2371,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
             /*task.set(CopyVectorXdToStdVector(
                 readCSV(dir + prefix + string("task.csv")).col(0)));*/
 
-            task.Print();
+            // task.Print();
             writeCSV(dir + prefix + string("task.csv"),
                      Eigen::Map<const VectorXd>(task.get().data(),
                                                 task.get().size()));
@@ -2428,6 +2441,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
               (sample_monitor.Read(sample_idx) ==
                SAMPLE_STATUS_CODE::ITERATION_LIMIT)) {
             max_inner_iter_pass_in *= 2;
+          }
+
+          // Test -- adjust time limit
+          // The time seems to scale with number of cpu in use (not sure yet)
+          inner_loop_setting.solver_time_limit =
+              FLAGS_solver_time_limit * CORES;
+          if (awaiting_sample_idx.empty()) {
+            inner_loop_setting.solver_time_limit =
+                FLAGS_solver_time_limit * (assigned_thread_idx.size() + 1);
           }
 
           // Set up feasibility and optimality tolerance

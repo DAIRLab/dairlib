@@ -206,6 +206,13 @@ DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
 // Multithread
 DEFINE_bool(is_multithread, true, "Use multi-thread or not");
 DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
+DEFINE_int32(
+    n_max_cpu_load, 80,
+    "# of active cores allowed on the machine; "
+    "This number can be used to prioritize different model optimizations on "
+    "the same machine. For example, an optimization with n_max_cpu_load=79 "
+    "will not add trajopt jobs, unless an optimization with n_max_cpu_load=80 "
+    "doesn't have more trajopt jobs to run");
 
 // Others
 DEFINE_string(program_name, "",
@@ -2042,6 +2049,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   for (int i = 0; i < N_sample; i++) {
     thread_finished_vec[i] = std::make_shared<int>(0);
   }
+  cout << "FLAGS_n_max_cpu_load = " << FLAGS_n_max_cpu_load << endl;
 
   // Some setup
   cout << "\nOther settings:\n";
@@ -2343,7 +2351,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
         if (!awaiting_sample_idx.empty() && !available_thread_idx.empty()) {
           // An additional check in case there are other processes running, and
           // we don't want to exceed a certain cpu load (e.g. for our server)
-          waitIfCpuLoadIsTooHigh(80);
+          waitIfCpuLoadIsTooHigh(FLAGS_n_max_cpu_load);
 
           // Pick a sample to evaluate
           int sample_idx = awaiting_sample_idx.front();

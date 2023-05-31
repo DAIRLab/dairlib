@@ -89,8 +89,11 @@ iter_delta=1
 #then printf "Allocated too many cores (%s). This job only need %s.\n" $SLURM_CPUS_PER_TASK $total_cores_needed;
 #fi
 
-# Prevent the server from shutting down when using too many cpu cores
+# Preventing the server from shutting down when using too many cpu cores
+n_max_cpu_load=80  # this can also be used to set priority of model optimization processes on the same machine
 n_thread_to_use=0
+
+# Old way of preventing the server from shutting down when using too many cpu cores
 #n_thread_to_use=$SLURM_CPUS_PER_TASK
 #if [ "$HOSTNAME" = "node-2080ti-7" ]; then
 #  if [ "$n_thread_to_use" -ge "40" ]; then
@@ -181,7 +184,7 @@ then
   # Optimize the model
   echo ===== evaluate nomial traj \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=false \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --no_model_update=$no_model_update --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe \
@@ -194,7 +197,7 @@ then
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --no_model_update=$no_model_update --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe \
@@ -211,7 +214,7 @@ then
 
   echo ===== evaluate nomial traj \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
@@ -224,7 +227,7 @@ then
 
   echo ===== evaluate nomial traj \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
@@ -241,7 +244,7 @@ then
 
   echo ===== evaluate nomial traj with com accel constraint  \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=false --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
@@ -254,7 +257,7 @@ then
 
   echo ===== evaluate nomial traj with com accel constraint \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=0 --max_outer_iter=0 --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --com_accel_constraint=true --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
@@ -268,7 +271,7 @@ then
 
   echo ===== evaluate initial rom \(without snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=1 --snopt_scaling=false --start_current_iter_as_rerun=false \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
@@ -281,7 +284,7 @@ then
 
   echo ===== evaluate \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=1 --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=true \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \
@@ -304,7 +307,7 @@ else
 
   echo ===== evaluate \(with snopt scaling\) =====
   ./bazel-bin/examples/goldilocks_models/find_goldilocks_models --iter_start=$iter_start --max_outer_iter=$final_iter --snopt_scaling=true --start_current_iter_as_rerun=false \
-   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use \
+   --data_folder_name=$folder_name --n_thread_to_use=$n_thread_to_use --n_max_cpu_load=$n_max_cpu_load \
    --Q=$Q --R=$R --w_joint_accel=$w_joint_accel \
    --swing_foot_cublic_spline=true --zero_ending_pelvis_angular_vel=$zero_ending_pelvis_angular_vel --com_at_center_of_support_polygon=$com_at_center_of_support_polygon --no_model_update=$no_model_update --solver_time_limit=$solver_time_limit --is_stochastic=$is_stochastic --mid_foot_height=$mid_foot_height \
    --heavy_toe=$heavy_toe --cubic_spline_in_joint_space=$cubic_spline_in_joint_space \

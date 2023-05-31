@@ -110,6 +110,8 @@ DEFINE_double(w_joint_accel, 0, "cost weight w_joint_accel");
 DEFINE_string(init_file, "",
               "Initial Guess for Trajectory Optimization. "
               "E.g. w0.csv");
+DEFINE_double(solver_time_limit, 0,
+    "Time limit for trajopt (in seconds). Sometimes it solves for too long");
 DEFINE_double(major_optimality_tol, 2e-4,
               "tolerance for optimality condition (complementarity gap)");
 DEFINE_double(major_feasibility_tol, 1e-4,
@@ -1943,6 +1945,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.is_zero_touchdown_impact = FLAGS_is_zero_touchdown_impact;
   inner_loop_setting.mu = 0.8;  // Note that this affect force. Not just impulse
   inner_loop_setting.max_iter = max_inner_iter;
+  inner_loop_setting.solver_time_limit = FLAGS_solver_time_limit;
   inner_loop_setting.major_optimality_tol = FLAGS_major_optimality_tol;
   inner_loop_setting.major_feasibility_tol = FLAGS_major_feasibility_tol;
   inner_loop_setting.snopt_log = false;
@@ -1984,6 +1987,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   if (inner_loop_setting.cubic_spline_in_joint_space) {
     DRAKE_DEMAND(inner_loop_setting.swing_foot_cublic_spline_constraint);
   }
+  // Small number time limit seems buggy. I tried 60seconds, but snopt solver
+  // stopped after 6 seconds. Need to find out why
+  DRAKE_DEMAND(FLAGS_solver_time_limit >= 600);
 
   // Construct reduced order model
   cout << "\nReduced-order model setting:\n";

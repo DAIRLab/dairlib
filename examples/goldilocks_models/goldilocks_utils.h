@@ -39,6 +39,7 @@ class InnerLoopSetting {
   double mu;
 
   int max_iter;
+  double solver_time_limit;
   double major_optimality_tol;
   double major_feasibility_tol;
   bool snopt_log;

@@ -2471,6 +2471,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                             setting.major_feasibility_tol);
     trajopt.SetSolverOption(id, "compl_inf_tol", setting.major_feasibility_tol);
     trajopt.SetSolverOption(id, "max_iter", setting.max_iter);
+    if (setting.solver_time_limit > 0) {
+      trajopt.SetSolverOption(id, "max_cpu_time", setting.solver_time_limit);
+    }
     trajopt.SetSolverOption(id, "nlp_lower_bound_inf", -1e6);
     trajopt.SetSolverOption(id, "nlp_upper_bound_inf", 1e6);
     trajopt.SetSolverOption(id, "print_timing_statistics", "no");
@@ -2496,6 +2499,12 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                             "Major iterations limit", setting.max_iter);
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(),
                             "Iterations limit", 100000);  // QP subproblems
+    if (setting.solver_time_limit > 0) {
+      trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Time limit",
+                              setting.solver_time_limit);
+      trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Timing level",
+                              3);
+    }
     trajopt.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level",
                             0);  // 0
     trajopt.SetSolverOption(

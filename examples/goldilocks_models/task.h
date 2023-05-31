@@ -92,7 +92,6 @@ class TasksGenerator {
   vector<string> names() const { return names_; }
   int dim() const { return task_dim_; }
   int dim_nondeg() const { return task_dim_nondeg_; }
-  vector<int> sample_numbers() const { return N_sample_vec_; }
   int total_sample_number() const { return N_sample_; }
   vector<double> task_min_range() const { return task_min_range_; }
   vector<double> task_max_range() const { return task_max_range_; }
@@ -101,6 +100,14 @@ class TasksGenerator {
   }
   double task_max(const string& name) const {
     return task_max_range_[name_to_index_map_.at(name)];
+  }
+  virtual const vector<int>& sample_numbers() const { return N_sample_vec_; }
+  virtual Eigen::MatrixXd sample_numbers_in_matrix_form() const {
+    Eigen::MatrixXd n_samples(1, N_sample_vec_.size());
+    for (int i = 0; i < n_samples.cols(); i++) {
+      n_samples(0, i) = N_sample_vec_.at(i);
+    }
+    return n_samples;
   }
 
   // Generator
@@ -113,7 +120,6 @@ class TasksGenerator {
   int task_dim_{};
   int task_dim_nondeg_{};
   vector<string> names_;
-  vector<int> N_sample_vec_;
   vector<double> task_min_range_;
   vector<double> task_max_range_;
   vector<std::uniform_real_distribution<>> distribution_;
@@ -122,6 +128,9 @@ class TasksGenerator {
   std::unordered_map<string, int> name_to_index_map_;
 
   std::default_random_engine random_eng_;
+
+ private:
+  vector<int> N_sample_vec_;
 };
 
 class GridTasksGenerator : public TasksGenerator {
@@ -178,6 +187,26 @@ class MultiGridTasksGenerator : public TasksGenerator {
 
   // Default constructor
   MultiGridTasksGenerator() = default;
+
+  const vector<int>& sample_numbers() const override {
+    throw "please use sample_numbers(int) instead of sample_numbers()";
+    return vector<int>();
+  }
+  const vector<int>& sample_numbers(int i) const {
+    if (i == 0) {
+      return task_gen1_.sample_numbers();
+    } else {
+      return task_gen2_.sample_numbers();
+    }
+  }
+  Eigen::MatrixXd sample_numbers_in_matrix_form() const override {
+    Eigen::MatrixXd n_samples(2, task_gen1_.sample_numbers().size());
+    for (int i = 0; i < n_samples.cols(); i++) {
+      n_samples(0, i) = task_gen1_.sample_numbers().at(i);
+      n_samples(1, i) = task_gen2_.sample_numbers().at(i);
+    }
+    return n_samples;
+  }
 
   // Generator
   vector<double> NewNominalTask(int sample_idx);

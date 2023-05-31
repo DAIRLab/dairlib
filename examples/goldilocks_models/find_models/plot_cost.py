@@ -100,9 +100,9 @@ ave_cost_prop = "k-" if only_plot_average_cost else "k--"
 ave_cost_label = "Averaged cost (excluding failed samples) " if only_add_successful_samples_to_average_cost else "Averaged cost "
 # ave_cost_label = ""
 
-for i in range(len(directory_list)):
-    directory = directory_list[i]
-    print("%d/%d " % (i, len(directory_list)), end='')
+for dir_list_idx in range(len(directory_list)):
+    directory = directory_list[dir_list_idx]
+    print("%d/%d " % (dir_list_idx, len(directory_list)), end='')
     # Checks for the director_list
     # if len(directory_list) > 1 and not save_figure:
     #     raise ValueError("save_figure has to be true. Otherwise this script won't go through the list")
@@ -257,11 +257,22 @@ for i in range(len(directory_list)):
             task_grid_dim = np.loadtxt(directory + 'n_samples.csv').astype(int)
             task_ranges = np.loadtxt(directory + 'task_ranges.csv', delimiter=',')
             task_names = np.loadtxt(directory + 'task_names.csv', dtype=str, delimiter=',')
-            non_degenerate_dim_indices = [i for i in range(len(task_grid_dim)) if task_grid_dim[i] != 1]
-            task_grid_dim = task_grid_dim[non_degenerate_dim_indices]
-            task_ranges = task_ranges[non_degenerate_dim_indices]
-            task_names = task_names[non_degenerate_dim_indices]
-            best_improvement_per_sample = np.array(best_improvement_per_sample).reshape(task_grid_dim)
+            code_version_before_two_task_planes = task_grid_dim.shape[1] == 1
+            if code_version_before_two_task_planes:
+                non_degenerate_dim_indices = [i for i in range(len(task_grid_dim)) if task_grid_dim[i] != 1]
+            else:
+                non_degenerate_dim_indices = [[i for i in range(len(task_grid_dim_per_plane)) if task_grid_dim_per_plane[i] != 1] for task_grid_dim_per_plane in task_grid_dim]
+            task_grid_dim = [task_grid_dim[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
+            task_ranges = [task_ranges[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
+            task_names = [task_names[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
+
+            best_improvement_per_sample__per_plane = []
+            current_idx = 0
+            for task_grid_dim__per_plane in task_grid_dim:
+                N_sample__per_plane = np.prod(task_grid_dim__per_plane)
+                best_improvement_per_sample__per_plane.append(np.array(best_improvement_per_sample[current_idx:current_idx+N_sample__per_plane]).reshape(task_grid_dim__per_plane))
+                current_idx += N_sample__per_plane
+            best_improvement_per_sample = best_improvement_per_sample__per_plane
 
             # 2. Plot average cost
             # Average cost
@@ -297,12 +308,15 @@ for i in range(len(directory_list)):
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]))
-            f.write("  tasks with non-zero range = " + str([task_names[i] + ' ' + str(task_ranges[i]) for i in range(len(task_names))]) + "\n")
-            f.write("  best_improvement_per_sample = \n" + str(best_improvement_per_sample))
-            f.close()
             print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')
-            print("  tasks with non-zero range = " + str([task_names[i] + ' ' + str(task_ranges[i]) for i in range(len(task_names))]))
-            print("  best_improvement_per_sample = \n" + str(best_improvement_per_sample))
+            for j in range(len(best_improvement_per_sample)):
+                if len(best_improvement_per_sample) > 1:
+                    print("  Task plane %d" % (j+1))
+                f.write("    tasks with non-zero range = " + str([task_names[j][i] + ' ' + str(task_ranges[j][i]) for i in range(len(task_names[j]))]) + "\n")
+                print("    tasks with non-zero range = " + str([task_names[j][i] + ' ' + str(task_ranges[j][i]) for i in range(len(task_names[j]))]))
+                f.write("    best_improvement_per_sample = \n" + str(best_improvement_per_sample[j]))
+                print("    best_improvement_per_sample = \n" + str(best_improvement_per_sample[j]))
+            f.close()
 
             # labels
             plt.xlabel('Iteration')

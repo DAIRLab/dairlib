@@ -114,7 +114,7 @@ vector<double> GridTasksGenerator::NewTask(int sample_idx) {
   for (int i = 0; i < task_dim_; i++) {
     ret[i] = task_0_[i] + task_grid_[i][index_tuple[i]];
     if (is_stochastic_[i]) {
-      if (N_sample_vec_[i] > 0) {
+      if (this->sample_numbers()[i] > 0) {
         ret[i] += distribution_[i](random_eng_);
       }
     }

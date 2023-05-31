@@ -1678,10 +1678,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       previous_task[i] = pre_task;
     }
   }
-  VectorXd n_samples(task_gen->sample_numbers().size());
-  for (int i = 0; i < n_samples.size(); i++) {
-    n_samples(i) = task_gen->sample_numbers().at(i);
-  }
+  Eigen::MatrixXd n_samples = task_gen->sample_numbers_in_matrix_form();
   writeCSV(dir + string("n_samples.csv"), n_samples);
   writeCSV(dir + string("n_sample.csv"), N_sample * VectorXd::Ones(1));
   SaveStringVecToCsv(task_gen->names(), dir + string("task_names.csv"));

@@ -254,15 +254,14 @@ for dir_list_idx in range(len(directory_list)):
                 best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
                 # best_improvement_per_sample[sample_i] = round((cost_main[0] - cost_main[-1]) / cost_main[0], 2)
             # Reshape `best_improvement_per_sample`
-            task_grid_dim = np.loadtxt(directory + 'n_samples.csv').astype(int)
+            task_grid_dim = np.loadtxt(directory + 'n_samples.csv', delimiter=',').astype(int)
             task_ranges = np.loadtxt(directory + 'task_ranges.csv', delimiter=',')
             task_names = np.loadtxt(directory + 'task_names.csv', dtype=str, delimiter=',')
-            code_version_before_two_task_planes = task_grid_dim.shape[1] == 1
+            code_version_before_two_task_planes = len(task_grid_dim.shape) == 1
             if code_version_before_two_task_planes:
-                non_degenerate_dim_indices = [i for i in range(len(task_grid_dim)) if task_grid_dim[i] != 1]
-            else:
-                non_degenerate_dim_indices = [[i for i in range(len(task_grid_dim_per_plane)) if task_grid_dim_per_plane[i] != 1] for task_grid_dim_per_plane in task_grid_dim]
-            task_grid_dim = [task_grid_dim[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
+                task_grid_dim = [task_grid_dim]
+            non_degenerate_dim_indices = [[i for i in range(len(task_grid_dim_per_plane)) if task_grid_dim_per_plane[i] != 1] for task_grid_dim_per_plane in task_grid_dim]
+            task_grid_dim = [np.max(task_grid_dim, 0)[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
             task_ranges = [task_ranges[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
             task_names = [task_names[indices__per_plane] for indices__per_plane in non_degenerate_dim_indices]
 

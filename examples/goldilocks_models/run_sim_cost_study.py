@@ -1326,6 +1326,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
 
   limit_margin = 0.01
   plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
+  # plt.xlim([0, max(x) + limit_margin])
   plt.ylim([min(y) - limit_margin, max(y) + limit_margin])
   # plt.xlim([-1, 1])
   # plt.ylim([0.85, 1.05])
@@ -1925,6 +1926,7 @@ if __name__ == "__main__":
   model_slices = [1, 200, 400, 600, 800]
   model_slices = [1, 200, 300, 400, 500, 600]
   model_slices = [1, 200, 300, 400, 500, 600, 700]
+  model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1952,6 +1954,7 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700]
+  model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -2022,7 +2025,8 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
   # model_indices = [1, 200, 400, 600, 800]
   # model_indices = [1, 200, 300, 400, 500, 600]
-  model_indices = [1, 200, 300, 400, 500, 600, 700]
+  # model_indices = [1, 200, 300, 400, 500, 600, 700]
+  # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

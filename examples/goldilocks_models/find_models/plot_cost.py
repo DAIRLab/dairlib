@@ -310,10 +310,11 @@ for dir_list_idx in range(len(directory_list)):
             print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')
             for j in range(len(best_improvement_per_sample)):
                 if len(best_improvement_per_sample) > 1:
+                    f.write("  Task plane %d" % (j+1) + "\n")
                     print("  Task plane %d" % (j+1))
                 f.write("    tasks with non-zero range = " + str([task_names[j][i] + ' ' + str(task_ranges[j][i]) for i in range(len(task_names[j]))]) + "\n")
                 print("    tasks with non-zero range = " + str([task_names[j][i] + ' ' + str(task_ranges[j][i]) for i in range(len(task_names[j]))]))
-                f.write("    best_improvement_per_sample = \n" + str(best_improvement_per_sample[j]))
+                f.write("    best_improvement_per_sample = \n" + str(best_improvement_per_sample[j]) + "\n")
                 print("    best_improvement_per_sample = \n" + str(best_improvement_per_sample[j]))
             f.close()
 

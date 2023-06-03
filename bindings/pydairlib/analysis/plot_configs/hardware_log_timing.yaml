@@ -1,0 +1,11 @@
+# YAML file containing timing information for making videos of
+# ALIP MIQP walking logs. The time given for video and rosbag are the start of
+# the respective log relative to the start of the LCM log
+logs: [
+    {'date': '05_18_23',
+     'lognum': '02',
+     'rosbag_offset': 0.0,
+     'video_offset': 0.0,
+     'start_time': 0.0,
+     'end_time': 30.0},
+] # Example log. TODO @Brian-Acosta: identify and code logs for plots and videos

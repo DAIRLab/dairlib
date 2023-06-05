@@ -87,6 +87,10 @@ def main():
     nlogs = len(logpaths)
     logplayers = {}
 
+    logplayers[active_log_idx] = LcmLogPlayer(
+        logpaths[active_log_idx],
+        args.channels
+    )
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -98,9 +102,11 @@ def main():
                     playing = not playing  # Toggle play/pause state
 
                 elif event.key == pygame.K_RIGHT:
+                    logplayers[active_log_idx].reset()
                     active_log_idx = (active_log_idx + 1) % nlogs
 
                 elif event.key == pygame.K_LEFT:
+                    logplayers[active_log_idx].reset()
                     active_log_idx -= 1
                     active_log_idx = active_log_idx if active_log_idx >= 0 \
                         else nlogs - 1

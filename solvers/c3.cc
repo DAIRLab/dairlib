@@ -9,7 +9,7 @@
 #include "drake/solvers/moby_lcp_solver.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
-asd
+
 namespace dairlib {
 namespace solvers {
 

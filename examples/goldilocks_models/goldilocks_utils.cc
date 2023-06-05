@@ -107,7 +107,8 @@ void CreateMBPForVisualization(MultibodyPlant<double>* plant,
 // Note:
 // * Whenever you add a new model, remember to update the model number in
 //     1. goldilocks_model_traj_opt.cc
-//     2. cassie_rom_planner_system.cc (where we called SetInitialGuess)
+//     2. cassie_rom_planner_system.cc (where we called SetInitialGuess; search
+//                                      for rom_option)
 //     3. update unit test in ReducedOrderModelOptionTest
 // * See google sheet for the ROM list
 std::unique_ptr<ReducedOrderModel> CreateRom(
@@ -130,7 +131,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     //    vector<int> skip_inds = {3, 4, 5};  // quaternion, x, and y
     // Note that we shouldn't use pelvis z because it drifts in state estimation
     // Skip pelvis z index
-    if ((rom_option >= 15) && (rom_option <= 30)) {
+    if ((rom_option >= 15) && (rom_option <= 31)) {
       // skip pelvis z
       skip_inds.push_back(6);
     }
@@ -139,7 +140,7 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     DRAKE_DEMAND(pos_map.at("base_qw") == 0);  // Assumption
     if (((rom_option >= 10) && (rom_option <= 14)) ||
         ((rom_option >= 22) && (rom_option <= 24)) ||
-        ((rom_option >= 27) && (rom_option <= 30))) {
+        ((rom_option >= 27) && (rom_option <= 31))) {
       // Also skip the right leg joints (swing leg)
       for (auto& pair : pos_map) {
         if (pair.first.find("right") != std::string::npos) {
@@ -166,7 +167,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
       // Second order
       mapping_basis = std::make_unique<MonomialFeatures>(
           2, plant.num_positions(), skip_inds, "mapping basis");
-    } else if ((rom_option == 7) || (rom_option == 27) || (rom_option == 30)) {
+    } else if ((rom_option == 7) || (rom_option == 27) || (rom_option == 30) ||
+               (rom_option == 31)) {
       // Zeroth order
       mapping_basis = std::make_unique<MonomialFeatures>(
           0, plant.num_positions(), skip_inds, "mapping basis");
@@ -197,6 +199,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
   } else if (rom_option == 1) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * LipmWithSwingFoot::kDimension(2), empty_inds, "dynamic basis");
+  } else if (rom_option == 5 || rom_option == 6 || rom_option == 25 ||
+             rom_option == 26) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
   } else if (rom_option == 2) {
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * FixHeightAccel::kDimension, empty_inds, "dynamic basis");
@@ -204,6 +210,10 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * FixHeightAccelWithSwingFoot::kDimension, empty_inds,
         "dynamic basis");
+  } else if (rom_option == 31) {
+    // Highest degree = 1
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        1, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
   } else if (rom_option == 4 || rom_option == 7 ||
              ((rom_option >= 9) && (rom_option <= 11)) || rom_option == 17 ||
              rom_option == 18 || rom_option == 21 || rom_option == 22 ||
@@ -211,13 +221,6 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // Highest degree = 2
     dynamic_basis = std::make_unique<MonomialFeatures>(
         2, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 5 || rom_option == 6 || rom_option == 25 ||
-             rom_option == 26) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * LipmWithSwingFoot::kDimension(3), empty_inds, "dynamic basis");
-  } else if (rom_option == 8) {
-    dynamic_basis = std::make_unique<MonomialFeatures>(
-        2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
   } else if (((rom_option >= 12) && (rom_option <= 16)) || (rom_option == 27)) {
     // Highest degree = 4
     dynamic_basis = std::make_unique<MonomialFeatures>(
@@ -226,6 +229,9 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     // Highest degree = 6
     dynamic_basis = std::make_unique<MonomialFeatures>(
         6, 2 * Lipm::kDimension(3), empty_inds, "dynamic basis");
+  } else if (rom_option == 8) {
+    dynamic_basis = std::make_unique<MonomialFeatures>(
+        2, 2 * Lipm::kDimension(3) + 1, empty_inds, "dynamic basis");
   } else {
     throw std::runtime_error("Not implemented");
   }
@@ -289,7 +295,8 @@ std::unique_ptr<ReducedOrderModel> CreateRom(
     rom = std::make_unique<LipmWithSwingFoot>(plant, stance_foot, swing_foot,
                                               *mapping_basis, *dynamic_basis, 3,
                                               invariant_idx);
-  } else if ((rom_option == 7) || (rom_option == 27) || (rom_option == 30)) {
+  } else if ((rom_option == 7) || (rom_option == 27) || (rom_option == 30) ||
+             (rom_option == 31)) {
     // Fix the mapping function of the COM
     std::set<int> invariant_idx = {0, 1, 2};
     rom = std::make_unique<Lipm>(plant, stance_foot, *mapping_basis,

@@ -576,7 +576,7 @@ CassiePlannerWithMixedRomFom::CassiePlannerWithMixedRomFom(
     idx_state_init_to_1_ = 1;
   } else if ((param_.rom_option == 4) ||
              ((param_.rom_option >= 8) && (param_.rom_option <= 27)) ||
-             (param_.rom_option == 30)) {
+             (param_.rom_option == 30) || (param_.rom_option == 31)) {
     idx_state_init_to_1_ = 2;
   } else {
     DRAKE_UNREACHABLE();

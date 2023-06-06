@@ -2699,9 +2699,11 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
         trajopt.AddBoundingBoxConstraint(sin(turning_angle / 2),
                                          sin(turning_angle / 2),
                                          xf(pos_map.at("base_qz")));
-        trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
+        // We only need to impose 3 constraint, becuae we have quaternion
+        // constraint in HybridDircon
+        /*trajopt.AddBoundingBoxConstraint(cos(turning_angle / 2),
                                          cos(turning_angle / 2),
-                                         xf(pos_map.at("base_qw")));
+                                         xf(pos_map.at("base_qw")));*/
       } else {
         // We don't need to impose pelvis yaw constraint, because we have left
         // hip yaw start and end constraints. I.e. we don't need to impose
@@ -2745,6 +2747,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Floating base velocity periodicity constraints
   if (periodic_floating_base_vel && !only_one_mode) {
     if (turning_rate == 0) {
+      // TODO: test if we overconstrain the problem by the following constraint
+      //  on base_vy
       trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
                                   -xf(n_q + vel_map.at("base_vy")));
       if (!one_dof_periodic_floating_base_vel) {

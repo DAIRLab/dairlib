@@ -207,7 +207,7 @@ DEFINE_int32(extend_model_iter, -1, "The starting iteration #");
 DEFINE_bool(is_multithread, true, "Use multi-thread or not");
 DEFINE_int32(n_thread_to_use, -1, "# of threads you want to use");
 DEFINE_int32(
-    n_max_cpu_load, 80,
+    n_max_cpu_load, 48,
     "# of active cores allowed on the machine; "
     "This number can be used to prioritize different model optimizations on "
     "the same machine. For example, an optimization with n_max_cpu_load=79 "

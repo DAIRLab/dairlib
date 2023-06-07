@@ -39,6 +39,14 @@ class C3 {
   Eigen::VectorXd Solve(Eigen::VectorXd& x0,
                         std::vector<Eigen::VectorXd>& delta,
                         std::vector<Eigen::VectorXd>& w);
+  
+
+  std::vector<Eigen::VectorXd> SolveFullSolution(Eigen::VectorXd& x0,
+                        std::vector<Eigen::VectorXd>& delta,
+                        std::vector<Eigen::VectorXd>& w);
+
+  std::vector<Eigen::VectorXd> OptimalInputSeq(const std::vector<Eigen::VectorXd> zfin);
+  double CalcCost(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& U);
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -131,6 +139,11 @@ protected:
       constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       userconstraints_;
+  // const LCS& lcs_;
+  LCS& lcs_;
+
+  //sharanya changes
+//   std::vector<VectorXd> Z_(N_, Eigen::VectorXd::Zero(n_ + m_ + k_));
 };
 
 }  // namespace solvers

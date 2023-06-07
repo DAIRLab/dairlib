@@ -35,7 +35,8 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
        const std::vector<Eigen::VectorXd>& warm_start_lambda,
        const std::vector<Eigen::VectorXd>& warm_start_u,
        bool warm_start)
-    : A_(LCS.A_),
+    : lcs_(LCS),
+      A_(LCS.A_),
       B_(LCS.B_),
       D_(LCS.D_),
       d_(LCS.d_),
@@ -188,9 +189,72 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //      std::cout <<  "prediction state" << std::endl;
   //    std::cout << z.segment(0, n_) << std::endl;
 
-
-  return z.segment(n_ + m_, k_);
+  
+  // return z.segment(n_ + m_, k_);
+  return zfin[0].segment(n_ + m_, k_);
 }
+
+vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
+  vector<MatrixXd> Gv = G_;
+  VectorXd z;
+  
+  // vector<VectorXd> u(N_, VectorXd::Zero(n_ + m_ + k_)); //is this an initializer? from line 332
+
+  for (int i = 0; i < options_.admm_iter-1; i++) {
+
+    //std::cout << "Iteration" << i <<  std::endl;
+    z = ADMMStep(x0, &delta, &w, &Gv);
+// std::cout << "new delta" << i <<  std::endl;
+//std::cout << delta.at(0).segment(n_,m_) << std::endl;
+//    std::cout << "w" << i <<  std::endl;
+//    std::cout << w.at(0) << std::endl;
+
+  }
+
+  vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
+  for (int i = 0; i < N_; i++) {
+    WD.at(i) = delta.at(i) - w.at(i);
+  }
+
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
+  
+  return zfin;
+}
+
+vector<VectorXd> C3::OptimalInputSeq(const vector<VectorXd> zfin){
+  //This function should return the optimal input sequence given the full Z solution
+  vector<VectorXd> UU;
+  
+  for (int i = 0; i < N_; i++){
+      UU[i] = zfin[i].segment(n_ + m_, k_);
+  }
+  
+return UU; 
+}
+
+
+double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU){
+  double cost = 0;
+  vector<VectorXd> XX; //locally comptued state sequence
+
+//   //instantiate LCS class here and forward simulate by the horizon length to get the open loop state rollout.
+  XX[0] = x0;
+  XX[1] = lcs_.Simulate(XX[0], UU[0]);
+  
+  // for (int i = 0; i < N_; i++){
+  //   XX[i] = lcs_.Simulate(XX[i], UU[i]);      
+  // }
+
+//   cost = XX[0].transpose()*Q_*XX[0];
+//   // for (int i = 0; i < N_; i++){
+//   //   cost += XX[i].transpose()*Q_*XX[i] + UU[0].transpose()*R_*UU[0];  //will this work?
+//   // }
+//   // cost += XX[N_].transpose()*Q_*XX[N_];
+
+  return cost;
+}
+
+
 
 VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
                       vector<VectorXd>* w, vector<MatrixXd>* Gv) {

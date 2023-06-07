@@ -223,9 +223,10 @@ vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, ve
 
 vector<VectorXd> C3::OptimalInputSeq(const vector<VectorXd> zfin){
   //This function should return the optimal input sequence given the full Z solution
-  vector<VectorXd> UU;
+  // vector<VectorXd> UU;
+  vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   
-  for (int i = 0; i < N_; i++){
+  for (int i = 0; i < N_ ; i++){
       UU[i] = zfin[i].segment(n_ + m_, k_);
   }
   
@@ -235,8 +236,8 @@ return UU;
 
 double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
   double cost = 0;
-  vector<VectorXd> XX; //locally extracted state sequence
-
+  // vector<VectorXd> XX; //locally extracted state sequence
+  vector<VectorXd> XX(N_+1, VectorXd::Zero(k_));
 //   //instantiate LCS class here and forward simulate by the horizon length to get the open loop state rollout.
   XX[0] = x0;
   // XX[1] = lcs_.Simulate(XX[0], UU[0]);

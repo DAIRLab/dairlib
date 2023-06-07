@@ -495,10 +495,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     std::cout << "velocity limit(c3)" << std::endl;
     
-    vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
-    vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-    double cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
-    std::cout<<"This is the cost "<<cost<<std::endl;
+    
     /// update the user
     // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
     // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
@@ -506,6 +503,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   VectorXd force_des = VectorXd::Zero(6);
   force_des << force(0), force(2), force(4), force(5), force(6), force(7);
+
+  //Cost computation piece
+  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+  double cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
+  std::cout<<"This is the cost "<<cost<<std::endl;
 
   VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 

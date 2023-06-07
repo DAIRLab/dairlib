@@ -26,7 +26,7 @@ LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
           vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
           vector<MatrixXd>(N, H), vector<VectorXd>(N, c)) {}
 
-VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
+VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
   VectorXd x_final;
 
   // calculate force

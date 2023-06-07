@@ -34,7 +34,7 @@ class LCS {
   /// Simulate the system for one-step
   /// @param x_init Initial x value
   /// @param input Input value
-  Eigen::VectorXd Simulate(Eigen::VectorXd& x_init, Eigen::VectorXd& input);
+  Eigen::VectorXd Simulate(Eigen::VectorXd& x_init, Eigen::VectorXd& input) const;
 
  public:
   const std::vector<Eigen::MatrixXd> A_;

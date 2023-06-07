@@ -233,23 +233,23 @@ return UU;
 }
 
 
-double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU){
+double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
   double cost = 0;
-  vector<VectorXd> XX; //locally comptued state sequence
+  vector<VectorXd> XX; //locally extracted state sequence
 
 //   //instantiate LCS class here and forward simulate by the horizon length to get the open loop state rollout.
   XX[0] = x0;
-  XX[1] = lcs_.Simulate(XX[0], UU[0]);
+  // XX[1] = lcs_.Simulate(XX[0], UU[0]);
   
-  // for (int i = 0; i < N_; i++){
-  //   XX[i] = lcs_.Simulate(XX[i], UU[i]);      
-  // }
+  for (int i = 0; i < N_; i++){
+    XX[i] = lcs_.Simulate(XX[i], UU[i]);      
+  }
 
-//   cost = XX[0].transpose()*Q_*XX[0];
-//   // for (int i = 0; i < N_; i++){
-//   //   cost += XX[i].transpose()*Q_*XX[i] + UU[0].transpose()*R_*UU[0];  //will this work?
-//   // }
-//   // cost += XX[N_].transpose()*Q_*XX[N_];
+  // cost = XX[0].transpose()*Q_.at(0)*XX[0];
+  for (int i = 0; i < N_; i++){
+    cost = cost + XX[i].transpose()*Q_.at(i)*XX[i] + UU[0].transpose()*R_.at(i)*UU[0];  //will this work?
+  }
+  cost = cost + XX[N_].transpose()*Q_.at(N_)*XX[N_];
 
   return cost;
 }

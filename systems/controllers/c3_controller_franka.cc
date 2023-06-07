@@ -438,6 +438,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+  
+  //Multi-sample code piece
+  // vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);
+  // vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);
+  // double cost = opt.CalcCost(state, optimalinputseq);
+  // std::cout<<"This is the cost "<<cost<<std::endl;
+
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();
   warm_start_u_ = opt.GetWarmStartU();
@@ -487,7 +494,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     state_next(12) = clamped_velocity(2);
 
     std::cout << "velocity limit(c3)" << std::endl;
-
+    
+    vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);
+    vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);
+    double cost = opt.CalcCost(state, optimalinputseq);
+    std::cout<<"This is the cost "<<cost<<std::endl;
     /// update the user
     // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
     // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;

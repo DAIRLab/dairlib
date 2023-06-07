@@ -46,7 +46,7 @@ class C3 {
                         std::vector<Eigen::VectorXd>& w);
 
   std::vector<Eigen::VectorXd> OptimalInputSeq(const std::vector<Eigen::VectorXd> zfin);
-  double CalcCost(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& U);
+  double CalcCost(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& U) const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -128,6 +128,7 @@ protected:
   bool warm_start_;
 
  private:
+  const LCS& lcs_;
   drake::solvers::MathematicalProgram prog_;
   drake::solvers::SolverOptions OSQPoptions_;
   drake::solvers::OsqpSolver osqp_;
@@ -140,7 +141,7 @@ protected:
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       userconstraints_;
   // const LCS& lcs_;
-  LCS& lcs_;
+  
 
   //sharanya changes
 //   std::vector<VectorXd> Z_(N_, Eigen::VectorXd::Zero(n_ + m_ + k_));

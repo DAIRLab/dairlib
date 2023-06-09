@@ -48,7 +48,7 @@ stabilize_time1: 0.5 #0.5
 move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75
 sim_dt: 0.0001 # 0.00005
-realtime_rate: 0.5
+realtime_rate: 0.2
 
 # trajectory parameters
 traj_radius: 0.1

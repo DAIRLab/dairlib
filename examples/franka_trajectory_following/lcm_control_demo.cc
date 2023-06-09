@@ -56,6 +56,8 @@ int DoMain(int argc, char* argv[]){
   drake::lcm::DrakeLcm drake_lcm;
   drake::lcm::DrakeLcm drake_lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
+
+  //This plant that is created is mainly to allow access to the drake methods of accessing parts by name etc. and is a very general version of the plant
   /// parse plant from urdfs
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
@@ -74,7 +76,8 @@ int DoMain(int argc, char* argv[]){
   /* -------------------------------------------------------------------------------------------*/
 
   DiagramBuilder<double> builder_f;
-
+  
+  //This plant_f is the simplified version of our robot that takes into account only the end effector and ball
   auto [plant_f, scene_graph] = AddMultibodyPlantSceneGraph(&builder_f, 0.0);
   Parser parser_f(&plant_f);
   parser_f.package_map().Add("robot_properties_fingers",
@@ -93,7 +96,8 @@ int DoMain(int argc, char* argv[]){
   auto& context_f = diagram_f->GetMutableSubsystemContext(plant_f, diagram_context.get());
 
   /* -------------------------------------------------------------------------------------------*/
-
+  //This plant_franka is a copy of the original full robot model including the franka arm, ee and ball but is not linked in any way to the ground truth model plant in simulate_lcm_franka. 
+  //This plant here is used to take in the input of the state estimator(the joint positions and ball positions) and perform FK on it to get the end effector position and ball position to later set ee.position and ball.position accordingly.
   DiagramBuilder<double> builder_franka;
   double sim_dt = 1e-4;
 

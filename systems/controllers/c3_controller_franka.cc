@@ -209,6 +209,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
   const RotationMatrix<double> R_current = H_mat.rotation();
   Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
+  
+  //print ee pose snippet
+  std::cout<< "end_effector "<< end_effector <<std::endl;
+  // end_effector = -end_effector;
+  std::cout<<"x_coordinate "<<end_effector[0]<<std::endl;
+  // end_effector[0] = -end_effector[0];
+//  std::cout<<"- x_coordinate "<<end_effector[0];
 
   // jacobian and end_effector_dot
   auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
@@ -472,10 +479,19 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   double scaling2 = system_scaling_pair2.second;
 
   drake::solvers::MobyLCPSolver<double> LCPSolver;
-  VectorXd force;
+  VectorXd force; //This contains the contact forces. 
+  //tangential forces and normal forces for two contacts --> gamma slack variable, ball+ee and ball+ground from stewart trinkle formulation
 
   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
                                                  &force);
+                                                 //The final force solution comes with 12 components (stewart trinkle formulation). 
+  //In order, these components are : 
+  //gamma_ee, gamma_bg (slack ee and slack ball-ground)
+  //normal force between ee and ball lambda_eeb^n
+  //normal force between ball and ground lambda_bg^n
+  //4 tangential forces between ee and ball lambda_eeb^{t1-t4}
+  //4 tangential forces between ball and ground lambda_bg^{t1-t4}
+
   (void)flag; // suppress compiler unused variable warning
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
@@ -502,18 +518,23 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   VectorXd force_des = VectorXd::Zero(6);
-  force_des << force(0), force(2), force(4), force(5), force(6), force(7);
+  force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
+
 
   //Cost computation piece
   vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
   double cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
-  std::cout<<"This is the cost "<<cost<<std::endl;
+  // std::cout<<"This is the cost "<<cost<<std::endl;
 
   VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
-
+  //Full state is 19 dimensions.
+  //state_next.head(3) - first three elements --- this is the ee position
+  //followed by ball orientation (4 elements as it is represented using quaternions) used for visualization probably
+  //followed by last 16 elements of the vector which includes everything except ee position
+  //fb ee MapVelocityToQDotball MapVelocityToQDotball angular velocity
 //  std::cout << "ADMM_X" << std::endl;
 //  std::cout << state_next.tail(9) << std::endl;
 
@@ -612,11 +633,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   // ball_xyz_dot(2) = 0; // expect no velocity in z direction
 
   ///3
-//  Vector3d average = Vector3d::Zero(3);
-//  for(int i = 0; i < 10; i++){
-//    average = average + past_velocities_[i]/10;
-//  }
-//  Vector3d ball_xyz_dot = average;
+//  Vector3d average = Vector3d::Zero(3); state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
   Vector3d r_ball(0, 0, ball_radius);
   Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);

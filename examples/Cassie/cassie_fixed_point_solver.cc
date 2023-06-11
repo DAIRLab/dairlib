@@ -446,7 +446,9 @@ bool CassieInitStateSolver(
                                    v(vel_map.at("base_vx")));
   program.AddBoundingBoxConstraint(pelvis_xy_vel(1), pelvis_xy_vel(1),
                                    v(vel_map.at("base_vy")));
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_vz")));
+  program.AddBoundingBoxConstraint(pelvis_xy_vel(0) * std::tan(-ground_incline),
+                                   pelvis_xy_vel(0) * std::tan(-ground_incline),
+                                   v(vel_map.at("base_vz")));
 
   // Add symmetry constraints, and zero roll/pitch on the hip
   program.AddConstraint(q(positions_map.at("knee_left")) ==

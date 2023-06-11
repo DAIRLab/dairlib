@@ -216,6 +216,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--stride_length=%.3f' % task_sl,
     '--stride_length_scaling=%.3f' % stride_length_scaling,
     '--turning_rate=%.3f' % task_tr,
+    '--ground_incline=%.3f' % task_gi,
     '--iter=%d' % rom_iter_idx,
     '--init_traj_file_path=%s' % init_traj_file_path,
     '--spring_model=%s' % str(spring_model).lower(),
@@ -238,6 +239,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
     '--pelvis_x_vel=%.3f' % (task_sl / task_du),
     '--pelvis_y_vel=%.3f' % 0.15,
     '--turning_rate=%.3f' % task_tr,
+    '--ground_incline=%.3f' % task_gi,
     '--path_init_state=%s' % path_simulation_init_state,
     '--path_init_pose_success=%s' % path_init_pose_success,
     '--solve_again_with_desired_turning_rate=%s' % solve_init_state_again_for_turning_rate,
@@ -351,11 +353,12 @@ def CollectAllTrajoptSampleIndices():
 def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, trajopt_sample_dir):
   trajopt_sample_indices = np.zeros((len(model_indices), len(task_list)),
                                     dtype=np.dtype(int))
-  for i in range(len(model_indices)):
-    for j in range(len(task_list)):
-      trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i] if (simulation_initialization_mode < 2) else 0,
-                                                                    task_list[j],
-                                                                    trajopt_sample_dir)
+  if simulation_initialization_mode > 0:
+    for i in range(len(model_indices)):
+      for j in range(len(task_list)):
+        trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i] if (simulation_initialization_mode < 2) else 0,
+                                                                      task_list[j],
+                                                                      trajopt_sample_dir)
   return trajopt_sample_indices
 
 
@@ -1788,7 +1791,7 @@ if __name__ == "__main__":
   completely_use_trajs_from_model_opt_as_target = True
   use_single_cost_function_for_all_tasks = False
   hybrid_mpc = parsed_yaml_file.get('use_hybrid_rom_mpc')
-  simulation_initialization_mode = 2
+  simulation_initialization_mode = 0
   # Testing
   solve_init_state_again_for_turning_rate = False
   if solve_init_state_again_for_turning_rate:
@@ -1838,7 +1841,13 @@ if __name__ == "__main__":
   n_task_sl = 25 #25 #10
   n_task_ph = 5  #25 #3
   n_task_tr = 30  #25 #3
+  n_task_gi = 25  #25 #3
   tasks = Tasks()
+  # stride_length = np.linspace(-0.2, -0.1, n_task)
+  # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
+  # stride_length = np.linspace(0.4, 0.5, n_task)
+  # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
+  #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   # tasks.AddTaskDim(np.linspace(0.3, 0.9, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0.25, 0.6, n_task_sl), "stride_length")
   tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_sl), "stride_length")
@@ -1849,19 +1858,13 @@ if __name__ == "__main__":
   # tasks.AddTaskDim(np.linspace(-0.2, 0.2, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
-  # stride_length = np.linspace(-0.2, -0.1, n_task)
-  # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
-  # stride_length = np.linspace(0.4, 0.5, n_task)
   # tasks.AddTaskDim(np.linspace(0.3, 0.4, n_task_sl), "stride_length")
-  # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
-  #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
-  tasks.AddTaskDim([0.0], "ground_incline")
-  tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
+  # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
+  # tasks.AddTaskDim([0.2], "stride_length")
   # tasks.AddTaskDim(np.linspace(-1.0, 1.0, n_task_tr), "turning_rate")
   # tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
-  tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
-  # tasks.AddTaskDim([0.0], "turning_rate")
+  # tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
+  tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
@@ -1869,6 +1872,9 @@ if __name__ == "__main__":
   # tasks.AddTaskDim(np.linspace(0.7, 1.0, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim([0.95], "pelvis_height")
   tasks.AddTaskDim([0.85], "pelvis_height")
+  tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_gi), "ground_incline")
+  # tasks.AddTaskDim([0.0], "ground_incline")
+  tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
   # log indices
@@ -1889,7 +1895,8 @@ if __name__ == "__main__":
   # Select two tasks to plot
   # task_to_plot = ['stride_length', 'pelvis_height']  # order matters
   # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
-  task_to_plot = ['stride_length', 'turning_rate']  # order matters
+  # task_to_plot = ['stride_length', 'turning_rate']  # order matters
+  task_to_plot = ['stride_length', 'ground_incline']  # order matters
 
   # Parameters for setting the task range for data collection filtering
   # mean_sl = 0.2
@@ -2009,6 +2016,7 @@ if __name__ == "__main__":
   task_grid_for_cost_improvement["stride_length"] = np.linspace(-0.6, 0.6, 13)
   task_grid_for_cost_improvement["pelvis_height"] = np.linspace(1.1, 0.6, 11)
   task_grid_for_cost_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 15)
+  task_grid_for_cost_improvement["ground_incline"] = np.linspace(-0.7, 0.7, 15)
   x_1, y_1 = np.meshgrid(task_grid_for_cost_improvement[task_to_plot[0]], task_grid_for_cost_improvement[task_to_plot[1]])
   task_value_grid_for_computing_cost_improvement = [x_1, y_1]
 
@@ -2017,8 +2025,8 @@ if __name__ == "__main__":
   task_ranges_to_average_over["stride_length"] = [-0.4, 0.4]
   # task_ranges_to_average_over["stride_length"] = [0.2, 0.4]
   task_ranges_to_average_over["pelvis_height"] = [0.3, 1.3]
-  task_ranges_to_average_over["ground_incline"] = [-0.4, 0.4]
   task_ranges_to_average_over["turning_rate"] = [-4, 4]
+  task_ranges_to_average_over["ground_incline"] = [-0.4, 0.4]
   final_iter_ave_cost = model_iter_idx_end
   # final_iter_ave_cost = 30
 
@@ -2026,6 +2034,7 @@ if __name__ == "__main__":
   task_grid_for_range_improvement = {}
   task_grid_for_range_improvement["pelvis_height"] = np.linspace(1.0, 0.5, 6)
   task_grid_for_range_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 7)
+  task_grid_for_range_improvement["ground_incline"] = np.linspace(-0.6, 0.6, 7)
 
   ### Set up environment
 
@@ -2100,6 +2109,7 @@ if __name__ == "__main__":
   task_list = tasks.GetTaskList()
 
   nonzero_turning = "turning_rate" in tasks.GetVaryingTaskElementName()
+  nonzero_incline = "ground_incline" in tasks.GetVaryingTaskElementName()
 
   # Make sure the dimension is correct
   if len(nominal_task_names) != tasks.get_task_dim():
@@ -2150,6 +2160,12 @@ if __name__ == "__main__":
     assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
   if len(tasks.GetVaryingTaskElementName()) > 2:
     raise ValueError("We probably don't want to run 3D sim task. Not necessary.")
+
+  # Currently we don't have trajopt samples for intializing simulation with non-zero ground incline
+  if nonzero_incline:
+    assert simulation_initialization_mode == 0
+  if not nonzero_incline:
+    assert simulation_initialization_mode > 0  # we have trajopt samples that we should use
 
   # Plotting parameter checks
   for model_idx in model_slices:

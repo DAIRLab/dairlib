@@ -55,8 +55,8 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20220510_rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/robot_1/"    # rom_option 27
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230427_4kg_toe_with_task_range/robot_1/"                                    # rom_option 27
-dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"                                    # rom_option 27
-#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230530_two_task_planes__sl_gi_and_sl_tr/robot_1/"                                    # rom_option 27
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"                                    # rom_option 27
+dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230530_two_task_planes__sl_gi_and_sl_tr/robot_1/"                                    # rom_option 27
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
@@ -75,7 +75,7 @@ lightweight_lcm_log: false
 vel_command_offset_x: 0.  #0.1  # hack: help rom_iter=300 walk in place at start
 
 ### High-level command (for both planner and controller)
-global_target_position_x: 10000
+global_target_position_x: 100000
 global_target_position_y: 0
 
 set_constant_walking_speed: false

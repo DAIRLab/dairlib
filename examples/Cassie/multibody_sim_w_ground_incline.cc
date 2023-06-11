@@ -165,7 +165,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   // Ground direction
-  DRAKE_DEMAND(abs(FLAGS_ground_incline) <= 0.3);
+  DRAKE_DEMAND(abs(FLAGS_ground_incline) <= 1.0);
   Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
                          cos(FLAGS_ground_incline));
 

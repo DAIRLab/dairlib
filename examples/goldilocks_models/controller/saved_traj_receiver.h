@@ -61,7 +61,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
     return this->get_output_port(swing_hip_yaw_traj_port_);
   }
 
-  void UseXYZtrajInHighLevelCommand();
+  void AdjustPlannedTrajGivenGroundSlopeInput();
   const drake::systems::InputPort<double>& get_input_port_slope() const {
     return this->get_input_port(slope_port_);
   }

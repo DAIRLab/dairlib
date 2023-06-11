@@ -237,7 +237,7 @@ SavedTrajReceiver::SavedTrajReceiver(
   //  stance_foot_ << 0, 1;  // left is 0, right is 1
 }
 
-void SavedTrajReceiver::UseXYZtrajInHighLevelCommand() {
+void SavedTrajReceiver::AdjustPlannedTrajGivenGroundSlopeInput() {
   use_slope_ = true;
   slope_port_ =
       this->DeclareVectorInputPort("slope", BasicVector<double>(1)).get_index();

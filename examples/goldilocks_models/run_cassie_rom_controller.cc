@@ -114,6 +114,7 @@ DEFINE_int32(iter, -1, "The iteration # of the model that you use");
 DEFINE_double(stride_length, -10000, "set constant walking stride length");
 DEFINE_double(stride_length_scaling, 1.0, "");
 DEFINE_double(turning_rate, -10000, "set constant turning rate");
+DEFINE_double(ground_incline, 0.0, "ground incline");
 DEFINE_bool(start_with_left_stance, true, "");
 
 DEFINE_string(init_traj_file_name, "",
@@ -180,8 +181,6 @@ DEFINE_bool(offset_swing_hip_yaw_for_heading, false,
             "If false, then we always regulate swing hip yaw to 0 (in the case "
             "that we don't use desired hip yaw from the planner)");
 
-DEFINE_double(ground_incline, 0.0, "ground incline");
-
 // Testing -- to create different behavior for Cassie
 DEFINE_string(high_level_traj_mode, "default",
               "Options:"
@@ -194,10 +193,6 @@ int DoMain(int argc, char* argv[]) {
 
   if (FLAGS_broadcast) {
     DRAKE_DEMAND(FLAGS_lcm_url_port == "7667");
-  }
-
-  if (FLAGS_ground_incline != 0) {
-    DRAKE_UNREACHABLE();  // TODO: need to servo global yaw to 0 for sim eval
   }
 
   // Read-in the parameters
@@ -272,6 +267,16 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_turning_rate > -100) {
     gains.set_constant_turning_rate = true;
     gains.constant_turning_rate = FLAGS_turning_rate;
+  }
+
+  if (FLAGS_ground_incline != 0) {
+    // We don't allow constant turning on a ground incline
+    // Also, we want feedback to keep global yaw at 0, instead of constant 0
+    // turning rate.
+    gains.set_constant_turning_rate = false;
+
+    // We don't use constant ground slope with non-default high_level_traj_mode
+    DRAKE_DEMAND(FLAGS_high_level_traj_mode == "default");
   }
 
   if (gains.set_constant_walking_speed && !gains.set_constant_turning_rate) {
@@ -670,9 +675,11 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(simulator_drift->get_output_port(0),
                     planner_traj_receiver->get_input_port_state());
     if (FLAGS_high_level_traj_mode == "desired_x_y_yaw_path") {
-      planner_traj_receiver->UseXYZtrajInHighLevelCommand();
+      planner_traj_receiver->AdjustPlannedTrajGivenGroundSlopeInput();
       builder.Connect(high_level_command->get_slope_output_port(),
                       planner_traj_receiver->get_input_port_slope());
+    } else if (FLAGS_ground_incline != 0) {
+      planner_traj_receiver->AdjustPlannedTrajGivenGroundSlopeInput();
     }
 
     // Create heading traj generator
@@ -807,6 +814,9 @@ int DoMain(int argc, char* argv[]) {
                       left_toe_angle_traj_gen->get_input_port_slope());
       builder.Connect(high_level_command->get_slope_output_port(),
                       right_toe_angle_traj_gen->get_input_port_slope());
+    } else if (FLAGS_ground_incline != 0) {
+      left_toe_angle_traj_gen->CreateGroundInclineInputPort();
+      right_toe_angle_traj_gen->CreateGroundInclineInputPort();
     }
     builder.Connect(state_receiver->get_output_port(0),
                     left_toe_angle_traj_gen->get_state_input_port());
@@ -1329,6 +1339,32 @@ int DoMain(int argc, char* argv[]) {
       }
       cout << "Set constant turning rate " << gains.constant_turning_rate
            << endl;
+    }
+
+    // Set constant ground incline
+    if (FLAGS_ground_incline != 0) {
+      auto& planner_traj_receiver_context =
+          loop.get_diagram()->GetMutableSubsystemContext(*planner_traj_receiver,
+                                                         &diagram_context);
+      planner_traj_receiver->get_input_port_slope().FixValue(
+          &planner_traj_receiver_context,
+          drake::systems::BasicVector<double>(
+              {std::tan(-FLAGS_ground_incline)}));
+
+      auto& left_toe_angle_traj_gen_context =
+          loop.get_diagram()->GetMutableSubsystemContext(
+              *left_toe_angle_traj_gen, &diagram_context);
+      left_toe_angle_traj_gen->get_input_port_slope().FixValue(
+          &left_toe_angle_traj_gen_context,
+          drake::systems::BasicVector<double>(
+              {std::tan(-FLAGS_ground_incline)}));
+      auto& right_toe_angle_traj_gen_context =
+          loop.get_diagram()->GetMutableSubsystemContext(
+              *right_toe_angle_traj_gen, &diagram_context);
+      right_toe_angle_traj_gen->get_input_port_slope().FixValue(
+          &right_toe_angle_traj_gen_context,
+          drake::systems::BasicVector<double>(
+              {std::tan(-FLAGS_ground_incline)}));
     }
 
     // Create the file to indicate that the planner thread is listening

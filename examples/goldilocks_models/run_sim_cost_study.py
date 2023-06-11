@@ -21,6 +21,7 @@ from matplotlib import cm
 import matplotlib.tri as mtri
 import matplotlib
 from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import interp1d
 import matplotlib.patches as mpatches
 import codecs
 import math
@@ -533,6 +534,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
       #   skip_this_eval_loop = False
       # if rom_iter == 500 and log_idx >= 300:
       #   skip_this_eval_loop = False
+      # if rom_iter == 300:
+      #   skip_this_eval_loop = False
       # if skip_this_eval_loop:
       #  continue
 
@@ -942,6 +945,39 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
   if save_fig:
     plt.savefig("%scost_vs_model_iter_contour%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+
+
+def Generate2dPlots1dTask(cmt):
+
+  # import pdb;pdb.set_trace()
+  cmt = cmt[abs(cmt[:, 3] - second_task_value) < 0.01]
+
+  ### 2D plot (cost vs tasks)
+  print("\n(1d task) Plotting cost vs task...")
+
+  plt.figure(figsize=(6.4, 4.8))
+  plt.rcParams.update({'font.size': 14})
+  for i in range(len(model_slices)):
+    model_iter = model_slices[i]
+    # The line along which we evaluate the cost (using interpolation)
+    m = model_iter * np.ones(500)
+    t_1st = np.linspace(-0.8, 0.8, 500)
+
+    # import pdb;pdb.set_trace()
+    interpolator = LinearNDInterpolator(cmt[:, 1:3], cmt[:, 0])
+    z = interpolator(np.vstack((m, t_1st)).T)
+    plt.plot(t_1st, z, '-',  # color=color_names[i],
+      linewidth=3, label="iter " + str(model_iter))
+
+  plt.xlabel(name_with_unit[task_to_plot[0]])
+  plt.ylabel('total cost')
+  plt.legend()
+  plt.gcf().subplots_adjust(bottom=0.15)
+  plt.gcf().subplots_adjust(left=0.15)
+  plt.title('%s ~ %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
+  if save_fig:
+    plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value))
+
 
 
 def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
@@ -1433,7 +1469,7 @@ def ComputeCostImprovementForIndividualTask(model_indices, cmt):
       f.close()
 
   np.set_printoptions(linewidth=100)  # number of characters per line for wrapping
-  msg = "\ncost_improvement_grid = \n" + str(cost_improvement_grid) + "\n"
+  msg = "\ncost_improvement_grid = \n" + str(np.around(cost_improvement_grid, 3)) + "\n"
   print(msg)
   f = open(eval_dir + "costs_info.txt", "a")
   f.write(msg)
@@ -1800,10 +1836,13 @@ if __name__ == "__main__":
 
   # Task list
   n_task_sl = 25 #25 #10
-  n_task_ph = 3  #25 #3
+  n_task_ph = 5  #25 #3
   n_task_tr = 30  #25 #3
   tasks = Tasks()
-  tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(0.3, 0.9, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(0.25, 0.6, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, -0.4, 1), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.3, 0.3, n_task_sl), "stride_length")
@@ -1819,6 +1858,7 @@ if __name__ == "__main__":
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
+  # tasks.AddTaskDim(np.linspace(-1.0, 1.0, n_task_tr), "turning_rate")
   # tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
   tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
   # tasks.AddTaskDim([0.0], "turning_rate")
@@ -1826,6 +1866,7 @@ if __name__ == "__main__":
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.8, 1.0, n_task_ph), "pelvis_height")
+  # tasks.AddTaskDim(np.linspace(0.7, 1.0, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim([0.95], "pelvis_height")
   tasks.AddTaskDim([0.85], "pelvis_height")
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
@@ -1835,7 +1876,7 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   save_fig = True
-  plot_nominal = True
+  plot_nominal = False
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
   cost_choice = 2  # 0: all cost including regularization cost
                    # 1: main cost (v cost, vdot cost and torque cost); Btw, main cost is the cost of which we take gradient during model optimization
@@ -1927,6 +1968,9 @@ if __name__ == "__main__":
   model_slices = [1, 200, 300, 400, 500, 600]
   model_slices = [1, 200, 300, 400, 500, 600, 700]
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
+  model_slices = [1, 300, 400]
+  model_slices = [1, 400]
+  model_slices = [1, 300, 400, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -1955,6 +1999,9 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
+  model_slices_cost_landsacpe = [1, 300, 400]
+  model_slices_cost_landsacpe = [1, 400]
+  model_slices_cost_landsacpe = [1, 300, 400, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -2027,6 +2074,9 @@ if __name__ == "__main__":
   # model_indices = [1, 200, 300, 400, 500, 600]
   # model_indices = [1, 200, 300, 400, 500, 600, 700]
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
+  model_indices = [1, 300, 400]
+  model_indices = [1, 400]
+  model_indices = [1, 300, 400, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -2065,6 +2115,8 @@ if __name__ == "__main__":
   for name in tasks.GetVaryingTaskElementName():
     if name not in name_of_task_value_to_be_read:
       name_of_task_value_to_be_read.append(name)
+  print("name_of_task_value_to_be_read = ", name_of_task_value_to_be_read)
+  # import pdb;pdb.set_trace()
 
   idx_map_for_name_of_trajopt_task_value_to_be_read = GetTrajoptTaskElementIdx(name_of_task_value_to_be_read, list(nominal_task_names))
 
@@ -2168,6 +2220,7 @@ if __name__ == "__main__":
   try:
     Generate3dPlots(cmt, nominal_cmt, plot_nominal)
     Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
+    # Generate2dPlots1dTask(cmt)
 
     ### Compute cost improvement for inidividual task
     ComputeCostImprovementForIndividualTask(model_indices, cmt)

@@ -56,6 +56,7 @@ cols: 3
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"                                    # rom_option 30
 #dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230427_4kg_toe_with_task_range/robot_1/"                                    # rom_option 27
 dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"                                    # rom_option 27
+#dir_model: "../dairlib_data/goldilocks_models/planning/robot_1/20230530_two_task_planes__sl_gi_and_sl_tr/robot_1/"                                    # rom_option 27
 dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 
 ### ROM parameter
@@ -124,13 +125,13 @@ y_vel_offset: 0.2  # 0.1  # during normal walking, y_vel is about 0.1 to 0.2 m/s
 
 # max_foot_speed should be more than two times bigger than the desired walking speed.
 # (maybe leave at least 0.5m/s margin for it to catch up with the body when falling forward)
-max_foot_speed: 3  # used to restrict swing foot travel distance
+max_foot_speed: 4.5 #6 #3 # used to restrict swing foot travel distance
 # max_step_length restricts the distance between stance and swing foot (not from pelvis to swing foot!).
 # It cannot be too big. Otherwise, the ROM is not a good approximation to FOM
-max_step_length: 0.9  # 0.7
+max_step_length: 0.9  #1.3  #0.9 # 0.7
 # (step length is measured from stance foot to swing foot)
 # desired body speed = desired_step_length / one stride duration
-max_desired_step_length: 0.5  # 0.4
+max_desired_step_length: 0.7  #0.9 #0.7 # 0.4
 max_lipm_step_length: 0.8
 #n_step : 2 #TODO : add this later for convenience
 

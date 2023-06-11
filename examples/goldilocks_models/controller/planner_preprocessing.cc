@@ -259,6 +259,15 @@ void PlannerFinalPosition::CalcFinalPos(
   } else if (high_level_command_mode_ == 1) {
     double init_phase =
         this->EvalVectorInput(context, phase_port_)->get_value()(0);
+
+    // Testing -- ramping speed up gradually over time
+    /*Vector2d const_step_length = const_step_length_;
+    double current_time = static_cast<const OutputVector<double>*>(
+        this->EvalVectorInput(context, state_port_))
+        ->get_timestamp();
+    const_step_length *= std::min((current_time / 110), 1.0);
+    Vector2d local_pos_diff = const_step_length * (n_step_ - init_phase);*/
+
     Vector2d local_pos_diff = const_step_length_ * (n_step_ - init_phase);
 
     // Assign local_final_pos

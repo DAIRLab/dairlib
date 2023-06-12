@@ -178,7 +178,8 @@ int do_main(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double>& plant =
       *builder.AddSystem<drake::multibody::MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::addFlatTerrain(&plant, &scene_graph, .8, .8, ground_normal);
+    double mu = (FLAGS_ground_incline == 0) ? 0.8 : 1.5;
+    multibody::addFlatTerrain(&plant, &scene_graph, mu, mu, ground_normal);
   }
 
   std::string urdf;

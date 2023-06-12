@@ -70,6 +70,7 @@ struct RomWalkingGains {
   double center_line_offset;
   double footstep_offset;
   double mid_foot_height;
+  bool adaptive_mid_foot_height;
   double final_foot_height;
   double final_foot_velocity_z;
   double lipm_height;
@@ -188,6 +189,7 @@ struct RomWalkingGains {
     a->Visit(DRAKE_NVP(center_line_offset));
     a->Visit(DRAKE_NVP(footstep_offset));
     a->Visit(DRAKE_NVP(mid_foot_height));
+    a->Visit(DRAKE_NVP(adaptive_mid_foot_height));
     a->Visit(DRAKE_NVP(final_foot_height));
     a->Visit(DRAKE_NVP(final_foot_velocity_z));
     // lipm heursitics

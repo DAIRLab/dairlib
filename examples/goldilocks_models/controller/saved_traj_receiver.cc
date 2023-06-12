@@ -235,6 +235,8 @@ SavedTrajReceiver::SavedTrajReceiver(
   //      state_mirror.MirrorVel(xpre.tail(nv_));
   //  xf_time_ << t_end, 2 * t_end;
   //  stance_foot_ << 0, 1;  // left is 0, right is 1
+
+  adaptive_mid_foot_height_ = gains.adaptive_mid_foot_height;
 }
 
 void SavedTrajReceiver::AdjustPlannedTrajGivenGroundSlopeInput() {
@@ -491,11 +493,22 @@ void SavedTrajReceiver::CalcSwingFootTraj(
           Y.at(1) = (Y.at(0) + Y.at(2)) / 2;
 
           /// Foot height ///
+          double desired_mid_foot_height = desired_mid_foot_height_;
+          if (use_slope_) {
+            if (adaptive_mid_foot_height_) {
+              // We assume end_foot_pos is relative to CoM and in pelvis frame
+              double slope =
+                  this->EvalVectorInput(context, slope_port_)->get_value()(0);
+              desired_mid_foot_height += ((0.25 - 0.05) / 0.4) * slope;
+              desired_mid_foot_height =
+                  std::clamp(desired_mid_foot_height, 0.05, 0.25);
+            }
+          }
           if (init_step) {
-            Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height_;
+            Y.at(1)(2) = start_foot_pos(2) + desired_mid_foot_height;
             Y.at(2)(2) = start_foot_pos(2) + desired_final_foot_height_;
           } else {
-            Y.at(1)(2) += desired_mid_foot_height_;
+            Y.at(1)(2) += desired_mid_foot_height;
             Y.at(2)(2) += desired_final_foot_height_;
           }
           if (left_stance) {

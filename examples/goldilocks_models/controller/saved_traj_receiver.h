@@ -162,6 +162,7 @@ class SavedTrajReceiver : public drake::systems::LeafSystem<double> {
   double final_foot_height_offset_for_right_leg_;
 
   // Testing slope
+  bool adaptive_mid_foot_height_ = false;
   bool use_slope_ = false;
   int slope_port_;
 };

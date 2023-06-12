@@ -1856,7 +1856,7 @@ if __name__ == "__main__":
   n_task_sl = 25 #25 #10
   n_task_ph = 5  #25 #3
   n_task_tr = 30  #25 #3
-  n_task_gi = 25  #25 #3
+  n_task_gi = 35  #25 #3
   tasks = Tasks()
   # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
@@ -1865,7 +1865,8 @@ if __name__ == "__main__":
   #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
   # tasks.AddTaskDim(np.linspace(0.3, 0.9, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0.25, 0.6, n_task_sl), "stride_length")
-  tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_sl), "stride_length")
+  tasks.AddTaskDim(np.linspace(-0.2, 0.7, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, -0.4, 1), "stride_length")
@@ -1888,6 +1889,7 @@ if __name__ == "__main__":
   # tasks.AddTaskDim([0.95], "pelvis_height")
   tasks.AddTaskDim([0.85], "pelvis_height")
   tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_gi), "ground_incline")
+  # tasks.AddTaskDim(np.linspace(-0.55, 0.55, n_task_gi), "ground_incline")
   # tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
@@ -1993,6 +1995,7 @@ if __name__ == "__main__":
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
   model_slices = [1, 300, 400, 500]
+  model_slices = [1, 400, 450, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -2024,6 +2027,7 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
   model_slices_cost_landsacpe = [1, 300, 400, 500]
+  model_slices_cost_landsacpe = [1, 400, 450, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -2101,6 +2105,7 @@ if __name__ == "__main__":
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
   model_indices = [1, 300, 400, 500]
+  model_indices = [1, 400, 450, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list

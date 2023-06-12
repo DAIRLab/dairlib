@@ -351,15 +351,25 @@ def CollectAllTrajoptSampleIndices():
 
 
 # trajopt_sample_indices for planner (find the most similar tasks)
-def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, trajopt_sample_dir):
+def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, trajopt_sample_dir, same_task_idx_for_all_models=False):
   trajopt_sample_indices = np.zeros((len(model_indices), len(task_list)),
                                     dtype=np.dtype(int))
   if simulation_initialization_mode > 0:
-    for i in range(len(model_indices)):
+    # Way 1: use the same trajopt_idx for each model idx (to save time)
+    if same_task_idx_for_all_models:
       for j in range(len(task_list)):
-        trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i] if (simulation_initialization_mode < 2) else 0,
+        trajopt_sample_indices[0, j] = GetTrajoptSampleIndexGivenTask(1 if (simulation_initialization_mode < 2) else 0,
                                                                       task_list[j],
                                                                       trajopt_sample_dir)
+      for i in range(1, len(model_indices)):
+        trajopt_sample_indices[i] = trajopt_sample_indices[0]
+    # Way 2: find samples for each model idx
+    else:
+      for i in range(len(model_indices)):
+        for j in range(len(task_list)):
+          trajopt_sample_indices[i, j] = GetTrajoptSampleIndexGivenTask(model_indices[i] if (simulation_initialization_mode < 2) else 0,
+                                                                        task_list[j],
+                                                                        trajopt_sample_dir)
   return trajopt_sample_indices
 
 
@@ -484,8 +494,8 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
   ### Construct sample indices from the task list for simulation
   # `trajopt_sample_idx` is also used to initialize simulation state
   # `trajopt_sample_idx` is for planner's initial guess and cost regularization term
-  trajopt_sample_indices_for_sim = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, FOM_model_dir_for_sim)
-  trajopt_sample_indices_for_planner = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, FOM_model_dir_for_planner)
+  trajopt_sample_indices_for_sim = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, FOM_model_dir_for_sim, True)
+  trajopt_sample_indices_for_planner = ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, FOM_model_dir_for_planner, False)
   print("trajopt_sample_indices_for_sim = \n" + str(trajopt_sample_indices_for_sim))
   print("trajopt_sample_indices_for_planner = \n" + str(trajopt_sample_indices_for_planner))
 
@@ -1759,6 +1769,7 @@ if __name__ == "__main__":
   data_dir = parsed_yaml_file.get('dir_data')
 
   FOM_model_dir_for_sim = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20220511_explore_task_boundary_2D--20220417_rom27_big_torque/robot_1/"
+  # FOM_model_dir_for_sim = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230611_explore_task_boundary_2D--20230530_two_task_planes__sl_gi_and_sl_tr/robot_1/"
   FOM_model_dir_for_planner = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"

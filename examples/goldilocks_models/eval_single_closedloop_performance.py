@@ -804,6 +804,8 @@ def main():
   parser.add_argument('--no-turning', dest='turning', action='store_false')
   parser.set_defaults(turning=False)
 
+  parser.add_argument("--ground_incline", help="", default=0.0, type=float)
+
   # Steady state check (specific to simulation)
   parser.add_argument("--desried_sim_end_time", help="", default=-1.0, type=float)
 
@@ -846,7 +848,7 @@ def main():
   log_status = True
 
   # Assign to local variables
-  global is_hardware, eval_dir, eval_for_RL, turning
+  global is_hardware, eval_dir, eval_for_RL, turning, ground_incline
   is_hardware = args.hardware
   eval_dir = args.eval_dir
   eval_for_RL = args.eval_for_RL
@@ -858,6 +860,7 @@ def main():
   desried_sim_end_time = args.desried_sim_end_time
   low_pass_filter = args.low_pass_filter
   turning = args.turning
+  ground_incline = args.ground_incline
 
   # Some setups
   if len(eval_dir) == 0:
@@ -1228,6 +1231,12 @@ def SaveData(cost_dict, file_prefix, ave_tasks, start_time, start_time_rt_walkin
   # print("writing to " + path)
   f = open(path, "w")
   f.write(str(ave_tasks["ave_turning_rate"]))
+  f.close()
+
+  path = eval_dir + "%s_ave_ground_incline.csv" % file_prefix
+  # print("writing to " + path)
+  f = open(path, "w")
+  f.write(str(round(ground_incline, 3)))
   f.close()
 
   path = eval_dir + "%s_start_time.csv" % file_prefix

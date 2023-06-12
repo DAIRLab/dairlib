@@ -306,7 +306,7 @@ def RunSimAndController(thread_idx, sim_end_time, task, log_idx, rom_iter_idx,
 
 
 # sim_end_time is used to check if the simulation ended early
-def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
+def EvalCost(sim_end_time, rom_iter_idx, log_idx, task, multithread=False):
   eval_cost_cmd = [
     'bazel-bin/examples/goldilocks_models/eval_single_closedloop_performance',
     '--file_path=' + LcmlogFilePath(rom_iter_idx, log_idx),
@@ -318,6 +318,7 @@ def EvalCost(sim_end_time, rom_iter_idx, log_idx, multithread=False):
     '--eval_dir=' + eval_dir,
     '--eval_for_RL' if eval_for_RL else '--no-eval_for_RL',
     '--turning' if nonzero_turning else '--no-turning',
+    '--ground_incline=' + str(task[tasks.GetDimIdxByName("ground_incline")]),
   ]
   print(' '.join(eval_cost_cmd))
   eval_cost_process = subprocess.Popen(eval_cost_cmd)
@@ -577,7 +578,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
         # Evaluate the cost (not multithreaded. Will block the main thread)
         if do_eval_cost:
-          EvalCost(sim_end_time, rom_iter, log_idx)
+          EvalCost(sim_end_time, rom_iter, log_idx, task)
 
         # Delete the lcmlog
         # os.remove(LcmlogFilePath(rom_iter_idx, log_idx))
@@ -601,7 +602,7 @@ def CheckThreadAndBlockWhenNecessary(working_threads, n_max_thread,
 
 
 # This function assumes that simulation has been run and there exist lcm logs
-def EvalCostInMultithread(model_indices, log_indices):
+def EvalCostInMultithread(model_indices, log_indices, task_list):
   working_threads = []
   n_max_thread = psutil.cpu_count()
 
@@ -611,18 +612,21 @@ def EvalCostInMultithread(model_indices, log_indices):
   n_total_sim = len(model_indices) * len(log_indices)
   counter = 0
   for rom_iter in model_indices:
-    for idx in log_indices:
+    for idx in range(len(log_indices)):
+      log_idx = log_indices[idx]
+      task = task_list[idx]
+
       print("\n===========\n")
       print("progress %.1f%%" % (float(counter) / n_total_sim * 100))
-      print("run sim for model %d and log %d" % (rom_iter, idx))
+      print("run sim for model %d and log %d" % (rom_iter, log_idx))
 
-      # if not (rom_iter == 400 and idx == 590):
+      # if not (rom_iter == 400 and log_idx == 590):
       #   continue
 
       # Evaluate the cost
-      path = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
+      path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       if not os.path.exists(path):
-        working_threads.append(EvalCost(sim_end_time, rom_iter, idx, True))
+        working_threads.append(EvalCost(sim_end_time, rom_iter, log_idx, task, True))
       counter += 1
 
       # Wait for threads to finish once is more than n_max_thread
@@ -1578,7 +1582,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, task_range_to_a
 
 
 def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
-  print("\nPlotting achievable task range over iter...")
+  print("\nPlotting achievable task range over iter %s=%.3f..." % (task_to_plot[1], second_task_value))
   interpolator = LinearNDInterpolator(cmt[:, 1:], cmt[:, 0])
 
   ### 2D plot (task range vs iteration)
@@ -2182,7 +2186,7 @@ if __name__ == "__main__":
   # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Cost evaluate only
-  # EvalCostInMultithread(model_indices, log_indices)
+  # EvalCostInMultithread(model_indices, log_indices, task_list)
 
   # Delete all logs but a few successful ones (for analysis later)
   # DeleteMostLogs(model_indices, log_indices)

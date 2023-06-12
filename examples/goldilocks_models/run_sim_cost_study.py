@@ -893,11 +893,11 @@ def Generate4dPlots(cmt, nominal_cmt, plot_nominal):
 
   if save_fig:
     ax.view_init(90, -90)  # look from +z axis. model iter vs task
-    plt.savefig("%smodel_ter_vs_task1_4Dscatterplot.png" % (eval_dir))
+    plt.savefig("%smodel_ter_vs_task1_4Dscatterplot.png" % (eval_dir), dpi=fig_dpi)
     ax.view_init(0, 0)  # look from x axis. cost vs task
-    plt.savefig("%stask2_vs_task1_4Dscatterplot.png" % (eval_dir))
+    plt.savefig("%stask2_vs_task1_4Dscatterplot.png" % (eval_dir), dpi=fig_dpi)
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    plt.savefig("%stask2_vs_model_iter_4Dscatterplot.png" % (eval_dir))
+    plt.savefig("%stask2_vs_model_iter_4Dscatterplot.png" % (eval_dir), dpi=fig_dpi)
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
 
@@ -933,11 +933,11 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
   # plt.title("")
   if save_fig:
     ax.view_init(90, -90)  # look from +z axis. model iter vs task
-    plt.savefig("%smodel_ter_vs_task_scatterplot%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%smodel_ter_vs_task_scatterplot%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
     ax.view_init(0, 0)  # look from x axis. cost vs task
-    plt.savefig("%scost_vs_task_scatterplot%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_task_scatterplot%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    plt.savefig("%scost_vs_model_iter_scatterplot%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_model_iter_scatterplot%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
   ### level set plot
@@ -961,7 +961,7 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
   ax.set_zlabel('total cost')
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
   if save_fig:
-    plt.savefig("%scost_vs_model_iter_contour%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_model_iter_contour%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
 def Generate2dPlots1dTask(cmt):
@@ -993,7 +993,7 @@ def Generate2dPlots1dTask(cmt):
   plt.gcf().subplots_adjust(left=0.15)
   plt.title('%s ~ %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
   if save_fig:
-    plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
 
@@ -1065,7 +1065,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_vs_model_iter%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_model_iter%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   ### 2D plot (cost vs tasks)
   print("\nPlotting cost vs task...")
@@ -1104,7 +1104,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   plt.gcf().subplots_adjust(left=0.15)
   plt.title('slice at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
   if save_fig:
-    plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   ### 2D plot (iter vs tasks; cost visualized in contours)
   print("\nPlotting iterations vs task...")
@@ -1145,7 +1145,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_landscape_iter%s_%s%.2f.png" % (eval_dir, app_list[i], name_abbrev[task_to_plot[1]], second_task_value))
+      plt.savefig("%scost_landscape_iter%s_%s%.2f.png" % (eval_dir, app_list[i], name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   ### 2D plot; cost landscape (task1 vs task2; cost visualized in contours)
   print("\nPlotting 2D cost landscape (task1 vs task2)..." )
@@ -1389,7 +1389,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (eval_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""))
+    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (eval_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""), dpi=fig_dpi)
 
 
 
@@ -1449,7 +1449,7 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value))
+      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value), dpi=fig_dpi)
 
 
 def ComputeCostImprovementForIndividualTask(model_indices, cmt):
@@ -1581,7 +1581,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, task_range_to_a
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_%s%.2f.png" % (eval_dir, task_range_to_average_over[0], task_range_to_average_over[1], name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_%s%.2f.png" % (eval_dir, task_range_to_average_over[0], task_range_to_average_over[1], name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   # Log the improvement percentage into a file
   message = "Max average cost improvement = %.1f %% over stride length from %.2f to %.2f\n" % (float((averaged_cost[0] - min(averaged_cost)) / averaged_cost[0] * 100), task_range_to_average_over[0], task_range_to_average_over[1])
@@ -1646,7 +1646,7 @@ def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   # Log the improvement percentage into a file
   message = "Max achievable task space improvement = %.1f %% (at %s=%.2f)\n" % (float((max(task_range) - task_range[0]) / task_range[0] * 100), task_to_plot[1], second_task_value)
@@ -1730,7 +1730,7 @@ class Tasks:
   def tasks_info(self):
     output = ""
     for name in self.names:
-      output += "%s ranges from %.3f to %.3f\n" % (name, self.task_data[name][0], self.task_data[name][-1])
+      output += "%s ranges from %.3f to %.3f (# samples = %d)\n" % (name, self.task_data[name][0], self.task_data[name][-1], len(self.task_data[name]))
     return output
   def get_task_dim(self):
     return self.n_dim
@@ -1773,6 +1773,7 @@ if __name__ == "__main__":
   FOM_model_dir_for_planner = ""
 
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
+  # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/all_logs/20230611_sim_eval_20230530_model/1_with_mpc_limit/3_continue_2_but_denser_samples/sim_cost_eval/"
   # eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
@@ -1899,6 +1900,7 @@ if __name__ == "__main__":
 
   ### Parameters for plotting
   save_fig = True
+  high_res_figure = False
   plot_nominal = False
   task_tolerance = 0.05  # 0.01  # if tasks are not on the grid points exactly
   cost_choice = 2  # 0: all cost including regularization cost
@@ -2156,6 +2158,9 @@ if __name__ == "__main__":
     idx_closedloop_cost_element = -2
   elif cost_choice == 2:
     idx_closedloop_cost_element = 1
+
+  # Plotting setup -- resolution of plots
+  fig_dpi = 1200 if high_res_figure else 300
 
   ### Box visualization for training task range
   visualize_training_task_range = True

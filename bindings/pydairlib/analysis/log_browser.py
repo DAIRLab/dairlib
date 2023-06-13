@@ -4,6 +4,7 @@
 """
 import os
 import lcm
+import sys
 import glob
 import pygame
 import argparse
@@ -21,14 +22,20 @@ class LcmLogPlayer:
         assert self.channels
 
         event = self.lcm_log.read_next_event()
-        while event.channel not in self.channels:
+        while event and (event.channel not in self.channels):
             event = self.lcm_log.read_next_event()
+
+        if not event:
+            return None, None
         return event.channel, event.data
 
     def publish_next(self):
         channel, data = self.get_next_message()
-        # TODO (@Brian-Acosta) does this need to be decoded?
-        self.lc.publish(channel, data)
+        if channel and data:
+            self.lc.publish(channel, data)
+        else:
+            self.reset()
+        return channel is not None
 
     def reset(self):
         self.lcm_log.seek(0)
@@ -48,7 +55,6 @@ def main():
     parser.add_argument(
         "--log_folder",
         nargs=1,
-        default="",
         help="Folder containing lcm logs",
         type=str,
         required=True
@@ -64,25 +70,27 @@ def main():
     parser.add_argument(
         "--channels",
         nargs="+",
-        default=[""],
+        default="",
         help="List of lcm channels to play back"
     )
     args = parser.parse_args()
+    log_folder = args.log_folder[0]
+    log_name_template = args.log_name_template
 
     # PyGame Setup
     pygame.init()
-    screen_width = 800
-    screen_height = 600
+    screen_width = 1500
+    screen_height = 200
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption("Lcm Log Browser")
-    font = pygame.font.Font(None, 36)
+    font = pygame.font.Font(None, 72)
 
     running = True
     playing = False
 
-    assert(os.path.isdir(args.log_folder))
+    assert(os.path.isdir(log_folder))
 
-    logpaths = get_log_names(args.log_folder, args.log_name_template)
+    logpaths = get_log_names(log_folder, log_name_template)
     active_log_idx = 0
     nlogs = len(logpaths)
     logplayers = {}
@@ -118,13 +126,15 @@ def main():
             )
 
         if playing:
-            logplayers[active_log_idx].publish_next()
+            playing = logplayers[active_log_idx].publish_next()
 
         # Clear the screen
-        screen.fill((0, 0, 0))
+        fill_color = (0, 255, 0) if playing else (255, 0, 0)
+        screen.fill(fill_color)
 
         # Render the current stream name
-        text_surface = font.render(logpaths[active_log_idx], True, (255, 255, 255))
+        path_stub = '/'.join(logpaths[active_log_idx].split('/')[-3:])
+        text_surface = font.render(path_stub, True, (0, 0, 0))
         text_rect = text_surface.get_rect(center=(screen_width // 2, screen_height // 2))
         screen.blit(text_surface, text_rect)
 

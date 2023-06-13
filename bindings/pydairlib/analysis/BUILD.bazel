@@ -82,6 +82,12 @@ py_library(
 )
 
 py_binary(
+    name = "log_browser",
+    srcs = ["log_browser.py"],
+    deps = ["@lcm//:lcm-python"],
+)
+
+py_binary(
     name = "parse_log_to_learning_data",
     srcs = ["parse_log_to_learning_data.py"],
     data = [

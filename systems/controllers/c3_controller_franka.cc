@@ -182,6 +182,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
     Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
+   
 
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);
@@ -192,6 +193,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired.segment(14, 3) << target[1];
     st_desired.segment(32, 3) << finish(0), finish(1), ball_radius + table_offset;
     st_desired.tail(3) << finish(0), finish(1), ball_radius + table_offset;
+
+     
 
     state_contact_desired->SetDataVector(st_desired);
     state_contact_desired->set_timestamp(timestamp);
@@ -211,9 +214,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
   
   //print ee pose snippet
-  std::cout<< "end_effector "<< end_effector <<std::endl;
+  // std::cout<< "end_effector "<< end_effector <<std::endl;
   // end_effector = -end_effector;
-  std::cout<<"x_coordinate "<<end_effector[0]<<std::endl;
+  // std::cout<<"x_coordinate "<<end_effector[0]<<std::endl;
   // end_effector[0] = -end_effector[0];
 //  std::cout<<"- x_coordinate "<<end_effector[0];
 
@@ -443,14 +446,26 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 
+
+  
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
   
+  //Position sampling
+  Eigen::VectorXd ball_orientation_vector = q_plant.head(4);
+  // std::cout<<"quaternion orientation of ball "<<ball_orientation_vector<<std::endl;
+  Eigen::Quaternion<double> ball_orientation(ball_orientation_vector[0],ball_orientation_vector[1],ball_orientation_vector[2],ball_orientation_vector[3]);
+  // ball_orientation.w
+  Matrix3d ball_rot_matrix = ball_orientation.toRotationMatrix();
+  std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
+  // Eigen::RotationMatrix ball_rot_matrix(&ball_orientation);
+  // std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
+
   //Multi-sample code piece
-  // vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);
-  // vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);
-  // double cost = opt.CalcCost(state, optimalinputseq);
-  // std::cout<<"This is the cost "<<cost<<std::endl;
+  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+  double cost = opt.CalcCost(state, optimalinputseq); 
+  std::cout<<"This is the cost "<<cost<<std::endl;
 
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();
@@ -522,9 +537,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
   //Cost computation piece
-  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
-  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-  double cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
+  // vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+  // vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+  // double cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   // std::cout<<"This is the cost "<<cost<<std::endl;
 
   VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
@@ -583,7 +598,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
                                           const Eigen::Vector3d end_effector, double timestamp) const {
   /// estimate q_plant
-  std::cout << "here" << std::endl;
+  // std::cout << "here" << std::endl;
   if (abs(param_.ball_stddev) > 1e-9) {
     std::random_device rd{};
     std::mt19937 gen{rd()};

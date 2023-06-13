@@ -125,14 +125,14 @@ class TimeVisualizer(object):
         ######
         # 2023-05-29 17h00m00s: Straight 2.5 meters -> Ramp -20% slope (base 2.5m) -> Ramp -20% slope (base 10.0m) -> Ramp -20% slope (base 2.5m) #2 -> Straight 2.5 meters #2
         # 20% ramp down
-        self.terrain_state_list = ['start', 'Straight 2.5 meters', 'Ramp -20% slope (base 2.5m)', 'Ramp -20% slope (base 10.0m)', 'Ramp -20% slope (base 2.5m) #2', 'Straight 2.5 meters #2', 'end']
-        self.exit_conditions = {}
-        self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 2.5 meters'] = [3.500, 1.000, 0.000, np.inf]
-        self.exit_conditions['Ramp -20% slope (base 2.5m)'] = [6.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Ramp -20% slope (base 10.0m)'] = [16.000, 1.000, 0.000, np.inf]
-        self.exit_conditions['Ramp -20% slope (base 2.5m) #2'] = [18.500, 1.000, 0.000, np.inf]
-        self.exit_conditions['Straight 2.5 meters #2'] = [21.000, 1.000, 0.000, np.inf]
+        # self.terrain_state_list = ['start', 'Straight 2.5 meters', 'Ramp -20% slope (base 2.5m)', 'Ramp -20% slope (base 10.0m)', 'Ramp -20% slope (base 2.5m) #2', 'Straight 2.5 meters #2', 'end']
+        # self.exit_conditions = {}
+        # self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 2.5 meters'] = [3.500, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp -20% slope (base 2.5m)'] = [6.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp -20% slope (base 10.0m)'] = [16.000, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Ramp -20% slope (base 2.5m) #2'] = [18.500, 1.000, 0.000, np.inf]
+        # self.exit_conditions['Straight 2.5 meters #2'] = [21.000, 1.000, 0.000, np.inf]
 
         ######
         # 2023-05-29 15h00m57s: Straight 5.0 meters -> Ramp 10.0% slope and 10 m -> Ramp 20.0% slope and 10 m -> Straight 5.0 meters #2
@@ -156,6 +156,29 @@ class TimeVisualizer(object):
         # self.exit_conditions['Ramp 10.0% slope and 5 m #2'] = [26.000, 1.000, 0.000, np.inf]
         # self.exit_conditions['Straight 5.0 meters #2'] = [31.000, 1.000, 0.000, np.inf]
 
+        ######
+        # 2023-06-13 10h41m39s: Straight 6.0 meters -> Straight 2.5 meters -> Turn 90 degrees (1.0 m radius)  -> Straight 2.5 meters #2 -> Turn 180 degrees (2.0 m radius)  -> Straight 2.0 meters -> Straight 2.0 meters #2 -> Ramp -20% slope (base 10.0m) -> Straight 2.5 meters #3 -> Turn 180 degrees (2.0 m radius)  #2 -> Turn -180 degrees (2.0 m radius)  -> Turn 180 degrees (2.0 m radius)  #3 -> Straight 2.0 meters #3 -> Straight 2.0 meters #4 -> Ramp 50% slope (base 8.0m) -> Straight 0.5 meters -> Turn 90 degrees (1.0 m radius)  #2
+        # Complete course for TRO resubmission
+        self.terrain_state_list = ['start', 'Straight 6.0 meters', 'Straight 2.5 meters', 'Turn 90 degrees (1.0 m radius) ', 'Straight 2.5 meters #2', 'Turn 180 degrees (2.0 m radius) ', 'Straight 2.0 meters', 'Straight 2.0 meters #2', 'Ramp -20% slope (base 10.0m)', 'Straight 2.5 meters #3', 'Turn 180 degrees (2.0 m radius)  #2', 'Turn -180 degrees (2.0 m radius) ', 'Turn 180 degrees (2.0 m radius)  #3', 'Straight 2.0 meters #3', 'Straight 2.0 meters #4', 'Ramp 50% slope (base 8.0m)', 'Straight 0.5 meters', 'Turn 90 degrees (1.0 m radius)  #2', 'end']
+        self.exit_conditions = {}
+        self.exit_conditions['start'] = [1.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Straight 6.0 meters'] = [7.000, 1.000, 0.000, np.inf]
+        self.exit_conditions['Straight 2.5 meters'] = [9.500, 1.000, 0.000, np.inf]
+        self.exit_conditions['Turn 90 degrees (1.0 m radius) '] = [1.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Straight 2.5 meters #2'] = [3.500, 0.000, 1.000, np.inf]
+        self.exit_conditions['Turn 180 degrees (2.0 m radius) '] = [-3.500, -0.000, -1.000, np.inf]
+        self.exit_conditions['Straight 2.0 meters'] = [-1.500, -0.000, -1.000, np.inf]
+        self.exit_conditions['Straight 2.0 meters #2'] = [0.500, -0.000, -1.000, np.inf]
+        self.exit_conditions['Ramp -20% slope (base 10.0m)'] = [10.500, -0.000, -1.000, np.inf]
+        self.exit_conditions['Straight 2.5 meters #3'] = [13.000, -0.000, -1.000, np.inf]
+        self.exit_conditions['Turn 180 degrees (2.0 m radius)  #2'] = [-13.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Turn -180 degrees (2.0 m radius) '] = [13.000, -0.000, -1.000, np.inf]
+        self.exit_conditions['Turn 180 degrees (2.0 m radius)  #3'] = [-13.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Straight 2.0 meters #3'] = [-11.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Straight 2.0 meters #4'] = [-9.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Ramp 50% slope (base 8.0m)'] = [-1.000, 0.000, 1.000, np.inf]
+        self.exit_conditions['Straight 0.5 meters'] = [-0.500, 0.000, 1.000, np.inf]
+        self.exit_conditions['Turn 90 degrees (1.0 m radius)  #2'] = [-17.500, -1.000, 0.000, np.inf]
 
         ####################################
 

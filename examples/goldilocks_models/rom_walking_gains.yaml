@@ -62,7 +62,7 @@ dir_data: "../dairlib_data/goldilocks_models/planning/robot_1/data/"
 ### ROM parameter
 rom_option: 27  # 4, 9
 #The iteration number of the theta that you use.has to be >= 1
-model_iter: 1 #150  #1 #30
+model_iter: 400 #150  #1 #30
 #The sample that we use to initialize planner
 sample_idx: 40 #19 #58 for 117 (9x13)   #40 for 81 (3x27)
 
@@ -252,7 +252,7 @@ ds_time: 0.
 max_CoM_to_footstep_dist: 0.5
 footstep_offset: 0.0
 center_line_offset: 0.03
-mid_foot_height: 0.05  #0.03   # The robot sometimes cannot catch itself when this foot height is small (e.g. 5cm)
+mid_foot_height: 0.1  #0.03   # The robot sometimes cannot catch itself when this foot height is small (e.g. 5cm)
 adaptive_mid_foot_height: true
 final_foot_height: -0.0
 final_foot_velocity_z: 0.0

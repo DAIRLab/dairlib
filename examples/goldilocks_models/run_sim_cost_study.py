@@ -1394,11 +1394,16 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'rx', markersize=3)
 
   limit_margin = 0.01
-  plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
-  # plt.xlim([0, max(x) + limit_margin])
-  plt.ylim([min(y) - limit_margin, max(y) + limit_margin])
-  # plt.xlim([-1, 1])
-  # plt.ylim([0.85, 1.05])
+  if visualize_training_task_range:
+    plt.xlim([min(min(x), training_task_range[0][0]) - limit_margin, max(max(x), training_task_range[0][1]) + limit_margin])
+    plt.ylim([min(min(y), training_task_range[1][0]) - limit_margin, max(max(y), training_task_range[1][1]) + limit_margin])
+    # plt.ylim([0.65, max(max(y), training_task_range[1][1]) + limit_margin])
+  else:
+    plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
+    # plt.xlim([0, max(x) + limit_margin])
+    plt.ylim([min(y) - limit_margin, max(y) + limit_margin])
+    # plt.xlim([-1, 1])
+    # plt.ylim([0.85, 1.05])
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
   plt.title('Cost comparison between iteration %d and %d' % (iter1, iter2))
@@ -1885,6 +1890,7 @@ if __name__ == "__main__":
   # tasks.AddTaskDim(np.linspace(0.3, 0.9, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(0.25, 0.6, n_task_sl), "stride_length")
   tasks.AddTaskDim(np.linspace(-0.2, 0.7, n_task_sl), "stride_length")
+  # tasks.AddTaskDim(np.linspace(-0.7, -0.2-0.0375, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
@@ -2014,7 +2020,6 @@ if __name__ == "__main__":
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
-  model_slices = [1, 400, 500]
   # model_slices = [1, 300, 400, 500]
   # model_slices = [1, 400, 450, 500]
   # color_names = ["darkblue", "maroon"]
@@ -2047,7 +2052,6 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
-  model_slices_cost_landsacpe = [1, 400, 500]
   # model_slices_cost_landsacpe = [1, 300, 400, 500]
   # model_slices_cost_landsacpe = [1, 400, 450, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
@@ -2128,7 +2132,6 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
-  model_indices = [1, 400, 500]
   # model_indices = [1, 300, 400, 500]
   # model_indices = [1, 400, 450, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
@@ -2176,7 +2179,7 @@ if __name__ == "__main__":
     idx_closedloop_cost_element = 1
 
   # Plotting setup -- resolution of plots
-  fig_dpi = 1200 if high_res_figure else 300
+  fig_dpi = 600 if high_res_figure else 300
 
   ### Box visualization for training task range
   visualize_training_task_range = True

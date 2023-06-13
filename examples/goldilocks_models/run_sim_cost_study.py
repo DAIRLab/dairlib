@@ -352,6 +352,22 @@ def CollectAllTrajoptSampleIndices():
 
 # trajopt_sample_indices for planner (find the most similar tasks)
 def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, trajopt_sample_dir, same_task_idx_for_all_models=False):
+  # Get task order, since it might be different in the trajopt folder than `task_list` (the one constructed in this script)
+  # We want to map the order here to the order in the trjaopt folder
+  task_list = copy.deepcopy(task_list)
+  task_names_in_trajopt_folder = np.loadtxt(trajopt_sample_dir + "task_names.csv", dtype=str, delimiter=',')
+  task_names_order_of_this_script = tasks.GetTaskNames()
+  idx_order = []
+  for name in task_names_in_trajopt_folder:
+    idx_order.append(task_names_order_of_this_script.index(name))
+  task_list = task_list[:, idx_order]
+  # print("task_names_in_trajopt_folder = ", task_names_in_trajopt_folder, "\n")
+  # print("task_names_order_of_this_script = ", task_names_order_of_this_script, "\n")
+  # print("idx_order = ", idx_order, "\n")
+  # print("task_list = ", task_list, "\n")
+  # print("task_list ordered = ", task_list[:, idx_order], "\n")
+  # import pdb;pdb.set_trace()
+
   trajopt_sample_indices = np.zeros((len(model_indices), len(task_list)),
                                     dtype=np.dtype(int))
   if simulation_initialization_mode > 0:
@@ -376,18 +392,18 @@ def ConstructTrajoptSampleIndicesGivenModelAndTask(model_indices, task_list, tra
 # Get trajopt sample idx with the most similar task
 # TODO: This function is currently not perfect yet. It cannot pick sample accurately if the sampling density is much high in one dimension than the other + we randomize tasks
 def GetTrajoptSampleIndexGivenTask(rom_iter, task, trajopt_sample_dir):
-  dir = model_dir if len(trajopt_sample_dir) == 0 else trajopt_sample_dir
 
   zero_stride_length = use_single_cost_function_for_all_tasks  # Hack -- not generalized to other tasks
-  stride_length_idx = list(nominal_task_names).index("stride_length")
+  task_names_in_trajopt_folder = np.loadtxt(trajopt_sample_dir + "task_names.csv", dtype=str, delimiter=',')
+  stride_length_idx = list(task_names_in_trajopt_folder).index("stride_length")
 
-  n_sample_trajopt = int(np.loadtxt(dir + "n_sample.csv"))
+  n_sample_trajopt = int(np.loadtxt(trajopt_sample_dir + "n_sample.csv"))
   dist_list = []
   path = ""
   # iter_range = list(range(251, 265)) if zero_stride_length else range(n_sample_trajopt)
   # for j in iter_range:
   for j in range(n_sample_trajopt):
-    path = dir + "%d_%d_task.csv" % (rom_iter, j)
+    path = trajopt_sample_dir + "%d_%d_task.csv" % (rom_iter, j)
     # print("try " + path)
     if os.path.exists(path):
       trajopt_task = np.loadtxt(path)
@@ -1740,6 +1756,8 @@ class Tasks:
     if not (name in self.names):
       raise ValueError("%s doesn't exist in the tasks" % name)
     return self.names.index(name)
+  def GetTaskNames(self):
+    return self.names
   def GetTask(self, task_idx):
     return self.task_arr[task_idx]
   def GetTaskList(self):
@@ -1807,7 +1825,7 @@ if __name__ == "__main__":
   completely_use_trajs_from_model_opt_as_target = True
   use_single_cost_function_for_all_tasks = False
   hybrid_mpc = parsed_yaml_file.get('use_hybrid_rom_mpc')
-  simulation_initialization_mode = 0
+  simulation_initialization_mode = 2
   # Testing
   solve_init_state_again_for_turning_rate = False
   if solve_init_state_again_for_turning_rate:
@@ -1855,7 +1873,7 @@ if __name__ == "__main__":
 
   # Task list
   n_task_sl = 25 #25 #10
-  n_task_ph = 5  #25 #3
+  n_task_ph = 25  #25 #3
   n_task_tr = 30  #25 #3
   n_task_gi = 35  #25 #3
   tasks = Tasks()
@@ -1884,14 +1902,14 @@ if __name__ == "__main__":
   tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
-  # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
+  tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.8, 1.0, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.7, 1.0, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim([0.95], "pelvis_height")
-  tasks.AddTaskDim([0.85], "pelvis_height")
-  tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_gi), "ground_incline")
+  # tasks.AddTaskDim([0.85], "pelvis_height")
+  # tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_gi), "ground_incline")
   # tasks.AddTaskDim(np.linspace(-0.55, 0.55, n_task_gi), "ground_incline")
-  # tasks.AddTaskDim([0.0], "ground_incline")
+  tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
 
@@ -1912,10 +1930,10 @@ if __name__ == "__main__":
   # log_indices_for_plot = list(range(240))
 
   # Select two tasks to plot
-  # task_to_plot = ['stride_length', 'pelvis_height']  # order matters
+  task_to_plot = ['stride_length', 'pelvis_height']  # order matters
   # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
   # task_to_plot = ['stride_length', 'turning_rate']  # order matters
-  task_to_plot = ['stride_length', 'ground_incline']  # order matters
+  # task_to_plot = ['stride_length', 'ground_incline']  # order matters
 
   # Parameters for setting the task range for data collection filtering
   # mean_sl = 0.2
@@ -1996,8 +2014,9 @@ if __name__ == "__main__":
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
-  model_slices = [1, 300, 400, 500]
-  model_slices = [1, 400, 450, 500]
+  model_slices = [1, 400, 500]
+  # model_slices = [1, 300, 400, 500]
+  # model_slices = [1, 400, 450, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -2028,8 +2047,9 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
-  model_slices_cost_landsacpe = [1, 300, 400, 500]
-  model_slices_cost_landsacpe = [1, 400, 450, 500]
+  model_slices_cost_landsacpe = [1, 400, 500]
+  # model_slices_cost_landsacpe = [1, 300, 400, 500]
+  # model_slices_cost_landsacpe = [1, 400, 450, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
@@ -2062,6 +2082,8 @@ if __name__ == "__main__":
   if use_single_cost_function_for_all_tasks:
     completely_use_trajs_from_model_opt_as_target = False
     FOM_model_dir_for_planner = ""
+  if FOM_model_dir_for_planner == "":
+    FOM_model_dir_for_planner = model_dir
 
   # Check directory names
   EnforceSlashEnding(model_dir)
@@ -2106,19 +2128,12 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
-  model_indices = [1, 300, 400, 500]
-  model_indices = [1, 400, 450, 500]
+  model_indices = [1, 400, 500]
+  # model_indices = [1, 300, 400, 500]
+  # model_indices = [1, 400, 450, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
-  nominal_task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str, delimiter=',')
-  # Make sure the order is correct
-  if not ((nominal_task_names[0] == "stride_length") &
-          (nominal_task_names[1] == "ground_incline") &
-          (nominal_task_names[2] == "duration") &
-          (nominal_task_names[3] == "turning_rate") &
-          (nominal_task_names[4] == "pelvis_height")):
-    raise ValueError("ERROR: unexpected task name or task order")
   # Get duration from model optimization file
   path_1_0_task = model_dir + "1_0_task.csv"
   if os.path.exists(path_1_0_task):
@@ -2134,6 +2149,7 @@ if __name__ == "__main__":
   nonzero_incline = "ground_incline" in tasks.GetVaryingTaskElementName()
 
   # Make sure the dimension is correct
+  nominal_task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str, delimiter=',')
   if len(nominal_task_names) != tasks.get_task_dim():
     print("nominal_task_names = ", nominal_task_names)
     print("tasks_info = ", tasks.tasks_info())

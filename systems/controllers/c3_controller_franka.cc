@@ -2,6 +2,8 @@
 
 #include <utility>
 #include <chrono>
+#include <iterator>
+#include <vector>
 
 
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
@@ -467,9 +469,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //Multi-sample code piece
   double x_samplec; //center of sampling circle
   double y_samplec; //center of sampling circle
-  double radius = 0.075; //radius of sampling circle
-  int num_samples = 4;
+  double radius = 0.0579; //radius of sampling circle
+  int num_samples = 3;
   double theta = 360/num_samples * PI / 180;
+  
+  std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
 
   VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
   Vector3d ee = end_effector; //end effector current position
@@ -503,15 +507,14 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   for(int i =1; i < num_samples + 1; i++ ){
       // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
-      double pos_x  = x_samplec + radius * sin(theta);
-      double pos_y = y_samplec + radius *cos(theta);
-      double ee_x_diff = pos_x - ee[0];
-      double ee_y_diff = pos_y - ee[1];
-
-      ee[0] = ee[0] + ee_x_diff;
-      ee[1] = ee[1] + ee_y_diff;
+      double pos_x  = x_samplec + radius * sin(i*theta);
+      double pos_y = y_samplec + radius *cos(i*theta);
+      ee[0] = pos_x;
+      ee[1] = pos_y;
       
-      test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);
+      test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);  //current state with modified ee position
+      
+      candidate_states[i-1] = test_state;
 
       vector<VectorXd> fullsol = opt.SolveFullSolution(test_state, delta, w);  //outputs full z
       vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
@@ -523,8 +526,16 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   double min = *std::min_element(cost_vector.begin(), cost_vector.end());
+  // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+  // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
   std::cout<<"minimum value"<<min<<std::endl;
+
+  std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+  int index = std::distance(std::begin(cost_vector), it);
+  std::cout << "index of smallest element: " << index;
+  state << candidate_states[index];
   
+
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);

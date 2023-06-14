@@ -1308,8 +1308,27 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     assert len(x_sample) == len(y_sample)
     return [np.interp(x, x_sample, y_sample[:,i]) for i in range(3)]
 
-  min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val)])
-  max_nonzero_ratio = max(z[np.logical_and(z > 0, z < big_val)])
+  # Visualize range
+  x_range_plot_window = []
+  y_range_plot_window = []
+  limit_margin = 0.01
+  if visualize_training_task_range:
+    x_range_plot_window = [min(min(x), training_task_range[0][0]) - limit_margin, max(max(x), training_task_range[0][1]) + limit_margin]
+    y_range_plot_window = [min(min(y), training_task_range[1][0]) - limit_margin, max(max(y), training_task_range[1][1]) + limit_margin]
+  else:
+    x_range_plot_window = [min(x) - limit_margin, max(x) + limit_margin]
+    y_range_plot_window = [min(y) - limit_margin, max(y) + limit_margin]
+  # Overwrite manually
+  # y_range_plot_window = [0.65, max(max(y), training_task_range[1][1]) + limit_margin]
+  # x_range_plot_window = [0, max(x) + limit_margin]
+  # x_range_plot_window = [-1, 1]
+  # y_range_plot_window = [0.85, 1.05]
+  # x_range_plot_window = [0, max(x) + limit_margin]
+  # y_range_plot_window = [-1.1, 1.1]
+
+  # Get min and max value of cost improvement
+  min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val) & np.logical_and(x > x_range_plot_window[0], x < x_range_plot_window[1]) & np.logical_and(y > y_range_plot_window[0], y < y_range_plot_window[1])])
+  max_nonzero_ratio = max(z[np.logical_and(z > 0, z < big_val) & np.logical_and(x > x_range_plot_window[0], x < x_range_plot_window[1]) & np.logical_and(y > y_range_plot_window[0], y < y_range_plot_window[1])])
   # min_nonzero_ratio = 0.5
   print("min_nonzero_ratio = ", min_nonzero_ratio)
   print("max_nonzero_ratio = ", max_nonzero_ratio)
@@ -1326,7 +1345,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   for i in range(n_level)[::-1]:
     levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, n_decimal))
   levels[0] = round(levels[0] - 0.1**n_decimal, n_decimal)
-  # levels[-1] = levels[-1] + 0.1**n_decimal
+  levels[-1] = round(levels[-1] + 0.1**n_decimal, n_decimal)
 
   colors = [tuple(color_code_interpolator(i / (n_level - 2))) for i in range(n_level - 1)]
 
@@ -1411,17 +1430,8 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     cmt_to_visualize = cmt[cmt[:, 1] == 1]
     plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'rx', markersize=3)
 
-  limit_margin = 0.01
-  if visualize_training_task_range:
-    plt.xlim([min(min(x), training_task_range[0][0]) - limit_margin, max(max(x), training_task_range[0][1]) + limit_margin])
-    plt.ylim([min(min(y), training_task_range[1][0]) - limit_margin, max(max(y), training_task_range[1][1]) + limit_margin])
-    # plt.ylim([0.65, max(max(y), training_task_range[1][1]) + limit_margin])
-  else:
-    plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
-    # plt.xlim([0, max(x) + limit_margin])
-    plt.ylim([min(y) - limit_margin, max(y) + limit_margin])
-    # plt.xlim([-1, 1])
-    # plt.ylim([0.85, 1.05])
+  plt.xlim(x_range_plot_window)
+  plt.ylim(y_range_plot_window)
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
   plt.title('Cost comparison between iteration %d and %d' % (iter1, iter2))

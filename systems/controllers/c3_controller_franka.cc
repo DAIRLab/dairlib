@@ -468,7 +468,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   double x_samplec; //center of sampling circle
   double y_samplec; //center of sampling circle
   double radius = 0.075; //radius of sampling circle
-  int num_samples = 3;
+  int num_samples = 4;
   double theta = 360/num_samples * PI / 180;
 
   VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
@@ -489,38 +489,41 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   // cost_vector = {3, 4, 5};
 
-  cost_vector.push_back(3);
-  cost_vector.push_back(4);
-  cost_vector.push_back(5);
+  // cost_vector.push_back(3);
+  // cost_vector.push_back(4);
+  // cost_vector.push_back(5);
   
-  for (int x : cost_vector){
-        std::cout << x << std::endl;
+  // for (int x : cost_vector){
+  //       std::cout << x << std::endl;
+  // }
+
+  // double min = *std::min_element(cost_vector.begin(), cost_vector.end());
+  // std::cout<<"minimum value"<<min<<std::endl;
+  
+  for(int i =1; i < num_samples + 1; i++ ){
+      // VectorXd cost_vector = VectorXd::Zero(num_samples);
+
+      double pos_x  = x_samplec + radius * sin(theta);
+      double pos_y = y_samplec + radius *cos(theta);
+      double ee_x_diff = pos_x - ee[0];
+      double ee_y_diff = pos_y - ee[1];
+
+      ee[0] = ee[0] + ee_x_diff;
+      ee[1] = ee[1] + ee_y_diff;
+      
+      test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);
+
+      vector<VectorXd> fullsol = opt.SolveFullSolution(test_state, delta, w);  //outputs full z
+      vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+      double cost = opt.CalcCost(test_state, optimalinputseq); 
+      cost_vector[i-1] = cost;
+
+      std::cout<<"This is the cost of sample"<<i<<" : " << cost<<std::endl;
+
   }
 
   double min = *std::min_element(cost_vector.begin(), cost_vector.end());
   std::cout<<"minimum value"<<min<<std::endl;
-  
-  // for(int i =1; i < num_samples + 1; i++ ){
-  //     VectorXd cost_vector = VectorXd::Zero(num_samples);
-
-  //     double pos_x  = x_samplec + radius * sin(theta);
-  //     double pos_y = y_samplec + radius *cos(theta);
-  //     double ee_x_diff = pos_x - ee[0];
-  //     double ee_y_diff = pos_y - ee[1];
-
-  //     ee[0] = ee[0] + ee_x_diff;
-  //     ee[1] = ee[1] + ee_y_diff;
-      
-  //     test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);
-
-  //     vector<VectorXd> fullsol = opt.SolveFullSolution(test_state, delta, w);  //outputs full z
-  //     vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-  //     double cost = opt.CalcCost(state, optimalinputseq); 
-  //     cost_vector[i-1] = cost;
-
-  //     std::cout<<"This is the cost of sample"<<i<<" : " << cost<<std::endl;
-
-  // }
   
 
   /// calculate the input given x[i]

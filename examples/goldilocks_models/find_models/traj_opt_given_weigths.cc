@@ -3028,6 +3028,23 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     trajopt.AddConstraint(com_center_polygon_constraint, x0.head(n_q));
   }
 
+  // Testing -- CoP constraint (away from the edge of support polygon)
+  // Constraint:
+  //     || (F1*(l)+F2*(-l))/(F1+F2) || <= alpha*l    where l is 1/2 foot length
+  //  -> || (F1-F2)/(F1+F2) || <= alpha
+  if (setting.cop_ratio >= 0) {
+    double alpha = setting.cop_ratio;
+    for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
+      for (int index = 0; index < num_time_samples[mode]; index++) {
+        auto lambda = trajopt.force(mode, index);
+        trajopt.AddLinearConstraint(
+            (-1 - alpha) * lambda(2) + (1 - alpha) * lambda(5) <= 0);
+        trajopt.AddLinearConstraint(
+            (1 - alpha) * lambda(2) + (-1 - alpha) * lambda(5) <= 0);
+      }
+    }
+  }
+
   // Testing -- swing foot cubic spline constraint
   if (setting.swing_foot_cublic_spline_constraint) {
     int constraint_sample_spacing = 2;

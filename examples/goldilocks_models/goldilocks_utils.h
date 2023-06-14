@@ -58,6 +58,7 @@ class InnerLoopSetting {
   bool swing_foot_cublic_spline_constraint;
   bool zero_ending_pelvis_angular_vel;
   bool com_at_center_of_support_polygon;
+  double cop_ratio;
 
   bool heavy_toe;
   bool cubic_spline_in_joint_space;

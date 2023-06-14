@@ -229,6 +229,12 @@ DEFINE_bool(cubic_spline_in_rom_constraint, false, "");
 DEFINE_bool(swing_foot_cublic_spline, false, "");
 DEFINE_bool(zero_ending_pelvis_angular_vel, false, "");
 DEFINE_bool(com_at_center_of_support_polygon, false, "");
+DEFINE_double(cop_ratio, -1,
+              "Constraint on center of pressure -- ratio of the center of "
+              "pressure position to the support polygon size (all relative to "
+              "the center of polygon). "
+              "Acceptable range: 0 to 1. If it's negative, then we don't "
+              "impose constraint.");
 DEFINE_double(mid_foot_height, 0.05, "");
 
 DEFINE_bool(only_update_wrt_main_cost, false, "");
@@ -1969,6 +1975,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
       FLAGS_zero_ending_pelvis_angular_vel;  // for testing
   inner_loop_setting.com_at_center_of_support_polygon =
       FLAGS_com_at_center_of_support_polygon;      // for testing
+  inner_loop_setting.cop_ratio = FLAGS_cop_ratio;  // for testing
   inner_loop_setting.heavy_toe = FLAGS_heavy_toe;  // for testing
   inner_loop_setting.cubic_spline_in_joint_space =
       FLAGS_cubic_spline_in_joint_space;  // for testing
@@ -1984,6 +1991,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
        << inner_loop_setting.zero_ending_pelvis_angular_vel << endl;
   cout << "com_at_center_of_support_polygon = "
        << inner_loop_setting.com_at_center_of_support_polygon << endl;
+  cout << "cop_ratio = " << inner_loop_setting.cop_ratio << endl;
   cout << "heavy_toe = " << inner_loop_setting.heavy_toe << endl;
   cout << "cubic_spline_in_joint_space = "
        << inner_loop_setting.cubic_spline_in_joint_space << endl;
@@ -1993,6 +2001,15 @@ int findGoldilocksModels(int argc, char* argv[]) {
   }
   if (inner_loop_setting.cubic_spline_in_joint_space) {
     DRAKE_DEMAND(inner_loop_setting.swing_foot_cublic_spline_constraint);
+  }
+  // We don't allow both `com_at_center_of_support_polygon` and `cop_ratio`
+  // constraints to be active at the same time.
+  DRAKE_DEMAND(!(inner_loop_setting.com_at_center_of_support_polygon &&
+                 (inner_loop_setting.cop_ratio >= 0)));
+  DRAKE_DEMAND(inner_loop_setting.cop_ratio <= 1);
+  if (inner_loop_setting.cop_ratio < 0) {
+    // only acceptable default value is -1. Checking here in case of a bug.
+    DRAKE_DEMAND(inner_loop_setting.cop_ratio == -1);
   }
 
   // Construct reduced order model

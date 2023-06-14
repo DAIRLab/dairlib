@@ -15,17 +15,18 @@ import copy  # for deepcopying a list
 import yaml
 import csv
 import numpy as np
-import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+import matplotlib.pyplot as plt
 from matplotlib import cm
-import matplotlib.tri as mtri
 import matplotlib
+import matplotlib as mpl
+import matplotlib.tri as mtri
+import matplotlib.patches as mpatches
+from matplotlib.patches import Rectangle
 from scipy.interpolate import LinearNDInterpolator
 from scipy.interpolate import interp1d
-import matplotlib.patches as mpatches
 import codecs
 import math
-from matplotlib.patches import Rectangle
 
 from py_utils import FindVarValueInString
 
@@ -1272,6 +1273,18 @@ def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_val
 
   return [x,y,z]
 
+
+class MplColorHelper:
+  def __init__(self, cmap_name):
+    self.cmap_name = cmap_name
+    self.cmap = plt.get_cmap(cmap_name)
+    self.norm = mpl.colors.Normalize(vmin=0, vmax=1)
+    self.scalarMap = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
+
+  def get_rgb(self, val):
+    return self.scalarMap.to_rgba(val)[:3]
+
+
 # Sometimes we set `hide_artifacts_of_increased_cost`=True because the ratio bigger than 1 was from bad solves at boundary
 def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
   x, y, z = superimposed_data
@@ -1289,11 +1302,23 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # Colors
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
   color_inf = 'darkred'
+  eps = 1e-8
+  one = 1-eps
   if use_blue_red_color_scheme:
-    eps = 1e-8
-    color_improved_low = np.array([1-eps, 0, 0])
-    color_improved_mid = np.array([1-eps, 1-eps, 1-eps])
-    color_improved_high = np.array([0, 0, 1-eps])
+    # color_improved_low = np.array([one, 0, 0])
+    # color_improved_mid = np.array([0.9, 0.9, 0.9])
+    # color_improved_high = np.array([0, 0, one])
+    # color_improved_low = np.array([one, 0, 0])
+    # color_improved_mid = np.array([one, 0.95, 0.0])
+    # color_improved_high = np.array([0, 0, one])
+    cmap = MplColorHelper('coolwarm')
+    color_improved_low = cmap.get_rgb(1)
+    color_improved_mid = cmap.get_rgb(0.5)
+    color_improved_high = cmap.get_rgb(0)
+    cmap = MplColorHelper('Spectral')
+    color_improved_low = cmap.get_rgb(0)
+    color_improved_mid = cmap.get_rgb(0.5)
+    color_improved_high = cmap.get_rgb(1)
     x_sample = np.array([0, 0.5, 1])
     y_sample = np.array([color_improved_high, color_improved_mid, color_improved_low])
   else:

@@ -1363,14 +1363,25 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   if hide_artifacts_of_increased_cost:
     plot_the_ratio_bigger_than_1 = False
 
+  # Adjust n_level if the ratio differece is too small
+  if (max_nonzero_ratio - min_nonzero_ratio) / (n_level - 1) < 0.1**n_decimal:
+    print("WARNING -- this feature hasn't been tested yet")
+    n_level = (max_nonzero_ratio - min_nonzero_ratio) / 0.1**n_decimal + 1
+
   # discrete color map
   delta_level = (min(1, max_nonzero_ratio) - min_nonzero_ratio) / (n_level - 1)
 
   levels = []
   for i in range(n_level)[::-1]:
-    levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, n_decimal))
-  levels[0] = round(levels[0] - 0.1**n_decimal, n_decimal)
-  levels[-1] = round(levels[-1] + 0.1**n_decimal, n_decimal)
+    val = min(1, max_nonzero_ratio) - i * delta_level
+    if i == 0:
+      levels.append(math.ceil(val * 10**n_decimal)/10**n_decimal)  # always round up for the top level
+    elif i == n_level-1:
+      levels.append(math.floor(val * 10**n_decimal)/10**n_decimal)  # always round down for the bottom level
+    else:
+      levels.append(round(val, n_decimal))
+    # levels.append(val)
+  # levels = [0.81, 0.82, 0.84, 0.86, 0.88, 0.89, 0.9, 0.92]
 
   colors = [tuple(color_code_interpolator(i / (n_level - 2))) for i in range(n_level - 1)]
 
@@ -1437,6 +1448,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
 
   cbar.set_ticks(levels)
   cbar.ax.set_yticklabels(levels)
+  # cbar.ax.set_yticklabels([round(levels[i], 2) for i in range(len(levels))])
 
   if visualize_training_task_range:
     ave = np.average(training_task_range, axis=1)
@@ -1851,6 +1863,7 @@ if __name__ == "__main__":
   eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval/"
   # eval_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/all_logs/20230611_sim_eval_20230530_model/1_with_mpc_limit/3_continue_2_but_denser_samples/sim_cost_eval/"
   # eval_dir = "/media/yuming/sata-ssd1/dairlib_data/sim_cost_eval/"
+  # eval_dir = "/home/yuming/Dropbox/Paper_writing/journal_paper/making_figures/new_plots_for_revisions/good_sim_plots/sim_cost_eval/"
   # eval_dir = "/media/yuming/data/dairlib_data/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/test_sim_eval/"
   # eval_dir = "../dairlib_data/goldilocks_models/sim_cost_eval_2/"

@@ -1280,16 +1280,33 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   iter2 = model_slice_value
 
   # Parameters
-  n_level = 5
+  n_level = 8
   n_decimal = 2
   plot_lost_task = True
   show_legend = False
+  use_blue_red_color_scheme = True
 
   # Colors
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
-  color_improved_low = np.array([0.2, 0.2, 1])
-  color_improved_high = np.array([0.1, 0.1, 0.5])
   color_inf = 'darkred'
+  if use_blue_red_color_scheme:
+    eps = 1e-8
+    color_improved_low = np.array([1-eps, 0, 0])
+    color_improved_mid = np.array([1-eps, 1-eps, 1-eps])
+    color_improved_high = np.array([0, 0, 1-eps])
+    x_sample = np.array([0, 0.5, 1])
+    y_sample = np.array([color_improved_high, color_improved_mid, color_improved_low])
+  else:
+    color_improved_low = np.array([0.2, 0.2, 1])
+    color_improved_high = np.array([0.1, 0.1, 0.5])
+    x_sample = np.array([0, 1])
+    y_sample = np.array([color_improved_high, color_improved_low])
+  def color_code_interpolator(x):
+    assert 0 <= x <= 1
+    # import pdb;pdb.set_trace()
+    assert np.all(0 <= x_sample) and np.all(x_sample <= 1)
+    assert len(x_sample) == len(y_sample)
+    return [np.interp(x, x_sample, y_sample[:,i]) for i in range(3)]
 
   min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val)])
   max_nonzero_ratio = max(z[np.logical_and(z > 0, z < big_val)])
@@ -1311,7 +1328,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   levels[0] = round(levels[0] - 0.1**n_decimal, n_decimal)
   # levels[-1] = levels[-1] + 0.1**n_decimal
 
-  colors = [tuple(color_improved_high + (color_improved_low - color_improved_high) * i / (n_level - 2)) for i in range(n_level - 1)]
+  colors = [tuple(color_code_interpolator(i / (n_level - 2))) for i in range(n_level - 1)]
 
   # Extend levels and colors for values bigger than 1
   if plot_the_ratio_bigger_than_1:
@@ -1351,7 +1368,8 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines
-  ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
+  if not use_blue_red_color_scheme:
+    ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
 
   # Add contour values
   # manual_locations = [(0,0.95)]
@@ -1897,16 +1915,16 @@ if __name__ == "__main__":
   # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
   # tasks.AddTaskDim([0.2], "stride_length")
   # tasks.AddTaskDim(np.linspace(-1.0, 1.0, n_task_tr), "turning_rate")
-  # tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
+  tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
   # tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
-  tasks.AddTaskDim([0.0], "turning_rate")
+  # tasks.AddTaskDim([0.0], "turning_rate")
   # pelvis_heights used in both simulation and in CollectAllTrajoptSampleIndices
   # tasks.AddTaskDim(np.linspace(0.85, 1.05, n_task_ph), "pelvis_height")
-  tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
+  # tasks.AddTaskDim(np.linspace(0.5, 1.1, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.8, 1.0, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim(np.linspace(0.7, 1.0, n_task_ph), "pelvis_height")
   # tasks.AddTaskDim([0.95], "pelvis_height")
-  # tasks.AddTaskDim([0.85], "pelvis_height")
+  tasks.AddTaskDim([0.85], "pelvis_height")
   # tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_gi), "ground_incline")
   # tasks.AddTaskDim(np.linspace(-0.55, 0.55, n_task_gi), "ground_incline")
   tasks.AddTaskDim([0.0], "ground_incline")
@@ -1930,9 +1948,9 @@ if __name__ == "__main__":
   # log_indices_for_plot = list(range(240))
 
   # Select two tasks to plot
-  task_to_plot = ['stride_length', 'pelvis_height']  # order matters
+  #task_to_plot = ['stride_length', 'pelvis_height']  # order matters
   # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
-  # task_to_plot = ['stride_length', 'turning_rate']  # order matters
+  task_to_plot = ['stride_length', 'turning_rate']  # order matters
   # task_to_plot = ['stride_length', 'ground_incline']  # order matters
 
   # Parameters for setting the task range for data collection filtering
@@ -2014,7 +2032,7 @@ if __name__ == "__main__":
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
-  model_slices = [1, 400, 500]
+  # model_slices = [1, 400, 500]
   # model_slices = [1, 300, 400, 500]
   # model_slices = [1, 400, 450, 500]
   # color_names = ["darkblue", "maroon"]
@@ -2047,7 +2065,7 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
-  model_slices_cost_landsacpe = [1, 400, 500]
+  # model_slices_cost_landsacpe = [1, 400, 500]
   # model_slices_cost_landsacpe = [1, 300, 400, 500]
   # model_slices_cost_landsacpe = [1, 400, 450, 500]
   #model_slices_cost_landsacpe = [1, 60, 80, 100]
@@ -2128,7 +2146,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
-  model_indices = [1, 400, 500]
+  # model_indices = [1, 400, 500]
   # model_indices = [1, 300, 400, 500]
   # model_indices = [1, 400, 450, 500]
   print("model_indices = \n" + str(np.array(model_indices)))
@@ -2176,7 +2194,7 @@ if __name__ == "__main__":
     idx_closedloop_cost_element = 1
 
   # Plotting setup -- resolution of plots
-  fig_dpi = 1200 if high_res_figure else 300
+  fig_dpi = 600 if high_res_figure else 300
 
   ### Box visualization for training task range
   visualize_training_task_range = True

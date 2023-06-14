@@ -448,24 +448,85 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
   
+  
+  //Position sampling
+  // Eigen::VectorXd ball_orientation_vector = q_plant.head(4);
+  // // std::cout<<"quaternion orientation of ball "<<ball_orientation_vector<<std::endl;
+  // Eigen::Quaternion<double> ball_orientation(ball_orientation_vector[0],ball_orientation_vector[1],ball_orientation_vector[2],ball_orientation_vector[3]);
+  // // ball_orientation.w
+  // Matrix3d ball_rot_matrix = ball_orientation.toRotationMatrix();
+  // std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
+  // // Eigen::RotationMatrix ball_rot_matrix(&ball_orientation);
+  // // std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
+
+
+ ////////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////////
+
+  //Multi-sample code piece
+  double x_samplec; //center of sampling circle
+  double y_samplec; //center of sampling circle
+  double radius = 0.075; //radius of sampling circle
+  int num_samples = 3;
+  double theta = 360/num_samples * PI / 180;
+
+  VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
+  Vector3d ee = end_effector; //end effector current position
+  // VectorXd cost_vector = VectorXd::Zero(num_samples);
+  
+  // double theta = 360/num_samples;
+  // std::cout<<"Theta"<<theta<<std::endl;
+  // std::cout<<"state vector"<<state<<std::endl;
+  // std::cout<<"Ball x position"<<state[7]<<std::endl;
+  // Vector3d ball_xyz = ball.tail(3);
+
+  x_samplec = ball_xyz[0]; //state[7];
+  y_samplec = ball_xyz[1]; //state[8];
+
+  // VectorXd cost_vector = VectorXd::Zero(num_samples);
+  std::vector<double> cost_vector(num_samples);
+
+  // cost_vector = {3, 4, 5};
+
+  cost_vector.push_back(3);
+  cost_vector.push_back(4);
+  cost_vector.push_back(5);
+  
+  for (int x : cost_vector){
+        std::cout << x << std::endl;
+  }
+
+  double min = *std::min_element(cost_vector.begin(), cost_vector.end());
+  std::cout<<"minimum value"<<min<<std::endl;
+  
+  // for(int i =1; i < num_samples + 1; i++ ){
+  //     VectorXd cost_vector = VectorXd::Zero(num_samples);
+
+  //     double pos_x  = x_samplec + radius * sin(theta);
+  //     double pos_y = y_samplec + radius *cos(theta);
+  //     double ee_x_diff = pos_x - ee[0];
+  //     double ee_y_diff = pos_y - ee[1];
+
+  //     ee[0] = ee[0] + ee_x_diff;
+  //     ee[1] = ee[1] + ee_y_diff;
+      
+  //     test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);
+
+  //     vector<VectorXd> fullsol = opt.SolveFullSolution(test_state, delta, w);  //outputs full z
+  //     vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+  //     double cost = opt.CalcCost(state, optimalinputseq); 
+  //     cost_vector[i-1] = cost;
+
+  //     std::cout<<"This is the cost of sample"<<i<<" : " << cost<<std::endl;
+
+  // }
+  
+
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
   
-  //Position sampling
-  Eigen::VectorXd ball_orientation_vector = q_plant.head(4);
-  // std::cout<<"quaternion orientation of ball "<<ball_orientation_vector<<std::endl;
-  Eigen::Quaternion<double> ball_orientation(ball_orientation_vector[0],ball_orientation_vector[1],ball_orientation_vector[2],ball_orientation_vector[3]);
-  // ball_orientation.w
-  Matrix3d ball_rot_matrix = ball_orientation.toRotationMatrix();
-  std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
-  // Eigen::RotationMatrix ball_rot_matrix(&ball_orientation);
-  // std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
-
-  //Multi-sample code piece
-  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
-  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-  double cost = opt.CalcCost(state, optimalinputseq); 
-  std::cout<<"This is the cost "<<cost<<std::endl;
+  
 
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();

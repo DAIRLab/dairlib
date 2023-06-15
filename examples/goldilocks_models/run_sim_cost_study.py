@@ -1302,6 +1302,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # Colors
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
   color_inf = 'darkred'
+  color_inf = (147/255, 81/255, 22/255)  # brown
   eps = 1e-8
   one = 1-eps
   if use_blue_red_color_scheme:
@@ -1316,6 +1317,10 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     color_improved_mid = cmap.get_rgb(0.5)
     color_improved_high = cmap.get_rgb(0)
     cmap = MplColorHelper('Spectral')
+    color_improved_low = cmap.get_rgb(0)
+    color_improved_mid = cmap.get_rgb(0.5)
+    color_improved_high = cmap.get_rgb(1)
+    cmap = MplColorHelper('RdYlBu')
     color_improved_low = cmap.get_rgb(0)
     color_improved_mid = cmap.get_rgb(0.5)
     color_improved_high = cmap.get_rgb(1)

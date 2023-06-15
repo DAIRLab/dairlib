@@ -67,16 +67,17 @@ def IsSimLogGood(x, t_x, desried_sim_end_time):
       return False
 
   # Check that the pelvis didn't fall below a certain height
-  min_height = 0.4
-  for idx in range(x.shape[0]):
-    if x[idx, 6] < min_height:
-      msg = msg_first_column + ": pelvis fell below " + str(
-        min_height) + " at time " + str(t_x[idx]) + "\n"
-      print(msg)
-      f = open(path_status_log, "a")
-      f.write(msg)
-      f.close()
-      return False
+  if ground_incline == 0:
+    min_height = 0.4
+    for idx in range(x.shape[0]):
+      if x[idx, 6] < min_height:
+        msg = msg_first_column + ": pelvis fell below " + str(
+          min_height) + " at time " + str(t_x[idx]) + "\n"
+        print(msg)
+        f = open(path_status_log, "a")
+        f.write(msg)
+        f.close()
+        return False
 
   return True
 

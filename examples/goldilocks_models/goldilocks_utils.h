@@ -62,6 +62,8 @@ class InnerLoopSetting {
 
   bool heavy_toe;
   bool cubic_spline_in_joint_space;
+
+  bool no_model_update;
 };
 
 // SubQpData stores all the data about the QPs in the SQP algorithm

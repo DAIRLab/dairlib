@@ -2013,6 +2013,9 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double stride_length = task.get("stride_length");
   double ground_incline = task.get("ground_incline");
   double turning_rate = task.get("turning_rate");
+  if (setting.no_model_update) {
+    if (turning_rate == 0 && ground_incline == 0) {turning_rate = 1e-8;}
+  }
   double duration = task.get("duration");
   double pelvis_height = task.get("pelvis_height");
   double swing_margin = task.get("swing_margin");

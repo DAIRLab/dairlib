@@ -19,6 +19,7 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib as mpl
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import matplotlib.tri as mtri
@@ -406,6 +407,18 @@ def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_val
 
   return [x,y,z]
 
+
+class MplColorHelper:
+  def __init__(self, cmap_name):
+    self.cmap_name = cmap_name
+    self.cmap = plt.get_cmap(cmap_name)
+    self.norm = mpl.colors.Normalize(vmin=0, vmax=1)
+    self.scalarMap = cm.ScalarMappable(norm=self.norm, cmap=self.cmap)
+
+  def get_rgb(self, val):
+    return self.scalarMap.to_rgba(val)[:3]
+
+
 # Sometimes we set `hide_artifacts_of_increased_cost`=True because the ratio bigger than 1 was from bad solves at boundary
 def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
   x, y, z = superimposed_data
@@ -414,19 +427,76 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   iter2 = model_slice_value
 
   # Parameters
-  n_level = 5
+  n_level = 8
   n_decimal = 2
   plot_lost_task = True
   show_legend = False
+  use_blue_red_color_scheme = True
 
   # Colors
+  # Colors
   color_0 = (0, 0.6, 0, 0.5)  # translucent green
-  color_improved_low = np.array([0.2, 0.2, 1])
-  color_improved_high = np.array([0.1, 0.1, 0.5])
   color_inf = 'darkred'
+  color_inf = (147/255, 81/255, 22/255)  # brown
+  eps = 1e-8
+  one = 1-eps
+  if use_blue_red_color_scheme:
+    # color_improved_low = np.array([one, 0, 0])
+    # color_improved_mid = np.array([0.9, 0.9, 0.9])
+    # color_improved_high = np.array([0, 0, one])
+    # color_improved_low = np.array([one, 0, 0])
+    # color_improved_mid = np.array([one, 0.95, 0.0])
+    # color_improved_high = np.array([0, 0, one])
+    cmap = MplColorHelper('coolwarm')
+    color_improved_low = cmap.get_rgb(1)
+    color_improved_mid = cmap.get_rgb(0.5)
+    color_improved_high = cmap.get_rgb(0)
+    cmap = MplColorHelper('Spectral')
+    color_improved_low = cmap.get_rgb(0)
+    color_improved_mid = cmap.get_rgb(0.5)
+    color_improved_high = cmap.get_rgb(1)
+    cmap = MplColorHelper('RdYlBu')
+    color_improved_low = cmap.get_rgb(0)
+    color_improved_mid = cmap.get_rgb(0.5)
+    color_improved_high = cmap.get_rgb(1)
+    x_sample = np.array([0, 0.5, 1])
+    y_sample = np.array([color_improved_high, color_improved_mid, color_improved_low])
+  else:
+    color_improved_low = np.array([0.2, 0.2, 1])
+    color_improved_high = np.array([0.1, 0.1, 0.5])
+    x_sample = np.array([0, 1])
+    y_sample = np.array([color_improved_high, color_improved_low])
+  def color_code_interpolator(x):
+    assert 0 <= x <= 1
+    # import pdb;pdb.set_trace()
+    assert np.all(0 <= x_sample) and np.all(x_sample <= 1)
+    assert len(x_sample) == len(y_sample)
+    return [np.interp(x, x_sample, y_sample[:,i]) for i in range(3)]
 
-  min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val)])
-  max_nonzero_ratio = max(z[np.logical_and(z > 0, z < big_val)])
+  # Visualize range
+  x_range_plot_window = []
+  y_range_plot_window = []
+  limit_margin = 0.01
+  if visualize_training_task_range:
+    x_range_plot_window = [min(min(x), training_task_range[0][0]) - limit_margin, max(max(x), training_task_range[0][1]) + limit_margin]
+    y_range_plot_window = [min(min(y), training_task_range[1][0]) - limit_margin, max(max(y), training_task_range[1][1]) + limit_margin]
+  else:
+    x_range_plot_window = [min(x) - limit_margin, max(x) + limit_margin]
+    y_range_plot_window = [min(y) - limit_margin, max(y) + limit_margin]
+  # Overwrite manually
+  # y_range_plot_window = [0.65, max(max(y), training_task_range[1][1]) + limit_margin]
+  # x_range_plot_window = [0, max(x) + limit_margin]
+  # x_range_plot_window = [-1, 1]
+  # y_range_plot_window = [0.85, 1.05]
+  # x_range_plot_window = [0, max(x) + limit_margin]
+  # y_range_plot_window = [-1.1, 1.1]
+  # y_range_plot_window = [0.65, 1.05]
+  # y_range_plot_window = [0.65, 1.]
+  # y_range_plot_window = [0.9, 1.]
+
+  # Get min and max value of cost improvement
+  min_nonzero_ratio = min(z[np.logical_and(z > 0, z < big_val) & np.logical_and(x > x_range_plot_window[0], x < x_range_plot_window[1]) & np.logical_and(y > y_range_plot_window[0], y < y_range_plot_window[1])])
+  max_nonzero_ratio = max(z[np.logical_and(z > 0, z < big_val) & np.logical_and(x > x_range_plot_window[0], x < x_range_plot_window[1]) & np.logical_and(y > y_range_plot_window[0], y < y_range_plot_window[1])])
   # min_nonzero_ratio = 0.5
   print("min_nonzero_ratio = ", min_nonzero_ratio)
   print("max_nonzero_ratio = ", max_nonzero_ratio)
@@ -441,11 +511,17 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
 
   levels = []
   for i in range(n_level)[::-1]:
-    levels.append(round(min(1, max_nonzero_ratio) - i * delta_level, n_decimal))
-  levels[0] = round(levels[0] - 0.1**n_decimal, n_decimal)
-  # levels[-1] = levels[-1] + 0.1**n_decimal
+    val = min(1, max_nonzero_ratio) - i * delta_level
+    if i == 0:
+      levels.append(math.ceil(val * 10**n_decimal)/10**n_decimal)  # always round up for the top level
+    elif i == n_level-1:
+      levels.append(math.floor(val * 10**n_decimal)/10**n_decimal)  # always round down for the bottom level
+    else:
+      levels.append(round(val, n_decimal))
+    # levels.append(val)
+  # levels = [0.81, 0.82, 0.84, 0.86, 0.88, 0.89, 0.9, 0.92]
 
-  colors = [tuple(color_improved_high + (color_improved_low - color_improved_high) * i / (n_level - 2)) for i in range(n_level - 1)]
+  colors = [tuple(color_code_interpolator(i / (n_level - 2))) for i in range(n_level - 1)]
 
   # levels = [0.92, 0.94, 0.96, 0.98, 1.0]
 
@@ -481,8 +557,9 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines
-  ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
-  # ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels[0:3], extend='both')
+  if not use_blue_red_color_scheme:
+    ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
+    # ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels[0:3], extend='both')
 
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10, extend='both')
   # cbar = fig.colorbar(surf, shrink=0.9, aspect=10)
@@ -518,14 +595,8 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     cmt_to_visualize = cmt[cmt[:, 1] == 1]
     plt.plot(cmt_to_visualize[:, 2], cmt_to_visualize[:, 3], 'wx', markersize=3)
 
-  limit_margin = 0.01
-  plt.xlim([min(x) - limit_margin, max(x) + limit_margin])
-  plt.ylim([min(y) - limit_margin, max(y) + limit_margin])
-  # plt.ylim([0.65, max(y) + limit_margin])
-  # plt.xlim([-1, 1])
-  # plt.ylim([0.65, 1.05])
-  # plt.ylim([0.65, 1.])
-  # plt.ylim([0.9, 1.])
+  plt.xlim(x_range_plot_window)
+  plt.ylim(y_range_plot_window)
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
   plt.title('Cost comparison between iteration %d and %d ' % (iter1, iter2) + "(Open loop)")
@@ -769,6 +840,11 @@ def GetVaryingTaskElementIdx(nominal_task_names):
 
 
 if __name__ == "__main__":
+
+  original_rom_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"
+  original_rom_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230530_two_task_planes__sl_gi_and_sl_tr/robot_1/"
+
+
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220218_explore_task_boundary--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220224_explore_task_boundary_2D--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/trajopt_cost_eval/20220302_explore_task_boundary_2D_gi_tr--20220131_rom17_much_smaller_range__only_walking_forward__more_forward/"
@@ -781,7 +857,8 @@ if __name__ == "__main__":
   # trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   # trajopt_base_dir = "/home/yuming/Desktop/temp/1221/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/"
-  # trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
+  # trajopt_base_dir = "/home/yuming/Desktop/20230611_explore_task_boundary_2D--20230530_two_task_planes__sl_gi_and_sl_tr/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -789,7 +866,7 @@ if __name__ == "__main__":
   # Check directories
   trajopt_data_dir = trajopt_base_dir + "robot_1/"
   output_dir = trajopt_base_dir + "plots/"
-  output_dir = "../temp_plots/"
+  # output_dir = "../temp_plots/"
   if not os.path.exists(trajopt_data_dir):
     raise ValueError("%s doesn't exist" % trajopt_data_dir)
   Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -906,6 +983,8 @@ if __name__ == "__main__":
   min_max_task_filter_for_viz['pelvis_height'] = (0, 2)
   min_max_task_filter_for_viz['ground_incline'] = (-2, 2)
   min_max_task_filter_for_viz['turning_rate'] = (-5, 5)
+  min_max_task_filter_for_viz['turning_rate'] = (-2.2, 2.2)
+  # min_max_task_filter_for_viz['turning_rate'] = (-1.44, 1.44)
   task_boundary_outer_box = {}
   task_boundary_outer_box['stride_length'] = (-0.8, 0.8)
   task_boundary_outer_box['pelvis_height'] = (0.3, 1.3)
@@ -923,7 +1002,7 @@ if __name__ == "__main__":
   visualize_training_task_range = True
   training_task_range = []
   if visualize_training_task_range:
-    nominal_task_ranges = np.loadtxt(trajopt_data_dir + "task_ranges.csv", delimiter=',')
+    nominal_task_ranges = np.loadtxt(original_rom_dir + "task_ranges.csv", delimiter=',')
     training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[0])[0][0]])
     training_task_range.append(nominal_task_ranges[np.where(nominal_task_names == task_to_plot[1])[0][0]])
 
@@ -948,14 +1027,14 @@ if __name__ == "__main__":
   Generate3dPlots(cmt)
   Generate2dPlots(model_indices, cmt)
 
-  ### Compute cost improvement for inidividual task
-  ComputeCostImprovementForIndividualTask(model_indices, cmt)
-
-  ### Compute expected (averaged) cost
-  ComputeExpectedCostOverTask(model_indices, cmt, task_ranges_to_average_over[task_to_plot[0]])
-
-  ### Compute task range over iteration
-  for second_task_value in task_grid_for_range_improvement[task_to_plot[1]]:
-    ComputeAchievableTaskRangeOverIter(cmt, second_task_value)
+  # ### Compute cost improvement for inidividual task
+  # ComputeCostImprovementForIndividualTask(model_indices, cmt)
+  #
+  # ### Compute expected (averaged) cost
+  # ComputeExpectedCostOverTask(model_indices, cmt, task_ranges_to_average_over[task_to_plot[0]])
+  #
+  # ### Compute task range over iteration
+  # for second_task_value in task_grid_for_range_improvement[task_to_plot[1]]:
+  #   ComputeAchievableTaskRangeOverIter(cmt, second_task_value)
 
   plt.show()

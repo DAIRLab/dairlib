@@ -73,6 +73,8 @@ directory_list = []
 if True:
     all_subfolders = [os.path.join(base, o) for o in os.listdir(base) if os.path.isdir(os.path.join(base, o))]
     for subfolder in all_subfolders:
+        if 'explore_task_boundary' in subfolder:
+            continue  # skip the folder that's for exploring boundary of task space
         data_folder = '%s/robot_%d/' % (subfolder, robot_option)
         if os.path.exists(data_folder):
             directory_list.append(data_folder)

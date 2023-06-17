@@ -489,7 +489,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # x_range_plot_window = [-1, 1]
   # y_range_plot_window = [0.85, 1.05]
   # x_range_plot_window = [0, max(x) + limit_margin]
-  # y_range_plot_window = [-1.1, 1.1]
+  # y_range_plot_window = [-1.44, 1.44]
   # y_range_plot_window = [0.65, 1.05]
   # y_range_plot_window = [0.65, 1.]
   # y_range_plot_window = [0.9, 1.]
@@ -841,7 +841,7 @@ def GetVaryingTaskElementIdx(nominal_task_names):
 
 if __name__ == "__main__":
 
-  original_rom_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"
+  # original_rom_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/robot_1/"
   original_rom_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230530_two_task_planes__sl_gi_and_sl_tr/robot_1/"
 
 
@@ -858,7 +858,8 @@ if __name__ == "__main__":
   # trajopt_base_dir = "/home/yuming/Desktop/temp/1221/20221209_explore_task_boundary_2D--rom27_big_range_bigger_step_size_5e-3_torque_weight_dominate_com_center/"
   trajopt_base_dir = "/home/yuming/workspace/dairlib_data/goldilocks_models/planning/robot_1/20230507_various_turning_and_stride_length__smaller_range/"
   trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
-  # trajopt_base_dir = "/home/yuming/Desktop/20230611_explore_task_boundary_2D--20230530_two_task_planes__sl_gi_and_sl_tr/"
+  # trajopt_base_dir = "/home/yuming/Desktop/20230518_explore_task_boundary_2D__bigger_grid--20230507_various_turning_and_stride_length__smaller_range/2_adding_eps_to_zero_turning_task/"
+  trajopt_base_dir = "/home/yuming/Desktop/20230611_explore_task_boundary_2D--20230530_two_task_planes__sl_gi_and_sl_tr/data/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -896,6 +897,7 @@ if __name__ == "__main__":
   # task_to_plot = ['ground_incline', 'turning_rate']
   task_to_plot = ['stride_length', 'turning_rate']
   # task_to_plot = ['turning_rate', 'stride_length']
+  # task_to_plot = ['stride_length', 'ground_incline']
   all_task_slice_value_map = {}
   # all_task_slice_value_map['stride_length'] = [-0.16, 0, 0.16]
   # all_task_slice_value_map['stride_length'] = [-0.2, -0.1, 0, 0.1, 0.2]
@@ -952,6 +954,7 @@ if __name__ == "__main__":
   task_grid_for_cost_improvement["stride_length"] = np.linspace(-0.7, 0.7, 15)
   task_grid_for_cost_improvement["pelvis_height"] = np.linspace(1.1, 0.6, 11)
   task_grid_for_cost_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 15)
+  task_grid_for_cost_improvement["ground_incline"] = np.linspace(-0.7, 0.7, 15)
   x_1, y_1 = np.meshgrid(task_grid_for_cost_improvement[task_to_plot[0]], task_grid_for_cost_improvement[task_to_plot[1]])
   task_value_grid_for_computing_cost_improvement = [x_1, y_1]
 
@@ -969,6 +972,7 @@ if __name__ == "__main__":
   task_grid_for_range_improvement = {}
   task_grid_for_range_improvement["pelvis_height"] = np.linspace(1.0, 0.5, 6)
   task_grid_for_range_improvement["turning_rate"] = np.linspace(-1.4, 1.4, 7)
+  task_grid_for_range_improvement["ground_incline"] = np.linspace(-0.6, 0.6, 7)
 
   # Parameters for visualization
   max_cost_to_ignore = 2  # 2

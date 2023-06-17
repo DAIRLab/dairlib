@@ -21,6 +21,7 @@ class TimeVisualizer(object):
         # Text box
         self.text_box = vis.TextItem('', '', view)
         self.text_box.setProperty('Position', [10, 300])
+        # self.text_box.setProperty('Position', [10, 600])
         self.text_box.setProperty('Font Size', 24)
         self.text_box.setProperty('Bold', True)
 

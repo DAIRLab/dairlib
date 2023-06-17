@@ -196,6 +196,9 @@ DEFINE_bool(no_model_update, false,
     "evaluate the given model's performance on different task");
 DEFINE_int32(delta_iter, 1, "Sometimes I want to skip iterations when "
                             "re-evaluating");
+DEFINE_bool(second_pass_boundary_exploration, false,
+    "turn on this flag if we are just resolving the trajopt again, "
+    "while exploring the task boundary (open loop evaluation)");
 
 // Extend model from passive to actuated
 DEFINE_bool(extend_model, false,
@@ -271,7 +274,7 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
                      const TasksGenerator* task_gen, const Task& task,
                      const ReducedOrderModel& rom, bool non_grid_task,
                      bool use_database, int robot_option, bool no_model_update,
-                     int delta_iter) {
+                     bool second_pass_boundary_exploration, int delta_iter) {
   if (is_get_nominal && !rerun_current_iteration) {
     if (use_database) {
       *init_file = SetInitialGuessByInterpolation(
@@ -295,8 +298,12 @@ void getInitFileName(string* init_file, const string& nominal_traj_init_file,
   } else if (rerun_current_iteration) {
     *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
   } else if (no_model_update) {
-    *init_file = to_string(iter - delta_iter) + "_" + to_string(sample) +
-                 string("_w.csv");
+    if (second_pass_boundary_exploration) {
+      *init_file = to_string(iter) + "_" + to_string(sample) + string("_w.csv");
+    } else {
+      *init_file = to_string(iter - delta_iter) + "_" + to_string(sample) +
+                   string("_w.csv");
+    }
   } else {
     if (non_grid_task) {
       *init_file = SetInitialGuessByInterpolation(
@@ -1978,7 +1985,7 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.cop_ratio = FLAGS_cop_ratio;  // for testing
   inner_loop_setting.heavy_toe = FLAGS_heavy_toe;  // for testing
   inner_loop_setting.cubic_spline_in_joint_space =
-      FLAGS_cubic_spline_in_joint_space;  // for testing
+      FLAGS_cubic_spline_in_joint_space;                       // for testing
   inner_loop_setting.no_model_update = FLAGS_no_model_update;  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
@@ -2073,6 +2080,8 @@ int findGoldilocksModels(int argc, char* argv[]) {
   cout << "\nOther settings:\n";
   cout << "is_debug? " << FLAGS_is_debug << endl;
   cout << "no_model_update? " << FLAGS_no_model_update << endl;
+  cout << "second_pass_boundary_exploration? "
+       << FLAGS_second_pass_boundary_exploration << endl;
   double ave_min_cost_so_far = std::numeric_limits<double>::infinity();
   std::vector<double> each_min_cost_so_far(
       N_sample, std::numeric_limits<double>::infinity());
@@ -2435,13 +2444,13 @@ int findGoldilocksModels(int argc, char* argv[]) {
           // Get file name of initial seed
           string init_file_pass_in;
           if (!FLAGS_is_debug) {
-            getInitFileName(&init_file_pass_in, init_file, iter, sample_idx,
-                            is_get_nominal, current_sample_is_a_rerun,
-                            has_been_all_success, step_size_shrinked_last_loop,
-                            n_rerun[sample_idx], sample_idx_to_help, dir,
-                            task_gen, task, *rom, !is_grid_task,
-                            FLAGS_use_database, FLAGS_robot_option,
-                            FLAGS_no_model_update, delta_iter);
+            getInitFileName(
+                &init_file_pass_in, init_file, iter, sample_idx, is_get_nominal,
+                current_sample_is_a_rerun, has_been_all_success,
+                step_size_shrinked_last_loop, n_rerun[sample_idx],
+                sample_idx_to_help, dir, task_gen, task, *rom, !is_grid_task,
+                FLAGS_use_database, FLAGS_robot_option, FLAGS_no_model_update,
+                FLAGS_second_pass_boundary_exploration, delta_iter);
           } else {
             init_file_pass_in = init_file.empty() ? to_string(iter) + "_" +
                                                         to_string(sample_idx) +

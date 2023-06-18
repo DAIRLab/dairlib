@@ -139,6 +139,7 @@ drake::systems::EventStatus MeshcatMPCDebugVisualizer::UnrestrictedUpdate(
     foothold_set = ConvexFootholdSet::CopyFromLcm(foothold_set_msg);
   } else {
     foothold_set = ConvexFootholdSet::CopyFromLcm(mpc_debug.footholds);
+    foothold_set.ReExpressInNewFrame(R_yaw.transpose());
   }
 
   DrawComTrajSolution("com_sol", mpc_debug.solution, R_yaw, 0.83);

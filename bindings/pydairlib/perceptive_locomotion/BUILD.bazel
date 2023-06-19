@@ -41,6 +41,24 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "visualize_lcm_log",
+    srcs = ["visualize_lcm_log.py"],
+    data = [
+            "//examples/Cassie:cassie_urdf",
+            "@lcm//:lcm-python",
+    ],
+    deps = [
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//lcmtypes:lcmtypes_robot_py",
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

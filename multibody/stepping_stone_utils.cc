@@ -3,6 +3,8 @@
 
 using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
+using drake::geometry::Box;
+
 using Eigen::Vector3d;
 
 namespace dairlib::multibody {
@@ -30,6 +32,18 @@ void AddSteppingStonesToSimFromYaml(MultibodyPlant<double>* plant,
 SquareSteppingStoneList
 LoadSteppingStonesFromYaml(const std::string& filename) {
   return drake::yaml::LoadYamlFile<SquareSteppingStoneList>(filename);
+}
+
+void AddSteppingStonesToMeshcatFromYaml(std::shared_ptr<drake::geometry::Meshcat> meshcat,
+                                        const std::string& filename) {
+  auto boxes = LoadSteppingStonesFromYaml(filename).cubes;
+  static int i = 0;
+  for (const auto& box_params : boxes) {
+    std::string path = "box" + std::to_string(++i);
+    const auto box = drake::geometry::Box(box_params.second);
+    meshcat->SetObject(path,box);
+    meshcat->SetTransform(path, box_params.first);
+  }
 }
 
 }

@@ -3,7 +3,10 @@
 #include <string>
 #include <vector>
 
+#include "multibody/stepping_stone_utils.h"
+
 #include "drake/geometry/scene_graph.h"
+#include "drake/geometry/meshcat_visualizer.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
@@ -53,10 +56,20 @@ class MultiposeVisualizer {
   /// ignored.
   void DrawPoses(Eigen::MatrixXd poses);
 
+  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat(){
+    return meshcat_;
+  }
+
+  void AddSteppingStonesFromYaml(const std::string& filename) {
+    AddSteppingStonesToMeshcatFromYaml(meshcat_, filename);
+  };
+
  private:
   int num_poses_;
   drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  drake::geometry::MeshcatVisualizer<double>* meshcat_visualizer_;
   std::unique_ptr<drake::systems::Context<double>> diagram_context_;
   std::vector<drake::multibody::ModelInstanceIndex> model_indices_;
 };

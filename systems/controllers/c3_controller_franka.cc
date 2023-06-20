@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iterator>
 #include <vector>
+#include <cmath>
 
 
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
@@ -469,14 +470,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //Multi-sample code piece
   double x_samplec; //center of sampling circle
   double y_samplec; //center of sampling circle
-  double radius = 0.0579; //radius of sampling circle
-  int num_samples = 3;
+  double radius = 0.075; //radius of sampling circle
+  int num_samples = 4;
   double theta = 360/num_samples * PI / 180;
   
   std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
 
   VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
-  Vector3d ee = end_effector; //end effector current position
+  Vector3d curr_ee = end_effector; //end effector current position
+  Vector3d ee = curr_ee; //end effector test position
   // VectorXd cost_vector = VectorXd::Zero(num_samples);
   
   // double theta = 360/num_samples;
@@ -509,6 +511,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       double pos_x  = x_samplec + radius * sin(i*theta);
       double pos_y = y_samplec + radius *cos(i*theta);
+
       ee[0] = pos_x;
       ee[1] = pos_y;
       
@@ -518,7 +521,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       vector<VectorXd> fullsol = opt.SolveFullSolution(test_state, delta, w);  //outputs full z
       vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-      double cost = opt.CalcCost(test_state, optimalinputseq); 
+      double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((curr_ee[0]-ee[0]),2)+std::pow((curr_ee[0]-ee[0]),2)); 
       cost_vector[i-1] = cost;
 
       std::cout<<"This is the cost of sample"<<i<<" : " << cost<<std::endl;
@@ -532,11 +535,21 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
   int index = std::distance(std::begin(cost_vector), it);
-  std::cout << "index of smallest element: " << index;
-  state << candidate_states[index];
+  std::cout << "index of smallest element: " << index <<std::endl;
+  std::cout << "chosen state : " << candidate_states[index];
   
-
-
+  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+  double cost_opt = opt.CalcCost(state, optimalinputseq);
+  std::cout<<"real cost "<<cost_opt<<std::endl;
+  std::cout << "real state : " << state;
+  
+  // state << candidate_states[index];  //Uncomment when confirmed
+  
+ 
+ 
+  // VectorXd input = opt.Solve(candidate_states[index], delta, w);
+  
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
   

@@ -241,7 +241,11 @@ double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
   // XX[1] = lcs_.Simulate(XX[0], UU[0]);
   
   for (int i = 0; i < N_; i++){
-    XX[i] = lcs_.Simulate(XX[i], UU[i]);      
+    
+    XX[i+1] = lcs_.Simulate(XX[i], UU[i]);  
+    // std::cout<< i<<std::endl;   
+    // std::cout<<"state"<<XX[i]<<std::endl;
+    // std::cout<<"input"<<UU[i]<<std::endl;
   }
 
   // cost = XX[0].transpose()*Q_.at(0)*XX[0];

@@ -39,7 +39,7 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 
 //VectorXd dummy_input = VectorXd::Zero(9);
 
-  auto flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
                           &force);
 
 //  VectorXd qval = E_[0] * x_init + c_[0] + H_[0] * input;
@@ -82,9 +82,9 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
 
-    if (flag == 1){
+    if (flag == 0){
 
-
+    std::cout<<"here lcs"<<std::endl;
 
 
 //      std::cout << "Next state prediction" << std::endl;
@@ -96,9 +96,9 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 //    std::cout << "Jn * v" << std::endl;
 
 //
-//    std::cout << "LCS force estimate" << std::endl;
-//   std::cout << force << std::endl;
-//    std::cout << "LCS force estimate" << std::endl;
+   std::cout << "LCS force estimate" << std::endl;
+  std::cout << force << std::endl;
+   std::cout << "LCS force estimate" << std::endl;
 
 //      std::cout << "D" << std::endl;
 //    std::cout << D_[0] << std::endl;

@@ -96,9 +96,9 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 //    std::cout << "Jn * v" << std::endl;
 
 //
-   std::cout << "LCS force estimate" << std::endl;
-  std::cout << force << std::endl;
-   std::cout << "LCS force estimate" << std::endl;
+  //  std::cout << "LCS force estimate" << std::endl;
+  // std::cout << force << std::endl;
+  //  std::cout << "LCS force estimate" << std::endl;
 
 //      std::cout << "D" << std::endl;
 //    std::cout << D_[0] << std::endl;

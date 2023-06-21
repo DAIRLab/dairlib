@@ -383,7 +383,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
 
-  /// upddate context
+  /// update context
   plant_f_.SetPositions(&context_f_, q);
   plant_f_.SetVelocities(&context_f_, v);
   multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
@@ -470,7 +470,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //Multi-sample code piece
   double x_samplec; //center of sampling circle
   double y_samplec; //center of sampling circle
-  double radius = 0.05; //radius of sampling circle
+  double radius = 0.075; //radius of sampling circle (0.05)
   int num_samples = 2;
   double theta = 360/num_samples * PI / 180;
   
@@ -528,13 +528,45 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       ee[1] = pos_y;
       
       // test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);  //current state with modified ee position
+      
+      VectorXd test_q(10);
+  
+      VectorXd test_v(9);
+      
+
+      test_q << q;
+      test_v << v;
+
+      test_q[0] = ee[0];
+      test_q[1] = ee[1];
+         
+
+      plant_f_.SetPositions(&context_f_, test_q);
+      plant_f_.SetVelocities(&context_f_, test_v);
+      multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
+
+      std::vector<SortedPair<GeometryId>> contact_pairs_test;
+      contact_pairs_test.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+      contact_pairs_test.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+
+      auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_test,
+      num_friction_directions_, mu_, 0.1);
+
+      solvers::LCS test_system_ = test_system_scaling_pair.first;
+
+
       test_state << ee, state.tail(16);
       
       candidate_states[i-1] = test_state;
 
-      vector<VectorXd> fullsol = opt.SolveFullSolution(test_state, delta, w);  //outputs full z
-      vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-      double cost = opt.CalcCost(test_state, optimalinputseq); //purely positional cost
+      solvers::C3MIQP opt_test(system_, Qha, R_, G_, U_, traj_desired, options,
+      warm_start_delta_, warm_start_binary_, warm_start_x_,
+      warm_start_lambda_, warm_start_u_, true);
+
+      vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  //outputs full z
+      vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
+      double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((curr_ee[0]-ee[0]),2)+std::pow((curr_ee[0]-ee[0]),2)); 
       cost_vector[i-1] = cost;
 
@@ -565,7 +597,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   // VectorXd input = opt.Solve(candidate_states[index], delta, w);
   
   /// calculate the input given x[i]
+  std::cout<<"original sol"<< std::endl;
   VectorXd input = opt.Solve(state, delta, w);
+  std::cout<<"original sol end"<<std::endl;
   
   
 
@@ -648,8 +682,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   
   //The next two lines are only used to verify sample direction
-  // state_next[0] = x_samplec + radius * cos(PI/2);
-  // state_next[1] = y_samplec + radius *sin(PI/2);
+  state_next[0] = x_samplec + radius * cos(PI/2);
+  state_next[1] = y_samplec + radius *sin(PI/2);
 
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;

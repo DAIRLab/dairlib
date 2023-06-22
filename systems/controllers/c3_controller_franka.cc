@@ -467,46 +467,51 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
  ////////////////////////////////////////////////////////////////////////////////////
  ////////////////////////////////////////////////////////////////////////////////////
 
-  //Multi-sample code piece
-  double x_samplec; //center of sampling circle
-  double y_samplec; //center of sampling circle
-  double radius = 0.075; //radius of sampling circle (0.05)
-  int num_samples = 2;
-  double theta = 360/num_samples * PI / 180;
-  
-  std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
+  if (ts < roll_phase) {
 
-  VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
-  Vector3d curr_ee = end_effector; //end effector current position
-  Vector3d ee = curr_ee; //end effector test position
-  // VectorXd cost_vector = VectorXd::Zero(num_samples);
-  
-  // double theta = 360/num_samples;
-  // std::cout<<"Theta"<<theta<<std::endl;
-  // std::cout<<"state vector"<<state<<std::endl;
-  // std::cout<<"Ball x position"<<state[7]<<std::endl;
-  // Vector3d ball_xyz = ball.tail(3);
 
-  x_samplec = ball_xyz[0]; //state[7];
-  y_samplec = ball_xyz[1]; //state[8];
 
-  // VectorXd cost_vector = VectorXd::Zero(num_samples);
-  std::vector<double> cost_vector(num_samples);
+    //Multi-sample code piece
+    double x_samplec; //center of sampling circle
+    double y_samplec; //center of sampling circle
+    double radius = 0.06; //radius of sampling circle (0.05)
+    int num_samples = 2;
+    double theta = 360 / num_samples * PI / 180;
 
-  // cost_vector = {3, 4, 5};
+    std::vector<VectorXd>
+        candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
 
-  // cost_vector.push_back(3);
-  // cost_vector.push_back(4);
-  // cost_vector.push_back(5);
-  
-  // for (int x : cost_vector){
-  //       std::cout << x << std::endl;
-  // }
+    VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
+    Vector3d curr_ee = end_effector; //end effector current position
+    Vector3d ee = curr_ee; //end effector test position
+    // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
-  // double min = *std::min_element(cost_vector.begin(), cost_vector.end());
-  // std::cout<<"minimum value"<<min<<std::endl;
-  
-  for(int i =1; i < num_samples + 1; i++ ){
+    // double theta = 360/num_samples;
+    // std::cout<<"Theta"<<theta<<std::endl;
+    // std::cout<<"state vector"<<state<<std::endl;
+    // std::cout<<"Ball x position"<<state[7]<<std::endl;
+    // Vector3d ball_xyz = ball.tail(3);
+
+    x_samplec = ball_xyz[0]; //state[7];
+    y_samplec = ball_xyz[1]; //state[8];
+
+    // VectorXd cost_vector = VectorXd::Zero(num_samples);
+    std::vector<double> cost_vector(num_samples);
+
+    // cost_vector = {3, 4, 5};
+
+    // cost_vector.push_back(3);
+    // cost_vector.push_back(4);
+    // cost_vector.push_back(5);
+
+    // for (int x : cost_vector){
+    //       std::cout << x << std::endl;
+    // }
+
+    // double min = *std::min_element(cost_vector.begin(), cost_vector.end());
+    // std::cout<<"minimum value"<<min<<std::endl;
+
+    for (int i = 1; i < num_samples + 1; i++) {
       // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
       // double pos_x  = x_samplec + radius * sin(i*theta);
@@ -515,91 +520,123 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       double pos_x = 0;
       double pos_y = 0;
 
-      if(i==1){
-        pos_x = x_samplec + radius * cos(PI/2);
-        pos_y = y_samplec + radius *sin(PI/2);
-      }
-      else{
-        pos_x = x_samplec + radius * cos(-PI/2);
-        pos_y = y_samplec + radius *sin(-PI/2);
+      std::cout << "height" << std::endl;
+      std::cout << ee[2] << std::endl;
+
+      if (i == 1) {
+        pos_x = x_samplec + radius * cos(PI / 2);
+        pos_y = y_samplec + radius * sin(PI / 2);
+      } else {
+        pos_x = x_samplec + radius * cos(-PI / 2);
+        pos_y = y_samplec + radius * sin(-PI / 2);
       }
 
       ee[0] = pos_x;
       ee[1] = pos_y;
-      
+      ee[2] = 0.02;
+
       // test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);  //current state with modified ee position
-      
+
       VectorXd test_q(10);
-  
+
       VectorXd test_v(9);
-      
 
       test_q << q;
       test_v << v;
 
       test_q[0] = ee[0];
       test_q[1] = ee[1];
-         
+      test_q[2] = ee[2];
+
+//      std::cout << "test_q" << std::endl;
+//      std::cout << test_q << std::endl;
+
+      /// update autodiff
+      VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
+          plant_f_.num_actuators());
+      xu_test << test_q, test_v, u;
+      auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
+
+      plant_ad_f_.SetPositionsAndVelocities(
+          &context_ad_f_,
+          xu_ad_test.head(plant_f_.num_positions() + plant_f_.num_velocities()));
+      multibody::SetInputsIfNew<AutoDiffXd>(
+          plant_ad_f_, xu_ad_test.tail(plant_f_.num_actuators()), &context_ad_f_);
 
       plant_f_.SetPositions(&context_f_, test_q);
       plant_f_.SetVelocities(&context_f_, test_v);
       multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
 
-      std::vector<SortedPair<GeometryId>> contact_pairs_test;
-      contact_pairs_test.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-      contact_pairs_test.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+//      std::vector<SortedPair<GeometryId>> contact_pairs_test;
+//      contact_pairs_test.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+//      contact_pairs_test.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_test,
-      num_friction_directions_, mu_, 0.1);
+          plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+          num_friction_directions_, mu_, 0.1);
 
-      solvers::LCS test_system_ = test_system_scaling_pair.first;
+      solvers::LCS test_system = test_system_scaling_pair.first;
 
+
+
+//      ///trying outside .simulate
+//      double scaling2 = test_system_scaling_pair.second;
+//      drake::solvers::MobyLCPSolver<double> LCPSolver_test;
+//      VectorXd force_test; //This contains the contact forces.
+//      //tangential forces and normal forces for two contacts --> gamma slack variable, ball+ee and ball+ground from stewart trinkle formulation
+//
+//      //double scaling2 = 1;
+//      VectorXd input_test = VectorXd::Zero(3);
+//      auto flag_test = LCPSolver_test.SolveLcpLemkeRegularized(test_system.F_[0], test_system.E_[0] * scaling2 * state + test_system.c_[0] * scaling2 + test_system.H_[0] * scaling2 * input_test,
+//                                                     &force_test);
+//
+//      std::cout << "flag_test" << std::endl;
+//      std::cout << flag_test << std::endl;
 
       test_state << ee, state.tail(16);
-      
-      candidate_states[i-1] = test_state;
 
-      solvers::C3MIQP opt_test(system_, Qha, R_, G_, U_, traj_desired, options,
-      warm_start_delta_, warm_start_binary_, warm_start_x_,
-      warm_start_lambda_, warm_start_u_, true);
+      candidate_states[i - 1] = test_state;
+
+      solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
+                               warm_start_delta_, warm_start_binary_, warm_start_x_,
+                               warm_start_lambda_, warm_start_u_, true);
 
       vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  //outputs full z
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((curr_ee[0]-ee[0]),2)+std::pow((curr_ee[0]-ee[0]),2)); 
-      cost_vector[i-1] = cost;
+      cost_vector[i - 1] = cost;
 
-      std::cout<<"This is the cost of sample "<<i<<" : " << cost<<std::endl;
+      std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
+
+    }
+
+    double min = *std::min_element(cost_vector.begin(), cost_vector.end());
+    // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+    // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
+    std::cout << "minimum value" << min << std::endl;
+
+    std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+    int index = std::distance(std::begin(cost_vector), it);
+    // std::cout << "index of smallest element: " << index <<std::endl;
+    // std::cout << "chosen state : " << candidate_states[index];
+
+    vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+    vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+    double cost_opt = opt.CalcCost(state, optimalinputseq);
+    std::cout << "real cost " << cost_opt << std::endl;
+    // std::cout << "real state : " << state;
+
+    // state << candidate_states[index];  //Uncomment when confirmed
 
   }
-
-  double min = *std::min_element(cost_vector.begin(), cost_vector.end());
-  // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
-  // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
-  std::cout<<"minimum value"<<min<<std::endl;
-
-  std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
-  int index = std::distance(std::begin(cost_vector), it);
-  // std::cout << "index of smallest element: " << index <<std::endl;
-  // std::cout << "chosen state : " << candidate_states[index];
-  
-  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
-  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-  double cost_opt = opt.CalcCost(state, optimalinputseq);
-  std::cout<<"real cost "<<cost_opt<<std::endl;
-  // std::cout << "real state : " << state;
-  
-  // state << candidate_states[index];  //Uncomment when confirmed
-  
- 
  
   // VectorXd input = opt.Solve(candidate_states[index], delta, w);
   
   /// calculate the input given x[i]
-  std::cout<<"original sol"<< std::endl;
+  //std::cout<<"original sol"<< std::endl;
   VectorXd input = opt.Solve(state, delta, w);
-  std::cout<<"original sol end"<<std::endl;
+  //std::cout<<"original sol end"<<std::endl;
   
   
 
@@ -682,8 +719,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   
   //The next two lines are only used to verify sample direction
-  state_next[0] = x_samplec + radius * cos(PI/2);
-  state_next[1] = y_samplec + radius *sin(PI/2);
+  ///testing
+//  VectorXd state_next_test = VectorXd::Zero(19);
+//  state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2);
+//  state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2);
+//  state_next_test[2] = 0.07;
+//  state_next = state_next_test;
 
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;

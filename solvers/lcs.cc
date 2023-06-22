@@ -39,8 +39,13 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 
 //VectorXd dummy_input = VectorXd::Zero(9);
 
-  auto flag = LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
+  ///hacking for now
+  double scaling = 0.000646507;
+
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x_init * scaling + c_[0] * scaling + H_[0] * input * scaling,
                           &force);
+
+  //std::cout << flag << std::endl;
 
 //  VectorXd qval = E_[0] * x_init + c_[0] + H_[0] * input;
 //  MatrixXd Fval = F_[0];
@@ -80,11 +85,11 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 //  }
 
   // update
-  x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
+  x_final = A_[0] * x_init + B_[0] * input + D_[0] * force / scaling + d_[0];
 
     if (flag == 0){
 
-    std::cout<<"here lcs"<<std::endl;
+    std::cout<<"CAREFUL LCS FAILED TO SOLVE"<<std::endl;
 
 
 //      std::cout << "Next state prediction" << std::endl;

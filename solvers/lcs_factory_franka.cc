@@ -255,6 +255,11 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
 
+//  std::cout << "quick check on AnDn" << std::endl;
+//  std::cout << D << std::endl;
+
+
+
   std::vector<MatrixXd> A_lcs(N, A);
   std::vector<MatrixXd> B_lcs(N, B);
   std::vector<MatrixXd> D_lcs(N, D * AnDn);

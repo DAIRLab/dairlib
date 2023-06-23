@@ -66,6 +66,10 @@ def GetSamplesToPlot(model_indices, log_indices):
           if (task_element < min_max_task_filter_for_viz[key][0]) or (task_element > min_max_task_filter_for_viz[key][1]):
             add_this_element = False
           col += 1
+        # If specified in `sample_task_to_remove`, we don't add the sample
+        for sample_task in np.array(sample_task_to_remove):
+          if np.linalg.norm(current_cmt[0, 2:4] - sample_task) < 3e-2:
+            add_this_element = False
         # task_element = task[idx_map_for_name_of_trajopt_task_value_to_be_read['turning_rate']]
         # # if (task_element <= 0) and (task_element >= -0.2):
         # if (task_element == 0):
@@ -133,11 +137,11 @@ def Generate4dPlots(cmt):
 
   if save_fig:
     ax.view_init(90, -90)  # look from +z axis. model iter vs task
-    plt.savefig("%smodel_ter_vs_task1_4Dscatterplot.png" % (output_dir))
+    plt.savefig("%smodel_ter_vs_task1_4Dscatterplot.png" % (output_dir), dpi=fig_dpi)
     ax.view_init(0, 0)  # look from x axis. cost vs task
-    plt.savefig("%stask2_vs_task1_4Dscatterplot.png" % (output_dir))
+    plt.savefig("%stask2_vs_task1_4Dscatterplot.png" % (output_dir), dpi=fig_dpi)
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    plt.savefig("%stask2_vs_model_iter_4Dscatterplot.png" % (output_dir))
+    plt.savefig("%stask2_vs_model_iter_4Dscatterplot.png" % (output_dir), dpi=fig_dpi)
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
 
@@ -167,11 +171,11 @@ def Generate3dPlots(cmt):
   # plt.title("")
   if save_fig:
     ax.view_init(90, -90)  # look from +z axis. model iter vs task
-    plt.savefig("%smodel_ter_vs_task_scatterplot%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%smodel_ter_vs_task_scatterplot%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
     ax.view_init(0, 0)  # look from x axis. cost vs task
-    plt.savefig("%scost_vs_task_scatterplot%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_task_scatterplot%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
     ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
-    plt.savefig("%scost_vs_model_iter_scatterplot%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_model_iter_scatterplot%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
 
   ### level set plot
@@ -188,7 +192,7 @@ def Generate3dPlots(cmt):
   ax.set_zlabel('total cost')
   ax.view_init(0, -90)  # look from -y axis. cost vs model iteration
   if save_fig:
-    plt.savefig("%scost_vs_model_iter_contour%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_model_iter_contour%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
 def Generate2dPlots(model_indices, cmt):
@@ -228,7 +232,7 @@ def Generate2dPlots(model_indices, cmt):
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_vs_model_iter%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_model_iter%s_%s%.2f.png" % (output_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   ### 2D plot (cost vs tasks)
   print("\nPlotting cost vs task...")
@@ -258,7 +262,7 @@ def Generate2dPlots(model_indices, cmt):
   plt.gcf().subplots_adjust(left=0.15)
   plt.title('slice at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
   if save_fig:
-    plt.savefig("%scost_vs_task_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%scost_vs_task_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   ### 2D plot (iter vs tasks)
   print("\nPlotting iterations vs task...")
@@ -299,7 +303,7 @@ def Generate2dPlots(model_indices, cmt):
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_landscape_iter%s_%s%.2f.png" % (output_dir, app_list[i], name_abbrev[task_to_plot[1]], second_task_value))
+      plt.savefig("%scost_landscape_iter%s_%s%.2f.png" % (output_dir, app_list[i], name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
   ### 2D plot; cost landscape (task1 vs task2; cost visualized in contours)
@@ -489,6 +493,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # x_range_plot_window = [-1, 1]
   # y_range_plot_window = [0.85, 1.05]
   # x_range_plot_window = [0, max(x) + limit_margin]
+  # x_range_plot_window[0] = 0
   # y_range_plot_window = [-1.44, 1.44]
   # y_range_plot_window = [0.65, 1.05]
   # y_range_plot_window = [0.65, 1.]
@@ -603,7 +608,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (output_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""))
+    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (output_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""), dpi=fig_dpi)
 
 
 
@@ -656,7 +661,7 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (output_dir, app_list[i], model_slice_value))
+      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (output_dir, app_list[i], model_slice_value), dpi=fig_dpi)
 
 
 def ComputeCostImprovementForIndividualTask(model_indices, cmt):
@@ -763,7 +768,7 @@ def ComputeExpectedCostOverTask(model_indices, cmt, task_range_to_average_over):
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_%s%.2f.png" % (output_dir, task_range_to_average_over[0], task_range_to_average_over[1], name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%save_cost_vs_model_iter_range_%.2fto%.2f_%s%.2f.png" % (output_dir, task_range_to_average_over[0], task_range_to_average_over[1], name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   # Log the improvement percentage into a file
   message = "Max average cost improvement = %.1f %% over stride length from %.2f to %.2f\n" % (float((averaged_cost[0] - min(averaged_cost)) / averaged_cost[0] * 100), task_range_to_average_over[0], task_range_to_average_over[1])
@@ -825,7 +830,7 @@ def ComputeAchievableTaskRangeOverIter(cmt, second_task_value):
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value))
+    plt.savefig("%stask_space_vs_model_iter_%s%.2f.png" % (output_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
   # Log the improvement percentage into a file
   message = "Max achievable task space improvement = %.1f %% (at %s=%.2f)\n" % (float((max(task_range) - task_range[0]) / task_range[0] * 100), task_to_plot[1], second_task_value)
@@ -860,6 +865,17 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/Desktop/temp/0526/20230518_explore_task_boundary_2D--20230507_various_turning_and_stride_length__smaller_range/"
   # trajopt_base_dir = "/home/yuming/Desktop/20230518_explore_task_boundary_2D__bigger_grid--20230507_various_turning_and_stride_length__smaller_range/2_adding_eps_to_zero_turning_task/"
   trajopt_base_dir = "/home/yuming/Desktop/20230611_explore_task_boundary_2D--20230530_two_task_planes__sl_gi_and_sl_tr/data/"
+  trajopt_base_dir = "/home/yuming/Desktop/20230611_explore_task_boundary_2D--20230530_two_task_planes__sl_gi_and_sl_tr/data/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0617/openloop_boudnary/20230615_first_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0622/temp/20230615_explore_task_boundary/1_first_run/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0622/temp/20230615_explore_task_boundary/2_second_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0622/temp/20230611_explore_task_boundary/3_rerun_tr_sl_plane__3rd_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0622/temp/20230611_explore_task_boundary/4_rerun_tr_sl_plane__4th_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230611_explore_task_boundary/5_rerun_tr_sl_plane__5th_pass/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230611_explore_task_boundary/6_rerun_tr_sl_plane__6th_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/3_third_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/4_fourth_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/5_fifth_pass/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -873,8 +889,10 @@ if __name__ == "__main__":
   Path(output_dir).mkdir(parents=True, exist_ok=True)
 
   ### Parameters for plotting
+  fig_dpi = 300  # 600 for high res
+
   model_iter_idx_start = 1
-  model_iter_idx_end = 401
+  model_iter_idx_end = 501
   model_iter_idx_delta = 100
   model_indices = list(range(model_iter_idx_start, model_iter_idx_end+1, model_iter_idx_delta))
   # Manually overwrite
@@ -946,8 +964,9 @@ if __name__ == "__main__":
   # model_slices_cost_landsacpe = [1, 100, 200, 300, 400]
   # model_slices_cost_landsacpe = model_indices
   # model_slices_cost_landsacpe = [401, 501]
-  # model_slices_cost_landsacpe = [401, 501]
-  model_slices_cost_landsacpe = model_indices
+  # model_slices_cost_landsacpe = [1, 301, 401, 501]
+  model_slices_cost_landsacpe = [1, 401]
+  # model_slices_cost_landsacpe = model_indices
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}
@@ -995,6 +1014,10 @@ if __name__ == "__main__":
   # task_boundary_outer_box['pelvis_height'] = (0.6, 1.02)
   task_boundary_outer_box['ground_incline'] = (-2, 2)
   task_boundary_outer_box['turning_rate'] = (-5, 5)
+
+  # Sometimes the trajopt got stuck at a local minimum. We remove these samples manually
+  sample_task_to_remove = []
+  # sample_task_to_remove = [[0, 0], [0, 0.3], [0.095, 0.78], [0.28,1.43], [0.095, 0], [0.125, 0]]  # 20230615_explore_task_boundary; turning rate vs stride length plot
 
   ### Create task list
   nominal_task_names = np.loadtxt(trajopt_data_dir + "task_names.csv", dtype=str, delimiter=',')

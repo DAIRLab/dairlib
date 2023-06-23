@@ -1,5 +1,6 @@
 #include <chrono>
 #include <string>
+
 #include <gflags/gflags.h>
 
 #include "common/file_utils.h"
@@ -10,6 +11,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
 #include "systems/system_utils.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
@@ -70,6 +72,7 @@ DEFINE_bool(construct_cubic, false,
 DEFINE_string(path, "", "");
 
 DEFINE_bool(draw_ground, false, "");
+DEFINE_bool(draw_com, false, "");
 
 void swapTwoBlocks(MatrixXd* mat, int i_1, int j_1, int i_2, int j_2, int n_row,
                    int n_col) {
@@ -343,7 +346,9 @@ void visualizeGait(int argc, char* argv[]) {
 
     // visualizer
     int n_loops = 1;
-    auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
+    auto ball_plant = FLAGS_draw_com
+                          ? multibody::ConstructBallPlant(&scene_graph)
+                          : std::make_unique<MultibodyPlant<double>>(0.0);
     multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                            pp_xtraj, *ball_plant);
     auto diagram = builder.Build();

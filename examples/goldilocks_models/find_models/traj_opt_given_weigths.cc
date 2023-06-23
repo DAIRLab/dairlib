@@ -2014,7 +2014,17 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double ground_incline = task.get("ground_incline");
   double turning_rate = task.get("turning_rate");
   if (setting.no_model_update) {
-    if (turning_rate == 0 && ground_incline == 0) {turning_rate = 1e-8;}
+    if (turning_rate == 0 && ground_incline == 0) {
+      turning_rate = 1e-2;
+    }
+    // testing -- not allowing the solver to exploit the problem
+    if (turning_rate == 0) {
+      turning_rate = 1e-2;
+    }
+    // testing -- not allowing the solver to exploit the problem
+    if (ground_incline == 0) {
+      ground_incline = 1e-2;
+    }
   }
   double duration = task.get("duration");
   double pelvis_height = task.get("pelvis_height");

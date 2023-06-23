@@ -1987,6 +1987,12 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.cubic_spline_in_joint_space =
       FLAGS_cubic_spline_in_joint_space;                       // for testing
   inner_loop_setting.no_model_update = FLAGS_no_model_update;  // for testing
+  inner_loop_setting.zero_turning_rate =
+      (task_gen->task_min("turning_rate") == 0 &&
+       task_gen->task_max("turning_rate") == 0);  // for testing
+  inner_loop_setting.zero_ground_incline =
+      (task_gen->task_min("ground_incline") == 0 &&
+       task_gen->task_max("ground_incline") == 0);  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint

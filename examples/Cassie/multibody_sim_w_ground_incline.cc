@@ -338,7 +338,7 @@ int do_main(int argc, char* argv[]) {
 
         if (!success) {
           std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
-          return 0;
+//          return 0;
         }
       }
       x_init << q_init, v_init;
@@ -395,7 +395,7 @@ int do_main(int argc, char* argv[]) {
 
         if (!success) {
           std::cout << "Sim didn't find a solution for init pose. Terminate.\n";
-          return 0;
+//          return 0;
         }
       }
     } else {

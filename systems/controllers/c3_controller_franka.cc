@@ -477,13 +477,14 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double radius = 0.06; //radius of sampling circle (0.05)
     int num_samples = 2;
     double theta = 360 / num_samples * PI / 180;
+    double angular_offset = 10 * PI/180;
 
     std::vector<VectorXd>
         candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
-    Vector3d curr_ee = end_effector; //end effector current position
-    Vector3d ee = curr_ee; //end effector test position
+    // Vector3d curr_ee = end_effector; //end effector current position
+    Vector3d ee = end_effector; //end effector test position
     // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
     // double theta = 360/num_samples;
@@ -495,6 +496,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     x_samplec = ball_xyz[0]; //state[7];
     y_samplec = ball_xyz[1]; //state[8];
 
+    double phase = acos((ee[0]-x_samplec)/std::sqrt(std::pow((ee[0]-x_samplec),2)+std::pow((ee[1]-y_samplec),2)));
+    std::cout<<"phase = "<< phase * 180/PI << std::endl;
+    std::cout<<"total angle ="<< (-PI/2 + phase) * 180/PI << std::endl;
+    // double phase = (ee[0] - x_samplec)
     // VectorXd cost_vector = VectorXd::Zero(num_samples);
     std::vector<double> cost_vector(num_samples);
 
@@ -511,11 +516,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // double min = *std::min_element(cost_vector.begin(), cost_vector.end());
     // std::cout<<"minimum value"<<min<<std::endl;
 
-    for (int i = 1; i < num_samples + 1; i++) {
+    for (int i = 0; i < num_samples; i++) {
       // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
-      // double pos_x  = x_samplec + radius * sin(i*theta);
-      // double pos_y = y_samplec + radius *cos(i*theta);
+      // double pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset);
+      // double pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
 
       double pos_x = 0;
       double pos_y = 0;
@@ -523,12 +528,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       std::cout << "height" << std::endl;
       std::cout << ee[2] << std::endl;
 
-      if (i == 1) {
-        pos_x = x_samplec + radius * cos(PI / 2);
-        pos_y = y_samplec + radius * sin(PI / 2);
+      if (i == 0) {
+        pos_x = x_samplec + radius * cos(PI / 2 + phase);
+        pos_y = y_samplec + radius * sin(PI / 2 + phase);
       } else {
-        pos_x = x_samplec + radius * cos(-PI / 2);
-        pos_y = y_samplec + radius * sin(-PI / 2);
+        pos_x = x_samplec + radius * cos(-PI / 2 + phase);
+        pos_y = y_samplec + radius * sin(-PI / 2 + phase);
       }
 
       ee[0] = pos_x;
@@ -595,7 +600,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       test_state << ee, state.tail(16);
 
-      candidate_states[i - 1] = test_state;
+      candidate_states[i] = test_state;
 
       solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
                                warm_start_delta_, warm_start_binary_, warm_start_x_,
@@ -605,7 +610,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((curr_ee[0]-ee[0]),2)+std::pow((curr_ee[0]-ee[0]),2)); 
-      cost_vector[i - 1] = cost;
+      cost_vector[i] = cost;
 
       std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
 
@@ -720,11 +725,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   
   //The next two lines are only used to verify sample direction
   ///testing
-//  VectorXd state_next_test = VectorXd::Zero(19);
-//  state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2);
-//  state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2);
-//  state_next_test[2] = 0.07;
-//  state_next = state_next_test;
+ VectorXd state_next_test = VectorXd::Zero(19);
+ state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2 + PI/4 ); //+ (10*PI/180)
+ state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2 + PI/4 );
+ state_next_test[2] = 0.07;
+ state_next = state_next_test;
 
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;

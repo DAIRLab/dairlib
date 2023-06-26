@@ -494,6 +494,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # y_range_plot_window = [0.85, 1.05]
   # x_range_plot_window = [0, max(x) + limit_margin]
   # x_range_plot_window[0] = 0
+  # x_range_plot_window = [0, 0.65]
   # y_range_plot_window = [-1.44, 1.44]
   # y_range_plot_window = [0.65, 1.05]
   # y_range_plot_window = [0.65, 1.]
@@ -505,6 +506,8 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # min_nonzero_ratio = 0.5
   print("min_nonzero_ratio = ", min_nonzero_ratio)
   print("max_nonzero_ratio = ", max_nonzero_ratio)
+  # min_nonzero_ratio = 0.71
+  # max_nonzero_ratio = 0.96
 
   # Update Flags
   plot_the_ratio_bigger_than_1 = max_nonzero_ratio > 1
@@ -875,7 +878,11 @@ if __name__ == "__main__":
   trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230611_explore_task_boundary/6_rerun_tr_sl_plane__6th_pass/"
   # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/3_third_pass/"
   # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/4_fourth_pass/"
-  # trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/5_fifth_pass/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0623/temp/20230615_explore_task_boundary/5_fifth_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0625/temp/20230611_explore_task_boundary/8_another_pass/"
+  trajopt_base_dir = "/home/yuming/Desktop/temp/0625/temp/20230611_explore_task_boundary/9_another_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0625/temp/20230615_explore_task_boundary/7_another_pass/"
+  # trajopt_base_dir = "/home/yuming/Desktop/temp/0625/temp/20230615_explore_task_boundary/8_another_pass/"
   if len(sys.argv) == 2:
     trajopt_base_dir = sys.argv[1]
   print("trajopt_base_dir = ", trajopt_base_dir)
@@ -1017,7 +1024,8 @@ if __name__ == "__main__":
 
   # Sometimes the trajopt got stuck at a local minimum. We remove these samples manually
   sample_task_to_remove = []
-  # sample_task_to_remove = [[0, 0], [0, 0.3], [0.095, 0.78], [0.28,1.43], [0.095, 0], [0.125, 0]]  # 20230615_explore_task_boundary; turning rate vs stride length plot
+  # sample_task_to_remove = [[0, 0], [0, 0.3], [0.095, 0.78], [0.28,1.43], [0.095, 0], [0.125, 0]]  # 20230611_explore_task_boundary/6_rerun_tr_sl_plane__6th_pass/; turning rate vs stride length plot
+  # sample_task_to_remove = [[0, 0],[0, 0.42],[0.253, 0.334],[0.318, 0.206],[0.095, 0.37],[0.0, -0.335]]  # 20230615_explore_task_boundary/5_fifth_pass/; ground incline vs stride length plot
 
   ### Create task list
   nominal_task_names = np.loadtxt(trajopt_data_dir + "task_names.csv", dtype=str, delimiter=',')
@@ -1044,6 +1052,10 @@ if __name__ == "__main__":
   print("model_indices = ", model_indices)
   # cmt is a list of (model index, task value, and cost)
   cmt = GetSamplesToPlot(model_indices, log_indices)
+
+  # # HACK - flip the ground incline sign, so that positive value corresponds to facing uphill
+  # assert task_to_plot[1] == 'ground_incline'
+  # cmt[:, 3] *= -1
 
   # Adjust slices value (for 2D plots)
   model_slices = AdjustSlices(model_slices)

@@ -138,6 +138,8 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable std::vector<VectorXd> warm_start_u_;
   mutable std::vector<VectorXd> warm_start_delta_;
   mutable std::vector<VectorXd> warm_start_binary_;
+  mutable Eigen::VectorXd optimal_sample_ = VectorXd::Zero(19);
+  mutable double optimal_cost_ = 999999;
 
   // kalman filter
   // mutable VectorXd xhat_prev;

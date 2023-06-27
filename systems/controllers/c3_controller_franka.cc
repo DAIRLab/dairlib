@@ -310,14 +310,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   /// side ways phase
   else if( ts < roll_phase + 2 * return_phase / 3 ) {
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+    // optimal_cost_ = min;
+    // optimal_sample_ = candidate_states[index];
+
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; // state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; // state[8] - back_dist*error_hat(1);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
   }
   /// position finger phase
   else{
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+    //isolating repositioning to the best state selected in the previous sampling run
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; //state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; //state[8] - back_dist*error_hat(1);
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
@@ -475,9 +479,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
     double radius = 0.06; //radius of sampling circle (0.05)
-    int num_samples = 2;
+    int num_samples = 4;
     double theta = 360 / num_samples * PI / 180;
-    double angular_offset = -10 * PI/180;
+    double angular_offset = 0 * PI/180;
 
     std::vector<VectorXd>
         candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
@@ -495,6 +499,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     x_samplec = ball_xyz[0]; //state[7];
     y_samplec = ball_xyz[1]; //state[8];
+    std::cout<<"ball center: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
     double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);
     std::cout<<"tan angle = "<< phase * 180/PI << std::endl;
@@ -523,8 +528,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       double pos_x = 0;
       double pos_y = 0;
 
-      std::cout << "height" << std::endl;
-      std::cout << ee[2] << std::endl;
+      // std::cout << "height" << std::endl;
+      // std::cout << ee[2] << std::endl;
 
       // if (i == 0) {
       //   pos_x = x_samplec + radius * cos(PI / 2 + phase);
@@ -537,6 +542,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset);
       pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
+
+      std::cout<<"sample position "<< i << " : "<< pos_x <<" , "<< pos_y <<std::endl;
 
 
       ee[0] = pos_x;
@@ -617,6 +624,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
 
+
     }
 
     double min = *std::min_element(cost_vector.begin(), cost_vector.end());
@@ -624,10 +632,19 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
     std::cout << "minimum value" << min << std::endl;
 
+    
+
     std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
     int index = std::distance(std::begin(cost_vector), it);
-    // std::cout << "index of smallest element: " << index <<std::endl;
-    // std::cout << "chosen state : " << candidate_states[index];
+    std::cout << "index of smallest element: " << index <<std::endl;
+    std::cout << "chosen state : " << candidate_states[index];
+    
+    //update to best state
+    if(min < optimal_cost_){
+         optimal_cost_ = min;
+         optimal_sample_ = candidate_states[index];
+    }
+   
 
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
     vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
@@ -641,12 +658,6 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
  
   // VectorXd input = opt.Solve(candidate_states[index], delta, w);
   
-
-  VectorXd state_next_test = VectorXd::Zero(19);
- state_next_test[0] = ball_xyz[0] + 0.05 * cos(-PI/2); //+ (10*PI/180)
- state_next_test[1] = ball_xyz[1] + 0.05 * sin(-PI/2);
- state_next_test[2] = 0.07;
- state_next = state_next_test;
 
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
@@ -736,10 +747,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //The next two lines are only used to verify sample direction
   ///testing
 //  VectorXd state_next_test = VectorXd::Zero(19);
- state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2 + (180*PI/180)); //+ (10*PI/180)
- state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2 + (180*PI/180));
- state_next_test[2] = 0.07;
- state_next = state_next_test;
+//  state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2); //+ (10*PI/180)
+//  state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2);
+//  state_next_test[2] = 0.07;
+//  state_next = state_next_test;
 
 // state_next = candidate_states[index];
 

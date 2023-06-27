@@ -237,6 +237,10 @@ SavedTrajReceiver::SavedTrajReceiver(
   //  stance_foot_ << 0, 1;  // left is 0, right is 1
 
   adaptive_mid_foot_height_ = gains.adaptive_mid_foot_height;
+  if (adaptive_mid_foot_height_) {
+    // we hard-coded an index to get the sagital velocity
+    DRAKE_DEMAND(rom.n_y() == 3);
+  }
 }
 
 void SavedTrajReceiver::AdjustPlannedTrajGivenGroundSlopeInput() {
@@ -499,7 +503,11 @@ void SavedTrajReceiver::CalcSwingFootTraj(
               // We assume end_foot_pos is relative to CoM and in pelvis frame
               double slope =
                   this->EvalVectorInput(context, slope_port_)->get_value()(0);
-              desired_mid_foot_height += ((0.25 - 0.05) / 0.4) * slope;
+              double sagital_velocity =
+                  traj_data.GetStateSamples(n_mode - 1).rightCols<1>()(3);
+              int sagital_vel_sign = (sagital_velocity >= 0) ? 1 : -1;
+              desired_mid_foot_height +=
+                  ((0.25 - 0.05) / 0.4) * slope * sagital_vel_sign;
               desired_mid_foot_height =
                   std::clamp(desired_mid_foot_height, 0.05, 0.25);
             }

@@ -250,9 +250,9 @@ double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
 
   // cost = XX[0].transpose()*Q_.at(0)*XX[0];
   for (int i = 0; i < N_; i++){
-    cost = cost + XX[i].transpose()*Q_.at(i)*XX[i] + UU[0].transpose()*R_.at(i)*UU[0];  //will this work?
+    cost = cost + (XX[i] - xdesired_[i]).transpose()*Q_.at(i)*(XX[i] - xdesired_[i]) + UU[0].transpose()*R_.at(i)*UU[0];  //will this work?
   }
-  cost = cost + XX[N_].transpose()*Q_.at(N_)*XX[N_];
+  cost = cost + (XX[N_]- xdesired_[N_]).transpose()*Q_.at(N_)*(XX[N_]- xdesired_[N_]);
 
   return cost;
 }

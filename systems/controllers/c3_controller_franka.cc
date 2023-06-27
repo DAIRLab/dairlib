@@ -477,7 +477,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double radius = 0.06; //radius of sampling circle (0.05)
     int num_samples = 2;
     double theta = 360 / num_samples * PI / 180;
-    double angular_offset = 10 * PI/180;
+    double angular_offset = -10 * PI/180;
 
     std::vector<VectorXd>
         candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
@@ -632,7 +632,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
     vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
     double cost_opt = opt.CalcCost(state, optimalinputseq);
-    std::cout << "real cost " << cost_opt << std::endl;
+    // std::cout << "real cost " << cost_opt << std::endl;
     // std::cout << "real state : " << state;
 
     // state << candidate_states[index];  //Uncomment when confirmed
@@ -641,6 +641,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
  
   // VectorXd input = opt.Solve(candidate_states[index], delta, w);
   
+
+  VectorXd state_next_test = VectorXd::Zero(19);
+ state_next_test[0] = ball_xyz[0] + 0.05 * cos(-PI/2); //+ (10*PI/180)
+ state_next_test[1] = ball_xyz[1] + 0.05 * sin(-PI/2);
+ state_next_test[2] = 0.07;
+ state_next = state_next_test;
+
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
   VectorXd input = opt.Solve(state, delta, w);
@@ -728,11 +735,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   
   //The next two lines are only used to verify sample direction
   ///testing
- VectorXd state_next_test = VectorXd::Zero(19);
- state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/4 + (45*PI/180)); //+ (10*PI/180)
- state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/4 + (45*PI/180));
+//  VectorXd state_next_test = VectorXd::Zero(19);
+ state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2 + (180*PI/180)); //+ (10*PI/180)
+ state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2 + (180*PI/180));
  state_next_test[2] = 0.07;
  state_next = state_next_test;
+
+// state_next = candidate_states[index];
 
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;

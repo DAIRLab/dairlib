@@ -496,9 +496,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     x_samplec = ball_xyz[0]; //state[7];
     y_samplec = ball_xyz[1]; //state[8];
 
-    double phase = acos((ee[0]-x_samplec)/std::sqrt(std::pow((ee[0]-x_samplec),2)+std::pow((ee[1]-y_samplec),2)));
-    std::cout<<"phase = "<< phase * 180/PI << std::endl;
-    std::cout<<"total angle ="<< (-PI/2 + phase) * 180/PI << std::endl;
+    double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);
+    std::cout<<"tan angle = "<< phase * 180/PI << std::endl;
+    // std::cout<<"total angle ="<< (PI/2 + phase) * 180/PI << std::endl;
     // double phase = (ee[0] - x_samplec)
     // VectorXd cost_vector = VectorXd::Zero(num_samples);
     std::vector<double> cost_vector(num_samples);
@@ -519,22 +519,25 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     for (int i = 0; i < num_samples; i++) {
       // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
-      // double pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset);
-      // double pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
-
+      
       double pos_x = 0;
       double pos_y = 0;
 
       std::cout << "height" << std::endl;
       std::cout << ee[2] << std::endl;
 
-      if (i == 0) {
-        pos_x = x_samplec + radius * cos(PI / 2 + phase);
-        pos_y = y_samplec + radius * sin(PI / 2 + phase);
-      } else {
-        pos_x = x_samplec + radius * cos(-PI / 2 + phase);
-        pos_y = y_samplec + radius * sin(-PI / 2 + phase);
-      }
+      // if (i == 0) {
+      //   pos_x = x_samplec + radius * cos(PI / 2 + phase);
+      //   pos_y = y_samplec + radius * sin(PI / 2 + phase);
+      // } else {
+      //   pos_x = x_samplec + radius * cos(-PI / 2 + phase);
+      //   pos_y = y_samplec + radius * sin(-PI / 2 + phase);
+      // }
+      std::cout<<"sample "<< i << " angle = "<< (i*theta + phase + angular_offset) * 180/PI <<std::endl;
+
+      pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset);
+      pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
+
 
       ee[0] = pos_x;
       ee[1] = pos_y;
@@ -726,8 +729,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //The next two lines are only used to verify sample direction
   ///testing
  VectorXd state_next_test = VectorXd::Zero(19);
- state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/2 + PI/4 ); //+ (10*PI/180)
- state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/2 + PI/4 );
+ state_next_test[0] = ball_xyz[0] + 0.05 * cos(PI/4 + (45*PI/180)); //+ (10*PI/180)
+ state_next_test[1] = ball_xyz[1] + 0.05 * sin(PI/4 + (45*PI/180));
  state_next_test[2] = 0.07;
  state_next = state_next_test;
 

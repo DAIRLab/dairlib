@@ -4,7 +4,7 @@ t_max: 0.5
 u_max: 4
 h_des: 0.9
 stance_width: 0.4
-retraction_dist: 0.0
+retraction_dist: 0.04
 xlim: 0.4
 ss_time: 0.32
 ds_time: 0.1

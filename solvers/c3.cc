@@ -270,8 +270,9 @@ double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
   std::cout<<"explicit Ball cost "<<ball_cost<<std::endl;
   
   //checking target when ball is stationary. debugging statements 
-  // std::cout<<" x desired at 0 " << xdesired_[0] << std::endl;
-  // std::cout<<" x desired at N_" << xdesired_[0] << std::endl;
+  //checking to make sure the desired state remains the same throughout horizon if ball is stationary
+  // std::cout<<" x desired at 0 " << xdesired_[0] << std::endl; 
+  std::cout<<" x desired at N_" << xdesired_[N_].segment(7,3) << std::endl;
   return cost;
 }
 

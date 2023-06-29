@@ -2014,7 +2014,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double ground_incline = task.get("ground_incline");
   double turning_rate = task.get("turning_rate");
   if (setting.no_model_update) {
-    // testing -- not allowing the solver to exploit the problem
+    // testing -- not allowing the solver to exploit the problem numerically
+    // (not sure if this matters yet)
     if (turning_rate == 0 && ground_incline == 0) {
       if (setting.zero_turning_rate) {
         ground_incline = 1e-2;
@@ -2029,6 +2030,18 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   double swing_margin = task.get("swing_margin");
   // double walking_vel = stride_length / duration;
   double turning_angle = turning_rate * duration;
+
+  // Set a few flags automatically
+  bool non_zero_ground_incline_set_of_constriants = (ground_incline != 0);
+  bool non_zero_turning_rate_set_of_constriants = (turning_rate != 0);
+  if (setting.no_model_update) {
+    // For boudary exploration, we always use the same set of constraints
+    // regardless of zero or non-zero turning rate and ground incline (so that
+    // the cost landscapes are consistent at the intersection of 0 turning rate
+    // and 0 incline)
+    non_zero_ground_incline_set_of_constriants = true;
+    non_zero_turning_rate_set_of_constriants = true;
+  }
 
   double all_cost_scale = setting.all_cost_scale;
 
@@ -2217,7 +2230,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Checks
   if (periodic_quaternion) {
-    DRAKE_DEMAND(turning_rate == 0);
+    DRAKE_DEMAND(!non_zero_turning_rate_set_of_constriants);
   }
 
   // Get mirrored reduced order model
@@ -2251,7 +2264,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       std::pair<string, string>("_right", "_left")};
   vector<string> asy_joint_names;
   vector<string> sym_joint_names;
-  if (turning_rate == 0) {
+  if (!non_zero_turning_rate_set_of_constriants) {
     asy_joint_names = {"hip_roll", "hip_yaw"};
   } else {
     asy_joint_names = {"hip_roll"};
@@ -2660,7 +2673,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     // Note -- we relax initial y position, letting it be anything
     // Note -- z constraint is imposed in the code above (pelvis height task)
     trajopt.AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
-    if (turning_rate == 0) {
+    if (!non_zero_turning_rate_set_of_constriants) {
       trajopt.AddBoundingBoxConstraint(-0.1, 0.1, x0(pos_map.at("base_y")));
     } else {
       trajopt.AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_y")));
@@ -2679,7 +2692,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Velocity level is imposed by periodicity constraints
   if (!only_one_mode) {
     // Ending floating base x and y positions
-    if (turning_rate == 0) {
+    if (!non_zero_turning_rate_set_of_constriants) {
       // x position constraint
       trajopt.AddBoundingBoxConstraint(stride_length, stride_length,
                                        xf(pos_map.at("base_x")));
@@ -2704,7 +2717,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
       // TODO: below is a naive version. You can implement the constraint using
       //  rotation matrix and mirror around the x-z plane of local frame
       //  (however, the downside is the potential complexity of constraint)
-      if (turning_rate == 0) {
+      if (!non_zero_turning_rate_set_of_constriants) {
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qx")));
         trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_qy")));
         trajopt.AddBoundingBoxConstraint(sin(turning_angle / 2),
@@ -2739,7 +2752,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // I think we don't need to impose this constraint, because we have joint
   // position periodicity constraints already
   /*if (!only_one_mode) {
-    if (turning_rate == 0) {
+    if (!non_zero_turning_rate_set_of_constriants) {
       if (periodic_quaternion) {
         trajopt.AddLinearConstraint(x0(pos_map.at("base_qw")) ==
             xf(pos_map.at("base_qw")));
@@ -2757,7 +2770,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Floating base velocity periodicity constraints
   if (periodic_floating_base_vel && !only_one_mode) {
-    if (turning_rate == 0) {
+    if (!non_zero_turning_rate_set_of_constriants) {
       // TODO: test if we overconstrain the problem by the following constraint
       //  on base_vy
       trajopt.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
@@ -2815,7 +2828,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
 
   // Testing -- other floating base constraints
   /*if (!only_one_mode) {
-    if (turning_rate != 0) {
+    if (non_zero_turning_rate_set_of_constriants) {
       // floating base velocity constraint at mid point
       // TODO: the floating base velocity is wrt global frame, so the following
       //  constraints is just an approximation
@@ -2832,7 +2845,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   // Testing -- set the end pelvis angular vel to be 0 (OSC heuristics)
   if (setting.zero_ending_pelvis_angular_vel) {
     if (!only_one_mode) {
-      if (turning_rate == 0) {
+      if (!non_zero_turning_rate_set_of_constriants) {
         trajopt.AddBoundingBoxConstraint(0, 0,
                                          x_pre(n_q + vel_map.at("base_wx")));
         trajopt.AddBoundingBoxConstraint(0, 0,
@@ -2841,7 +2854,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                          x_pre(n_q + vel_map.at("base_wz")));
       } else {
         cout << "zero_ending_pelvis_angular_vel is not implemented for "
-                "turning_rate != 0\n";
+                "non_zero_turning_rate_set_of_constriants\n";
         DRAKE_UNREACHABLE();
       }
     }
@@ -2915,7 +2928,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   }  // end for (l_r_pairs)
 
   // Treat hip yaw manually when turning rate is non-zero
-  if (turning_rate != 0) {
+  if (non_zero_turning_rate_set_of_constriants) {
     //  It might be hard to understanding the constraints on the hip yaw and
     //  pelvis yaw, so think about the following example:
     //  - Pelvis turn pi/4 per foot step.
@@ -3116,7 +3129,7 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
   std::unordered_map<int, double> odbp_constraint_scale;  // scaling
   odbp_constraint_scale.insert(std::pair<int, double>(0, s));
   if (swing_leg_collision_avoidance) {
-    if (turning_rate == 0) {
+    if (!non_zero_turning_rate_set_of_constriants) {
       double margin = swing_margin;
       auto left_foot_constraint =
           std::make_shared<PointPositionConstraint<double>>(

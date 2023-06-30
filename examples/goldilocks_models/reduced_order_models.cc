@@ -436,7 +436,7 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
           dynamic_basis, invariant_elements,
           to_string(world_dim) + "D lipm" + (use_pelvis ? " (pelvis)" : "") +
               (fixed_lip_height > 0
-                   ? "(fixed height " + std::to_string(fixed_lip_height) + " m)"
+                   ? " (fixed height " + to_string(fixed_lip_height) + " m)"
                    : "")),
       plant_(plant),
       world_(plant_.world_frame()),

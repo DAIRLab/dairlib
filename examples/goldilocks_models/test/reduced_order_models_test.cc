@@ -775,7 +775,7 @@ TEST_F(ReducedOrderModelOptionTest, AllOptions) {
   EXPECT_TRUE(rom->mapping_basis().n_q() == plant_.num_positions());
   EXPECT_TRUE(rom->dynamic_basis().n_order() == 1);
   EXPECT_TRUE(rom->dynamic_basis().n_q() == 6);
-  EXPECT_TRUE(rom->name() == "3D lipm (fixed height 0.8 m)");
+  EXPECT_TRUE(rom->name() == "3D lipm (fixed height 0.800000 m)");
   EXPECT_TRUE(rom->invariant_elements() == set<int>({0, 1, 2}));
 
   // clang-format on

@@ -48,7 +48,7 @@ class MonomialFeatures {
   int n_order() const { return n_order_; };
   int n_q() const { return n_q_; };
   const std::vector<int>& skip_inds() const { return skip_inds_; };
-  const  std::set<std::multiset<int>>& features() const { return features_; };
+  const std::set<std::multiset<int>>& features() const { return features_; };
   static void PrintMultiset(const std::multiset<int>& set);
 
  private:
@@ -225,7 +225,7 @@ class Lipm : public ReducedOrderModel {
        const BodyPoint& stance_contact_point,
        const MonomialFeatures& mapping_basis,
        const MonomialFeatures& dynamic_basis, int world_dim,
-       const std::set<int>& invariant_elements = {}, bool use_pelvis = false);
+       const std::set<int>& invariant_elements = {}, bool use_pelvis = false, double fixed_lip_height = -1);
 
   // Copy constructor for the Clone() method
   // TODO(yminchen): Do we need to explicitly define the copy constructor here?
@@ -262,6 +262,7 @@ class Lipm : public ReducedOrderModel {
   const BodyPoint& stance_foot() const { return stance_contact_point_; };
   int world_dim() const { return world_dim_; };
   int use_pelvis() const { return use_pelvis_; };
+  double fixed_lip_height() const { return fixed_lip_height_; };
 
  private:
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -274,6 +275,9 @@ class Lipm : public ReducedOrderModel {
   // Testing
   BodyPoint pelvis_;
   bool use_pelvis_;
+
+  //
+  double fixed_lip_height_ = -1;
 };
 
 /// Linear inverted pendulum model with swing foot (either 2D or 3D, determined

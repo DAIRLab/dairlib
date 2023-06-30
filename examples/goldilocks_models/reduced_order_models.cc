@@ -427,20 +427,25 @@ Lipm::Lipm(const MultibodyPlant<double>& plant,
            const BodyPoint& stance_contact_point,
            const MonomialFeatures& mapping_basis,
            const MonomialFeatures& dynamic_basis, int world_dim,
-           const std::set<int>& invariant_elements, bool use_pelvis)
+           const std::set<int>& invariant_elements, bool use_pelvis,
+           double fixed_lip_height)
     : ReducedOrderModel(
           world_dim, 0, MatrixX<double>::Zero(world_dim, 0),
           world_dim + mapping_basis.length(),
           (world_dim - 1) + dynamic_basis.length(), mapping_basis,
           dynamic_basis, invariant_elements,
-          to_string(world_dim) + "D lipm" + (use_pelvis ? " (pelvis)" : "")),
+          to_string(world_dim) + "D lipm" + (use_pelvis ? " (pelvis)" : "") +
+              (fixed_lip_height > 0
+                   ? "(fixed height " + std::to_string(fixed_lip_height) + " m)"
+                   : "")),
       plant_(plant),
       world_(plant_.world_frame()),
       stance_contact_point_(stance_contact_point),
       world_dim_(world_dim),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
           Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))),
-      use_pelvis_(use_pelvis) {
+      use_pelvis_(use_pelvis),
+      fixed_lip_height_(fixed_lip_height) {
   DRAKE_DEMAND((world_dim == 2) || (world_dim == 3));
 
   // Initialize model parameters (dependant on the feature vectors)
@@ -476,7 +481,8 @@ Lipm::Lipm(const Lipm& old_obj)
       world_dim_(old_obj.world_dim()),
       pelvis_(std::pair<const Vector3d, const Frame<double>&>(
           Vector3d::Zero(), plant_.GetFrameByName(pelvis_body_name))),
-      use_pelvis_(old_obj.use_pelvis()) {}
+      use_pelvis_(old_obj.use_pelvis()),
+      fixed_lip_height_(old_obj.fixed_lip_height()) {}
 
 VectorX<double> Lipm::EvalMappingFeat(const VectorX<double>& q,
                                       const Context<double>& context) const {
@@ -509,12 +515,16 @@ drake::VectorX<double> Lipm::EvalDynamicFeat(
     const drake::VectorX<double>& y, const drake::VectorX<double>& ydot,
     const drake::VectorX<double>& tau) const {
   VectorX<double> feature_extension = y.head(world_dim_ - 1);
-  double z = y(world_dim_ - 1);
-  if (z == 0) {
-    cout << "avoid singularity in dynamics_expression\n";
-    feature_extension *= 9.80665 / (1e-8);
+  if (fixed_lip_height_ > 0) {
+    feature_extension *= 9.80665 / fixed_lip_height_;
   } else {
-    feature_extension *= 9.80665 / z;
+    double z = y(world_dim_ - 1);
+    if (z == 0) {
+      cout << "avoid singularity in dynamics_expression\n";
+      feature_extension *= 9.80665 / (1e-8);
+    } else {
+      feature_extension *= 9.80665 / z;
+    }
   }
 
   VectorX<double> y_and_ydot(2 * n_y());

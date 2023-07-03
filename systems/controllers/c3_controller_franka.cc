@@ -439,14 +439,14 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   MatrixXd Qnew;
   Qnew = Q_[0];
 
-  if (ts > roll_phase){
-    double Qnew_finger = param_.Qnew_finger;
-    Qnew(0,0) = Qnew_finger;
-    Qnew(1,1) = Qnew_finger;
-    Qnew(2,2) = Qnew_finger;
-    Qnew(7,7) = param_.Qnew_ball_x;
-    Qnew(8,8) = param_.Qnew_ball_y;
-  }
+  // if (ts > roll_phase){
+  //   double Qnew_finger = param_.Qnew_finger;
+  //   Qnew(0,0) = Qnew_finger;
+  //   Qnew(1,1) = Qnew_finger;
+  //   Qnew(2,2) = Qnew_finger;
+  //   Qnew(7,7) = param_.Qnew_ball_x;
+  //   Qnew(8,8) = param_.Qnew_ball_y;
+  // }
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
@@ -545,11 +545,6 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       std::cout<<"sample position "<< i << " : "<< pos_x <<" , "<< pos_y <<std::endl;
 
-
-      // ee[0] = pos_x;
-      // ee[1] = pos_y;
-      // ee[2] = 0.02;
-
       // test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);  //current state with modified ee position
 
       VectorXd test_q(10);
@@ -564,7 +559,6 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       test_q[2] = 0.02;
 
 //      std::cout << "test_q" << std::endl;
-//      std::cout << test_q << std::endl;
 
       /// update autodiff
       VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
@@ -581,10 +575,6 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       plant_f_.SetPositions(&context_f_, test_q);
       plant_f_.SetVelocities(&context_f_, test_v);
       multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
-
-//      std::vector<SortedPair<GeometryId>> contact_pairs_test;
-//      contact_pairs_test.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-//      contact_pairs_test.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
           plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -619,7 +609,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  //outputs full z
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
-      std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
+      // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
       double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)); 
       cost_vector[i] = cost;
 
@@ -631,7 +621,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double min = *std::min_element(cost_vector.begin(), cost_vector.end());
     // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
     // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
-    std::cout << "minimum value" << min << std::endl;
+    std::cout << " minimum value is " << min << std::endl;
 
     
 
@@ -641,21 +631,38 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index].segment(0,3) << std::endl;
     
     //update to best state
-    if(min < 75){
+    if(min < 75){//75){ //heuristic threshold
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
          std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min;
          optimal_sample_ = candidate_states[index];
-         traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; //state[7] - back_dist*error_hat(0);
-         traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; //state[8] - back_dist*error_hat(1);
-         traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
+
+         VectorXd repositioning_st_desired(12 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+         repositioning_st_desired << optimal_sample_.head(2), 0.08 , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+         
+         state_contact_desired->SetDataVector(repositioning_st_desired);
+         state_contact_desired->set_timestamp(timestamp);
+         std::cout <<"Repositioned!! "<<std::endl;
+
+        //  /// update moving average filter and prev variables
+        //  if (moving_average_.size() < dt_filter_length_){
+        //      moving_average_.push_back(timestamp - prev_timestamp_);
+        //  }
+        //  else {
+        //     moving_average_.pop_front();
+        //     moving_average_.push_back(timestamp - prev_timestamp_);
+        //  }
+        //     prev_timestamp_ = timestamp;
+    //      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; //state[7] - back_dist*error_hat(0);
+    //      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; //state[8] - back_dist*error_hat(1);
+    //      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
     }
    
 
-    vector<VectorXd> fullsol_curr = opt.SolveFullSolution(state, delta, w);  //outputs full z
-    vector<VectorXd> optimalinputseq_curr = opt.OptimalInputSeq(fullsol_curr);  //outputs u over horizon
-    double cost_opt = opt.CalcCost(state, optimalinputseq);
+    // vector<VectorXd> fullsol_curr = opt.SolveFullSolution(state, delta, w);  //outputs full z
+    // vector<VectorXd> optimalinputseq_curr = opt.OptimalInputSeq(fullsol_curr);  //outputs u over horizon
+    // double cost_opt = opt.CalcCost(state, optimalinputseq);
     // std::cout << "real cost " << cost_opt << std::endl;
     // std::cout << "real state : " << state;
 

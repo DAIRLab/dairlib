@@ -32,11 +32,11 @@ from pydairlib.multibody import MultiposeVisualizer
 
 def main():
     # Constants
-    use_springs = False
+    use_springs = True
     channel_x = "CASSIE_STATE_SIMULATION"
     channel_u = "CASSIE_INPUT"
     channel_osc = "OSC_DEBUG_WALKING"
-    num_poses = 37
+    num_poses = 22
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]
@@ -52,7 +52,7 @@ def main():
         plant, controller_plant, channel_x, channel_u, channel_osc)
 
     n = robot_output['q'].shape[0]
-    q_idx = np.linspace( n / 3, 4 * n / 5, num_poses, dtype=int)
+    q_idx = np.linspace(0, n, num_poses, dtype=int)
     q_idx[-1] -= 1
     poses = robot_output['q'][q_idx]
 
@@ -73,7 +73,7 @@ def main():
     # ortho_camera.zoom = 1
     #
     # visualizer.GetMeshcat().SetCamera(ortho_camera)
-    visualizer.AddSteppingStonesFromYaml(FindResourceOrThrow(filename_stones))
+    visualizer.AddSteppingStonesFromYaml(filename_stones)
     visualizer.DrawPoses(poses.T)
     while(True):
         continue

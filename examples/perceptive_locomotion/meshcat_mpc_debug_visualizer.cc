@@ -150,7 +150,7 @@ drake::systems::EventStatus MeshcatMPCDebugVisualizer::UnrestrictedUpdate(
   state->get_mutable_discrete_state(n_footholds_idx_).set_value(
       Eigen::VectorXd::Constant(1, foothold_set.size()));
 
-
+//  meshcat_->Flush();
   return drake::systems::EventStatus::Succeeded();
 }
 

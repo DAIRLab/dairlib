@@ -42,11 +42,6 @@ stairs_down_yamlpath = stairs_down_logpath + '.yaml'
 outfolder = '/home/brian/workspace/manuscripts/tech_report/figures/'
 
 
-def init_ps():
-    ps = PlotStyler()
-    ps.set_default_styling()
-
-
 def get_velocity_profile_data(data, plant, state_channel, cassie_out_channel, vel_scale, t_offset):
     robot_output = mbp_plots.process_state_channel(data[state_channel], plant)
     robot_output['t_x'] -= robot_output['t_x'][0]
@@ -69,9 +64,7 @@ def make_velocity_tracking_plot(plant, context, robot_output, vdes, fname=None):
     )
     v_actual = fb_vel[:,0]
 
-    ps = PlotStyler()
-    ps.set_default_styling(directory=outfolder)
-
+    ps = PlotStyler(directory=outfolder)
     ps.plot(robot_output['t_x'], v_actual)
     ps.plot(vdes['t_vdes'], vdes['vdes'], linestyle='dashed', xlabel='Time (s)', ylabel='Velocity (m/s)', title='Forward Velocity Tracking')
     ps.add_legend(['Pelvis Forward Velocity', 'Desired Velocity'])
@@ -107,7 +100,8 @@ def log_main(logname, yamlname, meshcat=False):
 
 
 def main():
-    init_ps()
+    PlotStyler.set_default_styling()
+
     disp_meshcat = len(sys.argv) > 1
     log_main(stairs_down_logpath, stairs_down_yamlpath, disp_meshcat)
     log_main(stairs_up_logpath, stairs_up_yamlpath, disp_meshcat)

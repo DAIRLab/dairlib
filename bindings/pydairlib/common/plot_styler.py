@@ -44,7 +44,7 @@ class PlotStyler():
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
-    self.directory = directory
+
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None, linestyle=None,
            grid=True, xlabel=None, ylabel=None, title=None, legend=None, data_label=None):

@@ -479,13 +479,14 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     //Multi-sample code piece
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
-    double radius = 0.10; //radius of sampling circle (0.05) //0.06 //0.08
+    double radius = 0.05; //radius of sampling circle (0.05) //0.06 //0.08
     int num_samples = 4;
     double theta = 360 / num_samples * PI / 180;
     double angular_offset = 0 * PI/180;
 
-    std::vector<VectorXd>
-        candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
+    
+    std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
+    VectorXd st_desired(12 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     // Vector3d curr_ee = end_effector; //end effector current position
@@ -616,7 +617,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
 
 
-    // }
+    }
 
     double min = *std::min_element(cost_vector.begin(), cost_vector.end());
     // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
@@ -628,21 +629,35 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
     int index = std::distance(std::begin(cost_vector), it);
     // std::cout << "index of smallest element: " << index <<std::endl;
-    std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index].segment(0,3) << std::endl;
+    std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
     
     //update to best state
-    if(min < 75){//75){ //heuristic threshold
+    if(min < 150){//75){ //heuristic threshold
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
          std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min;
          optimal_sample_ = candidate_states[index];
 
-         VectorXd repositioning_st_desired(12 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
-         repositioning_st_desired << optimal_sample_.head(2), 0.08 , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+         std::cout<<"original st desired " << optimal_sample_.head(3) <<std::endl;
+         std::cout<<"current state " << state.head(3) <<std::endl;
+
+        //  double direction_angle = atan2(optimal_sample_[1], optimal_sample_[0]);
+        //  std::cout<<" Angle I want to go to : "<<direction_angle * 180/PI<<std::endl;
+
+        MatrixX<double> way_point = ball_xyz; //ball position is a way point
+        way_point[2] = way_point[2] + 0.05; //go above the ball
+
+        const MatrixX<double> control_points(state.head(3), way_point, optimal_sample_.head(3));
+
+        // drake::trajectories::BezierCurve<double> traj(0, 2, way_point); //generate a curve 
          
-         state_contact_desired->SetDataVector(repositioning_st_desired);
-         state_contact_desired->set_timestamp(timestamp);
+         
+
+
+         st_desired << optimal_sample_.head(2), 0.08 , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+         
+         
          std::cout <<"Repositioned!! "<<std::endl;
 
         //  /// update moving average filter and prev variables
@@ -658,19 +673,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     //      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; //state[8] - back_dist*error_hat(1);
     //      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
     }
-   
-
-    // vector<VectorXd> fullsol_curr = opt.SolveFullSolution(state, delta, w);  //outputs full z
-    // vector<VectorXd> optimalinputseq_curr = opt.OptimalInputSeq(fullsol_curr);  //outputs u over horizon
-    // double cost_opt = opt.CalcCost(state, optimalinputseq);
-    // std::cout << "real cost " << cost_opt << std::endl;
-    // std::cout << "real state : " << state;
-
-    // state << candidate_states[index];  //Uncomment when confirmed
-
-  }
- 
-  // VectorXd input = opt.Solve(candidate_states[index], delta, w);
+    else{
+      // VectorXd input = opt.Solve(candidate_states[index], delta, w);
   
 
   /// calculate the input given x[i]
@@ -755,7 +759,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   // double cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   // std::cout<<"This is the cost "<<cost<<std::endl;
 
-  VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+  // VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
   
   //The next two lines are only used to verify sample direction
@@ -770,6 +774,20 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+    }
+   
+
+    // vector<VectorXd> fullsol_curr = opt.SolveFullSolution(state, delta, w);  //outputs full z
+    // vector<VectorXd> optimalinputseq_curr = opt.OptimalInputSeq(fullsol_curr);  //outputs u over horizon
+    // double cost_opt = opt.CalcCost(state, optimalinputseq);
+    // std::cout << "real cost " << cost_opt << std::endl;
+    // std::cout << "real state : " << state;
+
+    // state << candidate_states[index];  //Uncomment when confirmed
+
+  
+ 
+  
   //Full state is 19 dimensions.
   //state_next.head(3) - first three elements --- this is the ee position
   //followed by ball orientation (4 elements as it is represented using quaternions) used for visualization probably

@@ -10,6 +10,7 @@
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 
+
 namespace dairlib {
 namespace solvers {
 

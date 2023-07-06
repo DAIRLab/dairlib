@@ -45,6 +45,9 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
     double curr_time, double stabilize_time1,
     double move_time, double stabilize_time2);
 
+Eigen::Vector3d generate_next_position(std::vector<Eigen::Vector3d> points, double t);
+double generate_next_z(double current, double end, double t);
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
@@ -498,48 +501,23 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // std::cout<<"state vector"<<state<<std::endl;
     // std::cout<<"Ball x position"<<state[7]<<std::endl;
     // Vector3d ball_xyz = ball.tail(3);
-
+    // std::cout<< "Ball xyz here :::::: "<< ball_xyz <<std::endl;
     x_samplec = ball_xyz[0]; //state[7];
     y_samplec = ball_xyz[1]; //state[8];
     std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
     double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);
     // std::cout<<"phase angle = "<< phase * 180/PI << std::endl;
-   
-    // VectorXd cost_vector = VectorXd::Zero(num_samples);
+
     std::vector<double> cost_vector(num_samples);
 
-    // cost_vector = {3, 4, 5};
-
-    // cost_vector.push_back(3);
-    // cost_vector.push_back(4);
-    // cost_vector.push_back(5);
-
-    // for (int x : cost_vector){
-    //       std::cout << x << std::endl;
-    // }
-
-    // double min = *std::min_element(cost_vector.begin(), cost_vector.end());
-    // std::cout<<"minimum value"<<min<<std::endl;
 
     for (int i = 0; i < num_samples; i++) {
-      // VectorXd cost_vector = VectorXd::Zero(num_samples);
-
       
       double pos_x = 0;
       double pos_y = 0;
 
-      // std::cout << "height" << std::endl;
-      // std::cout << ee[2] << std::endl;
-
-      // if (i == 0) {
-      //   pos_x = x_samplec + radius * cos(PI / 2 + phase);
-      //   pos_y = y_samplec + radius * sin(PI / 2 + phase);
-      // } else {
-      //   pos_x = x_samplec + radius * cos(-PI / 2 + phase);
-      //   pos_y = y_samplec + radius * sin(-PI / 2 + phase);
-      // }
-      std::cout<<"sample "<< i << " angle = "<< (i*theta + phase + angular_offset) * 180/PI <<std::endl;
+      // std::cout<<"sample "<< i << " angle = "<< (i*theta + phase + angular_offset) * 180/PI <<std::endl;
 
       pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset); //state[7]
       pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
@@ -611,7 +589,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)); 
+      double cost = opt.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2) + std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -629,33 +607,44 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
     int index = std::distance(std::begin(cost_vector), it);
     // std::cout << "index of smallest element: " << index <<std::endl;
-    std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
+    // std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
     
     //update to best state
-    if(min < 150){//75){ //heuristic threshold
+    if(min < 100){//75){ //heuristic threshold
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
          std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min;
          optimal_sample_ = candidate_states[index];
 
-         std::cout<<"original st desired " << optimal_sample_.head(3) <<std::endl;
-         std::cout<<"current state " << state.head(3) <<std::endl;
+        //  std::cout<<"original st desired " << optimal_sample_.head(3) <<std::endl;
+        //  std::cout<<"current state " << state.head(3) <<std::endl;
 
-        //  double direction_angle = atan2(optimal_sample_[1], optimal_sample_[0]);
-        //  std::cout<<" Angle I want to go to : "<<direction_angle * 180/PI<<std::endl;
+         Eigen::Vector3d way_point = ball_xyz;
+        //  std::cout<<"ballxyz " << ball_xyz <<std::endl;
+        //  way_point[0] = way_point[0] + 0.08;
+        //  way_point[1] = way_point[1] + 0.08;
+         way_point[2] = way_point[2] + 0.08;
 
-        MatrixX<double> way_point = ball_xyz; //ball position is a way point
-        way_point[2] = way_point[2] + 0.05; //go above the ball
-
-        const MatrixX<double> control_points(state.head(3), way_point, optimal_sample_.head(3));
-
-        // drake::trajectories::BezierCurve<double> traj(0, 2, way_point); //generate a curve 
          
+         std::vector<Vector3d> points(3, VectorXd::Zero(3));
          
+         points[0] = end_effector;
+         points[1] = way_point;
+         points[2] = optimal_sample_;
 
-
-         st_desired << optimal_sample_.head(2), 0.08 , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+         std::cout<<"points 0 " << points[0] <<std::endl;
+         std::cout<<" " <<std::endl;
+         std::cout<<"points 1 " << points[1] <<std::endl;
+         std::cout<<" " <<std::endl;
+         std::cout<<"points 2 " << points[2] <<std::endl;
+         std::cout<<" " <<std::endl;
+         
+         Eigen::Vector3d next_point = generate_next_position(points, 0.5);
+        //  std::cout<<"generated next point " << next_point <<std::endl;
+         double next_z = generate_next_z(end_effector[2], 0.08, 0.2); 
+         
+         st_desired << next_point.head(2), next_z , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
          
          
          std::cout <<"Repositioned!! "<<std::endl;
@@ -942,4 +931,30 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
   else{
     return {finish, zero};
   }
+}
+
+Eigen::Vector3d generate_next_position(std::vector<Eigen::Vector3d> points, double t){
+  Eigen::Vector3d a0;
+  Eigen::Vector3d a1;
+  Eigen::Vector3d a2;
+  Eigen::Vector3d a3;
+
+  a0 = points[0];
+  // std::cout<< " a0 = " << a0 <<std::endl;
+
+  a1 = VectorXd::Zero(3);
+  // std::cout<< " a1 = " << a1 <<std::endl;
+
+  a2 = 3 * (points[2] - points[0]);
+  // std::cout<< " a2 = " << a2 <<std::endl;
+
+  a3 = -2 * (points[2] - points[0]);
+  // std::cout<< " a3 = " << a3 <<std::endl;
+
+  // std::cout<<a0 + a1 * t + a2 * std::pow(t,2) + a3 * std::pow(t,3)<<std::endl;
+  return a0 + a1 * t + a2 * std::pow(t,2) + a3 * std::pow(t,3);
+}
+
+double generate_next_z(double current, double end, double t){
+  return current + t * (end - current);
 }

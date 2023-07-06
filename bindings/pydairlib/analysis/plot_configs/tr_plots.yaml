@@ -2,11 +2,19 @@
 # reported in mpc_debug
 
 solve_time_vs_constraint_activation: [
-  {'date': '05_08_23', 'lognum': '04', 'start_time': 0.0, 'end_time': 5.0 },
-  {'date': '05_08_23', 'lognum': '00', 'start_time': 0.0, 'end_time': 10.0 }
+  { 'date': '05_15_23', 'lognum': '05', 'start_time': 0.0, 'end_time': 30.0 }, # IMG_7432
+  { 'date': '05_15_23', 'lognum': '13', 'start_time': 0.0, 'end_time': 45.0 }, # IMG_7440
+  { 'date': '05_15_23', 'lognum': '17', 'start_time': 0.0, 'end_time': 45.0 }, # IMG_7444
+  { 'date': '05_15_23', 'lognum': '18', 'start_time': 0.0, 'end_time': 45.0 }, # IMG_7445
+  { 'date': '05_15_23', 'lognum': '20', 'start_time': 0.0, 'end_time': 20.0 }, # IMG_7447
+  { 'date': '05_15_23', 'lognum': '21', 'start_time': 0.0, 'end_time': 30.0 }  # IMG_7448
 ]
 
 solve_time_vs_num_footholds: [
-  { 'date': '05_05_23', 'lognum': '06', 'start_time': 0.0, 'end_time': 10.0 },
-  { 'date': '05_05_23', 'lognum': '10', 'start_time': 0.0, 'end_time': 10.0 }
+  { 'date': '05_15_23', 'lognum': '05', 'start_time': 0.0, 'end_time': 30.0 }, # IMG_7432
+  { 'date': '05_15_23', 'lognum': '13', 'start_time': 0.0, 'end_time': 45.0 }, # IMG_7440
+  { 'date': '05_15_23', 'lognum': '17', 'start_time': 0.0, 'end_time': 45.0 }, # IMG_7444
+  { 'date': '05_15_23', 'lognum': '18', 'start_time': 0.0, 'end_time': 45.0 }, # IMG_7445
+  { 'date': '05_15_23', 'lognum': '20', 'start_time': 0.0, 'end_time': 20.0 }, # IMG_7447
+  { 'date': '05_15_23', 'lognum': '21', 'start_time': 0.0, 'end_time': 30.0 }  # IMG_7448
 ]

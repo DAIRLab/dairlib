@@ -18,7 +18,7 @@ namespace dairlib {
 namespace solvers {
 
 FastOsqpSolver::FastOsqpSolver()
-    : SolverBase(&id, &is_available, &is_enabled, &ProgramAttributesSatisfied) {
+    : SolverBase(id(), &is_available, &is_enabled, &ProgramAttributesSatisfied) {
 }
 
 FastOsqpSolver::~FastOsqpSolver() = default;

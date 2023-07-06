@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "baeadb5a4c1e8f45070e030285e6748f64e61e4d"
+DRAKE_COMMIT = "69f4a77b22d001d487b37b212ece579d7672e938"
 
-DRAKE_CHECKSUM = "dee5ec34e1b23d6af64ce30fd0dc42be0867efe4f7af88f5eb710c2354b2df41"
+DRAKE_CHECKSUM = "351cea7481c3bcbaaa38d147e8b923c4106555941fd2df60f67714b6094102d6"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -62,6 +62,10 @@ local_repository(
 load("@drake//tools/workspace:default.bzl", "add_default_repositories")
 
 add_default_repositories()
+
+
+load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
+osqp_repository(name = "osqp")
 
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
 

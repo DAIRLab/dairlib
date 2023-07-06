@@ -525,7 +525,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
         break;
       }
       default: {
-        solution_result = SolutionResult::kUnknownError;
+        solution_result = SolutionResult::kSolverSpecificError;
         break;
       }
     }

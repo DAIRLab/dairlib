@@ -1,0 +1,19 @@
+# Piecewise stiffness and offset for springs.
+# The parameters are obtained by doing least square of the log of 03_15_22 log 11, 
+# which can be accessed by https://drive.google.com/drive/folders/1FCpdY-4dInvxIUGbf8bPNvdhKK5JlbN6.
+# The values are consistent with other logs for both walking and running
+
+swing:
+  knee_spring:
+    stiffness: 883.3358
+    offset: 0.003532
+  ankle_spring:
+    stiffness: 591.9035
+    offset: 0.01607
+stance:
+  knee_spring:
+    stiffness: 1749.1496
+    offset: -0.006280
+  ankle_spring:
+    stiffness: 1026.3388
+    offset: 0.007788

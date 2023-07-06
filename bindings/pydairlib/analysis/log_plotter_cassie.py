@@ -12,8 +12,9 @@ import mbp_plotting_utils as mbp_plots
 
 
 def main():
-    config_file = \
-        'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
+    config_folder = 'bindings/pydairlib/analysis/plot_configs/'
+    config_file = config_folder + 'cassie_default_plot.yaml'
+    # config_file = config_folder + 'cassie_running_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -32,17 +33,30 @@ def main():
     ''' Read the log '''
     filename = sys.argv[1]
     log = lcm.EventLog(filename, "r")
+    default_channels = cassie_plots.cassie_default_channels
+    if plot_config.use_archived_lcmtypes:
+        default_channels = cassie_plots.cassie_default_channels_archive
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,                                       # log
-                     cassie_plots.cassie_default_channels,      # lcm channels
-                     plot_config.end_time,
-                     mbp_plots.load_default_channels,           # processing callback
+        get_log_data(log,  # log
+                     default_channels,  # lcm channels
+                     plot_config.start_time,
+                     plot_config.duration,
+                     mbp_plots.load_default_channels,  # processing callback
                      plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+
+    if plot_config.plot_contact_forces:
+        contact_output = get_log_data(log,  # log
+                                      cassie_plots.cassie_contact_channels,  # lcm channels
+                                      plot_config.start_time,
+                                      plot_config.duration,
+                                      mbp_plots.load_force_channels,  # processing callback
+                                      'CASSIE_CONTACT_DRAKE')  # processing callback arguments
 
     print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
+    print('Log start time: ', robot_output['t_x'][0])
 
     ''' Plot Positions '''
     # Plot floating base positions if applicable
@@ -65,6 +79,10 @@ def main():
         mbp_plots.plot_floating_base_velocities(
             robot_output, vel_names, 6, t_x_slice)
 
+    if plot_config.plot_floating_base_velocity_body_frame:
+        mbp_plots.plot_floating_base_body_frame_velocities(
+            robot_output, t_x_slice, plant, context, "pelvis")
+
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
         mbp_plots.plot_joint_velocities(robot_output, vel_names,
@@ -77,7 +95,13 @@ def main():
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
-        mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+        plot = mbp_plots.plot_measured_efforts(robot_output, act_names, t_x_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
+    if plot_config.plot_commanded_efforts:
+        plot = mbp_plots.plot_commanded_efforts(robot_input, act_names, t_osc_slice)
+        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+
     if plot_config.act_names:
         mbp_plots.plot_measured_efforts_by_name(robot_output,
                                                 plot_config.act_names,
@@ -93,8 +117,9 @@ def main():
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
             for deriv in config['derivs']:
                 for dim in config['dims']:
-                    mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
-                                                     deriv, t_osc_slice)
+                    plot = mbp_plots.plot_osc_tracking_data(osc_debug, traj_name, dim,
+                                                            deriv, t_osc_slice)
+                    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
 
     ''' Plot Foot Positions '''
     if plot_config.foot_positions_to_plot:

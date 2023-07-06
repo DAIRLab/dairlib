@@ -3,9 +3,11 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "common",
     deps = [
-        ":find_resource",
+        ":blending_utils",
+        ":discrete_time_filter",
         ":eigen_utils",
         ":file_utils",
+        ":find_resource",
         "@drake//:drake_shared_library",
     ],
 )
@@ -33,7 +35,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "file_utils",
     srcs = [
@@ -41,6 +42,32 @@ cc_library(
     ],
     hdrs = [
         "file_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "blending_utils",
+    srcs = [
+        "blending_utils.cc",
+    ],
+    hdrs = [
+        "blending_utils.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "discrete_time_filter",
+    srcs = [
+        "discrete_time_filter.cc",
+    ],
+    hdrs = [
+        "discrete_time_filter.h",
     ],
     deps = [
         "@drake//:drake_shared_library",

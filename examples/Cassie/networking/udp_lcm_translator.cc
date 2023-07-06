@@ -71,8 +71,8 @@ void copy_vector(const T* input, T* output, int size) {
   }
 }
 
-void cassieOutFromLcm(const lcmt_cassie_out& message,
-    cassie_out_t* cassie_out) {
+void CassieOutFromLcm(const lcmt_cassie_out& message,
+                      cassie_out_t* cassie_out) {
   // copy pelvis
   copy_vector(message.pelvis.targetPc.etherCatStatus,
               cassie_out->pelvis.targetPc.etherCatStatus, 6);
@@ -136,8 +136,8 @@ void cassieOutFromLcm(const lcmt_cassie_out& message,
   cassie_out->isCalibrated = message.isCalibrated;
 }
 
-void cassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
-    lcmt_cassie_out* message) {
+void CassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
+                    lcmt_cassie_out* message) {
   message->utime = time_seconds * 1e6;
 
   // copy pelvis
@@ -205,8 +205,8 @@ void cassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
 }
 
 
-void cassieInToLcm(const cassie_user_in_t& cassie_in, double time_seconds,
-    lcmt_cassie_in* message) {
+void CassieInToLcm(const cassie_user_in_t& cassie_in, double time_seconds,
+                   lcmt_cassie_in* message) {
   message->utime = time_seconds * 1e6;
 
   copy_vector(cassie_in.torque, message->torque, 10);

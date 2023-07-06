@@ -121,10 +121,10 @@ C3Controller_franka::C3Controller_franka(
           TimestampedVector<double>(38), &C3Controller_franka::CalcControl)
       .get_index();
 
-  q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
-  v_map_franka_ = multibody::makeNameToVelocitiesMap(plant_franka_);
-  q_map_ = multibody::makeNameToPositionsMap(plant_);
-  v_map_ = multibody::makeNameToVelocitiesMap(plant_);
+  q_map_franka_ = multibody::MakeNameToPositionsMap(plant_franka_);
+  v_map_franka_ = multibody::MakeNameToVelocitiesMap(plant_franka_);
+  q_map_ = multibody::MakeNameToPositionsMap(plant_);
+  v_map_ = multibody::MakeNameToVelocitiesMap(plant_);
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(

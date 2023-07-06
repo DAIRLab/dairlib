@@ -1,0 +1,35 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name="all",
+    deps = [
+        ":contact_scheduler",
+    ]
+)
+
+cc_library(
+    name = "contact_scheduler",
+    srcs = ["contact_scheduler.cc"],
+    hdrs = ["contact_scheduler.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//common",
+        "//multibody:utils",
+        "//examples/Cassie:cassie_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "state_based_controller_switch",
+    srcs = ["state_based_controller_switch.cc"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//lcmtypes:lcmt_robot",
+        "@gflags",
+    ],
+)

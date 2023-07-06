@@ -1,14 +1,11 @@
 #include "examples/Cassie/osc/standing_com_traj.h"
 
+#include <algorithm>
 #include <math.h>
 
 #include <dairlib/lcmt_cassie_out.hpp>
-#include <drake/math/saturate.h>
 
 #include "multibody/multibody_utils.h"
-
-using std::cout;
-using std::endl;
 
 using Eigen::MatrixXd;
 using Eigen::Vector2d;
@@ -51,8 +48,8 @@ StandingComTraj::StandingComTraj(
               drake::Value<dairlib::lcmt_target_standing_height>{})
           .get_index();
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_cassie_out",
-                                     drake::Value<dairlib::lcmt_cassie_out>{})
+      this->DeclareAbstractInputPort("radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
   // Provide an instance to allocate the memory first (for the output)
   PiecewisePolynomial<double> pp(VectorXd(0));
@@ -67,15 +64,15 @@ void StandingComTraj::CalcDesiredTraj(
   // Read in current state
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  const auto& cassie_out =
-      this->EvalInputValue<dairlib::lcmt_cassie_out>(context, radio_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
 
 
   double target_height = height_;
 
   // Get target height from radio or lcm
   if (set_target_height_by_radio_) {
-    target_height = kTargetHeightMean + kTargetHeightScale * cassie_out->pelvis.radio.channel[6];
+    target_height = kTargetHeightMean + kTargetHeightScale * radio_out->channel[6];
   } else {
     if (this->EvalInputValue<dairlib::lcmt_target_standing_height>(
         context, target_height_port_)->timestamp > 1e-3) {
@@ -85,12 +82,12 @@ void StandingComTraj::CalcDesiredTraj(
   }
 
   // Add offset position from sticks
-  target_height += kHeightScale * cassie_out->pelvis.radio.channel[0];
+  target_height += kHeightScale * radio_out->channel[0];
 
   // Saturate based on min and max height
-  target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
-  double x_offset = kCoMXScale * cassie_out->pelvis.radio.channel[4];
-  double y_offset = kCoMYScale * cassie_out->pelvis.radio.channel[5];
+  target_height = std::clamp(target_height, kMinHeight, kMaxHeight);
+  double x_offset = kCoMXScale * radio_out->channel[4];
+  double y_offset = kCoMYScale * radio_out->channel[5];
   VectorXd q = robot_output->GetPositions();
 
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

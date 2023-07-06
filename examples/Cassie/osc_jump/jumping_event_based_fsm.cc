@@ -1,9 +1,11 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
 #include <dairlib/lcmt_controller_switch.hpp>
+#include <iostream>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 using dairlib::systems::OutputVector;
+using dairlib::systems::ImpactInfoVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -21,30 +23,33 @@ namespace osc_jump {
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double impact_threshold,
-                                 FSM_STATE init_state, BLEND_FUNC blend_func)
+                                 JUMPING_FSM_STATE init_state, BLEND_FUNC blend_func)
     : transition_times_(transition_times),
       contact_based_(contact_based),
       impact_threshold_(impact_threshold),
       init_state_(init_state),
       blend_func_(blend_func) {
   state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
+      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
+                                                                   plant.num_velocities(),
+                                                                   plant.num_actuators()))
           .get_index();
 
   // Configure the contact info port for the particular simulator
   contact_port_ = this->DeclareAbstractInputPort(
-                          "lcmt_contact_results_for_viz",
-                          drake::Value<drake::lcmt_contact_results_for_viz>{})
-                      .get_index();
+          "lcmt_contact_results_for_viz",
+          drake::Value<drake::lcmt_contact_results_for_viz>{})
+      .get_index();
   fsm_output_port_ =
       this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                     &JumpingEventFsm::CalcFiniteState)
           .get_index();
+  clock_output_port_ =
+      this->DeclareVectorOutputPort("t_clock", BasicVector<double>(1),
+                                    &JumpingEventFsm::CalcClock)
+          .get_index();
   near_impact_output_port =
-      this->DeclareVectorOutputPort("fsm, t_to_impact", BasicVector<double>(2),
+      this->DeclareVectorOutputPort("impact_info", ImpactInfoVector<double>(0, 0, 3),
                                     &JumpingEventFsm::CalcNearImpact)
           .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
@@ -90,7 +95,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   prev_time << timestamp;
 
   if (abs(transition_times_[BALANCE] - timestamp -
-          round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
+      round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
     std::cout << "Time until crouch: "
               << round(transition_times_[BALANCE] - timestamp) << std::endl;
   }
@@ -99,7 +104,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       fsm_state << CROUCH;
       std::cout << "Current time: " << timestamp << std::endl;
       std::cout << "Setting fsm to CROUCH" << std::endl;
-      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+      std::cout << "fsm: " << (JUMPING_FSM_STATE)fsm_state(0) << std::endl;
     }
   } else if (fsm_state(0) == CROUCH) {
     if (contact_based_ ? num_contacts == 0
@@ -108,7 +113,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "Current time: " << timestamp << std::endl;
       std::cout << "First detection time: " << state_trigger_time(0) << "\n";
       std::cout << "Setting fsm to FLIGHT" << std::endl;
-      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << std::endl;
+      std::cout << "fsm: " << (JUMPING_FSM_STATE)fsm_state(0) << std::endl;
     }
   } else if (fsm_state(0) == FLIGHT) {
     if (contact_based_ ? num_contacts != 0
@@ -118,7 +123,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
       std::cout << "First detection time: " << state_trigger_time(0) << "\n";
       std::cout << "Setting fsm to LAND"
                 << "\n";
-      std::cout << "fsm: " << (FSM_STATE)fsm_state(0) << "\n";
+      std::cout << "fsm: " << (JUMPING_FSM_STATE)fsm_state(0) << "\n";
     }
   } else if (fsm_state(0) == LAND) {
     // no more transitions
@@ -133,6 +138,12 @@ void JumpingEventFsm::CalcFiniteState(const Context<double>& context,
       context.get_discrete_state().get_vector(fsm_idx_).get_value();
 }
 
+void JumpingEventFsm::CalcClock(const Context<double>& context,
+                                BasicVector<double>* clock) const {
+  clock->get_mutable_value()
+      << context.get_discrete_state(prev_time_idx_).get_value();
+}
+
 double alpha_sigmoid(double t, double tau, double near_impact_threshold) {
   double x = (t + near_impact_threshold) / tau;
   return exp(x) / (1 + exp(x));
@@ -143,32 +154,33 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
 }
 
 void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
-                                     BasicVector<double>* near_impact) const {
+                                     ImpactInfoVector<double>* near_impact) const {
   VectorXd fsm_state = context.get_discrete_state(fsm_idx_).get_value();
   // Read in lcm message time
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
 
-  VectorXd is_near_impact = VectorXd::Zero(2);
-  auto alpha_func = blend_func_ == SIGMOID ? &alpha_sigmoid : &alpha_exp;
+  near_impact->set_timestamp(timestamp);
+  near_impact->SetCurrentContactMode(0);
+  near_impact->SetAlpha(0);
+  auto alpha_func = blend_func_ == kSigmoid ? &alpha_sigmoid : &alpha_exp;
 
   // Get current finite state
   if (abs(timestamp - transition_times_[FLIGHT]) < impact_threshold_) {
     double blend_window =
-        blend_func_ == SIGMOID ? 1.5 * impact_threshold_ : impact_threshold_;
+        blend_func_ == kSigmoid ? 1.5 * impact_threshold_ : impact_threshold_;
     if (abs(timestamp - transition_times_[FLIGHT]) < blend_window) {
       if (timestamp < transition_times_[FLIGHT]) {
-        is_near_impact(0) = alpha_func(timestamp - transition_times_[FLIGHT],
-                                       tau_, impact_threshold_);
+        near_impact->SetAlpha(alpha_func(timestamp - transition_times_[FLIGHT],
+                                         tau_, impact_threshold_));
       } else {
-        is_near_impact(0) = alpha_func(transition_times_[FLIGHT] - timestamp,
-                                       tau_, impact_threshold_);
+        near_impact->SetAlpha(alpha_func(transition_times_[FLIGHT] - timestamp,
+                                         tau_, impact_threshold_));
       }
-      is_near_impact(1) = LAND;
+      near_impact->SetCurrentContactMode(LAND);
     }
   }
-  near_impact->get_mutable_value() = is_near_impact;
 }
 
 }  // namespace osc_jump

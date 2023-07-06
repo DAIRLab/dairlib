@@ -5,6 +5,7 @@
 #include "drake/systems/framework/basic_vector.h"
 #include "drake/systems/framework/event.h"
 #include "systems/vector_scope.h"
+#include <iostream>
 
 namespace dairlib {
 namespace systems {

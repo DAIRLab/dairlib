@@ -40,7 +40,7 @@ template <typename T>
 Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   const DirconModeSequence<T>* ext_sequence,
                   const MultibodyPlant<T>& plant, int num_knotpoints)
-    : drake::systems::trajectory_optimization::MultipleShooting(
+    : drake::planning::trajectory_optimization::MultipleShooting(
     plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
     num_knotpoints, 1e-8, 1e8),
       my_sequence_(std::move(my_sequence)),
@@ -66,11 +66,11 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     if (mode_length(i_mode) > 1) {
       double min_dt = mode.min_T() / (mode.num_knotpoints() - 1);
       double max_dt = mode.max_T() / (mode.num_knotpoints() - 1);
-      prog().AddBoundingBoxConstraint(min_dt, max_dt, timestep(mode_start_[i_mode]));
+      prog().AddBoundingBoxConstraint(min_dt, max_dt, time_step(mode_start_[i_mode]));
       for (int j = 0; j < mode.num_knotpoints() - 2; j++) {
         // all timesteps must be equal
-        prog().AddLinearConstraint(timestep(mode_start_[i_mode] + j) ==
-            timestep(mode_start_[i_mode] + j + 1));
+        prog().AddLinearConstraint(time_step(mode_start_[i_mode] + j) ==
+            time_step(mode_start_[i_mode] + j + 1));
       }
     }
 
@@ -154,7 +154,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
       constraint->SetConstraintScaling(mode.GetDynamicsScale());
       prog().AddConstraint(
           constraint,
-          {timestep(mode_start_[i_mode] + j), state_vars(i_mode, j),
+          {time_step(mode_start_[i_mode] + j), state_vars(i_mode, j),
            state_vars(i_mode, j + 1), input_vars(i_mode, j),
            input_vars(i_mode, j + 1), force_vars(i_mode, j),
            force_vars(i_mode, j + 1), collocation_force_vars(i_mode, j),
@@ -627,7 +627,7 @@ void Dircon<T>::GetStateAndDerivativeSamples(
 
       VectorX<T> xk = result.GetSolution(state_vars(mode, j));
       VectorX<T> uk = result.GetSolution(input_vars(mode, j));
-      auto context = multibody::createContext<T>(plant_, xk, uk);
+      auto context = multibody::CreateContext<T>(plant_, xk, uk);
 
       states_i.col(j) = drake::math::DiscardGradient(xk);
       auto xdot = get_mode(mode).evaluators().CalcTimeDerivativesWithForce(
@@ -677,10 +677,10 @@ void Dircon<T>::SetInitialForceTrajectory(
   const auto& mode = get_mode(mode_index);
   double start_time = 0;
   double h;
-  if (timesteps_are_decision_variables())
+  if (time_steps_are_decision_variables ())
     h = prog().GetInitialGuess(h_vars()[0]);
   else
-    h = fixed_timestep();
+    h = fixed_time_step();
 
   VectorXd guess_force(force_vars_[mode_index].size());
   if (traj_init_l.empty()) {
@@ -728,10 +728,10 @@ void Dircon<T>::SetInitialForceTrajectory(
   const auto& mode = get_mode(mode_index);
   double start_time = 0;
   double h;
-  if (timesteps_are_decision_variables())
+  if (time_steps_are_decision_variables())
     h = prog().GetInitialGuess(h_vars()[0]);
   else
-    h = fixed_timestep();
+    h = fixed_time_step();
 
   VectorXd guess_force(force_vars_[mode_index].size());
   VectorXd guess_collocation_force(collocation_force_vars_[mode_index].size());
@@ -772,7 +772,7 @@ void Dircon<T>::ScaleTimeVariables(double scale) {
 
 template <typename T>
 void Dircon<T>::ScaleQuaternionSlackVariables(double scale) {
-  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+  DRAKE_DEMAND(multibody::HasQuaternion(plant_));
   for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
     for (int j = 0; j < mode_length(i_mode) - 1; j++) {
       const auto& vars = quaternion_slack_vars(i_mode, j);

@@ -1,4 +1,5 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
+#include <iostream>
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
@@ -75,13 +76,13 @@ void CassieFixedPointSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  std::cout << "N***** " << evaluators.count_active() << std::endl;
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
-  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  auto kinematic_constraint =
+      program.AddKinematicPositionConstraint(evaluators, q);
   auto fp_constraint =
       program.AddFixedPointConstraint(evaluators, q, u, lambda);
   program.AddJointLimitConstraints(q);
@@ -213,11 +214,12 @@ void CassieFixedBaseFixedPointSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
-  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  auto kinematic_constraint =
+      program.AddKinematicPositionConstraint(evaluators, q);
   auto fp_constraint =
       program.AddFixedPointConstraint(evaluators, q, u, lambda);
   program.AddJointLimitConstraints(q);
@@ -255,10 +257,6 @@ void CassieFixedBaseFixedPointSolver(
   const auto result = drake::solvers::Solve(program, guess);
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() << std::endl;
-
-  std::cout << to_string(result.get_solution_result()) << std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   // Draw final pose
   if (visualize_model_urdf != "") {
@@ -270,66 +268,6 @@ void CassieFixedBaseFixedPointSolver(
   *u_result = result.GetSolution(u);
   *lambda_result = result.GetSolution(lambda);
 }
-
-VdotConstraint::VdotConstraint(const MultibodyPlant<double>& plant,
-                               const KinematicEvaluatorSet<double>& evaluators)
-    : NonlinearConstraint<double>(
-          plant.num_velocities(),
-          plant.num_positions() + plant.num_velocities() +
-              plant.num_actuators() + evaluators.count_full() +
-              plant.num_velocities(),
-          VectorXd::Zero(plant.num_velocities()),
-          VectorXd::Zero(plant.num_velocities()), ""),
-      plant_(plant),
-      world_(plant.world_frame()),
-      context_(plant.CreateDefaultContext()),
-      evaluators_(evaluators),
-      n_q_(plant.num_positions()),
-      n_v_(plant.num_velocities()) {}
-
-void VdotConstraint::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<double>>& vars,
-    drake::VectorX<double>* y) const {
-  const auto& x = vars.head(plant_.num_positions() + plant_.num_velocities());
-  const auto& u = vars.segment(plant_.num_positions() + plant_.num_velocities(),
-                               plant_.num_actuators());
-  const auto& lambda = vars.segment(
-      plant_.num_positions() + plant_.num_velocities() + plant_.num_actuators(),
-      evaluators_.count_full());
-  const auto& vdot = vars.tail(plant_.num_velocities());
-  multibody::setContext<double>(plant_, x, u, context_.get());
-
-  *y = vdot - evaluators_.EvalActiveSecondTimeDerivative(context_.get(), lambda)
-                  .tail(n_v_);
-};
-
-BodyPointVelConstraint::BodyPointVelConstraint(
-    const MultibodyPlant<double>& plant,
-    const multibody::KinematicEvaluatorSet<double>& evaluators)
-    : NonlinearConstraint<double>(
-          evaluators.count_active(),
-          plant.num_positions() + plant.num_velocities(),
-          VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()), ""),
-      plant_(plant),
-      world_(plant.world_frame()),
-      context_(plant.CreateDefaultContext()),
-      evaluators_(evaluators),
-      n_q_(plant.num_positions()),
-      n_v_(plant.num_velocities()) {}
-
-void BodyPointVelConstraint::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<double>>& vars,
-    drake::VectorX<double>* y) const {
-  const auto& q = vars.head(plant_.num_positions());
-  const auto& v = vars.tail(plant_.num_velocities());
-
-  plant_.SetPositions(context_.get(), q);
-
-  MatrixXd J = evaluators_.EvalActiveJacobian(*context_);
-
-  *y = J * v;
-};
 
 void CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -382,32 +320,18 @@ void CassieInitStateSolver(
 
   auto program = multibody::MultibodyProgram(plant);
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
+  auto v = program.AddVelocityVariables();
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
-  auto kinematic_constraint = program.AddKinematicConstraint(evaluators, q);
+  auto kinematic_constraints =
+      program.AddHolonomicConstraint(evaluators, q, v, u, lambda);
   program.AddJointLimitConstraints(q);
 
-  // Velocity part
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
+
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
   int n_v = plant.num_velocities();
-  auto v = program.NewContinuousVariables(n_v, "v");
-
-  // Equation of motion
-  auto vdot = program.NewContinuousVariables(n_v, "vdot");
-  auto constraint = std::make_shared<VdotConstraint>(plant, evaluators);
-  program.AddConstraint(constraint, {q, v, u, lambda, vdot});
-
-  // Zero velocity on feet
-  multibody::KinematicEvaluatorSet<double> contact_evaluators(plant);
-  contact_evaluators.add_evaluator(&left_toe_evaluator);
-  contact_evaluators.add_evaluator(&left_heel_evaluator);
-  contact_evaluators.add_evaluator(&right_toe_evaluator);
-  contact_evaluators.add_evaluator(&right_heel_evaluator);
-  auto contact_vel_constraint =
-      std::make_shared<BodyPointVelConstraint>(plant, contact_evaluators);
-  program.AddConstraint(contact_vel_constraint, {q, v});
 
   // Fix floating base
   program.AddBoundingBoxConstraint(1, 1, q(positions_map.at("base_qw")));
@@ -499,7 +423,6 @@ void CassieInitStateSolver(
   // Snopt settings
   // program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
   //                         "../snopt_test.out");
-  std::cout << "Save log to ../snopt_test.out\n";
   program.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   program.SetSolverOption(drake::solvers::SnoptSolver::id(),
                           "Major optimality tolerance", 1e-2);

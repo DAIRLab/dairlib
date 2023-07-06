@@ -9,6 +9,8 @@
 #include "systems/robot_lcm_systems.h"
 
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -43,8 +45,6 @@ using drake::multibody::UnitInertia;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-using std::cout;
-using std::endl;
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -56,17 +56,20 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant(0.0);
 
-  addCassieMultibody(&plant, &scene_graph, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, "examples/Cassie/urdf/cassie_v2_shells.urdf");
   if (FLAGS_floating_base) {
     // Ground direction
     Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
                                   cos(FLAGS_ground_incline));
-    multibody::addFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal);
+    multibody::AddFlatTerrain(&plant, &scene_graph, 0.8, 0.8, ground_normal, false);
   }
 
   plant.Finalize();
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw
+  /// messages to Cassie
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
 
   // Create state receiver.
   auto state_sub =
@@ -111,13 +114,26 @@ int do_main(int argc, char* argv[]) {
         scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
   }
 
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 
+  drake::geometry::MeshcatVisualizerParams params;
+  params.publish_period = 1.0/60.0;
+  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+      &builder, scene_graph, meshcat, std::move(params));
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
 
   auto context = diagram->CreateDefaultContext();
+
+  /// Initialize the lcm subscriber to avoid triggering runtime errors
+  /// during initialization due to internal checks
+  /// (unit quaternion check in MultibodyPositionToGeometryPose
+  /// internal calculations)
+  auto& state_sub_context = diagram->GetMutableSubsystemContext(
+      *state_sub, context.get());
+  state_receiver->InitializeSubscriberPositions(plant, state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

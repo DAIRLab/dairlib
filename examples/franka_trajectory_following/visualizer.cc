@@ -1,5 +1,7 @@
 #include <gflags/gflags.h>
 
+#include <iostream>
+
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"

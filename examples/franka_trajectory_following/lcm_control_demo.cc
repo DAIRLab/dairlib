@@ -42,8 +42,8 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Context;
 using drake::multibody::Parser;
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;
@@ -114,8 +114,8 @@ int DoMain(int argc, char* argv[]){
   int nc = 2;
 
   VectorXd q = VectorXd::Zero(nq);
-  std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
-  std::map<std::string, int> v_map = makeNameToVelocitiesMap(plant);
+  std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
+  std::map<std::string, int> v_map = MakeNameToVelocitiesMap(plant);
   
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);

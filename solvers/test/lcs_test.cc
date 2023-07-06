@@ -71,7 +71,7 @@ void LcsTest() {
   /// Set state and input for linearization
   ///
   VectorXd q = VectorXd::Zero(plant.num_positions());
-  auto q_map = multibody::makeNameToPositionsMap(plant);
+  auto q_map = multibody::MakeNameToPositionsMap(plant);
 
   q(q_map.at("finger_base_to_upper_joint_0")) = 0;
   q(q_map.at("finger_upper_to_middle_joint_0")) = -1;
@@ -92,7 +92,7 @@ void LcsTest() {
   plant.SetPositions(&context, q);
 
   VectorXd v = VectorXd::Zero(plant.num_velocities());
-  auto v_map = multibody::makeNameToVelocitiesMap(plant);
+  auto v_map = multibody::MakeNameToVelocitiesMap(plant);
 
   VectorXd u = VectorXd::Zero(plant.num_actuators());
 

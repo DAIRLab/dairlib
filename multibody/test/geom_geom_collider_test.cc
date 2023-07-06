@@ -1,6 +1,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
 #include "common/find_resource.h"
+#include <iostream>
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
@@ -62,7 +63,7 @@ void GeomGeomColliderTest() {
                                                       diagram_context.get());
 
   VectorXd q = VectorXd::Zero(plant.num_positions());
-  auto q_map = makeNameToPositionsMap(plant);
+  auto q_map = MakeNameToPositionsMap(plant);
 
   q(q_map.at("finger_base_to_upper_joint_0")) = 0;
   q(q_map.at("finger_upper_to_middle_joint_0")) = -1;

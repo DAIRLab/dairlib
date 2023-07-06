@@ -1,5 +1,7 @@
 #include "solvers/lcs_factory.h"
 
+#include <iostream>
+
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "drake/solvers/moby_lcp_solver.h"

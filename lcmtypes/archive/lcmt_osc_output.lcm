@@ -1,0 +1,17 @@
+package archive.dairlib;
+
+struct lcmt_osc_output
+{
+  int64_t utime;
+  int32_t fsm_state;
+  int32_t num_tracking_data;
+
+  lcmt_osc_tracking_data tracking_data[num_tracking_data];
+  lcmt_osc_qp_output qp_output;
+  string tracking_data_names[num_tracking_data];
+
+  double input_cost;
+  double acceleration_cost;
+  double soft_constraint_cost;
+  double tracking_cost [num_tracking_data];
+}

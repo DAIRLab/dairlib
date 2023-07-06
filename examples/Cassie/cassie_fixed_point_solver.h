@@ -52,45 +52,4 @@ void CassieInitStateSolver(
     const Eigen::VectorXd& u_desired, const Eigen::VectorXd& lambda_desired,
     Eigen::VectorXd* q_result, Eigen::VectorXd* v_result,
     Eigen::VectorXd* u_result, Eigen::VectorXd* lambda_result);
-
-/// Constraint for CassieInitStateSolver
-class VdotConstraint : public dairlib::solvers::NonlinearConstraint<double> {
- public:
-  VdotConstraint(const drake::multibody::MultibodyPlant<double>& plant,
-                 const multibody::KinematicEvaluatorSet<double>& evaluators);
-  ~VdotConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& vars,
-                          drake::VectorX<double>* y) const override;
-
- private:
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::multibody::BodyFrame<double>& world_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
-  const multibody::KinematicEvaluatorSet<double>& evaluators_;
-  int n_q_;
-  int n_v_;
-};
-
-/// Constraint for CassieInitStateSolver
-class BodyPointVelConstraint
-    : public dairlib::solvers::NonlinearConstraint<double> {
- public:
-  BodyPointVelConstraint(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const multibody::KinematicEvaluatorSet<double>& evaluators);
-  ~BodyPointVelConstraint() override = default;
-
-  void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<double>>& vars,
-                          drake::VectorX<double>* y) const override;
-
- private:
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  const drake::multibody::BodyFrame<double>& world_;
-  std::unique_ptr<drake::systems::Context<double>> context_;
-  const multibody::KinematicEvaluatorSet<double>& evaluators_;
-  int n_q_;
-  int n_v_;
-};
-
 }  // namespace dairlib

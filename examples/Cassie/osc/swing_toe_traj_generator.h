@@ -21,7 +21,7 @@ class SwingToeTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::string& traj_name);
 
   // Input/output ports
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
   }
 

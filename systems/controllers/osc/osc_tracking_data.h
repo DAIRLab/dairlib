@@ -24,6 +24,8 @@ class OscTrackingData {
                   const drake::multibody::MultibodyPlant<double>& plant_w_spr,
                   const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
 
+  virtual ~OscTrackingData() = default;
+
   // Update() updates the caches. It does the following things in order:
   //  - updates the current fsm state
   //  - update the actual outputs
@@ -54,18 +56,25 @@ class OscTrackingData {
   }
   void CheckOscTrackingData();
 
-  // Set whether or not to use springs in the calculation of the actual outputs
+  // Set whether to use springs in the calculation of the actual outputs
   void SetSpringsInKinematicCalculation(bool use_springs_in_eval) {
     use_springs_in_eval_ = use_springs_in_eval;
   }
 
-  // Set whether or not to use the impact invariant projection
+  // Set whether to use the impact invariant projection
   void SetImpactInvariantProjection(bool use_impact_invariant_projection) {
     impact_invariant_projection_ = use_impact_invariant_projection;
   }
 
-  // Set whether or not to use the impact invariant projection
+  // Set whether to use the impact invariant projection
+  void SetNoDerivativeFeedback(bool no_derivative_feedback) {
+    no_derivative_feedback_ = no_derivative_feedback;
+  }
+
+  // Get whether to use the impact invariant projection
   bool GetImpactInvariantProjection() { return impact_invariant_projection_; }
+  // Get whether to use no derivative feedback near impacts
+  bool GetNoDerivativeFeedback() { return no_derivative_feedback_; }
 
   // Getters for debugging
   const Eigen::VectorXd& GetY() const { return y_; }
@@ -85,7 +94,7 @@ class OscTrackingData {
   const Eigen::MatrixXd& GetJ() const { return J_; }
   const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
   const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
-  const Eigen::MatrixXd& GetWeight() const { return W_; }
+  virtual const Eigen::MatrixXd& GetWeight() const { return W_; }
 
   // Getters
   const std::string& GetName() const { return name_; };
@@ -118,6 +127,9 @@ class OscTrackingData {
   // Flags
   bool use_springs_in_eval_ = true;
   bool impact_invariant_projection_ = false;
+  bool no_derivative_feedback_ = false;
+
+  double time_through_trajectory_ = 0;
 
   // Actual outputs, Jacobian and dJ/dt * v
   Eigen::VectorXd y_;
@@ -146,6 +158,9 @@ class OscTrackingData {
   // If `state_` is empty, then the tracking is always on.
   std::set<int> active_fsm_states_;
 
+  // Cost weights
+  Eigen::MatrixXd W_;
+
   /// OSC calculates feedback positions/velocities from `plant_w_spr_`,
   /// but in the optimization it uses `plant_wo_spr_`. The reason of using
   /// MultibodyPlant without springs is that the OSC cannot track desired
@@ -158,7 +173,6 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
  private:
-
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
                      double t, double t_since_state_switch);
   // Update actual output methods
@@ -186,9 +200,6 @@ class OscTrackingData {
 
   // Trajectory name
   std::string name_;
-
-  // Cost weights
-  Eigen::MatrixXd W_;
 };
 
 }  // namespace controllers

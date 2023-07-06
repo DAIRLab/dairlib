@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 #include <chrono>
 
 #include <gflags/gflags.h>
@@ -62,8 +63,8 @@ void runDircon(
   SceneGraph<double>& scene_graph =
       *builder.AddSystem(std::move(scene_graph_ptr));
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
-  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
+  auto velocities_map = multibody::MakeNameToVelocitiesMap(plant);
 
   for (auto const& element : positions_map)
     cout << element.first << " = " << element.second << endl;
@@ -117,7 +118,7 @@ void runDircon(
                            "Major iterations limit", 200);
 
   for (int j = 0; j < sequence.num_modes(); j++) {
-    trajopt.drake::systems::trajectory_optimization::MultipleShooting::
+    trajopt.drake::planning::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt.SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
                                       init_vc_traj[j]);
@@ -202,8 +203,8 @@ void runDircon(
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(plant_double_ptr,
-      &builder, &scene_graph, pp_xtraj);
+  multibody::ConnectTrajectoryVisualizer(plant_double_ptr, &builder,
+                                         &scene_graph, pp_xtraj);
   auto diagram = builder.Build();
 
   while (true) {

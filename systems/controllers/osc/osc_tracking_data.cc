@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 
@@ -23,8 +24,8 @@ using std::vector;
 
 namespace dairlib::systems::controllers {
 
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
@@ -87,18 +88,26 @@ void OscTrackingData::UpdateDesired(
     const drake::trajectories::Trajectory<double>& traj, double t,
     double t_since_state_switch) {
   // 2. Update desired output
-  y_des_ = traj.value(t);
   if (traj.has_derivative()) {
-    ydot_des_ = traj.EvalDerivative(t, 1);
-    yddot_des_ = traj.EvalDerivative(t, 2);
+    if (traj.rows() == 2 * n_ydot_) {
+      y_des_ = traj.value(t).topRows(n_y_);
+      ydot_des_ = traj.EvalDerivative(t, 1).topRows(n_ydot_);
+      yddot_des_ = traj.EvalDerivative(t, 1).bottomRows(n_ydot_);
+    } else {
+      y_des_ = traj.value(t);
+      ydot_des_ = traj.EvalDerivative(t, 1);
+      yddot_des_ = traj.EvalDerivative(t, 2);
+    }
   }
   // TODO (yangwill): Remove this edge case after EvalDerivative has been
   // implemented for ExponentialPlusPiecewisePolynomial
   else {
+    y_des_ = traj.value(t);
     ydot_des_ = traj.MakeDerivative(1)->value(t);
     yddot_des_ = traj.MakeDerivative(2)->value(t);
   }
   UpdateYddotDes(t, t_since_state_switch);
+  time_through_trajectory_ = t - traj.start_time();
 }
 
 void OscTrackingData::UpdateYddotCmd(double t, double t_since_state_switch) {
@@ -111,11 +120,6 @@ void OscTrackingData::StoreYddotCommandSol(const VectorXd& dv) {
 }
 
 void OscTrackingData::AddFiniteStateToTrack(int state) {
-  // Avoid repeated states
-  if (active_fsm_states_.count(state)) {
-    std::cout << "FSM state: " << state << " was already included in " << name_
-              << std::endl;
-  }
   DRAKE_DEMAND(!active_fsm_states_.count(state));
   active_fsm_states_.insert(state);
 }
@@ -123,7 +127,7 @@ void OscTrackingData::AddFiniteStateToTrack(int state) {
 // Run this function in OSC constructor to make sure that users constructed
 // OscTrackingData correctly.
 void OscTrackingData::CheckOscTrackingData() {
-  cout << "Checking " << name_ << endl;
+  //  cout << "Checking " << name_ << endl;
   CheckDerivedOscTrackingData();
 
   DRAKE_DEMAND((K_p_.rows() == n_ydot_) && (K_p_.cols() == n_ydot_));

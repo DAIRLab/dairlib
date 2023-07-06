@@ -18,3 +18,21 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "s2s_kalman_filter",
+    hdrs = ["s2s_kalman_filter.h"],
+    deps = [
+        ":linear_kalman_filter",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "linear_kalman_filter",
+    srcs = ["linear_kalman_filter.cc"],
+    hdrs = ["linear_kalman_filter.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

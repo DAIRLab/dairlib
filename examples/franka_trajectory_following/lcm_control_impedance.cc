@@ -43,8 +43,6 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Context;
 using drake::multibody::Parser;
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
 using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;

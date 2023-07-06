@@ -7,10 +7,12 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "vector",
     srcs = [
+        "impact_info_vector.cc",
         "output_vector.cc",
         "timestamped_vector.cc",
     ],
     hdrs = [
+        "impact_info_vector.h",
         "output_vector.h",
         "timestamped_vector.h",
     ],
@@ -42,6 +44,20 @@ cc_test(
         ":vector",
         "@drake//:drake_shared_library",
         "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "geared_motor",
+    srcs = [
+        "geared_motor.cc",
+    ],
+    hdrs = [
+        "geared_motor.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )
 

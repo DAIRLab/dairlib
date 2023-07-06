@@ -8,8 +8,6 @@
 #include <fstream>
 #include <string>
 
-#include <drake/math/saturate.h>
-
 using std::string;
 using std::vector;
 
@@ -163,7 +161,7 @@ ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTr
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double final_height = drake::math::saturate(
+  double final_height = std::clamp(
       desired_com_height_ + stance_foot_pos(2),
       CoM(2) - max_height_diff_per_step,
       CoM(2) + max_height_diff_per_step);
@@ -267,7 +265,7 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = drake::math::saturate(start_time,
+  start_time = std::clamp(start_time,
                                      -std::numeric_limits<double>::infinity(),
                                      end_time - 0.001);
 
@@ -306,7 +304,7 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = drake::math::saturate(start_time,
+  start_time = std::clamp(start_time,
                                      -std::numeric_limits<double>::infinity(),
                                      end_time - 0.001);
 

@@ -96,13 +96,17 @@ void MeshcatMPCDebugVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
     auto foothold = foothold_set.footholds().at(i);
     const auto [verts, faces] = foothold.GetSurfaceMesh();
     auto faces_reversed = faces;
+    Eigen::Matrix3Xd verts_line = verts;
+    verts_line.rightCols<1>() = verts_line.leftCols<1>();
     faces_reversed.row(0).swap(faces_reversed.row(2));
     meshcat_->SetTriangleMesh(prefix + make_path(i) + "top", verts, faces, rgb.at(1));
     meshcat_->SetTriangleMesh(prefix + make_path(i) + "bottom", verts, faces_reversed, rgb.at(1));
+    meshcat_->SetLine(prefix + make_path(i) + "boundary", verts_line, 2.0, drake::geometry::Rgba(0,0,0,0));
   }
   for (int i = foothold_set.size(); i < n_prev; i++) {
-    meshcat_->Delete(make_path(i) + "top");
-    meshcat_->Delete(make_path(i) + "bottom");
+    meshcat_->Delete(prefix + make_path(i) + "top");
+    meshcat_->Delete(prefix + make_path(i) + "bottom");
+    meshcat_->Delete(prefix + make_path(i) + "boundary");
   }
 }
 

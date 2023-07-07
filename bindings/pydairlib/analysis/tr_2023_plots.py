@@ -23,6 +23,54 @@ except ImportError:
     from yaml import Loader, Dumper
 
 
+default_hardware_mpc_debug_channels = {
+    'channel_x': 'NETWORK_CASIE_STATE_DISPATCHER',
+    'channel_mpc': 'ALIP_MINLP_DEBUG',
+    'channel_terrain': 'FOOTHOLDS_PROCESSED'
+}
+class MpcLogTileDriver:
+    """
+        Class to assist in driving the meshcat visualization at evenly
+        spaced time intervals for making motion tiles.
+    """
+    def __init__(self, fname, channels=None):
+        if channels is None:
+            self._channels = default_hardware_mpc_debug_channels
+        else:
+            self._channels = channels
+
+        self._lcmlog = lcm.EventLog(fname, "r")
+        self._lcm = lcm.LCM()
+        self._tstart = self._lcmlog.read_next_event().timestamp
+        self._tcurr = self._tstart
+        self.reset()
+
+    def reset(self):
+        self._lcmlog.seek(0)
+        self._tcurr = self._tstart
+
+    def publish_and_advance(self, seconds):
+        next_timestamp = self._tcurr + seconds * 1e6
+        self._lcmlog.seek_to_timestamp(next_timestamp)
+        channels_seen = []
+        event = self._lcmlog.read_next_event()
+        while event:
+            self._lcm.publish(event.channel, event.data)
+            if event.channel not in channels_seen:
+                channels_seen.append(event.channel)
+
+            seen = [channel in channels_seen for channel in self._channels.values()]
+            if all(seen):
+                break
+            event = self._lcmlog.read_next_event()
+
+        if not event:
+                self.reset()
+                self.publish_and_advance(seconds)
+        else:
+            self._tcurr = event.timestamp
+
+
 mpc_channels = {
     "ALIP_MINLP_DEBUG": dairlib.lcmt_mpc_debug,
     "FOOTSTEP_TARGET": dairlib.lcmt_footstep_target
@@ -96,6 +144,10 @@ def plot_solve_time_vs_constraint_activation(logs):
     )
     plt.ylabel('MPC Solve Time (ms)')
     plt.title('MPC Solve Time vs. Foothold Constraint Activation')
+
+
+def meshcat_tiles_main():
+    pass
 
 
 def main():

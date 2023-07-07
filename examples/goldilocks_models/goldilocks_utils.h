@@ -66,6 +66,7 @@ class InnerLoopSetting {
   bool no_model_update;
   bool zero_turning_rate;
   bool zero_ground_incline;
+  bool fixed_pelvis_height;
 };
 
 // SubQpData stores all the data about the QPs in the SQP algorithm

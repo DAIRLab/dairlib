@@ -1993,6 +1993,9 @@ int findGoldilocksModels(int argc, char* argv[]) {
   inner_loop_setting.zero_ground_incline =
       (task_gen->task_min("ground_incline") == 0 &&
        task_gen->task_max("ground_incline") == 0);  // for testing
+  inner_loop_setting.fixed_pelvis_height =
+      (task_gen->task_min("pelvis_height") ==
+       task_gen->task_max("pelvis_height"));  // for testing
   cout << "mu = " << inner_loop_setting.mu << endl;
   cout << "directory = " << dir << endl;
   cout << "com_accel_constraint = " << inner_loop_setting.com_accel_constraint

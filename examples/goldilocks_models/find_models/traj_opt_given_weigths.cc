@@ -2017,11 +2017,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     // testing -- not allowing the solver to exploit the problem numerically
     // (not sure if this matters yet)
     if (turning_rate == 0 && ground_incline == 0) {
-      if (setting.zero_turning_rate) {
-        ground_incline = 1e-2;
-      }
-      if (setting.zero_ground_incline) {
-        turning_rate = 1e-2;
+      if (setting.fixed_pelvis_height) {
+        if (setting.zero_turning_rate) {
+          ground_incline = 1e-2;
+        }
+        if (setting.zero_ground_incline) {
+          turning_rate = 1e-2;
+        }
       }
     }
   }

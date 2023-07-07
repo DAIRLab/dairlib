@@ -2041,13 +2041,8 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     // regardless of zero or non-zero turning rate and ground incline (so that
     // the cost landscapes are consistent at the intersection of 0 turning rate
     // and 0 incline)
-
-    // clang-format off
-    // TODO: There is a bug when I set the flags to true. The error message is
-    //  abort: Failure at bazel-out/k8-opt/bin/external/drake/solvers/_virtual_includes/constraint/drake/solvers/constraint.h:68 in Constraint(): condition '!lower_bound_.array().isNaN().any()' failed.
-    // clang-format on
-    //    non_zero_ground_incline_set_of_constriants = true;
-    //    non_zero_turning_rate_set_of_constriants = true;
+    non_zero_ground_incline_set_of_constriants = true;
+    non_zero_turning_rate_set_of_constriants = true;
   }
 
   double all_cost_scale = setting.all_cost_scale;
@@ -2709,14 +2704,20 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
                                   -xf(pos_map.at("base_y")));
     } else {
       // x y position constraint
-      double radius = stride_length / abs(turning_angle);
-      int sign = (turning_angle >= 0) ? 1 : -1;
-      double delta_x = radius * sin(abs(turning_angle));
-      double delta_y = sign * radius * (1 - cos(turning_angle));
-      trajopt.AddBoundingBoxConstraint(delta_x, delta_x,
-                                       xf(pos_map.at("base_x")));
-      trajopt.AddBoundingBoxConstraint(delta_y, delta_y,
-                                       xf(pos_map.at("base_y")));
+      if (turning_angle == 0) {
+        trajopt.AddBoundingBoxConstraint(stride_length, stride_length,
+                                         xf(pos_map.at("base_x")));
+        trajopt.AddBoundingBoxConstraint(0, 0, xf(pos_map.at("base_y")));
+      } else {
+        double radius = stride_length / abs(turning_angle);
+        int sign = (turning_angle >= 0) ? 1 : -1;
+        double delta_x = radius * sin(abs(turning_angle));
+        double delta_y = sign * radius * (1 - cos(turning_angle));
+        trajopt.AddBoundingBoxConstraint(delta_x, delta_x,
+                                         xf(pos_map.at("base_x")));
+        trajopt.AddBoundingBoxConstraint(delta_y, delta_y,
+                                         xf(pos_map.at("base_y")));
+      }
     }
 
     // Constraint on FINAL floating base quaternion

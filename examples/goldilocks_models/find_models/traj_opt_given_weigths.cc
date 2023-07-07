@@ -2041,8 +2041,13 @@ void cassieTrajOpt(const MultibodyPlant<double>& plant,
     // regardless of zero or non-zero turning rate and ground incline (so that
     // the cost landscapes are consistent at the intersection of 0 turning rate
     // and 0 incline)
-    non_zero_ground_incline_set_of_constriants = true;
-    non_zero_turning_rate_set_of_constriants = true;
+
+    // clang-format off
+    // TODO: There is a bug when I set the flags to true. The error message is
+    //  abort: Failure at bazel-out/k8-opt/bin/external/drake/solvers/_virtual_includes/constraint/drake/solvers/constraint.h:68 in Constraint(): condition '!lower_bound_.array().isNaN().any()' failed.
+    // clang-format on
+    //    non_zero_ground_incline_set_of_constriants = true;
+    //    non_zero_turning_rate_set_of_constriants = true;
   }
 
   double all_cost_scale = setting.all_cost_scale;

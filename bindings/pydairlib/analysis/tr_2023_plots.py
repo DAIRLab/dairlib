@@ -138,11 +138,13 @@ def plot_solve_time_vs_constraint_activation(logs):
         data = collect_solve_time_vs_constraint_activation(log["mpc_debug"], data)
     for key in data:
         data[key] = 1000 * np.array(data[key])
+    n_slack = len(data[False])
+    n_active = len(data[True])
 
     ps = PlotStyler()
     plt.boxplot(data.values())
     plt.gca().set_xticklabels(
-        ['Foothold Constraint Slack', 'Foothold Constraint Active']
+        [f'Foothold Constraint Slack\n(n = {n_slack})', f'Foothold Constraint Active\n(n = {n_active})']
     )
     plt.ylabel('MPC Solve Time (ms)')
     plt.title('MPC Solve Time vs. Foothold Constraint Activation')
@@ -157,7 +159,9 @@ def solve_time_main():
     )
     log_parent_folder = sys.argv[1]
     logs = {}
-    for key in dataset_config.keys():
+
+    keys = ['solve_time_vs_constraint_activation', 'solve_time_vs_num_footholds']
+    for key in keys:
         logs_key = {}
         for log in dataset_config[key]:
             log_key = f'{log["date"]}-lcmlog-mpc-{log["lognum"]}'
@@ -228,4 +232,6 @@ def get_mpc_log_starts(logfolder):
 
 if __name__ == "__main__":
     # get_mpc_log_starts( "/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/05_15_23")
-    motion_tiles_main()
+    # motion_tiles_main()
+    solve_time_main()
+

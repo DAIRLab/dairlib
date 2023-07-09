@@ -88,7 +88,7 @@ def foothold_constraint_active(msg):
     viol_p1 = np.array([np.max(A @ p1 - b) for (A, b) in footholds])
     viol_p2 = np.array([np.max(A @ p2 - b) for (A, b) in footholds])
 
-    return np.min(viol_p1) > -1e-5 or np.min(viol_p2) > -1e-5
+    return np.min(viol_p1) > -1e-6 or np.min(viol_p2) > -1e-6
 
 
 class MpcDebug:

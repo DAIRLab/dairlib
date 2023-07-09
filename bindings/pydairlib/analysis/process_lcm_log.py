@@ -42,6 +42,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
         event = lcm_log.read_next_event()
     return data_processing_callback(data_to_process, *args, *kwargs)
 
+
 # TODO (@Brian-Acosta) refactor this to be more modular
 def get_log_data_from_first_message(
         lcm_log, lcm_channels, start_channel, start_time, duration,

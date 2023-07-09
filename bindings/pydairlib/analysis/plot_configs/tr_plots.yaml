@@ -18,3 +18,12 @@ solve_time_vs_num_footholds: [
   { 'date': '05_15_23', 'lognum': '20', 'start_time': 0.0, 'end_time': 20.0 }, # IMG_7447
   { 'date': '05_15_23', 'lognum': '21', 'start_time': 0.0, 'end_time': 30.0 }  # IMG_7448
 ]
+
+timing_offsets:
+  '05_15_23':
+    '05': {'video_file': 'IMG_7432', 'lcmlog_anchor': 2.52, 'video_anchor': 3.56, 'rosbag_anchor': 2.069519 }
+    '13': {'video_file': 'IMG_7440', 'lcmlog_anchor': 2.56, 'video_anchor': 3.10, 'rosbag_anchor': 2.134893 }
+    '17': {'video_file': 'IMG_7444', 'lcmlog_anchor': 2.53, 'video_anchor': 2.80, 'rosbag_anchor': 2.098815 }
+    '18': {'video_file': 'IMG_7445', 'lcmlog_anchor': 2.52, 'video_anchor': 2.86, 'rosbag_anchor': 2.031441 }
+    '20': {'video_file': 'IMG_7447', 'lcmlog_anchor': 2.56, 'video_anchor': 4.46, 'rosbag_anchor': 2.070944 }
+    '21': {'video_file': 'IMG_7448', 'lcmlog_anchor': 2.57, 'video_anchor': 2.57, 'rosbag_anchor': 2.144443 }

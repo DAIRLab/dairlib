@@ -1,3 +1,4 @@
+import glob
 import io
 import os
 import sys
@@ -12,11 +13,12 @@ except ImportError:
     from yaml import Loader, Dumper
 
 
-import video_tools
-from process_lcm_log import get_log_data
-import mpc_plotting_utils as mpc_plots
+import pydairlib.analysis.video_tools as video_tools
+from pydairlib.analysis.process_lcm_log import get_log_data
+import pydairlib.analysis.mpc_plotting_utils as mpc_plots
 
 from pydairlib.common.plot_styler import PlotStyler
+from pydairlib.analysis.cassie_plotting_utils import get_timestamp_of_first_liftoff
 
 # lcmtypes
 import dairlib
@@ -146,10 +148,6 @@ def plot_solve_time_vs_constraint_activation(logs):
     plt.title('MPC Solve Time vs. Foothold Constraint Activation')
 
 
-def meshcat_tiles_main():
-    pass
-
-
 def solve_time_main():
     init_ps()
 
@@ -191,5 +189,19 @@ def motion_tiles_main():
 
     video_tools.extract_frames(0, -1, 10, video_file, outfolder)
 
+
+def get_mpc_log_starts(logfolder):
+    logs = glob.glob(os.path.join(logfolder, 'lcmlog-mpc-[0-9][0-9]'))
+    for log in logs:
+        lcmlog = lcm.EventLog(log)
+        start = get_timestamp_of_first_liftoff(
+            lcmlog,
+            "NETWORK_CASSIE_STATE_DISPATCHER",
+            vel_thresh=0.1
+        )
+        print(f'{log.split("/")[-1]}: {start:.2f}')
+
+
 if __name__ == "__main__":
-    motion_tiles_main()
+    get_mpc_log_starts( "/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/05_15_23")
+    # motion_tiles_main()

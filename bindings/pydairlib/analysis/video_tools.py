@@ -31,6 +31,7 @@ def extract_frames(start_time, end_time, num_frames, video_filename, save_folder
 
     # Get video properties
     fps = video.get(cv2.CAP_PROP_FPS)
+    print(f'fps: {fps}')
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     video_duration = total_frames / fps
 

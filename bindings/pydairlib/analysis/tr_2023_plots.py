@@ -182,12 +182,36 @@ def solve_time_main():
     plt.show()
 
 
-def motion_tiles_main():
-    log_file = "/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/05_15_23/lcmlog-mpc-18"
-    video_file = "/home/brian/workspace/data/alip_mpc/alip_mpc_videos/success/05_15_23/IMG_7445.MP4"
+def motion_tiles(date, lognum, start_offset, duration, num_tiles, prefix='', frame_edits=None):
+    # first do the video
+    dataset_config = load(
+        io.open('bindings/pydairlib/analysis/plot_configs/tr_plots.yaml', 'r'),
+        Loader=Loader
+    )
+    timing_info = dataset_config["timing_offsets"][date][lognum]
+    video_name = timing_info['video_file']
+    video_file = f"/home/brian/workspace/data/alip_mpc/alip_mpc_videos/success/{date}/{video_name}.MP4"
     outfolder = "/home/brian/workspace/data/alip_mpc_paper/motion_tiles"
+    start_time = timing_info["video_anchor"] + start_offset
+    end_time = start_time + duration
+    video_tools.extract_frames(
+        start_time,
+        end_time,
+        num_tiles,
+        video_file,
+        outfolder,
+        prefix,
+        frame_edits
+    )
 
-    video_tools.extract_frames(0, -1, 10, video_file, outfolder)
+    # Now do the meshcat
+    log_file = f"/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/{date}/lcmlog-mpc-{lognum}"
+
+
+def motion_tiles_main():
+    n = 10
+    motion_tiles('05_15_23', '13', 9.1, 0.4 * n, n, 'up', {'aspect': 0.9, 'yshift': -0.1, 'mirror': True})
+    motion_tiles('05_15_23', '13', 25.1, 0.4 * n, n, 'down', {'aspect': 0.9, 'yshift': -0.1, 'mirror': False})
 
 
 def get_mpc_log_starts(logfolder):
@@ -203,5 +227,5 @@ def get_mpc_log_starts(logfolder):
 
 
 if __name__ == "__main__":
-    get_mpc_log_starts( "/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/05_15_23")
-    # motion_tiles_main()
+    # get_mpc_log_starts( "/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/05_15_23")
+    motion_tiles_main()

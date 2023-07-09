@@ -57,7 +57,7 @@ def get_velocity_profile_data(data, plant, state_channel, cassie_out_channel, ve
     return robot_output, {'t_vdes': t, 'vdes': vel}
 
 
-def make_velocity_tracking_plot(plant, context, robot_output, vdes, fname=None):
+def make_velocity_tracking_plot(plant, context, robot_output, vdes, title, fname=None):
     fb_vel = mbp_plots.get_floating_base_velocity_in_body_frame(
         robot_output, plant, context,
         plant.GetBodyByName("pelvis").body_frame()
@@ -66,14 +66,22 @@ def make_velocity_tracking_plot(plant, context, robot_output, vdes, fname=None):
 
     ps = PlotStyler(directory=outfolder)
     ps.plot(robot_output['t_x'], v_actual)
-    ps.plot(vdes['t_vdes'], vdes['vdes'], linestyle='dashed', xlabel='Time (s)', ylabel='Velocity (m/s)', title='Forward Velocity Tracking')
-    ps.add_legend(['Pelvis Forward Velocity', 'Desired Velocity'])
+    ps.plot(
+        vdes['t_vdes'],
+        vdes['vdes'],
+        linestyle='dashed',
+        xlabel='Time (s)',
+        ylabel='Velocity (m/s)',
+        title=title,
+        ylim=[-0.05, 1.4]
+    )
+    ps.add_legend(['Pelvis Velocity $v_{x}$', ' Desired Velocity $v_{d}$'])
 
     if fname:
         ps.save_fig(fname)
 
 
-def log_main(logname, yamlname, meshcat=False):
+def log_main(logname, yamlname, plot_title, meshcat=False):
     vel_scale = 1.5
     channel_x = "CASSIE_STATE_SIMULATION"
     channel_radio = "CASSIE_VIRTUAL_RADIO"
@@ -94,7 +102,14 @@ def log_main(logname, yamlname, meshcat=False):
         plant, channel_x, channel_radio, vel_scale, 0.5)
 
     fname = logname.split('/')[-1] + '.png'
-    make_velocity_tracking_plot(plant, context, robot_output, vel_cmd, fname)
+    make_velocity_tracking_plot(
+        plant,
+        context,
+        robot_output,
+        vel_cmd,
+        plot_title,
+        fname
+    )
     if meshcat:
         multipose_visualizer_main(robot_output, yamlname, num_poses)
 
@@ -103,8 +118,18 @@ def main():
     PlotStyler.set_default_styling()
 
     disp_meshcat = len(sys.argv) > 1
-    log_main(stairs_down_logpath, stairs_down_yamlpath, disp_meshcat)
-    log_main(stairs_up_logpath, stairs_up_yamlpath, disp_meshcat)
+    log_main(
+        stairs_down_logpath,
+        stairs_down_yamlpath,
+        'Velocity Tracking - Step Down',
+        disp_meshcat
+    )
+    log_main(
+        stairs_up_logpath,
+        stairs_up_yamlpath,
+        'Velocity Tracking - Step Up',
+        disp_meshcat
+    )
 
 
 if __name__ == '__main__':

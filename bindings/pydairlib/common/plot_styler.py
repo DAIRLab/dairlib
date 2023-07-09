@@ -10,13 +10,19 @@ from matplotlib.patches import PathPatch
 class PlotStyler():
   @staticmethod
   def set_default_styling():
-    # matplotlib.rcParams['figure.figsize'] = 20, 12
-    # matplotlib.rcParams['figure.figsize'] = 20, 6
     matplotlib.rcParams['figure.figsize'] = 4, 6
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 20}
+    font = {'size': 24, 'family':'serif', 'serif':['Computer Modern']}
+    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
+    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
+    matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 2
+    matplotlib.rcParams['lines.linewidth'] = 4
+    matplotlib.rcParams['axes.titlesize'] = 30
+    matplotlib.rcParams['xtick.major.size'] = 15
+    matplotlib.rcParams['xtick.major.width'] = 1
+    matplotlib.rcParams['xtick.minor.size'] = 7
+    matplotlib.rcParams['xtick.minor.width'] = 1
     plt.set_cmap('tab20')
 
   def __init__(self, figure=None, nrows=1, ncols=1, directory=None):
@@ -34,7 +40,7 @@ class PlotStyler():
     self.dpi = 300
     self.directory = directory
     matplotlib.rcParams['figure.figsize'] = 10, 8
-    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
+
 
     if figure is None:
       self.fig, self.axes = plt.subplots(nrows=nrows, ncols=ncols,
@@ -54,9 +60,9 @@ class PlotStyler():
 
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None,
-           linestyle=None,
-           grid=True, xlabel=None, ylabel=None, title=None, legend=None,
-           data_label=None, subplot_index=0):
+           linestyle=None, grid=True, xlabel=None, ylabel=None, title=None,
+           legend=None, data_label=None, subplot_index=0):
+
     self.axes[subplot_index].plot(xdata, ydata, color=color,
                                   linestyle=linestyle, label=data_label)
     if xlim:

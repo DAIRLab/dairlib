@@ -2,8 +2,11 @@ import os
 import cv2
 import warnings
 
+import numpy as np
 
-def extract_frames(start_time, end_time, num_frames, video_filename, save_folder):
+
+def extract_frames(start_time, end_time, num_frames, video_filename,
+                   save_folder, prefix='', frame_edits=None):
     """
     Extracts frames from a video file at evenly spaced timestamps and saves them
     as JPEG images.
@@ -19,6 +22,7 @@ def extract_frames(start_time, end_time, num_frames, video_filename, save_folder
         num_frames (int): The number of frames to extract.
         video_filename (str): The filename of the input video file.
         save_folder (str): The folder to save the extracted frames.
+        prefix (str): A prefix before the frame number in the filename
 
     Returns:
         None
@@ -31,7 +35,6 @@ def extract_frames(start_time, end_time, num_frames, video_filename, save_folder
 
     # Get video properties
     fps = video.get(cv2.CAP_PROP_FPS)
-    print(f'fps: {fps}')
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     video_duration = total_frames / fps
 
@@ -61,9 +64,23 @@ def extract_frames(start_time, end_time, num_frames, video_filename, save_folder
         video.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
         ret, frame = video.read()
 
+        if frame_edits is not None:
+            aspect = frame_edits['aspect']
+            yshift = -frame_edits['yshift']
+            h = frame.shape[0]
+            w = frame.shape[1]
+            h_new = w / aspect
+            center_y = int(h / 2)
+            dy = int(h_new / 2)
+            offset = int(yshift * h)
+            frame = frame[offset + center_y - dy: offset + center_y + dy, :]
+
+            if frame_edits['mirror']:
+                frame = np.fliplr(frame)
+
         if ret:
             # Save the frame as a JPEG image
-            frame_filename = os.path.join(save_folder, f"{i}.jpg")
+            frame_filename = os.path.join(save_folder, f"{prefix}-{i}.jpg")
             cv2.imwrite(frame_filename, frame)
             frame_index += int(interval * fps)
             timestamp += interval

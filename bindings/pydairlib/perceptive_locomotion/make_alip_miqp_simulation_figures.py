@@ -112,6 +112,7 @@ def log_main(logname, yamlname, plot_title, meshcat=False):
     )
     if meshcat:
         multipose_visualizer_main(robot_output, yamlname, num_poses)
+        input('Press Enter To Continue')
 
 
 def main():
@@ -121,13 +122,13 @@ def main():
     log_main(
         stairs_down_logpath,
         stairs_down_yamlpath,
-        'Velocity Tracking - Step Down',
+        'Velocity Tracking - Descending',
         disp_meshcat
     )
     log_main(
         stairs_up_logpath,
         stairs_up_yamlpath,
-        'Velocity Tracking - Step Up',
+        'Velocity Tracking - Ascending',
         disp_meshcat
     )
 

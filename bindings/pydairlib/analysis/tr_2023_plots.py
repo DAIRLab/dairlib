@@ -1,8 +1,18 @@
+import io
+import os
 import sys
 import lcm
 import numpy as np
+from yaml import load, dump
 from matplotlib import pyplot as plt
 
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
+
+import video_tools
 from process_lcm_log import get_log_data
 import mpc_plotting_utils as mpc_plots
 
@@ -11,28 +21,18 @@ from pydairlib.common.plot_styler import PlotStyler
 # lcmtypes
 import dairlib
 
-
-import io
-import os
-from yaml import load, dump
-
-
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-
-
 default_hardware_mpc_debug_channels = {
     'channel_x': 'NETWORK_CASIE_STATE_DISPATCHER',
     'channel_mpc': 'ALIP_MINLP_DEBUG',
     'channel_terrain': 'FOOTHOLDS_PROCESSED'
 }
+
+
 class MpcLogTileDriver:
     """
         Class to assist in driving the meshcat visualization at evenly
         spaced time intervals for making motion tiles.
-    """
+     """
     def __init__(self, fname, channels=None):
         if channels is None:
             self._channels = default_hardware_mpc_debug_channels
@@ -150,7 +150,7 @@ def meshcat_tiles_main():
     pass
 
 
-def main():
+def solve_time_main():
     init_ps()
 
     dataset_config = load(
@@ -184,5 +184,12 @@ def main():
     plt.show()
 
 
+def motion_tiles_main():
+    log_file = "/home/brian/workspace/data/alip_mpc/alip_mpc_hardware_logs/05_15_23/lcmlog-mpc-18"
+    video_file = "/home/brian/workspace/data/alip_mpc/alip_mpc_videos/success/05_15_23/IMG_7445.MP4"
+    outfolder = "/home/brian/workspace/data/alip_mpc_paper/motion_tiles"
+
+    video_tools.extract_frames(0, -1, 10, video_file, outfolder)
+
 if __name__ == "__main__":
-    main()
+    motion_tiles_main()

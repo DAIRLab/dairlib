@@ -79,6 +79,7 @@ class PlotStyler():
       self.axes[subplot_index].legend(legend)
 
     self.axes[subplot_index].grid(grid, which='major')
+    self.fig.tight_layout()
 
   def plot_bands(self, x_low, x_high, y_low, y_high, color='C0',
                  subplot_index=0):
@@ -99,8 +100,8 @@ class PlotStyler():
     self.fig.savefig(self.directory + filename, dpi=self.dpi, bbox_inches='tight')
     return
 
-  def add_legend(self, labels, loc=0, subplot_index=0):
-    legend = self.axes[subplot_index].legend(labels, loc=loc)
+  def add_legend(self, labels, loc=0, subplot_index=0, ncol=1):
+    legend = self.axes[subplot_index].legend(labels, loc=loc, ncol=ncol, columnspacing=0.5)
     self.axes[subplot_index].add_artist(legend)
     return
 

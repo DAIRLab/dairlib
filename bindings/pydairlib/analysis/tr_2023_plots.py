@@ -28,6 +28,7 @@ default_hardware_mpc_debug_channels = {
     'channel_mpc': 'ALIP_MINLP_DEBUG',
     'channel_terrain': 'FOOTHOLDS_PROCESSED'
 }
+outfolder = '/home/brian/workspace/manuscripts/tech_report/figures/'
 
 
 class MpcLogTileDriver:
@@ -80,8 +81,7 @@ mpc_channels = {
 
 
 def init_ps():
-    ps = PlotStyler()
-    ps.set_default_styling()
+    PlotStyler.set_default_styling()
 
 
 def collect_solve_time_vs_num_footholds(mpc_debug, data=None):
@@ -120,15 +120,18 @@ def plot_solve_time_vs_nfootholds(logs):
     t_95 = [t for _, t in sorted(zip(ns, t_95))]
     ns = sorted(ns)
 
-    ps = PlotStyler()
+    ps = PlotStyler(directory=outfolder)
     ps.plot(ns, t_min)
     ps.plot(ns, t_max)
     ps.plot(ns, t_avg)
     ps.plot(
-        ns, t_95, xlabel='Number of Footholds', ylabel='MPC Solve Time (ms)',
-        title='MPC Solve Time vs. Number of Footholds'
+        ns, t_95, xlabel='Number of Footholds', ylabel='MPFC Solve Time (ms)',
+        title='MPFC Solve Time vs. Number of Footholds',
+        ylim=[0, 60]
     )
-    ps.add_legend(['min', 'max', 'mean', '90th Percentile'])
+    ps.add_legend(['Min.', 'Max.', 'Mean', '90th Percentile'], ncol=2)
+    ps.save_fig('solve_time_vs_footholds.png')
+
 
 
 def plot_solve_time_vs_constraint_activation(logs):
@@ -141,13 +144,14 @@ def plot_solve_time_vs_constraint_activation(logs):
     n_slack = len(data[False])
     n_active = len(data[True])
 
-    ps = PlotStyler()
+    ps = PlotStyler(directory=outfolder)
     plt.boxplot(data.values())
     plt.gca().set_xticklabels(
         [f'Foothold Constraint Slack\n(n = {n_slack})', f'Foothold Constraint Active\n(n = {n_active})']
     )
-    plt.ylabel('MPC Solve Time (ms)')
-    plt.title('MPC Solve Time vs. Foothold Constraint Activation')
+    plt.ylabel('MPFC Solve Time (ms)')
+    plt.title('MPFC Solve Time vs. Foothold Constraint Activation')
+    ps.save_fig('solve_time_vs_activation')
 
 
 def solve_time_main():
@@ -183,7 +187,6 @@ def solve_time_main():
 
     plot_solve_time_vs_nfootholds(logs["solve_time_vs_num_footholds"])
     plot_solve_time_vs_constraint_activation(logs["solve_time_vs_constraint_activation"])
-    plt.show()
 
 
 def motion_tiles(date, lognum, start_offset, duration, num_tiles, prefix='', frame_edits=None):

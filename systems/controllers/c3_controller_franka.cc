@@ -589,7 +589,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt.CalcCost(test_state, optimalinputseq) + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt.CalcCost(test_state, optimalinputseq) + 5 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -609,29 +609,53 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // std::cout << "index of smallest element: " << index <<std::endl;
     // std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
     
+    vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+  double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
+  std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+
+
     //update to best state
-    if(min < 100){//75){ //heuristic threshold
+    if(curr_ee_cost - min >= 5){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
          std::cout << "Decided to reposition"<<std::endl;
-         optimal_cost_ = min;
+         optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
+
+        //  Eigen::Vector3d v2(1.0, 0.0, 0.0);
+        //  double normV2 = v2.norm();
+        //  std::cout << "The norm of v2 is: " << normV2 << std::endl;
 
         //  std::cout<<"original st desired " << optimal_sample_.head(3) <<std::endl;
         //  std::cout<<"current state " << state.head(3) <<std::endl;
 
-        //  Eigen::Vector3d way_point = ball_xyz;
+         
         // //  std::cout<<"ballxyz " << ball_xyz <<std::endl;
         // //  way_point[0] = way_point[0] + 0.08;
         // //  way_point[1] = way_point[1] + 0.08;
         //  way_point[2] = way_point[2] + 0.08;
 
          
-        //  std::vector<Vector3d> points(3, VectorXd::Zero(3));
+         std::vector<Vector3d> points(4, VectorXd::Zero(3));
          
-        //  points[0] = end_effector;
+         points[0] = end_effector;
         //  points[1] = way_point;
-        //  points[2] = optimal_sample_;
+         points[3] = optimal_sample_;
+
+         Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz;
+         points[1] = (radius + 0.5) * way_point1/way_point1.norm();
+
+         Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
+         points[2] = (radius + 0.5) * way_point2/way_point2.norm();
+        // std::cout << "The norm of v2 is: " << points[1].norm() << std::endl;
+         
+         double t = 0.015;
+
+         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+         
+         
+
         //  std::cout<<"end effector z " << end_effector[2] <<std::endl;
 
         //  std::cout<<"points 0 " << points[0] <<std::endl;
@@ -666,11 +690,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //      double next_z = generate_next_z(end_effector[2], 0.08, i*0.015); 
              
         //      std::cout<<"Moving up"<<std::endl;
-        //      st_desired << next_point.head(2), next_z , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
         //      state_contact_desired->SetDataVector(st_desired);
         //      state_contact_desired->set_timestamp(timestamp);
-        //  }
+         
          
          
          
@@ -698,7 +722,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
   VectorXd input = opt.Solve(state, delta, w);
-  //std::cout<<"original sol end"<<std::endl;
+  std::cout<<"This is where the end effector is rn : "<< state.head(3) <<std::endl;
   
   
 

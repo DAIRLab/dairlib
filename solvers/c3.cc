@@ -228,6 +228,7 @@ vector<VectorXd> C3::OptimalInputSeq(const vector<VectorXd> zfin){
   
   for (int i = 0; i < N_ ; i++){
       UU[i] = zfin[i].segment(n_ + m_, k_);
+      // std::cout << "here" << zfin[i].head(n_) << std::endl;
   }
   
 return UU; 
@@ -241,39 +242,39 @@ double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
   XX[0] = x0;
   // XX[1] = lcs_.Simulate(XX[0], UU[0]);
 
-  double ball_cost = 0;
-  std::vector<Eigen::MatrixXd> Qball = Q_;
-  for (int i = 0; i < N_; i++){
-  for(int j = 0; j < 7; j++){
-    Qball.at(i)(j,j) = 0;
-  }
-  for(int j = 10; j < 16; j++){
-    Qball.at(i)(j,j) = 0;
-  }
-  }
+  // double ball_cost = 0;
+  // std::vector<Eigen::MatrixXd> Qball = Q_;
+  // for (int i = 0; i < N_; i++){
+  // for(int j = 0; j < 7; j++){
+  //   Qball.at(i)(j,j) = 0;
+  // }
+  // for(int j = 10; j < 16; j++){
+  //   Qball.at(i)(j,j) = 0;
+  // }
+  // }
 
   for (int i = 0; i < N_; i++){
     
     XX[i+1] = lcs_.Simulate(XX[i], UU[i]);  
-    // std::cout<< i<<std::endl;   
-    // std::cout<<"state"<<XX[i]<<std::endl;
+    //std::cout<< i<<std::endl;   
+    //std::cout<<"state"<<XX[i]<<std::endl;
     // std::cout<<"input"<<UU[i]<<std::endl;
   }
 
   // cost = XX[0].transpose()*Q_.at(0)*XX[0];
   for (int i = 0; i < N_; i++){
     cost = cost + (XX[i] - xdesired_[i]).transpose()*Q_.at(i)*(XX[i] - xdesired_[i]) + UU[i].transpose()*R_.at(i)*UU[i];  //will this work?
-    ball_cost = ball_cost + (XX[i] - xdesired_[i]).transpose()*Qball.at(i)*(XX[i] - xdesired_[i]);
+    //ball_cost = ball_cost + (XX[i] - xdesired_[i]).transpose()*Qball.at(i)*(XX[i] - xdesired_[i]);
   }
   cost = cost + (XX[N_]- xdesired_[N_]).transpose()*Q_.at(N_)*(XX[N_]- xdesired_[N_]);
 
-  ball_cost = ball_cost + (XX[N_] - xdesired_[N_]).transpose()*Qball.at(N_)*(XX[N_] - xdesired_[N_]);
-  std::cout<<"explicit Ball cost "<<ball_cost<<std::endl;
+  //ball_cost = ball_cost + (XX[N_] - xdesired_[N_]).transpose()*Qball.at(N_)*(XX[N_] - xdesired_[N_]);
+  //std::cout<<"explicit Ball cost "<<ball_cost<<std::endl;
   
   //checking target when ball is stationary. debugging statements 
   //checking to make sure the desired state remains the same throughout horizon if ball is stationary
-  // std::cout<<" x desired at 0 " << xdesired_[0] << std::endl; 
-  std::cout<<" x desired at N_" << xdesired_[N_].segment(7,3) << std::endl;
+  //std::cout<<" x desired at 0 " << xdesired_[0] << std::endl; 
+  // std::cout<<" x desired at N_" << xdesired_[N_].segment(7,3) << std::endl;
   return cost;
 }
 

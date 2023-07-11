@@ -87,6 +87,8 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force / scaling + d_[0];
 
+  //std::cout << "here" << D_[0] << std::endl;
+
     if (flag == 0){
 
     std::cout<<"CAREFUL LCS FAILED TO SOLVE"<<std::endl;

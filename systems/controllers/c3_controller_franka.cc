@@ -614,7 +614,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 0 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -639,11 +639,19 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
+    double hyp = 0;
+    if(C3_flag_ == 0){
+        hyp = 9;
+    }
+    else{
+        hyp = -5;
+    }
 
     //update to best state
-    if(curr_ee_cost - min >= 0){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
+    if(curr_ee_cost - min >= hyp || C3_flag_ == 1 ){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
+        //  C3_flag_ = 0;
          std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
@@ -670,16 +678,17 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          points[3] = optimal_sample_.head(3);
         //  std::cout<<"optimal sample"<<points[3]<<std::endl;
 
-        //  Eigen::Vector3d way_point1  = points[0] + 0.5*(points[3] - points[0]) - ball_xyz  ;
-        //  points[1] = ball_xyz + (radius + 0.05) * way_point1/way_point1.norm();
+         Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
+         points[1] = ball_xyz + (radius + 0.01) * way_point1/way_point1.norm();
         //  std::cout<<"way_point1"<<way_point1<<std::endl;
 
-         Eigen::Vector3d way_point1  = points[0] + 0.5*(points[3] - points[0]);
-         way_point1[2] = 0.06;
-        //  std::cout<<"ee"<<points[0]<<std::endl;
-        //  std::cout<<"way_point1"<<way_point1<<std::endl;
-        //  std::cout<<"ee"<<points[2]<<std::endl;
-         points[1] = way_point1;
+        //KIND OF WORKING
+        //  Eigen::Vector3d way_point1  = points[0] + 0.5*(points[3] - points[0]);
+        //  way_point1[2] = 0.06;
+        // //  std::cout<<"ee"<<points[0]<<std::endl;
+        // //  std::cout<<"way_point1"<<way_point1<<std::endl;
+        // //  std::cout<<"ee"<<points[2]<<std::endl;
+        //  points[1] = way_point1;
 
 
          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
@@ -741,7 +750,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //      state_contact_desired->SetDataVector(st_desired);
         //      state_contact_desired->set_timestamp(timestamp);
          
-         
+         if (curr_ee_cost - min <= 10){
+              C3_flag_ = 0;
+              std::cout<< "got close to optimal solution and flag is " << C3_flag_ << std::endl;
+         }
          
          
          
@@ -763,12 +775,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     }
     else{
       // VectorXd input = opt.Solve(candidate_states[index], delta, w);
-  
+        C3_flag_ = 0;
 
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
-
-  ///ADDING DELTA
+  
+    ///ADDING DELTA
     if (options.delta_option == 1) {
     /// reset delta and w (option 1)
     delta = delta_reset;
@@ -786,8 +798,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   VectorXd input = opt.Solve(state, delta, w);
   std::cout<<"Using C3 "<<std::endl;
+  std::cout<<"Min : "<<min<<std::endl;
   // std::cout<<"This is where the end effector is rn : "<< state.head(3) <<std::endl;
-  
+  // C3_flag_++;
   
 
   warm_start_x_ = opt.GetWarmStartX();
@@ -878,6 +891,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
 
+  if (curr_ee_cost >= 75){
+    C3_flag_ = 1;
+    std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
+  }
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   // std::cout<<"here"<<std::endl;

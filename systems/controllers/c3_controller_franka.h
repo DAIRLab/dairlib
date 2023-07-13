@@ -141,6 +141,7 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable Eigen::VectorXd optimal_sample_ = VectorXd::Zero(19);
   mutable double optimal_cost_ = 999999;
   mutable bool C3_flag_ = 0;
+  mutable bool reposition_flag_ = 0;
 
   // kalman filter
   // mutable VectorXd xhat_prev;

@@ -614,7 +614,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 0 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -640,9 +640,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
     double hyp = 5;
-    // if(C3_flag_ == 0){
-    //     hyp = 5;
-    // }
+    if(C3_flag_ == 0){
+        hyp = 3;
+    }
+    else{
+        hyp = 17;
+    }
     // if (reposition_flag_ == 1){
     //     hyp = 0;
     // }
@@ -651,7 +654,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     if(curr_ee_cost - min >= hyp){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
-        //  C3_flag_ = 1;
+        //  C3_flag_ = 0;
          std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
@@ -776,7 +779,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     }
     else{
       // VectorXd input = opt.Solve(candidate_states[index], delta, w);
-        
+        C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
 
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
@@ -892,10 +895,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= hyp - 0.01){
+  if (curr_ee_cost - min >= 10){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
-    C3_flag_ = 1;
-    reposition_flag_ = 1;
+    C3_flag_ = 0;
+    // reposition_flag_ = 1;
   }
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;

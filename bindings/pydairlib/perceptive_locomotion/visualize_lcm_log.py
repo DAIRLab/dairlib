@@ -35,7 +35,7 @@ def main():
     channel_x = "CASSIE_STATE_SIMULATION"
     channel_u = "CASSIE_INPUT"
     channel_osc = "OSC_DEBUG_WALKING"
-    num_poses = 22
+    num_poses = 1
 
     filename_log = sys.argv[1]
     filename_stones = sys.argv[2]

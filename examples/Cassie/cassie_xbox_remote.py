@@ -63,7 +63,7 @@ def main():
     joystick.init()
 
     done = False
-    max_speed = 0.5
+    max_speed = 1.0/3.0
     ramp_up = np.arange(0, max_speed, 0.01)
     stay = max_speed * np.ones(400)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01))
@@ -121,6 +121,5 @@ def main():
         i += 1
 
     pygame.quit()
-
 if __name__ == '__main__':
     main()

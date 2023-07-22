@@ -10,15 +10,15 @@ from matplotlib.patches import PathPatch
 class PlotStyler():
   @staticmethod
   def set_default_styling():
-    matplotlib.rcParams['figure.figsize'] = 4, 6
+    matplotlib.rcParams['figure.figsize'] = 4, 4
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 24, 'family':'serif', 'serif':['Computer Modern']}
+    font = {'size': 30, 'family':'serif', 'serif':['Computer Modern']}
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
     matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
     matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 4
-    matplotlib.rcParams['axes.titlesize'] = 30
+    matplotlib.rcParams['axes.titlesize'] = 34
     matplotlib.rcParams['xtick.major.size'] = 15
     matplotlib.rcParams['xtick.major.width'] = 1
     matplotlib.rcParams['xtick.minor.size'] = 7
@@ -101,7 +101,7 @@ class PlotStyler():
     return
 
   def add_legend(self, labels, loc=0, subplot_index=0, ncol=1):
-    legend = self.axes[subplot_index].legend(labels, loc=loc, ncol=ncol, columnspacing=0.5)
+    legend = self.axes[subplot_index].legend(labels, loc=loc, ncol=ncol, columnspacing=0.5, fontsize=24)
     self.axes[subplot_index].add_artist(legend)
     return
 

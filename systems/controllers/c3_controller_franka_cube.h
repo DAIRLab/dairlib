@@ -31,8 +31,8 @@
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
 //CHANGE FOR WHEN YOU DO THE SPHERE EXAMPLE
-// #include "examples/franka_trajectory_following/c3_parameters.h"
-#include "examples/franka_trajectory_following/c3_parameters.h"
+#include "examples/cube_franka/c3_parameters.h"
+// #include "examples/franka_trajectory_following_cube/c3_parameters.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 #include <random>

@@ -1,0 +1,158 @@
+group "1.director" {
+    cmd "drake-director" {
+        exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
+        host = "localhost";
+    }
+}
+
+group "2.ROS" {
+    cmd "a.roscore" {
+        exec = "roscore";
+        host = "localhost";
+    }
+    cmd "b.vision" {
+        exec = "rosrun franka_vision pointgrey.py hough 0";
+        host = "localhost";
+    }
+    cmd "c.realsense" {
+        exec = "roslaunch realsense2_camera rs_camera.launch";
+        host = "localhost";
+    }
+    cmd "d.echo ball" {
+        exec = "rostopic echo /c3/position_estimate";
+        host = "localhost";
+    }
+}
+
+group "4.ROS controlers" {
+    cmd "a.move to start" {
+        exec = "roslaunch franka_example_controllers move_to_start.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+    cmd "b.ROS impedance" {
+        exec = "roslaunch franka_example_controllers drake_impedance_controller.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+    cmd "c.control_node" {
+        exec = "roslaunch franka_control franka_control.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "localhost";
+    }
+}
+
+group "5.[HW] C3 Computer" {
+    cmd "a.[HW] C3" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/lcm_control_demo --TTL 1";
+        host = "localhost";
+    }
+    cmd "b.log parameters" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/start_logging c3_computer";
+        host = "localhost";
+    }
+}
+
+group "6.[HW] Franka Computer" {
+    cmd "a.[HW] ROS->LCM" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/run_c3_ros_to_lcm";
+        host = "localhost";
+    }
+    cmd "b.[HW] impedance controller" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/run_c3_impedance_experiment --channel FRANKA_ROS_OUTPUT";
+        host = "localhost";
+    }
+    cmd "c.[HW] run_state_estimator" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/run_state_estimator --channel FRANKA_ROS_OUTPUT --TTL 1";
+        host = "localhost";
+    }
+    cmd "d.[HW] visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/visualizer --channel=FRANKA_STATE_ESTIMATE";
+        host = "localhost";
+    }
+}
+
+group "7.[SIM] C3" {
+    cmd "a.[SIM] C3" {
+        exec = "bazel-bin/examples/cube_franka/lcm_control_demo --TTL 0";
+        host = "localhost";
+    }
+    cmd "b.[SIM] franka" {
+        exec = "bazel-bin/examples/cube_franka/simulate_franka_lcm";
+        host = "localhost";
+    }
+    cmd "c.[SIM] impedance controller" {
+        exec = "bazel-bin/examples/cube_franka/run_c3_impedance_experiment";
+        host = "localhost";
+    }
+    cmd "d.[SIM] sim visualizer" {
+        exec = "bazel-bin/examples/cube_franka/visualizer --channel=FRANKA_OUTPUT";
+        host = "localhost";
+    }
+}
+
+group "8.Logging, Utils" {
+    cmd "a.start_logging" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/start_logging";
+        host = "localhost";
+    }
+    cmd "b.start_filming" {
+        exec = "python examples/franka_trajectory_following_cube/scripts/start_filming.py";
+        host = "localhost";
+    }
+    cmd "c.process_logs" {
+        exec = "bazel-bin/bindings/pydairlib/analysis/log_plotter_franka";
+        host = "localhost";
+    }
+    cmd "d.process_frames" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/process_frames";
+        host = "localhost";
+    }
+    cmd "e.update_urdf" {
+        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/update_urdfs";
+        host = "localhost";
+    }
+}
+cmd "3.safety" {
+    exec = "rosrun franka_safety safety.py";
+    host = "localhost";
+}
+cmd "9.lcmspy" {
+    exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+    host = "localhost";
+}
+
+script "start_c3_cmds" {
+    start group "5.[HW] C3 Computer";
+}
+
+script "start_franka_cmds" {
+    stop cmd "b.ROS impedance";
+    stop group "5.[HW] C3 Computer";
+    stop group "6.[HW] Franka Computer";
+    stop cmd "a.start_logging";
+    stop cmd "b.start_filming";
+    start cmd "a.roscore";
+    start cmd "3.safety";
+    start cmd "a.move to start";
+    wait cmd "a.move to start" status "stopped";
+    start cmd "a.start_logging";
+    start cmd "b.start_filming";
+    start cmd "b.ROS impedance" wait "running";
+    wait ms 3000;
+    start group "6.[HW] Franka Computer";
+    wait ms 1000;
+    start cmd "d.[HW] visualizer";
+}
+
+script "stop_c3_cmds" {
+    stop group "5.[HW] C3 Computer";
+}
+
+script "stop_franka_cmds" {
+    stop cmd "b.ROS impedance";
+    stop cmd "a.start_logging";
+    stop cmd "b.start_filming";
+    stop group "5.[HW] C3 Computer";
+    stop group "6.[HW] Franka Computer";
+    stop cmd "9.lcmspy";
+    start cmd "c.process_logs";
+    start cmd "d.process_frames";
+}

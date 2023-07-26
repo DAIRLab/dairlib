@@ -76,6 +76,24 @@ cc_library(
 )
 
 cc_library(
+    name = "c3_controller_franka_cube",
+    srcs = [
+        "c3_controller_franka_cube.cc",
+    ],
+    hdrs = [
+        "c3_controller_franka_cube.h",
+    ],
+    deps = [
+        "//examples/cube_franka:c3_parameters",
+        "//systems/framework:vector",
+        "//solvers:c3",
+        "//solvers:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
     name = "impedance_controller",
     srcs = [
         "impedance_controller.cc",
@@ -86,6 +104,23 @@ cc_library(
     deps = [
         "//systems/framework:vector",
         "//examples/franka_trajectory_following:c3_parameters",
+        "//solvers:c3",
+        "//solvers:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "impedance_controller_cube",
+    srcs = [
+        "impedance_controller_cube.cc",
+    ],
+    hdrs = [
+        "impedance_controller_cube.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "//examples/cube_franka:c3_parameters",
         "//solvers:c3",
         "//solvers:lcs",
         "@drake//:drake_shared_library",

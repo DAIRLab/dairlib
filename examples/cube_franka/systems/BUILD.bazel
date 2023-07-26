@@ -1,0 +1,25 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "c3_systems",
+    srcs = [
+        "gravity_compensator.cc",
+        "c3_trajectory_source.cc",
+        "robot_output_passthrough.cc"
+    ],
+    hdrs = [
+        "gravity_compensator.h",
+        "c3_trajectory_source.h",
+        "robot_output_passthrough.h"
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+        "//multibody:utils",
+        "//lcmtypes:lcmt_robot",
+        "//examples/cube_franka:c3_parameters",
+    ],
+)

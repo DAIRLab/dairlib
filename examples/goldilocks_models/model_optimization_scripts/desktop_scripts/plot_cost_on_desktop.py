@@ -13,7 +13,8 @@ while True:
 
   # Call plotting script with srun
   RunCommand("python3 examples/goldilocks_models/find_models/plot_cost.py", True)
+  RunCommand("python3 examples/goldilocks_models/find_models/plot_cost.py --exclude_failed_samples", True)
 
   print("sleep for a while")
-  time.sleep(3600)
+  time.sleep(7200)
 

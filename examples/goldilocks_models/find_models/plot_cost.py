@@ -39,7 +39,7 @@ save_figure = True
 plot_cost_breakdown = True
 only_plot_average_cost = True
 normalize_by_nominal_cost = True
-only_add_successful_samples_to_average_cost = False
+# only_add_successful_samples_to_average_cost = False
 
 
 ### Some plots settings
@@ -53,12 +53,16 @@ parser.add_argument("--iter_start", help="", default=1, type=int)
 parser.add_argument("--iter_end", help="", default=-1, type=int)
 parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fixed_spring", default=1, type=int, choices=[0, 1])
 parser.add_argument("--path", help="", default="", type=str)
+parser.add_argument('--exclude_failed_samples', action='store_true')
+parser.add_argument('--no-exclude_failed_samples', dest='exclude_failed_samples', action='store_false')
+parser.set_defaults(exclude_failed_samples=False)
 args = parser.parse_args()
 
 iter_start = args.iter_start
 iter_end = args.iter_end
 is_iter_end = (args.iter_end > 1)
 robot_option = args.robot_option
+only_add_successful_samples_to_average_cost = args.exclude_failed_samples
 
 # Checks
 if len(args.path) > 0:
@@ -303,7 +307,7 @@ for dir_list_idx in range(len(directory_list)):
             cost_min = min(cost_min, min(average_cost_main))
 
             # Write jobs into file
-            f = open(directory + "../costs_info.txt", "w")
+            f = open("%s../costs_info%s.txt" % (directory, "_excluding_failed_samples" if only_add_successful_samples_to_average_cost else ""), "w")
             f.write("For %s\n" % unique_folder_name)
             f.write("  file_name_cost = %s\n" % "cost_main")
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
@@ -350,8 +354,8 @@ for dir_list_idx in range(len(directory_list)):
 
             if save_figure:
                 affix = "_new" if os.path.exists(directory + "../cost.png") else ""
-                plt.savefig("%s../cost%s.png" % (directory, affix))
-                plt.savefig("../cost_%s.png" % unique_folder_name)
+                plt.savefig("%s../cost%s%s.png" % (directory, "_excluding_failed_samples" if only_add_successful_samples_to_average_cost else "", affix))
+                plt.savefig("../cost%s_%s.png" % ("_excluding_failed_samples" if only_add_successful_samples_to_average_cost else "", unique_folder_name))
                 print(";  figure saved")
                 # print("  figure saved for %s" % unique_folder_name)
                 plt.close()

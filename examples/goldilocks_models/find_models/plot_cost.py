@@ -316,6 +316,7 @@ for dir_list_idx in range(len(directory_list)):
             f.write("For %s\n" % unique_folder_name)
             f.write("  file_name_cost = %s\n" % "cost_main")
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
+            f.write("  cost_threshold_for_failure = %.3f\n" % cost_threshold_for_failure)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]))
             print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')

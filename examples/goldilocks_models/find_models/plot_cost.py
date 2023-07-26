@@ -55,7 +55,7 @@ parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fi
 parser.add_argument("--path", help="", default="", type=str)
 parser.add_argument('--exclude_failed_samples', action='store_true')
 parser.add_argument('--no-exclude_failed_samples', dest='exclude_failed_samples', action='store_false')
-parser.add_argument("--cost_threshold_for_failure", help="", default=-1.0, type=float)
+parser.add_argument("--cost_threshold_for_failure", help="", default=np.inf, type=float)
 parser.set_defaults(exclude_failed_samples=False)
 args = parser.parse_args()
 
@@ -233,8 +233,7 @@ for dir_list_idx in range(len(directory_list)):
                     idx = 0
                     for iter_i in range(iter_start, iter_start + iteration_length):
                         is_success[idx] = int(np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=","))
-                        if cost_threshold_for_failure > 0:
-                            is_success[idx] *= (np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_'+file_name, delimiter=",") < cost_threshold_for_failure)
+                        is_success[idx] *= (np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_'+file_name, delimiter=",") < cost_threshold_for_failure)
                         idx += 1
 
                 # For some reason, sometimes the cost file exists but empty. (it looks to happen only in the last iteration, so it's probably the training was stopped unexpected, or reached the max hard drive capacity)

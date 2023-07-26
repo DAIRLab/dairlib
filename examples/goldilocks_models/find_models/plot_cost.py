@@ -314,6 +314,7 @@ for dir_list_idx in range(len(directory_list)):
             # Write jobs into file
             f = open("%s../costs_info%s.txt" % (directory, "_excluding_failed_samples" if only_add_successful_samples_to_average_cost else ""), "w")
             f.write("For %s\n" % unique_folder_name)
+            f.write("  last iteration = %d\n" % t[-1])
             f.write("  file_name_cost = %s\n" % "cost_main")
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
             f.write("  cost_threshold_for_failure = %.3f\n" % cost_threshold_for_failure)

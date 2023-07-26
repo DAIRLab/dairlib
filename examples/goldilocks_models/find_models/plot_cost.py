@@ -234,7 +234,7 @@ for dir_list_idx in range(len(directory_list)):
                     for iter_i in range(iter_start, iter_start + iteration_length):
                         is_success[idx] = int(np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=","))
                         if cost_threshold_for_failure > 0:
-                            is_success[idx] *= (np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_'+file_name, delimiter=",") > cost_threshold_for_failure)
+                            is_success[idx] *= (np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_'+file_name, delimiter=",") < cost_threshold_for_failure)
                         idx += 1
 
                 # For some reason, sometimes the cost file exists but empty. (it looks to happen only in the last iteration, so it's probably the training was stopped unexpected, or reached the max hard drive capacity)

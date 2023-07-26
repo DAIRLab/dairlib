@@ -261,8 +261,10 @@ for dir_list_idx in range(len(directory_list)):
                 sum_cost_main = [x + y for x, y in zip(sum_cost_main, filtered_cost_main[0:iteration_length])]
 
                 # Others - Update best_improvement_per_sample
-                best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
                 # best_improvement_per_sample[sample_i] = round((cost_main[0] - cost_main[-1]) / cost_main[0], 2)
+                # best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
+                first_cost_below_failure_threshold = np.array(cost_main)[np.array(cost_main)<cost_threshold_for_failure][0]
+                best_improvement_per_sample[sample_i] = round((first_cost_below_failure_threshold - np.min(cost_main)) / cost_main[0], 2)
             # Reshape `best_improvement_per_sample`
             task_grid_dim = np.loadtxt(directory + 'n_samples.csv', delimiter=',').astype(int)
             task_ranges = np.loadtxt(directory + 'task_ranges.csv', delimiter=',')

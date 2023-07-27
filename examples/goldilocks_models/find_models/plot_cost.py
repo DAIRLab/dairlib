@@ -102,6 +102,8 @@ file_name_nominal_cost = 'c_main.csv'
 # folder_name_nominal_cost = "nominal_no_constraint_traj/"
 folder_name_nominal_cost = "nominal_traj_cubic_swing_foot/"
 
+save_file_name_affix = "%s%s" % ("_excluding_failed_samples" if only_add_successful_samples_to_average_cost else "", ("_%.2f" % cost_threshold_for_failure) if cost_threshold_for_failure < np.inf else "")
+
 
 ### visualization setting
 ave_cost_prop = "k-" if only_plot_average_cost else "k--"
@@ -312,7 +314,7 @@ for dir_list_idx in range(len(directory_list)):
             cost_min = min(cost_min, min(average_cost_main))
 
             # Write jobs into file
-            f = open("%s../costs_info%s.txt" % (directory, "_excluding_failed_samples" if only_add_successful_samples_to_average_cost else ""), "w")
+            f = open("%s../costs_info%s.txt" % (directory, save_file_name_affix), "w")
             f.write("For %s\n" % unique_folder_name)
             f.write("  last iteration = %d\n" % t[-1])
             f.write("  file_name_cost = %s\n" % "cost_main")
@@ -361,8 +363,8 @@ for dir_list_idx in range(len(directory_list)):
 
             if save_figure:
                 affix = "_new" if os.path.exists(directory + "../cost.png") else ""
-                plt.savefig("%s../cost%s%s.png" % (directory, "_excluding_failed_samples" if only_add_successful_samples_to_average_cost else "", affix))
-                plt.savefig("../cost%s_%s.png" % ("_excluding_failed_samples" if only_add_successful_samples_to_average_cost else "", unique_folder_name))
+                plt.savefig("%s../cost%s%s.png" % (directory, save_file_name_affix, affix))
+                plt.savefig("../cost%s_%s.png" % (save_file_name_affix, unique_folder_name))
                 print(";  figure saved")
                 # print("  figure saved for %s" % unique_folder_name)
                 plt.close()

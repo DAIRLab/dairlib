@@ -14,6 +14,7 @@ while True:
   # Call plotting script with srun
   RunCommand("python3 examples/goldilocks_models/find_models/plot_cost.py", True)
   RunCommand("python3 examples/goldilocks_models/find_models/plot_cost.py --exclude_failed_samples --cost_threshold_for_failure=2.5", True)
+  RunCommand("python3 examples/goldilocks_models/find_models/plot_cost.py --exclude_failed_samples --cost_threshold_for_failure=3.5", True)
 
   print("sleep for a while")
   time.sleep(7200)

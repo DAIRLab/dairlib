@@ -133,7 +133,7 @@ int DoMain(int argc, char* argv[]){
   // drake::geometry::GeometryId sphere_geoms = 
   //   plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId cube_v3_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("tray"))[0];
+    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))[0];
   drake::geometry::GeometryId EE_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link10"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, cube_v3_geoms};

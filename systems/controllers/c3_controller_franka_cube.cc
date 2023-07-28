@@ -401,7 +401,19 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+
+  //finger to corner contact pairs
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[5]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[6]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[7]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[8]));
+
+  contact_pairs.push_back(SortedPair(contact_geoms_[8], contact_geoms_[9]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -537,7 +549,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       test_q[0] = pos_x;
       test_q[1] = pos_y;
-      test_q[2] = 0.02;
+      test_q[2] = 0.05;
 
 //      std::cout << "test_q" << std::endl;
 

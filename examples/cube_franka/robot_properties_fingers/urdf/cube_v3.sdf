@@ -1,36 +1,20 @@
 <?xml version="1.0"?>
 <sdf version="1.7">
   <model name="tray">
-    <link name="tray">
-      <inertial>
-        <mass>2</mass>
-        <!-- Inertia values were calculated to be consistent with the mass and
-             geometry size, assuming a uniform density. -->
-        <inertia>
-          <ixx>0.06</ixx>
-          <ixy>0</ixy>
-          <ixz>0</ixz>
-          <iyy>0.015</iyy>
-          <iyz>0</iyz>
-          <izz>0.075</izz>
-        </inertia>
-      </inertial>
-      <visual name="tray">
-        <geometry>
-          <box>
-            <size>0.0615 0.0615 0.0615</size>
-          </box>
-        </geometry>
-      </visual>
-      <collision name="front_left_support">
+    
+    <link name="front_left_support">
+    <collision name="front_left_support">
         <geometry>
           <sphere>
             <radius>0.001</radius>
           </sphere>
         </geometry>
         <pose>0.03075 -0.03075 -0.03075 0 0 0</pose>
-      </collision>
-      <collision name="front_right_support">
+    </collision>
+    </link>
+
+    <link name="front_right_support">
+    <collision name="front_right_support">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -38,7 +22,10 @@
         </geometry>
         <pose>0.03075 0.03075 -0.03075 0 0 0</pose>
       </collision>
-      <collision name="back_left_support">
+    </link>
+
+    <link name="back_left_support">
+    <collision name="back_left_support">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -46,7 +33,10 @@
         </geometry>
         <pose>-0.03075 -0.03075 -0.03075 0 0 0</pose>
       </collision>
-      <collision name="back_right_support">
+    </link>
+
+    <link name="back_right_support">
+    <collision name="back_right_support">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -54,7 +44,10 @@
         </geometry>
         <pose>-0.03075 0.03075 -0.03075 0 0 0</pose>
       </collision>
-      <collision name="front_left_top">
+    </link>
+
+    <link name="front_left_top">
+    <collision name="front_left_top">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -62,6 +55,9 @@
         </geometry>
         <pose>0.03075 -0.03075 0.03075 0 0 0</pose>
       </collision>
+    </link>
+
+    <link name="front_right_top">
       <collision name="front_right_top">
         <geometry>
           <sphere>
@@ -70,7 +66,10 @@
         </geometry>
         <pose>0.03075 0.03075 0.03075 0 0 0</pose>
       </collision>
-      <collision name="back_left_top">
+    </link>
+
+    <link name="back_left_top">
+    <collision name="back_left_top">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -78,7 +77,10 @@
         </geometry>
         <pose>-0.03075 -0.03075 0.03075 0 0 0</pose>
       </collision>
-      <collision name="back_right_top">
+    </link>
+
+    <link name="back_right_top">
+    <collision name="back_right_top">
         <geometry>
           <sphere>
             <radius>0.001</radius>
@@ -87,5 +89,102 @@
         <pose>-0.03075 0.03075 0.03075 0 0 0</pose>
       </collision>
     </link>
+    
+    <link name="cube">
+      <inertial>
+        <mass>0.132</mass>
+        <!-- Inertia values were calculated to be consistent with the mass and
+             geometry size, assuming a uniform density. -->
+        <inertia>
+          <ixx>0.0000524</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.0000524</iyy>
+          <iyz>0</iyz>
+          <izz>0.0000524</izz>
+        </inertia>
+      </inertial>
+      <visual name="cube">
+        <geometry>
+          <box>
+            <size>0.0615 0.0615 0.0615</size>
+          </box>
+        </geometry>
+      </visual>
+      <collision name="volume">
+            <geometry>
+          <box>
+            <size>0.0615 0.0615 0.0615</size>
+          </box>
+        </geometry>
+      </collision>   
+    </link>
+
+    <!-- Define the fixed joints connecting each sphere to the cube -->
+    <joint name="front_left_support_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>front_left_support</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>0.03075 -0.03075 -0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="front_right_support_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>front_right_support</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>0.03075 0.03075 -0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="back_left_support_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>back_left_support</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>-0.03075 -0.03075 -0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="back_right_support_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>back_right_support</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>-0.03075 0.03075 -0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="front_left_top_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>front_left_top</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>0.03075 -0.03075 0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="front_right_top_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>front_right_top</child>
+      <!-- Pose of the joint relative to the parent link -->
+      <pose>0.03075 0.03075 0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="back_left_top_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>back_left_top</child>
+      <!-- Pose of the joint relative to the parent link -->
+       <pose>-0.03075 -0.03075 0.03075 0 0 0</pose>
+    </joint>
+
+    <joint name="back_right_top_joint" type="fixed">
+      <!-- Parent and child links for the joint -->
+      <parent>cube</parent>
+      <child>back_right_top</child>
+      <!-- Pose of the joint relative to the parent link -->
+       <pose>-0.03075 0.03075 0.03075 0 0 0</pose>
+    </joint>
+      
+      
   </model>
 </sdf>

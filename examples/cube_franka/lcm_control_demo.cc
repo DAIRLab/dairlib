@@ -292,14 +292,32 @@ int DoMain(int argc, char* argv[]){
 
   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
-  drake::geometry::GeometryId cube_v3_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tray"))[0];
+  drake::geometry::GeometryId corner0 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_left_support"))[0];
+    drake::geometry::GeometryId corner1 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_right_support"))[0];
+    drake::geometry::GeometryId corner2 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_left_support"))[0];
+    drake::geometry::GeometryId corner3 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_right_support"))[0];
+    drake::geometry::GeometryId corner4 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_left_top"))[0];
+    drake::geometry::GeometryId corner5 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_right_top"))[0];
+    drake::geometry::GeometryId corner6 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_left_top"))[0];
+    drake::geometry::GeometryId corner7 = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_right_top"))[0];
     // drake::geometry::GeometryId sphere_geoms = 
     // plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId ground_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
+
   std::vector<drake::geometry::GeometryId> contact_geoms = 
-    {finger_geoms, cube_v3_geoms, ground_geoms};
+    {finger_geoms, corner0, corner1, corner2, corner3, corner4, corner5, corner6, corner7, ground_geoms};
+
+  // std::vector<drake::geometry::GeometryId> contact_geoms = 
+  //   {finger_geoms, cube_v3_geoms, ground_geoms};
   // std::vector<drake::geometry::GeometryId> contact_geoms = 
   //   {finger_geoms, sphere_geoms, ground_geoms};
 

@@ -120,7 +120,7 @@ int DoMain(int argc, char* argv[]){
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
-  int nc = 2;
+  int nc = 9; // 2;This is the number of contacts
 
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
@@ -292,6 +292,8 @@ int DoMain(int argc, char* argv[]){
 
   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
+  drake::geometry::GeometryId cube_volume = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("cube"))[0];
   drake::geometry::GeometryId corner0 = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_left_support"))[0];
     drake::geometry::GeometryId corner1 = 
@@ -314,8 +316,10 @@ int DoMain(int argc, char* argv[]){
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
 
   std::vector<drake::geometry::GeometryId> contact_geoms = 
-    {finger_geoms, corner0, corner1, corner2, corner3, corner4, corner5, corner6, corner7, ground_geoms};
-
+    {finger_geoms, cube_volume, corner0, corner1, corner2, corner3, corner4, corner5, corner6, corner7, ground_geoms};
+  
+  // std::cout<< "contact geoms finger" <<finger_geoms <<std::endl;
+  // std::cout<< "contact geoms corner 0" <<corner0 <<std::endl;
   // std::vector<drake::geometry::GeometryId> contact_geoms = 
   //   {finger_geoms, cube_v3_geoms, ground_geoms};
   // std::vector<drake::geometry::GeometryId> contact_geoms = 

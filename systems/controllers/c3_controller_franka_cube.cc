@@ -95,7 +95,7 @@ C3Controller_franka::C3Controller_franka(
   // initialize warm start
   int time_horizon = 5;
   int nx = 19;
-  int nlambda = 12;
+  int nlambda = 6*9;//12; 6 forces per contact pair
   int nu = 3;
 
   for (int i = 0; i < time_horizon; i++){
@@ -399,34 +399,89 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
 
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  std::vector<SortedPair<GeometryId>> contact_pairs_init;
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
 
   //finger to corner contact pairs
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[5]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[6]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[7]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[8]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //between finger and cube
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[5]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[6]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[7]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[8]));
 
-  contact_pairs.push_back(SortedPair(contact_geoms_[8], contact_geoms_[9]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+  
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[2], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[3], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[4], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[5], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[6], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[7], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[8], contact_geoms_[10]));
+  contact_pairs_init.push_back(SortedPair(contact_geoms_[9], contact_geoms_[10]));
+  // contact_pairs_init.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+  std::cout<<"contact pairs init size"<<contact_pairs_init.size()<<std::endl;
 
-  auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+  VectorXd phi(contact_geoms_.size());
+  MatrixXd J_n(contact_geoms_.size(), plant_f_.num_velocities());
+  MatrixXd J_t(2 * contact_geoms_.size() * num_friction_directions_,
+               plant_f_.num_velocities());
+
+  std::vector<std::pair<double, int>> sorted_phi_indices;
+
+  for (int i = 1; i < 9; i++) {
+    multibody::GeomGeomCollider collider(
+        plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
+                                   // Michael about changes in geomgeom)
+    auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
+
+    phi(i) = phi_i; //distance between contact pair
+    std::cout<<"This is phi"<<phi(i)<<std::endl;
+    sorted_phi_indices.push_back(std::make_pair(phi_i, i));
+  }
+
+    int num_smallest_phis = 4;
+    std::nth_element(sorted_phi_indices.begin(), sorted_phi_indices.begin() + num_smallest_phis,
+                     sorted_phi_indices.end());
+
+      
+     
+    std::vector<SortedPair<GeometryId>> contact_pairs;
+
+    // Displaying the 4 smallest phi values
+    std::cout << "The 4 smallest phi values:" << std::endl;
+    for (int i = 0; i < num_smallest_phis; i++) {
+        int index = sorted_phi_indices[i].second;
+        double phi_value = sorted_phi_indices[i].first;
+        contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
+        std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
+    }
+
+    std::cout<<"contact pairs size"<<contact_pairs.size()<<std::endl;
+
+    auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
 
-  solvers::LCS system_ = system_scaling_pair.first;
+    solvers::LCS system_ = system_scaling_pair.first;
   // double scaling = system_scaling_pair.second;
+
+
+  
 
   C3Options options;
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
   int m = ((system_.D_)[0].cols());
   int k = ((system_.B_)[0].cols());
+
+  // std::cout<< N << " " <<n<< " "<<m<< " "<<k<<std::endl;
+  // std::cout<< ((system_.E_)[0].cols()) <<std::endl;
+  // std::cout<< ((system_.F_)[0].cols()) <<std::endl;
+  // std::cout<< ((system_.H_)[0].cols()) <<std::endl;
+  // std::cout<< ((system_.c_)[0].rows()) <<std::endl;
 
 
   /// initialize ADMM variables (delta, w)
@@ -501,7 +556,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-    VectorXd st_desired(12 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+    // VectorXd st_desired(12 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     // Vector3d curr_ee = end_effector; //end effector current position
@@ -599,6 +655,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
                                warm_start_delta_, warm_start_binary_, warm_start_x_,
                                warm_start_lambda_, warm_start_u_, true);
 
+    
+    // std::cout<< "R size"<<R_.size() << std::endl;
+
 
     // solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
     // warm_start_delta_, warm_start_binary_, warm_start_x_,
@@ -651,13 +710,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
-    double hyp = 5;
-    if(C3_flag_ == 0){
-        hyp = 3;
-    }
-    else{
-        hyp = 17;
-    }
+    double hyp = 3000;
+    // if(C3_flag_ == 0){
+    //     hyp = 3;
+    // }
+    // else{
+    //     hyp = 17;
+    // }
     // if (reposition_flag_ == 1){
     //     hyp = 0;
     // }
@@ -915,6 +974,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   // std::cout<<"here"<<std::endl;
+  // std::cout<<st_desired.size()<<std::endl;
     }
    
 

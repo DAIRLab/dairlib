@@ -489,7 +489,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-    VectorXd st_desired(12 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     // Vector3d curr_ee = end_effector; //end effector current position

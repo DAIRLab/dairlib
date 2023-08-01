@@ -33,8 +33,8 @@ class C3 {
 
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
-  /// @param delta A pointer to the copy variable solution
-  /// @param w A pointer to the scaled dual variable solution
+  /// @param delta Copy variable solution
+  /// @param w Scaled dual variable solution
   /// @return The first control action to take, u[0]
   Eigen::VectorXd Solve(Eigen::VectorXd& x0,
                         std::vector<Eigen::VectorXd>& delta,
@@ -44,7 +44,7 @@ class C3 {
   /// @param x0 The initial state of the system
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
-  /// @param G A pointer to the G variables from previous step
+  /// @param G The G variables from previous step
   Eigen::VectorXd ADMMStep(Eigen::VectorXd& x0,
                            std::vector<Eigen::VectorXd>* delta,
                            std::vector<Eigen::VectorXd>* w,
@@ -52,15 +52,15 @@ class C3 {
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
-  /// @param WD A pointer to the (w - delta) variables
-  /// @param G A pointer to the G variables from previous step
+  /// @param WD The (w - delta) variables
+  /// @param G The G variables from previous step
   std::vector<Eigen::VectorXd> SolveQP(Eigen::VectorXd& x0,
                                        std::vector<Eigen::MatrixXd>& G,
                                        std::vector<Eigen::VectorXd>& WD);
 
   /// Solve the projection problem for all timesteps
-  /// @param WZ A pointer to the (z + w) variables
-  /// @param G A pointer to the G variables from previous step
+  /// @param WZ (z + w) variables
+  /// @param G The G variables from previous step
   std::vector<Eigen::VectorXd> SolveProjection(
       std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
 
@@ -80,8 +80,8 @@ class C3 {
 
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
-  /// @param U A pointer to the U variables
-  /// @param delta_c A pointer to the copy of (z + w) variables
+  /// @param U The U variables
+  /// @param delta_c The copy of (z + w) variables
   virtual Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
                                                 const Eigen::VectorXd& delta_c,
                                                 const Eigen::MatrixXd& E,

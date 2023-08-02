@@ -34,7 +34,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     int num_friction_directions, double mu, float dt) {
 
 
-
+    std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
   ///
   /// First, calculate vdot and derivatives from non-contact dynamics
   ///
@@ -112,7 +112,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
 
-    phi(i) = phi_i;
+    phi(i) = phi_i; //distance between contact pair
 
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,

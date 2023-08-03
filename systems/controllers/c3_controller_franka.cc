@@ -895,7 +895,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 10){
+  if (curr_ee_cost - min >= 20){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;

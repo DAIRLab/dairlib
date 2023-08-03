@@ -442,7 +442,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     sorted_phi_indices.push_back(std::make_pair(phi_i, i));
   }
 
-    int num_smallest_phis = 4;
+    int num_smallest_phis = 8; //4; //Change this to change the number of ground contacts you want to pass to the lcs system. 8 for full computation, 4 for partial. Finger to cube is appended as first contact already.
     std::nth_element(sorted_phi_indices.begin(), sorted_phi_indices.begin() + num_smallest_phis,
                      sorted_phi_indices.end());
 
@@ -713,15 +713,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
     double hyp = 200;
-    // if(C3_flag_ == 0){
-    //     hyp = 3;
-    // }
-    // else{
-    //     hyp = 17;
-    // }
-    // if (reposition_flag_ == 1){
-    //     hyp = 0;
-    // }
+    if(C3_flag_ == 0){
+        hyp = 30;
+    }
+    else{
+        hyp = 100;
+    }
     
     //update to best state
     
@@ -740,7 +737,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  std::cout<<"optimal sample"<<points[3]<<std::endl;
 
          Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
-         points[1] = ball_xyz + (radius + 0.01) * way_point1/way_point1.norm();
+         points[1] = ball_xyz + (radius + 0.03) * way_point1/way_point1.norm();  //cube diagonal comes out to 10.6 cms, and sampling radius is 5cms so add 3 cms for the bezier to pull further
         //  std::cout<<"way_point1"<<way_point1<<std::endl;
 
         //KIND OF WORKING
@@ -753,7 +750,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
-         points[2] = ball_xyz + (radius + 0.01) * way_point2/way_point2.norm();
+         points[2] = ball_xyz + (radius + 0.03) * way_point2/way_point2.norm();
                  
          double t = 0.02;
 
@@ -906,7 +903,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 10){
+  if (curr_ee_cost - min >= 20){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;

@@ -22,7 +22,7 @@ Q_default: 0
 Q_finger: 500         # finger xyz cost
 Q_ball_x: 10000 #10000
 Q_ball_y: 10000  #10000
-Q_finger_vel: 10        # translational velocity cost
+Q_finger_vel: 20        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
 Qnew_ball_x: 1
@@ -48,7 +48,7 @@ stabilize_time1: 0.5 #0.5
 move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75
 sim_dt: 0.0001 # 0.00005
-realtime_rate: 0.2
+realtime_rate: 0.1
 
 # trajectory parameters
 traj_radius: 0.1

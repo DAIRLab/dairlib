@@ -288,7 +288,7 @@ int DoMain(int argc, char* argv[]){
   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
   drake::geometry::GeometryId sphere_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_1"))[0];
   drake::geometry::GeometryId ground_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = 

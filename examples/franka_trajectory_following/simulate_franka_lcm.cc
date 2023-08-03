@@ -132,7 +132,7 @@ int DoMain(int argc, char* argv[]){
   q[q_map["base_qz"]] = param.q_init_ball(3);
   q[q_map["base_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
   q[q_map["base_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
-  q[q_map["base_z"]] = param.ball_radius + param.table_offset;
+  q[q_map["base_z"]] = 0.1+ param.ball_radius + param.table_offset;
 
   plant.SetPositions(&plant_context, q);
 

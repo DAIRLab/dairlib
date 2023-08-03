@@ -39,7 +39,7 @@ save_figure = True
 plot_cost_breakdown = True
 only_plot_average_cost = True
 normalize_by_nominal_cost = True
-only_add_successful_samples_to_average_cost = False
+# only_add_successful_samples_to_average_cost = False
 
 
 ### Some plots settings
@@ -53,12 +53,18 @@ parser.add_argument("--iter_start", help="", default=1, type=int)
 parser.add_argument("--iter_end", help="", default=-1, type=int)
 parser.add_argument("--robot_option", help="0 is five-link robot. 1 is cassie_fixed_spring", default=1, type=int, choices=[0, 1])
 parser.add_argument("--path", help="", default="", type=str)
+parser.add_argument('--exclude_failed_samples', action='store_true')
+parser.add_argument('--no-exclude_failed_samples', dest='exclude_failed_samples', action='store_false')
+parser.add_argument("--cost_threshold_for_failure", help="", default=np.inf, type=float)
+parser.set_defaults(exclude_failed_samples=False)
 args = parser.parse_args()
 
 iter_start = args.iter_start
 iter_end = args.iter_end
 is_iter_end = (args.iter_end > 1)
 robot_option = args.robot_option
+only_add_successful_samples_to_average_cost = args.exclude_failed_samples
+cost_threshold_for_failure = args.cost_threshold_for_failure
 
 # Checks
 if len(args.path) > 0:
@@ -95,6 +101,8 @@ file_name_nominal_cost = 'c_main.csv'
 # folder_name_nominal_cost = ""
 # folder_name_nominal_cost = "nominal_no_constraint_traj/"
 folder_name_nominal_cost = "nominal_traj_cubic_swing_foot/"
+
+save_file_name_affix = "%s%s" % ("_excluding_failed_samples" if only_add_successful_samples_to_average_cost else "", ("_%.2f" % cost_threshold_for_failure) if cost_threshold_for_failure < np.inf else "")
 
 
 ### visualization setting
@@ -227,6 +235,7 @@ for dir_list_idx in range(len(directory_list)):
                     idx = 0
                     for iter_i in range(iter_start, iter_start + iteration_length):
                         is_success[idx] = int(np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_is_success.csv', delimiter=","))
+                        is_success[idx] *= (np.genfromtxt(directory+str(iter_i)+'_'+str(sample_i)+'_'+file_name, delimiter=",") < cost_threshold_for_failure)
                         idx += 1
 
                 # For some reason, sometimes the cost file exists but empty. (it looks to happen only in the last iteration, so it's probably the training was stopped unexpected, or reached the max hard drive capacity)
@@ -253,8 +262,10 @@ for dir_list_idx in range(len(directory_list)):
                 sum_cost_main = [x + y for x, y in zip(sum_cost_main, filtered_cost_main[0:iteration_length])]
 
                 # Others - Update best_improvement_per_sample
-                best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
                 # best_improvement_per_sample[sample_i] = round((cost_main[0] - cost_main[-1]) / cost_main[0], 2)
+                # best_improvement_per_sample[sample_i] = round((cost_main[0] - np.min(cost_main)) / cost_main[0], 2)
+                first_cost_below_failure_threshold = np.array(cost_main)[np.array(cost_main)<cost_threshold_for_failure][0]
+                best_improvement_per_sample[sample_i] = round((first_cost_below_failure_threshold - np.min(cost_main)) / cost_main[0], 2)
             # Reshape `best_improvement_per_sample`
             task_grid_dim = np.loadtxt(directory + 'n_samples.csv', delimiter=',').astype(int)
             task_ranges = np.loadtxt(directory + 'task_ranges.csv', delimiter=',')
@@ -303,10 +314,12 @@ for dir_list_idx in range(len(directory_list)):
             cost_min = min(cost_min, min(average_cost_main))
 
             # Write jobs into file
-            f = open(directory + "../costs_info.txt", "w")
+            f = open("%s../costs_info%s.txt" % (directory, save_file_name_affix), "w")
             f.write("For %s\n" % unique_folder_name)
+            f.write("  last iteration = %d\n" % t[-1])
             f.write("  file_name_cost = %s\n" % "cost_main")
             f.write("  folder_name_nominal_cost = %s\n" % folder_name_nominal_cost)
+            f.write("  cost_threshold_for_failure = %.3f\n" % cost_threshold_for_failure)
             f.write("  nominal_cost = %.3f\n" % nominal_cost)
             f.write("  (iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.1f%%)\n" % (average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]))
             print("  (nominal_cost, iter 1 normalized cost, min normalized cost, improvement) = (%.3f, %.3f, %.3f, %.1f%%)\n" % (nominal_cost, average_cost_main[0], min(average_cost_main), 100 * (average_cost_main[0] - min(average_cost_main)) / average_cost_main[0]), end='')
@@ -350,8 +363,8 @@ for dir_list_idx in range(len(directory_list)):
 
             if save_figure:
                 affix = "_new" if os.path.exists(directory + "../cost.png") else ""
-                plt.savefig("%s../cost%s.png" % (directory, affix))
-                plt.savefig("../cost_%s.png" % unique_folder_name)
+                plt.savefig("%s../cost%s%s.png" % (directory, save_file_name_affix, affix))
+                plt.savefig("../cost%s_%s.png" % (save_file_name_affix, unique_folder_name))
                 print(";  figure saved")
                 # print("  figure saved for %s" % unique_folder_name)
                 plt.close()

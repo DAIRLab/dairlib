@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<robot name="samples">
+       <link name="sample_1">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 -0.065 0"/> <!-- Origin at the center of the sphere -->
+            <geometry>
+                <sphere radius="0.005"/> <!-- Radius of the small sphere -->
+            </geometry>
+            <material>
+                <color rgba="0 0 1 1"/> <!-- Red color for visualization -->
+            </material>
+        </visual>
+    </link>
+
+    <link name="sample_2">
+         <visual>
+            <origin rpy="0 0 0" xyz="0 0 0.065"/> <!-- Origin at the center of the sphere -->
+            <geometry>
+                <sphere radius="0.005"/> <!-- Radius of the small sphere -->
+            </geometry>
+            <material>
+                <color rgba="0 0 1 1"/> <!-- Red color for visualization -->
+            </material>
+        </visual>
+    </link>
+
+    <link name="sample_3">       
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 -0.065"/> <!-- Origin at the center of the sphere -->
+            <geometry>
+                <sphere radius="0.005"/> <!-- Radius of the small sphere -->
+            </geometry>
+            <material>
+                <color rgba="0 0 1 1"/> <!-- Red color for visualization -->
+            </material>
+        </visual>
+    </link>
+</robot>

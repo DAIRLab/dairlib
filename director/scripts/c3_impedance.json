@@ -9,10 +9,10 @@
                                  "abstract_field" : "data",
                                  "x_index" : 29
                                 },
-                 "type_data": {"color":[0, 0, 1],
+                 "type_data": {"color":[1, 0, 1],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.0315
+                               "radius": 0.006
                              }
                },
               {"name": "estimated_state",
@@ -22,10 +22,10 @@
                   "abstract_field" : "data",
                   "x_index" : 32
                 },
-                "type_data": {"color":[1, 0, 0],
+                "type_data": {"color":[0, 1, 0],
                   "alpha": 0.5,
                   "type": "point",
-                  "radius": 0.0315
+                  "radius": 0.006
                 }
               },
                {"name": "ball_path",
@@ -35,11 +35,10 @@
                                  "abstract_field" : "data",
                                  "x_index" : 35
                                 },
-                 "type_data": {"color":[0, 1, 0],
+                 "type_data": {"color":[0, 0, 1],
                                "alpha": 0.5,
-                               "type": "line",
-                               "thickness": 0.001,
-                               "history" : -1
+                               "type": "point",
+                               "radius": 0.006
                              }
                },
                {"name": "x1",
@@ -49,10 +48,10 @@
                                  "abstract_field" : "data",
                                  "x_index" : 0
                                 },
-                 "type_data": {"color":[1, 0, 0],
+                 "type_data": {"color":[0, 0, 0],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.0195
+                               "radius": 0.006
                              }
                }
             ]

@@ -95,7 +95,7 @@ C3Controller_franka::C3Controller_franka(
   // initialize warm start
   int time_horizon = 5;
   int nx = 19;
-  int nlambda = 12;
+  int nlambda = 6*6; //6 forces per contact pair //12;
   int nu = 3;
 
   for (int i = 0; i < time_horizon; i++){
@@ -401,7 +401,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -482,8 +487,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     //Multi-sample code piece
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
-    double radius = 0.052; //radius of sampling circle (0.05) //0.06 //0.08
-    int num_samples = 4;
+    double radius = 0.08; //radius of sampling circle (0.05) //0.06 //0.08
+    int num_samples = 3;
     double theta = 360 / num_samples * PI / 180;
     double angular_offset = 0 * PI/180;
 
@@ -506,8 +511,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     y_samplec = ball_xyz[1]; //state[8];
     // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
-    double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
-    // double phase = 0;
+    // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
+    double phase = 0;
    
     // std::cout<<"phase angle = "<< phase * 180/PI << std::endl;
 
@@ -537,7 +542,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       test_q[0] = pos_x;
       test_q[1] = pos_y;
-      test_q[2] = 0.02;
+      test_q[2] = 0.08;
+
+      
 
 //      std::cout << "test_q" << std::endl;
 
@@ -639,12 +646,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
-    double hyp = 5;
+    double hyp = -5;
     if(C3_flag_ == 0){
-        hyp = 3;
+        hyp = -5000; //3;
     }
     else{
-        hyp = 17;
+        hyp = 50;
     }
     // if (reposition_flag_ == 1){
     //     hyp = 0;
@@ -682,7 +689,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  std::cout<<"optimal sample"<<points[3]<<std::endl;
 
          Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
-         points[1] = ball_xyz + (radius + 0.01) * way_point1/way_point1.norm();
+         points[1] = ball_xyz + (radius + 0.02) * way_point1/way_point1.norm();
         //  std::cout<<"way_point1"<<way_point1<<std::endl;
 
         //KIND OF WORKING
@@ -695,11 +702,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
-         points[2] = ball_xyz + (radius + 0.01) * way_point2/way_point2.norm();
+         
+         points[2] = ball_xyz + (radius + 0.02) * way_point2/way_point2.norm();
         // std::cout << "The norm of v2 is: " << points[1].norm() << std::endl;
          
-         double t = 0.02;
-
+         double t = 0.002;
+        
+        // Eigen::Vector3d next_point = generate_next_position(points, t);
          Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
          
          
@@ -748,7 +757,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //      double next_z = generate_next_z(end_effector[2], 0.08, i*0.015); 
              
         //      std::cout<<"Moving up"<<std::endl;
-          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+          // st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+
+          //sending samples at the end of this vector FOR VISUALIZATION
+          // st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
+          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+
 
         //      state_contact_desired->SetDataVector(st_desired);
         //      state_contact_desired->set_timestamp(timestamp);
@@ -895,13 +909,28 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 20){
+  if (curr_ee_cost - min >= 50){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;
   }
+  
+  // ball_xyz_d = candidate_states[0].head(3);
+  // ball_xyz = candidate_states[1].head(3);
+  // true_ball_xyz = candidate_states[2].head(3);
+  // ball_xyz_d[0] = 0.55;
+  // ball_xyz_d[1] = 1;
+  // ball_xyz_d[2] = 0.5;
 
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+  // ball_xyz[0] = 0.55;
+  // ball_xyz[1] = 1;
+  // ball_xyz[2] = 0.5;
+  
+  //ball_xyz_d is ball xyz desired. Currently being used to visualize sample 1 in blue.
+  //ball_xyz is ball xyz. Currently being used to visualize sample 2 in blue.
+  // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
+  st_desired << state_next.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), state_next.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+  // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   // std::cout<<"here"<<std::endl;
     }
    
@@ -1074,27 +1103,12 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
 }
 
 Eigen::Vector3d generate_next_position(std::vector<Eigen::Vector3d> points, double t){
-  Eigen::Vector3d a0;
-  Eigen::Vector3d a1;
-  Eigen::Vector3d a2;
-  Eigen::Vector3d a3;
+  Eigen::Vector3d a0 = points[0];
+    Eigen::Vector3d a1 = points[3] - a0;
+    Eigen::Vector3d a2 = 3 * (points[1] - points[0]);
+    Eigen::Vector3d a3 = -2 * (points[1] - points[0]);
 
-  a0 = points[0];
-  // std::cout<< " a0 = " << a0 <<std::endl;
-
-  a1 = VectorXd::Zero(3);
-  // std::cout<< " a1 = " << a1 <<std::endl;
-
-  a2 = 3 * (points[1] - points[0]);
-  // std::cout<< " a2 = " << a2 <<std::endl;
-
-  a3 = -2 * (points[1] - points[0]);
-  // std::cout<< " a3 = " << a3 <<std::endl;
-
-  // std::cout<<a0 + a1 * t + a2 * std::pow(t,2) + a3 * std::pow(t,3)<<std::endl;
-  return a0 + a1 * t + a2 * std::pow(t,2) + a3 * std::pow(t,3);
+    return a0 + a1 * t + a2 * std::pow(t, 2) + a3 * std::pow(t, 3);
 }
 
-double generate_next_z(double current, double end, double t){
-  return current + t * (end - current);
-}
+

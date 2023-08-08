@@ -412,7 +412,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
 
-  solvers::LCS system_ = system_scaling_pair.first;
+  solvers::LCS system_ = system_scaling_pair.first; //checking
   // double scaling = system_scaling_pair.second;
 
   C3Options options;

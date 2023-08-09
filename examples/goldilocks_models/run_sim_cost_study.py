@@ -1423,8 +1423,11 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # Therefore, we plot each are separately
   if np.sum(z == small_val) != 0:  # if-condition makes sure that the index selection are not emtpy
     ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
-  if np.sum(z == big_val) != 0:  # if-condition makes sure that the index selection are not emtpy
-    ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
+  if np.sum(z == big_val) > 2:  # if-condition makes sure that the index selection are not emtpy
+    try:
+      ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
+    except RuntimeError:
+      print("Maybe the data is a line")
   surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines

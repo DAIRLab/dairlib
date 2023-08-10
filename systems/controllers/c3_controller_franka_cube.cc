@@ -399,11 +399,21 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
 
-  std::vector<SortedPair<GeometryId>> contact_pairs_init;
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs_init;
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
 
   //finger to corner contact pairs
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //between finger and cube
+  std::vector<SortedPair<GeometryId>> ee_contact_pair {SortedPair(contact_geoms_[0], contact_geoms_[1])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair1 {SortedPair(contact_geoms_[2], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair2 {SortedPair(contact_geoms_[3], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair3 {SortedPair(contact_geoms_[4], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair4 {SortedPair(contact_geoms_[5], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair5 {SortedPair(contact_geoms_[6], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair6 {SortedPair(contact_geoms_[7], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair7 {SortedPair(contact_geoms_[8], contact_geoms_[10])};
+  std::vector<SortedPair<GeometryId>> ground_contact_pair8 {SortedPair(contact_geoms_[9], contact_geoms_[10])};
+  
+  contact_pairs_init.push_back(ee_contact_pair);  //between finger and cube
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
@@ -413,57 +423,58 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[8]));
 
   
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[2], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[3], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[4], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[5], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[6], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[7], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[8], contact_geoms_[10]));
-  contact_pairs_init.push_back(SortedPair(contact_geoms_[9], contact_geoms_[10]));
+  contact_pairs_init.push_back(ground_contact_pair1);
+  contact_pairs_init.push_back(ground_contact_pair2);
+  contact_pairs_init.push_back(ground_contact_pair3);
+  contact_pairs_init.push_back(ground_contact_pair4);
+  contact_pairs_init.push_back(ground_contact_pair5);
+  contact_pairs_init.push_back(ground_contact_pair6);
+  contact_pairs_init.push_back(ground_contact_pair7);
+  contact_pairs_init.push_back(ground_contact_pair8);
   // contact_pairs_init.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
   // std::cout<<"contact pairs init size"<<contact_pairs_init.size()<<std::endl;
 
-  VectorXd phi(contact_geoms_.size());
-  MatrixXd J_n(contact_geoms_.size(), plant_f_.num_velocities());
-  MatrixXd J_t(2 * contact_geoms_.size() * num_friction_directions_,
-               plant_f_.num_velocities());
+  // VectorXd phi(contact_geoms_.size());
+  // MatrixXd J_n(contact_geoms_.size(), plant_f_.num_velocities());
+  // MatrixXd J_t(2 * contact_geoms_.size() * num_friction_directions_,
+  //              plant_f_.num_velocities());
 
-  std::vector<std::pair<double, int>> sorted_phi_indices;
+  // std::vector<std::pair<double, int>> sorted_phi_indices;
 
-  for (int i = 1; i < 9; i++) {
-    multibody::GeomGeomCollider collider(
-        plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
-                                   // Michael about changes in geomgeom)
-    auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
+  // for (int i = 1; i < 9; i++) {
+  //   multibody::GeomGeomCollider collider(
+  //       plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
+  //                                  // Michael about changes in geomgeom)
+  //   auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
 
-    phi(i) = phi_i; //distance between contact pair
-    // std::cout<<"This is phi"<<phi(i)<<std::endl;
-    sorted_phi_indices.push_back(std::make_pair(phi_i, i));
-  }
+  //   phi(i) = phi_i; //distance between contact pair
+  //   // std::cout<<"This is phi"<<phi(i)<<std::endl;
+  //   sorted_phi_indices.push_back(std::make_pair(phi_i, i));
+  // }
 
-    int num_smallest_phis = 8; //4; //Change this to change the number of ground contacts you want to pass to the lcs system. 8 for full computation, 4 for partial. Finger to cube is appended as first contact already.
-    std::nth_element(sorted_phi_indices.begin(), sorted_phi_indices.begin() + num_smallest_phis,
-                     sorted_phi_indices.end());
+  //   int num_smallest_phis = 8; //4; //Change this to change the number of ground contacts you want to pass to the lcs system. 8 for full computation, 4 for partial. Finger to cube is appended as first contact already.
+  //   std::nth_element(sorted_phi_indices.begin(), sorted_phi_indices.begin() + num_smallest_phis,
+  //                    sorted_phi_indices.end());
 
       
      
-    std::vector<SortedPair<GeometryId>> contact_pairs; //the final chosen ones being sent to the lcs factory function
+    // std::vector<SortedPair<GeometryId>> contact_pairs; //the final chosen ones being sent to the lcs factory function
     
-    contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); //sending finger cube contact pair
-    // Displaying the 4 smallest phi values
-    // std::cout << "The 4 smallest phi values:" << std::endl;
-    for (int i = 0; i < num_smallest_phis; i++) {
-        int index = sorted_phi_indices[i].second;
-        double phi_value = sorted_phi_indices[i].first;
-        contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
-        // std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
-    }
-
+  //   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); //sending finger cube contact pair
+  //   // Displaying the 4 smallest phi values
+  //   // std::cout << "The 4 smallest phi values:" << std::endl;
+  //   for (int i = 0; i < num_smallest_phis; i++) {
+  //       int index = sorted_phi_indices[i].second;
+  //       double phi_value = sorted_phi_indices[i].first;
+  //       contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
+  //       // std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
+  //   }
+    
     // std::cout<<"contact pairs size prior to sampling"<<contact_pairs.size()<<std::endl;
-
+    
+   
     auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_init,
       num_friction_directions_, mu_, 0.1);
 
     solvers::LCS system_ = system_scaling_pair.first;
@@ -618,38 +629,38 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       
       // std::cout<<"HERE"<<std::endl;
       //WOULD I NEED TO UPDATE THIS WITH NEW CONTACT PAIRS BASED ON CURRENT STATE?
-      std::vector<SortedPair<GeometryId>> test_contact_pairs;
-      test_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+    //   std::vector<SortedPair<GeometryId>> test_contact_pairs;
+    //   test_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
       
-      std::vector<std::pair<double, int>> test_sorted_phi_indices;
+    //   std::vector<std::pair<double, int>> test_sorted_phi_indices;
 
-      for (int i = 1; i < 9; i++) {
-        multibody::GeomGeomCollider collider(
-        plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
-                                   // Michael about changes in geomgeom)
-         auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
+    //   for (int i = 1; i < 9; i++) {
+    //     multibody::GeomGeomCollider collider(
+    //     plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
+    //                                // Michael about changes in geomgeom)
+    //      auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
 
-        phi(i) = phi_i; //distance between contact pair
-        // std::cout<<"This is updated phi"<<phi(i)<<std::endl;
-        test_sorted_phi_indices.push_back(std::make_pair(phi_i, i));
-      }
+    //     phi(i) = phi_i; //distance between contact pair
+    //     // std::cout<<"This is updated phi"<<phi(i)<<std::endl;
+    //     test_sorted_phi_indices.push_back(std::make_pair(phi_i, i));
+    //   }
 
-    // int num_smallest_phis = 4;
-    std::nth_element(test_sorted_phi_indices.begin(), test_sorted_phi_indices.begin() + num_smallest_phis,
-                     test_sorted_phi_indices.end());
-      // std::cout<<"contact pairs size just before sampling"<<contact_pairs.size()<<std::endl;
+    // // int num_smallest_phis = 4;
+    // std::nth_element(test_sorted_phi_indices.begin(), test_sorted_phi_indices.begin() + num_smallest_phis,
+    //                  test_sorted_phi_indices.end());
+    //   // std::cout<<"contact pairs size just before sampling"<<contact_pairs.size()<<std::endl;
 
-    // Displaying the 4 smallest phi values
-    // std::cout << "The 4 smallest phi values:" << std::endl;
-    for (int i = 0; i < num_smallest_phis; i++) {
-        int index = test_sorted_phi_indices[i].second;
-        double phi_value = test_sorted_phi_indices[i].first;
-        test_contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
-        // std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
-    }
+    // // Displaying the 4 smallest phi values
+    // // std::cout << "The 4 smallest phi values:" << std::endl;
+    // for (int i = 0; i < num_smallest_phis; i++) {
+    //     int index = test_sorted_phi_indices[i].second;
+    //     double phi_value = test_sorted_phi_indices[i].first;
+    //     test_contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
+    //     // std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
+    // }
 
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-          plant_f_, context_f_, plant_ad_f_, context_ad_f_, test_contact_pairs,
+          plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_init,
           num_friction_directions_, mu_, 0.1);
       
       // std::cout<<"contact pairs size during sampling"<<contact_pairs.size()<<std::endl;
@@ -835,7 +846,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   // std::cout<<"contact pairs size just before lcp rollout in C3 : "<<contact_pairs.size()<<std::endl;
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_init,
       num_friction_directions_, mu_, dt);
 
   solvers::LCS system2_ = system_scaling_pair2.first;

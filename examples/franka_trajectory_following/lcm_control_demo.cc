@@ -287,6 +287,8 @@ int DoMain(int argc, char* argv[]){
 
   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
+    // drake::geometry::GeometryId sphere_geoms = 
+    // plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere_v2"))[0];
   drake::geometry::GeometryId capsule1_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_1"))[0];
   drake::geometry::GeometryId capsule2_geoms = 

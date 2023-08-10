@@ -398,15 +398,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
+  
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+ 
 
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[5]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
 
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
+  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
+  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
+  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
+
+  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
+  
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_contact1);
+  contact_pairs.push_back(ground_contact2);
+  contact_pairs.push_back(ground_contact3);
+
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -418,6 +432,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   C3Options options;
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
+  std::cout<<"n simple model dim = "<<n<<std::endl;
   int m = ((system_.D_)[0].cols());
   int k = ((system_.B_)[0].cols());
 
@@ -621,7 +636,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -644,15 +659,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
-  std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+  // std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
-    double hyp = -5;
-    if(C3_flag_ == 0){
-        hyp = -5000; //3;
-    }
-    else{
-        hyp = 50;
-    }
+    double hyp = 3000;
+    // if(C3_flag_ == 0){
+    //     hyp = 3; //3;
+    // }
+    // else{
+    //     hyp = 17;
+    // }
     // if (reposition_flag_ == 1){
     //     hyp = 0;
     // }
@@ -662,24 +677,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
         //  C3_flag_ = 0;
-         std::cout << "Decided to reposition"<<std::endl;
+        //  std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
 
-         std::cout<<"Min : "<<min<<std::endl;
-        //  Eigen::Vector3d v2(1.0, 0.0, 0.0);
-        //  double normV2 = v2.norm();
-        //  std::cout << "The norm of v2 is: " << normV2 << std::endl;
-
-        //  std::cout<<"original st desired " << optimal_sample_.head(3) <<std::endl;
-        //  std::cout<<"current state " << state.head(3) <<std::endl;
-
-         
-        //  std::cout<<"ballxyz " << ball_xyz <<std::endl;
-        // //  way_point[0] = way_point[0] + 0.08;
-        // //  way_point[1] = way_point[1] + 0.08;
-        //  way_point[2] = way_point[2] + 0.08;
-
+        //  std::cout<<"Min : "<<min<<std::endl;
+        
          
          std::vector<Vector3d> points(4, VectorXd::Zero(3));
          
@@ -690,6 +693,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
          Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
          points[1] = ball_xyz + (radius + 0.02) * way_point1/way_point1.norm();
+
+        // Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]);
+        // way_point1[2] = way_point1[2] + 0.04;
         //  std::cout<<"way_point1"<<way_point1<<std::endl;
 
         //KIND OF WORKING
@@ -704,12 +710,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
          
          points[2] = ball_xyz + (radius + 0.02) * way_point2/way_point2.norm();
-        // std::cout << "The norm of v2 is: " << points[1].norm() << std::endl;
-         
-         double t = 0.002;
+
+        //  Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]);
+        // way_point2[2] = way_point2[2] + 0.04;
         
+         
+         double t = 0.02;
+        Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
         // Eigen::Vector3d next_point = generate_next_position(points, t);
-         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+         
          
          
 
@@ -733,13 +742,17 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
             dt /= moving_average_.size();
           }
          
-        //  for(int i = 0; i < 660; i++){
-            //  Eigen::Vector3d next_point = generate_next_position(points, 0.1);
-            //  std::cout<<"generated next point " << next_point <<std::endl;
-        //      double next_z = generate_next_z(end_effector[2], 0.2, 2*i*0.015); 
+         t = dt;
+        //  Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+        //  for(int i = 0; i < 50; i++){
+        //     //  Eigen::Vector3d next_point = generate_next_position(points, 0.1);
+        //     t = i*0.02;
+        //     Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+        //      std::cout<<"generated next point " << next_point <<std::endl;
+        //     //  double next_z = generate_next_z(end_effector[2], 0.2, 2*i*0.015); 
              
-        //      std::cout<<"Moving down"<<std::endl;
-        //      st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+        //     //  std::cout<<"Moving down"<<std::endl;
+        //      st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
         //     //  st_desired << next_point.head(2), next_z , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
         //      state_contact_desired->SetDataVector(st_desired);
@@ -751,45 +764,19 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         // //  points[1] = way_point;
         //  points[2] = ball_xyz.head(2), 0.08;
 
-        //  for(int i = 0; i < 66; i++){
-        //      Eigen::Vector3d next_point = generate_next_position(points, i*0.015);
-        //      std::cout<<"generated next point " << next_point <<std::endl;
-        //      double next_z = generate_next_z(end_effector[2], 0.08, i*0.015); 
-             
-        //      std::cout<<"Moving up"<<std::endl;
-          // st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
-
-          //sending samples at the end of this vector FOR VISUALIZATION
-          // st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
-          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
-
-
         //      state_contact_desired->SetDataVector(st_desired);
         //      state_contact_desired->set_timestamp(timestamp);
-         std::cout<<"hyp in reposition "<< hyp <<std::endl;
+        //  std::cout<<"hyp in reposition "<< hyp <<std::endl;
         //  if (curr_ee_cost - min <= hyp + 0.02){
         //       C3_flag_ = 0;
         //       reposition_flag_ = 0;
         //       std::cout<< "got close to optimal solution and c3 flag is " << C3_flag_ << std::endl;
         //  }
+         st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
          
-         
-         
-         
+
         //  std::cout <<"Repositioned!! "<<std::endl;
 
-        //  /// update moving average filter and prev variables
-        //  if (moving_average_.size() < dt_filter_length_){
-        //      moving_average_.push_back(timestamp - prev_timestamp_);
-        //  }
-        //  else {
-        //     moving_average_.pop_front();
-        //     moving_average_.push_back(timestamp - prev_timestamp_);
-        //  }
-        //     prev_timestamp_ = timestamp;
-    //      traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; //state[7] - back_dist*error_hat(0);
-    //      traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; //state[8] - back_dist*error_hat(1);
-    //      traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
     }
     else{
       // VectorXd input = opt.Solve(candidate_states[index], delta, w);
@@ -887,7 +874,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   VectorXd force_des = VectorXd::Zero(6);
-  force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
+  // force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
 
 
   //Cost computation piece
@@ -909,7 +896,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 50){
+  if (curr_ee_cost - min >= 30){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;
@@ -929,23 +916,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //ball_xyz_d is ball xyz desired. Currently being used to visualize sample 1 in blue.
   //ball_xyz is ball xyz. Currently being used to visualize sample 2 in blue.
   // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
-  st_desired << state_next.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), state_next.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+  st_desired << state_next.head(3), orientation_d, optimal_sample_.tail(16), force_des.head(6), state_next.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
   // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   // std::cout<<"here"<<std::endl;
     }
-   
-
-    // vector<VectorXd> fullsol_curr = opt.SolveFullSolution(state, delta, w);  //outputs full z
-    // vector<VectorXd> optimalinputseq_curr = opt.OptimalInputSeq(fullsol_curr);  //outputs u over horizon
-    // double cost_opt = opt.CalcCost(state, optimalinputseq);
-    // std::cout << "real cost " << cost_opt << std::endl;
-    // std::cout << "real state : " << state;
-
-    // state << candidate_states[index];  //Uncomment when confirmed
-
-  
- 
-  
+     
   //Full state is 19 dimensions.
   //state_next.head(3) - first three elements --- this is the ee position
   //followed by ball orientation (4 elements as it is represented using quaternions) used for visualization probably

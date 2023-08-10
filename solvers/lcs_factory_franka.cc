@@ -30,11 +30,11 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
-    const vector<SortedPair<GeometryId>>& contact_geoms,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     int num_friction_directions, double mu, float dt) {
 
 
-    // std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
+    std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
   ///
   /// First, calculate vdot and derivatives from non-contact dynamics
   ///
@@ -107,17 +107,30 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
                plant.num_velocities());
 
   for (int i = 0; i < contact_geoms.size(); i++) {
-    multibody::GeomGeomCollider collider(
-        plant, contact_geoms[i]);  // deleted num_fricton_directions (check with
+    std::vector<double> distances;
+    std::vector<drake::MatrixX<double>> J_vec;
+
+    for(int j = 0; j < contact_geoms[i].size(); j++){
+        SortedPair<GeometryId> pair {(contact_geoms.at(i)).at(j)};
+        multibody::GeomGeomCollider collider(plant, pair);  // deleted num_fricton_directions (check with
                                    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+ 
+        distances.push_back(phi_i);
+        J_vec.push_back(J_i);
+    }
+    std::cout<<"Jvec size " <<J_vec.size()<<std::endl;
 
-    phi(i) = phi_i; //distance between contact pair
-
-    J_n.row(i) = J_i.row(0);
+    auto min_distance_it = std::min_element(distances.begin(), distances.end());
+    int min_distance_index = std::distance(distances.begin(), min_distance_it);
+    // SortedPair<GeometryId> closest_contact_pair = contact_geoms[i][min_distance_index]; //(contact_geoms.at(i)).at(min_distance_index);
+    J_n.row(i) = (J_vec.at(min_distance_index)).row(0); //J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
               plant.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
+        (J_vec.at(min_distance_index)).block(1, 0, 2 * num_friction_directions, plant.num_velocities());
+
+    phi(i) = *min_distance_it; //distance between contact pair
+    
   }
 
 

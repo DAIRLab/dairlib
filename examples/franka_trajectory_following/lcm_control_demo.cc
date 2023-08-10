@@ -115,7 +115,7 @@ int DoMain(int argc, char* argv[]){
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
-  int nc = 6;  //number of contacts 
+  int nc = 4;  //number of contacts 
 
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = makeNameToPositionsMap(plant);

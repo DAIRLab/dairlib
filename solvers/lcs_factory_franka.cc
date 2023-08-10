@@ -34,7 +34,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     int num_friction_directions, double mu, float dt) {
 
 
-    std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
+    // std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
   ///
   /// First, calculate vdot and derivatives from non-contact dynamics
   ///
@@ -119,7 +119,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
         distances.push_back(phi_i);
         J_vec.push_back(J_i);
     }
-    std::cout<<"Jvec size " <<J_vec.size()<<std::endl;
+    // std::cout<<"Jvec size " <<J_vec.size()<<std::endl;
 
     auto min_distance_it = std::min_element(distances.begin(), distances.end());
     int min_distance_index = std::distance(distances.begin(), min_distance_it);

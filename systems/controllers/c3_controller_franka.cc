@@ -95,7 +95,7 @@ C3Controller_franka::C3Controller_franka(
   // initialize warm start
   int time_horizon = 5;
   int nx = 19;
-  int nlambda = 6*6; //6 forces per contact pair //12;
+  int nlambda = 6*4; //6 forces per contact pair //12;
   int nu = 3;
 
   for (int i = 0; i < time_horizon; i++){
@@ -432,7 +432,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   C3Options options;
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
-  std::cout<<"n simple model dim = "<<n<<std::endl;
+  // std::cout<<"n simple model dim = "<<n<<std::endl;
   int m = ((system_.D_)[0].cols());
   int k = ((system_.B_)[0].cols());
 
@@ -559,6 +559,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       test_q[1] = pos_y;
       test_q[2] = 0.08;
 
+      
       
 
 //      std::cout << "test_q" << std::endl;
@@ -825,7 +826,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     }
     dt /= moving_average_.size();
   }
-
+ 
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
@@ -902,6 +903,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // reposition_flag_ = 1;
   }
   
+
+std::cout<<"here"<<std::endl;
+
   // ball_xyz_d = candidate_states[0].head(3);
   // ball_xyz = candidate_states[1].head(3);
   // true_ball_xyz = candidate_states[2].head(3);

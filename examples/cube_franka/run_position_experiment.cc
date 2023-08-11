@@ -73,7 +73,7 @@ int DoMain(int argc, char* argv[]){
   Parser parser(&plant);
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
   // parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/cube_v3.sdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();

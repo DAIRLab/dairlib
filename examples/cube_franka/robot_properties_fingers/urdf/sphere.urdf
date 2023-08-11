@@ -1,31 +1,22 @@
 <?xml version="1.0" ?>
-<robot name="sphere_v2">
-    <link name="sphere">
+<robot name="sphere">
+    <link name="capsule_1">
         <contact>
-            <!-- TODO: not sure if these values make sense -->
-            <!-- TODO: are these values even read by pybullet? -->
-            <lateral_friction value="1.0"/>
-            <rolling_friction value="0.0"/>
-            <contact_cfm value="0.0"/>
-            <contact_erp value="1.0"/>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
         </contact>
         <inertial>
             <origin rpy="0 0 0" xyz="0 0 0"/>
-            <mass value="0.132"/>
-            <inertia ixx="0.0000524" ixy="0" ixz="0" iyy="0.0000524" iyz="0" izz="0.0000524"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
         </inertial>
-        <visual>
-            <origin rpy="0 0 0" xyz="0 0 0"/>
-            <geometry>
-                <mesh filename="sphere_with_texture.obj"/>
-            </geometry>
-        </visual>
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <sphere radius="0.0315"/>
+                <capsule length="0.125" radius="0.015"/> 
             </geometry>
-            <drake:proximity_properties>
+        </collision>
+        <drake:proximity_properties>
                 <!-- POINT CONTACT -->
                 <drake:mu_static value="1"/>
                 <drake:mu_dynamic value="1"/>
@@ -35,7 +26,101 @@
                 <!-- <drake:mesh_resolution_hint value="0.02"/> -->
                 <!-- <drake:hydroelastic_modulus value="1e7"/> -->
                 <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
-            </drake:proximity_properties>
-        </collision>        
+        </drake:proximity_properties>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.015"/> 
+            </geometry>
+        </visual>
     </link>
+
+    <link name="capsule_2">
+        <contact>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
+        </contact>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+        </inertial>
+        <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="1"/>
+                <drake:mu_dynamic value="1"/>
+
+                <!-- HYDROELASTIC CONTACT -->
+                <!-- <drake:compliant_hydroelastic/> -->
+                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+        </drake:proximity_properties>
+        <collision>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
+            <geometry>
+                <capsule length="0.125" radius="0.015"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
+            <geometry>
+                <capsule length="0.125" radius="0.015"/> 
+            </geometry>
+        </visual>
+    </link>
+
+    <link name="capsule_3">
+        <!-- Third capsule (perpendicular to the first two capsules) -->
+        <contact>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
+        </contact>
+        <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="1"/>
+                <drake:mu_dynamic value="1"/>
+
+                <!-- HYDROELASTIC CONTACT -->
+                <!-- <drake:compliant_hydroelastic/> -->
+                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+        </drake:proximity_properties>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.12" radius="0.015"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.12" radius="0.015"/> 
+            </geometry>
+        </visual>
+    </link>
+
+    
+
+
+    <!-- Joints to connect the capsules-->
+    <joint name="attach_joint" type="fixed">
+        <parent link="capsule_1"/>
+        <child link="capsule_2"/>
+        <origin rpy="0 1.5708 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the y-axis -->
+    </joint>
+
+    <joint name="attach_joint2" type="fixed">
+        <parent link="capsule_2"/>
+        <child link="capsule_3"/>
+        <origin rpy="0 0 1.5708" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the z-axis -->
+    </joint>
+
+    
 </robot>

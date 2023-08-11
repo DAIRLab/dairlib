@@ -95,7 +95,7 @@ C3Controller_franka::C3Controller_franka(
   // initialize warm start
   int time_horizon = 5;
   int nx = 19;
-  int nlambda = 6*9;//12; 6 forces per contact pair
+  int nlambda = 6*4; //6 forces per contact pair //12;
   int nu = 3;
 
   for (int i = 0; i < time_horizon; i++){
@@ -134,7 +134,7 @@ C3Controller_franka::C3Controller_franka(
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+      "examples/cube_franka/parameters.yaml");
   max_desired_velocity_ = param_.velocity_limit;
 
   // filter info
@@ -398,102 +398,43 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
-
-  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs_init;
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-
-  //finger to corner contact pairs
-  std::vector<SortedPair<GeometryId>> ee_contact_pair {SortedPair(contact_geoms_[0], contact_geoms_[1])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair1 {SortedPair(contact_geoms_[2], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair2 {SortedPair(contact_geoms_[3], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair3 {SortedPair(contact_geoms_[4], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair4 {SortedPair(contact_geoms_[5], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair5 {SortedPair(contact_geoms_[6], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair6 {SortedPair(contact_geoms_[7], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair7 {SortedPair(contact_geoms_[8], contact_geoms_[10])};
-  std::vector<SortedPair<GeometryId>> ground_contact_pair8 {SortedPair(contact_geoms_[9], contact_geoms_[10])};
   
-  contact_pairs_init.push_back(ee_contact_pair);  //between finger and cube
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+ 
+
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[5]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[6]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[7]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[8]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
 
+  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
+  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
+  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
+
+  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
+  // contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
   
-  contact_pairs_init.push_back(ground_contact_pair1);
-  contact_pairs_init.push_back(ground_contact_pair2);
-  contact_pairs_init.push_back(ground_contact_pair3);
-  contact_pairs_init.push_back(ground_contact_pair4);
-  contact_pairs_init.push_back(ground_contact_pair5);
-  contact_pairs_init.push_back(ground_contact_pair6);
-  contact_pairs_init.push_back(ground_contact_pair7);
-  contact_pairs_init.push_back(ground_contact_pair8);
-  // contact_pairs_init.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-  // std::cout<<"contact pairs init size"<<contact_pairs_init.size()<<std::endl;
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_contact1);
+  contact_pairs.push_back(ground_contact2);
+  contact_pairs.push_back(ground_contact3);
 
-  // VectorXd phi(contact_geoms_.size());
-  // MatrixXd J_n(contact_geoms_.size(), plant_f_.num_velocities());
-  // MatrixXd J_t(2 * contact_geoms_.size() * num_friction_directions_,
-  //              plant_f_.num_velocities());
 
-  // std::vector<std::pair<double, int>> sorted_phi_indices;
-
-  // for (int i = 1; i < 9; i++) {
-  //   multibody::GeomGeomCollider collider(
-  //       plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
-  //                                  // Michael about changes in geomgeom)
-  //   auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
-
-  //   phi(i) = phi_i; //distance between contact pair
-  //   // std::cout<<"This is phi"<<phi(i)<<std::endl;
-  //   sorted_phi_indices.push_back(std::make_pair(phi_i, i));
-  // }
-
-  //   int num_smallest_phis = 8; //4; //Change this to change the number of ground contacts you want to pass to the lcs system. 8 for full computation, 4 for partial. Finger to cube is appended as first contact already.
-  //   std::nth_element(sorted_phi_indices.begin(), sorted_phi_indices.begin() + num_smallest_phis,
-  //                    sorted_phi_indices.end());
-
-      
-     
-    // std::vector<SortedPair<GeometryId>> contact_pairs; //the final chosen ones being sent to the lcs factory function
-    
-  //   contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); //sending finger cube contact pair
-  //   // Displaying the 4 smallest phi values
-  //   // std::cout << "The 4 smallest phi values:" << std::endl;
-  //   for (int i = 0; i < num_smallest_phis; i++) {
-  //       int index = sorted_phi_indices[i].second;
-  //       double phi_value = sorted_phi_indices[i].first;
-  //       contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
-  //       // std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
-  //   }
-    
-    // std::cout<<"contact pairs size prior to sampling"<<contact_pairs.size()<<std::endl;
-    
-   
-    auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_init,
+  auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
 
-    solvers::LCS system_ = system_scaling_pair.first;
+  solvers::LCS system_ = system_scaling_pair.first; //checking
   // double scaling = system_scaling_pair.second;
-
-
-  
 
   C3Options options;
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
+  // std::cout<<"n simple model dim = "<<n<<std::endl;
   int m = ((system_.D_)[0].cols());
   int k = ((system_.B_)[0].cols());
-
-  // std::cout<< N << " " <<n<< " "<<m<< " "<<k<<std::endl;
-  // std::cout<< ((system_.E_)[0].cols()) <<std::endl;
-  // std::cout<< ((system_.F_)[0].cols()) <<std::endl;
-  // std::cout<< ((system_.H_)[0].cols()) <<std::endl;
-  // std::cout<< ((system_.c_)[0].rows()) <<std::endl;
 
 
   /// initialize ADMM variables (delta, w)
@@ -561,24 +502,33 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     //Multi-sample code piece
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
-    double radius = 0.052; //radius of sampling circle (0.05) //0.06 //0.08
-    int num_samples = 4;
+    double radius = 0.08; //radius of sampling circle (0.05) //0.06 //0.08
+    int num_samples = 1;
     double theta = 360 / num_samples * PI / 180;
-    double angular_offset = 45 * PI/180;
+    double angular_offset = 0 * PI/180;
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-    
     VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
+    // Vector3d curr_ee = end_effector; //end effector current position
     Vector3d ee = end_effector; //end effector test position
+    // VectorXd cost_vector = VectorXd::Zero(num_samples);
 
+    // double theta = 360/num_samples;
+    // std::cout<<"Theta"<<theta<<std::endl;
+    // std::cout<<"state vector"<<state<<std::endl;
+    // std::cout<<"Ball x position"<<state[7]<<std::endl;
+    // Vector3d ball_xyz = ball.tail(3);
+    // std::cout<< "Ball xyz here :::::: "<< ball_xyz <<std::endl;
     x_samplec = ball_xyz[0]; //state[7];
     y_samplec = ball_xyz[1]; //state[8];
     // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
-    double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
+    // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
+    double phase = 0;
+   
     // std::cout<<"phase angle = "<< phase * 180/PI << std::endl;
 
     std::vector<double> cost_vector(num_samples);
@@ -607,7 +557,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       test_q[0] = pos_x;
       test_q[1] = pos_y;
-      test_q[2] = 0.05;
+      test_q[2] = 0.08;
+
+      
+      
 
 //      std::cout << "test_q" << std::endl;
 
@@ -626,46 +579,28 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       plant_f_.SetPositions(&context_f_, test_q);
       plant_f_.SetVelocities(&context_f_, test_v);
       multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
-      
-      // std::cout<<"HERE"<<std::endl;
-      //WOULD I NEED TO UPDATE THIS WITH NEW CONTACT PAIRS BASED ON CURRENT STATE?
-    //   std::vector<SortedPair<GeometryId>> test_contact_pairs;
-    //   test_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-      
-    //   std::vector<std::pair<double, int>> test_sorted_phi_indices;
-
-    //   for (int i = 1; i < 9; i++) {
-    //     multibody::GeomGeomCollider collider(
-    //     plant_f_, contact_pairs_init[i]);  // deleted num_fricton_directions (check with
-    //                                // Michael about changes in geomgeom)
-    //      auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
-
-    //     phi(i) = phi_i; //distance between contact pair
-    //     // std::cout<<"This is updated phi"<<phi(i)<<std::endl;
-    //     test_sorted_phi_indices.push_back(std::make_pair(phi_i, i));
-    //   }
-
-    // // int num_smallest_phis = 4;
-    // std::nth_element(test_sorted_phi_indices.begin(), test_sorted_phi_indices.begin() + num_smallest_phis,
-    //                  test_sorted_phi_indices.end());
-    //   // std::cout<<"contact pairs size just before sampling"<<contact_pairs.size()<<std::endl;
-
-    // // Displaying the 4 smallest phi values
-    // // std::cout << "The 4 smallest phi values:" << std::endl;
-    // for (int i = 0; i < num_smallest_phis; i++) {
-    //     int index = test_sorted_phi_indices[i].second;
-    //     double phi_value = test_sorted_phi_indices[i].first;
-    //     test_contact_pairs.push_back(SortedPair(contact_geoms_[index], contact_geoms_[10]));
-    //     // std::cout << "Phi[" << index << "] = " << phi_value << std::endl;
-    // }
 
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-          plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_init,
+          plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
           num_friction_directions_, mu_, 0.1);
-      
-      // std::cout<<"contact pairs size during sampling"<<contact_pairs.size()<<std::endl;
 
       solvers::LCS test_system = test_system_scaling_pair.first;
+
+
+
+//      ///trying outside .simulate
+//      double scaling2 = test_system_scaling_pair.second;
+//      drake::solvers::MobyLCPSolver<double> LCPSolver_test;
+//      VectorXd force_test; //This contains the contact forces.
+//      //tangential forces and normal forces for two contacts --> gamma slack variable, ball+ee and ball+ground from stewart trinkle formulation
+//
+//      //double scaling2 = 1;
+//      VectorXd input_test = VectorXd::Zero(3);
+//      auto flag_test = LCPSolver_test.SolveLcpLemkeRegularized(test_system.F_[0], test_system.E_[0] * scaling2 * state + test_system.c_[0] * scaling2 + test_system.H_[0] * scaling2 * input_test,
+//                                                     &force_test);
+//
+//      std::cout << "flag_test" << std::endl;
+//      std::cout << flag_test << std::endl;
 
       test_state << test_q.head(3), state.tail(16);
 
@@ -675,9 +610,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
                                warm_start_delta_, warm_start_binary_, warm_start_x_,
                                warm_start_lambda_, warm_start_u_, true);
 
-    
-    // std::cout<< "R size"<<R_.size() << std::endl;
-     
+
+    // solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+    // warm_start_delta_, warm_start_binary_, warm_start_x_,
+    // warm_start_lambda_, warm_start_u_, true);
     
       ///ADDING DELTA
         if (options.delta_option == 1) {
@@ -695,13 +631,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
       vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  //outputs full z
-      
+
       //std::cout << "test state" << test_state.head(10) - test_q << std::endl;
 
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -710,7 +646,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     }
 
     double min = *std::min_element(cost_vector.begin(), cost_vector.end());
-       
+    // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+    // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
+    // std::cout << " minimum value is " << min << std::endl;
+
+    
 
     std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
     int index = std::distance(std::begin(cost_vector), it);
@@ -718,28 +658,33 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
     
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
-    // std::cout<<"HERE"<<std::endl;
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
-    double hyp = 200;
+    double hyp = -300;
     if(C3_flag_ == 0){
-        hyp = 30;
+        hyp = 3; //3;
     }
     else{
-        hyp = 100;
+        hyp = 17;
     }
+    // if (reposition_flag_ == 1){
+    //     hyp = 0;
+    // }
     
     //update to best state
-    
     if(curr_ee_cost - min >= hyp){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
-         std::cout << "Decided to reposition"<<std::endl;
+      //if(min < optimal_cost_) 
+         //if the min cost you have is lesser than the previous optimal cost, then reposition. 
+        //  C3_flag_ = 0;
+        //  std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
 
-         std::cout<<"Min : "<<min<<std::endl;
-                 
+        //  std::cout<<"Min : "<<min<<std::endl;
+        
+         
          std::vector<Vector3d> points(4, VectorXd::Zero(3));
          
          points[0] = end_effector;
@@ -748,7 +693,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  std::cout<<"optimal sample"<<points[3]<<std::endl;
 
          Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
-         points[1] = ball_xyz + (radius + 0.03) * way_point1/way_point1.norm();  //cube diagonal comes out to 10.6 cms, and sampling radius is 5cms so add 3 cms for the bezier to pull further
+         points[1] = ball_xyz + (radius + 0.02) * way_point1/way_point1.norm();
+
+        // Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]);
+        // way_point1[2] = way_point1[2] + 0.04;
         //  std::cout<<"way_point1"<<way_point1<<std::endl;
 
         //KIND OF WORKING
@@ -761,13 +709,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
-         points[2] = ball_xyz + (radius + 0.03) * way_point2/way_point2.norm();
-                 
-         double t = 0.02;
-
-         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
          
-      
+         points[2] = ball_xyz + (radius + 0.02) * way_point2/way_point2.norm();
+
+        //  Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]);
+        // way_point2[2] = way_point2[2] + 0.04;
+        
+         
+         double t = 0.02;
+        Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+        // Eigen::Vector3d next_point = generate_next_position(points, t);
+         
+         
+         
+
+        //  std::cout<<"end effector z " << end_effector[2] <<std::endl;
+
+        //  std::cout<<"points 0 " << points[0] <<std::endl;
+        //  std::cout<<" " <<std::endl;
+        //  std::cout<<"points 1 " << points[1] <<std::endl;
+        //  std::cout<<" " <<std::endl;
+        //  std::cout<<"points 2 " << points[2] <<std::endl;
+        //  std::cout<<" " <<std::endl;
+
           double dt = 0;
           if (moving_average_.empty()){
             dt = param_.dt;
@@ -779,13 +743,17 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
             dt /= moving_average_.size();
           }
          
-        //  for(int i = 0; i < 660; i++){
-            //  Eigen::Vector3d next_point = generate_next_position(points, 0.1);
-            //  std::cout<<"generated next point " << next_point <<std::endl;
-        //      double next_z = generate_next_z(end_effector[2], 0.2, 2*i*0.015); 
+         t = dt;
+        //  Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+        //  for(int i = 0; i < 50; i++){
+        //     //  Eigen::Vector3d next_point = generate_next_position(points, 0.1);
+        //     t = i*0.02;
+        //     Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+        //      std::cout<<"generated next point " << next_point <<std::endl;
+        //     //  double next_z = generate_next_z(end_effector[2], 0.2, 2*i*0.015); 
              
-        //      std::cout<<"Moving down"<<std::endl;
-        //      st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+        //     //  std::cout<<"Moving down"<<std::endl;
+        //      st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
         //     //  st_desired << next_point.head(2), next_z , orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
 
         //      state_contact_desired->SetDataVector(st_desired);
@@ -793,14 +761,31 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  }
          
 
-          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+        //  points[0] = end_effector;
+        // //  points[1] = way_point;
+        //  points[2] = ball_xyz.head(2), 0.08;
 
-         std::cout<<"hyp in reposition "<< hyp <<std::endl;
+        //      state_contact_desired->SetDataVector(st_desired);
+        //      state_contact_desired->set_timestamp(timestamp);
+        //  std::cout<<"hyp in reposition "<< hyp <<std::endl;
+        //  if (curr_ee_cost - min <= hyp + 0.02){
+        //       C3_flag_ = 0;
+        //       reposition_flag_ = 0;
+        //       std::cout<< "got close to optimal solution and c3 flag is " << C3_flag_ << std::endl;
+        //  }
+         st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+         
+
+        //  std::cout <<"Repositioned!! "<<std::endl;
+
     }
     else{
-     
+      // VectorXd input = opt.Solve(candidate_states[index], delta, w);
         C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
 
+  /// calculate the input given x[i]
+  //std::cout<<"original sol"<< std::endl;
+  
     ///ADDING DELTA
     if (options.delta_option == 1) {
     /// reset delta and w (option 1)
@@ -816,7 +801,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     w = w_reset;
 }
 
-   /// calculate the input given x[i]
+
   VectorXd input = opt.Solve(state, delta, w);
   std::cout<<"Using C3 "<<std::endl;
   std::cout<<"Min : "<<min<<std::endl;
@@ -841,12 +826,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     }
     dt /= moving_average_.size();
   }
-  
-
-  // std::cout<<"contact pairs size just before lcp rollout in C3 : "<<contact_pairs.size()<<std::endl;
+ 
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_init,
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, dt);
 
   solvers::LCS system2_ = system_scaling_pair2.first;
@@ -892,7 +875,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   VectorXd force_des = VectorXd::Zero(6);
-  force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
+  // force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
 
 
   //Cost computation piece
@@ -914,30 +897,34 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 20){
+  if (curr_ee_cost - min >= 30){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;
   }
   
-  // std::cout<<"contact pairs size at end of sampling "<<contact_pairs.size()<<std::endl;
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+
+std::cout<<"here"<<std::endl;
+
+  // ball_xyz_d = candidate_states[0].head(3);
+  // ball_xyz = candidate_states[1].head(3);
+  // true_ball_xyz = candidate_states[2].head(3);
+  // ball_xyz_d[0] = 0.55;
+  // ball_xyz_d[1] = 1;
+  // ball_xyz_d[2] = 0.5;
+
+  // ball_xyz[0] = 0.55;
+  // ball_xyz[1] = 1;
+  // ball_xyz[2] = 0.5;
+  
+  //ball_xyz_d is ball xyz desired. Currently being used to visualize sample 1 in blue.
+  //ball_xyz is ball xyz. Currently being used to visualize sample 2 in blue.
+  // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
+  st_desired << state_next.head(3), orientation_d, optimal_sample_.tail(16), force_des.head(6), state_next.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+  // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   // std::cout<<"here"<<std::endl;
-  // std::cout<<st_desired.size()<<std::endl;
     }
-   
-
-    // vector<VectorXd> fullsol_curr = opt.SolveFullSolution(state, delta, w);  //outputs full z
-    // vector<VectorXd> optimalinputseq_curr = opt.OptimalInputSeq(fullsol_curr);  //outputs u over horizon
-    // double cost_opt = opt.CalcCost(state, optimalinputseq);
-    // std::cout << "real cost " << cost_opt << std::endl;
-    // std::cout << "real state : " << state;
-
-    // state << candidate_states[index];  //Uncomment when confirmed
-
-  
- 
-  
+     
   //Full state is 19 dimensions.
   //state_next.head(3) - first three elements --- this is the ee position
   //followed by ball orientation (4 elements as it is represented using quaternions) used for visualization probably
@@ -1095,27 +1082,12 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
 }
 
 Eigen::Vector3d generate_next_position(std::vector<Eigen::Vector3d> points, double t){
-  Eigen::Vector3d a0;
-  Eigen::Vector3d a1;
-  Eigen::Vector3d a2;
-  Eigen::Vector3d a3;
+  Eigen::Vector3d a0 = points[0];
+    Eigen::Vector3d a1 = points[3] - a0;
+    Eigen::Vector3d a2 = 3 * (points[1] - points[0]);
+    Eigen::Vector3d a3 = -2 * (points[1] - points[0]);
 
-  a0 = points[0];
-  // std::cout<< " a0 = " << a0 <<std::endl;
-
-  a1 = VectorXd::Zero(3);
-  // std::cout<< " a1 = " << a1 <<std::endl;
-
-  a2 = 3 * (points[1] - points[0]);
-  // std::cout<< " a2 = " << a2 <<std::endl;
-
-  a3 = -2 * (points[1] - points[0]);
-  // std::cout<< " a3 = " << a3 <<std::endl;
-
-  // std::cout<<a0 + a1 * t + a2 * std::pow(t,2) + a3 * std::pow(t,3)<<std::endl;
-  return a0 + a1 * t + a2 * std::pow(t,2) + a3 * std::pow(t,3);
+    return a0 + a1 * t + a2 * std::pow(t, 2) + a3 * std::pow(t, 3);
 }
 
-double generate_next_z(double current, double end, double t){
-  return current + t * (end - current);
-}
+

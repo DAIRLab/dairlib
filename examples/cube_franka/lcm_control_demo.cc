@@ -64,8 +64,7 @@ int DoMain(int argc, char* argv[]){
   parser.package_map().Add("robot_properties_fingers",
                         "examples/cube_franka/robot_properties_fingers");
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/cube_v3.sdf");
-  // parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
 
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -84,9 +83,7 @@ int DoMain(int argc, char* argv[]){
   parser_f.package_map().Add("robot_properties_fingers",
                         "examples/cube_franka/robot_properties_fingers");
   parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
-  parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/cube_v3.sdf");
-  // parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
-
+  parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI_f = RigidTransform<double>::Identity();
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f);
   plant_f.Finalize();
@@ -107,9 +104,7 @@ int DoMain(int argc, char* argv[]){
   auto [plant_franka, scene_graph_franka] = AddMultibodyPlantSceneGraph(&builder_franka, sim_dt);
   Parser parser_franka(&plant_franka);
   parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/cube_v3.sdf");
-  // parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
-
+  parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI_franka = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka);
   plant_franka.Finalize();
@@ -120,7 +115,7 @@ int DoMain(int argc, char* argv[]){
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
-  int nc = 9; // 2;This is the number of contacts
+  int nc = 4;  //number of contacts 
 
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
@@ -292,38 +287,18 @@ int DoMain(int argc, char* argv[]){
 
   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
-  drake::geometry::GeometryId cube_volume = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("cube"))[0];
-  drake::geometry::GeometryId corner0 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_left_support"))[0];
-    drake::geometry::GeometryId corner1 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_right_support"))[0];
-    drake::geometry::GeometryId corner2 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_left_support"))[0];
-    drake::geometry::GeometryId corner3 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_right_support"))[0];
-    drake::geometry::GeometryId corner4 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_left_top"))[0];
-    drake::geometry::GeometryId corner5 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("front_right_top"))[0];
-    drake::geometry::GeometryId corner6 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_left_top"))[0];
-    drake::geometry::GeometryId corner7 = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("back_right_top"))[0];
     // drake::geometry::GeometryId sphere_geoms = 
-    // plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
+    // plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere_v2"))[0];
+  drake::geometry::GeometryId capsule1_geoms = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_1"))[0];
+  drake::geometry::GeometryId capsule2_geoms = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_2"))[0];
+  drake::geometry::GeometryId capsule3_geoms = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_3"))[0];
   drake::geometry::GeometryId ground_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
-
   std::vector<drake::geometry::GeometryId> contact_geoms = 
-    {finger_geoms, cube_volume, corner0, corner1, corner2, corner3, corner4, corner5, corner6, corner7, ground_geoms};
-  
-  // std::cout<< "contact geoms finger" <<finger_geoms <<std::endl;
-  // std::cout<< "contact geoms corner 0" <<corner0 <<std::endl;
-  // std::vector<drake::geometry::GeometryId> contact_geoms = 
-  //   {finger_geoms, cube_v3_geoms, ground_geoms};
-  // std::vector<drake::geometry::GeometryId> contact_geoms = 
-  //   {finger_geoms, sphere_geoms, ground_geoms};
+    {finger_geoms, capsule1_geoms, capsule2_geoms, capsule3_geoms, ground_geoms};
 
   /* -------------------------------------------------------------------------------------------*/
 
@@ -364,7 +339,7 @@ int DoMain(int argc, char* argv[]){
       control_publisher->get_input_port());
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_lcm_control_demo");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_lcm_control_demo");
   auto context_d = diagram->CreateDefaultContext();
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

@@ -54,7 +54,7 @@ using Eigen::MatrixXd;
 int DoMain(int argc, char* argv[]){
   // load parameters
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
-    "examples/cube_franka/parameters.yaml");
+    "examples/franka_trajectory_following/parameters.yaml");
 
   // load urdf and sphere
   DiagramBuilder<double> builder;
@@ -63,9 +63,8 @@ int DoMain(int argc, char* argv[]){
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  // parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/cube_v3.sdf");
+  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
+  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
@@ -131,9 +130,10 @@ int DoMain(int argc, char* argv[]){
   q[q_map["base_qx"]] = param.q_init_ball(1);
   q[q_map["base_qy"]] = param.q_init_ball(2);
   q[q_map["base_qz"]] = param.q_init_ball(3);
-  q[q_map["base_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
+  q[q_map["base_x"]] = 0.05 + param.x_c + traj_radius * sin(M_PI * param.phase / 180.0); //moving the object ahead by 2.5 cms so the ee doesn't hit it during initialization
+                                                                                         //could also reduce size of object with necessary changes in moments of inertia
   q[q_map["base_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
-  q[q_map["base_z"]] = param.ball_radius + param.table_offset;
+  q[q_map["base_z"]] = 0.1 + param.ball_radius + param.table_offset;
 
   plant.SetPositions(&plant_context, q);
 

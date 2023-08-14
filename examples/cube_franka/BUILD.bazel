@@ -4,6 +4,20 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "cube_franka_example",
+    deps = [
+        ":trifinger_urdf",
+        ":c3_parameters",
+        ":simulate_franka_lcm",
+        ":lcm_control_impedence",
+        ":lcm_control_demo",
+        ":run_c3_impedance_experiment",
+        ":visualizer"
+        
+        ],
+)
+
+cc_library(
     name = "trifinger_urdf",
     data = glob([
     	"robot_properties_fingers/urdf/**",

@@ -503,13 +503,21 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
     double radius = 0.08; //radius of sampling circle (0.05) //0.06 //0.08
-    int num_samples = 1;
-    double theta = 360 / num_samples * PI / 180;
+    int num_samples = 3;
+    double theta = (360 / num_samples) * (PI / 180);
     double angular_offset = 0 * PI/180;
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
     VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+    
+    // std::cout<<"candidate states size = "<<candidate_states.size()<<std::endl;
+    // std::cout<<"Optimal sample size "<<optimal_sample_.size()<<std::endl;
+    // std::cout<<"orientation_d size "<<orientation_d.size()<<std::endl;
+    // std::cout<<"ball_xyz_d.size "<<ball_xyz_d.size()<<std::endl;
+    // std::cout<<"ball_xyz.size "<<ball_xyz.size()<<std::endl;
+    // std::cout<<"true_ball_xyz.size "<<true_ball_xyz.size()<<std::endl;
+    // std::cout<<"st_desired size init = "<<st_desired.size()<<std::endl;
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     // Vector3d curr_ee = end_effector; //end effector current position
@@ -557,7 +565,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       test_q[0] = pos_x;
       test_q[1] = pos_y;
-      test_q[2] = 0.08;
+      test_q[2] = 0.04; // 0.08;
 
       
       
@@ -664,7 +672,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     double hyp = -300;
     if(C3_flag_ == 0){
-        hyp = 3; //3;
+        hyp = -3000; //3;
     }
     else{
         hyp = 17;
@@ -678,11 +686,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
         //  C3_flag_ = 0;
-        //  std::cout << "Decided to reposition"<<std::endl;
+         std::cout << "Decided to reposition"<<std::endl;
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
 
-        //  std::cout<<"Min : "<<min<<std::endl;
+         std::cout<<"Min : "<<min<<std::endl;
+         std::cout<<"hyp in reposition = "<<hyp<<std::endl;
+         
         
          
          std::vector<Vector3d> points(4, VectorXd::Zero(3));
@@ -773,8 +783,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //       reposition_flag_ = 0;
         //       std::cout<< "got close to optimal solution and c3 flag is " << C3_flag_ << std::endl;
         //  }
-         st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
-         
+        // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+        st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+        //  st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+         std::cout<<"st_desired size in reposition = "<<st_desired.size()<<std::endl;
 
         //  std::cout <<"Repositioned!! "<<std::endl;
 
@@ -875,7 +887,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   VectorXd force_des = VectorXd::Zero(6);
-  // force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
+  force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
 
 
   //Cost computation piece
@@ -904,7 +916,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
   
 
-std::cout<<"here"<<std::endl;
+// std::cout<<"here"<<std::endl;
 
   // ball_xyz_d = candidate_states[0].head(3);
   // ball_xyz = candidate_states[1].head(3);
@@ -920,8 +932,9 @@ std::cout<<"here"<<std::endl;
   //ball_xyz_d is ball xyz desired. Currently being used to visualize sample 1 in blue.
   //ball_xyz is ball xyz. Currently being used to visualize sample 2 in blue.
   // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
-  st_desired << state_next.head(3), orientation_d, optimal_sample_.tail(16), force_des.head(6), state_next.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
-  // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+  // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), state_next.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
+  // std::cout<<"st_desired size in C3 = "<<st_desired.size()<<std::endl;
+  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
   // std::cout<<"here"<<std::endl;
     }
      

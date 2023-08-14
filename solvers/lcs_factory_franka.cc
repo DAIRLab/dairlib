@@ -130,6 +130,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
         (J_vec.at(min_distance_index)).block(1, 0, 2 * num_friction_directions, plant.num_velocities());
 
     phi(i) = *min_distance_it; //distance between contact pair
+    std::cout<<"distance of contact pair "<<i<<" = "<<phi(i)<<std::endl;
     
   }
 

@@ -301,9 +301,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// rolling phase
   // if ( ts < roll_phase ) {
     //Maintaining roll phase without time based heuristic. Instead constantly rolling except when making decision to reposition instead.
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    //This is the desired location of the end effector
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - 0.04;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] ;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] - 0.02;
   // }
   /// upwards phase
   // else if (ts < roll_phase + return_phase / 3){
@@ -421,7 +422,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   contact_pairs.push_back(ground_contact2);
   contact_pairs.push_back(ground_contact3);
 
-
+  std::cout<<"REALT SYSTEM: "<<std::endl;
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
@@ -565,7 +566,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       test_q[0] = pos_x;
       test_q[1] = pos_y;
-      test_q[2] = 0.04; // 0.08;
+      test_q[2] = 0.08; // 0.08;
 
       
       
@@ -587,7 +588,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       plant_f_.SetPositions(&context_f_, test_q);
       plant_f_.SetVelocities(&context_f_, test_v);
       multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
-
+      
+      std::cout<<"Sampled system "<<i<<": "<<std::endl;
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
           plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
           num_friction_directions_, mu_, 0.1);
@@ -645,7 +647,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1000 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -670,19 +672,33 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
-    double hyp = -300;
-    if(C3_flag_ == 0){
-        hyp = -3000; //3;
+    // double hyp = -300;
+    // if(C3_flag_ == 0){
+    //     hyp = -3000; //3;
+    // }
+    // else{
+    //     hyp = 17;
+    // }
+
+    double diff = curr_ee_cost - min;
+    std::cout<<"Diff = "<<diff<<std::endl;
+    
+    if (diff <= 15) //the current position is better than sample or good enough ==> Do C3
+    { C3_flag_ = 1; 
+    // std::cout<<"trying to do C3 "<<C3_flag_<<std::endl; 
     }
-    else{
-        hyp = 17;
+    else 
+    {
+      C3_flag_ = 1; //should be 0
+      // std::cout<<"trying to reposition "<<C3_flag_<<std::endl;
     }
+        
     // if (reposition_flag_ == 1){
     //     hyp = 0;
     // }
     
     //update to best state
-    if(curr_ee_cost - min >= hyp){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
+    if(C3_flag_ == 0){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
       //if(min < optimal_cost_) 
          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
         //  C3_flag_ = 0;
@@ -691,8 +707,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          optimal_sample_ = candidate_states[index];
 
          std::cout<<"Min : "<<min<<std::endl;
-         std::cout<<"hyp in reposition = "<<hyp<<std::endl;
-         
+        //  std::cout<<"hyp in reposition = "<<hyp<<std::endl;
+
         
          
          std::vector<Vector3d> points(4, VectorXd::Zero(3));
@@ -786,14 +802,14 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         // st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
         st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), ball_xyz_d, ball_xyz, true_ball_xyz;
         //  st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), next_point.head(3), optimal_sample_.head(3), candidate_states[2].head(3);
-         std::cout<<"st_desired size in reposition = "<<st_desired.size()<<std::endl;
+        //  std::cout<<"st_desired size in reposition = "<<st_desired.size()<<std::endl;
 
         //  std::cout <<"Repositioned!! "<<std::endl;
 
     }
     else{
       // VectorXd input = opt.Solve(candidate_states[index], delta, w);
-        C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
+        // C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
 
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
@@ -887,7 +903,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   VectorXd force_des = VectorXd::Zero(6);
-  force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
+  // force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
 
 
   //Cost computation piece
@@ -908,12 +924,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 //  state_next = state_next_test;
 
 // state_next = candidate_states[index];
-  std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 30){
-    std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
-    C3_flag_ = 0;
-    // reposition_flag_ = 1;
-  }
+  // std::cout<<"hyp in C3 "<< hyp <<std::endl;
+  // if (curr_ee_cost - min >= 30){
+  //   std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
+  //   C3_flag_ = 0;
+  //   // reposition_flag_ = 1;
+  // }
   
 
 // std::cout<<"here"<<std::endl;

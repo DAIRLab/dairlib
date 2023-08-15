@@ -490,6 +490,9 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
                                    do_eval_cost=False):
   # TODO: I wonder if we will break any thing if we run ipopt in parallel for the initial pose? (currently we are not doing this, so we are fine)
 
+  # Copy this sim eval script for future reference
+  RunCommand('cp examples/goldilocks_models/run_sim_cost_study.py ' + eval_dir + '/run_sim_cost_study__run_sim.py')
+
   ### Some checks
   if parsed_yaml_file.get('use_radio'):
     raise ValueError("Currently we don't use radio in sim evaluation, although the evaluation script could probably be extended easily")
@@ -2335,6 +2338,8 @@ if __name__ == "__main__":
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
   RunCommand("rm " + eval_dir + "costs_info.txt")
+  # Copy this sim eval script for future reference
+  RunCommand('cp examples/goldilocks_models/run_sim_cost_study.py ' + eval_dir + '/run_sim_cost_study__plot_cost.py')
 
   # Manual overwrite log_indices for plotting
   if len(log_indices_for_plot) != 0:

@@ -30,7 +30,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.005"/> 
             </geometry>
             <material>
                 <color rgba="1 0 0 1"/> <!-- Red color for visualization -->
@@ -68,7 +68,7 @@
         <visual>
             <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.005"/> 
             </geometry>
             <material>
                 <color rgba="0 1 0 1"/> <!-- green color for visualization -->
@@ -107,7 +107,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.12" radius="0.015"/> 
+                <capsule length="0.12" radius="0.005"/> 
             </geometry>
             <material>
                 <color rgba="0 0 1 1"/> <!-- Blue color -->

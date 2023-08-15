@@ -503,7 +503,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     //Multi-sample code piece
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
-    double radius = 0.08; //radius of sampling circle (0.05) //0.06 //0.08
+    double radius = 0.01;//0.08; //radius of sampling circle (0.05) //0.06 //0.08
     int num_samples = 3;
     double theta = (360 / num_samples) * (PI / 180);
     double angular_offset = 0 * PI/180;
@@ -535,8 +535,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     y_samplec = ball_xyz[1]; //state[8];
     // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
-    double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
-    // double phase = 0;
+    // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
+    double phase = 0;
    
     // std::cout<<"phase angle = "<< phase * 180/PI << std::endl;
 
@@ -648,7 +648,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1000 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -684,7 +684,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double diff = curr_ee_cost - min;
     std::cout<<"Diff = "<<diff<<std::endl;
     
-    if (diff <= 15) //the current position is better than sample or good enough ==> Do C3
+    double hyp = 3;
+
+    if (diff <= 0) //the current position is better than sample or good enough ==> Do C3
     { C3_flag_ = 1; 
     // std::cout<<"trying to do C3 "<<C3_flag_<<std::endl; 
     }
@@ -720,7 +722,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  std::cout<<"optimal sample"<<points[3]<<std::endl;
 
          Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
-         points[1] = ball_xyz + (radius + 0.02) * way_point1/way_point1.norm();
+         points[1] = ball_xyz + (radius + 0.05) * way_point1/way_point1.norm();
 
         // Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]);
         // way_point1[2] = way_point1[2] + 0.04;
@@ -737,13 +739,17 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
          
-         points[2] = ball_xyz + (radius + 0.02) * way_point2/way_point2.norm();
+         points[2] = ball_xyz + (radius + 0.05) * way_point2/way_point2.norm();
 
         //  Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]);
         // way_point2[2] = way_point2[2] + 0.04;
-        
+        // std::cout<<"point"<<points[0]<<std::endl;
+        // std::cout<<"z coord "<<points.at(0)[2]<<std::endl;
+
+        points.at(1)[2] = points.at(1)[2] + 0.02;
+        points.at(2)[2] = points.at(2)[2] + 0.02;  //adding 2cm to z coordinate so it goes mostly above the object
          
-         double t = 0.02;
+         double t = 0.1;
         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
         // Eigen::Vector3d next_point = generate_next_position(points, t);
          

@@ -60,7 +60,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(to_robot_output->get_output_port(), robot_output_pub->get_input_port());
   
   auto sys = builder.Build();
-  // DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_impedance_ros_to_lcm");
+  // DrawAndSaveDiagramGraph(*sys, "examples/cube_franka/diagram_run_impedance_ros_to_lcm");
 
   Simulator<double> simulator(*sys); 
   simulator.Initialize();

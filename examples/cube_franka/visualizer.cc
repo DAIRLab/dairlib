@@ -50,7 +50,7 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
-    "examples/franka_trajectory_following/parameters.yaml");
+    "examples/cube_franka/parameters.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -61,7 +61,7 @@ int do_main(int argc, char* argv[]) {
 
   Parser parser(&plant, &scene_graph);
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  // parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
+  // parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
@@ -92,7 +92,7 @@ int do_main(int argc, char* argv[]) {
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_visualizer");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_visualizer");
 
   auto context = diagram->CreateDefaultContext();
 

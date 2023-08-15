@@ -110,7 +110,7 @@
                 <capsule length="0.12" radius="0.015"/> 
             </geometry>
             <material>
-                <color rgba="0 0 1 1"/> <!-- blue color for visualization -->
+                <color rgba="0 0 1 1"/> <!-- Blue color -->
             </material>
         </visual>
     </link>

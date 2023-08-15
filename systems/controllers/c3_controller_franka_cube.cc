@@ -422,7 +422,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   contact_pairs.push_back(ground_contact2);
   contact_pairs.push_back(ground_contact3);
 
-  std::cout<<"REALT SYSTEM: "<<std::endl;
+  // std::cout<<"REAL SYSTEM: "<<std::endl;
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
@@ -535,8 +535,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     y_samplec = ball_xyz[1]; //state[8];
     // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
-    // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
-    double phase = 0;
+    double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
+    // double phase = 0;
    
     // std::cout<<"phase angle = "<< phase * 180/PI << std::endl;
 
@@ -549,6 +549,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       double pos_y = 0;
 
       // std::cout<<"sample "<< i << " angle = "<< (i*theta + phase + angular_offset) * 180/PI <<std::endl;
+      // if (i == 0){radius = 0;} //ing one sample above the ball
 
       pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset); //state[7]
       pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
@@ -589,7 +590,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       plant_f_.SetVelocities(&context_f_, test_v);
       multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
       
-      std::cout<<"Sampled system "<<i<<": "<<std::endl;
+      // std::cout<<"Sampled system "<<i<<": "<<std::endl;
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
           plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
           num_friction_directions_, mu_, 0.1);
@@ -689,7 +690,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     }
     else 
     {
-      C3_flag_ = 1; //should be 0
+      C3_flag_ = 0; //should be 0
       // std::cout<<"trying to reposition "<<C3_flag_<<std::endl;
     }
         

@@ -54,7 +54,7 @@ using Eigen::MatrixXd;
 int DoMain(int argc, char* argv[]){
   // load parameters
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
-    "examples/franka_trajectory_following/parameters.yaml");
+    "examples/cube_franka/parameters.yaml");
 
   // load urdf and sphere
   DiagramBuilder<double> builder;
@@ -63,8 +63,8 @@ int DoMain(int argc, char* argv[]){
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf");
-  parser.AddModelFromFile("examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
@@ -101,7 +101,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_simulate_franka_lcm");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_simulate_franka_lcm");
 
   drake::systems::Simulator<double> simulator(*diagram);
   

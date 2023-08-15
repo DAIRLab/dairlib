@@ -141,7 +141,7 @@ int DoMain(int argc, char* argv[]){
  /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_trajectory_following/diagram_run_position_experiments");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_run_position_experiments");
   auto context_d = diagram->CreateDefaultContext();
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &drake_lcm, std::move(diagram), state_receiver, "FRANKA_ROS_OUTPUT", true);

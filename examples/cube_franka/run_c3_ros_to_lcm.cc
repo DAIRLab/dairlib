@@ -121,7 +121,7 @@ int DoMain(int argc, char* argv[]){
   /* -------------------------------------------------------------------------------------------*/
 
   auto sys = builder.Build();
-  // DrawAndSaveDiagramGraph(*sys, "examples/franka_trajectory_following/diagram_run_c3_ros_to_lcm");
+  // DrawAndSaveDiagramGraph(*sys, "examples/cube_franka/diagram_run_c3_ros_to_lcm");
 
   Simulator<double> simulator(*sys); 
   simulator.Initialize();

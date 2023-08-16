@@ -88,7 +88,7 @@ ImpedanceController::ImpedanceController(
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+      "examples/cube_franka/parameters.yaml");
 
   // define end effector and contact
   EE_offset_ << param_.EE_offset;

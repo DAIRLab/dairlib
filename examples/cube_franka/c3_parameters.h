@@ -91,6 +91,13 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(dt_filter_length));
     a->Visit(DRAKE_NVP(alpha_p));
     a->Visit(DRAKE_NVP(alpha_v));
+
+    // sampling params
+    a->Visit(DRAKE_NVP(sampling_radius));
+    a->Visit(DRAKE_NVP(sample_height));
+    a->Visit(DRAKE_NVP(sample_number));
+    a->Visit(DRAKE_NVP(spline_width));
+    
   }
 
   // impedance control parameters
@@ -156,6 +163,12 @@ struct C3Parameters {
   VectorXd EE_offset;
   double table_offset;
   double model_table_offset;
+
+  //sampling parameters
+  double sampling_radius;
+  int sample_number;
+  double sample_height;
+  double spline_width;
 
   // misc
   double contact_threshold;

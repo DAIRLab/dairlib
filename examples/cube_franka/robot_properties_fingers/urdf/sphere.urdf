@@ -101,13 +101,13 @@
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.12" radius="0.015"/> 
+                <capsule length="0.125" radius="0.015"/> 
             </geometry>
         </collision>
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.12" radius="0.015"/> 
+                <capsule length="0.125" radius="0.015"/> 
             </geometry>
             <material>
                 <color rgba="0 0 1 1"/> <!-- Blue color -->

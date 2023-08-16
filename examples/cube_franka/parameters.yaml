@@ -41,7 +41,7 @@ axis_option: 1
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
-q_init_ball: [1, 0, 0, 0] # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
+q_init_ball: [0.847410781, 0.310617894, 0.311017672, -0.385788646] #[0.9239, 0.3827, 0, 0] (2 contacts) #[1, 0, 0, 0] (1 contact) # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
 initial_start: [0.55, 0, 0.12]
 initial_finish: [0, 0, 0.07]  # [0, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
 stabilize_time1: 0.5 #0.5
@@ -64,12 +64,19 @@ lead_angle: 20 # angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters
-ball_radius: 0.0625 #0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
+ball_radius: 0.0625 #0.0625 #0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
 table_offset: -0.0245 #-0.0245      # chances need to be consistent with franka_box, model urdf, AND vision
 model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model urdf
 # number_contact_pairs: 9 #9 contact pairs for cube - 1 for ee-->cube and 8 for each corner-->ground 
+
+#Sampling parameters
+sampling_radius: 0.08   #Size of sampling circle
+sample_height: 0.08
+sample_number: 3
+spline_width: 0.04
+
 
 # Misc
 contact_threshold: 0.01
@@ -87,3 +94,4 @@ gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param h
 dt_filter_length: 10
 alpha_p: 0.2
 alpha_v: 1
+

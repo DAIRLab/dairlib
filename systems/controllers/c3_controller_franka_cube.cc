@@ -531,6 +531,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // std::cout<<"Ball x position"<<state[7]<<std::endl;
     // Vector3d ball_xyz = ball.tail(3);
     // std::cout<< "Ball xyz here :::::: "<< ball_xyz <<std::endl;
+    std::cout<<"Ball_xyz = "<<ball_xyz<<std::endl;
+    std::cout<<"Ball_xyz_d = "<<ball_xyz_d<<std::endl;
+
     x_samplec = ball_xyz[0]; //state[7];
     y_samplec = ball_xyz[1]; //state[8];
     // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
@@ -671,7 +674,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
-  std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+  // std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
     // double hyp = -300;
     // if(C3_flag_ == 0){
@@ -682,12 +685,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     // }
 
     double diff = curr_ee_cost - min;
-    std::cout<<"Diff = "<<diff<<std::endl;
+    // std::cout<<"Diff = "<<diff<<std::endl;
     
     double hyp = 3;
 
     if (diff <= 0) //the current position is better than sample or good enough ==> Do C3
-    { C3_flag_ = 1; 
+    { C3_flag_ = 0; 
     // std::cout<<"trying to do C3 "<<C3_flag_<<std::endl; 
     }
     else 
@@ -709,7 +712,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
 
-         std::cout<<"Min : "<<min<<std::endl;
+        //  std::cout<<"Min : "<<min<<std::endl;
         //  std::cout<<"hyp in reposition = "<<hyp<<std::endl;
 
         
@@ -839,7 +842,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   VectorXd input = opt.Solve(state, delta, w);
   std::cout<<"Using C3 "<<std::endl;
-  std::cout<<"Min : "<<min<<std::endl;
+  // std::cout<<"Min : "<<min<<std::endl;
   // std::cout<<"This is where the end effector is rn : "<< state.head(3) <<std::endl;
   // C3_flag_++;
   

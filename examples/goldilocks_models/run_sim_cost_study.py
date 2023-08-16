@@ -1374,7 +1374,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # Adjust n_level if the ratio differece is too small
   if (max_nonzero_ratio - min_nonzero_ratio) / (n_level - 1) < 0.1**n_decimal:
     print("WARNING -- this feature hasn't been tested yet")
-    n_level = (max_nonzero_ratio - min_nonzero_ratio) / 0.1**n_decimal + 1
+    n_level = int((max_nonzero_ratio - min_nonzero_ratio) / 0.1**n_decimal) + 1
 
   # discrete color map
   delta_level = (min(1, max_nonzero_ratio) - min_nonzero_ratio) / (n_level - 1)

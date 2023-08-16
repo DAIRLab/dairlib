@@ -687,10 +687,10 @@ def CalcCostInTrajoptStyle(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_ext
   return cost_dict
 
 
-def CalcCostInRLStyle(x_extracted, u_extracted, vdot_numerical):
+def CalcCostInRLStyle(t_x_extracted, t_u_extracted, x_extracted, u_extracted, vdot_numerical):
   cost_dict = {}
 
-  w_Q = 0.005  # big weight: 0.1; small weight 0.005
+  w_Q = 0.0  # big weight: 0.1; small weight 0.005
   w_R = 0.0002
   w_joint_accel = 0.002  # big: 0.002; small: 0.0001
   W_Q = w_Q * np.identity(nv)
@@ -698,24 +698,31 @@ def CalcCostInRLStyle(x_extracted, u_extracted, vdot_numerical):
   W_joint_accel = w_joint_accel * W_Q
   W_Q *= 0
 
-  x_extracted = x_extracted[0::50]  # RL runs at 20Hz
-  u_extracted = u_extracted[0::50]  # RL runs at 20Hz
+  # sampling period
+  dt_sampling = 0.001  # RL runs at 20Hz, but want to eval on all data, because there might be spikes in the beginning of each stance phase (see the torque plot) and low sampling period can sometimes hit or miss this spike, causing noise in landscape plots
+  dn_sampling = max(1, int(dt_sampling * 1000))
+
+  x_extracted = x_extracted[0::dn_sampling]
+  u_extracted = u_extracted[0::dn_sampling]
+
+  t_x_extracted = t_x_extracted[0::dn_sampling]
+  t_u_extracted = t_u_extracted[0::dn_sampling]
+  dt_x = np.diff(t_x_extracted)
+  dt_u = np.diff(t_u_extracted)
 
   # Adjust weight for dt
-  W_R *= 0.05             # 50ms
-  W_joint_accel *= 0.05   # 50ms
-  W_Q *= 0.05             # 50ms
+  W_joint_accel *= dt_sampling
 
   cost_x = 0.0
-  for i in range(len(x_extracted)):
+  for i in range(len(x_extracted) - 1):  # -1 due to np.diff for dt
     v_i = x_extracted[i, nq:]
-    cost_x += (v_i.T @ W_Q @ v_i)
+    cost_x += (v_i.T @ W_Q @ v_i) * dt_x[i]
   cost_dict["cost_x"] = cost_x
 
   cost_u = 0.0
-  for i in range(len(u_extracted)):
+  for i in range(len(u_extracted) - 1):  # -1 due to np.diff for dt
     u_i = u_extracted[i, :]
-    cost_u += (u_i.T @ W_R @ u_i)
+    cost_u += (u_i.T @ W_R @ u_i) * dt_u[i]
   cost_dict["cost_u"] = cost_u
 
   cost_accel = 0.0
@@ -1104,7 +1111,7 @@ def ProcessDataGivenStartTimeAndEndTime(t_start, t_end, weight_dict, is_hardware
 
   # Compute all costs
   if eval_for_RL:
-    cost_dict = CalcCostInRLStyle(x_extracted, u_extracted, vdot_numerical)
+    cost_dict = CalcCostInRLStyle(t_x_extracted, t_u_extracted, x_extracted, u_extracted, vdot_numerical)
   else:
     cost_dict = CalcCostInTrajoptStyle(t_start, t_end, n_x_data, n_u_data, dt_x, dt_u, x_extracted,
       u_extracted, vdot_numerical, fsm_tx_extracted, fsm_tu_extracted, weight_dict)

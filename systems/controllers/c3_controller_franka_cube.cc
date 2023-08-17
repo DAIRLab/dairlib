@@ -122,9 +122,14 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
 
+  // state_output_port_ = this->DeclareVectorOutputPort(
+  //         "xee, xball, xee_dot, xball_dot, lambda, visualization",
+  //         TimestampedVector<double>(38), &C3Controller_franka::CalcControl)
+  //     .get_index();
+
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(38), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(44), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -192,7 +197,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(38);
+    VectorXd st_desired = VectorXd::Zero(38);    //THIS DECLARATION IS BAD!!! CHANGE IT!!
     st_desired.head(3) << target[0];
     st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
     st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
@@ -436,7 +441,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
+    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size() + 3 + 3);  //remove +3 when not visualizing
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     Vector3d ee = end_effector; //end effector test position
@@ -573,19 +578,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
-  // std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+  std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
 
-    double hyp = 5;
+    double hyp = 10;
     if(C3_flag_ == 0){
-        hyp = 3;
+        hyp = param_.repositioning_threshold; //20;
     }
     else{
-        hyp = 17;
+        hyp = param_.C3_bias;
     }
+    // double hyp1 = 10; //current position needs to be at least 10 points as good enough as the min
+    // double hyp2 = 50; //if you are doing C3 and more than hyp2 away from min, switch to repositioning.
 
+  
     double diff = curr_ee_cost - min;
     std::cout<<"Diff = "<<diff<<std::endl;
+
+    // if (diff >= hyp1){
+    //   C3_flag_ = 1; //Do C3
+    // }
+    // else{
+    //   C3_flag_ = 0;
+    // }
     
     // if (diff <= 15) //the current position is better than sample or good enough ==> Do C3
     // { C3_flag_ = 1; 
@@ -605,7 +620,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          optimal_cost_ = min; 
          optimal_sample_ = candidate_states[index];
 
-        //  std::cout<<"Min : "<<min<<std::endl;
+         std::cout<<"Min : "<<min<<std::endl;
         //  std::cout<<"hyp in reposition = "<<hyp<<std::endl;
 
         
@@ -624,7 +639,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          points[1] = ball_xyz + (param_.spline_width) * way_point1/way_point1.norm();
 
         // Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]);
-        way_point1[2] = way_point1[2] + 0.08;
+        // way_point1[2] = way_point1[2] + 0.08;
         //  std::cout<<"way_point1"<<way_point1<<std::endl;
 
        
@@ -633,11 +648,11 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
          points[2] = ball_xyz + (param_.spline_width) * way_point2/way_point2.norm();
 
         //  Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]);
-        way_point2[2] = way_point2[2] + 0.08;
+        // way_point2[2] = way_point2[2] + 0.08;
 
         
          
-         double t = 0.02;
+         double t = 0.03;
         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
            
 
@@ -666,8 +681,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
        
        
         
-        st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3);
-       
+        st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), next_point.head(3), optimal_sample_.head(3);
+      //  std::cout<<"Stdesire repo size : "<<st_desired.size()<<std::endl;
 
     }
     else{
@@ -760,9 +775,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   VectorXd force_des = VectorXd::Zero(6);
   // force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
 
+  if (curr_ee_cost - min >= param_.C3_failure){
+    
+    C3_flag_ = 0;
+    std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
+    // reposition_flag_ = 1;
+  }
 
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
- 
+  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz, state_next.head(3), optimal_sample_.head(3);
+  // std::cout<<"Stdesired C3 size"<<st_desired.size()<<std::endl;
     }
   
 

@@ -72,10 +72,15 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 # number_contact_pairs: 9 #9 contact pairs for cube - 1 for ee-->cube and 8 for each corner-->ground 
 
 #Sampling parameters
-sampling_radius: 0.08   #Size of sampling circle
+sampling_radius: 0.07   #Size of sampling circle
 sample_height: 0.08
 sample_number: 3
-spline_width: 0.04
+spline_width: 0.09
+
+#Switching parameters
+C3_failure: 80
+repositioning_threshold: 20
+C3_bias: 200
 
 
 # Misc

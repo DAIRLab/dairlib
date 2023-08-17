@@ -319,7 +319,7 @@ int DoMain(int argc, char* argv[]){
 
   // Function Arguments: int num_positions, int num_velocities, int lambda_size, int  misc_size
   // auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9); //should this not be 19 for state vector as (10+9) and then 6 for contact forces and 9 for misc visualization parameters?
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 15); //should this not be 19 for state vector as (10+9) and then 6 for contact forces and 9 for misc visualization parameters?
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));

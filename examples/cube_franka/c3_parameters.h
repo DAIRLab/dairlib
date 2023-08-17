@@ -97,6 +97,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(sample_height));
     a->Visit(DRAKE_NVP(sample_number));
     a->Visit(DRAKE_NVP(spline_width));
+    a->Visit(DRAKE_NVP(C3_failure));
+    a->Visit(DRAKE_NVP(repositioning_threshold));
+    a->Visit(DRAKE_NVP(C3_bias));
     
   }
 
@@ -170,6 +173,11 @@ struct C3Parameters {
   double sample_height;
   double spline_width;
 
+  //switching parameters
+  double C3_failure;
+  double repositioning_threshold;
+  double C3_bias;
+
   // misc
   double contact_threshold;
   int enable_heuristic;
@@ -189,4 +197,5 @@ struct C3Parameters {
   uint32_t dt_filter_length;
   double alpha_p;
   double alpha_v;
+
 };

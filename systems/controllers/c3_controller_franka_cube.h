@@ -144,6 +144,7 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable double optimal_cost_ = 999999;
   mutable bool C3_flag_ = 0;
   mutable bool reposition_flag_ = 0;
+  mutable double angular_offset_ = 0 * PI/180;
 
   // kalman filter
   // mutable VectorXd xhat_prev;

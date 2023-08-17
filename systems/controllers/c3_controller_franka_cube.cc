@@ -437,7 +437,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     double sampling_radius = 0.08; //sampling_radius of sampling circle (0.05) //0.06 //0.08
     int num_samples = param_.sample_number;
     double theta = (360 / num_samples) * (PI / 180);
-    double angular_offset = 0 * PI/180;
+    // double angular_offset = 0 * PI/180;
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
@@ -464,8 +464,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       double pos_x = 0;
       double pos_y = 0;
 
-      pos_x  = x_samplec + sampling_radius * cos(i*theta + phase + angular_offset); //state[7]
-      pos_y = y_samplec + sampling_radius * sin(i*theta + phase + angular_offset);
+      pos_x  = x_samplec + sampling_radius * cos(i*theta + phase + angular_offset_); //state[7]
+      pos_y = y_samplec + sampling_radius * sin(i*theta + phase + angular_offset_);
 
 
       VectorXd test_q(10);
@@ -779,6 +779,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     
     C3_flag_ = 0;
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
+    angular_offset_ = angular_offset_ + (10*PI/180); //change samples when you can't make any progress
     // reposition_flag_ = 1;
   }
 

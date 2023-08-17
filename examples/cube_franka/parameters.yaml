@@ -78,9 +78,9 @@ sample_number: 3
 spline_width: 0.09
 
 #Switching parameters
-C3_failure: 80
-repositioning_threshold: 20
-C3_bias: 200
+C3_failure: 50
+repositioning_threshold: 17
+C3_bias: 100
 
 
 # Misc

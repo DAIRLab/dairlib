@@ -310,7 +310,7 @@ int DoMain(int argc, char* argv[]){
                                   scene_graph, *diagram_f, contact_geoms, 
                                   num_friction_directions, mu, Q, R, G, U, 
                                   xdesired, pp);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 15);
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));

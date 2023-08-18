@@ -52,7 +52,7 @@
                  "type_data": {"color":[1, 0, 1],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.006
+                               "radius": 0.0195
                              }
                },
 
@@ -66,7 +66,21 @@
                  "type_data": {"color":[1, 1, 0],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.006
+                               "radius": 0.010
+                             }
+               },
+
+               {"name": "Reposition/C3 indicator",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 44
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.05
                              }
                },
 

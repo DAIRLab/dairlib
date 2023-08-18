@@ -32,9 +32,6 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(Q_ball_y));
     a->Visit(DRAKE_NVP(Q_finger_vel));
     a->Visit(DRAKE_NVP(Q_ball_vel));
-    a->Visit(DRAKE_NVP(Qnew_finger));
-    a->Visit(DRAKE_NVP(Qnew_ball_x));
-    a->Visit(DRAKE_NVP(Qnew_ball_y));
     a->Visit(DRAKE_NVP(R));
     a->Visit(DRAKE_NVP(G));
     a->Visit(DRAKE_NVP(U_default));
@@ -99,7 +96,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(C3_failure));
     a->Visit(DRAKE_NVP(repositioning_threshold));
-    a->Visit(DRAKE_NVP(C3_bias));
+    a->Visit(DRAKE_NVP(travel_cost));
     
   }
 
@@ -125,9 +122,6 @@ struct C3Parameters {
   double Q_ball_y;
   double Q_finger_vel;
   double Q_ball_vel;
-  double Qnew_finger;
-  double Qnew_ball_x;
-  double Qnew_ball_y;
   double R;
   double G;
   double U_default;
@@ -176,7 +170,7 @@ struct C3Parameters {
   //switching parameters
   double C3_failure;
   double repositioning_threshold;
-  double C3_bias;
+  double travel_cost;
 
   // misc
   double contact_threshold;

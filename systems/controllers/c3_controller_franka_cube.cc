@@ -129,7 +129,7 @@ C3Controller_franka::C3Controller_franka(
 
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(44), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(49), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -178,7 +178,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Eigen::Vector3d start = param_.initial_start;
     Eigen::Vector3d finish = param_.initial_finish;
     finish(0) = x_c + traj_radius * sin(param_.phase * PI/ 180) + finish(0);
-    finish(1) = y_c + traj_radius * cos(param_.phase * PI / 180) + finish(1);
+    finish(1) = y_c + traj_radius * cos(param_.phase * PI / 180) + finish(1); //- 0.02; This is how to change the initial end effector location. -0.02 stops it from hitting the jack.
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
                                                                    param_.stabilize_time1 + first_message_time_,
                                                                    param_.move_time, param_.stabilize_time2);
@@ -193,11 +193,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
     Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
+     
    
 
     // fill st_desired
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(38);    //THIS DECLARATION IS BAD!!! CHANGE IT!!
+    VectorXd st_desired = VectorXd::Zero(38);
     st_desired.head(3) << target[0];
     st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
     st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
@@ -261,7 +262,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd ball_dot = v_plant.tail(6);
   Vector3d v_ball = ball_dot.tail(3);
 
-  // std::cout<< "Ball xyz init :::::: "<< ball_xyz <<std::endl;
+  // std::cout<< "Ball xyz init = "<< ball_xyz.head(1)<<","<<ball_xyz[1]<<","<<ball_xyz[2]<<std::endl;
 
   VectorXd q(10);
   q << end_effector, ball;
@@ -309,8 +310,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // if ( ts < roll_phase ) {
     //Maintaining roll phase without time based heuristic. Instead constantly rolling except when making decision to reposition instead.
     //This is the desired location of the end effector
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - 0.04;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] ;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004; // - 0.02;
   
   // }
@@ -434,23 +435,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     //Multi-sample code piece
     double x_samplec; //center of sampling circle
     double y_samplec; //center of sampling circle
-    double sampling_radius = 0.08; //sampling_radius of sampling circle (0.05) //0.06 //0.08
+    double sampling_radius = param_.sampling_radius; //sampling_radius of sampling circle (0.05) //0.06 //0.08
     int num_samples = param_.sample_number;
     double theta = (360 / num_samples) * (PI / 180);
     // double angular_offset = 0 * PI/180;
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size() + 3 + 3);  //remove +3 when not visualizing
+    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size() + 3 + 3 + 3 + 1 + 1);  //remove +3 when not visualizing
+
+    
+
+    
+
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     Vector3d ee = end_effector; //end effector test position
    
-
+    
     x_samplec = ball_xyz[0]; 
     y_samplec = ball_xyz[1]; 
     // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
 
+    // std::cout<< "Ball xyz when sampling = "<< ball_xyz.head(1)<<","<<ball_xyz[1] <<std::endl;
     // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
     double phase = 0;
    
@@ -558,7 +565,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 100 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      double cost = opt_test.CalcCost(test_state, optimalinputseq) + param_.travel_cost * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -579,14 +586,22 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+  double curr_ee_vector {curr_ee_cost};  //vectorizing for visualization
+  double min_vector {min}; //vectorizing for visualization
+
+  // std::cout<<"Sample here "<<candidate_states[0].head(3)<<std::endl;
+
+    //Setting optimal cost and optimal solution
+    optimal_cost_ = min; 
+    optimal_sample_ = candidate_states[index];
 
 
-    double hyp = 10;
+    double switching_cost_threshold;
     if(C3_flag_ == 0){
-        hyp = param_.repositioning_threshold; //20;
+        switching_cost_threshold = param_.repositioning_threshold;
     }
     else{
-        hyp = param_.C3_bias;
+        switching_cost_threshold = param_.C3_failure;
     }
     // double hyp1 = 10; //current position needs to be at least 10 points as good enough as the min
     // double hyp2 = 50; //if you are doing C3 and more than hyp2 away from min, switch to repositioning.
@@ -614,13 +629,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     
     
     //REPOSITIONING CONDITION
-    if(curr_ee_cost - min >= hyp){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
+    if(curr_ee_cost - min >= switching_cost_threshold){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
      
          std::cout << "Decided to reposition"<<std::endl;
-         optimal_cost_ = min; 
-         optimal_sample_ = candidate_states[index];
+        
 
-         std::cout<<"Min : "<<min<<std::endl;
+        //  std::cout<<"Min : "<<min<<std::endl;
         //  std::cout<<"hyp in reposition = "<<hyp<<std::endl;
 
         
@@ -650,9 +664,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]);
         // way_point2[2] = way_point2[2] + 0.08;
 
-        
+        double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();
+        double t = 0.0048/len_of_curve;
          
-         double t = 0.03;
+        //  double t = 0.03;
         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
            
 
@@ -665,24 +680,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //  std::cout<<"points 2 " << points[2] <<std::endl;
         //  std::cout<<" " <<std::endl;
 
-          double dt = 0;
-          if (moving_average_.empty()){
-            dt = param_.dt;
-          }
-          else{
-            for (int i = 0; i < (int) moving_average_.size(); i++){
-              dt += moving_average_[i];
-            }
-            dt /= moving_average_.size();
-          }
+          // double dt = 0;
+          // if (moving_average_.empty()){
+          //   dt = param_.dt;
+          // }
+          // else{
+          //   for (int i = 0; i < (int) moving_average_.size(); i++){
+          //     dt += moving_average_[i];
+          //   }
+          //   dt /= moving_average_.size();
+          // }
          
-         t = dt;
+        //  t = dt;
 
        
-       
+        Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
         
-        st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), next_point.head(3), optimal_sample_.head(3);
-      //  std::cout<<"Stdesire repo size : "<<st_desired.size()<<std::endl;
+        st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), next_point.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_vector, min_vector;
+       
+      //  std::cout<< "Ball xyz after reposition = "<< ball_xyz.head(1)<<","<<ball_xyz[1] <<std::endl;
+
+      C3_flag_ = 0;
+
+  // std::cout<<"Sample st end of reposition "<<candidate_states[0].head(3)<<std::endl;
 
     }
     else{
@@ -707,7 +727,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
   std::cout<<"Using C3 "<<std::endl;
-  std::cout<<"Min : "<<min<<std::endl;
+  // std::cout<<"Min : "<<min<<std::endl;
     
 
   warm_start_x_ = opt.GetWarmStartX();
@@ -775,16 +795,20 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   VectorXd force_des = VectorXd::Zero(6);
   // force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
 
-  if (curr_ee_cost - min >= param_.C3_failure){
+  // if (curr_ee_cost - min >= param_.C3_failure){
     
-    C3_flag_ = 0;
-    std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
-    angular_offset_ = angular_offset_ + (10*PI/180); //change samples when you can't make any progress
-    // reposition_flag_ = 1;
-  }
+  //   C3_flag_ = 0;
+  //   std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
+  //   // angular_offset_ = angular_offset_ + (10*PI/180); //change samples when you can't make any progress
+  //   // reposition_flag_ = 1;
+  // }
+ 
+  Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
+  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), state_next.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_vector, min_vector;
+  
+  // std::cout<< "Ball xyz after C3 = "<< ball_xyz.head(1)<<","<<ball_xyz[1] <<std::endl;
+  // std::cout<<"Sample at end of C3"<<candidate_states[0].head(3)<<std::endl;
 
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz, state_next.head(3), optimal_sample_.head(3);
-  // std::cout<<"Stdesired C3 size"<<st_desired.size()<<std::endl;
     }
   
 
@@ -809,62 +833,13 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
  
 }
 
-void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
-                                          const Eigen::Vector3d end_effector, double timestamp) const {
-  /// estimate q_plant
-  // std::cout << "here" << std::endl;
-  if (abs(param_.ball_stddev) > 1e-9) {
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0, param_.ball_stddev};
 
-
-    double dist_x = d(gen);
-    double dist_y = d(gen);
-
-
-    double noise_threshold = 0.01;
-    if (dist_x > noise_threshold) {
-      dist_x = noise_threshold;
-    } else if (dist_x < -noise_threshold) {
-      dist_x = -noise_threshold;
-    }
-    if (dist_y > noise_threshold) {
-      dist_y = noise_threshold;
-    } else if (dist_y < -noise_threshold) {
-      dist_y = -noise_threshold;
-    }
-    double x_obs = q_plant(q_map_franka_.at("base_x")) + dist_x;
-    double y_obs = q_plant(q_map_franka_.at("base_y")) + dist_y;
-
-    double alpha_p = param_.alpha_p;
-    q_plant(q_map_franka_.at("base_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
-    q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
-
-    ///project estimate
-    q_plant.tail(7) << 1, 0, 0, 0, ProjectStateEstimate(end_effector, q_plant.tail(3));;
-  }
-  else{
-    q_plant.tail(7) << 1, 0, 0, 0, q_plant.tail(3);
-  }
-
-  /// estimate v_plant
-//  std::cout << "before\n" << v_plant.tail(6) << std::endl;
-  double alpha_v = param_.alpha_v;
-  double ball_radius = param_.ball_radius;
-
-  ///1
-  Vector3d ball_xyz_dot = v_plant.tail(3);
-
-
-  Vector3d r_ball(0, 0, ball_radius);
-  Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
-  v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
-}
 
 Eigen::Vector3d C3Controller_franka::ProjectStateEstimate(
     const Eigen::Vector3d& endeffector,
     const Eigen::Vector3d& estimate) const {
+
+  //Project state estimate of the object if penetration is predicted
 
   Eigen::Vector3d dist_vec = estimate - endeffector;
   double R = param_.ball_radius;

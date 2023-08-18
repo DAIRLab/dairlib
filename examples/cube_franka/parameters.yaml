@@ -19,14 +19,11 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                  # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 500       # finger xyz cost
+Q_finger: 500      # finger xyz cost
 Q_ball_x: 100000 #10000
 Q_ball_y: 100000  #10000
-Q_finger_vel: 10        # translational velocity cost
-Q_ball_vel: 0.1         # angular & translational velocity cost
-Qnew_finger: 1000000    # Qnew costs
-Qnew_ball_x: 1
-Qnew_ball_y: 1
+Q_finger_vel: 10  #10        # translational velocity cost
+Q_ball_vel: 0.1 #0.1         # translational velocity cost
 R: 0.01                 # torque cost in xyz
 G: 0.01 #0.1
 U_default: 1
@@ -42,7 +39,7 @@ axis_option: 1
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
 q_init_ball: [0.847410781, 0.310617894, 0.311017672, -0.385788646] #[0.9239, 0.3827, 0, 0] (2 contacts) #[1, 0, 0, 0] (1 contact) # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
-initial_start: [0.55, 0, 0.12]
+initial_start: [0.55, 0 , 0.12]
 initial_finish: [0, 0, 0.07]  # [0, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
 stabilize_time1: 0.5 #0.5
 move_time: 0.75 #0.75
@@ -76,11 +73,11 @@ sampling_radius: 0.07   #Size of sampling circle
 sample_height: 0.08
 sample_number: 3
 spline_width: 0.09
+travel_cost: 100
 
 #Switching parameters
-C3_failure: 50
+C3_failure: 100
 repositioning_threshold: 17
-C3_bias: 100
 
 
 # Misc

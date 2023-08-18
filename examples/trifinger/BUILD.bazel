@@ -17,6 +17,16 @@ cc_library(
     ]),
 )
 
+cc_library(
+    name = "trifinger_plant",
+    srcs = ["trifinger_plant.cc"],
+    hdrs = ["trifinger_plant.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
 py_binary(
     name = "simulate_trifinger",
     srcs = ["simulate_trifinger.py"],

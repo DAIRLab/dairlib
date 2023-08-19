@@ -309,7 +309,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// rolling phase
   // if ( ts < roll_phase ) {
     //Maintaining roll phase without time based heuristic. Instead constantly rolling except when making decision to reposition instead.
-    //This is the desired location of the end effector
+    //This is the desired location of the end effector; We want the end effector to go above where the ball currently is
     traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
     traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004; // - 0.02;

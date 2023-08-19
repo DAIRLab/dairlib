@@ -260,7 +260,7 @@ int DoMain(int argc, char* argv[]){
     timings(i) = settling_time + i * time_increment;
   }
 
-  PiecewisePolynomial<double> pp;
+  PiecewisePolynomial<double> pp;   //generate a piecewise polynomial trajectory with zero order hold from the xtraj provided 
   if (param.hold_order == 0){
     pp = PiecewisePolynomial<double>::ZeroOrderHold(timings, xtraj_mat);
   }

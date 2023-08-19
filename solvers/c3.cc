@@ -193,7 +193,8 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
   
   // return z.segment(n_ + m_, k_);
-  return zfin[0].segment(n_ + m_, k_);
+  return zfin[0].segment(n_ + m_, k_);    //extract k elements starting from index n+m of the 0th vector in zfin. 
+                                          //equivalent to extracting the input vector associated with time step 0 in the MPC problem
 }
 
 vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
@@ -224,7 +225,7 @@ vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, ve
 }
 
 vector<VectorXd> C3::OptimalInputSeq(const vector<VectorXd> zfin){
-  //This function should return the optimal input sequence given the full Z solution
+  //This function should return the optimal input sequence along the full horizon given the full Z solution
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   
   for (int i = 0; i < N_ ; i++){

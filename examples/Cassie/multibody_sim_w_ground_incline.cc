@@ -228,14 +228,18 @@ int do_main(int argc, char* argv[]) {
 
   // Sensor aggregator and publisher of lcmt_cassie_out
   if (FLAGS_publish_cassie_out) {
-  auto radio_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          FLAGS_radio_channel, lcm));
-  const auto& sensor_aggregator =
-      AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
-  auto sensor_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
-          "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
+    auto radio_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+            FLAGS_radio_channel, lcm));
+    const auto& sensor_aggregator =
+        AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
+    auto sensor_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
+            "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
+    builder.Connect(radio_sub->get_output_port(),
+                    sensor_aggregator.get_input_port_radio());
+    builder.Connect(sensor_aggregator.get_output_port(0),
+                    sensor_pub->get_input_port());
   }
 
   // Termination checker
@@ -264,12 +268,6 @@ int do_main(int argc, char* argv[]) {
                   contact_viz.get_input_port(0));
   builder.Connect(contact_viz.get_output_port(0),
                   contact_results_publisher.get_input_port());
-  if (FLAGS_publish_cassie_out) {
-    builder.Connect(radio_sub->get_output_port(),
-                    sensor_aggregator.get_input_port_radio());
-    builder.Connect(sensor_aggregator.get_output_port(0),
-                    sensor_pub->get_input_port());
-  }
 
   auto diagram = builder.Build();
 

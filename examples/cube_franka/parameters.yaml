@@ -25,10 +25,10 @@ Q_ball_y: 100000  #10000
 Q_finger_vel: 10  #10        # translational velocity cost
 Q_ball_vel: 0.1 #0.1         # translational velocity cost
 R: 0.01                 # torque cost in xyz
-G: 0.01 #0.1
-U_default: 1
-U_pos_vel: 100 #1000           # first 19 diag elements of U
-U_u: 10 #10                  # last 3 diag elements of U
+G: 0.01 #0.1             #ADMM related
+U_default: 1              #ADMM projection step related
+U_pos_vel: 100 #1000           # first 19 diag elements of U  #ADMM projection step related
+U_u: 10 #10                  # last 3 diag elements of U      #ADMM projection step related
 q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03

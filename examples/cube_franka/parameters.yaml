@@ -19,7 +19,7 @@ pushing_offset: 0 #-0.001
 # c3 parameters
 mu: 1                  # changes need to be consistent with urdf
 Q_default: 0
-Q_finger: 500      # finger xyz cost
+Q_finger: 650      # finger xyz cost
 Q_ball_x: 100000 #10000
 Q_ball_y: 100000  #10000
 Q_finger_vel: 10  #10        # translational velocity cost
@@ -74,10 +74,11 @@ sample_height: 0.08
 sample_number: 3
 spline_width: 0.09
 travel_cost: 100
+travel_speed: 0.0048
 
 #Switching parameters
 C3_failure: 100
-repositioning_threshold: 17
+repositioning_threshold: 25
 
 
 # Misc

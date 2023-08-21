@@ -665,7 +665,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         // way_point2[2] = way_point2[2] + 0.08;
 
         double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();
-        double t = 0.0048/len_of_curve;
+        double t = param_.travel_speed/len_of_curve;
          
         //  double t = 0.03;
         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);

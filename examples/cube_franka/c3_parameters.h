@@ -97,6 +97,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(C3_failure));
     a->Visit(DRAKE_NVP(repositioning_threshold));
     a->Visit(DRAKE_NVP(travel_cost));
+    a->Visit(DRAKE_NVP(travel_speed));
     
   }
 
@@ -171,6 +172,7 @@ struct C3Parameters {
   double C3_failure;
   double repositioning_threshold;
   double travel_cost;
+  double travel_speed;
 
   // misc
   double contact_threshold;

@@ -101,7 +101,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_simulate_franka_lcm");
+  DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_simulate_franka_lcm");
 
   drake::systems::Simulator<double> simulator(*diagram);
   

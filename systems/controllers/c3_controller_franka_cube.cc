@@ -93,7 +93,10 @@ C3Controller_franka::C3Controller_franka(
       pp_(pp){
 
 
-  // initialize warm start
+  // Debugging:  check the Drake system diagram.
+  // diagram_.GetGraphvizFragment()
+
+  // Set up some variables and initialize warm start.
   int time_horizon = 5;
   int nx = 19;
   int nlambda = 6*4; // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
@@ -116,7 +119,7 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (49) includes:
+  State output port (53) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
@@ -128,10 +131,12 @@ C3Controller_franka::C3Controller_franka(
       (3) optimal xyz sample location
       (3) C3 versus repositioning indicator xyz position
       (2) current and minimum sample costs
+      (1) the state of the C3 flag
+      (3) the desired location of the object
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(49), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(53), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -191,7 +196,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
      
     // Fill the desired state vector, `st_desired`.
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(49);
+    VectorXd st_desired = VectorXd::Zero(53);
     st_desired.head(3) << target[0];
     st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
     st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
@@ -416,7 +421,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
   std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
   std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-  VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + 3*num_samples + 3 + 3 + 3 + 1 + 1);  //remove +3 when not visualizing
+  VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + 3*num_samples + 3 + 3 + 3 + 1 + 1 + 1 + 3);  //remove +3 when not visualizing
 
   // Loop over samples.
   for (int i = 0; i < num_samples; i++) {
@@ -424,13 +429,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     VectorXd test_q = q;
     VectorXd test_v = v;
 
-    // Update the hypothetical state's end effector location to the tested sample location.
+    // Update the hypothetical state's end effector location to the tested sample location and velocity to 0.
     test_q[0] = x_samplec + sampling_radius * cos(i*theta + phase + angular_offset_);
     test_q[1] = y_samplec + sampling_radius * sin(i*theta + phase + angular_offset_);
     test_q[2] = param_.sample_height;
-
-    // The candidate state is the current state but with a new end effector location at the sample.
-    test_state << test_q.head(3), state.tail(16);
+    test_v.head(3) << VectorXd::Zero(3);
+    
+    // The candidate state is the current state but with a new end effector location at the sample and 0 end effector velocity.
+    test_state << test_q.head(3), state.segment(3,7), test_v;
 
     // Store the candidate state for comparison later to other sampled states and their costs.
     candidate_states[i] = test_state;
@@ -457,6 +463,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         num_friction_directions_, mu_, 0.1);
 
     // Instantiate the C3 MIQP solver based on the LCS.
+    // TODO:  might want to give the sample system other warm starts besides that made from the current location.
     solvers::LCS test_system = test_system_scaling_pair.first;
     solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
                               warm_start_delta_, warm_start_binary_, warm_start_x_,
@@ -478,13 +485,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
 
     // Solve MIQP.
-    vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
+    vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
 
     // Store the sample's associated cost.
-    vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  // Outputs u over horizon.
+    vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
     double c3_cost = opt_test.CalcCost(test_state, optimalinputseq);
-    double xy_travel_distance = (test_q.head(2) - end_effector.head(2)).norm();  // Ignore differences in z.
-    cost_vector[i] = c3_cost + param_.travel_cost*xy_travel_distance;
+    double xy_travel_distance = (test_q.head(2) - end_effector.head(2)).norm();                   // Ignore differences in z.
+    cost_vector[i] = c3_cost + param_.travel_cost*xy_travel_distance;                             // Total sample cost considers travel distance.
   }
 
   // Find optimal sample index based on lowest cost.
@@ -492,12 +499,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
   int index = std::distance(std::begin(cost_vector), it);
 
-  // Compute the C3 cost based on current location.
-  vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  // Outputs full z.
-  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);    // Outputs u over horizon.
-  double curr_ee_cost = opt.CalcCost(state, optimalinputseq);         // Computes cost from current state.
+  // Solve MIQP and compute the C3 cost based on current location.
+  vector<VectorXd> fullsol_current_loction = opt.SolveFullSolution(state, delta, w);  // Outputs full z.
+  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol_current_loction);    // Outputs u over horizon.
+  double curr_ee_cost = opt.CalcCost(state, optimalinputseq);                         // Computes cost from current state.
 
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+
+  // After solving, store the solutions as warm starts for the next round.
+  // TODO: look into if these warm start values are actually being used anywhere useful.
+  warm_start_x_ = opt.GetWarmStartX();
+  warm_start_lambda_ = opt.GetWarmStartLambda();
+  warm_start_u_ = opt.GetWarmStartU();
+  warm_start_delta_ = opt.GetWarmStartDelta();
+  warm_start_binary_ = opt.GetWarmStartBinary();
 
   // Set optimal cost and optimal solution class variables to lowest cost with associated sample.
   optimal_cost_ = min; 
@@ -515,7 +530,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double diff = curr_ee_cost - min;
   std::cout<<"Diff = "<<diff<<std::endl;
 
-  
+
   // Decide whether to run C3 or to reposition based on cost difference between current location C3 cost and best available sampled cost.
   // If current cost is higher than best sample cost by switching_cost_threshold, do repositioning.
   // REPOSITIONING PORTION
@@ -523,6 +538,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Ensure state flag indicates we are repositioning.
     C3_flag_ = 0;
     std::cout << "Decided to reposition"<<std::endl;
+
+    // Pick the current end effector location for defining the repositioning curve.
+    //TO DO : Figure out the best location to do this ee state update.
+    plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
+    plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
+    Vector3d EE_offset_ = param_.EE_offset;
+    const drake::math::RigidTransform<double> H_mat =
+        plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
+    const RotationMatrix<double> R_current = H_mat.rotation();
+    end_effector << H_mat.translation() + R_current*EE_offset_;
 
     // Build control points for the repositioning curve.
     std::vector<Vector3d> points(4, VectorXd::Zero(3));
@@ -543,16 +568,23 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Choose next end effector location based on fixed speed traversal of computed curve.
     double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();
-    double t = param_.travel_speed/len_of_curve;
+    double t = param_.travel_speed/len_of_curve;    // TODO: this seems just wrong, not in units of time... needs to be between 0 and 1
+                                                    // actually this seems right, but travel_speed is probably in meters/timestep.  would be
+                                                    // better for params.yaml to have meters/second, then we need to convert to m/dt here, based
+                                                    // on the estimated dt per loop.
     Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + 
                                   std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + 
                                     std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
 
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
-    
+
+  
     // Set desired next state.
-    st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), next_point.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_;
+    st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6),
+                  candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
+                  next_point.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
+                   switching_cost_threshold, traj_desired.at(0).segment(7,3);
   }
 
   // C3 PORTION
@@ -560,6 +592,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   {
     // Ensure state flag indicates C3 is running.
     C3_flag_ = 1;
+
+    // TODO:  We may want to re-query the current state of the simulation to update `state` since this might be old at this point.
 
     // TODO: this can be switched to a function call since it's a repeat of a few other sections.
     // Reset delta and w.
@@ -577,15 +611,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
 
     // Get the control input from the previously solved full solution from current state.
-    VectorXd input = fullsol[0].segment(n + m, k);
+    VectorXd input = fullsol_current_loction[0].segment(n + m, k);
     std::cout<<"Using C3 "<<std::endl;
-  
-    // TODO: look into if these warm start values are actually being used anywhere useful.
-    warm_start_x_ = opt.GetWarmStartX();
-    warm_start_lambda_ = opt.GetWarmStartLambda();
-    warm_start_u_ = opt.GetWarmStartU();
-    warm_start_delta_ = opt.GetWarmStartDelta();
-    warm_start_binary_ = opt.GetWarmStartBinary();
 
     // Compute dt based on moving average filter.
     double dt = 0;
@@ -648,9 +675,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
     // Set the indicator in visualization to C3 location, at a negative y value.
     Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
+    
 
     // Update desired next state.
-    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), state_next.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_;
+    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
+                  candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
+                  state_next.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
+                  switching_cost_threshold, traj_desired.at(0).segment(7,3);
    }
   
 

@@ -205,7 +205,7 @@ int DoMain(int argc, char* argv[]){
 #endif
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_run_c3_impedance_experiments");
+  DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_run_c3_impedance_experiments");
 
 
   auto context_d = diagram->CreateDefaultContext();

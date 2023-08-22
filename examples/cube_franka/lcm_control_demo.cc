@@ -96,8 +96,10 @@ int DoMain(int argc, char* argv[]){
   auto& context_f = diagram_f->GetMutableSubsystemContext(plant_f, diagram_context.get());
 
   /* -------------------------------------------------------------------------------------------*/
-  //This plant_franka is a copy of the original full robot model including the franka arm, ee and ball but is not linked in any way to the ground truth model plant in simulate_lcm_franka. 
-  //This plant here is used to take in the input of the state estimator(the joint positions and ball positions) and perform FK on it to get the end effector position and ball position to later set ee.position and ball.position accordingly.
+  //This plant_franka is a copy of the original full robot model including the franka arm, 
+  //ee and ball but is not linked in any way to the ground truth model plant in simulate_lcm_franka. 
+  //This plant here is used to take in the input of the state estimator(the joint positions and ball positions) 
+  //and perform FK on it to get the end effector position and ball position to later set ee.position and ball.position accordingly.
   DiagramBuilder<double> builder_franka;
   double sim_dt = 1e-4;
 
@@ -308,6 +310,7 @@ int DoMain(int argc, char* argv[]){
   auto context = plant.CreateDefaultContext();
   auto context_ad = plant_ad->CreateDefaultContext();
 
+  //state receiver gets the joint configurations from the full model franka arm and jack
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
   
@@ -322,7 +325,7 @@ int DoMain(int argc, char* argv[]){
 
   // Function Arguments: int num_positions, int num_velocities, int lambda_size, int  misc_size
   // auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 20); //should this not be 19 for state vector as (10+9) and then 6 for contact forces and 9 for misc visualization parameters?
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 24); //should this not be 19 for state vector as (10+9) and then 6 for contact forces and 24 for misc visualization parameters
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));
@@ -345,7 +348,8 @@ int DoMain(int argc, char* argv[]){
       control_publisher->get_input_port());
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_lcm_control_demo");
+  DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_lcm_control_demo");
+  DrawAndSaveDiagramGraph(*diagram_f, "examples/cube_franka/diagram_lcm_control_demo_f");
   auto context_d = diagram->CreateDefaultContext();
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

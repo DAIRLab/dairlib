@@ -149,6 +149,7 @@ DEFINE_double(yaw_disturbance, 0,
 
 // RL training
 DEFINE_bool(is_RL_training, false, "");
+DEFINE_bool(collect_rewards_via_lcmlogs, false, "");
 DEFINE_bool(include_previous_vel_in_rl_state, false, "");
 DEFINE_bool(only_construct_to_get_RL_problem_size_so_do_not_simulate, false,
             "");
@@ -348,6 +349,7 @@ int DoMain(int argc, char* argv[]) {
   param.init_file = FLAGS_init_file;
   param.dir_and_prefix_FOM = FLAGS_dir_and_prefix_FOM;
   param.is_RL_training = FLAGS_is_RL_training;
+  param.collect_rewards_via_lcmlogs = FLAGS_collect_rewards_via_lcmlogs;
   param.get_RL_gradient_offline = FLAGS_get_RL_gradient_offline;
   param.policy_output_noise_bound = FLAGS_policy_output_noise_bound;
   param.path_model_params = FLAGS_path_model_params;

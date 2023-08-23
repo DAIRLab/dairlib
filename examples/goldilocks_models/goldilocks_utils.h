@@ -223,6 +223,7 @@ struct PlannerSetting {
 
   // RL
   bool is_RL_training;
+  bool collect_rewards_via_lcmlogs;
   bool get_RL_gradient_offline;
   double policy_output_noise_bound;
   std::string path_model_params;

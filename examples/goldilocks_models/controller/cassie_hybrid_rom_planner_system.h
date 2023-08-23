@@ -385,6 +385,7 @@ class CassiePlannerWithOnlyRom : public drake::systems::LeafSystem<double> {
 
   // For RL training
   bool is_RL_training_;
+  bool collect_rewards_via_lcmlogs_;
   bool only_use_rom_state_in_near_future_for_RL_ = true;
   bool include_previous_vel_in_rl_state_;
   void SaveStateAndActionIntoFilesForRLTraining(

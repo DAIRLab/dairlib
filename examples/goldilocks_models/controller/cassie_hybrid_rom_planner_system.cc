@@ -70,6 +70,7 @@ CassiePlannerWithOnlyRom::CassiePlannerWithOnlyRom(
     const set<int>& idx_const_rom_vel_during_double_support,
     bool singel_eval_mode, bool log_data, int print_level)
     : is_RL_training_(param.is_RL_training),
+      collect_rewards_via_lcmlogs_(param.collect_rewards_via_lcmlogs),
       nq_(plant_control.num_positions()),
       nv_(plant_control.num_velocities()),
       nx_(plant_control.num_positions() + plant_control.num_velocities()),
@@ -1368,7 +1369,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
 
   VectorXd RL_action_noise(RL_policy_output_variances_.size());
   drake::solvers::MathematicalProgramResult result_with_noise;
-  if (is_RL_training_) {
+  if (is_RL_training_ && !collect_rewards_via_lcmlogs_) {
     for (int i = 0; i < RL_policy_output_variances_.size(); i++) {
       double rand = (distributions_->at(i))(*generator_);
       // Heurisitics -- clamp it to avoid tail distribution
@@ -1438,7 +1439,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       trajopt, result, &global_feet_pos, &global_com_pos);
   MatrixXd global_feet_pos_with_noise;
   MatrixXd global_com_pos_with_noise;
-  if (is_RL_training_) {
+  if (is_RL_training_ && !collect_rewards_via_lcmlogs_) {
     global_feet_pos_with_noise = MatrixXd(2, param_.n_step + 1);
     global_com_pos_with_noise = MatrixXd(2, param_.n_step + 1);
     ExtractGlobalComAndFootstepPosition(
@@ -1452,14 +1453,14 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
   lightweight_saved_traj_ = HybridRomPlannerTrajectory(
       trajopt, result, global_feet_pos, global_com_pos, quat_xyz_shift,
       current_local_stance_foot_pos, prefix, "", true, current_time);
-  if (is_RL_training_) {
+  if (is_RL_training_ && !collect_rewards_via_lcmlogs_) {
     lightweight_saved_traj_with_noise_ = HybridRomPlannerTrajectory(
         trajopt, result_with_noise, global_feet_pos_with_noise,
         global_com_pos_with_noise, quat_xyz_shift,
         current_local_stance_foot_pos, prefix, "", true, current_time);
   }
 
-  if (is_RL_training_) {
+  if (is_RL_training_ && !collect_rewards_via_lcmlogs_) {
     *traj_msg = lightweight_saved_traj_with_noise_.GenerateLcmObject();
   } else {
     *traj_msg = lightweight_saved_traj_.GenerateLcmObject();
@@ -1535,7 +1536,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
                       current_local_stance_foot_pos, final_position,
                       reg_local_delta_footstep, global_delta_footstep_, trajopt,
                       result, param_.dir_data, prefix);
-    if (is_RL_training_) {
+    if (is_RL_training_ && !collect_rewards_via_lcmlogs_) {
       SaveStateAndActionIntoFilesForRLTraining(
           context, des_xy_vel_com_rt_init_stance_foot.at(0)(0),
           desired_com_height_, start_with_left_stance, init_phase,
@@ -1562,7 +1563,7 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       full_saved_traj.WriteToFile(param_.dir_data + file_name);
       cout << "Wrote to file: " << param_.dir_data + file_name << endl;
 
-      if (is_RL_training_) {
+      if (is_RL_training_ && !collect_rewards_via_lcmlogs_) {
         string file_name = prefix + "rom_trajectory_w_noise";
         HybridRomPlannerTrajectory full_saved_traj(
             trajopt, result_with_noise, global_feet_pos_with_noise,

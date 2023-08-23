@@ -44,6 +44,12 @@ using drake::systems::LeafSystem;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+#define NUM_POSITIONS 14
+#define NUM_VELOCITIES 9
+#define NUM_LAMBDAS 6
+#define NUM_VISUALIZATION 27
+#define STATE_VECTOR_SIZE NUM_POSITIONS+NUM_VELOCITIES+NUM_LAMBDAS+NUM_VISUALIZATION
+
 namespace dairlib {
 namespace systems {
 namespace controllers {

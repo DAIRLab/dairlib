@@ -26,6 +26,7 @@ struct C3Parameters {
 
     // c3 parameters
     a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(use_full_cost));
     a->Visit(DRAKE_NVP(Q_default));
     a->Visit(DRAKE_NVP(Q_finger));
     a->Visit(DRAKE_NVP(Q_ball_x));
@@ -109,6 +110,7 @@ struct C3Parameters {
 
   // c3 parameters
   double mu;
+  bool use_full_cost;
   double Q_default;
   double Q_finger;
   double Q_ball_x;

@@ -1,6 +1,6 @@
 # bouncy ball parameters
 
-# impedance control parameters
+# impedance control parameters  # TODO may need to tune these
 translational_stiffness: 500 # 400
 rotational_stiffness: 900
 translational_damping_ratio: 1
@@ -18,14 +18,16 @@ pushing_offset: 0 #-0.001
 
 # c3 parameters
 mu: 1                  # changes need to be consistent with urdf
+use_full_cost: true        # debugging parameter, if false uses ball location error only to compare current with sample c3 costs.
 Q_default: 0
-Q_finger: 650      # finger xyz cost
-Q_ball_x: 100000 #10000
-Q_ball_y: 100000  #10000
-Q_finger_vel: 10  #10        # translational velocity cost
-Q_ball_vel: 0.1 #0.1         # translational velocity cost
-R: 0.01                 # torque cost in xyz
-G: 0.01 #0.1             #ADMM related
+Q_finger: 650      # finger xyz cost  # TODO tune these
+Q_ball_x: 100000 #10000  # TODO tune these
+Q_ball_y: 100000  #10000  # TODO tune these
+Q_ball_z: 0
+Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
+Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
+R: 0.01                 # torque cost in xyz  # TODO may need to tune these
+G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
 U_default: 1              #ADMM projection step related
 U_pos_vel: 100 #1000           # first 19 diag elements of U  #ADMM projection step related
 U_u: 10 #10                  # last 3 diag elements of U      #ADMM projection step related
@@ -33,7 +35,7 @@ q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
 velocity_limit: 1
-orientation_degrees: 0 #15
+orientation_degrees: 0 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
 axis_option: 1
 
 # initialization/simulation parameters
@@ -48,20 +50,20 @@ sim_dt: 0.0001 # 0.00005
 realtime_rate: 0.2
 
 # trajectory parameters
-traj_radius: 0.1
+traj_radius: 0.2
 phase: 0
 x_c: 0.55
 y_c: 0
-degree_increment: 20
+degree_increment: 30  
 time_increment: 1
 hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
 # if enable_adaptive_path is set to 1, the trajectory above is not used
-lead_angle: 50 #20 angle in degrees
+lead_angle: 30 #20 angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters
-ball_radius: 0.0625 #0.0625 #0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision
+ball_radius: 0.0625 #0.0625 #0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision  # TODO tune/remove these
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
 table_offset: -0.0245 #-0.0245      # chances need to be consistent with franka_box, model urdf, AND vision
@@ -69,29 +71,23 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 # number_contact_pairs: 9 #9 contact pairs for cube - 1 for ee-->cube and 8 for each corner-->ground 
 
 #Sampling parameters
-sampling_radius: 0.07   #Size of sampling circle
-sample_height: 0.08
-sample_number: 8
-spline_width: 0.09
+sampling_radius: 0.12   #Size of sampling circle
+sample_height: 0.05
+sample_number: 3
+spline_width: 0.12   #0.09
 travel_cost: 100
-travel_speed: 0.007
+travel_speed: 0.5     # desired meters/second of repositioning
 
 #Switching parameters
 C3_failure: 100
-repositioning_threshold: 25
+repositioning_threshold: 0
 
 
 # Misc
 contact_threshold: 0.01
 enable_heuristic: 0
-enable_contact: 1
+enable_contact: 0   #1
 ball_stddev: 0.0 # standard deviation of 0-mean noise on ball state estimation
-
-# gaiting parameters
-roll_phase: 1  #2.5
-return_phase: 0.5 #0.75
-gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param here
-# gait parameters represent height above the table
 
 # filters
 dt_filter_length: 10

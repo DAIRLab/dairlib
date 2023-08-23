@@ -119,7 +119,7 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (53) includes:
+  State output port (56) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
@@ -133,10 +133,11 @@ C3Controller_franka::C3Controller_franka(
       (2) current and minimum sample costs
       (1) the state of the C3 flag
       (3) the desired location of the object
+      (3) Estimated state of the jack
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(53), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(STATE_VECTOR_SIZE), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -196,7 +197,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
      
     // Fill the desired state vector, `st_desired`.
     VectorXd traj = pp_.value(timestamp);
-    VectorXd st_desired = VectorXd::Zero(53);
+    VectorXd st_desired = VectorXd::Zero(STATE_VECTOR_SIZE);
     st_desired.head(3) << target[0];
     st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
     st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
@@ -207,6 +208,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     prev_timestamp_ = (timestamp);
 
     return;
+  }
+
+  // Compute dt of the control loop based on moving average filter.
+  double control_loop_dt = 0;
+  if (moving_average_.empty()){
+    control_loop_dt = param_.dt;
+  }
+  else{
+    for (int i = 0; i < (int) moving_average_.size(); i++){
+      control_loop_dt += moving_average_[i];
+    }
+    control_loop_dt /= moving_average_.size();
   }
 
   // FK:  Get the location of the end effector sphere based on franka's joint states.
@@ -405,7 +418,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 
-
   // Multi-sample code piece
   double x_samplec = ball_xyz[0];                   // center sampling circle on current ball location.
   double y_samplec = ball_xyz[1];                   // center sampling circle on current ball location.
@@ -421,7 +433,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
   std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
   std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-  VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + 3*num_samples + 3 + 3 + 3 + 1 + 1 + 1 + 3);  //remove +3 when not visualizing
+  VectorXd st_desired(STATE_VECTOR_SIZE);
 
   // Loop over samples.
   for (int i = 0; i < num_samples; i++) {
@@ -489,7 +501,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Store the sample's associated cost.
     vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
-    double c3_cost = opt_test.CalcCost(test_state, optimalinputseq);
+    double c3_cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);
     double xy_travel_distance = (test_q.head(2) - end_effector.head(2)).norm();                   // Ignore differences in z.
     cost_vector[i] = c3_cost + param_.travel_cost*xy_travel_distance;                             // Total sample cost considers travel distance.
   }
@@ -500,9 +512,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   int index = std::distance(std::begin(cost_vector), it);
 
   // Solve MIQP and compute the C3 cost based on current location.
-  vector<VectorXd> fullsol_current_loction = opt.SolveFullSolution(state, delta, w);  // Outputs full z.
-  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol_current_loction);    // Outputs u over horizon.
-  double curr_ee_cost = opt.CalcCost(state, optimalinputseq);                         // Computes cost from current state.
+  vector<VectorXd> fullsol_current_location = opt.SolveFullSolution(state, delta, w);  // Outputs full z.
+  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol_current_location);    // Outputs u over horizon.
+  double curr_ee_cost = opt.CalcCost(state, optimalinputseq, param_.use_full_cost);    // Computes cost from current state.
 
   std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
@@ -568,13 +580,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Choose next end effector location based on fixed speed traversal of computed curve.
     double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();
-    double t = param_.travel_speed/len_of_curve;    // TODO: this seems just wrong, not in units of time... needs to be between 0 and 1
-                                                    // actually this seems right, but travel_speed is probably in meters/timestep.  would be
-                                                    // better for params.yaml to have meters/second, then we need to convert to m/dt here, based
-                                                    // on the estimated dt per loop.
-    Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + 
-                                  std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + 
-                                    std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+    double desired_travel_len = param_.travel_speed * control_loop_dt;
+    double curve_fraction = desired_travel_len/len_of_curve;
+    // clamp the curve fraction to 1 
+    if(curve_fraction>1){
+      curve_fraction = 1;
+    }
+
+    Eigen::Vector3d next_point = points[0] + curve_fraction*(-3*points[0] + 3*points[1]) + 
+                                  std::pow(curve_fraction,2) * (3*points[0] -6*points[1] + 3*points[2]) + 
+                                    std::pow(curve_fraction,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
 
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
@@ -584,7 +599,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6),
                   candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
                   next_point.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                   switching_cost_threshold, traj_desired.at(0).segment(7,3);
+                   switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
   }
 
   // C3 PORTION
@@ -611,25 +626,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
 
     // Get the control input from the previously solved full solution from current state.
-    VectorXd input = fullsol_current_loction[0].segment(n + m, k);
+    VectorXd input = fullsol_current_location[0].segment(n + m, k);
     std::cout<<"Using C3 "<<std::endl;
-
-    // Compute dt based on moving average filter.
-    double dt = 0;
-    if (moving_average_.empty()){
-      dt = param_.dt;
-    }
-    else{
-      for (int i = 0; i < (int) moving_average_.size(); i++){
-        dt += moving_average_[i];
-      }
-      dt /= moving_average_.size();
-    }
   
     // Calculate state and force using LCS from current location.
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-        num_friction_directions_, mu_, dt);
+        num_friction_directions_, mu_, control_loop_dt);
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
 
@@ -659,7 +662,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     if (vd.norm() > max_desired_velocity_){
       // Update new desired position accordingly.
       Vector3d dx = state_next.head(3) - state.head(3);
-      state_next.head(3) << max_desired_velocity_ * dt * dx / dx.norm() + state.head(3);
+      state_next.head(3) << max_desired_velocity_ * control_loop_dt * dx / dx.norm() + state.head(3);
       
       // Update new desired velocity accordingly.
       Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
@@ -681,7 +684,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
                   candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
                   state_next.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                  switching_cost_threshold, traj_desired.at(0).segment(7,3);
+                  switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
    }
   
 

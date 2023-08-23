@@ -141,6 +141,7 @@ int DoMain(int argc, char* argv[]){
   Qinit.block(0,0,3,3) << param.Q_finger * MatrixXd::Identity(3,3);
   Qinit(7,7) = param.Q_ball_x;
   Qinit(8,8) = param.Q_ball_y;
+  Qinit(9,9) = param.Q_ball_z;
   // Qinit.block(10,10,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv);   // This is sketchy?  TODO
    Qinit.block(16,16,3,3) << param.Q_ball_vel * MatrixXd::Identity(3,3); 
   Qinit.block(10,10,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
@@ -325,7 +326,7 @@ int DoMain(int argc, char* argv[]){
 
   // Function Arguments: int num_positions, int num_velocities, int lambda_size, int  misc_size
   // auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 24); //should this not be 19 for state vector as (10+9) and then 6 for contact forces and 24 for misc visualization parameters
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(NUM_POSITIONS, NUM_VELOCITIES, NUM_LAMBDAS, NUM_VISUALIZATION);
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));

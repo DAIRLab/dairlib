@@ -5,6 +5,6 @@ struct C3Options {
   int admm_iter = 2;    // total number of ADMM iterations
   float rho = 0.1;       // inital value of the rho parameter
   float rho_scale = 3;  // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads = 2;   // 0 is dynamic, greater than 0 for a fixed count
+  int num_threads = 1;   // 0 is dynamic, greater than 0 for a fixed count  // TODO: this was 2, switched to 1 8/23/2023
   int delta_option = 1;  // different options for delta update
 };

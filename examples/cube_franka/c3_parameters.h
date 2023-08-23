@@ -26,10 +26,12 @@ struct C3Parameters {
 
     // c3 parameters
     a->Visit(DRAKE_NVP(mu));
+    a->Visit(DRAKE_NVP(use_full_cost));
     a->Visit(DRAKE_NVP(Q_default));
     a->Visit(DRAKE_NVP(Q_finger));
     a->Visit(DRAKE_NVP(Q_ball_x));
     a->Visit(DRAKE_NVP(Q_ball_y));
+    a->Visit(DRAKE_NVP(Q_ball_z));
     a->Visit(DRAKE_NVP(Q_finger_vel));
     a->Visit(DRAKE_NVP(Q_ball_vel));
     a->Visit(DRAKE_NVP(R));
@@ -79,11 +81,6 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(enable_contact));
     a->Visit(DRAKE_NVP(ball_stddev));
 
-    // gaiting params
-    a->Visit(DRAKE_NVP(roll_phase));
-    a->Visit(DRAKE_NVP(return_phase));
-    a->Visit(DRAKE_NVP(gait_parameters));
-
     // filter params
     a->Visit(DRAKE_NVP(dt_filter_length));
     a->Visit(DRAKE_NVP(alpha_p));
@@ -117,10 +114,12 @@ struct C3Parameters {
 
   // c3 parameters
   double mu;
+  bool use_full_cost;
   double Q_default;
   double Q_finger;
   double Q_ball_x;
   double Q_ball_y;
+  double Q_ball_z;
   double Q_finger_vel;
   double Q_ball_vel;
   double R;
@@ -179,11 +178,6 @@ struct C3Parameters {
   int enable_heuristic;
   int enable_contact;
   double ball_stddev;
-
-  // gaiting parameters
-  double roll_phase;
-  double return_phase;
-  VectorXd gait_parameters;
   
   // test parameters
   double lead_angle;

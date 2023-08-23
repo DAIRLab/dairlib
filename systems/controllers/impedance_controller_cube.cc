@@ -217,11 +217,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   // Quaterniond w_desired = RotationMatrix<double>(w_d_aa).ToQuaternion();
 
   double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
-  if (enable_heuristic_ && timestamp > settling_time){
-    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
-                                 ball_xyz, ball_xyz_d, settling_time, timestamp);
-    xd.tail(3) << xd_new;
-  }
+  // if (enable_heuristic_ && timestamp > settling_time){
+  //   Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
+  //                                ball_xyz, ball_xyz_d, settling_time, timestamp);
+  //   xd.tail(3) << xd_new;
+  // }
 
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R, orientation_d);
@@ -390,48 +390,48 @@ bool ImpedanceController::SaturatedClamp(const VectorXd& tau, const VectorXd& cl
   return false;
 }
 
-Vector3d ImpedanceController::ApplyHeuristic(
-    const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
-    const VectorXd& x, const VectorXd& x_dot,
-    const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
-    double settling_time, double timestamp) const {
+// Vector3d ImpedanceController::ApplyHeuristic(
+//     const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
+//     const VectorXd& x, const VectorXd& x_dot,
+//     const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
+//     double settling_time, double timestamp) const {
 
-  /*
-  NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
-  THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
-  */
+//   /*
+//   NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
+//   THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
+//   */
   
-  Vector3d xd_new = xd;
-  Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
+//   Vector3d xd_new = xd;
+//   Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
 
-  double roll_phase = param_.roll_phase;
-  double return_phase = param_.return_phase;
-  double period = roll_phase + return_phase;
-  double shifted_time = timestamp - settling_time - return_phase;
-  if (shifted_time < 0) shifted_time += period;
-  double ts = shifted_time - period * floor((shifted_time / period));
+//   double roll_phase = param_.roll_phase;
+//   double return_phase = param_.return_phase;
+//   double period = roll_phase + return_phase;
+//   double shifted_time = timestamp - settling_time - return_phase;
+//   if (shifted_time < 0) shifted_time += period;
+//   double ts = shifted_time - period * floor((shifted_time / period));
 
-  if (lambda.norm() > param_.contact_threshold && ts < roll_phase && x_dot(2) < 0){
-    double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
-    if (diff > 0){
-      xd_new = xd_new - diff*ball_to_EE;
-    }
-    xd_new = xd_new + pushing_offset_*ball_to_EE;
-  }
-  else{
-    double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
-    if (diff < 0){
-      xd_new = xd_new - diff*ball_to_EE;
-    }
-    xd_new = xd_new + moving_offset_*ball_to_EE;
-  }
+//   if (lambda.norm() > param_.contact_threshold && ts < roll_phase && x_dot(2) < 0){
+//     double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
+//     if (diff > 0){
+//       xd_new = xd_new - diff*ball_to_EE;
+//     }
+//     xd_new = xd_new + pushing_offset_*ball_to_EE;
+//   }
+//   else{
+//     double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
+//     if (diff < 0){
+//       xd_new = xd_new - diff*ball_to_EE;
+//     }
+//     xd_new = xd_new + moving_offset_*ball_to_EE;
+//   }
 
-  // if (x_dot(2) > 0){
-  //   xd_new(2) = xd_new(2) + moving_offset_;
-  // }
+//   // if (x_dot(2) > 0){
+//   //   xd_new(2) = xd_new(2) + moving_offset_;
+//   // }
 
-  return xd_new;
-}
+//   return xd_new;
+// }
 
 }  // namespace controllers
 }  // namespace systems

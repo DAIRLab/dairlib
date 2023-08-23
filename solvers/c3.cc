@@ -236,47 +236,53 @@ vector<VectorXd> C3::OptimalInputSeq(const vector<VectorXd> zfin){
 return UU; 
 }
 
-
-double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU) const{
-  double cost = 0;
+// Calculate the cost associated with the object position errors only, using the provided control inputs.
+// The provided control inputs are intended to come from the SolveFullSolution method, which minimizes a cost that considers
+// other quantities, e.g. velocity errors, end effector location errors, etc.
+double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU, bool use_full_cost) const{
   vector<VectorXd> XX(N_+1, VectorXd::Zero(k_)); //locally extracted state sequence
-//   //instantiate LCS class here and forward simulate by the horizon length to get the open loop state rollout.
   XX[0] = x0;
-  // XX[1] = lcs_.Simulate(XX[0], UU[0]);
 
-  // double ball_cost = 0;
-  // std::vector<Eigen::MatrixXd> Qball = Q_;
-  // for (int i = 0; i < N_; i++){
-  // for(int j = 0; j < 7; j++){
-  //   Qball.at(i)(j,j) = 0;
-  // }
-  // for(int j = 10; j < 16; j++){
-  //   Qball.at(i)(j,j) = 0;
-  // }
-  // }
-
+  // Get the N step lcs rollout.
   for (int i = 0; i < N_; i++){
-    
-    XX[i+1] = lcs_.Simulate(XX[i], UU[i]);  
-    //std::cout<< i<<std::endl;   
-    //std::cout<<"state"<<XX[i]<<std::endl;
-    // std::cout<<"input"<<UU[i]<<std::endl;
+    XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
   }
 
-  // cost = XX[0].transpose()*Q_.at(0)*XX[0];
-  for (int i = 0; i < N_; i++){
-    cost = cost + (XX[i] - xdesired_[i]).transpose()*Q_.at(i)*(XX[i] - xdesired_[i]) + UU[i].transpose()*R_.at(i)*UU[i];  //will this work?
-    //ball_cost = ball_cost + (XX[i] - xdesired_[i]).transpose()*Qball.at(i)*(XX[i] - xdesired_[i]);
-  }
-  cost = cost + (XX[N_]- xdesired_[N_]).transpose()*Q_.at(N_)*(XX[N_]- xdesired_[N_]);
+  // Declare Q_eff and R_eff as the Q and R to use for cost computation.
+  std::vector<Eigen::MatrixXd> Q_eff = Q_;
+  std::vector<Eigen::MatrixXd> R_eff = R_;
 
-  //ball_cost = ball_cost + (XX[N_] - xdesired_[N_]).transpose()*Qball.at(N_)*(XX[N_] - xdesired_[N_]);
-  //std::cout<<"explicit Ball cost "<<ball_cost<<std::endl;
-  
-  //checking target when ball is stationary. debugging statements 
-  //checking to make sure the desired state remains the same throughout horizon if ball is stationary
-  //std::cout<<" x desired at 0 " << xdesired_[0] << std::endl; 
-  // std::cout<<" x desired at N_" << xdesired_[N_].segment(7,3) << std::endl;
+  // If not calculating the full cost, calculate just the ball position error cost.
+  if (use_full_cost == false) {
+    for (int i = 0; i < N_; i++){
+      // Make R all zeros since not penalizing input effort.
+      R_eff[i] = R_eff[i] * 0;
+
+      // Use all zeros for Q and R except for portion of Q that corresponds to ball xyz errors.
+      for(int j = 0; j < 7; j++){
+        Q_eff.at(i)(j,j) = 0;
+      }
+      for(int j = 10; j < 16; j++){
+        Q_eff.at(i)(j,j) = 0;
+      }
+    }
+
+    // Do Nth step for Q.
+    for(int j = 0; j < 7; j++){
+      Q_eff.at(N_)(j,j) = 0;
+    }
+    for(int j = 10; j < 16; j++){
+      Q_eff.at(N_)(j,j) = 0;
+    }
+  }
+
+  // Calculate the cost over the N+1 time steps.
+  double cost = 0;
+  for (int i = 0; i < N_; i++){
+    cost = cost + (XX[i] - xdesired_[i]).transpose()*Q_eff.at(i)*(XX[i] - xdesired_[i]) + UU[i].transpose()*R_eff.at(i)*UU[i];
+  }
+  cost = cost + (XX[N_]- xdesired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_]- xdesired_[N_]);
+
   return cost;
 }
 

@@ -453,7 +453,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Update autodiff.
     VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
         plant_f_.num_actuators());
-    xu_test << test_q, test_v, u;                      // u here is set to a vector of 1000s -- TODO why?
+    
+    // u here is set to a vector of 1000s -- TODO why?
+    // Update context with respect to positions and velocities associated with each candidate state. 
+    // Do we want to merge the two loops again? 
+    VectorXd test_q = test_state.head(plant_.num_positions());
+    VectorXd test_v = test_state.tail(plant_.num_velocities());
+    
+    xu_test << test_q, test_v, u;                   
     auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
 
     plant_ad_f_.SetPositionsAndVelocities(
@@ -506,28 +513,27 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
       // After solving, store the solutions as warm starts for the next round.
       // TODO: look into if these warm start values are actually being used anywhere useful.
-      warm_start_x_ = opt.GetWarmStartX();
-      warm_start_lambda_ = opt.GetWarmStartLambda();
-      warm_start_u_ = opt.GetWarmStartU();
-      warm_start_delta_ = opt.GetWarmStartDelta();
-      warm_start_binary_ = opt.GetWarmStartBinary();
+      warm_start_x_ = opt_test.GetWarmStartX();
+      warm_start_lambda_ = opt_test.GetWarmStartLambda();
+      warm_start_u_ = opt_test.GetWarmStartU();
+      warm_start_delta_ = opt_test.GetWarmStartDelta();
+      warm_start_binary_ = opt_test.GetWarmStartBinary();
     }
     // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
     // This encourages the system to use C3 once reached the end of a repositioning maneuver.
     else {
-      cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 10;
+      cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 10;  // Move to param file?
     }
   }
 
   // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
-  std::vector<double> additional_sample_cost_vector(num_samples-1);
-  additional_sample_cost_vector << cost_vector.tail(num_samples-1);
+  std::vector<double> additional_sample_cost_vector = std::vector<double>(cost_vector.begin() + 1, cost_vector.end());
   double best_additional_sample_cost = *std::min_element(additional_sample_cost_vector.begin(),
                                                          additional_sample_cost_vector.end());
   std::vector<double>::iterator it = std::min_element(std::begin(additional_sample_cost_vector),
                                                       std::end(additional_sample_cost_vector));
-  SampleIndex index = std::distance(std::begin(additional_sample_cost_vector), it) + 1;
-  best_additional_sample = candidate_states[index];
+  SampleIndex index = (SampleIndex)(std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+  VectorXd best_additional_sample = candidate_states[index];
 
   // Inspect the current and best other sample C3 costs.
   double curr_ee_cost = cost_vector[CURRENT_LOCATION_INDEX];
@@ -630,9 +636,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Update desired next state.
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
-                  candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
+                  candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                  switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
+                  C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz;
   }
   // REPOSITION.
   else {
@@ -684,9 +690,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
     // Set desired next state.
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
-                  candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
+                  candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                   switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
+                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz;
   }
   
 

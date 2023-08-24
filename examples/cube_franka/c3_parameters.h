@@ -81,6 +81,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(enable_contact));
     a->Visit(DRAKE_NVP(ball_stddev));
 
+    //Visualization
+    a->Visit(DRAKE_NVP(display_rollout_flag));
+
     // filter params
     a->Visit(DRAKE_NVP(dt_filter_length));
     a->Visit(DRAKE_NVP(alpha_p));
@@ -177,6 +180,9 @@ struct C3Parameters {
   int enable_contact;
   double ball_stddev;
   
+  //Visualization
+  bool display_rollout_flag;
+
   // test parameters
   double lead_angle;
   int enable_adaptive_path;

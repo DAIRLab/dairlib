@@ -45,9 +45,6 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
     double curr_time, double stabilize_time1,
     double move_time, double stabilize_time2);
 
-Eigen::Vector3d generate_next_position(std::vector<Eigen::Vector3d> points, double t);
-double generate_next_z(double current, double end, double t);
-
 namespace dairlib {
 namespace systems {
 namespace controllers {
@@ -134,6 +131,7 @@ C3Controller_franka::C3Controller_franka(
       (1) the state of the C3 flag
       (3) the desired location of the object
       (3) Estimated xyz position of the jack
+      (3) Goal end effector location used by C3 
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -444,7 +442,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
   std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
   vector<VectorXd> fullsol_current_location;                                                // Current location C3 solution.
-
+  Vector3d goal_ee_location_c3 (traj_desired_vector[q_map_.at("tip_link_1_to_base_x")],      // This vector is used to store the goal ee location used by c3 
+                                traj_desired_vector[q_map_.at("tip_link_1_to_base_y")],
+                                traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]);   // For visualization only.
+                                                                                            
   // Loop over samples to compute their costs.
   for (int i = 0; i < num_samples; i++) {
     // Get the candidate state from the previously built vector.
@@ -638,7 +639,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                  C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz;
+                  C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3;
   }
   // REPOSITION.
   else {
@@ -692,7 +693,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz;
+                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3;
   }
   
 

@@ -325,7 +325,6 @@ int DoMain(int argc, char* argv[]){
                                   xdesired, pp);
 
   // Function Arguments: int num_positions, int num_velocities, int lambda_size, int  misc_size
-  // auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
   auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(NUM_POSITIONS, NUM_VELOCITIES, NUM_LAMBDAS, NUM_VISUALIZATION);
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    

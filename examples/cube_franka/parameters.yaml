@@ -88,6 +88,9 @@ enable_heuristic: 0
 enable_contact: 0   #1
 ball_stddev: 0.0 # standard deviation of 0-mean noise on ball state estimation
 
+#Visualization
+display_rollout_flag: false
+
 # filters
 dt_filter_length: 10
 alpha_p: 0.2

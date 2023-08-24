@@ -245,7 +245,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // TODO: Need to add noise; currently using noiseless simulation.
   VectorXd q_plant = robot_output->GetPositions();
   VectorXd v_plant = robot_output->GetVelocities();
-  q_plant.tail(3) << ProjectStateEstimate(end_effector, q_plant.tail(3));
   // If doing in hardware, use state estimation here.
   // StateEstimation(q_plant, v_plant, end_effector, timestamp);
 
@@ -297,9 +296,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Set the desired location of the end effector; we want it to go to the ball's x,y position.
   traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
   traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-  // For the z location, add clearance above what the pp value for the end effector is.
-  // TODO:  Alp recommends checking that this desired ee location is actually reasonable -- add visualization.
-  traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004; 
+  // For the z location, do some fixed height.
+  traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
    
   // Repeat the desired vector N+1 times, for N as the horizon length.
   std::vector<VectorXd> traj_desired(Q_.size(), traj_desired_vector);
@@ -584,7 +582,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Calculate state and force using LCS from current location.
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-        num_friction_directions_, mu_, control_loop_dt);
+        num_friction_directions_, mu_, 0.02);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
 
@@ -711,28 +709,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
-}
-
-
-// Projects state estimate of the object if penetration is predicted.
-Eigen::Vector3d C3Controller_franka::ProjectStateEstimate(
-    const Eigen::Vector3d& endeffector,
-    const Eigen::Vector3d& estimate) const {
-
-  Eigen::Vector3d dist_vec = estimate - endeffector;
-  double R = param_.ball_radius;
-  double r = param_.finger_radius;
-  
-  if (dist_vec.norm() < (R+r)*(1)){
-    Eigen::Vector3d u(dist_vec(0), dist_vec(1), 0);
-    double u_norm = u.norm();
-    double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
-
-    return estimate + du * u / u_norm;
-  }
-  else {
-    return estimate;
-  }
 }
 
 

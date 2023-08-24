@@ -146,11 +146,16 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable std::vector<VectorXd> warm_start_u_;
   mutable std::vector<VectorXd> warm_start_delta_;
   mutable std::vector<VectorXd> warm_start_binary_;
+
+  // sampling
   mutable Eigen::VectorXd optimal_sample_ = VectorXd::Zero(19);
   mutable double optimal_cost_ = 999999;
   mutable bool C3_flag_ = 0;
   mutable bool reposition_flag_ = 0;
   mutable double angular_offset_ = 0 * PI/180;
+  const enum SampleIndex { CURRENT_LOCATION, SAMPLE_1, SAMPLE_2, SAMPLE_3,
+                           SAMPLE_4, SAMPLE_5, SAMPLE_6, SAMPLE_7, SAMPLE_8
+                           SAMPLE_9, SAMPLE_10, SAMPLE_11, SAMPLE_12 }
 
   // kalman filter
   // mutable VectorXd xhat_prev;

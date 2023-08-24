@@ -133,7 +133,7 @@ C3Controller_franka::C3Controller_franka(
       (2) current and minimum sample costs
       (1) the state of the C3 flag
       (3) the desired location of the object
-      (3) Estimated state of the jack
+      (3) Estimated xyz position of the jack
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -275,6 +275,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
 
   // Change this for adaptive path.
+  // TODO:  Change this to a fixed location (and maybe orientation too).
   VectorXd traj_desired_vector = pp_.value(timestamp);
   // Compute adaptive path if enable_adaptive_path is 1.
   if (param_.enable_adaptive_path == 1){
@@ -299,6 +300,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
   traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
   // For the z location, add clearance above what the pp value for the end effector is.
+  // TODO:  Alp recommends checking that this desired ee location is actually reasonable -- add visualization.
   traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004; 
    
   // Repeat the desired vector N+1 times, for N as the horizon length.
@@ -379,11 +381,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1);
 
-  solvers::LCS system_ = system_scaling_pair.first; //checking
+  solvers::LCS system_ = system_scaling_pair.first;
   // double scaling = system_scaling_pair.second;
 
   C3Options options;
-  int N = (system_.A_).size();
+  int N = (system_.A_).size();        // horizon length (5 expected)
   int n = ((system_.A_)[0].cols());   // number of state variables (19 expected)
   int m = ((system_.D_)[0].cols());   // number of contact forces (6*num_contacts = 24 expected)
   int k = ((system_.B_)[0].cols());   // number of control inputs (3 expected)
@@ -413,10 +415,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // In practice, we use a Q value that is fixed throughout the horizon.  Here we set it equal to the first matrix provided in Q_.
   // If we want to introduce time-varying Q, this line will have to be changed.
   std::vector<MatrixXd> Qha(Q_.size(), Q_[0]);
-
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
-    warm_start_delta_, warm_start_binary_, warm_start_x_,
-    warm_start_lambda_, warm_start_u_, true);
 
   // Multi-sample code piece
   double x_samplec = ball_xyz[0];                   // center sampling circle on current ball location.
@@ -503,15 +501,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
     double c3_cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);
     double xy_travel_distance = (test_q.head(2) - end_effector.head(2)).norm();                   // Ignore differences in z.
-    cost_vector[i] = c3_cost + param_.travel_cost*xy_travel_distance;                             // Total sample cost considers travel distance.
+    cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                             // Total sample cost considers travel distance.
   }
 
   // Find optimal sample index based on lowest cost.
   double min = *std::min_element(cost_vector.begin(), cost_vector.end());
   std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
-  int index = std::distance(std::begin(cost_vector), it);
+  SampleIndex index = std::distance(std::begin(cost_vector), it);
 
-  // Solve MIQP and compute the C3 cost based on current location.
+  // Set up optimization, solve, and compute the C3 cost based on current location.
+  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+    warm_start_delta_, warm_start_binary_, warm_start_x_,
+    warm_start_lambda_, warm_start_u_, true);
   vector<VectorXd> fullsol_current_location = opt.SolveFullSolution(state, delta, w);  // Outputs full z.
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol_current_location);    // Outputs u over horizon.
   double curr_ee_cost = opt.CalcCost(state, optimalinputseq, param_.use_full_cost);    // Computes cost from current state.
@@ -530,23 +531,110 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   optimal_cost_ = min; 
   optimal_sample_ = candidate_states[index];
 
-  // Set the switching threshold based on whether currently doing C3 or repositioning.
-  double switching_cost_threshold;
-  if(C3_flag_ == 0){
-    switching_cost_threshold = param_.repositioning_threshold;
+
+  // Update whether we should currently do C3 or repositioning based on costs of samples.
+  if (C3_flag_ == true) {   // Currently doing C3.
+    // Switch to repositioning if one of the other samples is better, with hysteresis.
+    if (curr_ee_cost > optimal_cost_ + param_.switching_hysteresis) {
+      C3_flag_ = false;
+    }
   }
-  else{
-    switching_cost_threshold = param_.C3_failure;
+  else {                    // Currently repositioning.
+    // Switch to C3 if the current sample is better, with hysteresis.
+    if (optimal_cost_ > curr_ee_cost + param_.switching_hysteresis) {
+      C3_flag_ = true;
+    }
   }
 
-  double diff = curr_ee_cost - min;
-  std::cout<<"Diff = "<<diff<<std::endl;
+  // Take action based on whether trying to run C3 or reposition.
+  // DO C3.
+  if (C3_flag_ == true) {
+    // Ensure state flag indicates C3 is running.
+    C3_flag_ = 1;
 
+    // TODO:  We may want to re-query the current state of the simulation to update `state` since this might be old at this point.
 
-  // Decide whether to run C3 or to reposition based on cost difference between current location C3 cost and best available sampled cost.
-  // If current cost is higher than best sample cost by switching_cost_threshold, do repositioning.
-  // REPOSITIONING PORTION
-  if(curr_ee_cost - min >= switching_cost_threshold){
+    // TODO: this can be switched to a function call since it's a repeat of a few other sections.
+    // Reset delta and w.
+    if (options.delta_option == 1) {
+    // Reset delta and w (option 1 involves inserting the updated state into delta)
+    delta = delta_reset;
+    w = w_reset;
+    for (int j = 0; j < N; j++) {
+      delta[j].head(n) << state;
+    }
+    } else {
+    // Reset delta and w (default option resets delta and w to all zeros)
+      delta = delta_reset;
+      w = w_reset;
+    }
+
+    // Get the control input from the previously solved full solution from current state.
+    VectorXd input = fullsol_current_location[0].segment(n + m, k);
+    std::cout<<"Using C3 "<<std::endl;
+  
+    // Calculate state and force using LCS from current location.
+    auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+        num_friction_directions_, mu_, control_loop_dt);
+    solvers::LCS system2_ = system_scaling_pair2.first;
+    double scaling2 = system_scaling_pair2.second;
+
+    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    VectorXd force; //This contains the contact forces. 
+    // Tangential forces and normal forces for contacts
+    // --> gamma slack variable, ball+ee and ball+ground (multiple if needed) from stewart trinkle formulation.
+
+    auto flag = LCPSolver.SolveLcpLemkeRegularized(
+          system2_.F_[0],
+          system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
+          &force);
+    //The final force solution comes with 24 components (stewart trinkle formulation).  In order, these components are : 
+    // - (4) gamma_ee, gamma_bg(x3) (slack ee and slack ball-ground)
+    // - (1) normal force between ee and ball lambda_eeb^n
+    // - (3) normal force between ball and ground(x3) lambda_bg^n
+    // - (4) tangential forces between ee and ball lambda_eeb^{t1-t4}
+    // - (3*4) tangential forces between ball and ground(x3) lambda_bg^{t1-t4}
+
+    (void)flag; // Suppress compiler unused variable warning.
+
+    // Roll out the LCS.
+    VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
+
+    // Check if the desired end effector position is unreasonably far from the current location based on if desired
+    // ee velocity is high.
+    // TODO:  Since our control_loop_dt is high, this might trigger very often; may need to roll out LCS with something
+    // smaller than control_loop_dt.
+    Vector3d vd = state_next.segment(10, 3);
+    if (vd.norm() > max_desired_velocity_){
+      // Update new desired position accordingly.
+      Vector3d dx = state_next.head(3) - state.head(3);
+      state_next.head(3) << max_desired_velocity_ * control_loop_dt * dx / dx.norm() + state.head(3);
+      
+      // Update new desired velocity accordingly.
+      Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
+      state_next(10) = clamped_velocity(0);
+      state_next(11) = clamped_velocity(1);
+      state_next(12) = clamped_velocity(2);
+
+      std::cout << "velocity limit(c3)" << std::endl;
+    }
+
+    // TODO:  double check that this makes sense to keep at zeros or if it should go back to the end effector forces.
+    VectorXd force_des = VectorXd::Zero(6);
+  
+    // Set the indicator in visualization to C3 location, at a negative y value.
+    Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
+    
+
+    // Update desired next state.
+    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
+                  candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
+                  state_next.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
+                  switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
+  }
+  // REPOSITION.
+  else {
     // Ensure state flag indicates we are repositioning.
     C3_flag_ = 0;
     std::cout << "Decided to reposition"<<std::endl;
@@ -601,91 +689,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   next_point.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
                    switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
   }
-
-  // C3 PORTION
-  else
-  {
-    // Ensure state flag indicates C3 is running.
-    C3_flag_ = 1;
-
-    // TODO:  We may want to re-query the current state of the simulation to update `state` since this might be old at this point.
-
-    // TODO: this can be switched to a function call since it's a repeat of a few other sections.
-    // Reset delta and w.
-    if (options.delta_option == 1) {
-    // Reset delta and w (option 1 involves inserting the updated state into delta)
-    delta = delta_reset;
-    w = w_reset;
-    for (int j = 0; j < N; j++) {
-      delta[j].head(n) << state;
-    }
-    } else {
-    // Reset delta and w (default option resets delta and w to all zeros)
-      delta = delta_reset;
-      w = w_reset;
-    }
-
-    // Get the control input from the previously solved full solution from current state.
-    VectorXd input = fullsol_current_location[0].segment(n + m, k);
-    std::cout<<"Using C3 "<<std::endl;
-  
-    // Calculate state and force using LCS from current location.
-    auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-        num_friction_directions_, mu_, control_loop_dt);
-    solvers::LCS system2_ = system_scaling_pair2.first;
-    double scaling2 = system_scaling_pair2.second;
-
-    drake::solvers::MobyLCPSolver<double> LCPSolver;
-    VectorXd force; //This contains the contact forces. 
-    // Tangential forces and normal forces for contacts
-    // --> gamma slack variable, ball+ee and ball+ground (multiple if needed) from stewart trinkle formulation.
-
-    auto flag = LCPSolver.SolveLcpLemkeRegularized(
-          system2_.F_[0],
-          system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
-          &force);
-    //The final force solution comes with 24 components (stewart trinkle formulation).  In order, these components are : 
-    // - (4) gamma_ee, gamma_bg(x3) (slack ee and slack ball-ground)
-    // - (1) normal force between ee and ball lambda_eeb^n
-    // - (3) normal force between ball and ground(x3) lambda_bg^n
-    // - (4) tangential forces between ee and ball lambda_eeb^{t1-t4}
-    // - (3*4) tangential forces between ball and ground(x3) lambda_bg^{t1-t4}
-
-    (void)flag; // Suppress compiler unused variable warning.
-
-    // Roll out the LCS.
-    VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
-
-    // Check if the desired end effector position is unreasonably far from the current location based on if desired ee velocity is high.
-    Vector3d vd = state_next.segment(10, 3);
-    if (vd.norm() > max_desired_velocity_){
-      // Update new desired position accordingly.
-      Vector3d dx = state_next.head(3) - state.head(3);
-      state_next.head(3) << max_desired_velocity_ * control_loop_dt * dx / dx.norm() + state.head(3);
-      
-      // Update new desired velocity accordingly.
-      Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
-      state_next(10) = clamped_velocity(0);
-      state_next(11) = clamped_velocity(1);
-      state_next(12) = clamped_velocity(2);
-
-      std::cout << "velocity limit(c3)" << std::endl;
-    }
-
-    // TODO:  double check that this makes sense to keep at zeros or if it should go back to the end effector forces.
-    VectorXd force_des = VectorXd::Zero(6);
-  
-    // Set the indicator in visualization to C3 location, at a negative y value.
-    Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
-    
-
-    // Update desired next state.
-    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
-                  candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3),
-                  state_next.head(3), optimal_sample_.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
-                  switching_cost_threshold, traj_desired.at(0).segment(7,3), ball_xyz;
-   }
   
 
   // Send desired output vector to output port.

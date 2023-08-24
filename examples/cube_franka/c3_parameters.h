@@ -91,9 +91,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(sample_height));
     a->Visit(DRAKE_NVP(sample_number));
     a->Visit(DRAKE_NVP(spline_width));
-    a->Visit(DRAKE_NVP(C3_failure));
-    a->Visit(DRAKE_NVP(repositioning_threshold));
-    a->Visit(DRAKE_NVP(travel_cost));
+    a->Visit(DRAKE_NVP(switching_hysteresis));
+    a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(travel_speed));
     
   }
@@ -168,9 +167,8 @@ struct C3Parameters {
   double spline_width;
 
   //switching parameters
-  double C3_failure;
-  double repositioning_threshold;
-  double travel_cost;
+  double switching_hysteresis;
+  double travel_cost_per_meter;
   double travel_speed;
 
   // misc

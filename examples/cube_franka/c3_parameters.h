@@ -89,7 +89,7 @@ struct C3Parameters {
     // sampling params
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(sample_height));
-    a->Visit(DRAKE_NVP(sample_number));
+    a->Visit(DRAKE_NVP(num_additional_samples));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(switching_hysteresis));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
@@ -162,7 +162,7 @@ struct C3Parameters {
 
   //sampling parameters
   double sampling_radius;
-  int sample_number;
+  int num_additional_samples;
   double sample_height;
   double spline_width;
 

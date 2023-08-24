@@ -153,9 +153,11 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable bool C3_flag_ = 0;
   mutable bool reposition_flag_ = 0;
   mutable double angular_offset_ = 0 * PI/180;
-  const enum SampleIndex { CURRENT_LOCATION, SAMPLE_1, SAMPLE_2, SAMPLE_3,
-                           SAMPLE_4, SAMPLE_5, SAMPLE_6, SAMPLE_7, SAMPLE_8
-                           SAMPLE_9, SAMPLE_10, SAMPLE_11, SAMPLE_12 }
+  const enum SampleIndex { CURRENT_LOCATION_INDEX,
+                           SAMPLE_INDEX_1, SAMPLE_INDEX_2, SAMPLE_INDEX_3,
+                           SAMPLE_INDEX_4, SAMPLE_INDEX_5, SAMPLE_INDEX_6,
+                           SAMPLE_INDEX_7, SAMPLE_INDEX_8, SAMPLE_INDEX_9,
+                           SAMPLE_INDEX_10, SAMPLE_INDEX_11, SAMPLE_INDEX_12 }
 
   // kalman filter
   // mutable VectorXd xhat_prev;

@@ -59,7 +59,7 @@ int DoMain(int argc, char* argv[]){
   // load urdf and sphere
   DiagramBuilder<double> builder;
   double sim_dt = param.sim_dt;
-  double output_dt = param.sim_dt;
+  double output_dt = param.sim_publish_dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);

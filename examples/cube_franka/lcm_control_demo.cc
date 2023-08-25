@@ -101,7 +101,7 @@ int DoMain(int argc, char* argv[]){
   //This plant here is used to take in the input of the state estimator(the joint positions and ball positions) 
   //and perform FK on it to get the end effector position and ball position to later set ee.position and ball.position accordingly.
   DiagramBuilder<double> builder_franka;
-  double sim_dt = 1e-4;
+  double sim_dt = param.sim_dt;  // TODO: This was hardcoded at 1e-4 but should most likely match this parameter.
 
   auto [plant_franka, scene_graph_franka] = AddMultibodyPlantSceneGraph(&builder_franka, sim_dt);
   Parser parser_franka(&plant_franka);

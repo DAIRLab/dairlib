@@ -55,6 +55,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(move_time));
     a->Visit(DRAKE_NVP(stabilize_time2));
     a->Visit(DRAKE_NVP(sim_dt));
+    a->Visit(DRAKE_NVP(sim_publish_dt));
     a->Visit(DRAKE_NVP(realtime_rate));
 
     // trajectory parameters
@@ -145,6 +146,7 @@ struct C3Parameters {
   double move_time;
   double stabilize_time2;
   double sim_dt;
+  double sim_publish_dt;
   double realtime_rate;
 
   // trajectory parameters

@@ -90,6 +90,12 @@ cc_library(
         "//solvers:lcs",
         "@drake//:drake_shared_library",
     ],
+    copts = [
+        "-fopenmp"
+    ],
+    linkopts = [
+        "-lgomp"
+    ]
 )
 
 

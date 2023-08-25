@@ -6,6 +6,7 @@
 #include <vector>
 #include <cmath>
 
+#include <omp.h>
 
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
@@ -440,10 +441,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
   std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
   vector<VectorXd> fullsol_current_location;                                                // Current location C3 solution.
-  Vector3d goal_ee_location_c3 (traj_desired_vector[q_map_.at("tip_link_1_to_base_x")],      // This vector is used to store the goal ee location used by c3 
+  Vector3d goal_ee_location_c3 (traj_desired_vector[q_map_.at("tip_link_1_to_base_x")],     // This vector is used to store the goal ee location used by c3 
                                 traj_desired_vector[q_map_.at("tip_link_1_to_base_y")],
-                                traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]);   // For visualization only.
-                                                                                            
+                                traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]);    // For visualization only.
+
+
+  //Set omp parallelization 
+  if (options.num_threads > 0) {
+    omp_set_dynamic(0);                                                                     // Explicitly disable dynamic teams
+    omp_set_num_threads(options.num_threads);                                              // Set number of threads
+  }
+
+  //Parallelize the following for loop
+  #pragma omp parallel for                                                           
   // Loop over samples to compute their costs.
   for (int i = 0; i < num_samples; i++) {
     // Get the candidate state from the previously built vector.
@@ -524,6 +534,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 10;  // Move to param file?
     }
   }
+  //End of parallelization
 
   // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
   std::vector<double> additional_sample_cost_vector = std::vector<double>(cost_vector.begin() + 1, cost_vector.end());

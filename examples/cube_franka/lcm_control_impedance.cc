@@ -181,7 +181,7 @@ int DoMain(int argc, char* argv[]){
   msg_data[3] = 1;
   msg_data[7] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
   msg_data[8] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
-  msg_data[9] = param.ball_radius + param.table_offset;
+  msg_data[9] = param.jack_half_width + param.table_offset;
   msg_data[28] = msg_data[7];
   msg_data[29] = msg_data[8];
   msg_data[30] = msg_data[9];

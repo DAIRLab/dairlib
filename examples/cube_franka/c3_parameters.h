@@ -98,6 +98,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(switching_hysteresis));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(travel_speed));
+    a->Visit(DRAKE_NVP(num_sample_threads));
     
   }
 
@@ -175,6 +176,7 @@ struct C3Parameters {
   double switching_hysteresis;
   double travel_cost_per_meter;
   double travel_speed;
+  int num_sample_threads;
 
   // misc
   double contact_threshold;

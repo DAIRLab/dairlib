@@ -126,7 +126,7 @@ int DoMain(int argc, char* argv[]){
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);
   //q(2) = param.q_init_finger(2) + param.table_offset;
-  q(2) = param.finger_radius + 2*param.ball_radius + param.table_offset;
+  q(2) = param.finger_radius + 2*param.jack_half_width + param.table_offset;
 
   q[q_map["base_qw"]] = param.q_init_ball_c3(0);
   q[q_map["base_qx"]] = param.q_init_ball_c3(1);
@@ -203,7 +203,7 @@ int DoMain(int argc, char* argv[]){
       double y = pattern_line_y[i%(2*line_step_size)];
       q(q_map["base_x"]) = x;
       q(q_map["base_y"]) = y;
-      q(q_map["base_z"]) = param.ball_radius + param.table_offset;
+      q(q_map["base_z"]) = param.jack_half_width + param.table_offset;
       VectorXd xtraj_hold = VectorXd::Zero(nq + nv);
       xtraj_hold.head(nq) << q;
       xtraj.push_back(xtraj_hold);

@@ -445,11 +445,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //Set omp parallelization 
   if (options.num_threads > 0) {
     omp_set_dynamic(0);                                                                     // Explicitly disable dynamic teams
-    omp_set_num_threads(options.num_threads);                                              // Set number of threads
+    omp_set_num_threads(param_.num_sample_threads);                                              // Set number of threads
   }
 
   //Parallelize the following for loop
-  #pragma omp parallel for                                                           
+  // #pragma omp parallel for
   // Loop over samples to compute their costs.
   for (int i = 0; i < num_samples; i++) {
     // Get the candidate state from the previously built vector.
@@ -527,7 +527,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
     // This encourages the system to use C3 once reached the end of a repositioning maneuver.
     else {
-      cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 10;  // Move to param file?
+      cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 1;  // Move to param file?
     }
   }
   //End of parallelization

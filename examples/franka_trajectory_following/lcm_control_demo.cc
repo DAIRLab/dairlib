@@ -155,9 +155,6 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
 
-  double r = param.traj_radius;
-  double xc = param.x_c;
-  double yc = param.y_c;
   double degree_increment = param.degree_increment;
   double lower, upper;
   assert(degree_increment > 0); // avoid potential infinite loops

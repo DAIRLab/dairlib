@@ -150,7 +150,6 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable double optimal_cost_ = 999999;
   mutable bool C3_flag_ = 0;
   mutable bool reposition_flag_ = 0;
-  mutable double angular_offset_ = 0 * PI/180;
   enum SampleIndex { CURRENT_LOCATION_INDEX,
                      SAMPLE_INDEX_1, SAMPLE_INDEX_2, SAMPLE_INDEX_3,
                      SAMPLE_INDEX_4, SAMPLE_INDEX_5, SAMPLE_INDEX_6,

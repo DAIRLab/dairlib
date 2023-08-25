@@ -295,6 +295,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
   // For the z location, do some fixed height.
   traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
+
+  // Store the goal end effector location used by C3 for visualization later.
+  Vector3d goal_ee_location_c3(traj_desired_vector[q_map_.at("tip_link_1_to_base_x")],
+                               traj_desired_vector[q_map_.at("tip_link_1_to_base_y")],
+                               traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]);
    
   // Repeat the desired vector N+1 times, for N as the horizon length.
   std::vector<VectorXd> traj_desired(Q_.size(), traj_desired_vector);
@@ -408,62 +413,35 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // If we want to introduce time-varying Q, this line will have to be changed.
   std::vector<MatrixXd> Qha(Q_.size(), Q_[0]);
 
-  // Multi-sample code piece
-  double x_samplec = ball_xyz[0];                       // center sampling circle on current ball location.
-  double y_samplec = ball_xyz[1];                       // center sampling circle on current ball location.
-  double sampling_radius = param_.sampling_radius;      // radius of sampling circle.
-  int num_samples = param_.num_additional_samples + 1;  // number of samples is current location plus additional samples.
-  double theta = (360 / (num_samples-1)) * (PI / 180);
+  /// Prepare to evaluate multiple samples.
 
+  // Save candidate sample states, LCS representations, and ... TODO
   // Build a vector of candidate state vectors, starting with current state and sampling some other end effector locations.
-  std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-  candidate_states[0] << state;
-  for (int i = 1; i < num_samples; i++) {
-    // Start with the current configuration and velocity.
-    VectorXd test_q = q;
-    VectorXd test_v = v;
+  int num_samples = param_.num_additional_samples + 1;
+  int candidate_state_size = plant_.num_positions() + plant_.num_velocities();
+  std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(candidate_state_size));
+  std::vector<solvers::LCS> candidate_lcs_objects(num_samples);
 
-    // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
-    test_q[0] = x_samplec + sampling_radius * cos(i*theta + angular_offset_);
-    test_q[1] = y_samplec + sampling_radius * sin(i*theta + angular_offset_);
-    test_q[2] = param_.sample_height;
-    test_v.head(3) << VectorXd::Zero(3);
-    
-    // Store the candidate state for comparison later to other sampled states and their costs.
-    candidate_states[i] << test_q.head(3), state.segment(3,7), test_v;
-  }
-
-  // Instantiate variables before loop; they get assigned values inside loop.
-  VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
-  std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
-  vector<VectorXd> fullsol_current_location;                                                // Current location C3 solution.
-  Vector3d goal_ee_location_c3 (traj_desired_vector[q_map_.at("tip_link_1_to_base_x")],     // This vector is used to store the goal ee location used by c3 
-                                traj_desired_vector[q_map_.at("tip_link_1_to_base_y")],
-                                traj_desired_vector[q_map_.at("tip_link_1_to_base_z")]);    // For visualization only.
-
-
-  //Set omp parallelization 
-  if (options.num_threads > 0) {
-    omp_set_dynamic(0);                                                                     // Explicitly disable dynamic teams
-    omp_set_num_threads(param_.num_sample_threads);                                              // Set number of threads
-  }
-
-  //Parallelize the following for loop
-  // #pragma omp parallel for
-  // Loop over samples to compute their costs.
   for (int i = 0; i < num_samples; i++) {
-    // Get the candidate state from the previously built vector.
-    test_state = candidate_states[i];
+    Eigen::VectorXd candidate_state;
+
+    if(i == 0){
+      candidate_state = state;  // Start with current state and add others.
+    }
+    else {
+      candidate_state = generate_radially_symmetric_sample_location(
+        num_samples, i, candidate_state_size, q, v, param_.sampling_radius, param_.sample_height
+      );
+    }
 
     // Update autodiff.
     VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
         plant_f_.num_actuators());
     
     // u here is set to a vector of 1000s -- TODO why?
-    // Update context with respect to positions and velocities associated with each candidate state. 
-    // Do we want to merge the two loops again? 
-    VectorXd test_q = test_state.head(plant_.num_positions());
-    VectorXd test_v = test_state.tail(plant_.num_velocities());
+    // Update context with respect to positions and velocities associated with each candidate state.
+    VectorXd test_q = candidate_state.head(plant_.num_positions());
+    VectorXd test_v = candidate_state.tail(plant_.num_velocities());
     
     xu_test << test_q, test_v, u;                   
     auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
@@ -484,8 +462,31 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         num_friction_directions_, mu_, 0.1);
 
     // Instantiate the C3 MIQP solver based on the LCS.
-    // TODO:  might want to give the sample system other warm starts besides that made from the current location.
     solvers::LCS test_system = test_system_scaling_pair.first;
+
+    // Store the candidate states and LCS objects.
+    candidate_states[i] << candidate_state;
+    candidate_lcs_objects[i] = test_system;
+  }
+
+  // Instantiate variables before loop; they get assigned values inside loop.
+  VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
+  std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
+  vector<VectorXd> fullsol_current_location;                                                // Current location C3 solution.
+
+
+  // Omp parallelization settings.
+  if (param_.num_sample_threads > 0) {
+    omp_set_dynamic(0);                                 // Explicitly disable dynamic teams.
+    omp_set_num_threads(param_.num_sample_threads);     // Set number of threads.
+  }
+
+  // Parallelize the following for loop
+  #pragma omp parallel for
+  // Loop over samples to compute their costs.
+  for (int i = 0; i < num_samples; i++) {
+    // TODO:  get the right `test_system` from array
+
     solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
                               warm_start_delta_, warm_start_binary_, warm_start_x_,
                               warm_start_lambda_, warm_start_u_, true);
@@ -746,5 +747,38 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
     return {finish, zero};
   }
 }
+
+Eigen::VectorXd generate_radially_symmetric_sample_location(
+    const int& num_samples,
+    const int& i,
+    const int& candidate_state_size,
+    const Eigen::VectorXd& q,
+    const Eigen::VectorXd& v,
+    const double& sampling_radius,
+    const double& sampling_height){
+
+  Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
+  Vector3d ball_xyz = q.tail(3);
+
+  double x_samplec = ball_xyz[0];                       // center sampling circle on current ball location.
+  double y_samplec = ball_xyz[1];                       // center sampling circle on current ball location.
+  double sampling_radius = sampling_radius;             // radius of sampling circle.
+  double theta = (360 / (num_samples-1)) * (PI / 180);
+
+  VectorXd test_q = q;
+  VectorXd test_v = v;
+
+  // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
+  test_q[0] = x_samplec + sampling_radius * cos(i*theta);
+  test_q[1] = y_samplec + sampling_radius * sin(i*theta);
+  test_q[2] = sampling_height;
+  test_v.head(3) << VectorXd::Zero(3);
+  
+  // Store the candidate state for comparison later to other sampled states and their costs.
+  candidate_state << test_q.head(3), q.tail(7), test_v;
+
+  return candidate_state;
+}
+
 
 

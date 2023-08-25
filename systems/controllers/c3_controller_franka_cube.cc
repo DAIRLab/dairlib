@@ -172,15 +172,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double x_c = param_.x_c;
   double y_c = param_.y_c;
   double traj_radius = param_.traj_radius;
-  double ball_radius = param_.ball_radius;
+  double jack_half_width = param_.jack_half_width;
   double table_offset = param_.table_offset;
 
   // Move to initial position if not there yet (this returns before running rest of function).
   if (timestamp <= settling_time){
     Eigen::Vector3d start = param_.initial_start;
     Eigen::Vector3d finish = param_.initial_finish;
-    finish(0) = x_c + traj_radius * sin(param_.phase * PI/ 180) + finish(0);
-    finish(1) = y_c + traj_radius * cos(param_.phase * PI / 180) + finish(1); //- 0.02; This is how to change the initial end effector location. -0.02 stops it from hitting the jack.
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
                                                                    param_.stabilize_time1 + first_message_time_,
                                                                    param_.move_time, param_.stabilize_time2);
@@ -194,12 +192,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
     Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
      
-    // Fill the desired state vector, `st_desired`.
-    VectorXd traj = pp_.value(timestamp);
+    // Fill the desired state vector with the target end effector location and orientation.
     VectorXd st_desired = VectorXd::Zero(STATE_VECTOR_SIZE);
     st_desired.head(3) << target[0];
     st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
-    st_desired.segment(11, 3) << finish(0), finish(1), ball_radius + table_offset;
     st_desired.segment(14, 3) << target[1];
 
     state_contact_desired->SetDataVector(st_desired);
@@ -288,7 +284,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
     traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
-    traj_desired_vector(q_map_.at("base_z")) = ball_radius + table_offset;
+    traj_desired_vector(q_map_.at("base_z")) = jack_half_width + table_offset;
   }
   
   // In the original ball rolling example from C3 paper, this point in the code had a time-based phase switch.

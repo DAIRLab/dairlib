@@ -69,7 +69,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(enable_adaptive_path));
     
     // geometry parameters
-    a->Visit(DRAKE_NVP(ball_radius));
+    a->Visit(DRAKE_NVP(jack_half_width));
     a->Visit(DRAKE_NVP(finger_radius));
     a->Visit(DRAKE_NVP(EE_offset));
     a->Visit(DRAKE_NVP(table_offset));
@@ -157,7 +157,7 @@ struct C3Parameters {
   int hold_order;
 
   // geometry parameters
-  double ball_radius;
+  double jack_half_width;
   double finger_radius;
   VectorXd EE_offset;
   double table_offset;

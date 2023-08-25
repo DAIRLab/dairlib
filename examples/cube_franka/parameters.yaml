@@ -42,7 +42,7 @@ axis_option: 1
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
 q_init_ball: [0.847410781, 0.310617894, 0.311017672, -0.385788646] #[0.9239, 0.3827, 0, 0] (2 contacts) #[1, 0, 0, 0] (1 contact) # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
 initial_start: [0.55, 0 , 0.12]
-initial_finish: [0, 0, 0.07]  # [0, 0, 0.07]  # xy computed according to x_c, y_c, traj_radius, and phase
+initial_finish: [0.55, 0.55, 0.07]  # [0.55, 0.53, 0.07] avoids contact between ee and jack when control begins
 stabilize_time1: 0.5 #0.5
 move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75
@@ -63,7 +63,7 @@ lead_angle: 30 #20 angle in degrees
 enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
 
 # geometry parameters
-ball_radius: 0.0625 #0.0625 #0.0315           # changes need to be consistent with sphere urdf, geometry mesh, AND vision  # TODO tune/remove these
+jack_half_width: 0.0625       # gives rough size of the jack object
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
 table_offset: -0.0245 #-0.0245      # chances need to be consistent with franka_box, model urdf, AND vision

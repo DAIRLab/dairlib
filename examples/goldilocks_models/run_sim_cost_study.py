@@ -2044,6 +2044,11 @@ if __name__ == "__main__":
   # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
   task_to_plot = ['stride_length', 'turning_rate']  # order matters
   # task_to_plot = ['stride_length', 'ground_incline']  # order matters
+  if args.eval_task_space == 1:
+    task_to_plot = ['stride_length', 'turning_rate']  # order matters
+  elif args.eval_task_space == 2:
+    task_to_plot = ['stride_length', 'ground_incline']  # order matters
+
 
   # Parameters for setting the task range for data collection filtering
   # mean_sl = 0.2

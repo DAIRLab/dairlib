@@ -46,6 +46,15 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
     double curr_time, double stabilize_time1,
     double move_time, double stabilize_time2);
 
+Eigen::VectorXd generate_radially_symmetric_sample_location(
+    const int& num_samples,
+    const int& i,
+    const int& candidate_state_size,
+    const Eigen::VectorXd& q,
+    const Eigen::VectorXd& v,
+    const double& sampling_radius,
+    const double& sampling_height);
+
 namespace dairlib {
 namespace systems {
 namespace controllers {
@@ -388,26 +397,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   int k = ((system_.B_)[0].cols());   // number of control inputs (3 expected)
 
 
-  /// initialize ADMM variables (delta, w)
-  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
-
-  /// initialize ADMM reset variables (delta, w get reset to these values)
+  // Don't initialize delta and w ADMM variables here, since they will get created inside thread-safe loops.
+  // Initialize ADMM reset variables (delta, w get reset to these values).
   std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
   std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
-
-  if (options.delta_option == 1) {
-    // Reset delta and w (option 1 involves inserting the updated state into delta)
-    delta = delta_reset;
-    w = w_reset;
-    for (int j = 0; j < N; j++) {
-      delta[j].head(n) << state;
-    }
-  } else {
-    // Reset delta and w (default option resets delta and w to all zeros)
-    delta = delta_reset;
-    w = w_reset;
-  }
 
   // In practice, we use a Q value that is fixed throughout the horizon.  Here we set it equal to the first matrix provided in Q_.
   // If we want to introduce time-varying Q, this line will have to be changed.
@@ -415,17 +408,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   /// Prepare to evaluate multiple samples.
 
-  // Save candidate sample states, LCS representations, and ... TODO
+  // Save candidate sample states and their associated LCS representations.
   // Build a vector of candidate state vectors, starting with current state and sampling some other end effector locations.
   int num_samples = param_.num_additional_samples + 1;
   int candidate_state_size = plant_.num_positions() + plant_.num_velocities();
-  std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(candidate_state_size));
-  std::vector<solvers::LCS> candidate_lcs_objects(num_samples);
-
+  // NOTE:  These vectors are initialized as empty since assigning a particular index in a vector of LCS objects is not allowed.
+  // Items are appended to the vectors in the below for loop.  Be careful about possible memory issues as a result.
+  std::vector<VectorXd> candidate_states;
+  std::vector<solvers::LCS> candidate_lcs_objects;
   for (int i = 0; i < num_samples; i++) {
     Eigen::VectorXd candidate_state;
 
-    if(i == 0){
+    if(i == CURRENT_LOCATION_INDEX){
       candidate_state = state;  // Start with current state and add others.
     }
     else {
@@ -439,7 +433,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         plant_f_.num_actuators());
     
     // u here is set to a vector of 1000s -- TODO why?
-    // Update context with respect to positions and velocities associated with each candidate state.
+    // Update context with respect to positions and velocities associated with the candidate state.
     VectorXd test_q = candidate_state.head(plant_.num_positions());
     VectorXd test_v = candidate_state.tail(plant_.num_velocities());
     
@@ -460,20 +454,16 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
         num_friction_directions_, mu_, 0.1);
-
-    // Instantiate the C3 MIQP solver based on the LCS.
-    solvers::LCS test_system = test_system_scaling_pair.first;
+    solvers::LCS test_lcs = test_system_scaling_pair.first;
 
     // Store the candidate states and LCS objects.
-    candidate_states[i] << candidate_state;
-    candidate_lcs_objects[i] = test_system;
+    candidate_states.push_back(candidate_state);
+    candidate_lcs_objects.push_back(test_lcs);
   }
 
   // Instantiate variables before loop; they get assigned values inside loop.
-  VectorXd test_state = VectorXd::Zero(plant_.num_positions() + plant_.num_velocities());   // Current sample under consideration.
-  std::vector<double> cost_vector(num_samples);                                             // Vector of costs per sample.
-  vector<VectorXd> fullsol_current_location;                                                // Current location C3 solution.
-
+  std::vector<double> cost_vector(num_samples);         // Vector of costs per sample.
+  vector<VectorXd> fullsol_current_location;            // Current location C3 solution.
 
   // Omp parallelization settings.
   if (param_.num_sample_threads > 0) {
@@ -481,56 +471,53 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     omp_set_num_threads(param_.num_sample_threads);     // Set number of threads.
   }
 
-  // Parallelize the following for loop
+  // Parallelize over computing C3 costs for each sample.
   #pragma omp parallel for
-  // Loop over samples to compute their costs.
-  for (int i = 0; i < num_samples; i++) {
-    // TODO:  get the right `test_system` from array
+    // Loop over samples to compute their costs.
+    for (int i = 0; i < num_samples; i++) {
+      // Get the candidate state and its LCS representation.
+      VectorXd test_state = candidate_states.at(i);
+      solvers::LCS test_system = candidate_lcs_objects.at(i);
+      solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
+                               warm_start_delta_, warm_start_binary_, warm_start_x_,
+                               warm_start_lambda_, warm_start_u_, true);
 
-    solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
-                              warm_start_delta_, warm_start_binary_, warm_start_x_,
-                              warm_start_lambda_, warm_start_u_, true);
-
-    // TODO:  this code is nearly identical to some code higher; could be replaced with a function call in both places.
-    // Reset delta and w.
-    if (options.delta_option == 1) {
+      // TODO:  this code is nearly identical to some code higher; could be replaced with a function call in both places.
+      // Reset delta and w.
+      std::vector<VectorXd> delta = delta_reset;
+      std::vector<VectorXd> w = w_reset;
       // Reset delta and w (option 1 involves inserting the updated state into delta)
-      delta = delta_reset;
-      w = w_reset;
-      for (int j = 0; j < N; j++) {
-        delta[j].head(n) << test_state;  // Use test state, not current state.
+      if (options.delta_option == 1) {
+        for (int j = 0; j < N; j++) {
+          delta[j].head(n) << test_state;  // Use test state, not current state.
+        }
       }
-    } else {
-      // Reset delta and w (default option resets delta and w to all zeros)
-      delta = delta_reset;
-      w = w_reset;
-    }
 
-    // Solve optimization problem, add travel cost to the optimal C3 cost.
-    vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
-    vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
-    double c3_cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);
-    double xy_travel_distance = (test_q.head(2) - end_effector.head(2)).norm();                   // Ignore differences in z.
-    cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                   // Total sample cost considers travel distance.
-  
-    // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
-    if (i == CURRENT_LOCATION_INDEX) {
-      fullsol_current_location = fullsol_sample_location;
+      // Solve optimization problem, add travel cost to the optimal C3 cost.
+      vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
+      vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
+      double c3_cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);
+      double xy_travel_distance = (test_state.head(2) - end_effector.head(2)).norm();               // Ignore differences in z.
+      cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                   // Total sample cost considers travel distance.
+    
+      // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
+      if (i == CURRENT_LOCATION_INDEX) {
+        fullsol_current_location = fullsol_sample_location;
 
-      // After solving, store the solutions as warm starts for the next round.
-      // TODO: look into if these warm start values are actually being used anywhere useful.
-      warm_start_x_ = opt_test.GetWarmStartX();
-      warm_start_lambda_ = opt_test.GetWarmStartLambda();
-      warm_start_u_ = opt_test.GetWarmStartU();
-      warm_start_delta_ = opt_test.GetWarmStartDelta();
-      warm_start_binary_ = opt_test.GetWarmStartBinary();
+        // After solving, store the solutions as warm starts for the next round.
+        // TODO: look into if these warm start values are actually being used anywhere useful.
+        warm_start_x_ = opt_test.GetWarmStartX();
+        warm_start_lambda_ = opt_test.GetWarmStartLambda();
+        warm_start_u_ = opt_test.GetWarmStartU();
+        warm_start_delta_ = opt_test.GetWarmStartDelta();
+        warm_start_binary_ = opt_test.GetWarmStartBinary();
+      }
+      // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
+      // This encourages the system to use C3 once reached the end of a repositioning maneuver.
+      else {
+        cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 1;  // Move to param file?
+      }
     }
-    // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
-    // This encourages the system to use C3 once reached the end of a repositioning maneuver.
-    else {
-      cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 1;  // Move to param file?
-    }
-  }
   //End of parallelization
 
   // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
@@ -570,17 +557,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // TODO: this can be switched to a function call since it's a repeat of a few other sections.
     // Reset delta and w.
+    std::vector<VectorXd> delta = delta_reset;
+    std::vector<VectorXd> w = w_reset;
+    // Reset delta and w (option 1 involves inserting the updated state into delta)
     if (options.delta_option == 1) {
-      // Reset delta and w (option 1 involves inserting the updated state into delta)
-      delta = delta_reset;
-      w = w_reset;
       for (int j = 0; j < N; j++) {
-        delta[j].head(n) << state;
+        delta[j].head(n) << state;  // Use current state.
       }
-    } else {
-      // Reset delta and w (default option resets delta and w to all zeros)
-      delta = delta_reset;
-      w = w_reset;
     }
 
     // Get the control input from the previously solved full solution from current state.
@@ -595,7 +578,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double scaling2 = system_scaling_pair2.second;
 
     drake::solvers::MobyLCPSolver<double> LCPSolver;
-    VectorXd force; //This contains the contact forces. 
+    VectorXd force; //This contains the contact forces.
     // Tangential forces and normal forces for contacts
     // --> gamma slack variable, ball+ee and ball+ground (multiple if needed) from stewart trinkle formulation.
 
@@ -757,16 +740,15 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
     const double& sampling_radius,
     const double& sampling_height){
 
-  Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
-  Vector3d ball_xyz = q.tail(3);
-
-  double x_samplec = ball_xyz[0];                       // center sampling circle on current ball location.
-  double y_samplec = ball_xyz[1];                       // center sampling circle on current ball location.
-  double sampling_radius = sampling_radius;             // radius of sampling circle.
-  double theta = (360 / (num_samples-1)) * (PI / 180);
-
+  // Start with the current state.  The end effector location and velocity of this state will be changed.
   VectorXd test_q = q;
   VectorXd test_v = v;
+
+  // Center the sampling circle on the current ball location.
+  Vector3d ball_xyz = q.tail(3);
+  double x_samplec = ball_xyz[0];
+  double y_samplec = ball_xyz[1];
+  double theta = (360 / (num_samples-1)) * (PI / 180);
 
   // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
   test_q[0] = x_samplec + sampling_radius * cos(i*theta);
@@ -774,7 +756,8 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
   test_q[2] = sampling_height;
   test_v.head(3) << VectorXd::Zero(3);
   
-  // Store the candidate state for comparison later to other sampled states and their costs.
+  // Store and return the candidate state.
+  Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
   candidate_state << test_q.head(3), q.tail(7), test_v;
 
   return candidate_state;

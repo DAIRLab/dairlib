@@ -49,6 +49,7 @@ using Eigen::VectorXd;
 #define NUM_LAMBDAS 6
 #define NUM_VISUALIZATION 30 + 5//5*(3+1)
 #define STATE_VECTOR_SIZE NUM_POSITIONS+NUM_VELOCITIES+NUM_LAMBDAS+NUM_VISUALIZATION
+#define PI 3.14159265359
 
 namespace dairlib {
 namespace systems {
@@ -121,7 +122,6 @@ class C3Controller_franka : public LeafSystem<double> {
   std::map<string, int> v_map_franka_;
   std::map<string, int> q_map_;
   std::map<string, int> v_map_;
-  const double PI{3.14159265359};
   double max_desired_velocity_;
 
   // dt filter

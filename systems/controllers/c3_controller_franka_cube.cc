@@ -522,7 +522,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       double c3_cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);
       double xy_travel_distance = (test_state.head(2) - end_effector.head(2)).norm();               // Ignore differences in z.
       cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                   // Total sample cost considers travel distance.
-    
+
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
         fullsol_current_location = fullsol_sample_location;
@@ -540,8 +540,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       else {
         cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
+
+      std::cout<<"Sample "<<i<<" C3 cost: "<<c3_cost<<std::endl;
     }
   //End of parallelization
+  std::cout<<""<<std::endl;
 
   // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
   std::vector<double> additional_sample_cost_vector = std::vector<double>(cost_vector.begin() + 1, cost_vector.end());
@@ -691,14 +694,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();
     double desired_travel_len = param_.travel_speed * control_loop_dt;
     double curve_fraction = desired_travel_len/len_of_curve;
-    // clamp the curve fraction to 1 
+    // Clamp the curve fraction to 1.
     if(curve_fraction>1){
       curve_fraction = 1;
     }
 
-    Eigen::Vector3d next_point = points[0] + curve_fraction*(-3*points[0] + 3*points[1]) + 
+    // If desired travel step is larger than straight-line distance to target, avoid the spline and go straight to target.
+    Eigen::Vector3d next_point;
+    double dist_from_curr_to_destination = (points[3]-points[0]).norm();
+    if (desired_travel_len >= dist_from_curr_to_destination){
+      next_point = points[3];
+    }
+    else {
+      next_point = points[0] + curve_fraction*(-3*points[0] + 3*points[1]) + 
                                   std::pow(curve_fraction,2) * (3*points[0] -6*points[1] + 3*points[2]) + 
-                                    std::pow(curve_fraction,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+                                  std::pow(curve_fraction,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
+    }
 
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};

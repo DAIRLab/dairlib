@@ -20,7 +20,7 @@ pushing_offset: 0 #-0.001
 mu: 1                  # changes need to be consistent with urdf
 use_full_cost: true        # debugging parameter, if false uses ball location error only to compare current with sample c3 costs.
 Q_default: 0
-Q_finger: 650      # finger xyz cost  # TODO tune these
+Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
 Q_ball_z: 0
@@ -79,16 +79,16 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 #Sampling parameters
 sampling_strategy: 1
 sampling_radius: 0.12   #Size of sampling circle
-sample_height: 0.05
+sample_height: 0.04
 num_additional_samples: 3
 spline_width: 0.12   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.5     # desired meters/second of repositioning
-num_sample_threads: 1     # number of parallel threads to compute C3 cost of samples
+num_sample_threads: 2     # number of parallel threads to compute C3 cost of samples
 
 #Switching parameters
 switching_hysteresis: 150
-reposition_fixed_cost: 400    # This needs to be higher than the switching hysteresis to ensure switching
+reposition_fixed_cost: 500    # This needs to be higher than the switching hysteresis to ensure switching
                               # back to C3 once it repositions and reaches a repositioning goal.
 
 

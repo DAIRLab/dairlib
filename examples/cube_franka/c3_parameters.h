@@ -59,6 +59,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(realtime_rate));
 
     // trajectory parameters
+    a->Visit(DRAKE_NVP(trajectory_type));
     a->Visit(DRAKE_NVP(traj_radius));
     a->Visit(DRAKE_NVP(phase));
     a->Visit(DRAKE_NVP(x_c));
@@ -67,7 +68,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(time_increment));
     a->Visit(DRAKE_NVP(hold_order));
     a->Visit(DRAKE_NVP(lead_angle));
-    a->Visit(DRAKE_NVP(enable_adaptive_path));
+    a->Visit(DRAKE_NVP(fixed_goal_x));
+    a->Visit(DRAKE_NVP(fixed_goal_y));
     
     // geometry parameters
     a->Visit(DRAKE_NVP(jack_half_width));
@@ -91,11 +93,13 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(alpha_v));
 
     // sampling params
+    a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(sample_height));
     a->Visit(DRAKE_NVP(num_additional_samples));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(switching_hysteresis));
+    a->Visit(DRAKE_NVP(reposition_fixed_cost));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(travel_speed));
     a->Visit(DRAKE_NVP(num_sample_threads));
@@ -158,6 +162,8 @@ struct C3Parameters {
   double degree_increment;
   double time_increment;
   int hold_order;
+  double fixed_goal_x;
+  double fixed_goal_y;
 
   // geometry parameters
   double jack_half_width;
@@ -167,6 +173,7 @@ struct C3Parameters {
   double model_table_offset;
 
   //sampling parameters
+  int sampling_strategy;
   double sampling_radius;
   int num_additional_samples;
   double sample_height;
@@ -174,6 +181,7 @@ struct C3Parameters {
 
   //switching parameters
   double switching_hysteresis;
+  double reposition_fixed_cost;
   double travel_cost_per_meter;
   double travel_speed;
   int num_sample_threads;
@@ -189,7 +197,7 @@ struct C3Parameters {
 
   // test parameters
   double lead_angle;
-  int enable_adaptive_path;
+  int trajectory_type;
 
   // filter parameters
   uint32_t dt_filter_length;

@@ -51,17 +51,21 @@ sim_publish_dt: 0.001   # 1kHz for state publishing matches Franka hardware.
 realtime_rate: 0.2
 
 # trajectory parameters
+trajectory_type: 1    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal
 traj_radius: 0.2
 phase: 0
-x_c: 0.55
+x_c: 0.35
 y_c: 0
 degree_increment: 30  
 time_increment: 1
 hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
-# if enable_adaptive_path is set to 1, the trajectory above is not used
-lead_angle: 30 #20 angle in degrees
-enable_adaptive_path: 1 # 0 to use regular path, 1 to use path that adjusts to ball in real time
+# adaptive path specific parameters
+lead_angle: 40 #20 angle in degrees
+
+# fixed path specific parameters
+fixed_goal_x: 0.55
+fixed_goal_y: -0.25
 
 # geometry parameters
 jack_half_width: 0.0625       # gives rough size of the jack object
@@ -71,17 +75,21 @@ table_offset: -0.0245 #-0.0245      # chances need to be consistent with franka_
 model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model urdf
 # number_contact_pairs: 9 #9 contact pairs for cube - 1 for ee-->cube and 8 for each corner-->ground 
 
+
 #Sampling parameters
+sampling_strategy: 1
 sampling_radius: 0.12   #Size of sampling circle
 sample_height: 0.05
 num_additional_samples: 3
 spline_width: 0.12   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.5     # desired meters/second of repositioning
-num_sample_threads: 2     # number of parallel threads to compute C3 cost of samples
+num_sample_threads: 1     # number of parallel threads to compute C3 cost of samples
 
 #Switching parameters
-switching_hysteresis: 200
+switching_hysteresis: 150
+reposition_fixed_cost: 400    # This needs to be higher than the switching hysteresis to ensure switching
+                              # back to C3 once it repositions and reaches a repositioning goal.
 
 
 # Misc

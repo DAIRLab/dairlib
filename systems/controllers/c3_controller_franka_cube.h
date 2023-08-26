@@ -147,14 +147,17 @@ class C3Controller_franka : public LeafSystem<double> {
 
   // sampling
   mutable Eigen::VectorXd optimal_sample_ = VectorXd::Zero(19);
+  mutable Eigen::VectorXd reposition_target_ = VectorXd::Zero(19);
   mutable double optimal_cost_ = 999999;
-  mutable bool C3_flag_ = 0;
+  mutable bool C3_flag_ = 1;
   mutable bool reposition_flag_ = 0;
   enum SampleIndex { CURRENT_LOCATION_INDEX,
                      SAMPLE_INDEX_1, SAMPLE_INDEX_2, SAMPLE_INDEX_3,
                      SAMPLE_INDEX_4, SAMPLE_INDEX_5, SAMPLE_INDEX_6,
                      SAMPLE_INDEX_7, SAMPLE_INDEX_8, SAMPLE_INDEX_9,
                      SAMPLE_INDEX_10, SAMPLE_INDEX_11, SAMPLE_INDEX_12 };
+  enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
+                          RANDOM_ON_CIRCLE_SAMPLING };
 
   // kalman filter
   // mutable VectorXd xhat_prev;

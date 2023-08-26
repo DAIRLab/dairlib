@@ -5,6 +5,7 @@
 #include <iterator>
 #include <vector>
 #include <cmath>
+#include <random>
 
 #include <omp.h>
 
@@ -49,6 +50,13 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
 Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& num_samples,
     const int& i,
+    const int& candidate_state_size,
+    const Eigen::VectorXd& q,
+    const Eigen::VectorXd& v,
+    const double& sampling_radius,
+    const double& sampling_height);
+
+    Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& candidate_state_size,
     const Eigen::VectorXd& q,
     const Eigen::VectorXd& v,
@@ -280,8 +288,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Change this for adaptive path.
   // TODO:  Change this to a fixed location (and maybe orientation too).
   VectorXd traj_desired_vector = pp_.value(timestamp);
-  // Compute adaptive path if enable_adaptive_path is 1.
-  if (param_.enable_adaptive_path == 1){
+  // Compute adaptive path if trajectory_type is 1.
+  if (param_.trajectory_type == 1){
     // traj_desired_vector 7-9 is xyz of sphere
     double x = ball_xyz(0) - x_c;
     double y = ball_xyz(1) - y_c;
@@ -293,6 +301,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
     traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("base_z")) = jack_half_width + table_offset;
+  }
+  // Use a fixed goal if trajectory_type is 2.
+  else if (param_.trajectory_type == 2){
+    traj_desired_vector(q_map_.at("base_x")) = param_.fixed_goal_x;
+    traj_desired_vector(q_map_.at("base_y")) = param_.fixed_goal_y;
     traj_desired_vector(q_map_.at("base_z")) = jack_half_width + table_offset;
   }
   
@@ -422,10 +436,19 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     if(i == CURRENT_LOCATION_INDEX){
       candidate_state = state;  // Start with current state and add others.
     }
+    else if((i == CURRENT_LOCATION_INDEX + 1) & (C3_flag_ == false)){
+      candidate_state = reposition_target_;   // Include the current reposition target if we are currently repositioning.
+    }
     else {
+      //Generate samples based on choice of sampling strategy
+      if (param_.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
       candidate_state = generate_radially_symmetric_sample_location(
-        num_samples, i, candidate_state_size, q, v, param_.sampling_radius, param_.sample_height
-      );
+        num_samples, i, candidate_state_size, q, v, param_.sampling_radius, param_.sample_height);
+      }
+      else if(param_.sampling_strategy == RANDOM_ON_CIRCLE_SAMPLING){
+        candidate_state = generate_random_sample_location_on_circle(candidate_state_size, q, v, 
+        param_.sampling_radius, param_.sample_height);
+      }
     }
 
     // Update autodiff.
@@ -515,7 +538,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
       // This encourages the system to use C3 once reached the end of a repositioning maneuver.
       else {
-        cost_vector[i] = cost_vector[i] + param_.switching_hysteresis + 1;  // Move to param file?
+        cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
     }
   //End of parallelization
@@ -633,6 +656,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // REPOSITION.
   else {
     std::cout << "Decided to reposition"<<std::endl;
+
+    // Save the current reposition target so it is considered for the next control loop.
+    reposition_target_ = best_additional_sample;
 
     // Pick the current end effector location for defining the repositioning curve.
     //TO DO : Figure out the best location to do this ee state update.
@@ -753,6 +779,41 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
   // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
   test_q[0] = x_samplec + sampling_radius * cos(i*theta);
   test_q[1] = y_samplec + sampling_radius * sin(i*theta);
+  test_q[2] = sampling_height;
+  test_v.head(3) << VectorXd::Zero(3);
+  
+  // Store and return the candidate state.
+  Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
+  candidate_state << test_q.head(3), q.tail(7), test_v;
+
+  return candidate_state;
+}
+
+Eigen::VectorXd generate_random_sample_location_on_circle(
+    const int& candidate_state_size,
+    const Eigen::VectorXd& q,
+    const Eigen::VectorXd& v,
+    const double& sampling_radius,
+    const double& sampling_height){
+
+  // Start with the current state.  The end effector location and velocity of this state will be changed.
+  VectorXd test_q = q;
+  VectorXd test_v = v;
+
+  // Center the sampling circle on the current ball location.
+  Vector3d ball_xyz = q.tail(3);
+  double x_samplec = ball_xyz[0];
+  double y_samplec = ball_xyz[1];
+
+  // Generate a random theta in the range [0, 2π].
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(0, 2 * PI);
+  double theta = dis(gen);
+
+  // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
+  test_q[0] = x_samplec + sampling_radius * cos(theta);
+  test_q[1] = y_samplec + sampling_radius * sin(theta);
   test_q[2] = sampling_height;
   test_v.head(3) << VectorXd::Zero(3);
   

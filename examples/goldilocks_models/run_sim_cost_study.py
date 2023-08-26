@@ -2413,4 +2413,5 @@ if __name__ == "__main__":
     print("It's possible that we need to adjust `second_task_value` to get a non-zero area slice. Look at the 4D plot to decide the task value for slicing")
 
 
-  plt.show()
+  if args.eval_task_space == -1:
+    plt.show()

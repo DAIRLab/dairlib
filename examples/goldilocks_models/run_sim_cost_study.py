@@ -1860,6 +1860,17 @@ simulation_initialization_modes[2] = "From FOM trajopt without embedding (could 
 # TODO (yuming): Generalize this to select any pair of task. Reference: https://github.com/DAIRLab/dairlib/commit/f61df0c583e0b67e00483477b01b1062e38375c7
 
 if __name__ == "__main__":
+  ### argument parser (for convenience)
+  parser = argparse.ArgumentParser()
+  # `eval_task_space` is a high level flag for convenince.
+  #   - default to -1 which doesn't do anything
+  #   - 1: slice stride length + turning rate
+  #   - 2: slice stride length + ground incline
+  parser.add_argument("--eval_task_space", help="", default=-1, type=int)
+  args = parser.parse_args()
+  assert (args.eval_task_space == -1) or (args.eval_task_space == 1) or (args.eval_task_space == 2)
+
+
   # Read the controller parameters
   a_yaml_file = open(
     "examples/goldilocks_models/rom_walking_gains.yaml")
@@ -1891,6 +1902,11 @@ if __name__ == "__main__":
   # eval_dir = "/home/yuming/Desktop/has_scp_or_uploaded/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/7_repeat_4_but_with_very_strong_gains/5_steps_steady_states/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/has_scp_or_uploaded/1215/20221209_sim_eval_with_hybrid_mpc_with_rom27_CoP_cosntraint/5_repeat_3_but_spring_model/5_steps_steady_state/sim_cost_eval/"
   # eval_dir = "/home/yuming/Desktop/temp/sim_cost_eval/"
+  if args.eval_task_space == 1:
+    eval_dir = "../dairlib_data/goldilocks_models/sl_vs_tr/sim_cost_eval/"
+  elif args.eval_task_space == 2:
+    eval_dir = "../dairlib_data/goldilocks_models/sl_vs_gi/sim_cost_eval/"
+
 
   ### global parameters
   eval_for_RL = False
@@ -1908,10 +1924,13 @@ if __name__ == "__main__":
   use_single_cost_function_for_all_tasks = False
   hybrid_mpc = parsed_yaml_file.get('use_hybrid_rom_mpc')
   simulation_initialization_mode = 2
+  if args.eval_task_space == 2: # High level convenient set up
+    simulation_initialization_mode = 0
   # Testing
   solve_init_state_again_for_turning_rate = False
   if solve_init_state_again_for_turning_rate:
     assert simulation_initialization_mode != 0
+  
 
   # ROM Planner parameters (moved here since they are modified often)
   use_ipopt = True if hybrid_mpc else False
@@ -1995,6 +2014,14 @@ if __name__ == "__main__":
   tasks.AddTaskDim([0.0], "ground_incline")
   tasks.AddTaskDim([-1.0], "duration")  # assign later; this shouldn't be a task for sim evaluation
   tasks.AddTaskDim([0.03], "swing_margin")  # This is not being used.
+
+  if args.eval_task_space == 1:
+    tasks.AddTaskDim(np.linspace(-1.8, 1.8, n_task_tr), "turning_rate", True)
+    tasks.AddTaskDim([0.0], "ground_incline", True)
+  elif args.eval_task_space == 2:
+    tasks.AddTaskDim([0.0], "turning_rate", True)
+    tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_gi), "ground_incline", True)
+
 
   # log indices
   log_idx_offset = 0  # 0

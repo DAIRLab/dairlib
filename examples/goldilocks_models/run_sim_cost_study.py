@@ -1868,6 +1868,9 @@ if __name__ == "__main__":
   #   - 1: slice stride length + turning rate
   #   - 2: slice stride length + ground incline
   parser.add_argument("--eval_task_space", help="", default=-1, type=int)
+  parser.add_argument('--turn_off_warning_interuption', action='store_true')
+  parser.add_argument('--no-turn_off_warning_interuption', dest='turn_off_warning_interuption', action='store_false')
+  parser.set_defaults(turn_off_warning_interuption=False)
   args = parser.parse_args()
   assert (args.eval_task_space == -1) or (args.eval_task_space == 1) or (args.eval_task_space == 2)
 
@@ -2312,7 +2315,8 @@ if __name__ == "__main__":
         'double_support_duration'), duration):
     # raise ValueError("Reminder: you are setting a different duration in sim than in trajopt")
     print("Warning: duration in sim is different from in trajopt")
-    input("type anything to confirm and continue")
+    if not args.turn_off_warning_interuption:
+      input("type anything to confirm and continue")
   if eval_for_RL:
     assert model_dir == "../dairlib_data/goldilocks_models/planning/robot_1/testing_rl_20220422_rom30_bigger_footspread/robot_1/"
   if len(tasks.GetVaryingTaskElementName()) > 2:

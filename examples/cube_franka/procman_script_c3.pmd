@@ -90,11 +90,11 @@ group "7.[SIM] C3" {
 
 group "8.Logging, Utils" {
     cmd "a.start_logging" {
-        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/start_logging";
+        exec = "bazel-bin/examples/cube_franka/scripts/start_logging";
         host = "localhost";
     }
     cmd "b.start_filming" {
-        exec = "python examples/franka_trajectory_following_cube/scripts/start_filming.py";
+        exec = "python examples/cube_franka/scripts/start_filming.py";
         host = "localhost";
     }
     cmd "c.process_logs" {
@@ -102,11 +102,11 @@ group "8.Logging, Utils" {
         host = "localhost";
     }
     cmd "d.process_frames" {
-        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/process_frames";
+        exec = "bazel-bin/examples/cube_franka/scripts/process_frames";
         host = "localhost";
     }
     cmd "e.update_urdf" {
-        exec = "bazel-bin/examples/franka_trajectory_following_cube/scripts/update_urdfs";
+        exec = "bazel-bin/examples/cube_franka/scripts/update_urdfs";
         host = "localhost";
     }
 }

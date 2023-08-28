@@ -2,11 +2,12 @@ import os
 import glob
 from datetime import date
 
-default_log_root = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
+# default_log_root = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
+DEFAULT_LOG_ROOT = "/home/sharanya/Desktop/logs"
 #default_log_root = "/hdd_storage/c3-experiments/logs".format(os.getenv('HOME'))
 
 
-def create_new_log(log_root=default_log_root):
+def create_new_log(log_root=DEFAULT_LOG_ROOT):
   ''' change this to change log location '''
   curr_date = date.today().strftime("%m_%d_%y")
   year = date.today().strftime("%Y")
@@ -30,7 +31,7 @@ def create_new_log(log_root=default_log_root):
 
   return logdir, log_num
 
-def get_most_recent_logs(log_root=default_log_root):
+def get_most_recent_logs(log_root=DEFAULT_LOG_ROOT):
   ''' change this to change log location '''
 
   curr_date = date.today().strftime("%m_%d_%y")
@@ -38,10 +39,10 @@ def get_most_recent_logs(log_root=default_log_root):
   #logdir = "{}/{}/{}".format(log_root, year, curr_date)
 
 
-  logdir = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
+  logdir = DEFAULT_LOG_ROOT
 
   #SQUARE
-  log_num = "{:02}".format(7)
+  # log_num = "{:02}".format(7)
 
   #LINE
   #log_num = "{:02}".format(8)

@@ -541,10 +541,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
 
-      std::cout<<"Sample "<<i<<" C3 cost: "<<c3_cost<<std::endl;
+      // std::cout<<"Sample "<<i<<" C3 cost: "<<c3_cost<<std::endl;
     }
   //End of parallelization
-  std::cout<<""<<std::endl;
+  // std::cout<<""<<std::endl;
 
   // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
   std::vector<double> additional_sample_cost_vector = std::vector<double>(cost_vector.begin() + 1, cost_vector.end());
@@ -557,7 +557,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // Inspect the current and best other sample C3 costs.
   double curr_ee_cost = cost_vector[CURRENT_LOCATION_INDEX];
-  std::cout<<"Current EE location cost: "<<curr_ee_cost<<", best other sample cost: "<<best_additional_sample_cost<<std::endl;
+  // std::cout<<"Current EE location cost: "<<curr_ee_cost<<", best other sample cost: "<<best_additional_sample_cost<<std::endl;
 
 
   // Update whether we should keep doing C3 or reposition based on costs of samples.
@@ -594,7 +594,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Get the control input from the previously solved full solution from current state.
     VectorXd input = fullsol_current_location[0].segment(n + m, k);
-    std::cout<<"Using C3 "<<std::endl;
+    // std::cout<<"Using C3 "<<std::endl;
   
     // Calculate state and force using LCS from current location.
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
@@ -640,7 +640,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       state_next(11) = clamped_velocity(1);
       state_next(12) = clamped_velocity(2);
 
-      std::cout << "velocity limit(c3)" << std::endl;
+      // std::cout << "velocity limit(c3)" << std::endl;
     }
 
     // TODO:  double check that this makes sense to keep at zeros or if it should go back to the end effector forces.
@@ -658,7 +658,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   // REPOSITION.
   else {
-    std::cout << "Decided to reposition"<<std::endl;
+    // std::cout << "Decided to reposition"<<std::endl;
 
     // Save the current reposition target so it is considered for the next control loop.
     reposition_target_ = best_additional_sample;

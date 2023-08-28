@@ -491,11 +491,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Omp parallelization settings.
   if (param_.num_sample_threads > 0) {
     omp_set_dynamic(0);                                 // Explicitly disable dynamic teams.
-    omp_set_num_threads(param_.num_sample_threads);     // Set number of threads.
+    omp_set_num_threads(12); //param_.num_sample_threads);     // Set number of threads.
+    omp_set_nested(1);
   }
 
   // Parallelize over computing C3 costs for each sample.
-  #pragma omp parallel for
+  #pragma omp parallel for num_threads(12)
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
       // Get the candidate state and its LCS representation.

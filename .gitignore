@@ -15,3 +15,5 @@ examples/trifinger/env/
 examples/franka_trajectory_following/diagram_*.ps
 log.txt
 *.ps
+*.out
+lcmlog*

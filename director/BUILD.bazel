@@ -8,6 +8,7 @@ py_binary(
     deps = [
         "//lcmtypes:lcmtypes_robot_py",
         "@drake//tools:drake_visualizer_py",
+        "@drake//tools:meldis",
         "@pydrake_pegged",
     ],
 )

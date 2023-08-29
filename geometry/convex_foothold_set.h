@@ -36,9 +36,6 @@ class ConvexFootholdSet {
  private:
   std::vector<ConvexFoothold> set_;
 };
-
-
-
 }
 }
 

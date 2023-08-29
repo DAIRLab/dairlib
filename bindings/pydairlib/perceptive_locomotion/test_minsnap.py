@@ -1,3 +1,8 @@
+"""
+    Sandbox for testing different ways of creating minimum snap
+    trajectories with the abilityu to plot the trajectories inm time and space
+"""
+
 import time
 import numpy as np
 import matplotlib.pyplot as plt

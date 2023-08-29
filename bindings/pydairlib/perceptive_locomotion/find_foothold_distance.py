@@ -1,3 +1,7 @@
+"""
+    Test script to validate a QP for finding the distance to a confex foothold
+"""
+
 import numpy as np
 
 from pydairlib.geometry import ConvexFoothold

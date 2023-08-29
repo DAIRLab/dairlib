@@ -18,8 +18,14 @@ py_binary(
 )
 
 py_library(
-    name = "osc_debug_py",
+    name = "osc_debug",
     srcs = ["osc_debug.py"],
+    deps = [],
+)
+
+py_library(
+    name = "video_tools",
+    srcs = ["video_tools.py"],
     deps = [],
 )
 
@@ -42,7 +48,7 @@ py_library(
     srcs = ["mbp_plotting_utils.py"],
     data = ["@lcm//:lcm-python"],
     deps = [
-        ":osc_debug_py",
+        "//bindings/pydairlib/analysis:osc_debug",
         "//bindings/pydairlib/common:plot_styler",
         "//bindings/pydairlib/common:plotting_utils",
         "//bindings/pydairlib/lcm",
@@ -82,6 +88,12 @@ py_library(
 )
 
 py_binary(
+    name = "log_browser",
+    srcs = ["log_browser.py"],
+    deps = ["@lcm//:lcm-python"],
+)
+
+py_binary(
     name = "parse_log_to_learning_data",
     srcs = ["parse_log_to_learning_data.py"],
     data = [
@@ -108,6 +120,8 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
+        ":mbp_plotting_utils",
+        ":cassie_plotting_utils",
         ":cassie_plot_config",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
@@ -149,6 +163,9 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
+        ":video_tools",
+        ":cassie_plotting_utils",
+        ":process_lcm_log",
         ":mpc_plotting_utils",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
@@ -159,4 +176,38 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_archive_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
+)
+
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":osc_debug",
+    ":video_tools",
+    ":mbp_plotting_utils",
+    ":cassie_plotting_utils",
+    ":process_lcm_log",
+    ":mpc_plot_config",
+    ":mpc_plotting_utils",
+    ":cassie_plot_config"
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "analysis",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
 )

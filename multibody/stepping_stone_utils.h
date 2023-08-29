@@ -5,6 +5,7 @@
 
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/geometry/meshcat.h"
 
 using dairlib::geometry::ConvexFoothold;
 using drake::math::RigidTransformd;
@@ -73,6 +74,9 @@ void AddSteppingStonesToSim(drake::multibody::MultibodyPlant<double>* plant,
                             drake::geometry::SceneGraph<double>* scene_graph,
                             SquareSteppingStoneList stones,
                             double mu);
+
+void AddSteppingStonesToMeshcatFromYaml(std::shared_ptr<drake::geometry::Meshcat> meshcat,
+                                        const std::string& filename);
 
 void AddSteppingStonesToSimFromYaml(
     drake::multibody::MultibodyPlant<double>* plant,

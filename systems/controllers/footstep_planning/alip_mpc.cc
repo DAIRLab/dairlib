@@ -122,7 +122,7 @@ void AlipMPC::AddTrackingCost(const vector<Eigen::VectorXd> &xd,
   }
   xd_ = xd;
   Q_ = Q;
-  Qf_ = alip_utils::SolveDareTwoStep(
+  Qf_ = 0.5 * alip_utils::SolveDareTwoStep(
       Q, H_, m_, td_.back(), Tds_, nknots_, reset_discretization_);
   MakeTerminalCost();
 }
@@ -184,9 +184,15 @@ void AlipMPC::AddInputCost(double R) {
 }
 
 void AlipMPC::MakeTerminalCost(){
+  Matrix<double, 8, 8> Qf = Matrix<double, 8, 8>::Zero();
+  Qf.topLeftCorner<4,4>() = 0.5 * Qf_;
+  Qf.bottomRightCorner<4,4>() = Qf_;
+  Vector<double, 8> xd = Vector<double, 8>::Zero();
+  xd.head<4>() = xd_.at(nmodes_ - 2).tail<4>();
+  xd.tail<4>() = xd_.back().tail<4>();
   terminal_cost_ = prog_->AddQuadraticCost(
-      2 * Qf_, -2 * Qf_ * xd_.back().tail<4>(),
-      xx_.back().tail<4>()).evaluator();
+      2 * Qf, -2 * Qf * xd,
+      {xx_.at(nmodes_ - 2).tail<4>(), xx_.back().tail<4>()}).evaluator();
 }
 
 void AlipMPC::MakeCapturePointConstraint(int foothold_idx) {
@@ -248,10 +254,10 @@ void AlipMPC::MakeDynamicsConstraints() {
 
 double AlipMPC::GetTerminalCost() const {
   VectorXd res = VectorXd::Zero(1);
-  terminal_cost_->Eval(
-      solution_.first.GetSolution(xx_.back().tail<4>()),
-      &res
-  );
+  Vector<double, 8> x = Vector<double, 8>::Zero();
+  x.head<4>() = solution_.first.GetSolution(xx_.at(nmodes_ - 2).tail<4>());
+  x.tail<4>() = solution_.first.GetSolution(xx_.back().tail<4>());
+  terminal_cost_->Eval(x,&res);
   return res(0);
 }
 
@@ -411,8 +417,14 @@ void AlipMPC::UpdateTrackingCost(const vector<VectorXd>& xd) {
                               -2.0*Q_ * GetStateAtKnot(xd.at(n+1), k));
     }
   }
-  terminal_cost_->UpdateCoefficients(2.0 * Qf_,
-                                     -2.0 * Qf_ * xd.back().tail<4>());
+  Matrix<double, 8, 8> Qf = Matrix<double, 8, 8>::Zero();
+  Qf.topLeftCorner<4,4>() = 0.5 * Qf_;
+  Qf.bottomRightCorner<4,4>() = Qf_;
+  Vector<double, 8> x = Vector<double, 8>::Zero();
+  x.head<4>() = xd.at(nmodes_ - 2).tail<4>();
+  x.tail<4>() = xd.back().tail<4>();
+  terminal_cost_->UpdateCoefficients(2.0 * Qf,
+                                     -2.0 * Qf * x);
   xd_ = xd;
 }
 

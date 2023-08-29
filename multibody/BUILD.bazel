@@ -96,6 +96,7 @@ cc_library(
         "multipose_visualizer.h",
     ],
     deps = [
+        ":utils",
         "@drake//:drake_shared_library",
     ],
 )

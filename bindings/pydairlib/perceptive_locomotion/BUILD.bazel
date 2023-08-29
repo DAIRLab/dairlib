@@ -12,6 +12,16 @@ load(
 )
 
 py_binary(
+    name = "make_alip_miqp_simulation_figures",
+    srcs = ["make_alip_miqp_simulation_figures.py"],
+    deps = [":visualize_lcm_log"],
+    data = [
+        "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python"
+    ]
+)
+
+py_binary(
     name = "test_minsnap",
     srcs = ["test_minsnap.py"],
     deps = [
@@ -38,6 +48,24 @@ py_binary(
         ":perceptive_locomotion",
         "//bindings/pydairlib/common:plot_styler",
         "//bindings/pydairlib/geometry:convex_foothold_py",
+    ],
+)
+
+py_binary(
+    name = "visualize_lcm_log",
+    srcs = ["visualize_lcm_log.py"],
+    data = [
+            "//examples/Cassie:cassie_urdf",
+            "@lcm//:lcm-python",
+    ],
+    deps = [
+        "//bindings/pydairlib/analysis:process_lcm_log",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//lcmtypes:lcmtypes_robot_py",
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/cassie:cassie_utils_py",
     ],
 )
 

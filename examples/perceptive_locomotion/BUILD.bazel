@@ -70,6 +70,7 @@ cc_binary(
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/perceptive_locomotion/gains:alip_minlp_gains",
         "//geometry:convex_foothold",
+        "//geometry:convex_foothold_lcm_systems",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -83,7 +84,6 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//geometry:convex_foothold_lcm_systems",
                 "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],

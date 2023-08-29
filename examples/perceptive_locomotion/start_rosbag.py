@@ -51,7 +51,7 @@ def rosbagger_main(topics_filename):
     current_logs = sorted(glob.glob('lcmlog-mpc-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
-        log_num = f'{last_log+1:02}'
+        log_num = f'{last_log:02}'
     else:
         log_num = '00'
 

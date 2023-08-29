@@ -61,8 +61,7 @@ int do_main(int argc, char* argv[]) {
 
   Parser parser(&plant, &scene_graph);
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  // parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
 

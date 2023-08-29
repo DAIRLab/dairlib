@@ -56,7 +56,7 @@ int DoMain(int argc, char* argv[]){
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/cube_franka/parameters.yaml");
 
-  // load urdf and sphere
+  // load urdf and jack
   DiagramBuilder<double> builder;
   double sim_dt = param.sim_dt;
   double output_dt = param.sim_publish_dt;
@@ -64,7 +64,7 @@ int DoMain(int argc, char* argv[]){
 
   Parser parser(&plant);
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);

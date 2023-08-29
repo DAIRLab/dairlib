@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot name="sphere">
+<robot name="jack">
     <link name="capsule_1">
         <contact>
             <rolling_friction value="0.5"/>
@@ -13,7 +13,7 @@
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.025"/> 
             </geometry>
         </collision>
         <drake:proximity_properties>
@@ -30,7 +30,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.025"/> 
             </geometry>
             <material>
                 <color rgba="1 0 0 1"/> <!-- Red color for visualization -->
@@ -62,13 +62,13 @@
         <collision>
             <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.025"/> 
             </geometry>
         </collision>
         <visual>
             <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.025"/> 
             </geometry>
             <material>
                 <color rgba="0 1 0 1"/> <!-- green color for visualization -->
@@ -101,13 +101,13 @@
         <collision>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.025"/> 
             </geometry>
         </collision>
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
-                <capsule length="0.125" radius="0.015"/> 
+                <capsule length="0.125" radius="0.025"/> 
             </geometry>
             <material>
                 <color rgba="0 0 1 1"/> <!-- Blue color -->

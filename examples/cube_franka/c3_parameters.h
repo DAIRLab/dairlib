@@ -97,6 +97,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(sample_height));
+    a->Visit(DRAKE_NVP(min_angle_from_vertical));
+    a->Visit(DRAKE_NVP(max_angle_from_vertical));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(spline_width));
@@ -178,9 +180,11 @@ struct C3Parameters {
   bool force_skip_sampling;
   int sampling_strategy;
   double sampling_radius;
+  double sample_height;
+  double min_angle_from_vertical;
+  double max_angle_from_vertical;
   int num_additional_samples_repos;
   int num_additional_samples_c3;
-  double sample_height;
   double spline_width;
 
   //switching parameters

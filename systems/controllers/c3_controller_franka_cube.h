@@ -157,7 +157,8 @@ class C3Controller_franka : public LeafSystem<double> {
                      SAMPLE_INDEX_7, SAMPLE_INDEX_8, SAMPLE_INDEX_9,
                      SAMPLE_INDEX_10, SAMPLE_INDEX_11, SAMPLE_INDEX_12 };
   enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
-                          RANDOM_ON_CIRCLE_SAMPLING };
+                          RANDOM_ON_CIRCLE_SAMPLING,
+                          RANDOM_ON_SPHERE_SAMPLING };
 
   // kalman filter
   // mutable VectorXd xhat_prev;

@@ -77,15 +77,21 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 
 
 #Sampling parameters
-force_skip_sampling: false   # flag to skip doing sampling and just run C3 on its own.
-sampling_strategy: 1
-sampling_radius: 0.12   #Size of sampling circle
-sample_height: 0.04
+force_skip_sampling: false    # flag to skip doing sampling and just run C3 on its own.
+sampling_strategy: 2          # Select sampling strategy. 
+                              # 0 means radially symmetric sampling on a circle. 
+                              # 1 means random sampling on a 2D circle. 
+                              # 2 means random sampling on a 3D sphere.
+sampling_radius: 0.12         # size of sampling circle; used for both circle perimeter (0, 1) and spherical surface sampling (2).
+sample_height: 0.04           # height of sampling circle; used for circle perimeter (0, 1).
+min_angle_from_vertical: 0.785    # radians minimum angle from vertical (i.e. closest to top of sphere) used for spherical surface sampling (2).
+max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
 num_additional_samples_repos: 3   # number of additional samples to consider when doing repositioning.
 num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
 spline_width: 0.12   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.5     # desired meters/second of repositioning
+
 
 #Threading parameters
 num_threads: 0     # Total number of threads to use. 0 means use all threads on machine.

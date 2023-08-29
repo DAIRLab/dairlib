@@ -56,12 +56,20 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
     const double& sampling_radius,
     const double& sampling_height);
 
-    Eigen::VectorXd generate_random_sample_location_on_circle(
+Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& candidate_state_size,
     const Eigen::VectorXd& q,
     const Eigen::VectorXd& v,
     const double& sampling_radius,
     const double& sampling_height);
+
+Eigen::VectorXd generate_random_sample_location_on_sphere(
+    const int& candidate_state_size,
+    const Eigen::VectorXd& q,
+    const Eigen::VectorXd& v,
+    const double& sampling_radius,
+    const double& min_angle_from_vertical,
+    const double& max_angle_from_vertical);
 
 namespace dairlib {
 namespace systems {
@@ -450,7 +458,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       candidate_state = reposition_target_;   // Include the current reposition target if we are currently repositioning.
     }
     else {
-      //Generate samples based on choice of sampling strategy
+      // Generate additional samples based on choice of sampling strategy.
       if (param_.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
       candidate_state = generate_radially_symmetric_sample_location(
         num_samples, i, candidate_state_size, q, v, param_.sampling_radius, param_.sample_height);
@@ -458,6 +466,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       else if(param_.sampling_strategy == RANDOM_ON_CIRCLE_SAMPLING){
         candidate_state = generate_random_sample_location_on_circle(candidate_state_size, q, v, 
         param_.sampling_radius, param_.sample_height);
+      }
+      else if(param_.sampling_strategy == RANDOM_ON_SPHERE_SAMPLING){
+        candidate_state = generate_random_sample_location_on_sphere(candidate_state_size, q, v, 
+        param_.sampling_radius, param_.min_angle_from_vertical, param_.max_angle_from_vertical);
       }
     }
 
@@ -801,6 +813,7 @@ std::vector<Eigen::Vector3d> move_to_initial_position(
   }
 }
 
+// Sampling strategy 0:  Equally spaced on perimeter of circle of fixed radius and height.
 Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& num_samples,
     const int& i,
@@ -833,6 +846,7 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
   return candidate_state;
 }
 
+// Sampling strategy 1:  Random on perimeter of circle of fixed radius and height.
 Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& candidate_state_size,
     const Eigen::VectorXd& q,
@@ -859,6 +873,51 @@ Eigen::VectorXd generate_random_sample_location_on_circle(
   test_q[0] = x_samplec + sampling_radius * cos(theta);
   test_q[1] = y_samplec + sampling_radius * sin(theta);
   test_q[2] = sampling_height;
+  test_v.head(3) << VectorXd::Zero(3);
+  
+  // Store and return the candidate state.
+  Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
+  candidate_state << test_q.head(3), q.tail(7), test_v;
+
+  return candidate_state;
+}
+
+// Sampling strategy 2:  Random on surface of sphere of fixed radius, constrained to band defined by elevation angles.
+Eigen::VectorXd generate_random_sample_location_on_sphere(
+    const int& candidate_state_size,
+    const Eigen::VectorXd& q,
+    const Eigen::VectorXd& v,
+    const double& sampling_radius,
+    const double& min_angle_from_vertical,
+    const double& max_angle_from_vertical){
+
+  // Start with the current state.  The end effector location and velocity of this state will be changed.
+  VectorXd test_q = q;
+  VectorXd test_v = v;
+
+  // Center the sampling circle on the current ball location.
+  Vector3d ball_xyz = q.tail(3);
+  double x_samplec = ball_xyz[0];
+  double y_samplec = ball_xyz[1];
+  double z_samplec = ball_xyz[2];
+
+  // Generate a random theta in the range [0, 2π].  This angle corresponds to angle about vertical axis.
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(0, 2 * PI);
+  double theta = dis(gen);
+
+  // Generate a random elevation angle in provided range.  This angle corresponds to elevation angle from vertical.
+  std::random_device rd_height;
+  std::mt19937 gen_height(rd_height());
+  std::uniform_real_distribution<> dis_height(min_angle_from_vertical, max_angle_from_vertical);
+  double elevation_theta = dis_height(gen_height);
+
+  // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
+  test_q[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
+  test_q[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
+  test_q[2] = z_samplec + sampling_radius * cos(elevation_theta);
+  
   test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.

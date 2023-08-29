@@ -109,8 +109,9 @@
                                 },
                  "type_data": {"color":[0, 0, 0],
                                "alpha": 0.5,
-                               "type": "point",
-                               "radius": 0.005
+                               "type": "line",
+                               "thickness": 0.003,
+                               "history": -1
                              }
                 },
 

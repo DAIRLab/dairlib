@@ -77,7 +77,7 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 
 
 #Sampling parameters
-sampling_strategy: 1
+sampling_strategy: 0
 sampling_radius: 0.12   #Size of sampling circle
 sample_height: 0.04
 num_additional_samples: 3

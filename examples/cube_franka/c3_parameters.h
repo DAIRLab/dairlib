@@ -102,7 +102,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(reposition_fixed_cost));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(travel_speed));
-    a->Visit(DRAKE_NVP(num_sample_threads));
+    a->Visit(DRAKE_NVP(num_threads));
     
   }
 
@@ -184,7 +184,7 @@ struct C3Parameters {
   double reposition_fixed_cost;
   double travel_cost_per_meter;
   double travel_speed;
-  int num_sample_threads;
+  int num_threads;
 
   // misc
   double contact_threshold;

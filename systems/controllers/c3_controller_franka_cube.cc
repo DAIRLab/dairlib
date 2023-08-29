@@ -489,14 +489,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   vector<VectorXd> fullsol_current_location;            // Current location C3 solution.
 
   // Omp parallelization settings.
-  if (param_.num_sample_threads > 0) {
-    omp_set_dynamic(0);                                 // Explicitly disable dynamic teams.
-    omp_set_num_threads(12); //param_.num_sample_threads);     // Set number of threads.
-    omp_set_nested(1);
+  // NOTE:  Need to disable using the parameter num_threads in c3_options.h for the inner C3 parallelization by setting the
+  // c3_options.h parameter overwrite_threading_settings to false.  Probably fine if left at true, though this could limit the number
+  // of threads used on a machine with a lot of threads.
+  omp_set_dynamic(0);           // Explicitly disable dynamic teams.
+  omp_set_nested(1);            // Enable nested threading.
+  int n_threads_to_use;
+  if (param_.num_threads == 0) {
+    n_threads_to_use = omp_get_max_threads();   // Interpret setting number of threads to zero as a request to use all machine's threads.
   }
+  else {
+    n_threads_to_use = param_.num_threads;
+  }
+  omp_set_num_threads(n_threads_to_use);
 
   // Parallelize over computing C3 costs for each sample.
-  #pragma omp parallel for num_threads(12)
+  #pragma omp parallel for num_threads(n_threads_to_use)
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
       // Get the candidate state and its LCS representation.

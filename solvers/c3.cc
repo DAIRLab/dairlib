@@ -453,10 +453,12 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
   int i;
 
 
-
-  if (options_.num_threads > 0) {
-    omp_set_dynamic(0);  // Explicitly disable dynamic teams
-    omp_set_num_threads(options_.num_threads);  // Set number of threads
+  // If doing sampling, omp configuration happens elsewhere so don't overwrite it here.
+  if (options_.overwrite_threading_settings == true){
+    if (options_.num_threads > 0) {
+      omp_set_dynamic(0);                         // Explicitly disable dynamic teams.
+      omp_set_num_threads(options_.num_threads);  // Set number of threads.
+    }
   }
 
 #pragma omp parallel for

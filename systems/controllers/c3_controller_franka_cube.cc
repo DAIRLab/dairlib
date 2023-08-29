@@ -722,18 +722,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     points[2] = ball_xyz + (param_.spline_width) * ball_to_way_point2_vector/ball_to_way_point2_vector.norm();
 
     // Choose next end effector location based on fixed speed traversal of computed curve.
-    double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();
+    // double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();  // curve length overestimate
+    double len_of_curve = (points[3] - points[0]).norm();                                                                 // curve length underestimate
     double desired_travel_len = param_.travel_speed * control_loop_dt;
     double curve_fraction = desired_travel_len/len_of_curve;
+
     // Clamp the curve fraction to 1.
-    if(curve_fraction>1){
+    if(curve_fraction > 1){
       curve_fraction = 1;
     }
 
     // If desired travel step is larger than straight-line distance to target, avoid the spline and go straight to target.
     Eigen::Vector3d next_point;
     double dist_from_curr_to_destination = (points[3]-points[0]).norm();
-    if (desired_travel_len >= dist_from_curr_to_destination){
+    if (desired_travel_len >= dist_from_curr_to_destination) {
       next_point = points[3];
     }
     else {

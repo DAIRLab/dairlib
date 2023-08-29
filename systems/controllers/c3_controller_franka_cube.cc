@@ -426,7 +426,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Build a vector of candidate state vectors, starting with current state and sampling some other end effector locations.
   // Determine number of samples to use based on current mode:  C3 or repositioning.
   int num_samples;
-  if (C3_flag_ == true) {
+  if (param_.force_skip_sampling == true) {
+    num_samples = 1;
+  }
+  else if (C3_flag_ == true) {
     num_samples = param_.num_additional_samples_c3 + 1;
   }
   else {
@@ -568,14 +571,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //End of parallelization
   // std::cout<<""<<std::endl;
 
-  // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
-  std::vector<double> additional_sample_cost_vector = std::vector<double>(cost_vector.begin() + 1, cost_vector.end());
-  double best_additional_sample_cost = *std::min_element(additional_sample_cost_vector.begin(),
-                                                         additional_sample_cost_vector.end());
-  std::vector<double>::iterator it = std::min_element(std::begin(additional_sample_cost_vector),
-                                                      std::end(additional_sample_cost_vector));
-  SampleIndex index = (SampleIndex)(std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+  // Determine whether to switch between C3 and repositioning modes if there are other samples to consider.
+  SampleIndex index = CURRENT_LOCATION_INDEX;
+  if (num_samples > 1) {
+    // Find best additional sample index based on lowest cost (this is the best sample cost, excluding the current location).
+    std::vector<double> additional_sample_cost_vector = std::vector<double>(cost_vector.begin() + 1, cost_vector.end());
+    double best_additional_sample_cost = *std::min_element(additional_sample_cost_vector.begin(),
+                                                           additional_sample_cost_vector.end());
+    std::vector<double>::iterator it = std::min_element(std::begin(additional_sample_cost_vector),
+                                                        std::end(additional_sample_cost_vector));
+    index = (SampleIndex)(std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+  }
+
   VectorXd best_additional_sample = candidate_states[index];
+  double best_additional_sample_cost = cost_vector[index];
 
   // Inspect the current and best other sample C3 costs.
   double curr_ee_cost = cost_vector[CURRENT_LOCATION_INDEX];

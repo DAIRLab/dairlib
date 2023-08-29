@@ -93,6 +93,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(alpha_v));
 
     // sampling params
+    a->Visit(DRAKE_NVP(force_skip_sampling));
     a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(sample_height));
@@ -174,6 +175,7 @@ struct C3Parameters {
   double model_table_offset;
 
   //sampling parameters
+  bool force_skip_sampling;
   int sampling_strategy;
   double sampling_radius;
   int num_additional_samples_repos;

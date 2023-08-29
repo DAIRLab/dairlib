@@ -424,7 +424,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // Save candidate sample states and their associated LCS representations.
   // Build a vector of candidate state vectors, starting with current state and sampling some other end effector locations.
-  int num_samples = param_.num_additional_samples + 1;
+  // Determine number of samples to use based on current mode:  C3 or repositioning.
+  int num_samples;
+  if (C3_flag_ == true) {
+    num_samples = param_.num_additional_samples_c3 + 1;
+  }
+  else {
+    num_samples = param_.num_additional_samples_repos + 1;
+  }
   int candidate_state_size = plant_.num_positions() + plant_.num_velocities();
   // NOTE:  These vectors are initialized as empty since assigning a particular index in a vector of LCS objects is not allowed.
   // Items are appended to the vectors in the below for loop.  Be careful about possible memory issues as a result.
@@ -482,6 +489,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Store the candidate states and LCS objects.
     candidate_states.push_back(candidate_state);
     candidate_lcs_objects.push_back(test_lcs);
+  }
+
+  // For visualization only, we need there to be at least 4 items in the candidate_states vector.  Add vectors of zeros to fill
+  // any remaining gap.
+  while (candidate_states.size() < 4) {
+    candidate_states.push_back(VectorXd::Zero(candidate_state_size));
   }
 
   // Instantiate variables before loop; they get assigned values inside loop.

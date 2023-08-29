@@ -80,7 +80,8 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 sampling_strategy: 1
 sampling_radius: 0.12   #Size of sampling circle
 sample_height: 0.04
-num_additional_samples: 3
+num_additional_samples_repos: 3   # number of additional samples to consider when doing repositioning.
+num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
 spline_width: 0.12   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.5     # desired meters/second of repositioning

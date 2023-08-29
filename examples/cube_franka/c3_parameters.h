@@ -96,7 +96,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(sample_height));
-    a->Visit(DRAKE_NVP(num_additional_samples));
+    a->Visit(DRAKE_NVP(num_additional_samples_repos));
+    a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(switching_hysteresis));
     a->Visit(DRAKE_NVP(reposition_fixed_cost));
@@ -175,7 +176,8 @@ struct C3Parameters {
   //sampling parameters
   int sampling_strategy;
   double sampling_radius;
-  int num_additional_samples;
+  int num_additional_samples_repos;
+  int num_additional_samples_c3;
   double sample_height;
   double spline_width;
 

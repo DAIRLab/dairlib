@@ -668,7 +668,7 @@ def EvalCostInMultithread(model_indices, log_indices, task_list):
   print("Finished evaluating. Current time = " + str(datetime.now()))
 
 
-def DeleteMostLogs(model_indices, log_indices):
+def DeleteMostLogs(model_indices, log_indices, no_warning_interuption=False):
   if log_indices[0] != 0:
     raise ValueError("log index should start from 0")
 
@@ -742,7 +742,8 @@ def DeleteMostLogs(model_indices, log_indices):
   for command in file_saving_command_list:
     RunCommand(command)
 
-  input("WARNING: Going to delete lcmlog files! (type anything to continue)")
+  if not no_warning_interuption:
+    input("WARNING: Going to delete lcmlog files! (type anything to continue)")
 
   # Delete the rest of the file
   RunCommand('rm ' + eval_dir + 'lcmlog-idx_*')
@@ -1183,10 +1184,10 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
       print("`WARNING: superimposed_data` is empty. It's possible that the grid is not dense enough.")
       print("Skip plotting landscape comparison because there is no data.")
     else:
-      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, True)
-      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, True)
+      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, True)
+      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, True)
       Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
-      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
+      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
 
 
 big_val = 1000000
@@ -1871,6 +1872,9 @@ if __name__ == "__main__":
   parser.add_argument('--turn_off_warning_interuption', action='store_true')
   parser.add_argument('--no-turn_off_warning_interuption', dest='turn_off_warning_interuption', action='store_false')
   parser.set_defaults(turn_off_warning_interuption=False)
+  parser.add_argument('--delete_log_every_iter', action='store_true')
+  parser.add_argument('--no-delete_log_every_iter', dest='delete_log_every_iter', action='store_false')
+  parser.set_defaults(delete_log_every_iter=False)
   args = parser.parse_args()
   assert (args.eval_task_space == -1) or (args.eval_task_space == 1) or (args.eval_task_space == 2)
 
@@ -2339,14 +2343,27 @@ if __name__ == "__main__":
   print("log_indices = \n" + str(log_indices))
 
   ### Toggle the functions here to run simulation or evaluate cost
-  # Simulation
-  # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+  if args.delete_log_every_iter:
+    for model_idx in model_indices:
+      # Simulation
+      RunSimAndEvalCostInMultithread([model_idx], log_indices, task_list)
 
-  # Cost evaluate only
-  # EvalCostInMultithread(model_indices, log_indices, task_list)
+      # Cost evaluate only
+      EvalCostInMultithread([model_idx], log_indices, task_list)
 
-  # Delete all logs but a few successful ones (for analysis later)
-  # DeleteMostLogs(model_indices, log_indices)
+      # Delete all logs but a few successful ones (for analysis later)
+      DeleteMostLogs([model_idx], log_indices, no_warning_interuption=True)
+
+  else:
+    # Simulation
+    # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
+
+    # Cost evaluate only
+    # EvalCostInMultithread(model_indices, log_indices, task_list)
+
+    # Delete all logs but a few successful ones (for analysis later)
+    # DeleteMostLogs(model_indices, log_indices)
+    pass
 
   ### if the evluation sample size is too big, we can break it down using the code below
   # for model_index in model_indices:

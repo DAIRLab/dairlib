@@ -113,7 +113,6 @@ void MultiposeVisualizer::DrawPoses(MatrixXd poses) {
 
   // Publish diagram
   diagram_->ForcedPublish(*diagram_context_);
-
 }
 
 }  // namespace multibody

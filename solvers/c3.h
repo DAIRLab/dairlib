@@ -46,7 +46,7 @@ class C3 {
                         std::vector<Eigen::VectorXd>& w);
 
   std::vector<Eigen::VectorXd> OptimalInputSeq(const std::vector<Eigen::VectorXd> zfin);
-  double CalcCost(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& U, bool use_full_cost) const;
+  std::pair<double,std::vector<Eigen::VectorXd>>  CalcCost(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& U, bool use_full_cost) const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system

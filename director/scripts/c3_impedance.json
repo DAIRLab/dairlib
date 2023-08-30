@@ -128,6 +128,36 @@
                                "radius": 0.005
                              }
                 },
+
+                {"name": "Current loc predicted jack end",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 59
+                                },
+                 "type_data": {"color":[0, 0, 1],
+                               "alpha": 0.5,
+                               "type": "line",
+                               "thickness": 0.001,
+                               "history": -1
+                             }
+                },
+ 
+                {"name": "Best sample loc predicted jack end",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 62
+                                },
+                 "type_data": {"color":[0, 1, 0],
+                               "alpha": 0.5,
+                               "type": "line",
+                               "thickness": 0.001,
+                               "history": -1
+                             }
+                },
                 
                {"name": "x1",
                 "source_data" : {"category":"lcm",
@@ -142,6 +172,8 @@
                                "radius": 0.006
                              }
                }
+
+              
             ]
 }
   

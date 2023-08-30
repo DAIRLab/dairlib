@@ -637,7 +637,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
       // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
       // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
-      double cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost) + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+      auto cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost).first + 10 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
       cost_vector[i] = cost;
 
       // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
@@ -659,7 +659,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     
     vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
   vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
-  double curr_ee_cost = opt.CalcCost(state, optimalinputseq, param_.use_full_cost); //computes cost for given x0
+  auto curr_ee_cost = opt.CalcCost(state, optimalinputseq, param_.use_full_cost).first; //computes cost for given x0
   // std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
 
     double hyp = 3000;

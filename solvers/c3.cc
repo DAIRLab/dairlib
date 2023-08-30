@@ -236,11 +236,10 @@ vector<VectorXd> C3::OptimalInputSeq(const vector<VectorXd> zfin){
 return UU; 
 }
 
-// Calculate the cost associated with the object position errors only, using the provided control inputs.
-// The provided control inputs are intended to come from the SolveFullSolution method, which minimizes a cost that considers
-// other quantities, e.g. velocity errors, end effector location errors, etc.
-double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU, bool use_full_cost) const{
-  vector<VectorXd> XX(N_+1, VectorXd::Zero(k_)); //locally extracted state sequence
+// Calculate the C3 cost and feasible trajectory associated with applying a provided control input sequence to
+// a system at a provided initial state.
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU, bool use_full_cost) const{
+  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(k_)); //locally extracted state sequence
   XX[0] = x0;
 
   // Get the N step lcs rollout.
@@ -283,7 +282,9 @@ double C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU, bool use_full_cost
   }
   cost = cost + (XX[N_]- xdesired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_]- xdesired_[N_]);
 
-  return cost;
+  // Return the cost and the rolled out state trajectory.
+  std::pair <double, std::vector<VectorXd>> ret (cost, XX);
+  return ret;
 }
 
 

@@ -142,13 +142,13 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (56) includes:
+  State output port (65) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
     xball_dot (6) -- angular and linear velocities of object
     lambda (6) -- end effector/object forces (slack variable, normal force, 4 tangential forces)
-    visualization (20) -- miscellaneous visualization-related debugging values:
+    visualization (36) -- miscellaneous visualization-related debugging values:
       (9) 3 sample xyz locations
       (3) next xyz position of the end effector
       (3) optimal xyz sample location
@@ -157,7 +157,9 @@ C3Controller_franka::C3Controller_franka(
       (1) the state of the C3 flag
       (3) the desired location of the object
       (3) Estimated xyz position of the jack
-      (3) Goal end effector location used by C3 
+      (3) Goal end effector location used by C3
+      (3) predicted jack location at end of current end effector location's C3 plan
+      (3) predicted jack location at end of best sampled end effector location's C3 plan
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -513,8 +515,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   // Instantiate variables before loop; they get assigned values inside loop.
-  std::vector<double> cost_vector(num_samples);         // Vector of costs per sample.
-  vector<VectorXd> fullsol_current_location;            // Current location C3 solution.
+  std::vector<double> cost_vector(num_samples);                         // Vector of costs per sample.
+  std::vector<VectorXd> predicted_states_at_end_horizon(num_samples);   // Vector of predicted last states.
+  vector<VectorXd> fullsol_current_location;                            // Current location C3 solution.
 
   // Omp parallelization settings.
   // NOTE:  Need to disable using the parameter num_threads in c3_options.h for the inner C3 parallelization by setting the
@@ -556,9 +559,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // Solve optimization problem, add travel cost to the optimal C3 cost.
       vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
-      double c3_cost = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);
+      auto c3_cost_trajectory_pair = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);    //Returns a pair (C3 cost for sample, Trajectory vector x0, x1 .. xN)
+      double c3_cost = c3_cost_trajectory_pair.first;
       double xy_travel_distance = (test_state.head(2) - end_effector.head(2)).norm();               // Ignore differences in z.
       cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                   // Total sample cost considers travel distance.
+
+      // Save the predicted state at the end of the horizon.
+      vector<VectorXd> predicted_state_trajectory = c3_cost_trajectory_pair.second;
+      predicted_states_at_end_horizon[i] = predicted_state_trajectory.back();
 
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
@@ -597,6 +605,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd best_additional_sample = candidate_states[index];
   double best_additional_sample_cost = cost_vector[index];
+
+  // Grab the predicted end object location for the current and best sampled end effector locations.
+  VectorXd predicted_ee_loc_current = predicted_states_at_end_horizon[CURRENT_LOCATION_INDEX].segment(7, 3);
+  VectorXd predicted_ee_loc_best_sample = predicted_states_at_end_horizon[index].segment(7, 3);
 
   // Inspect the current and best other sample C3 costs.
   double curr_ee_cost = cost_vector[CURRENT_LOCATION_INDEX];
@@ -697,7 +709,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
-                  C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3;
+                  C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
+                  predicted_ee_loc_current, predicted_ee_loc_best_sample;
+
   }
   // REPOSITION.
   else {
@@ -764,7 +778,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
-                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3;
+                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
+                  predicted_ee_loc_current, predicted_ee_loc_best_sample;
   }
   
 

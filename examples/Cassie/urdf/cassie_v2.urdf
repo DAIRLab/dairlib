@@ -19,7 +19,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/pelvis.obj" />
+        <mesh filename="meshes/pelvis.gltf" />
       </geometry>
       <material name="">
         <color
@@ -47,7 +47,7 @@
         xyz="0 0 -0.07"
         rpy="0 -1.570796 0" />
       <geometry>
-        <mesh filename="meshes/agility/left_yaw.obj" />
+        <mesh filename="meshes/agility/left_yaw.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
@@ -74,7 +74,7 @@
         xyz="0 0 -0.07"
         rpy="0 -1.570796 0" />
       <geometry>
-        <mesh filename="meshes/agility/right_yaw.obj" />
+        <mesh filename="meshes/agility/right_yaw.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
@@ -101,7 +101,7 @@
         xyz="0 0 -0.09"
         rpy="-1.570796 1.570796 0" />
       <geometry>
-        <mesh filename="meshes/agility/left_hip.obj" />
+        <mesh filename="meshes/agility/left_hip.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
@@ -128,7 +128,7 @@
         xyz="0 0 -0.09"
         rpy="-1.570796 1.570796 0" />
       <geometry>
-        <mesh filename="meshes/agility/right_hip.obj" />
+        <mesh filename="meshes/agility/right_hip.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
@@ -155,7 +155,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/agility/left_thigh.obj" />
+        <mesh filename="meshes/agility/left_thigh.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -182,7 +182,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/agility/right_thigh.obj" />
+        <mesh filename="meshes/agility/right_thigh.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -209,7 +209,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/knee-output.obj" />
+        <mesh filename="meshes/knee-output.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -236,7 +236,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/knee-output-r.obj" />
+        <mesh filename="meshes/knee-output-r.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -263,7 +263,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/agility/left_shin.obj" />
+        <mesh filename="meshes/agility/left_shin.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -290,7 +290,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/agility/right_shin.obj" />
+        <mesh filename="meshes/agility/right_shin.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -317,7 +317,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/knee-spring.obj" />
+        <mesh filename="meshes/knee-spring.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
@@ -344,7 +344,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/knee-spring.obj" />
+        <mesh filename="meshes/knee-spring.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
@@ -371,7 +371,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/tarsus.obj" />
+        <mesh filename="meshes/tarsus.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -398,7 +398,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/tarsus-r.obj" />
+        <mesh filename="meshes/tarsus-r.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.024 0.24 0.5 1.0" />
@@ -425,7 +425,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/heel-spring.obj" />
+        <mesh filename="meshes/heel-spring.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
@@ -452,7 +452,7 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/heel-spring.obj" />
+        <mesh filename="meshes/heel-spring.gltf" />
       </geometry>
       <material name="">
         <color rgba="0.1 0.1 0.1 1" />
@@ -509,8 +509,8 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/agility/left_foot.obj" />
-        <!-- <mesh filename="meshes/toe.obj" /> -->
+        <mesh filename="meshes/agility/left_foot.gltf" />
+        <!-- <mesh filename="meshes/toe.gltf" /> -->
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />
@@ -562,8 +562,8 @@
         xyz="0 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/agility/right_foot.obj" />
-        <!-- <mesh filename="meshes/toe-r.obj" /> -->
+        <mesh filename="meshes/agility/right_foot.gltf" />
+        <!-- <mesh filename="meshes/toe-r.gltf" /> -->
       </geometry>
       <material name="">
         <color rgba="0.4 0.4 0.4 1" />

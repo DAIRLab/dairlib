@@ -642,7 +642,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Calculate state and force using LCS from current location.
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-        num_friction_directions_, mu_, 0.02);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
+        num_friction_directions_, mu_, 0.002);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
 
@@ -696,7 +696,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Update desired next state.
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
-                  state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
+                  state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3;
   }
   // REPOSITION.
@@ -763,7 +763,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Set desired next state.
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
-                  next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, optimal_cost_,
+                  next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3;
   }
   

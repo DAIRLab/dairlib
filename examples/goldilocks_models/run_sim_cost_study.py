@@ -781,14 +781,14 @@ def PlotNominalCost(model_indices, trajopt_sample_indices_for_viz):
   return costs
 
 
-def GetSamplesToPlot(model_indices, log_indices):
+def GetSamplesToPlot(model_indices, log_indices, directory):
   # cmt_l stores cost, model index, task value, and log index
   cmt = np.zeros((0, 2 + len(name_of_task_value_to_be_read)))
   log = np.zeros((0, 1))
   for rom_iter in model_indices:
     for idx in log_indices:
-      path0 = eval_dir + '%d_%d_success.csv' % (rom_iter, idx)
-      path1 = eval_dir + '%d_%d_cost_values.csv' % (rom_iter, idx)
+      path0 = directory + '%d_%d_success.csv' % (rom_iter, idx)
+      path1 = directory + '%d_%d_cost_values.csv' % (rom_iter, idx)
       if os.path.exists(path0):
         current_cmt = np.zeros((1, 2 + len(name_of_task_value_to_be_read)))
         ### Read cost
@@ -802,7 +802,7 @@ def GetSamplesToPlot(model_indices, log_indices):
         add_this_element = True
         col = 2
         for task_name in name_of_task_value_to_be_read:
-          path_task = eval_dir + '%d_%d_ave_%s.csv' % (rom_iter, idx, task_name)
+          path_task = directory + '%d_%d_ave_%s.csv' % (rom_iter, idx, task_name)
           task = np.loadtxt(path_task, delimiter=',').item()  # 0-dim scalar
           current_cmt[0, col] = task
           if (task < min_max_task_filter_for_viz[task_name][0]) or (task > min_max_task_filter_for_viz[task_name][1]):
@@ -1177,7 +1177,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   ### 2D plot; cost landscape comparison (task1 vs task2; cost visualized in contours)
   print("\nPlotting 2D cost landscape comparison (task1 vs task2)...")
   for model_slice_value in model_slices_cost_landsacpe:
-    if model_slice_value == 1:
+    if model_slice_value == baseline_rom_iter:
       continue
     superimposed_data = InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value)
     if len(superimposed_data[0]) == 0:
@@ -1193,7 +1193,7 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
 big_val = 1000000
 small_val = -1e-8
 def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value):
-  iter1 = 1
+  iter1 = baseline_rom_iter
   iter2 = model_slice_value
 
   if cmt.shape[1] != 4:
@@ -1294,7 +1294,7 @@ class MplColorHelper:
 def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
   x, y, z = superimposed_data
 
-  iter1 = 1
+  iter1 = baseline_rom_iter
   iter2 = model_slice_value
 
   # Parameters
@@ -1869,12 +1869,22 @@ if __name__ == "__main__":
   #   - 1: slice stride length + turning rate
   #   - 2: slice stride length + ground incline
   parser.add_argument("--eval_task_space", help="", default=-1, type=int)
+  #
   parser.add_argument('--turn_off_warning_interuption', action='store_true')
   parser.add_argument('--no-turn_off_warning_interuption', dest='turn_off_warning_interuption', action='store_false')
   parser.set_defaults(turn_off_warning_interuption=False)
+  # 
   parser.add_argument('--delete_log_every_iter', action='store_true')
   parser.add_argument('--no-delete_log_every_iter', dest='delete_log_every_iter', action='store_false')
   parser.set_defaults(delete_log_every_iter=False)
+  # For plottig -- We allow comparing to a ROM that's not just iter1 (LIP)
+  # To do this, we need to specify 
+  #   1. a path to the model folder
+  #   2. a model (default to 1)
+  #   3. max lcmlog index for that model (default to 1000, since most of the time the lcmlog sample size is smaller than this)
+  parser.add_argument("--baseline_rom_path", help="", default="", type=str)
+  parser.add_argument("--baseline_rom_iter", help="", default=1, type=int)
+  parser.add_argument("--baseline_rom_max_log_idx", help="", default=1000, type=int)
   args = parser.parse_args()
   assert (args.eval_task_space == -1) or (args.eval_task_space == 1) or (args.eval_task_space == 2)
 
@@ -2113,6 +2123,11 @@ if __name__ == "__main__":
            'turning_rate': "(rad/s)"}
 
 
+  # Baseline iteration for the cost landscape comparison
+  baseline_rom_iter = 1 
+  if len(args.baseline_rom_path) != 0:
+    baseline_rom_iter = args.baseline_rom_iter
+
   # 2D plot (cost vs task)
   # model_slices = []
   # model_slices = [1, 50, 100, 150]
@@ -2214,6 +2229,8 @@ if __name__ == "__main__":
   EnforceSlashEnding(FOM_model_dir_for_sim)
   EnforceSlashEnding(FOM_model_dir_for_planner)
   EnforceSlashEnding(eval_dir)
+  if len(args.baseline_rom_path) != 0:
+    EnforceSlashEnding(args.baseline_rom_path)
 
   # Create folder if not exist
   if len(sys.argv) > 1 and sys.argv[1] == "fresh":
@@ -2254,6 +2271,10 @@ if __name__ == "__main__":
   # model_indices = [1, 400, 500]
   # model_indices = [1, 300, 400, 500]
   # model_indices = [1, 400, 450, 500]
+
+  ### Final setup for model indices
+  if baseline_rom_iter not in model_indices:
+    model_indices = [baseline_rom_iter] + model_indices
   print("model_indices = \n" + str(np.array(model_indices)))
 
   ### Create task list
@@ -2338,6 +2359,11 @@ if __name__ == "__main__":
   for model_idx in model_slices_cost_landsacpe:
     assert model_idx in model_indices  # we read csv data according to model_indices
 
+  ### Some adjustment for the external baseline ROM for comparison
+  if len(args.baseline_rom_path) != 0:
+    if args.baseline_rom_iter in model_indices:
+      model_indices.remove(args.baseline_rom_iter)
+
   ### Construct log indices
   log_indices = list(range(log_idx_offset, log_idx_offset + len(task_list)))
   print("log_indices = \n" + str(log_indices))
@@ -2402,7 +2428,9 @@ if __name__ == "__main__":
 
   # Get samples to plot
   # cmt is a list of (model index, task value, and cost)
-  cmt = GetSamplesToPlot(model_indices, log_indices)
+  cmt = GetSamplesToPlot(model_indices, log_indices, eval_dir)
+  if len(args.baseline_rom_path) != 0:    
+      cmt = np.vstack([cmt, GetSamplesToPlot([args.baseline_rom_iter], list(range(0,args.baseline_rom_max_log_idx)))], args.baseline_rom_path)
   nominal_cmt = GetNominalSamplesToPlot(model_indices)
   if (len(nominal_cmt) == 0) or eval_for_RL:
     plot_nominal = False

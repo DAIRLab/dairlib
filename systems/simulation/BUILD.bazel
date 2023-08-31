@@ -10,14 +10,3 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-
-cc_library(
-    name = "state_to_height_map",
-    srcs = ["state_to_height_map.cc"],
-    hdrs = ["state_to_height_map.h"],
-    deps = [
-        "//multibody:boxy_height_map",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)

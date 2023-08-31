@@ -6,7 +6,7 @@ using Eigen::MatrixXd;
 using Eigen::Matrix2d;
 using Eigen::VectorXd;
 
-StateSpaceButterworthFilter butter(int order, double w_c) {
+DiscreteSISOButterworthFilter butter(int order, double w_c) {
   DRAKE_DEMAND(order % 2 == 0);
   DRAKE_DEMAND(order > 0);
   DRAKE_DEMAND(0 < w_c && w_c < 1);
@@ -45,7 +45,7 @@ StateSpaceButterworthFilter butter(int order, double w_c) {
       BigA.block<2, 2>(2 * i, 2 * j) = B.at(i) * BigA.block<2, 2>(2 * i, 2 * j);
     }
   }
-  StateSpaceButterworthFilter::ValidateA(BigA);
+  DiscreteSISOButterworthFilter::ValidateA(BigA);
   return {BigA, BigB};
 }
 }

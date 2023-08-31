@@ -1,5 +1,5 @@
 #include <iostream>
-#include <signal.h>
+#include <csignal>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_foothold_set.hpp"
@@ -82,12 +82,10 @@ int DoMain(int argc, char* argv[]) {
   // Create the diagram
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
-
-  // Run lcm-driven simulation
   auto simulator = std::make_unique<Simulator<double>>(*diagram, std::move(context));
   auto& sim_context = simulator->get_mutable_context();
 
-  ros::Rate r(100.0); // 50 Hz
+  ros::Rate r(100.0); // 100 Hz
 
   spinner.start();
   plane_subscriber->WaitForMessage(0);
@@ -96,6 +94,7 @@ int DoMain(int argc, char* argv[]) {
   double t_begin = ros::Time::now().toSec();
 
   std::cout << "First message received, starting foothold translator\n";
+  // Poor man's LcmDrivenLoop with synchronous ros spinning
   while (true) {
     ros::spinOnce();
     double elapsed = ros::Time::now().toSec() - t_begin;

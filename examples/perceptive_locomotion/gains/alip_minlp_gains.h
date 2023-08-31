@@ -1,5 +1,5 @@
 #pragma once
-#include "systems/controllers/footstep_planning/alip_minlp_footstep_controller.h"
+#include "systems/controllers/footstep_planning/alip_mpfc.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
 

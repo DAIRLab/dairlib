@@ -57,7 +57,7 @@ class OutputVectorButterworthFilter : public LeafSystem<double> {
   const int order_;
   drake::systems::DiscreteStateIndex filter_state_idx_;
   std::vector<int> filter_idxs_;
-  std::unordered_map<int, filter_utils::StateSpaceButterworthFilter> index_to_filter_map_;
+  std::unordered_map<int, filter_utils::DiscreteSISOButterworthFilter> index_to_filter_map_;
   void CopyFilterValues(const drake::systems::Context<double>& context,
                         OutputVector<double>* y) const;
 

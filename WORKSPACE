@@ -78,6 +78,13 @@ load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 pydrake_repository(name = "pydrake_pegged")
 
 # Prebuilt ROS workspace
+new_local_repository(
+    name = "ros",
+    build_file = "tools/workspace/ros/ros.bazel",
+    path = "tools/workspace/ros/bundle_ws/install",
+)
+
+# Locally developed and installed ROS packages
 environ_repository(
     name = "environ_local_ros",
     vars = ["LOCAL_ROS_INSTALL_PATH"],
@@ -86,23 +93,11 @@ environ_repository(
 load("@environ_local_ros//:environ.bzl", "LOCAL_ROS_INSTALL_PATH")
 
 new_local_repository(
-    name = "ros",
-    build_file = "tools/workspace/ros/ros.bazel",
-    path = "tools/workspace/ros/bundle_ws/install",
-)
-
-new_local_repository(
     name = "ros-local",
     build_file = "tools/workspace/ros/ros-local.bazel",
     path = LOCAL_ROS_INSTALL_PATH,
 )
 
-#new_local_repository(
-#    name = "acd2d",
-#    build_file = "tools/workspace/acd2d/acd2d.bazel",
-#    path = "/home/brian/workspace/acd2d",
-#)
-##
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",

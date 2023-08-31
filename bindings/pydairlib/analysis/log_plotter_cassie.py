@@ -39,11 +39,11 @@ def plotter_main(plot_config, log):
         default_channels = cassie_plots.cassie_default_channels_archive
     robot_output, robot_input, osc_debug, imu_accel = \
         get_log_data(log,  # log
-            default_channels,  # lcm channels
-            plot_config.start_time,
-            plot_config.duration,
-            mbp_plots.load_default_channels,  # processing callback
-            plant, controller_plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+                     default_channels,  # lcm channels
+                     plot_config.start_time,
+                     plot_config.duration,
+                     mbp_plots.load_default_channels,  # processing callback
+                     plant, controller_plant, channel_x, channel_u, channel_osc)
 
     if plot_config.plot_contact_forces:
         contact_output = get_log_data(log,  # log

@@ -53,7 +53,7 @@ class MultibodyPlantTfBroadcasterSystem : public drake::systems::LeafSystem<doub
         world_frame_(world_frame_name),
         frames_(frames) {
 
-    this->set_name("tf braodcaster");
+    this->set_name("tf broadcaster for " + plant_.get_name());
     DeclareVectorInputPort("x", plant.num_positions() + plant.num_velocities());
 
     for (const auto& frame : base_fixed_frames) {
@@ -64,8 +64,6 @@ class MultibodyPlantTfBroadcasterSystem : public drake::systems::LeafSystem<doub
       body_fixed_frames_.push_back(tf);
     }
 
-    // Declare a forced publish so that any time Publish(.) is called on this
-    // system (or a Diagram containing it), a message is emitted.
     if (publish_triggers.find(TriggerType::kForced) != publish_triggers.end()) {
       this->DeclareForcedPublishEvent(
           &MultibodyPlantTfBroadcasterSystem::PublishTransforms);
@@ -88,12 +86,9 @@ class MultibodyPlantTfBroadcasterSystem : public drake::systems::LeafSystem<doub
 
     if (publish_triggers.find(TriggerType::kPerStep) !=
         publish_triggers.end()) {
-      this->DeclarePerStepEvent(
-          drake::systems::PublishEvent<double>([this](
-              const drake::systems::Context<double>& context,
-              const drake::systems::PublishEvent<double>&) {
-            this->PublishTransforms(context);
-          }));
+      this->DeclarePerStepPublishEvent(
+          &MultibodyPlantTfBroadcasterSystem::PublishTransforms
+      );
     }
   }
 

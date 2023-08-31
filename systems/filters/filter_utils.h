@@ -11,7 +11,7 @@ namespace dairlib::systems::filter_utils {
 /// Container for a state space representation of a discrete time
 /// SISO butterworth filter with the output as the last element of the state,
 /// e.g. C = [0 0 0 ... 0 1], D = 0
-struct StateSpaceButterworthFilter {
+struct DiscreteSISOButterworthFilter {
   Eigen::MatrixXd A_;
   Eigen::VectorXd B_;
   Eigen::VectorXd UpdateFilter(const Eigen::VectorXd &x, double u) const {
@@ -29,11 +29,11 @@ struct StateSpaceButterworthFilter {
 };
 
 /// Generates the butterworth filter - Note that this implementation is
-/// implemented the easiest way possible and therefore
+/// implemented naively and therefore:
 /// - is likely not numerically stable for high-order filters
 /// - only supports an even filter order
-StateSpaceButterworthFilter butter(int order, double w_c);
-inline StateSpaceButterworthFilter butter(int order, double f_s, double f_c) {
+DiscreteSISOButterworthFilter butter(int order, double w_c);
+inline DiscreteSISOButterworthFilter butter(int order, double f_s, double f_c) {
   DRAKE_DEMAND(f_s > f_c);
   return butter(order, 0.5 * f_c / f_s);
 }

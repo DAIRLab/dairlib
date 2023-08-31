@@ -4,8 +4,8 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "alip_minlp_footstep_controller",
-    srcs = ["alip_minlp_footstep_controller.cc"],
-    hdrs = ["alip_minlp_footstep_controller.h"],
+    srcs = ["alip_mpfc.cc"],
+    hdrs = ["alip_mpfc.h"],
     deps = [
         ":alip_miqp",
         ":alip_multiqp",

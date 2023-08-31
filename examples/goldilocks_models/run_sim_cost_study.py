@@ -1864,6 +1864,7 @@ simulation_initialization_modes[2] = "From FOM trajopt without embedding (could 
 if __name__ == "__main__":
   ### argument parser (for convenience)
   parser = argparse.ArgumentParser()
+  parser.add_argument("--main_eval_dir", help="", default="", type=str)
   # `eval_task_space` is a high level flag for convenince.
   #   - default to -1 which doesn't do anything
   #   - 1: slice stride length + turning rate
@@ -1928,7 +1929,8 @@ if __name__ == "__main__":
     eval_dir = "../dairlib_data/goldilocks_models/sl_vs_tr/sim_cost_eval/"
   elif args.eval_task_space == 2:
     eval_dir = "../dairlib_data/goldilocks_models/sl_vs_gi/sim_cost_eval/"
-
+  if len(args.main_eval_dir) > 0:
+    eval_dir = args.main_eval_dir
 
   ### global parameters
   eval_for_RL = False
@@ -2156,6 +2158,7 @@ if __name__ == "__main__":
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
+  model_slices = [180]
   # model_slices = [1, 400, 500]
   # model_slices = [1, 300, 400, 500]
   # model_slices = [1, 400, 450, 500]
@@ -2189,6 +2192,7 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
+  model_slices_cost_landsacpe = [180]
   # model_slices_cost_landsacpe = [1, 400, 500]
   # model_slices_cost_landsacpe = [1, 300, 400, 500]
   # model_slices_cost_landsacpe = [1, 400, 450, 500]
@@ -2272,6 +2276,7 @@ if __name__ == "__main__":
   # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
+  model_indices = [180]
   # model_indices = [1, 400, 500]
   # model_indices = [1, 300, 400, 500]
   # model_indices = [1, 400, 450, 500]

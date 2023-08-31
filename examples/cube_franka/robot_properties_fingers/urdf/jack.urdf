@@ -33,7 +33,7 @@
                 <capsule length="0.125" radius="0.025"/> 
             </geometry>
             <material>
-                <color rgba="1 0 0 1"/> <!-- Red color for visualization -->
+                <color rgba="0.5 0.5 0.5 0.2"/> <!-- Red color for visualization -->
             </material>
         </visual>
     </link>
@@ -71,7 +71,7 @@
                 <capsule length="0.125" radius="0.025"/> 
             </geometry>
             <material>
-                <color rgba="0 1 0 1"/> <!-- green color for visualization -->
+                <color rgba="0.5 0.5 0.5 0.2"/> <!-- green color for visualization -->
             </material>
         </visual>
     </link>
@@ -110,7 +110,7 @@
                 <capsule length="0.125" radius="0.025"/> 
             </geometry>
             <material>
-                <color rgba="0 0 1 1"/> <!-- Blue color -->
+                <color rgba="0.5 0.5 0.5 0.2"/> <!-- Blue color -->
             </material>
         </visual>
     </link>

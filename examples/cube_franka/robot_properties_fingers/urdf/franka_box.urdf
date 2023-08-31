@@ -668,12 +668,15 @@
     </inertial>
     <visual>
       <geometry>
-        <box size="5 5 0.1"/>
+        <box size="5 5 1.1"/>
       </geometry>
+      <material>
+        <color rgba="0.5 0.5 0.5 0.2"/> <!-- Red color for visualization -->
+      </material>
     </visual>
    <collision name="box">
       <geometry>
-        <box size="5 5 0.1"/>
+        <box size="5 5 1.1"/>
       </geometry>
                   <drake:proximity_properties>
         <drake:mu_static value="1"/>
@@ -694,7 +697,7 @@
       <parent link="connection"/>
       <child link="box"/>
       <!-- lowered the table since Franka table is a bit lower as well (offset by -0.0301)-->
-      <origin xyz="0 0 -0.07450000000000001"/> <!-- -0.05 + table_offset-->
+      <origin xyz="0 0 -0.57450000000000001"/> <!-- -0.05 + table_offset-->
     </joint>
 
 

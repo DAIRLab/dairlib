@@ -142,7 +142,7 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (65) includes:
+  State output port (71) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
@@ -158,8 +158,10 @@ C3Controller_franka::C3Controller_franka(
       (3) the desired location of the object
       (3) Estimated xyz position of the jack
       (3) Goal end effector location used by C3
-      (3) predicted jack location at end of current end effector location's C3 plan
-      (3) predicted jack location at end of best sampled end effector location's C3 plan
+      (3) feasible predicted jack location at end of current end effector location's C3 plan
+      (3) optimistic predicted jack location at end of current end effector location's C3 plan
+      (3) feasible predicted jack location at end of best sampled end effector location's C3 plan
+      (3) optimistic predicted jack location at end of best sampled end effector location's C3 plan
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -515,9 +517,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   // Instantiate variables before loop; they get assigned values inside loop.
-  std::vector<double> cost_vector(num_samples);                         // Vector of costs per sample.
-  std::vector<VectorXd> predicted_states_at_end_horizon(num_samples);   // Vector of predicted last states.
-  vector<VectorXd> fullsol_current_location;                            // Current location C3 solution.
+  std::vector<double> cost_vector(num_samples);                                   // Vector of costs per sample.
+  std::vector<VectorXd> predicted_states_at_end_horizon_optimistic(num_samples, VectorXd::Zero(n));  // Vector of optimistic predicted last states.
+  std::vector<VectorXd> predicted_states_at_end_horizon_feasible(num_samples, VectorXd::Zero(n));    // Vector of feasible predicted last states.
+  vector<VectorXd> fullsol_current_location;                                      // Current location C3 solution.
 
   // Omp parallelization settings.
   // NOTE:  Need to disable using the parameter num_threads in c3_options.h for the inner C3 parallelization by setting the
@@ -564,9 +567,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       double xy_travel_distance = (test_state.head(2) - end_effector.head(2)).norm();               // Ignore differences in z.
       cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                   // Total sample cost considers travel distance.
 
-      // Save the predicted state at the end of the horizon.
+      // Save the feasible and optimistic predicted states at the end of the horizon.
       vector<VectorXd> predicted_state_trajectory = c3_cost_trajectory_pair.second;
-      predicted_states_at_end_horizon[i] = predicted_state_trajectory.back();
+      predicted_states_at_end_horizon_feasible[i] = predicted_state_trajectory.back();
+      predicted_states_at_end_horizon_optimistic[i] = fullsol_sample_location.back().head(n);       // Get x portion from z vector.
 
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
@@ -606,9 +610,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd best_additional_sample = candidate_states[index];
   double best_additional_sample_cost = cost_vector[index];
 
-  // Grab the predicted end object location for the current and best sampled end effector locations.
-  VectorXd predicted_ee_loc_current = predicted_states_at_end_horizon[CURRENT_LOCATION_INDEX].segment(7, 3);
-  VectorXd predicted_ee_loc_best_sample = predicted_states_at_end_horizon[index].segment(7, 3);
+  // Grab the feasible and optimistic predicted end object location for the current and best sampled end effector locations.
+  VectorXd predicted_jack_loc_current_feasible   = predicted_states_at_end_horizon_feasible[  CURRENT_LOCATION_INDEX].segment(7, 3);
+  VectorXd predicted_jack_loc_current_optimistic = predicted_states_at_end_horizon_optimistic[CURRENT_LOCATION_INDEX].segment(7, 3);
+  VectorXd predicted_jack_loc_best_sample_feasible   = predicted_states_at_end_horizon_feasible[  index].segment(7, 3);
+  VectorXd predicted_jack_loc_best_sample_optimistic = predicted_states_at_end_horizon_optimistic[index].segment(7, 3);
 
   // Inspect the current and best other sample C3 costs.
   double curr_ee_cost = cost_vector[CURRENT_LOCATION_INDEX];
@@ -710,8 +716,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
-                  predicted_ee_loc_current, predicted_ee_loc_best_sample;
-
+                  predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
+                  predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic;
   }
   // REPOSITION.
   else {
@@ -779,7 +785,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
-                  predicted_ee_loc_current, predicted_ee_loc_best_sample;
+                  predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
+                  predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic;
   }
   
 

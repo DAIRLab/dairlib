@@ -1870,6 +1870,10 @@ if __name__ == "__main__":
   #   - 2: slice stride length + ground incline
   parser.add_argument("--eval_task_space", help="", default=-1, type=int)
   #
+  parser.add_argument('--only_plotting', action='store_true')
+  parser.add_argument('--no-only_plotting', dest='only_plotting', action='store_false')
+  parser.set_defaults(only_plotting=False)
+  #
   parser.add_argument('--turn_off_warning_interuption', action='store_true')
   parser.add_argument('--no-turn_off_warning_interuption', dest='turn_off_warning_interuption', action='store_false')
   parser.set_defaults(turn_off_warning_interuption=False)
@@ -2369,50 +2373,51 @@ if __name__ == "__main__":
   print("log_indices = \n" + str(log_indices))
 
   ### Toggle the functions here to run simulation or evaluate cost
-  if args.delete_log_every_iter:
-    for model_idx in model_indices:
+  if not args.only_plotting:
+    if args.delete_log_every_iter:
+      for model_idx in model_indices:
+        # Simulation
+        RunSimAndEvalCostInMultithread([model_idx], log_indices, task_list)
+
+        # Cost evaluate only
+        EvalCostInMultithread([model_idx], log_indices, task_list)
+
+        # Delete all logs but a few successful ones (for analysis later)
+        DeleteMostLogs([model_idx], log_indices, no_warning_interuption=True)
+
+    else:
       # Simulation
-      RunSimAndEvalCostInMultithread([model_idx], log_indices, task_list)
+      # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
 
       # Cost evaluate only
-      EvalCostInMultithread([model_idx], log_indices, task_list)
+      # EvalCostInMultithread(model_indices, log_indices, task_list)
 
       # Delete all logs but a few successful ones (for analysis later)
-      DeleteMostLogs([model_idx], log_indices, no_warning_interuption=True)
+      # DeleteMostLogs(model_indices, log_indices)
+      pass
 
-  else:
-    # Simulation
-    # RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list)
-
-    # Cost evaluate only
-    # EvalCostInMultithread(model_indices, log_indices, task_list)
-
-    # Delete all logs but a few successful ones (for analysis later)
-    # DeleteMostLogs(model_indices, log_indices)
-    pass
-
-  ### if the evluation sample size is too big, we can break it down using the code below
-  # for model_index in model_indices:
-  #   A = log_indices
-  #   B = A[:len(A)//2]
-  #   C = A[len(A)//2:]
-  #   A = task_list
-  #   task_listB = A[:len(A)//2]
-  #   task_listC = A[len(A)//2:]
-  #
-  #   # Simulation
-  #   RunSimAndEvalCostInMultithread([model_index], B, task_listB)
-  #   # Cost evaluate only
-  #   EvalCostInMultithread([model_index], B)
-  #   # Delete all logs but a few successful ones (for analysis later)
-  #   # DeleteMostLogs([model_index], B)
-  #
-  #   # Simulation
-  #   RunSimAndEvalCostInMultithread([model_index], C, task_listC)
-  #   # Cost evaluate only
-  #   EvalCostInMultithread([model_index], C)
-  #   # Delete all logs but a few successful ones (for analysis later)
-  #   # DeleteMostLogs([model_index], C)
+    ### if the evluation sample size is too big, we can break it down using the code below
+    # for model_index in model_indices:
+    #   A = log_indices
+    #   B = A[:len(A)//2]
+    #   C = A[len(A)//2:]
+    #   A = task_list
+    #   task_listB = A[:len(A)//2]
+    #   task_listC = A[len(A)//2:]
+    #
+    #   # Simulation
+    #   RunSimAndEvalCostInMultithread([model_index], B, task_listB)
+    #   # Cost evaluate only
+    #   EvalCostInMultithread([model_index], B)
+    #   # Delete all logs but a few successful ones (for analysis later)
+    #   # DeleteMostLogs([model_index], B)
+    #
+    #   # Simulation
+    #   RunSimAndEvalCostInMultithread([model_index], C, task_listC)
+    #   # Cost evaluate only
+    #   EvalCostInMultithread([model_index], C)
+    #   # Delete all logs but a few successful ones (for analysis later)
+    #   # DeleteMostLogs([model_index], C)
 
   ### Plotting
   print("Nominal cost is from: " + model_dir)

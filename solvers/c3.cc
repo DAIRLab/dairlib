@@ -10,6 +10,8 @@
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 
+#include <iostream>
+
 namespace dairlib {
 namespace solvers {
 
@@ -28,7 +30,7 @@ using drake::solvers::Solve;
 
 C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
        const vector<MatrixXd>& G, const vector<MatrixXd>& U,
-       const vector<VectorXd>& xdesired, const C3Options& options,
+       const vector<VectorXd>& xdesired, const C3Options& options, double scaling,
        const std::vector<Eigen::VectorXd>& warm_start_delta,
        const std::vector<Eigen::VectorXd>& warm_start_binary,
        const std::vector<Eigen::VectorXd>& warm_start_x,
@@ -49,6 +51,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       G_(G),
       xdesired_(xdesired),
       options_(options),
+      scaling_(scaling),
       N_((LCS.A_).size()),
       n_((LCS.A_)[0].cols()),
       m_((LCS.D_)[0].cols()),
@@ -56,7 +59,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       hflag_(H_[0].isZero(0)),
       prog_(MathematicalProgram()),
       OSQPoptions_(SolverOptions()),
-      osqp_(OsqpSolver()) {
+      osqp_(OsqpSolver()){
 
   // Deep copy warm start
   warm_start_ = warm_start;
@@ -149,6 +152,63 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
 
+//  double scaling = scaling_;
+//
+//  std::cout << "TIMESTEP 1 (force): " << zfin[0].segment(n_  ,m_)(3) * scaling << std::endl;
+//  std::cout << "TIMESTEP 2 (force): " << zfin[1].segment(n_  ,m_)(3) * scaling << std::endl;
+//  std::cout << "TIMESTEP 3 (force): " << zfin[2].segment(n_  ,m_)(3) * scaling << std::endl;
+//  std::cout << "TIMESTEP 4 (force): " << zfin[3].segment(n_  ,m_)(3) * scaling << std::endl;
+//  std::cout << "TIMESTEP 5 (force): " << zfin[4].segment(n_  ,m_)(3) * scaling << std::endl;
+//
+//  VectorXd dist0 = E_[0] * zfin[0].segment(0,n_) * scaling + H_[0] * zfin[0].segment(n_+m_,k_) * scaling + c_[0] * scaling + F_[0] * zfin[0].segment(n_  ,m_) * scaling;
+//  VectorXd dist1 = E_[0] * zfin[1].segment(0,n_) * scaling + H_[0] * zfin[1].segment(n_+m_,k_) * scaling + c_[1] * scaling + F_[0] * zfin[1].segment(n_  ,m_) * scaling;
+//  VectorXd dist2 = E_[0] * zfin[2].segment(0,n_) * scaling + H_[0] * zfin[2].segment(n_+m_,k_) * scaling + c_[2] * scaling + F_[0] * zfin[2].segment(n_  ,m_) * scaling;
+//  VectorXd dist3 = E_[0] * zfin[3].segment(0,n_) * scaling + H_[0] * zfin[3].segment(n_+m_,k_) * scaling + c_[3] * scaling + F_[0] * zfin[3].segment(n_  ,m_) * scaling;
+//  VectorXd dist4 = E_[0] * zfin[4].segment(0,n_) * scaling + H_[0] * zfin[4].segment(n_+m_,k_) * scaling + c_[4] * scaling + F_[0] * zfin[4].segment(n_  ,m_) * scaling;
+//
+//  std::cout << "TIMESTEP 1 (gap function + Jn dt v_{k+1}): " << dist0(3) << std::endl;
+//  std::cout << "TIMESTEP 2 (gap function + Jn dt v_{k+1}): "  << dist1(3) << std::endl;
+//  std::cout << "TIMESTEP 3 (gap function + Jn dt v_{k+1}): " << dist2(3) << std::endl;
+//  std::cout << "TIMESTEP 4 (gap function + Jn dt v_{k+1}): " << dist3(3) << std::endl;
+//  std::cout << "TIMESTEP 5 (gap function + Jn dt v_{k+1}): " << dist4(3) << std::endl;
+//
+////  VectorXd cv0 = (E_[0] * zfin[0].segment(0,n_) + H_[0] * zfin[0].segment(n_+m_,k_) + c_[0] + F_[0] * zfin[0].segment(n_  ,m_)).transpose() * zfin[0].segment(n_  ,m_) * scaling * scaling;
+////  VectorXd cv1 = (E_[0] * zfin[1].segment(0,n_) + H_[0] * zfin[1].segment(n_+m_,k_) + c_[0] + F_[0] * zfin[1].segment(n_  ,m_)).transpose() * zfin[1].segment(n_  ,m_) * scaling * scaling;
+////  VectorXd cv2 = (E_[0] * zfin[2].segment(0,n_) + H_[0] * zfin[2].segment(n_+m_,k_) + c_[0] + F_[0] * zfin[2].segment(n_  ,m_)).transpose() * zfin[2].segment(n_  ,m_) * scaling * scaling;
+////  VectorXd cv3 = (E_[0] * zfin[3].segment(0,n_) + H_[0] * zfin[3].segment(n_+m_,k_) + c_[0] + F_[0] * zfin[3].segment(n_  ,m_)).transpose() * zfin[3].segment(n_  ,m_) * scaling * scaling;
+////  VectorXd cv4 = (E_[0] * zfin[4].segment(0,n_) + H_[0] * zfin[4].segment(n_+m_,k_) + c_[0] + F_[0] * zfin[4].segment(n_  ,m_)).transpose() * zfin[4].segment(n_  ,m_) * scaling * scaling;
+//
+//  double cv0 = dist0(3) * zfin[0](n_+3) * scaling;
+//  double cv1 = dist1(3) * zfin[1](n_+3) * scaling;
+//  double cv2 = dist2(3) * zfin[2](n_+3) * scaling;
+//  double cv3 = dist3(3) * zfin[3](n_+3) * scaling;
+//  double cv4 = dist4(3) * zfin[4](n_+3) * scaling;
+//
+//  std::cout << "TIMESTEP 1 (ground contact complementarity violation):" << cv0 << std::endl;
+//  std::cout << "TIMESTEP 2 (ground contact complementarity violation):" << cv1 << std::endl;
+//  std::cout << "TIMESTEP 3 (ground contact complementarity violation):" << cv2 << std::endl;
+//  std::cout << "TIMESTEP 4 (ground contact complementarity violation):" << cv3 << std::endl;
+//  std::cout << "TIMESTEP 5 (ground contact complementarity violation):" << cv4 << std::endl;
+
+
+
+//  std::cout << "comp[1]" << E_[0] * zfin[1].segment(0,n_) * scaling + H_[0] * zfin[1].segment(n_+m_,k_) * scaling + F_[0] * zfin[1].segment(n_  ,m_) + c_[1] * scaling << std::endl;
+//  std::cout << "comp[2]" << E_[0] * zfin[2].segment(0,n_) * scaling + H_[0] * zfin[2].segment(n_+m_,k_) * scaling + F_[0] * zfin[2].segment(n_  ,m_) + c_[2] * scaling << std::endl;
+//  std::cout << "comp[3]" << E_[0] * zfin[3].segment(0,n_) * scaling + H_[0] * zfin[3].segment(n_+m_,k_) * scaling + F_[0] * zfin[3].segment(n_  ,m_) + c_[3] * scaling << std::endl;
+//  std::cout << "comp[4]" << E_[0] * zfin[4].segment(0,n_) * scaling + H_[0] * zfin[4].segment(n_+m_,k_) * scaling + F_[0] * zfin[4].segment(n_  ,m_) + c_[4] * scaling << std::endl;
+
+//  std::cout << "zfin[0]" << zfin[0](9) + 0.0245 - 0.0315 << std::endl;
+//  std::cout << "zfin[1]" << zfin[1](9) + 0.0245 - 0.0315 << std::endl;
+//  std::cout << "zfin[2]" << zfin[2](9) + 0.0245 - 0.0315 << std::endl;
+//  std::cout << "zfin[3]" << zfin[3](9) + 0.0245 - 0.0315<< std::endl;
+//  std::cout << "zfin[4]" << zfin[4](9) + 0.0245 - 0.0315 << std::endl;
+
+//  std::cout << "zfin[0]" << zfin[0].segment(7,3) << std::endl;
+//  std::cout << "zfin[1]" << zfin[1].segment(7,3) << std::endl;
+//  std::cout << "zfin[2]" << zfin[2].segment(7,3) << std::endl;
+//  std::cout << "zfin[3]" << zfin[3].segment(7,3) << std::endl;
+//  std::cout << "zfin[4]" << zfin[4].segment(7,3) << std::endl;
+
   z = zfin[0];
 
 //  std::cout <<  "contact prediction" << std::endl;
@@ -181,12 +241,12 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
 //      std::cout <<  "input" << std::endl;
 //      std::cout << z.segment(n_+m_, k_) << std::endl;
-
+//
 //      std::cout <<  "contact prediction" << std::endl;
 //      std::cout << z.segment(n_, m_) << std::endl;
-
+//
 //      std::cout <<  "prediction state" << std::endl;
-  //    std::cout << z.segment(0, n_) << std::endl;
+//      std::cout << z.segment(0, n_) << std::endl;
 
 
   return z.segment(n_ + m_, k_);
@@ -243,6 +303,18 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
  //std::cout << "Viol:" << z[1] - delta->at(1) << std::endl;
   //std::cout << "Z" << z[1] << std::endl;
+
+//  std::cout << "z[0]" << z[0]<< std::endl;
+//  std::cout << "z[1]" << z[1] << std::endl;
+//  std::cout << "z[2]" << z[2]<< std::endl;
+//  std::cout << "z[3]" << z[3] << std::endl;
+//  std::cout << "z[4]" << z[4] << std::endl;
+//
+//  std::cout << "delta[0]" << (*delta)[0]<< std::endl;
+//  std::cout << "delta[1]" << (*delta)[1] << std::endl;
+//  std::cout << "delta[2]" << (*delta)[2]<< std::endl;
+//  std::cout << "delta[3]" << (*delta)[3] << std::endl;
+//  std::cout << "delta[4]" << (*delta)[4] << std::endl;
 
   return z[0];
 }

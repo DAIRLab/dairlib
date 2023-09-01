@@ -135,6 +135,7 @@ int DoMain(int argc, char* argv[]){
   Qinit.block(0,0,3,3) << param.Q_finger * MatrixXd::Identity(3,3);
   Qinit(7,7) = param.Q_ball_x;
   Qinit(8,8) = param.Q_ball_y;
+  Qinit(9,9) = param.Q_ball_z;
   Qinit.block(10,10,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv);
   Qinit.block(10,10,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
@@ -143,9 +144,13 @@ int DoMain(int argc, char* argv[]){
   MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
   Uinit.block(0,0,nq+nv,nq+nv) << 
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);
-  Uinit.block(nq+nv+6*nc, nq+nv+6*nc, nu, nu) << 
+  Uinit.block(nq+nv+6*nc, nq+nv+6*nc, nu, nu) <<
     param.U_u * MatrixXd::Identity(nu, nu);
-  
+//  Ginit(9,9) = 0;
+//  //Uinit(9,9) = 0;
+//  Ginit(18,18) = 0;
+//  //Uinit(18,18) = 0;
+
   VectorXd xdesiredinit = VectorXd::Zero(nq+nv);
   xdesiredinit.head(nq) << q;
 

@@ -271,7 +271,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // compute sphere positional error
   Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("base_x")),
                       traj_desired_vector(q_map_.at("base_y")),
-                      traj_desired_vector(q_map_.at("base_z")));
+                      table_offset + ball_radius);
   Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
   Vector3d error_hat = error_xy / error_xy.norm();
@@ -387,7 +387,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
       num_friction_directions_, mu_, 0.1);
 
   solvers::LCS system_ = system_scaling_pair.first;
-  // double scaling = system_scaling_pair.second;
+  double scaling = system_scaling_pair.second;
 
   C3Options options;
   int N = (system_.A_).size();
@@ -428,11 +428,12 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     Qnew(2,2) = Qnew_finger;
     Qnew(7,7) = param_.Qnew_ball_x;
     Qnew(8,8) = param_.Qnew_ball_y;
+    Qnew(9,9) = param_.Qnew_ball_x;
   }
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, scaling,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 

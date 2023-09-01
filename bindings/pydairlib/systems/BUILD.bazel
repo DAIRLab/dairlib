@@ -58,20 +58,20 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-pybind_py_library(
-    name = "controllers_py",
-    cc_deps = [
-        "@drake//:drake_shared_library",
-        "//systems/controllers:c3_controller",
-    ],
-    cc_so_name = "controllers",
-    cc_srcs = ["controllers_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
+#pybind_py_library(
+#    name = "controllers_py",
+#    cc_deps = [
+#        "@drake//:drake_shared_library",
+#        "//systems/controllers:c3_controller",
+#    ],
+#    cc_so_name = "controllers",
+#    cc_srcs = ["controllers_py.cc"],
+#    py_deps = [
+#        "@drake//bindings/pydrake",
+#        ":module_py",
+#    ],
+#    py_imports = ["."],
+#)
 
 pybind_py_library(
     name = "controllers_franka_py",
@@ -122,7 +122,7 @@ PY_LIBRARIES = [
     ":robot_lcm_systems_py",
     ":primitives_py",
     ":framework_py",
-    ":controllers_py",
+    #":controllers_py",
     ":controllers_franka_py",
     ":impedance_controllers_py",
 ]

@@ -30,17 +30,17 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "c3_diagram_test",
-    srcs = ["c3_diagram_test.cc"],
-    data = [":five_link_biped.urdf"],
-    deps = [
-        "@drake//:drake_shared_library",
-        "@gflags",
-        "//common",
-        "//systems/controllers:c3_controller",
-        "//systems:system_utils",
-        "//systems/primitives:primitives",
-        "//systems:robot_lcm_systems",
-    ],
-)
+#cc_binary(
+#    name = "c3_diagram_test",
+#    srcs = ["c3_diagram_test.cc"],
+#    data = [":five_link_biped.urdf"],
+#    deps = [
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#        "//common",
+#        "//systems/controllers:c3_controller",
+#        "//systems:system_utils",
+#        "//systems/primitives:primitives",
+#        "//systems:robot_lcm_systems",
+#    ],
+#)

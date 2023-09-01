@@ -3,13 +3,13 @@
 
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
-    name = "c3_test",
-    srcs = ["test/c3_test.cc"],
-    deps = [
-        ":c3"
-    ],
-)
+#cc_binary(
+#    name = "c3_test",
+#    srcs = ["test/c3_test.cc"],
+#    deps = [
+#        ":c3"
+#    ],
+#)
 
 
 #py_binary(

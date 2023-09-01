@@ -24,6 +24,7 @@ class C3 {
      const std::vector<Eigen::MatrixXd>& U,
      const std::vector<Eigen::VectorXd>& xdesired, 
      const C3Options& options,
+     double scaling,
      const std::vector<Eigen::VectorXd>& warm_start_delta = {},
      const std::vector<Eigen::VectorXd>& warm_start_binary = {},
      const std::vector<Eigen::VectorXd>& warm_start_x_ = {},
@@ -110,6 +111,7 @@ class C3 {
   const int m_;
   const int k_;
   const bool hflag_;
+  double scaling_;
 
 protected:
   std::vector<Eigen::VectorXd> warm_start_delta_;

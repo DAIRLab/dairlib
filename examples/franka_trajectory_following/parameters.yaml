@@ -20,8 +20,9 @@ pushing_offset: 0 #-0.001
 mu: 1                  # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 500         # finger xyz cost
-Q_ball_x: 10000 #10000
-Q_ball_y: 10000  #10000
+Q_ball_x: 100000 #10000
+Q_ball_y: 100000  #10000
+Q_ball_z: 10000000 #1000000 #100000000 (almost no penetration )
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
 Qnew_finger: 1000000    # Qnew costs
@@ -30,7 +31,7 @@ Qnew_ball_y: 1
 R: 0.01                 # torque cost in xyz
 G: 0.01
 U_default: 1
-U_pos_vel: 10           # first 19 diag elements of U
+U_pos_vel: 100       # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
 q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
@@ -74,7 +75,7 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 contact_threshold: 0.01
 enable_heuristic: 0
 enable_contact: 1
-ball_stddev: 0.0 # standard deviation of 0-mean noise on ball state estimation
+ball_stddev: 0.000 # standard deviation of 0-mean noise on ball state estimation
 
 # gaiting parameters
 roll_phase: 1  #2.5

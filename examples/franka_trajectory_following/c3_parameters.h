@@ -30,6 +30,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(Q_finger));
     a->Visit(DRAKE_NVP(Q_ball_x));
     a->Visit(DRAKE_NVP(Q_ball_y));
+    a->Visit(DRAKE_NVP(Q_ball_z));
     a->Visit(DRAKE_NVP(Q_finger_vel));
     a->Visit(DRAKE_NVP(Q_ball_vel));
     a->Visit(DRAKE_NVP(Qnew_finger));
@@ -113,6 +114,7 @@ struct C3Parameters {
   double Q_finger;
   double Q_ball_x;
   double Q_ball_y;
+  double Q_ball_z;
   double Q_finger_vel;
   double Q_ball_vel;
   double Qnew_finger;

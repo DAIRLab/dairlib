@@ -53,21 +53,22 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-cc_library(
-    name = "c3_controller",
-    srcs = [
-        "c3_controller.cc",
-    ],
-    hdrs = [
-        "c3_controller.h",
-    ],
-    deps = [
-        "//systems/framework:vector",
-        "//solvers:c3",
-        "//solvers:lcs",
-        "@drake//:drake_shared_library",
-    ],
-)
+
+#cc_library(
+#    name = "c3_controller",
+#    srcs = [
+#        "c3_controller.cc",
+#    ],
+#    hdrs = [
+#        "c3_controller.h",
+#    ],
+#    deps = [
+#        "//systems/framework:vector",
+#        "//solvers:c3",
+#        "//solvers:lcs",
+#        "@drake//:drake_shared_library",
+#    ],
+#)
 
 cc_library(
     name = "c3_controller_franka",

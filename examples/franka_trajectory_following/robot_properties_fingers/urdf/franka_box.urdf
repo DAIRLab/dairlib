@@ -540,7 +540,7 @@
   <joint name="panda_joint9" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0.0096"/>
     <parent link="panda_link8"/>
-    <child link="panda_link9"/> 
+    <child link="panda_link9"/>
   </joint>
   <link name="panda_link10">
    <inertial>
@@ -705,5 +705,5 @@
   </drake:collision_filter_group>
 
 
-  
+
 </robot>

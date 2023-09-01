@@ -1,0 +1,58 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "log_sequence_rectifier",
+    srcs = ["log_sequence_rectifier.cc"],
+    deps = [
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "trajectory_saver",
+    deps = [
+        "//lcm:dircon_trajectory_saver",
+        "//lcm:lcm_trajectory_saver",
+    ],
+)
+
+cc_library(
+    name = "lcm_trajectory_saver",
+    srcs = ["lcm_trajectory.cc"],
+    hdrs = ["lcm_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "dircon_trajectory_saver",
+    srcs = ["dircon_saved_trajectory.cc"],
+    hdrs = ["dircon_saved_trajectory.h"],
+    deps = [
+        ":lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/trajectory_optimization:dircon",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_test(
+    name = "lcm_trajectory_saver_test",
+    size = "small",
+    srcs = ["test/lcm_trajectory_test.cc"],
+    deps = [
+        ":lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)

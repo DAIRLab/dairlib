@@ -633,6 +633,24 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
     
 
+
+    // State output port (56) includes:
+    // xee (7) -- orientation and position of end effector
+    // xball (7) -- orientation and position of object (i.e. "ball")
+    // xee_dot (3) -- linear velocity of end effector
+    // xball_dot (6) -- angular and linear velocities of object
+    // lambda (6) -- end effector/object forces (slack variable, normal force, 4 tangential forces)
+    // visualization (20) -- miscellaneous visualization-related debugging values:
+    //   (9) 3 sample xyz locations
+    //   (3) next xyz position of the end effector
+    //   (3) optimal xyz sample location
+    //   (3) C3 versus repositioning indicator xyz position
+    //   (2) current and minimum sample costs
+    //   (1) the state of the C3 flag
+    //   (3) the desired location of the object
+    //   (3) Estimated xyz position of the jack
+    //   (3) Goal end effector location used by C3 
+
     // Update desired next state.
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),

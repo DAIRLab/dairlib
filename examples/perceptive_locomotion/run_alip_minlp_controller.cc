@@ -14,7 +14,7 @@
 #include "multibody/stepping_stone_utils.h"
 #include "solvers/solver_options_io.h"
 #include "systems/filters/floating_base_velocity_filter.h"
-#include "systems/controllers/footstep_planning/alip_mpfc.h"
+#include "systems/controllers/footstep_planning/alip_mpc_system.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
@@ -57,7 +57,7 @@ using Eigen::VectorXd;
 using geometry::ConvexFoothold;
 using geometry::ConvexFootholdSet;
 
-using systems::controllers::AlipMPFC;
+using systems::controllers::AlipMPCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::AlipMINLPGains;
 using systems::controllers::FootstepSender;
@@ -214,7 +214,7 @@ int DoMain(int argc, char* argv[]) {
           200, gains_mpc.pelvis_vel_butter_wc);
 
   auto foot_placement_controller =
-      builder.AddSystem<AlipMPFC>(
+      builder.AddSystem<AlipMPCSystem>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
           left_right_toe, gains_mpc.gains, planner_solver_options);

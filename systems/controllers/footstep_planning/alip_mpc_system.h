@@ -37,11 +37,11 @@ struct AlipMINLPGains {
   S2SKalmanFilterData filter_data;
 };
 
-class AlipMPFC : public drake::systems::LeafSystem<double> {
+class AlipMPCSystem : public drake::systems::LeafSystem<double> {
  public:
 
   // TODO (@Brian-Acosta) : Move stance durations to gains struct
-  AlipMPFC(
+  AlipMPCSystem(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
       std::vector<int> left_right_stance_fsm_states,

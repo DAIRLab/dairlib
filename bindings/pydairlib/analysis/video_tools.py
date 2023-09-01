@@ -1,31 +1,42 @@
 import os
 import cv2
 import warnings
-
 import numpy as np
+from dataclasses import dataclass
 
 
-def extract_frames(start_time, end_time, num_frames, video_filename,
-                   save_folder, prefix='', frame_edits=None):
+@dataclass
+class FrameEdits:
+    aspect: float
+    yshift: int
+    mirror: bool
+
+
+def extract_frames(start_time: float, end_time: float, num_frames: int,
+                   video_filename: str, save_folder: str, prefix: str = '',
+                   frame_edits: FrameEdits = None):
     """
     Extracts frames from a video file at evenly spaced timestamps and saves them
     as JPEG images.
 
     Args:
-        start_time (float): The starting timestamp in seconds from which to
-                            extract frames.
-        end_time (float): The ending timestamp in seconds until which to
-                          extract frames.
-                          Set end_time to -1 to use the whole video.
-                          If end_time is greater than the video duration, it
-                          will be automatically set to the video duration.
-        num_frames (int): The number of frames to extract.
-        video_filename (str): The filename of the input video file.
-        save_folder (str): The folder to save the extracted frames.
-        prefix (str): A prefix before the frame number in the filename
+        start_time: The starting timestamp in seconds from which to extract
+        frames.
+        end_time: The ending timestamp in seconds until which to extract frames.
+        Set end_time to -1 to use the whole video. If end_time is greater
+        than the video duration, it will be automatically set to the video
+        duration.
+        num_frames: The number of frames to extract, evenly spaced from
+        start_time to end_time
+        video_filename: The filename of the input video file.
+        save_folder: The folder to save the extracted frames.
+        prefix: A prefix before the frame number in the save filename of the
+        extracted frames
+        frame_edits: Transformation to apply to each video frame - see
+        FrameEdits dataclass
 
-    Returns:
-        None
+    Returns: Nothing
+
     """
 
     os.makedirs(save_folder, exist_ok=True)
@@ -65,8 +76,8 @@ def extract_frames(start_time, end_time, num_frames, video_filename,
         ret, frame = video.read()
 
         if frame_edits is not None:
-            aspect = frame_edits['aspect']
-            yshift = -frame_edits['yshift']
+            aspect = frame_edits.aspect
+            yshift = -frame_edits.yshift
             h = frame.shape[0]
             w = frame.shape[1]
             h_new = w / aspect
@@ -75,7 +86,7 @@ def extract_frames(start_time, end_time, num_frames, video_filename,
             offset = int(yshift * h)
             frame = frame[offset + center_y - dy: offset + center_y + dy, :]
 
-            if frame_edits['mirror']:
+            if frame_edits.mirror:
                 frame = np.fliplr(frame)
 
         if ret:

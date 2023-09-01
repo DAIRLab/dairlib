@@ -95,6 +95,8 @@ std::pair<LCS,double> LCSFactory::LinearizePlantToLCS(
 
   MatrixXd Nq = AB_q.block(0, n_state, n_state, n_vel);
 
+  Eigen::MatrixXd NqInverse = Nq.completeOrthogonalDecomposition().pseudoInverse();
+
   ///
   /// Contact-related terms
   ///
@@ -164,7 +166,7 @@ std::pair<LCS,double> LCSFactory::LinearizePlantToLCS(
 
   E = MatrixXd::Zero(n_contact_vars, n_total);
   E.block(n_contacts, 0, n_contacts, n_state) =
-      dt * dt * J_n * AB_v_q;
+      dt * dt * J_n * AB_v_q + J_n * NqInverse;
   E.block(2 * n_contacts, 0,
           2 * n_contacts * num_friction_directions, n_state) =
       dt * J_t * AB_v_q;
@@ -214,7 +216,7 @@ std::pair<LCS,double> LCSFactory::LinearizePlantToLCS(
 
   c = VectorXd::Zero(n_contact_vars);
   c.segment(n_contacts, n_contacts) =
-      phi + dt * dt * J_n * d_v;
+      phi + dt * dt * J_n * d_v - J_n * NqInverse * plant.GetPositions(context);
 
   c.segment(2 * n_contacts,
             2 * n_contacts * num_friction_directions) =

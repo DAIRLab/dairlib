@@ -2,7 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import animation as animation
 
-from mpc_debug import MpcDebug, LcmTrajectory
+from pydairlib.perceptive_locomotion.alip_mpfc_debug import AlipMPFCDebug, \
+    LcmTrajectory
 
 from pydairlib.common import plotting_utils, plot_styler
 
@@ -24,7 +25,8 @@ def make_solution_animation(mpc_debug):
         )
 
     ani = animation.FuncAnimation(
-        ps.fig, _animate_callback, frames=len(mpc_debug.t_mpc), interval=1)
+        ps.fig, _animate_callback, frames=len(mpc_debug.t_mpc), interval=1
+    )
 
     plt.show()
 
@@ -36,7 +38,8 @@ def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
     xy_traj = np.hstack(
         [
             np.hstack(
-                [np.expand_dims(xx[n][k][:2] + pp[n][:2], axis=-1) for k in range(nk)]
+                [np.expand_dims(xx[n][k][:2] + pp[n][:2], axis=-1) for k in
+                 range(nk)]
             ) for n in range(nm)
         ]
     )
@@ -60,7 +63,7 @@ def plot_com_traj_solution_overhead(xx, pp, fsm, x0, p0):
 
 
 def mpc_processing_callback(data, mpc_channel, footstep_channel, fsm_channel):
-    mpc_debug = MpcDebug()
+    mpc_debug = AlipMPFCDebug()
     for msg in data[mpc_channel]:
         mpc_debug.append(msg)
     mpc_debug.to_numpy()
@@ -95,7 +98,8 @@ def plot_mpc_state_traj(xx, ps=None):
         {'xlabel': 'Knot Point',
          'ylabel': 'ALIP State',
          'title': 'MPC State Trajectory'},
-        ps)
+        ps
+    )
     return ps
 
 
@@ -138,7 +142,7 @@ def plot_mpc_state_prediction(mpc_debug, ps=None):
 def plot_mpc_loop_time(mpc_debug):
     plt.figure()
     looptimes = np.ediff1d(mpc_debug.t_mpc)
-    plt.plot( mpc_debug.t_mpc[:-1], looptimes)
+    plt.plot(mpc_debug.t_mpc[:-1], looptimes)
     plt.title('Mpc loop times')
     plt.ylabel('Loop time (s)')
 
@@ -152,7 +156,6 @@ def plot_mpc_solve_time(mpc_debug):
 
 def plot_foothold_origin(mpc_debug, ps=None):
     ps = plot_styler.PlotStyler() if ps is None else ps
-
 
 
 def plot_mpc_timing(mpc_debug):
@@ -187,4 +190,3 @@ def plot_foot_targets(mpc_debug, i, ps=None):
         labels, ps
     )
     return ps
-

@@ -40,7 +40,7 @@ class LcmTrajectory:
             self.trajectories[block.trajectory_name] = LcmTrajectoryBlock(block)
 
 
-class MpcSolution:
+class AlipMPFCSolution:
     def __init__(self):
         self.t_mpc = []
         self.xxs = {}
@@ -72,7 +72,7 @@ class MpcSolution:
     # Convert the inner-most list to a numpy array - leaving the rest as a list
     def recursive_list_to_numpy(lst):
         if lst[0] is list:
-            lst = [MpcDebug.recursive_list_to_numpy(l) for l in lst]
+            lst = [AlipMPFCSolution.recursive_list_to_numpy(l) for l in lst]
         else:
             lst = np.array(lst)
         return lst
@@ -91,7 +91,7 @@ def foothold_constraint_active(msg):
     return np.min(viol_p1) > -1e-6 or np.min(viol_p2) > -1e-6
 
 
-class MpcDebug:
+class AlipMPFCDebug:
     def __init__(self):
         self.t_mpc = []
         self.solve_time = []
@@ -99,9 +99,9 @@ class MpcDebug:
         self.x0 = {}
         self.p0 = {}
         self.mpc_trajs = {
-            "solution": MpcSolution(),
-            "guess": MpcSolution(),
-            "desired": MpcSolution()
+            "solution": AlipMPFCSolution(),
+            "guess": AlipMPFCSolution(),
+            "desired": AlipMPFCSolution()
         }
         self.nfootholds = {}
         self.constraint_activation = {}

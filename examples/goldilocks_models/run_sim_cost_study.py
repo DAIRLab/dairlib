@@ -1219,6 +1219,14 @@ def Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe
       Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
       #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
 
+    # Print average cost
+    x, y, z = superimposed_data
+    message = "Averaged cost ratio of the intersected task region: %.3f" % np.average(z[(small_val < z)*(z < big_val)])
+    print(message)
+    f = open(eval_dir + "costs_info.txt", "a")
+    f.write(message + "\n")
+    f.close()
+
 
 big_val = 1000000
 small_val = -1e-8

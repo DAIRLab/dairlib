@@ -3,6 +3,10 @@
 # import matplotlib
 # matplotlib.use('Agg')
 
+# Example command for comparing one model to an external model:
+#   python3 examples/goldilocks_models/run_sim_cost_study.py --eval_task_space=2 --baseline_rom_path=/home/yuming/Desktop/temp/20230828_sim_eval_20230530_rom27_opeloop/1_first_try/sl_vs_gi/sim_cost_eval/ --baseline_rom_iter=400 --main_eval_dir=/home/yuming/Desktop/temp/20230827_sim_eval_CMA_model_20230822_124722/1_original_mpc_paramters/sl_vs_gi/sim_cost_eval/
+
+
 import sys
 import subprocess
 import time
@@ -883,11 +887,7 @@ def GetNominalSamplesToPlot(model_indices):
 
 def AdjustSlices(model_slices):
   max_model_iter_in_successful_samples = int(max(cmt[:, 1]))
-  max_model_iter_in_slices = model_slices[-1]
-  for i in range(len(model_slices)):
-    if model_slices[i] > max_model_iter_in_successful_samples:
-      max_model_iter_in_slices = model_slices[i - 1]  # this is general to 1-element case
-      break
+  max_model_iter_in_slices = max([e for e in model_slices if e<=max_model_iter_in_successful_samples])
 
   print("max_model_iter_in_slices = ", max_model_iter_in_slices)
   if len(model_slices) == 0:
@@ -986,7 +986,7 @@ def Generate3dPlots(cmt, nominal_cmt, plot_nominal):
     plt.savefig("%scost_vs_model_iter_contour%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
-def Generate2dPlots1dTask(cmt):
+def Generate2dPlots1dTask(cmt, model_slices):
 
   # import pdb;pdb.set_trace()
   cmt = cmt[abs(cmt[:, 3] - second_task_value) < 0.01]
@@ -1018,13 +1018,7 @@ def Generate2dPlots1dTask(cmt):
     plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
-
-def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
-  app = "_w_nom" if plot_nominal else ""
-
-  if cmt.shape[1] != 4:
-    raise ValueError("The code assumes cmt is 4D (two dimensional task)")
-
+def SetupNomialPlotting(nominal_cmt, plot_nominal):
   # Some set up for plotting nominal costs
   num_task_dim = 2
   if plot_nominal:
@@ -1033,6 +1027,18 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
         num_task_dim = 1
       else:
         plot_nominal = False
+  return num_task_dim, plot_nominal
+
+
+def Generate2dPlotsCostVsIteration(model_indices, cmt, nominal_cmt, plot_nominal):
+  app = "_w_nom" if plot_nominal else ""
+
+  if cmt.shape[1] != 4:
+    raise ValueError("The code assumes cmt is 4D (two dimensional task)")
+
+  # Some set up for plotting nominal costs
+  num_task_dim, plot_nominal = SetupNomialPlotting(nominal_cmt, plot_nominal)
+
 
   ### 2D plot (cost vs iteration)
   print("\nPlotting cost vs iterations...")
@@ -1089,6 +1095,17 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   if save_fig:
     plt.savefig("%scost_vs_model_iter%s_%s%.2f.png" % (eval_dir, app, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
+
+def Generate2dPlotsCostVsTask(model_indices, cmt, model_slices, nominal_cmt, plot_nominal):
+  app = "_w_nom" if plot_nominal else ""
+
+  if cmt.shape[1] != 4:
+    raise ValueError("The code assumes cmt is 4D (two dimensional task)")
+
+  # Some set up for plotting nominal costs
+  num_task_dim, plot_nominal = SetupNomialPlotting(nominal_cmt, plot_nominal)
+
+
   ### 2D plot (cost vs tasks)
   print("\nPlotting cost vs task...")
 
@@ -1127,6 +1144,17 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
   plt.title('slice at %s %.2f %s ' % (task_to_plot[1], second_task_value, units[task_to_plot[1]]))
   if save_fig:
     plt.savefig("%scost_vs_task_%s%.2f.png" % (eval_dir, name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
+
+
+def Generate2dPlotsIterVsTask(model_indices, cmt, nominal_cmt, plot_nominal):
+  app = "_w_nom" if plot_nominal else ""
+
+  if cmt.shape[1] != 4:
+    raise ValueError("The code assumes cmt is 4D (two dimensional task)")
+
+  # Some set up for plotting nominal costs
+  num_task_dim, plot_nominal = SetupNomialPlotting(nominal_cmt, plot_nominal)
+
 
   ### 2D plot (iter vs tasks; cost visualized in contours)
   print("\nPlotting iterations vs task...")
@@ -1169,6 +1197,8 @@ def Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal):
     if save_fig:
       plt.savefig("%scost_landscape_iter%s_%s%.2f.png" % (eval_dir, app_list[i], name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
+
+def Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe):
   ### 2D plot; cost landscape (task1 vs task2; cost visualized in contours)
   print("\nPlotting 2D cost landscape (task1 vs task2)..." )
   for model_slice_value in model_slices_cost_landsacpe:
@@ -1303,11 +1333,14 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plot_lost_task = True
   show_legend = False
   use_blue_red_color_scheme = True
+  gradient_for_ratio_bigger_than_1 = True
 
   # Colors
-  color_0 = (0, 0.6, 0, 0.5)  # translucent green
+  # color_0 = (0, 0.6, 0, 0.5)  # translucent green
+  color_0 = (50/255, 205/255, 50/255)  # green
   color_inf = 'darkred'
-  color_inf = (147/255, 81/255, 22/255)  # brown
+  # color_inf = (147/255, 81/255, 22/255)  # brown
+  color_inf = (255/255, 116/255, 21/255)  # orange
   eps = 1e-8
   one = 1-eps
   if use_blue_red_color_scheme:
@@ -1374,16 +1407,17 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
     plot_the_ratio_bigger_than_1 = False
 
   # Adjust n_level if the ratio differece is too small
-  if (max_nonzero_ratio - min_nonzero_ratio) / (n_level - 1) < 0.1**n_decimal:
+  max_ratio_for_gradient = max_nonzero_ratio if gradient_for_ratio_bigger_than_1 else min(1, max_nonzero_ratio)
+  if (max_ratio_for_gradient - min_nonzero_ratio) / (n_level - 1) < 0.1**n_decimal:
     print("WARNING -- this feature hasn't been tested yet")
     n_level = int((max_nonzero_ratio - min_nonzero_ratio) / 0.1**n_decimal) + 1
 
   # discrete color map
-  delta_level = (min(1, max_nonzero_ratio) - min_nonzero_ratio) / (n_level - 1)
+  delta_level = (max_ratio_for_gradient - min_nonzero_ratio) / (n_level - 1)
 
   levels = []
   for i in range(n_level)[::-1]:
-    val = min(1, max_nonzero_ratio) - i * delta_level
+    val = max_ratio_for_gradient - i * delta_level
     if i == 0:
       levels.append(math.ceil(val * 10**n_decimal)/10**n_decimal)  # always round up for the top level
     elif i == n_level-1:
@@ -1396,7 +1430,7 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   colors = [tuple(color_code_interpolator(i / (n_level - 2))) for i in range(n_level - 1)]
 
   # Extend levels and colors for values bigger than 1
-  if plot_the_ratio_bigger_than_1:
+  if plot_the_ratio_bigger_than_1 and not gradient_for_ratio_bigger_than_1:
     levels.append(round(max_nonzero_ratio, n_decimal) + 0.1**n_decimal)
     colors.append('red')
 
@@ -1421,18 +1455,20 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plt.rcParams.update({'font.size': 14})
   fig, ax = plt.subplots()
 
+  # import pdb;pdb.set_trace()
+
   # Plotting all
   # # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels)
   # surf = ax.tricontourf(x, y, z, cmap=cmap, norm=norm, levels=levels, extend='both')  # all
   # Plotting all at the same time can creat artifacts. E.g. when plotting lost area, it actually use all data to plot convex hull
   # Therefore, we plot each are separately
-  if np.sum(z == small_val) != 0:  # if-condition makes sure that the index selection are not emtpy
-    ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
   if np.sum(z == big_val) > 2:  # if-condition makes sure that the index selection are not emtpy
     try:
       ax.tricontourf(x[(z == big_val)], y[(z == big_val)], z[(z == big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the lost area
     except RuntimeError:
       print("Maybe the data is a line")
+  if np.sum(z == small_val) != 0:  # if-condition makes sure that the index selection are not emtpy
+    ax.tricontourf(x[(z == small_val)], y[(z == small_val)], z[(z == small_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the gained area
   surf = ax.tricontourf(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], cmap=cmap, norm=norm, levels=levels, extend='both')  # only the overlapped area
 
   # Add contour lines
@@ -1892,7 +1928,7 @@ if __name__ == "__main__":
   parser.add_argument("--baseline_rom_max_log_idx", help="", default=1000, type=int)
   args = parser.parse_args()
   assert (args.eval_task_space == -1) or (args.eval_task_space == 1) or (args.eval_task_space == 2)
-
+  external_rom_comparison = len(args.baseline_rom_path) != 0
 
   # Read the controller parameters
   a_yaml_file = open(
@@ -2002,27 +2038,10 @@ if __name__ == "__main__":
   n_task_tr = 30  #25 #3
   n_task_gi = 35  #25 #3
   tasks = Tasks()
-  # stride_length = np.linspace(-0.2, -0.1, n_task)
   # stride_length = np.linspace(-0.3, 0, n_task, endpoint=False)
-  # stride_length = np.linspace(0.4, 0.5, n_task)
-  # stride_length = np.hstack([np.linspace(-0.6, -0.4, n_task, endpoint=False),
-  #                            -np.linspace(-0.6, -0.4, n_task, endpoint=False)])
-  # tasks.AddTaskDim(np.linspace(0.3, 0.9, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(0.25, 0.6, n_task_sl), "stride_length")
   tasks.AddTaskDim(np.linspace(-0.2, 0.7, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.7, -0.2-0.0375, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.7, 0.7, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.6, 0.6, n_task_sl), "stride_length")
   # tasks.AddTaskDim(np.linspace(-0.4, 0.4, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.4, -0.4, 1), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.3, 0.3, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.2, 0.2, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(-0.42, 0.42, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(0, 0.2, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(0.3, 0.4, n_task_sl), "stride_length")
-  # tasks.AddTaskDim(np.linspace(0, 0, n_task_sl), "stride_length")
   # tasks.AddTaskDim([0.2], "stride_length")
-  # tasks.AddTaskDim(np.linspace(-1.0, 1.0, n_task_tr), "turning_rate")
   tasks.AddTaskDim(np.linspace(-1.4, 1.4, n_task_tr), "turning_rate")
   # tasks.AddTaskDim(np.linspace(-2.0, 2.0, n_task_tr), "turning_rate")
   # tasks.AddTaskDim([0.0], "turning_rate")
@@ -2131,72 +2150,24 @@ if __name__ == "__main__":
 
   # Baseline iteration for the cost landscape comparison
   baseline_rom_iter = 1 
-  if len(args.baseline_rom_path) != 0:
+  if external_rom_comparison:
     baseline_rom_iter = args.baseline_rom_iter
 
   # 2D plot (cost vs task)
   # model_slices = []
-  # model_slices = [1, 50, 100, 150]
-  # model_slices = [1, 50, 100, 150, 200, 250, 300]
-  # model_slices = [1, 10, 20, 30, 40, 50, 60]
-  # model_slices = [5, 50, 95]
-  # model_slices = [5, 95]
-  # model_slices = [1, 50, 100]
-  # model_slices = [1, 60]
-  # model_slices = [1, 25, 50, 75, 100]
-  # model_slices = list(range(1, 50, 5))
-  # model_slices = [1, 100, 200, 300, 400, 500]
-  # model_slices = [500]
-  # model_slices = [1, 100, 200, 300, 400, 450]
-  # model_slices = [1, 20, 40, 60, 80, 100]
-  # model_slices = [1, 10, 20, 30, 40, 50]
-  # model_slices = [1, 30, 56]
-  # model_slices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
-  model_slices = [1, 200, 400, 600, 800]
-  model_slices = [1, 200, 300, 400, 500, 600]
-  model_slices = [1, 200, 300, 400, 500, 600, 700]
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
   model_slices = [180]
-  # model_slices = [1, 400, 500]
-  # model_slices = [1, 300, 400, 500]
-  # model_slices = [1, 400, 450, 500]
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
   # 2D landscape (task1 vs task2)
   # model_slices_cost_landsacpe = []
-  # model_slices_cost_landsacpe = [1, 11, 50, 100, 150, 200]
-  # model_slices_cost_landsacpe = [1, 11, 50, 100, 150]
-  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150]
-  # model_slices_cost_landsacpe = [1, 11, 50, 75, 90, 100, 125, 150, 175, 200, 225, 250, 275, 300, 320, 340]
-  # model_slices_cost_landsacpe = [1, 50, 100, 150, 200, 250, 300, 320, 350, 400]
-  # model_slices_cost_landsacpe = [1, 100]
-  # model_slices_cost_landsacpe = [500]
-  # model_slices_cost_landsacpe = [300, 400]
-  # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 450]
-  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50, 60]
-  # model_slices_cost_landsacpe = [5, 50, 95]
-  # model_slices_cost_landsacpe = [5, 95]
-  # model_slices_cost_landsacpe = [1, 50, 100]
-  # model_slices_cost_landsacpe = [1, 60]
-  #model_slices_cost_landsacpe = [1, 11, 50, 70]
-  # model_slices_cost_landsacpe = [75]
-  # model_slices_cost_landsacpe = [1, 20, 40, 60, 80, 100]
-  # model_slices_cost_landsacpe = [1, 10, 20, 30, 40, 50]
-  # model_slices_cost_landsacpe = [1, 30, 56]
-  # model_slices_cost_landsacpe = [1, 100, 200, 300, 400, 500, 600, 700, 800]
-  model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600]
-  model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700]
   model_slices_cost_landsacpe = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
   model_slices_cost_landsacpe = [180]
-  # model_slices_cost_landsacpe = [1, 400, 500]
-  # model_slices_cost_landsacpe = [1, 300, 400, 500]
-  # model_slices_cost_landsacpe = [1, 400, 450, 500]
-  #model_slices_cost_landsacpe = [1, 60, 80, 100]
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}
@@ -2237,7 +2208,7 @@ if __name__ == "__main__":
   EnforceSlashEnding(FOM_model_dir_for_sim)
   EnforceSlashEnding(FOM_model_dir_for_planner)
   EnforceSlashEnding(eval_dir)
-  if len(args.baseline_rom_path) != 0:
+  if external_rom_comparison:
     EnforceSlashEnding(args.baseline_rom_path)
 
   # Create folder if not exist
@@ -2255,44 +2226,29 @@ if __name__ == "__main__":
   if model_indices[0] == 0:
     model_indices[0] += 1
   # example list: [1, 5, 10, 15]
-  # model_indices = [1, 60]  # Overwrite
-  # model_indices = [1, 100]  # Overwrite
-  # model_indices = [1, 100, 200, 300, 400]  # Overwrite
-  # model_indices = [1, 100]  # Overwrite
-  # model_indices = [1, 100, 200, 300, 400, 450]  # Overwrite
-  # model_indices = [300, 400]  # Overwrite
-  # model_indices = [500]  # Overwrite
-  # model_indices = [1, 20, 40, 60, 70, 80, 90, 100]  # Overwrite
-  # model_indices = [1, 10, 20, 30, 40, 50]  # Overwrite
-  #model_indices = [100]  # Overwrite
-  # model_indices = [1, 30, 56]  # Overwrite
-  # model_indices = [1, 100]  # Overwrite
-  # model_indices = [200, 300, 400]
-  # model_indices = [500]
-  # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800]
-  # model_indices = [1, 200, 400, 600, 800]
-  # model_indices = [1, 200, 300, 400, 500, 600]
-  # model_indices = [1, 200, 300, 400, 500, 600, 700]
-  # model_indices = [1, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
   model_indices = [180]
-  # model_indices = [1, 400, 500]
-  # model_indices = [1, 300, 400, 500]
-  # model_indices = [1, 400, 450, 500]
 
   ### Final setup for model indices
   if baseline_rom_iter not in model_indices:
     model_indices = [baseline_rom_iter] + model_indices
   print("model_indices = \n" + str(np.array(model_indices)))
 
+  ## Some flag overwrites
+  if eval_for_RL or external_rom_comparison:
+    plot_nominal = False
+
   ### Create task list
   # Get duration from model optimization file
-  path_1_0_task = model_dir + "1_0_task.csv"
-  if os.path.exists(path_1_0_task):
-    duration = np.loadtxt(path_1_0_task)[2]
+  if external_rom_comparison:
+    duration = 0.4 if spring_model else 0.35
   else:
-    raise ValueError("%s doesn't exist" % path_1_0_task)
+    path_1_0_task = model_dir + "1_0_task.csv"
+    if os.path.exists(path_1_0_task):
+      duration = np.loadtxt(path_1_0_task)[2]
+    else:
+      raise ValueError("%s doesn't exist" % path_1_0_task)
   tasks.AddTaskDim([duration], "duration", True)
   # Construct task object
   tasks.Construct()
@@ -2302,13 +2258,15 @@ if __name__ == "__main__":
   nonzero_incline = "ground_incline" in tasks.GetVaryingTaskElementName()
 
   # Make sure the dimension is correct
-  nominal_task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str, delimiter=',')
-  if len(nominal_task_names) != tasks.get_task_dim():
-    print("nominal_task_names = ", nominal_task_names)
-    print("tasks_info = ", tasks.tasks_info())
-    raise ValueError("sim eval task dimension is different from trajopt dim. "
-                     "We want them to be the same becasue we use the same code "
-                     "to plot sim cost and trajopt cost")
+  nominal_task_names = np.array(["stride_length","ground_incline","duration","turning_rate","pelvis_height","swing_margin"]) # default to 20230530_two_task_planes__sl_gi_and_sl_tr
+  if os.path.exists(model_dir + "task_names.csv"):
+    nominal_task_names = np.loadtxt(model_dir + "task_names.csv", dtype=str, delimiter=',')
+    if len(nominal_task_names) != tasks.get_task_dim():
+      print("nominal_task_names = ", nominal_task_names)
+      print("tasks_info = ", tasks.tasks_info())
+      raise ValueError("sim eval task dimension is different from trajopt dim. "
+                       "We want them to be the same becasue we use the same code "
+                       "to plot sim cost and trajopt cost")
 
   # Plotting setup -- picking two task elements to show
   name_of_task_value_to_be_read = task_to_plot
@@ -2317,9 +2275,9 @@ if __name__ == "__main__":
     if name not in name_of_task_value_to_be_read:
       name_of_task_value_to_be_read.append(name)
   print("name_of_task_value_to_be_read = ", name_of_task_value_to_be_read)
-  # import pdb;pdb.set_trace()
 
-  idx_map_for_name_of_trajopt_task_value_to_be_read = GetTrajoptTaskElementIdx(name_of_task_value_to_be_read, list(nominal_task_names))
+  if plot_nominal:
+    idx_map_for_name_of_trajopt_task_value_to_be_read = GetTrajoptTaskElementIdx(name_of_task_value_to_be_read, list(nominal_task_names))
 
   # Plotting setups
   idx_closedloop_cost_element = -1
@@ -2333,6 +2291,8 @@ if __name__ == "__main__":
 
   ### Box visualization for training task range
   visualize_training_task_range = True
+  if external_rom_comparison:
+    visualize_training_task_range = False
   training_task_range = []
   if visualize_training_task_range:
     path = model_dir + "task_ranges.csv"
@@ -2369,7 +2329,7 @@ if __name__ == "__main__":
     assert model_idx in model_indices  # we read csv data according to model_indices
 
   ### Some adjustment for the external baseline ROM for comparison
-  if len(args.baseline_rom_path) != 0:
+  if external_rom_comparison:
     if args.baseline_rom_iter in model_indices:
       model_indices.remove(args.baseline_rom_iter)
 
@@ -2439,10 +2399,10 @@ if __name__ == "__main__":
   # Get samples to plot
   # cmt is a list of (model index, task value, and cost)
   cmt = GetSamplesToPlot(model_indices, log_indices, eval_dir)
-  if len(args.baseline_rom_path) != 0:    
-      cmt = np.vstack([cmt, GetSamplesToPlot([args.baseline_rom_iter], list(range(0,args.baseline_rom_max_log_idx)))], args.baseline_rom_path)
-  nominal_cmt = GetNominalSamplesToPlot(model_indices)
-  if (len(nominal_cmt) == 0) or eval_for_RL:
+  if external_rom_comparison:    
+      cmt = np.vstack([cmt, GetSamplesToPlot([args.baseline_rom_iter], list(range(0,args.baseline_rom_max_log_idx)), args.baseline_rom_path)])
+  nominal_cmt = GetNominalSamplesToPlot(model_indices) if plot_nominal else np.zeros((0,2))
+  if (len(nominal_cmt) == 0):
     plot_nominal = False
 
   # Adjust slices value (for 2D plots)
@@ -2453,18 +2413,27 @@ if __name__ == "__main__":
   Generate4dPlots(cmt, nominal_cmt, plot_nominal)
   try:
     Generate3dPlots(cmt, nominal_cmt, plot_nominal)
-    Generate2dPlots(model_indices, cmt, nominal_cmt, plot_nominal)
-    # Generate2dPlots1dTask(cmt)
 
-    ### Compute cost improvement for inidividual task
-    ComputeCostImprovementForIndividualTask(model_indices, cmt)
+    if not external_rom_comparison:
+      Generate2dPlotsCostVsIteration(model_indices, cmt, nominal_cmt, plot_nominal)
+      Generate2dPlotsIterVsTask(model_indices, cmt, nominal_cmt, plot_nominal)
+    if external_rom_comparison:
+      model_slices = [args.baseline_rom_iter] + model_slices
+      model_slices_cost_landsacpe = [args.baseline_rom_iter] + model_slices_cost_landsacpe
+    Generate2dPlotsCostVsTask(model_indices, cmt, model_slices, nominal_cmt, plot_nominal)
+    # Generate2dPlots1dTask(cmt, model_slices)
+    Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe)
 
-    ### Compute expected (averaged) cost
-    ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, task_ranges_to_average_over[task_to_plot[0]])
+    if not external_rom_comparison:
+      ### Compute cost improvement for inidividual task
+      ComputeCostImprovementForIndividualTask(model_indices, cmt)
 
-    ### Compute task range over iteration
-    for second_task_value in task_grid_for_range_improvement[task_to_plot[1]]:
-      ComputeAchievableTaskRangeOverIter(cmt, second_task_value)
+      ### Compute expected (averaged) cost
+      ComputeExpectedCostOverTask(model_indices, cmt, nominal_cmt, task_ranges_to_average_over[task_to_plot[0]])
+
+      ### Compute task range over iteration
+      for second_task_value in task_grid_for_range_improvement[task_to_plot[1]]:
+        ComputeAchievableTaskRangeOverIter(cmt, second_task_value)
 
     ### Success percentage vs iteration
     # TODO: Plot one wrt all sample numbers
@@ -2475,3 +2444,5 @@ if __name__ == "__main__":
 
   if args.eval_task_space == -1:
     plt.show()
+
+  # plt.show()

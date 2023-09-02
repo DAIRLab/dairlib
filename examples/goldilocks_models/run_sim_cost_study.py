@@ -584,6 +584,13 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
 
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       if not os.path.exists(path):
+        # Save commands into csv file
+        task_name_list_to_save = ["stride_length","pelvis_height","ground_incline","turning_rate"]
+        for task_name in task_name_list_to_save:
+          f = open(eval_dir + '%d_%d_des_%s.csv' % (rom_iter, log_idx, task_name), "w")
+          f.write(str(task[tasks.GetDimIdxByName(task_name)]))
+          f.close()          
+
         # Get the initial traj
         # print("1 thread_idx_set = " + str(thread_idx_set))
         # print("len(working_threads) = " + str(len(working_threads)))

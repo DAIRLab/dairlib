@@ -780,7 +780,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     else{
       // VectorXd input = opt.Solve(candidate_states[index], delta, w);
         C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
-
+        optimal_sample_ = candidate_states[index];
   /// calculate the input given x[i]
   //std::cout<<"original sol"<< std::endl;
   

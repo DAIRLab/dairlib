@@ -1219,13 +1219,20 @@ def Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe
       Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
       #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
 
-    # Print average cost
+    f = open(eval_dir + "costs_info.txt", "a")
     x, y, z = superimposed_data
+    # Print average cost
     message = "Averaged cost ratio of the intersected task region: %.3f" % np.average(z[(small_val < z)*(z < big_val)])
     print(message)
-    f = open(eval_dir + "costs_info.txt", "a")
+    f.write(message + "\n")
+    # Print the ratio of the gained task area to the lost task area
+    gained_area = len(z[(z == small_val)])
+    lost_area = len(z[(z == big_val)])
+    message = "The area ratio of the gained tasks to the lost tasks: %.3f" % (gained_area / lost_area if lost_area > 0 else np.inf)
+    print(message)
     f.write(message + "\n")
     f.close()
+
 
 
 big_val = 1000000
@@ -1482,6 +1489,10 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   # Add contour lines
   if not use_blue_red_color_scheme:
     ax.tricontour(x[(small_val < z)*(z < big_val)], y[(small_val < z)*(z < big_val)], z[(small_val < z)*(z < big_val)], colors='blue', linestyles="dashed", linewidths=0.5, levels=levels, extend='both')
+
+  # Testing -- visualize the gained/lost tasks dots
+  # plt.scatter(x[(z == big_val)], y[(z == big_val)], marker='o', c='purple')
+  # plt.scatter(x[(z == small_val)], y[(z == small_val)], marker='o', c='purple')
 
   # Add contour values
   # manual_locations = [(0,0.95)]

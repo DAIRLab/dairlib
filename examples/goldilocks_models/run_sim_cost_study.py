@@ -1262,6 +1262,15 @@ def Generate2dLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe, tr
     message = "The area ratio of the gained tasks to the lost tasks: %.3f" % (gained_area / lost_area if lost_area > 0 else np.inf)
     print(message)
     f.write(message + "\n")
+    # Print the ratio of the gained task area to the lost task area
+    common_area = len(z[(small_val < z)*(z < big_val)])
+    message = "The area ratio of the gained tasks to the common tasks: %.3f" % (gained_area / common_area if common_area > 0 else np.inf)
+    print(message)
+    f.write(message + "\n")
+    # Print the ratio of the gained task area to the lost task area
+    message = "The area ratio of the lost tasks to the common tasks: %.3f" % (lost_area / common_area if common_area > 0 else np.inf)
+    print(message)
+    f.write(message + "\n")
     f.close()
 
 

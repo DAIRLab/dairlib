@@ -43,12 +43,13 @@ for task_name in task_name_list_to_save:
         for line in f.readlines():
           idx_of_substring = line.find("--%s=" % task_name)
           if idx_of_substring >= 0:
-            idx_of_space_character = idx_of_substring
-            for idx in range(idx_of_substring, len(line)):
+            idx_of_number = idx_of_substring + len("--%s=" % task_name) 
+            idx_of_space_character = idx_of_number
+            for idx in range(idx_of_number, len(line)):
               if line[idx] == " ":
                 idx_of_space_character = idx
                 break
-            command_value = line[idx_of_substring:idx_of_space_character]
+            command_value = line[idx_of_number:idx_of_space_character]
             break
         f.close()
         assert len(command_value) > 0

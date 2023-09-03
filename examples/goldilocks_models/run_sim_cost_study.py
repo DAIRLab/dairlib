@@ -585,8 +585,7 @@ def RunSimAndEvalCostInMultithread(model_indices, log_indices, task_list,
       path = eval_dir + '%d_%d_success.csv' % (rom_iter, log_idx)
       if not os.path.exists(path):
         # Save commands into csv file
-        task_name_list_to_save = ["stride_length","pelvis_height","ground_incline","turning_rate"]
-        for task_name in task_name_list_to_save:
+        for task_name in commanded_task_name_list_to_save:
           f = open(eval_dir + '%d_%d_des_%s.csv' % (rom_iter, log_idx, task_name), "w")
           f.write(str(task[tasks.GetDimIdxByName(task_name)]))
           f.close()          
@@ -795,6 +794,7 @@ def PlotNominalCost(model_indices, trajopt_sample_indices_for_viz):
 def GetSamplesToPlot(model_indices, log_indices, directory):
   # cmt_l stores cost, model index, task value, and log index
   cmt = np.zeros((0, 2 + len(name_of_task_value_to_be_read)))
+  tracking_errors = np.zeros((0, len(commanded_task_name_list_to_save)))
   log = np.zeros((0, 1))
   for rom_iter in model_indices:
     for idx in log_indices:
@@ -832,7 +832,18 @@ def GetSamplesToPlot(model_indices, log_indices, directory):
         # if (cost > 2.25) & (current_cmt[0, 2] < 0.3):
         #   print("(iter, log) = (%.0f, %.0f) has cost %.3f (outlier)" %
         #         (current_cmt[0, 0], idx, current_cmt[0, 2]))
+
+        if plot_tracking_error:
+          task_error_vector = np.zeros((1, len(commanded_task_name_list_to_save)))
+          for i in range(len(commanded_task_name_list_to_save)):
+            task_name = commanded_task_name_list_to_save[i]
+            actual_task = np.loadtxt(directory + '%d_%d_ave_%s.csv' % (rom_iter, idx, task_name), delimiter=',').item()  # 0-dim scalar
+            des_task = np.loadtxt(directory + '%d_%d_des_%s.csv' % (rom_iter, idx, task_name), delimiter=',').item()  # 0-dim scalar
+            task_error_vector[0, i] = des_task - actual_task
+          tracking_errors = np.vstack([tracking_errors, task_error_vector])
+
   print("cmt.shape = " + str(cmt.shape))
+  print("tracking_errors.shape = " + str(tracking_errors.shape))
 
   ### Testing -- find the log idx with high cost
   cost_threshold = 2
@@ -849,7 +860,7 @@ def GetSamplesToPlot(model_indices, log_indices, directory):
       print("(iter, log) = (%.0f, %.0f) has low cost %.3f" %
             (mem[1], log[i], mem[0]))
 
-  return cmt
+  return cmt, tracking_errors
 
 
 def GetNominalSamplesToPlot(model_indices):
@@ -1205,31 +1216,44 @@ def Generate2dPlotsIterVsTask(model_indices, cmt, nominal_cmt, plot_nominal):
       plt.savefig("%scost_landscape_iter%s_%s%.2f.png" % (eval_dir, app_list[i], name_abbrev[task_to_plot[1]], second_task_value), dpi=fig_dpi)
 
 
+def Generate2dTrackingLandscapePlots(model_indices, cmt, tracking_errors, model_slices_cost_landsacpe):
+  emt = copy.deepcopy(cmt)
+  assert tracking_error_task_name in commanded_task_name_list_to_save
+  idx = commanded_task_name_list_to_save.index(tracking_error_task_name)
+  emt[:,0] = np.absolute(tracking_errors[:,idx])
+  Generate2dLandscapePlots(model_indices, emt, model_slices_cost_landsacpe, tracking_error_instead_of_cost=True)
+
+
 def Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe):
+  Generate2dLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe, tracking_error_instead_of_cost=False)
+
+
+def Generate2dLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe, tracking_error_instead_of_cost):
   ### 2D plot; cost landscape (task1 vs task2; cost visualized in contours)
   print("\nPlotting 2D cost landscape (task1 vs task2)..." )
   for model_slice_value in model_slices_cost_landsacpe:
-    Generate2dCostLandscape(cmt, model_slice_value)
+    Generate2dCostLandscape(cmt, model_slice_value, tracking_error_instead_of_cost)
 
   ### 2D plot; cost landscape comparison (task1 vs task2; cost visualized in contours)
   print("\nPlotting 2D cost landscape comparison (task1 vs task2)...")
   for model_slice_value in model_slices_cost_landsacpe:
     if model_slice_value == baseline_rom_iter:
       continue
-    superimposed_data = InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value)
+    superimposed_data = InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value, tracking_error_instead_of_cost)
     if len(superimposed_data[0]) == 0:
       print("`WARNING: superimposed_data` is empty. It's possible that the grid is not dense enough.")
       print("Skip plotting landscape comparison because there is no data.")
     else:
-      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, True)
-      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, True)
-      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, True, False)
-      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, False, False)
+      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, True, True)
+      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, False, True)
+      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, True, False)
+      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, False, False)
 
+    value_name = "tracking_error" if tracking_error_instead_of_cost else "cost"
     f = open(eval_dir + "costs_info.txt", "a")
     x, y, z = superimposed_data
     # Print average cost
-    message = "Averaged cost ratio of the intersected task region: %.3f" % np.average(z[(small_val < z)*(z < big_val)])
+    message = "Average %s ratio of the intersected task region: %.3f" % (value_name, np.average(z[(small_val < z)*(z < big_val)]))
     print(message)
     f.write(message + "\n")
     # Print the ratio of the gained task area to the lost task area
@@ -1244,15 +1268,15 @@ def Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe
 
 big_val = 1000000
 small_val = -1e-8
-def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value):
+def InterpolateAndSuperimposeDataForCostLandscapeComparison(cmt, model_slice_value, tracking_error_instead_of_cost):
   iter1 = baseline_rom_iter
   iter2 = model_slice_value
 
   if cmt.shape[1] != 4:
     raise ValueError("We assume cmt is [cost, model iter, task1 value, task2 value], since we hard-coded the column index in the code below")
 
-  ct1 = Generate2dCostLandscape(cmt, iter1, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter1][:, [0,2,3]]
-  ct2 = Generate2dCostLandscape(cmt, iter2, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter2][:, [0,2,3]]
+  ct1 = Generate2dCostLandscape(cmt, iter1, tracking_error_instead_of_cost, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter1][:, [0,2,3]]
+  ct2 = Generate2dCostLandscape(cmt, iter2, tracking_error_instead_of_cost, True) if interpolate_across_iterations else cmt[cmt[:, 1] == iter2][:, [0,2,3]]
 
   if len(ct1) == 0:
     print("WARNING!!! iter 1 has no samples, we don't plot the landscape comparison for iter %d" % model_slice_value)
@@ -1343,7 +1367,9 @@ class MplColorHelper:
 
 
 # Sometimes we set `hide_artifacts_of_increased_cost`=True because the ratio bigger than 1 was from bad solves at boundary
-def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
+def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, visualize_datapoints_on_landscape, hide_artifacts_of_increased_cost):
+  value_name = "tracking_error" if tracking_error_instead_of_cost else "cost"
+
   x, y, z = superimposed_data
 
   iter1 = baseline_rom_iter
@@ -1546,15 +1572,17 @@ def Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value,
   plt.ylim(y_range_plot_window)
   plt.xlabel(name_with_unit[task_to_plot[0]])
   plt.ylabel(name_with_unit[task_to_plot[1]])
-  plt.title('Cost comparison between iteration %d and %d' % (iter1, iter2))
+  plt.title('%s comparison between iteration %d and %d' % (value_name, iter1, iter2))
   plt.gcf().subplots_adjust(bottom=0.15)
   plt.gcf().subplots_adjust(left=0.15)
   if save_fig:
-    plt.savefig("%scost_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (eval_dir, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""), dpi=fig_dpi)
+    plt.savefig("%s%s_landscape_comparison_btwn_iter_%d_and_%d%s%s.png" % (eval_dir, value_name, iter1, iter2, "__dp" if visualize_datapoints_on_landscape else "", "__hide_artifacts" if hide_artifacts_of_increased_cost else ""), dpi=fig_dpi)
 
 
 
-def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
+def Generate2dCostLandscape(cmt, model_slice_value, tracking_error_instead_of_cost, no_plotting=False):
+  value_name = "tracking_error" if tracking_error_instead_of_cost else "cost"
+
   data_list = [cmt]
   title_list = ["", ""]
   app_list = ["", "_nom"]
@@ -1606,11 +1634,11 @@ def Generate2dCostLandscape(cmt, model_slice_value, no_plotting=False):
     # plt.xlim([0, 135])
     plt.xlabel(name_with_unit[task_to_plot[0]])
     plt.ylabel(name_with_unit[task_to_plot[1]])
-    plt.title('Cost landscape at iteration %d ' % model_slice_value + title_list[i])
+    plt.title(('%s landscape at iteration %d ' % (value_name, model_slice_value)) + title_list[i])
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.gcf().subplots_adjust(left=0.15)
     if save_fig:
-      plt.savefig("%scost_landscape%s_model_iter_%d.png" % (eval_dir, app_list[i], model_slice_value), dpi=fig_dpi)
+      plt.savefig("%s%s_landscape%s_model_iter_%d.png" % (eval_dir, value_name, app_list[i], model_slice_value), dpi=fig_dpi)
 
 
 def ComputeCostImprovementForIndividualTask(model_indices, cmt):
@@ -2108,6 +2136,11 @@ if __name__ == "__main__":
   # log_indices_for_plot = list(range(log_idx_offset + tasks.get_n_task()))
   # log_indices_for_plot = list(range(240))
 
+  # Plot the tracking errors
+  plot_tracking_error = True
+  commanded_task_name_list_to_save = ["stride_length","pelvis_height","ground_incline","turning_rate"]
+  tracking_error_task_name = "stride_length"
+        
   # Select two tasks to plot
   #task_to_plot = ['stride_length', 'pelvis_height']  # order matters
   # task_to_plot = ['ground_incline', 'turning_rate']  # order matters
@@ -2424,9 +2457,11 @@ if __name__ == "__main__":
 
   # Get samples to plot
   # cmt is a list of (model index, task value, and cost)
-  cmt = GetSamplesToPlot(model_indices, log_indices, eval_dir)
+  cmt, tracking_errors = GetSamplesToPlot(model_indices, log_indices, eval_dir)
   if external_rom_comparison:    
-      cmt = np.vstack([cmt, GetSamplesToPlot([args.baseline_rom_iter], list(range(0,args.baseline_rom_max_log_idx)), args.baseline_rom_path)])
+    cmt_ext, tracking_errors_ext = GetSamplesToPlot([args.baseline_rom_iter], list(range(0,args.baseline_rom_max_log_idx)), args.baseline_rom_path)
+    cmt = np.vstack([cmt, cmt_ext])
+    tracking_errors = np.vstack([tracking_errors, tracking_errors_ext])
   nominal_cmt = GetNominalSamplesToPlot(model_indices) if plot_nominal else np.zeros((0,2))
   if (len(nominal_cmt) == 0):
     plot_nominal = False
@@ -2449,6 +2484,8 @@ if __name__ == "__main__":
     Generate2dPlotsCostVsTask(model_indices, cmt, model_slices, nominal_cmt, plot_nominal)
     # Generate2dPlots1dTask(cmt, model_slices)
     Generate2dCostLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe)
+    if plot_tracking_error:
+      Generate2dTrackingLandscapePlots(model_indices, cmt, tracking_errors, model_slices_cost_landsacpe)
 
     if not external_rom_comparison:
       ### Compute cost improvement for inidividual task

@@ -1259,11 +1259,14 @@ def Generate2dLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe, tr
     # Print the ratio of the gained task area to the lost task area
     gained_area = len(z[(z == small_val)])
     lost_area = len(z[(z == big_val)])
+    common_area = len(z[(small_val < z)*(z < big_val)])
     message = "The area ratio of the gained tasks to the lost tasks: %.3f" % (gained_area / lost_area if lost_area > 0 else np.inf)
     print(message)
     f.write(message + "\n")
+    message = "The area ratio of (gained + common) tasks to (lost + common) tasks: %.3f" % ((gained_area+common_area) / (lost_area+common_area) if (lost_area+common_area) > 0 else np.inf)
+    print(message)
+    f.write(message + "\n")
     # Print the ratio of the gained task area to the lost task area
-    common_area = len(z[(small_val < z)*(z < big_val)])
     message = "The area ratio of the gained tasks to the common tasks: %.3f" % (gained_area / common_area if common_area > 0 else np.inf)
     print(message)
     f.write(message + "\n")
@@ -2474,6 +2477,10 @@ if __name__ == "__main__":
   nominal_cmt = GetNominalSamplesToPlot(model_indices) if plot_nominal else np.zeros((0,2))
   if (len(nominal_cmt) == 0):
     plot_nominal = False
+
+  # Negate the ground incline sign for more intuitive visualization
+  if task_to_plot[1] == 'ground_incline':
+    cmt[:,3] *= -1  # to flip the ground incline
 
   # Adjust slices value (for 2D plots)
   model_slices = AdjustSlices(model_slices)

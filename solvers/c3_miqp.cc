@@ -25,7 +25,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
   // Create an environment
   env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
-  env_.set("Threads", "2");
+  // env_.set("Threads", "2");
   env_.start();
 }
 
@@ -54,7 +54,8 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // Create an empty model
   GRBModel model = GRBModel(env_);
   //model.set("FeasibilityTol", "0.01");
-  //model.set("IterationLimit", "40");
+  // model.set("IterationLimit", "40");
+  // model.set(GRB_DBL_PAR_TIMELIMIT, "0.5");    // Time limit in seconds for MIQP.
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];

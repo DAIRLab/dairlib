@@ -153,7 +153,7 @@
                  "type_data": {"color":[0, 0.5, 1],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.1
+                               "radius": 0.005
                              }
                 },
  
@@ -181,7 +181,7 @@
                  "type_data": {"color":[0.5, 1, 0],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.1
+                               "radius": 0.005
                              }
                 },
                 

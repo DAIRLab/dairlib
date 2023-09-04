@@ -23,11 +23,11 @@ Q_default: 0
 Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
-Q_ball_z: 0
+Q_ball_z: 100000
 Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 0.01                 # torque cost in xyz  # TODO may need to tune these
-G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
+G: 0.001 #0.1             #ADMM related  # TODO may need to tune these
 U_default: 1              #ADMM projection step related
 U_pos_vel: 100 #1000           # first 19 diag elements of U  #ADMM projection step related
 U_u: 10 #10                  # last 3 diag elements of U      #ADMM projection step related

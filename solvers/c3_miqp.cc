@@ -55,7 +55,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   GRBModel model = GRBModel(env_);
   //model.set("FeasibilityTol", "0.01");
   // model.set("IterationLimit", "40");
-  // model.set(GRB_DBL_PAR_TIMELIMIT, "0.5");    // Time limit in seconds for MIQP.
+  model.set(GRB_DBL_PAR_TIMELIMIT, "0.5");    // Time limit in seconds for MIQP.
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];

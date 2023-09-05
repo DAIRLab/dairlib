@@ -148,6 +148,9 @@ int DoMain(int argc, char* argv[]){
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
   MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
+  Ginit.block(nq+nv+4+1, nq+nv+4+1, 3, 3) = param.G_ground * MatrixXd::Identity(3, 3);              // Ground normal forces.
+  Ginit.block(nq+nv+4+4+4, nq+nv+4+4+4, 3*4, 3*4) = param.G_ground * MatrixXd::Identity(3*4, 3*4);  // Ground tangential forces.
+
   MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
   Uinit.block(0,0,nq+nv,nq+nv) << 
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);

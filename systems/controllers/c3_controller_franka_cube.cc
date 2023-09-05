@@ -504,6 +504,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
         num_friction_directions_, mu_, 0.1);
     solvers::LCS test_lcs = test_system_scaling_pair.first;
+    // double test_scaling = test_system_scaling_pair.second;   // Might be necessary to use this in computing LCS if getting LCS
+                                                                // solve errors frequently in the future.
 
     // Store the candidate states and LCS objects.
     candidate_states.push_back(candidate_state);
@@ -538,6 +540,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   omp_set_num_threads(n_threads_to_use);
 
   // Parallelize over computing C3 costs for each sample.
+  std::cout << "\nLOOP" << std::endl;
   #pragma omp parallel for num_threads(n_threads_to_use)
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
@@ -560,7 +563,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       }
 
       // Solve optimization problem, add travel cost to the optimal C3 cost.
+      std::cout<<i<<" before solve"<<std::endl;
       vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
+      std::cout<<i<<" after solve"<<std::endl;
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
       auto c3_cost_trajectory_pair = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);    //Returns a pair (C3 cost for sample, Trajectory vector x0, x1 .. xN)
       double c3_cost = c3_cost_trajectory_pair.first;

@@ -96,3 +96,14 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+cc_test(
+    name = "mixed_integer_test",
+    srcs = ["test/mixed_integer_test.cc"],
+    deps = [
+        ":optimization_utils",
+        "@drake//:drake_shared_library",
+        "@drake//common/test_utilities:eigen_matrix_compare",
+        "@gtest//:main",
+    ],
+)

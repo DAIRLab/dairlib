@@ -1,13 +1,14 @@
 #include "solvers/optimization_utils.h"
 #include <iostream>
 
-#include <iostream>
-
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using drake::solvers::Constraint;
 using drake::solvers::Binding;
 using drake::solvers::MathematicalProgram;
+using drake::solvers::LinearConstraint;
+using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::DecisionVariable;
 using drake::AutoDiffVecXd;
 using drake::math::InitializeAutoDiff;
 using drake::math::ExtractGradient;
@@ -171,6 +172,65 @@ int CountConstraintRows(const MathematicalProgram& prog) {
     n += binding.evaluator()->num_constraints();
   }
   return n;
+}
+
+std::tuple<MatrixXd, VectorXd, VectorXd>
+GetBigMFormulation(const MatrixXd& A, const MatrixXd& b, double M) {
+  MatrixXd Ac = MatrixXd::Zero(A.rows(), A.cols() + 1);
+  Ac.leftCols(A.cols()) = A;
+  Ac.rightCols<1>() = M * VectorXd::Ones(A.rows());
+  VectorXd ub = b + M * VectorXd::Ones(b.size());
+  VectorXd lb =
+      -std::numeric_limits<double>::infinity() * VectorXd::Ones(b.size());
+  return std::tie(Ac, lb, ub);
+}
+
+Binding<LinearConstraint> AddBigMInequalityConstraint(
+    drake::solvers::MathematicalProgram& prog,
+    const MatrixXd& A, const VectorXd& b, double M,
+    const VectorXDecisionVariable& x, const DecisionVariable& z){
+  auto [Ac, lb, ub] = GetBigMFormulation(A, b, M);
+  return prog.AddLinearConstraint(Ac, lb, ub, {x, drake::Vector1<DecisionVariable>(z)});
+}
+
+void UpdateBigMInequalityConstraint(Binding<LinearConstraint>& binding,
+                                    const MatrixXd& A, const MatrixXd& b,
+                                    double M) {
+  MatrixXd Ac = MatrixXd::Zero(A.rows(), A.cols() + 1);
+  Ac.leftCols(A.cols()) = A;
+  Ac.rightCols<1>() = M * VectorXd::Ones(A.rows());
+  VectorXd ub = b + M * VectorXd::Ones(b.size());
+  VectorXd lb = VectorXd::Constant(b.size(), -std::numeric_limits<double>::infinity());
+  binding.evaluator()->UpdateCoefficients(Ac, lb, ub);
+}
+
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& constraints) {
+  for (auto &constr : constraints) {
+    std::cout << constr.evaluator()->get_description() << ":\n A:\n"
+              << constr.evaluator()->get_sparse_A() << "\nub:\n"
+              << constr.evaluator()->upper_bound() << "\nlb:\n"
+              << constr.evaluator()->lower_bound() << std::endl;
+  }
+}
+
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::LinearEqualityConstraint>>& constraints) {
+  for (auto &constr : constraints) {
+    std::cout << constr.evaluator()->get_description() << ":\n A:\n"
+              << constr.evaluator()->get_sparse_A() << "\nb:\n"
+              << constr.evaluator()->upper_bound() << std::endl;
+  }
+}
+
+void print_constraint(
+    const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>& constraints) {
+  for (auto &constraint : constraints) {
+    auto constr = dynamic_cast<drake::solvers::LinearConstraint*>(constraint.evaluator().get());
+    std::cout << constr->get_description() << ":\n A:\n"
+              << constr->get_sparse_A() << "\nb:\n"
+              << constr->upper_bound() << std::endl;
+  }
 }
 
 }  // namespace solvers

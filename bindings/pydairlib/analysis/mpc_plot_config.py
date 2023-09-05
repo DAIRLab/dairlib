@@ -6,7 +6,7 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-from cassie_plot_config import CassiePlotConfig
+from pydairlib.analysis.cassie_plot_config import CassiePlotConfig
 
 
 class MpcPlotConfig:

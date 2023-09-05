@@ -1,13 +1,12 @@
 import sys
 import lcm
-import numpy as np
 from matplotlib import pyplot as plt
 
-from process_lcm_log import get_log_data
-from mpc_plot_config import MpcPlotConfig
-from log_plotter_cassie import plotter_main
+from pydairlib.analysis.process_lcm_log import get_log_data
+from pydairlib.analysis.mpc_plot_config import MpcPlotConfig
+from pydairlib.analysis.log_plotter_cassie import plotter_main
 
-import mpc_plotting_utils as mpc_plots
+import pydairlib.perceptive_locomotion.alip_mpfc_plotting_utils as mpc_plots
 
 from pydairlib.common.plot_styler import PlotStyler
 
@@ -29,12 +28,16 @@ def main():
     # init_ps()
 
     plot_config = MpcPlotConfig(
-            'bindings/pydairlib/analysis/plot_configs/mpc_plot_config.yaml')
+        'bindings/pydairlib/analysis/plot_configs/mpc_plot_config.yaml'
+    )
 
     filename = sys.argv[1]
     filenum = filename.split('/')[-1].split('-')[-1]
     if sys.argv[2] == 'hardware':
-        filename_mpc = filename.replace(f'lcmlog-{filenum}', f'lcmlog-mpc-{filenum}')
+        filename_mpc = filename.replace(
+            f'lcmlog-{filenum}', f'lcmlog-mpc-'
+                                 f'{filenum}'
+        )
     else:
         filename_mpc = filename
     log = lcm.EventLog(filename, "r")
@@ -55,9 +58,10 @@ def main():
         quit()
 
     _ = mpc_plots.plot_mpc_timing(mpc_debug)
-    
+
     ps = mpc_plots.plot_mpc_state_traj(
-        mpc_debug.mpc_trajs["solution"].xxs[mpc_debug.t_mpc[5]])
+        mpc_debug.mpc_trajs["solution"].xxs[mpc_debug.t_mpc[5]]
+    )
 
     _ = mpc_plots.plot_mpc_state_prediction(mpc_debug)
 

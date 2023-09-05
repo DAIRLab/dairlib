@@ -9,7 +9,6 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 #include "dairlib/lcmt_contact.hpp"
-#include "dairlib/lcmt_gps_signal.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -59,37 +58,31 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   ///    0: assume both feet are always in contact with ground.
   ///    1: assume both feet are always in the air.
   explicit CassieStateEstimator(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator,
-      const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
-      const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
+      const drake::multibody::MultibodyPlant<double> &plant,
+      const multibody::KinematicEvaluatorSet<double> *fourbar_evaluator,
+      const multibody::KinematicEvaluatorSet<double> *left_contact_evaluator,
+      const multibody::KinematicEvaluatorSet<double> *right_contact_evaluator,
       std::map<std::string, double> joint_offset_map = {},
       bool test_with_ground_truth_state = false,
       bool print_info_to_terminal = false, int hardware_test_mode = -1,
       double contact_force_threshold = 60);
 
-  // (testing) accept a gps signal (can also be from properly initialized VIO)
-  // as an additional EKF measurement
-  const drake::systems::InputPort<double>& get_gps_input_port() const {
-    return this->get_input_port(gps_input_port_);
-  }
-
-  const drake::systems::OutputPort<double>& get_robot_output_port() const {
+  const drake::systems::OutputPort<double> &get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_contact_output_port() const {
+  const drake::systems::OutputPort<double> &get_contact_output_port() const {
     return this->get_output_port(contact_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
+  const drake::systems::OutputPort<double> &get_gm_contact_output_port() const {
     return this->get_output_port(contact_forces_output_port_);
   }
-  const drake::systems::OutputPort<double>& get_covariance_output_port() const {
+  const drake::systems::OutputPort<double> &get_covariance_output_port() const {
     return this->get_output_port(pose_covariance_output_port_);
   }
 
-  void solveFourbarLinkage(const Eigen::VectorXd& q_init,
-                           double* left_heel_spring,
-                           double* right_heel_spring) const;
+  void solveFourbarLinkage(const Eigen::VectorXd &q_init,
+                           double *left_heel_spring,
+                           double *right_heel_spring) const;
 
   /// EstimateContactForEkf() and EstimateContactForController()
   /// estimate the ground contacts based on the optimal costs and spring
@@ -98,26 +91,27 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   /// EstimateContactForController(). See the cc file for more detail.
   /// The methods are set to be public in order to unit test them.
 
-  void EstimateContactForEkf(const systems::OutputVector<double>& output,
-                             int* left_contact, int* right_contact) const;
-  void EstimateContactForController(const systems::OutputVector<double>& output,
-                                    int* left_contact,
-                                    int* right_contact) const;
-  void EstimateContactForces(const drake::systems::Context<double>& context,
-                             const systems::OutputVector<double>& output,
-                             Eigen::VectorXd& lambda, int& left_contact,
-                             int& right_contact) const;
+  void EstimateContactForEkf(const systems::OutputVector<double> &output,
+                             int *left_contact, int *right_contact) const;
+  void EstimateContactForController(const systems::OutputVector<double> &output,
+                                    int *left_contact,
+                                    int *right_contact) const;
+  void EstimateContactForces(const drake::systems::Context<double> &context,
+                             const systems::OutputVector<double> &output,
+                             Eigen::VectorXd &lambda, int &left_contact,
+                             int &right_contact) const;
 
   // Setters for initial values
-  void setPreviousTime(drake::systems::Context<double>* context,
+  void setPreviousTime(drake::systems::Context<double> *context,
                        double time) const;
   void setInitialPelvisPose(
-      drake::systems::Context<double>* context, Eigen::Vector4d quat,
+      drake::systems::Context<double> *context, Eigen::Vector4d quat,
       Eigen::Vector3d position,
       Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
-  void setPreviousImuMeasurement(drake::systems::Context<double>* context,
-                                 const Eigen::VectorXd& imu_value) const;
-  void SetSpringDeflectionThresholds(double knee_spring_threshold, double ankle_spring_threshold) {
+  void setPreviousImuMeasurement(drake::systems::Context<double> *context,
+                                 const Eigen::VectorXd &imu_value) const;
+  void SetSpringDeflectionThresholds(double knee_spring_threshold,
+                                     double ankle_spring_threshold) {
     knee_spring_threshold_ctrl_ = knee_spring_threshold;
     knee_spring_threshold_ekf_ = knee_spring_threshold;
     ankle_spring_threshold_ctrl_ = ankle_spring_threshold;
@@ -128,15 +122,15 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   }
 
   // Copy joint state from cassie_out_t to an OutputVector
-  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t &cassie_out,
+                                                systems::OutputVector<double> *output) const;
 
   // Currently, `DoCalcNextUpdateTime` seems to be the only gateway of adding
   // kTimed events
   void DoCalcNextUpdateTime(
-      const drake::systems::Context<double>& context,
-      drake::systems::CompositeEventCollection<double>* events,
-      double* time) const final;
+      const drake::systems::Context<double> &context,
+      drake::systems::CompositeEventCollection<double> *events,
+      double *time) const final;
 
   // Set the time of the next received message. Is used to trigger update
   // events.
@@ -145,37 +139,37 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void set_next_message_time(double t) { next_message_time_ = t; };
 
  private:
-  void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
-  void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
-  void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
-      systems::OutputVector<double>* output) const;
+  void AssignImuValueToOutputVector(const cassie_out_t &cassie_out,
+                                    systems::OutputVector<double> *output) const;
+  void AssignActuationFeedbackToOutputVector(const cassie_out_t &cassie_out,
+                                             systems::OutputVector<double> *output) const;
+  void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd &state_est,
+                                             systems::OutputVector<double> *output) const;
 
   drake::systems::EventStatus Update(
-      const drake::systems::Context<double>& context,
-      drake::systems::State<double>* state) const;
+      const drake::systems::Context<double> &context,
+      drake::systems::State<double> *state) const;
 
-  void CopyStateOut(const drake::systems::Context<double>& context,
-                    systems::OutputVector<double>* output) const;
-  void CopyContact(const drake::systems::Context<double>& context,
-                   dairlib::lcmt_contact* contact_msg) const;
+  void CopyStateOut(const drake::systems::Context<double> &context,
+                    systems::OutputVector<double> *output) const;
+  void CopyContact(const drake::systems::Context<double> &context,
+                   dairlib::lcmt_contact *contact_msg) const;
   void CopyEstimatedContactForces(
-      const drake::systems::Context<double>& context,
-      drake::lcmt_contact_results_for_viz* contact_msg) const;
+      const drake::systems::Context<double> &context,
+      drake::lcmt_contact_results_for_viz *contact_msg) const;
 
-  void CopyPoseCovarianceOut(const drake::systems::Context<double>& context,
-                             drake::systems::BasicVector<double>* cov) const;
+  void CopyPoseCovarianceOut(const drake::systems::Context<double> &context,
+                             drake::systems::BasicVector<double> *cov) const;
 
   int n_q_;
   int n_v_;
   int n_u_;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator_;
-  const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator_;
-  const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::MultibodyPlant<double> &plant_;
+  const multibody::KinematicEvaluatorSet<double> *fourbar_evaluator_;
+  const multibody::KinematicEvaluatorSet<double> *left_contact_evaluator_;
+  const multibody::KinematicEvaluatorSet<double> *right_contact_evaluator_;
+  const drake::multibody::BodyFrame<double> &world_;
   const bool is_floating_base_;
   std::unique_ptr<drake::systems::Context<double>> context_;
 
@@ -184,9 +178,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_idx_map_;
 
   // Body frames
-  std::vector<const drake::multibody::Frame<double>*> toe_frames_;
-  const drake::multibody::Frame<double>& pelvis_frame_;
-  const drake::multibody::Body<double>& pelvis_;
+  std::vector<const drake::multibody::Frame<double> *> toe_frames_;
+  const drake::multibody::Frame<double> &pelvis_frame_;
+  const drake::multibody::Body<double> &pelvis_;
   std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
   // Input/output port indices
@@ -198,12 +192,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex contact_forces_output_port_;
   drake::systems::OutputPortIndex pose_covariance_output_port_;
 
-
   // Below are indices of system states:
   // A state which stores previous timestamp
   drake::systems::DiscreteStateIndex time_idx_;
   // States related to EKF
-  drake::systems::DiscreteStateIndex prev_gps_time_idx_;
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
@@ -215,10 +207,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   // Cassie parameters
   std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double> &>>
       rod_on_thighs_;
   std::vector<
-      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double>&>>
+      std::pair<const Eigen::Vector3d, const drake::multibody::Frame<double> &>>
       rod_on_heel_springs_;
   double rod_length_;
   Eigen::Vector3d front_contact_disp_;
@@ -244,7 +236,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
   //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
   double knee_spring_threshold_ctrl_ = -0.015;
-  double knee_spring_threshold_ekf_ = -0.01;
+  double knee_spring_threshold_ekf_ = -0.015;
   double ankle_spring_threshold_ctrl_ = -0.01;
   double ankle_spring_threshold_ekf_ = -0.02;
   const double w_soft_constraint_ = 100;  // Soft constraint cost

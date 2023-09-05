@@ -11,5 +11,3 @@ attic/multibody/solver_log/
 .vscode
 *.csv
 /examples/Cassie/saved_trajectories/
-*.npy
-/.learning_data

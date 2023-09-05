@@ -1,3 +1,3 @@
-# Joint position offsets to compensate for poor encoder calibration
+# Joint position offsets to compensate for inaccurate encoder calibration
 toe_left: -0.147  #TODO (@Brian-Acosta) Measure the toe offsets and set these vals
 toe_right: 0.01

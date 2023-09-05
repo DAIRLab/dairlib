@@ -84,7 +84,9 @@ new_local_repository(
     path = "tools/workspace/ros/bundle_ws/install",
 )
 
-# Locally developed and installed ROS packages
+# Add any ROS packages which are developed locally.
+# TODO (@Brian-Acosta) add in an ignored version of this in case no local ros
+#  workspace is used. Update the README to include the existence of this feature.
 environ_repository(
     name = "environ_local_ros",
     vars = ["LOCAL_ROS_INSTALL_PATH"],

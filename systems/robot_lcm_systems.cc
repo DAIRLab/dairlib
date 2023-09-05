@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "robot_lcm_systems.h"
 
 #include "multibody/multibody_utils.h"
@@ -9,7 +11,6 @@
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include <iostream>
 
 namespace dairlib {
 namespace systems {
@@ -265,6 +266,7 @@ void RobotCommandSender::OutputCommand(
     dairlib::lcmt_robot_input* input_msg) const {
   const TimestampedVector<double>* command =
       (TimestampedVector<double>*)this->EvalVectorInput(context, 0);
+
   input_msg->utime = command->get_timestamp() * 1e6;
   input_msg->num_efforts = num_actuators_;
   input_msg->effort_names.resize(num_actuators_);

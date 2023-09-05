@@ -1,9 +1,9 @@
-import subprocess
 import os
 import sys
 import glob
 import codecs
 import socket
+import subprocess
 from datetime import date
 
 
@@ -32,7 +32,7 @@ def mpc_debug_logging_main():
     current_logs = sorted(glob.glob('lcmlog-mpc-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
-        log_num = f'{last_log+1:02}'
+        log_num = f'{last_log + 1:02}'
     else:
         log_num = '00'
 
@@ -49,7 +49,7 @@ def log_everything_main():
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
     logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
-    dair = f"{os.getenv('HOME')}/workspace/{'brian/' if is_cassie() else''}" \
+    dair = f"{os.getenv('HOME')}/workspace/{'brian/' if is_cassie() else ''}" \
            f"dairlib/"
     standing_gains = os.path.join(
         dair,
@@ -74,7 +74,7 @@ def log_everything_main():
     current_logs = sorted(glob.glob('lcmlog-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
-        log_num = f'{last_log+1:02}'
+        log_num = f'{last_log + 1:02}'
     else:
         log_num = '00'
 

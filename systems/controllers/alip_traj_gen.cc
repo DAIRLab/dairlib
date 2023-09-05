@@ -40,7 +40,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
     contact_points_in_each_state, const Eigen::MatrixXd& Q,
-    const Eigen::MatrixXd& R, bool filter_alip_state, bool target_com_z) :
+    const Eigen::MatrixXd& R, bool filter_alip_state) :
     plant_(plant),
     context_(context),
     desired_com_height_(desired_com_height),
@@ -48,8 +48,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
     unordered_state_durations_(unordered_state_durations),
     contact_points_in_each_state_(contact_points_in_each_state),
     world_(plant_.world_frame()) ,
-    filter_alip_state_(filter_alip_state),
-    target_com_z_(target_com_z) {
+    filter_alip_state_(filter_alip_state) {
 
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() == contact_points_in_each_state.size());
@@ -67,11 +66,6 @@ ALIPTrajGenerator::ALIPTrajGenerator(
   touchdown_time_port_ =
       this->DeclareVectorInputPort("t_touchdown", BasicVector<double>(1))
           .get_index();
-  if (target_com_z_) {
-    com_z_input_port_ =
-        this->DeclareVectorInputPort("com_z", BasicVector<double>(1))
-            .get_index();
-  }
 
   // Provide an instance to allocate the memory first (for the output)
   ExponentialPlusPiecewisePolynomial<double> exp;
@@ -107,7 +101,7 @@ ALIPTrajGenerator::ALIPTrajGenerator(
   com_z_idx_ = this->DeclareDiscreteState(
       desired_com_height * VectorXd::Ones(1));
 
-  this->DeclarePerStepUnrestrictedUpdateEvent(
+  this->DeclareForcedUnrestrictedUpdateEvent(
       &ALIPTrajGenerator::UnrestrictedUpdate);
 }
 
@@ -125,7 +119,7 @@ drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
   // Read in finite state machine
   const BasicVector<double>* fsm_output =
       (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
-  int fsm_state = (int)fsm_output->get_value()(0);
+  int fsm_state = static_cast<int>(fsm_output->get_value()(0));
   int mode_index = GetModeIdx(fsm_state);
 
   // calculate current estimate of ALIP state
@@ -162,14 +156,12 @@ drake::systems::EventStatus ALIPTrajGenerator::UnrestrictedUpdate(
   return EventStatus::Succeeded();
 }
 
-ExponentialPlusPiecewisePolynomial<double>
-ALIPTrajGenerator::ConstructAlipComTraj(
-    const Vector3d& CoM, const Vector3d& stance_foot_pos,
-    const Vector4d& x_alip, double com_z_rel_to_stance_at_next_td,
+ExponentialPlusPiecewisePolynomial<double> ALIPTrajGenerator::ConstructAlipComTraj(
+    const Vector3d& CoM, const Vector3d& stance_foot_pos, const Vector4d& x_alip,
     double start_time, double end_time_of_this_fsm_state) const {
 
   double CoM_wrt_foot_z = (CoM(2) - stance_foot_pos(2));
-  //DRAKE_DEMAND(CoM_wrt_foot_z > 0);
+  DRAKE_DEMAND(CoM_wrt_foot_z > 0);
 
   // create a 3D one-segment polynomial for ExponentialPlusPiecewisePolynomial
   Vector2d T_waypoint_com {start_time, end_time_of_this_fsm_state};
@@ -180,16 +172,12 @@ ALIPTrajGenerator::ConstructAlipComTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double start_height = std::clamp(
+  double height = std::clamp(
       desired_com_height_ + stance_foot_pos(2),
       CoM(2) - max_height_diff_per_step,
       CoM(2) + max_height_diff_per_step);
-  double final_height = com_z_rel_to_stance_at_next_td + stance_foot_pos(2);
-  Y(2,0) = start_height;
-  Y(2, 1) = final_height;
-
-  Vector3d Y_dot_start = Vector3d::Zero();
-  Vector3d Y_dot_end = Vector3d::Zero();
+  Y(2, 0) = height;
+  Y(2, 1) = height;
 
   PiecewisePolynomial<double> pp_part =
       PiecewisePolynomial<double>::FirstOrderHold(T_waypoint_com, Y);
@@ -242,13 +230,6 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
   VectorXd prev_event_time =
       this->EvalVectorInput(context, touchdown_time_port_)->get_value();
 
-  // read in next touchdown com z
-  double com_z_td_des = desired_com_height_;
-  if (target_com_z_) {
-    com_z_td_des =
-        this->EvalVectorInput(context, com_z_input_port_)->get_value()(0);
-  }
-
   int mode_index = GetModeIdx(fsm_state);
 
   // Get time
@@ -278,7 +259,7 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(const drake::systems::Context<
       dynamic_cast<ExponentialPlusPiecewisePolynomial<double>*>(traj);
   *exp_pp_traj =
       ConstructAlipComTraj(
-          CoM, stance_foot_pos, x_alip, com_z_td_des, start_time, end_time);
+          CoM, stance_foot_pos, x_alip, start_time, end_time);
 }
 
 void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<

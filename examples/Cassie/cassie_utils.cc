@@ -1,7 +1,7 @@
 #include <iostream>
 #include "examples/Cassie/cassie_utils.h"
-#include "common/find_resource.h"
 
+#include "common/find_resource.h"
 #include "examples/Cassie/systems/cassie_encoder.h"
 #include "multibody/multibody_solvers.h"
 #include "drake/geometry/scene_graph.h"
@@ -260,7 +260,8 @@ VectorXd SolveFourBarIK(const MultibodyPlant<double>& plant,
   prog.AddQuadraticErrorCost(
       Eigen::MatrixXd::Identity(plant.num_positions(), plant.num_positions()),
       q_nominal,
-      q);
+      q
+  );
   auto sol = drake::solvers::Solve(prog);
   if (sol.is_success()) {
     return sol.GetSolution(q);

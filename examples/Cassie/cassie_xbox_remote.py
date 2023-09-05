@@ -8,6 +8,7 @@ import numpy as np
 cassie_blue = (6, 61, 128)
 white = (255, 255, 255)
 
+
 # This is a simple class that will help us print to the screen
 # It has nothing to do with the joysticks, just outputting the
 # information.
@@ -63,7 +64,7 @@ def main():
     joystick.init()
 
     done = False
-    max_speed = 1.0/3.0
+    max_speed = 1.0 / 3.0
     ramp_up = np.arange(0, max_speed, 0.01)
     stay = max_speed * np.ones(400)
     ramp_down = np.flip(np.arange(0, max_speed, 0.01))
@@ -79,12 +80,13 @@ def main():
 
         # Get the name from the OS for the controller/joystick
         name = joystick.get_name()
-        textPrint.print(screen, "Welcome! remember to make this the active \nwindow when you wish to use the remote")
-        textPrint.print(screen, "Controller detected: {}".format(name) )
+        textPrint.print(screen, "Welcome! remember to make this the active "
+                                "\nwindow when you wish to use the remote")
+        textPrint.print(screen, "Controller detected: {}".format(name))
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: # If user clicked close
-                done=True # Flag that we are done so we exit this loop
+            if event.type == pygame.QUIT:  # If user clicked close
+                done = True  # Flag that we are done so we exit this loop
 
             if event.type == pygame.JOYHATMOTION:
                 hat_val = joystick.get_hat(0)
@@ -92,14 +94,13 @@ def main():
                 # saturate between -1 and 1
                 radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
 
-
-        textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
+        textPrint.print(screen, "Side dial position: {:.2f}".format(
+            radio_channel_6_pos))
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
 
         # Go ahead and update the screen with what we've drawn.
         pygame.display.flip()
-
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
@@ -121,5 +122,7 @@ def main():
         i += 1
 
     pygame.quit()
+
+
 if __name__ == '__main__':
     main()

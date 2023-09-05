@@ -72,11 +72,14 @@ sudo apt install python3-rosinstall-generator python-catkin-tools python3-vcstoo
 ```
 sudo ./tools/workspace/ros/compile_ros_workspace.sh
 ```
-5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON` by Adding to `~/.bashrc`
+5. Set the environment variable `DAIRLIB_WITH_ROS` to `ON` by adding to `~/.bashrc`
 ```
 export DAIRLIB_WITH_ROS=ON
 ```
+or adding an alias to set `DAIRLIB_WITH_ROS` to `ON` or `OFF` as needed. 
+
 #### Setup elevation_mapping ros node
+TODO(@Brian-Acosta) Update this
 Move up to the workspace directory and make a catkin workspace:
 ```
 cd ~/workspace

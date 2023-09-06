@@ -23,12 +23,12 @@ Q_default: 0
 Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
-Q_ball_z: 100000
+Q_ball_z: 1
 Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
-G_ground: 0.01
+G_ground: 0.0000
 U_default: 1              #ADMM projection step related
 U_pos_vel: 100 #1000           # first 19 diag elements of U  #ADMM projection step related
 U_u: 10 #10                  # last 3 diag elements of U      #ADMM projection step related
@@ -87,15 +87,15 @@ sampling_radius: 0.12         # size of sampling circle; used for both circle pe
 sample_height: 0.04           # height of sampling circle; used for circle perimeter (0, 1).
 min_angle_from_vertical: 0.785    # radians minimum angle from vertical (i.e. closest to top of sphere) used for spherical surface sampling (2).
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
-num_additional_samples_repos: 1   # number of additional samples to consider when doing repositioning.
-num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
+num_additional_samples_repos: 0   # number of additional samples to consider when doing repositioning.
+num_additional_samples_c3: 0      # number of additional samples to consider when doing C3.
 spline_width: 0.12   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.5     # desired meters/second of repositioning
 
 
 #Threading parameters
-num_threads: 1     # Total number of threads to use. 0 means use all threads on machine.
+num_threads: 0     # Total number of threads to use. 0 means use all threads on machine.
 
 #Switching parameters
 switching_hysteresis: 150

@@ -120,19 +120,19 @@ C3Controller_franka::C3Controller_franka(
   // diagram_.GetGraphvizFragment()
 
   // Set up some variables and initialize warm start.
-  int time_horizon = 5;
-  int nx = 19;
-  int nlambda = 6*4; // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
-  int nu = 3;
+  N_ = 5;
+  n_ = 19;
+  m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
+  k_ = 3;
 
-  for (int i = 0; i < time_horizon; i++){
-    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
-    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
-    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
-    warm_start_u_.push_back(VectorXd::Zero(nu));
-    warm_start_x_.push_back(VectorXd::Zero(nx));
+  for (int i = 0; i < N_; i++){
+    warm_start_delta_.push_back(VectorXd::Zero(n_+m_+k_));
+    warm_start_binary_.push_back(VectorXd::Zero(m_));
+    warm_start_lambda_.push_back(VectorXd::Zero(m_));
+    warm_start_u_.push_back(VectorXd::Zero(k_));
+    warm_start_x_.push_back(VectorXd::Zero(n_));
   }
-  warm_start_x_.push_back(VectorXd::Zero(nx));
+  warm_start_x_.push_back(VectorXd::Zero(n_));
   
   // TODO:  figure out what this shape is
   state_input_port_ =
@@ -181,6 +181,27 @@ C3Controller_franka::C3Controller_franka(
   // filter info
   prev_timestamp_ = 0;
   dt_filter_length_ = param_.dt_filter_length;
+
+  /// figure out a nice way to do this as SortedPairs with pybind is not working
+  /// (potentially pass a matrix 2xnum_pairs?)
+
+  // PASSING CONTACT PAIRS
+  // Define contact pairs between end effector and capsules.
+  ee_contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  ee_contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  ee_contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+
+  // Define contact pairs between ground and capsules.
+  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
+  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
+  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
+  
+  // Will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]].
+  contact_pairs_.push_back(ee_contact_pairs_);
+  contact_pairs_.push_back(ground_contact1);
+  contact_pairs_.push_back(ground_contact2);
+  contact_pairs_.push_back(ground_contact3);
+  // TODO:  double check that the closest ee-capsule pair is chosen in LCS factory.
 }
 
 // Gets called with every loop to calculate the next control input.
@@ -384,49 +405,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_f_.SetVelocities(&context_f_, v);
   multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
 
-  /// figure out a nice way to do this as SortedPairs with pybind is not working
-  /// (potentially pass a matrix 2xnum_pairs?)
-
-  // PASSING CONTACT PAIRS
-  // Define contact pairs between end effector and capsules.
-  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
-  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
-  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
-
-  // Define contact pairs between ground and capsules.
-  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
-  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
-  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
-  
-  // Will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]].
-  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
-  contact_pairs.push_back(ee_contact_pairs);
-  contact_pairs.push_back(ground_contact1);
-  contact_pairs.push_back(ground_contact2);
-  contact_pairs.push_back(ground_contact3);
-  // TODO:  double check that the closest ee-capsule pair is chosen in LCS factory.
-
-
-  // Compute the LCS based on the current context.
-  auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, 0.1);
-
-  solvers::LCS system_ = system_scaling_pair.first;
-  // double scaling = system_scaling_pair.second;
-
   C3Options options;
-  int N = (system_.A_).size();        // horizon length (5 expected)
-  int n = ((system_.A_)[0].cols());   // number of state variables (19 expected)
-  int m = ((system_.D_)[0].cols());   // number of contact forces (6*num_contacts = 24 expected)
-  int k = ((system_.B_)[0].cols());   // number of control inputs (3 expected)
 
 
   // Don't initialize delta and w ADMM variables here, since they will get created inside thread-safe loops.
   // Initialize ADMM reset variables (delta, w get reset to these values).
-  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
+  std::vector<VectorXd> delta_reset(N_, VectorXd::Zero(n_ + m_ + k_));
+  std::vector<VectorXd> w_reset(N_, VectorXd::Zero(n_ + m_ + k_));
 
   // In practice, we use a Q value that is fixed throughout the horizon.  Here we set it equal to the first matrix provided in Q_.
   // If we want to introduce time-varying Q, this line will have to be changed.
@@ -501,7 +486,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     
     // Compute the LCS based on the hypothetical state at the ee sample location.
     auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, 0.1);
     solvers::LCS test_lcs = test_system_scaling_pair.first;
     // double test_scaling = test_system_scaling_pair.second;   // Might be necessary to use this in computing LCS if getting LCS
@@ -520,8 +505,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // Instantiate variables before loop; they get assigned values inside loop.
   std::vector<double> cost_vector(num_samples);                                   // Vector of costs per sample.
-  std::vector<VectorXd> predicted_states_at_end_horizon_optimistic(num_samples, VectorXd::Zero(n));  // Vector of optimistic predicted last states.
-  std::vector<VectorXd> predicted_states_at_end_horizon_feasible(num_samples, VectorXd::Zero(n));    // Vector of feasible predicted last states.
+  std::vector<VectorXd> predicted_states_at_end_horizon_optimistic(num_samples, VectorXd::Zero(n_));  // Vector of optimistic predicted last states.
+  std::vector<VectorXd> predicted_states_at_end_horizon_feasible(num_samples, VectorXd::Zero(n_));    // Vector of feasible predicted last states.
   vector<VectorXd> fullsol_current_location;                                      // Current location C3 solution.
 
   // Omp parallelization settings.
@@ -557,8 +542,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       std::vector<VectorXd> w = w_reset;
       // Reset delta and w (option 1 involves inserting the updated state into delta)
       if (options.delta_option == 1) {
-        for (int j = 0; j < N; j++) {
-          delta[j].head(n) << test_state;  // Use test state, not current state.
+        for (int j = 0; j < N_; j++) {
+          delta[j].head(n_) << test_state;  // Use test state, not current state.
         }
       }
 
@@ -575,7 +560,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // Save the feasible and optimistic predicted states at the end of the horizon.
       vector<VectorXd> predicted_state_trajectory = c3_cost_trajectory_pair.second;
       predicted_states_at_end_horizon_feasible[i] = predicted_state_trajectory.back();
-      predicted_states_at_end_horizon_optimistic[i] = fullsol_sample_location.back().head(n);       // Get x portion from z vector.
+      predicted_states_at_end_horizon_optimistic[i] = fullsol_sample_location.back().head(n_);      // Get x portion from z vector.
 
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
@@ -653,18 +638,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     std::vector<VectorXd> w = w_reset;
     // Reset delta and w (option 1 involves inserting the updated state into delta)
     if (options.delta_option == 1) {
-      for (int j = 0; j < N; j++) {
-        delta[j].head(n) << state;  // Use current state.
+      for (int j = 0; j < N_; j++) {
+        delta[j].head(n_) << state;  // Use current state.
       }
     }
 
     // Get the control input from the previously solved full solution from current state.
-    VectorXd input = fullsol_current_location[0].segment(n + m, k);
+    VectorXd input = fullsol_current_location[0].segment(n_ + m_, k_);
     // std::cout<<"Using C3 "<<std::endl;
   
     // Calculate state and force using LCS from current location.
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
-        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, 0.002);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;

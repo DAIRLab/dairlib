@@ -43,6 +43,8 @@ using drake::systems::Context;
 using drake::systems::LeafSystem;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using drake::SortedPair;
+using drake::geometry::GeometryId;
 
 #define NUM_POSITIONS 14
 #define NUM_VELOCITIES 9
@@ -109,6 +111,8 @@ class C3Controller_franka : public LeafSystem<double> {
   const drake::geometry::SceneGraph<double>& scene_graph_;
   const drake::systems::Diagram<double>& diagram_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs_;
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs_;
   int num_friction_directions_;
   double mu_;
   const std::vector<Eigen::MatrixXd> Q_;
@@ -129,6 +133,12 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable std::deque<double> moving_average_;
   mutable double prev_timestamp_;
   uint32_t dt_filter_length_;
+
+  // LCS sizing
+  int N_;   // horizon length (5 expected)
+  int n_;   // number of state variables (19 expected)
+  int m_;   // number of contact forces (6*num_contacts = 24 expected)
+  int k_;   // number of control inputs (3 expected)
 
   // velocity
   mutable Eigen::Vector3d prev_position_;

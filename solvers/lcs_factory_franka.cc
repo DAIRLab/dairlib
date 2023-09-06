@@ -271,6 +271,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
+  std::cout<<"\tAnDn = "<<AnDn<<std::endl;
 
 //  std::cout << "quick check on AnDn" << std::endl;
 //  std::cout << D << std::endl;
@@ -287,6 +288,9 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   std::vector<MatrixXd> H_lcs(N, H / AnDn);
 
   LCS system(A_lcs, B_lcs, D_lcs, d_lcs, E_lcs, F_lcs, H_lcs, c_lcs);
+
+  // Set the scaling stored in the LCS.
+  system.SetScaling(AnDn);
 
   std::pair <LCS, double> ret (system, AnDn);
 

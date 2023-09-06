@@ -36,6 +36,9 @@ class LCS {
   /// @param input Input value
   Eigen::VectorXd Simulate(Eigen::VectorXd& x_init, Eigen::VectorXd& input) const;
 
+  // Helper function to set scaling.
+  void SetScaling(double scaling);
+
  public:
   const std::vector<Eigen::MatrixXd> A_;
   const std::vector<Eigen::MatrixXd> B_;
@@ -46,6 +49,9 @@ class LCS {
   const std::vector<Eigen::MatrixXd> H_;
   const std::vector<Eigen::VectorXd> c_;
   const int N_;
+
+ private:
+  mutable double scaling_ = 0.000646507;
 };
 
 }  // namespace solvers

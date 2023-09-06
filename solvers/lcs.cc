@@ -40,9 +40,9 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 //VectorXd dummy_input = VectorXd::Zero(9);
 
   ///hacking for now
-  double scaling = 0.000646507;
+  // double scaling = 0.000646507;
 
-  auto flag = LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x_init * scaling + c_[0] * scaling + H_[0] * input * scaling,
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x_init * scaling_ + c_[0] * scaling_ + H_[0] * input * scaling_,
                           &force);
 
   //std::cout << flag << std::endl;
@@ -85,7 +85,7 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 //  }
 
   // update
-  x_final = A_[0] * x_init + B_[0] * input + D_[0] * force / scaling + d_[0];
+  x_final = A_[0] * x_init + B_[0] * input + D_[0] * force / scaling_ + d_[0];
 
   //std::cout << "here" << D_[0] << std::endl;
 
@@ -120,6 +120,10 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
 
 
   return x_final;
+}
+
+void LCS::SetScaling(double scaling) {
+  scaling_ = scaling;
 }
 
 }  // namespace solvers

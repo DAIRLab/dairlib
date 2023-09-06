@@ -23,8 +23,8 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
          warm_start_u, warm_start), env_(true) {
 
   // Create an environment
-  env_.set("LogToConsole", "0");
-  env_.set("OutputFlag", "0");
+  env_.set("LogToConsole", "1");
+  env_.set("OutputFlag", "1");
   // env_.set("Threads", "2");
   env_.start();
 }
@@ -112,6 +112,44 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     model.addConstr(cexpr2 + c(i) >= 0);
     model.addConstr(cexpr2 + c(i) <= M * binary[i]);
   }
+
+  // TODO:  Play around with fixing some of these constraints.  Eventually make these adaptive to model size instead of hard-coded for the jack.
+  // Any reported rates were achieved using 1 thread and 0 sample locations on Wanxin's computer.
+  // for (int i = 0; i < m_; i++) {
+  //   model.addConstr(binary[i] == 0);
+  // }
+  // // Enforce sliding on ground for all contacts (gamma = 0).
+  // model.addConstr(binary[0] + binary[1] + binary[2] + binary[3] == 0);
+  // // Enforce that only up to one ground contact can lift up (lambda_n = 0).
+  // model.addConstr(binary[5] + binary[6] + binary[7] <= 1);
+  // Enforce opposing tangential forces can't both be non-zero.
+  // (This alone doesn't improve speed noticeably; 2-3Hz.)
+  model.addConstr(binary[8] + binary[9] <= 1);      // end effector / jack contact.
+  model.addConstr(binary[10] + binary[11] <= 1);
+  model.addConstr(binary[12] + binary[13] <= 1);    // capsule 1 / ground contact.
+  model.addConstr(binary[14] + binary[15] <= 1);
+  model.addConstr(binary[16] + binary[17] <= 1);    // capsule 2 / ground contact.
+  model.addConstr(binary[18] + binary[19] <= 1);
+  model.addConstr(binary[20] + binary[21] <= 1);    // capsule 3 / ground contact.
+  model.addConstr(binary[22] + binary[23] <= 1);
+  // Enforce there can't be tangential forces if there's no corresponding normal force.
+  // (This alone doesn't improve speed noticeably; 1-2Hz.)
+  model.addConstr(binary[8] <= binary[4]);          // end effector / jack contact.
+  model.addConstr(binary[9] <= binary[4]);
+  model.addConstr(binary[10] <= binary[4]);
+  model.addConstr(binary[11] <= binary[4]);
+  model.addConstr(binary[12] <= binary[5]);         // capsule 1 / ground contact.
+  model.addConstr(binary[13] <= binary[5]);
+  model.addConstr(binary[14] <= binary[5]);
+  model.addConstr(binary[15] <= binary[5]);
+  model.addConstr(binary[16] <= binary[6]);         // capsule 2 / ground contact.
+  model.addConstr(binary[17] <= binary[6]);
+  model.addConstr(binary[18] <= binary[6]);
+  model.addConstr(binary[19] <= binary[6]);
+  model.addConstr(binary[20] <= binary[7]);         // capsule 3 / ground contact.
+  model.addConstr(binary[21] <= binary[7]);
+  model.addConstr(binary[22] <= binary[7]);
+  model.addConstr(binary[23] <= binary[7]);
 
   model.optimize();
 

@@ -125,6 +125,8 @@ C3Controller_franka::C3Controller_franka(
   m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
   k_ = 3;
 
+  // Do separate warm starting for samples than for current end effector location.
+  // --> Current end effector location.  This will be updated with every control loop.
   for (int i = 0; i < N_; i++){
     warm_start_delta_.push_back(VectorXd::Zero(n_+m_+k_));
     warm_start_binary_.push_back(VectorXd::Zero(m_));
@@ -133,6 +135,15 @@ C3Controller_franka::C3Controller_franka(
     warm_start_x_.push_back(VectorXd::Zero(n_));
   }
   warm_start_x_.push_back(VectorXd::Zero(n_));
+  // --> Samples.  This will not be updated and will always be zeros.
+  for (int i = 0; i < N_; i++){
+    warm_start_delta_zeros_.push_back(VectorXd::Zero(n_+m_+k_));
+    warm_start_binary_zeros_.push_back(VectorXd::Zero(m_));
+    warm_start_lambda_zeros_.push_back(VectorXd::Zero(m_));
+    warm_start_u_zeros_.push_back(VectorXd::Zero(k_));
+    warm_start_x_zeros_.push_back(VectorXd::Zero(n_));
+  }
+  warm_start_x_zeros_.push_back(VectorXd::Zero(n_));
   
   // TODO:  figure out what this shape is
   state_input_port_ =
@@ -532,9 +543,27 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // Get the candidate state and its LCS representation.
       VectorXd test_state = candidate_states.at(i);
       solvers::LCS test_system = candidate_lcs_objects.at(i);
+
+      // By default use zeros for warm start.  Overwrite for current end effector location.
+      std::vector<VectorXd> warm_start_delta = warm_start_delta_zeros_;
+      std::vector<VectorXd> warm_start_binary = warm_start_binary_zeros_;
+      std::vector<VectorXd> warm_start_x = warm_start_x_zeros_;
+      std::vector<VectorXd> warm_start_lambda = warm_start_lambda_zeros_;
+      std::vector<VectorXd> warm_start_u = warm_start_u_zeros_;
+      bool do_warm_start = false;
+      if (i == CURRENT_LOCATION_INDEX) {
+        warm_start_delta = warm_start_delta_;
+        warm_start_binary = warm_start_binary_;
+        warm_start_x = warm_start_x_;
+        warm_start_lambda = warm_start_lambda_;
+        warm_start_u = warm_start_u_;
+        do_warm_start = true;
+      }
+
+      // Set up C3 MIQP.
       solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
-                               warm_start_delta_, warm_start_binary_, warm_start_x_,
-                               warm_start_lambda_, warm_start_u_, true);
+                               warm_start_delta, warm_start_binary, warm_start_x,
+                               warm_start_lambda, warm_start_u, do_warm_start);
 
       // TODO:  this code is nearly identical to some code higher; could be replaced with a function call in both places.
       // Reset delta and w.
@@ -648,11 +677,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // std::cout<<"Using C3 "<<std::endl;
   
     // Calculate state and force using LCS from current location.
+    std::cout<<"Linearization in C3"<<std::endl;
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, 0.002);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
+    std::cout<<"\tScaling "<<scaling2<<std::endl;
+    std::cout<<"Linearization end in C3"<<std::endl;
 
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd force; //This contains the contact forces.

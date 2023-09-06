@@ -155,6 +155,12 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable std::vector<VectorXd> warm_start_delta_;
   mutable std::vector<VectorXd> warm_start_binary_;
 
+  mutable std::vector<VectorXd> warm_start_delta_zeros_;
+  mutable std::vector<VectorXd> warm_start_binary_zeros_;
+  mutable std::vector<VectorXd> warm_start_lambda_zeros_;
+  mutable std::vector<VectorXd> warm_start_u_zeros_;
+  mutable std::vector<VectorXd> warm_start_x_zeros_;
+
   // sampling
   mutable Eigen::VectorXd optimal_sample_ = VectorXd::Zero(19);
   mutable Eigen::VectorXd reposition_target_ = VectorXd::Zero(19);

@@ -31,7 +31,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
-    int num_friction_directions, double mu, float dt) {
+    int num_friction_directions, double mu, float dt, int horizon_length) {
 
 
     // std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
@@ -266,7 +266,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
             2 * contact_geoms.size() * num_friction_directions) =
       J_t * dt * d_v;
 
-  int N = 5;
+  int N = horizon_length;
 
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();

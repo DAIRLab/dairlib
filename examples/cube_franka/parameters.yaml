@@ -28,7 +28,7 @@ Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to t
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
-G_ground: 0.0000
+G_ground: 0.00001
 U_default: 1              #ADMM projection step related
 U_pos_vel: 100 #1000           # first 19 diag elements of U  #ADMM projection step related
 U_u: 10 #10                  # last 3 diag elements of U      #ADMM projection step related
@@ -38,6 +38,8 @@ dt: 0.015 # 0.03
 velocity_limit: 100
 orientation_degrees: 0 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
 axis_option: 1
+planning_timestep: 0.1
+horizon_length: 4
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]

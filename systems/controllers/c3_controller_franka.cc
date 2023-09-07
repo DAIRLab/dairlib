@@ -424,7 +424,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, 0.1);
+      num_friction_directions_, mu_, 0.1, 5);
 
   solvers::LCS system_ = system_scaling_pair.first; //checking
   // double scaling = system_scaling_pair.second;
@@ -582,7 +582,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
       auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
           plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-          num_friction_directions_, mu_, 0.1);
+          num_friction_directions_, mu_, 0.1, 5);
 
       solvers::LCS test_system = test_system_scaling_pair.first;
 
@@ -830,7 +830,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, dt);
+      num_friction_directions_, mu_, dt, 5);
 
   solvers::LCS system2_ = system_scaling_pair2.first;
   double scaling2 = system_scaling_pair2.second;

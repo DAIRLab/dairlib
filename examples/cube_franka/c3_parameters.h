@@ -46,6 +46,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(velocity_limit));
     a->Visit(DRAKE_NVP(orientation_degrees));
     a->Visit(DRAKE_NVP(axis_option));
+    a->Visit(DRAKE_NVP(planning_timestep));
+    a->Visit(DRAKE_NVP(horizon_length));
 
     // initialization/simulation parameters
     a->Visit(DRAKE_NVP(q_init_franka));
@@ -147,6 +149,8 @@ struct C3Parameters {
   double velocity_limit;
   double orientation_degrees;
   int axis_option;
+  double planning_timestep;
+  int horizon_length;
 
   // initialization/simulation parameters
   VectorXd q_init_franka;

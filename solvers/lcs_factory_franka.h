@@ -30,7 +30,7 @@ class LCSFactoryFranka {
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
-      int num_friction_directions, double mu, float dt);
+      int num_friction_directions, double mu, float dt, int horizon_length);
 };
 
 }  // namespace solvers

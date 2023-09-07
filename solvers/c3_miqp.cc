@@ -123,7 +123,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // // Enforce that only up to one ground contact can lift up (lambda_n = 0).
   // model.addConstr(binary[5] + binary[6] + binary[7] <= 1);
   // Enforce sticking for all contacts.
-  model.addConstr(binary[0] + binary[1] + binary[2] + binary[3] == 0);
+  // model.addConstr(binary[0] + binary[1] + binary[2] + binary[3] == 0);
   // model.addConstr(binary[0] == 1);
   // model.addConstr(binary[1] == 1);
   // model.addConstr(binary[2] == 1);

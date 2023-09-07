@@ -278,7 +278,7 @@ int DoMain(int argc, char* argv[]){
   /* -------------------------------------------------------------------------------------------*/
 
   int num_friction_directions = 2;
-  int N = 5;
+  int N = param.horizon_length;   //5
   std::vector<MatrixXd> Q, R, G, U;
   std::vector<VectorXd> xdesired;
 

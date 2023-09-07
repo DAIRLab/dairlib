@@ -115,35 +115,8 @@ C3Controller_franka::C3Controller_franka(
       xdesired_(xdesired),
       pp_(pp){
 
-
   // Debugging:  check the Drake system diagram.
   // diagram_.GetGraphvizFragment()
-
-  // Set up some variables and initialize warm start.
-  N_ = 5;
-  n_ = 19;
-  m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
-  k_ = 3;
-
-  // Do separate warm starting for samples than for current end effector location.
-  // --> Current end effector location.  This will be updated with every control loop.
-  for (int i = 0; i < N_; i++){
-    warm_start_delta_.push_back(VectorXd::Zero(n_+m_+k_));
-    warm_start_binary_.push_back(VectorXd::Zero(m_));
-    warm_start_lambda_.push_back(VectorXd::Zero(m_));
-    warm_start_u_.push_back(VectorXd::Zero(k_));
-    warm_start_x_.push_back(VectorXd::Zero(n_));
-  }
-  warm_start_x_.push_back(VectorXd::Zero(n_));
-  // --> Samples.  This will not be updated and will always be zeros.
-  for (int i = 0; i < N_; i++){
-    warm_start_delta_zeros_.push_back(VectorXd::Zero(n_+m_+k_));
-    warm_start_binary_zeros_.push_back(VectorXd::Zero(m_));
-    warm_start_lambda_zeros_.push_back(VectorXd::Zero(m_));
-    warm_start_u_zeros_.push_back(VectorXd::Zero(k_));
-    warm_start_x_zeros_.push_back(VectorXd::Zero(n_));
-  }
-  warm_start_x_zeros_.push_back(VectorXd::Zero(n_));
   
   // TODO:  figure out what this shape is
   state_input_port_ =
@@ -218,6 +191,35 @@ C3Controller_franka::C3Controller_franka(
 // Gets called with every loop to calculate the next control input.
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
+
+  // Set up some variables and initialize warm start.
+  N_ = param_.horizon_length;   //5;
+  std::cout<<"N_ initial = "<<N_<<std::endl;
+  std::cout<<"horizon length initial = "<<param_.horizon_length<<std::endl;
+  std::cout<<"num_additional_samples_c3 = "<<param_.num_additional_samples_c3<<std::endl;
+  n_ = 19;
+  m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
+  k_ = 3;
+
+  // Do separate warm starting for samples than for current end effector location.
+  // --> Current end effector location.  This will be updated with every control loop.
+  for (int i = 0; i < N_; i++){
+    warm_start_delta_.push_back(VectorXd::Zero(n_+m_+k_));
+    warm_start_binary_.push_back(VectorXd::Zero(m_));
+    warm_start_lambda_.push_back(VectorXd::Zero(m_));
+    warm_start_u_.push_back(VectorXd::Zero(k_));
+    warm_start_x_.push_back(VectorXd::Zero(n_));
+  }
+  warm_start_x_.push_back(VectorXd::Zero(n_));
+  // --> Samples.  This will not be updated and will always be zeros.
+  for (int i = 0; i < N_; i++){
+    warm_start_delta_zeros_.push_back(VectorXd::Zero(n_+m_+k_));
+    warm_start_binary_zeros_.push_back(VectorXd::Zero(m_));
+    warm_start_lambda_zeros_.push_back(VectorXd::Zero(m_));
+    warm_start_u_zeros_.push_back(VectorXd::Zero(k_));
+    warm_start_x_zeros_.push_back(VectorXd::Zero(n_));
+  }
+  warm_start_x_zeros_.push_back(VectorXd::Zero(n_));
 
   // Get the full state of the plant.
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
@@ -498,7 +500,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Compute the LCS based on the hypothetical state at the ee sample location.
     auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
-        num_friction_directions_, mu_, 0.1);
+        num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
     solvers::LCS test_lcs = test_system_scaling_pair.first;
     // double test_scaling = test_system_scaling_pair.second;   // Might be necessary to use this in computing LCS if getting LCS
                                                                 // solve errors frequently in the future.
@@ -608,11 +610,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       else {
         cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
-
-      // std::cout<<"Sample "<<i<<" C3 cost: "<<c3_cost<<std::endl;
     }
   //End of parallelization
-  // std::cout<<""<<std::endl;
 
   // Determine whether to switch between C3 and repositioning modes if there are other samples to consider.
   SampleIndex index = CURRENT_LOCATION_INDEX;
@@ -680,7 +679,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // std::cout<<"Linearization in C3"<<std::endl;
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
-        num_friction_directions_, mu_, 0.002);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
+        num_friction_directions_, mu_, 0.002, param_.horizon_length);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
     // std::cout<<"\tScaling "<<scaling2<<std::endl;

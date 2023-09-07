@@ -135,10 +135,10 @@ class C3Controller_franka : public LeafSystem<double> {
   uint32_t dt_filter_length_;
 
   // LCS sizing
-  int N_;   // horizon length (5 expected)
-  int n_;   // number of state variables (19 expected)
-  int m_;   // number of contact forces (6*num_contacts = 24 expected)
-  int k_;   // number of control inputs (3 expected)
+  mutable int N_;   // horizon length (5 expected)
+  mutable int n_;   // number of state variables (19 expected)
+  mutable int m_;   // number of contact forces (6*num_contacts = 24 expected)
+  mutable int k_;   // number of control inputs (3 expected)
 
   // velocity
   mutable Eigen::Vector3d prev_position_;

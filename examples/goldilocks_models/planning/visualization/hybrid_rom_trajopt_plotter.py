@@ -204,7 +204,7 @@ def main():
     # prev_wall_time = -1 
     # prev_sim_time = -1
     is_first_frame = True
-    for j in range(start_idx, end_idx, 1):
+    for j in range(start_idx, end_idx, 5):
       filepath = args.folder_path + str(j) + "_rom_trajectory"
       rom_traj = pydairlib.lcm.lcm_trajectory.HybridRomPlannerTrajectory(filepath, lightweight_log)
 
@@ -269,6 +269,10 @@ def PlotGlobalFeetAndCoMPosition(rom_traj, redraw=False, x_limit=[], y_limit=[])
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
   if len(x_limit) > 0:
+    x_limit = [i[0] for i in x_limit]
+    print("x_limit", x_limit)
+    y_limit = [i[0] for i in y_limit]
+    print("y_limit", y_limit)
     plt.xlim(x_limit)
     plt.ylim(y_limit)
   else:

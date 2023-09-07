@@ -248,10 +248,12 @@ void PlannerFinalPosition::CalcFinalPos(
     //     << rot.toRotationMatrix() * global_pos_diff;
     double init_phase =
         this->EvalVectorInput(context, phase_port_)->get_value()(0);
-    double const_step_length = 0.1;
-    double n_step = 2;
+    Vector2d const_step_length(0.2, 0);
+    double n_step = 4;
     local_final_pos_output->get_mutable_value()
-        << rot.toRotationMatrix() * (const_step_length * (n_step - init_phase));
+        << (const_step_length * (n_step - init_phase));
+    // local_final_pos_output->get_mutable_value()
+    //     << rot.toRotationMatrix() * (const_step_length * (n_step - init_phase));
 
     /*cout << "current_pelvis_pos_xy = " << current_pelvis_pos_xy << endl;
     cout << "pelvis_x = " << pelvis_x.transpose() << endl;

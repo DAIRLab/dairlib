@@ -31,7 +31,7 @@ group "1.rom-space-controller" {
         host = "localhost";
     }
     cmd "3.1.rom-planner (short time limit)" {
-        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --use_ipopt=true --n_step=2 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5";
+        exec = "./bazel-bin/examples/goldilocks_models/run_cassie_rom_planner_process --zero_touchdown_impact=true --fix_duration=true --knots_per_mode=10 --use_ipopt=true --n_step=4 --feas_tol=1e-2 --log_solver_info=false  --knots_per_mode=5 --min_mpc_thread_loop_duration=0.05";
         host = "localhost";
     }
     cmd "3.3.rom-planner (debug a given solve_idx)" {
@@ -118,7 +118,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "0.drake-director" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=contact,frame,image   --script examples/Cassie/director_scripts/show_time.py";
+        exec = "bazel-bin/director/drake-director";
         host = "localhost";
     }
     cmd "2.0. cassie planner pose (multi-pose)" {
@@ -166,7 +166,7 @@ group "0.operator" {
         host = "localhost";
     }
     cmd "4.0. hybrid ROM traj visualizer" {
-        exec = "bazel-bin/examples/goldilocks_models/planning/visualization/hybrid_rom_trajopt_plotter 0";
+        exec = "bazel-bin/examples/goldilocks_models/planning/visualization/hybrid_rom_trajopt_plotter --end_idx=4000";
         host = "localhost";
     }
 }

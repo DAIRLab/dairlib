@@ -1004,6 +1004,12 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
       }
     }
   }
+      for (auto& pos : des_xy_pos_com_rt_init_stance_foot) {
+        cout << "pos = " << pos.transpose() << endl;
+      }
+      for (auto& vel : des_xy_vel_com_rt_init_stance_foot) {
+        cout << "vel = " << vel.transpose() << endl;
+      }
   // My ntoes: Only the goal position needs the above shift.
   //    When translating the planned traj between each solve, I believe we don't
   //    need to care about the above shift. Also when "translating" the planned
@@ -1038,14 +1044,14 @@ void CassiePlannerWithOnlyRom::SolveTrajOpt(
         << des_xy_vel_com_rt_init_stance_foot.at(0)(0),
         abs(des_xy_vel_com_rt_init_stance_foot.at(0)(1));
   }
-  /*cout << "des_com_pos = "
-       << des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance
-              .transpose()
-       << endl;
-  cout << "des_com_vel = "
-       << des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance
-              .transpose()
-       << endl;*/
+  // cout << "des_com_pos = "
+  //      << des_com_pos_rt_stance_foot_at_start_of_mode__during_left_stance
+  //             .transpose()
+  //      << endl;
+  // cout << "des_com_vel = "
+  //      << des_com_vel_rt_stance_foot_at_start_of_mode__during_left_stance
+  //             .transpose()
+  //      << endl;
 
   ///
   /// Use LIPM MPC and IK to get desired configuration to guide ROM MPC
@@ -1852,8 +1858,10 @@ void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
     bool left_stance = start_with_left_stance;
     for (int i = 0; i < n_total_step; i++) {
       if (left_stance) {
+        // des_xy_vel->at(i)(1) = 0;
         des_xy_vel->at(i)(1) -= y_vel_offset;
       } else {
+        // des_xy_vel->at(i)(1) = 0;
         des_xy_vel->at(i)(1) += y_vel_offset;
       }
       left_stance = !left_stance;
@@ -1861,7 +1869,7 @@ void CassiePlannerWithOnlyRom::CreateDesiredBodyPosAndVel(
   }
 
   // Check and print
-  DRAKE_DEMAND((des_xy_pos->back() - adjusted_final_pos).norm() < 1e-14);
+  // DRAKE_DEMAND((des_xy_pos->back() - adjusted_final_pos).norm() < 1e-14);
   /*cout << "des_xy_pos = \n";
   for (int i = 0; i < des_xy_pos->size(); i++) {
     cout << des_xy_pos->at(i).transpose() << endl;

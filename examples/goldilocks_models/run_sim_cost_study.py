@@ -2411,6 +2411,8 @@ if __name__ == "__main__":
       for model_idx in model_indices:
         # Simulation
         RunSimAndEvalCostInMultithread([model_idx], log_indices, task_list)
+        # RunCommand("pkill -f bazel-bin")
+        # RunCommand("pkill -f lcm-logger")
 
         # Cost evaluate only
         EvalCostInMultithread([model_idx], log_indices, task_list)

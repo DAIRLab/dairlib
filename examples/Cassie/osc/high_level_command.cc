@@ -1193,7 +1193,7 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
       global_target_position_ - com_pos.segment(0, 2);
   // double desired_yaw =
   //     atan2(global_com_pos_to_target_pos(1), global_com_pos_to_target_pos(0));
-  double desired_yaw = 0.2;
+  double desired_yaw = 0.25;
 
   // Get current yaw velocity
   double yaw_vel = v(2);

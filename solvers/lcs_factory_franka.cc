@@ -271,7 +271,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
-  std::cout<<"\tAnDn = "<<AnDn<<std::endl;
+//   std::cout<<"\tAnDn = "<<AnDn<<std::endl;
 
 //  std::cout << "quick check on AnDn" << std::endl;
 //  std::cout << D << std::endl;

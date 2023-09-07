@@ -536,7 +536,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   omp_set_num_threads(n_threads_to_use);
 
   // Parallelize over computing C3 costs for each sample.
-  std::cout << "\nLOOP" << std::endl;
+  // std::cout << "\nLOOP" << std::endl;
   #pragma omp parallel for num_threads(n_threads_to_use)
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
@@ -577,9 +577,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       }
 
       // Solve optimization problem, add travel cost to the optimal C3 cost.
-      std::cout<<i<<" before solve"<<std::endl;
+      // std::cout<<i<<" before solve"<<std::endl;
       vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
-      std::cout<<i<<" after solve"<<std::endl;
+      // std::cout<<i<<" after solve"<<std::endl;
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
       auto c3_cost_trajectory_pair = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);    //Returns a pair (C3 cost for sample, Trajectory vector x0, x1 .. xN)
       double c3_cost = c3_cost_trajectory_pair.first;
@@ -677,14 +677,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // std::cout<<"Using C3 "<<std::endl;
   
     // Calculate state and force using LCS from current location.
-    std::cout<<"Linearization in C3"<<std::endl;
+    // std::cout<<"Linearization in C3"<<std::endl;
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, 0.002);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
-    std::cout<<"\tScaling "<<scaling2<<std::endl;
-    std::cout<<"Linearization end in C3"<<std::endl;
+    // std::cout<<"\tScaling "<<scaling2<<std::endl;
+    // std::cout<<"Linearization end in C3"<<std::endl;
 
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd force; //This contains the contact forces.

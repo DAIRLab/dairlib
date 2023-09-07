@@ -135,22 +135,22 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // Enforce there can be tangential forces only if there's corresponding normal force (or binary tangential can
   // be 0 only if binary normal is also 0).
   // (This alone doesn't improve speed noticeably; 1-2Hz.)
-  model.addConstr(binary[8] <= binary[4]);          // end effector / jack contact.
-  model.addConstr(binary[9] <= binary[4]);
-  model.addConstr(binary[10] <= binary[4]);
-  model.addConstr(binary[11] <= binary[4]);
-  model.addConstr(binary[12] <= binary[5]);         // capsule 1 / ground contact.
-  model.addConstr(binary[13] <= binary[5]);
-  model.addConstr(binary[14] <= binary[5]);
-  model.addConstr(binary[15] <= binary[5]);
-  model.addConstr(binary[16] <= binary[6]);         // capsule 2 / ground contact.
-  model.addConstr(binary[17] <= binary[6]);
-  model.addConstr(binary[18] <= binary[6]);
-  model.addConstr(binary[19] <= binary[6]);
-  model.addConstr(binary[20] <= binary[7]);         // capsule 3 / ground contact.
-  model.addConstr(binary[21] <= binary[7]);
-  model.addConstr(binary[22] <= binary[7]);
-  model.addConstr(binary[23] <= binary[7]);
+  model.addConstr(binary[8] >= binary[4]);          // end effector / jack contact.
+  model.addConstr(binary[9] >= binary[4]);
+  model.addConstr(binary[10] >= binary[4]);
+  model.addConstr(binary[11] >= binary[4]);
+  model.addConstr(binary[12] >= binary[5]);         // capsule 1 / ground contact.
+  model.addConstr(binary[13] >= binary[5]);
+  model.addConstr(binary[14] >= binary[5]);
+  model.addConstr(binary[15] >= binary[5]);
+  model.addConstr(binary[16] >= binary[6]);         // capsule 2 / ground contact.
+  model.addConstr(binary[17] >= binary[6]);
+  model.addConstr(binary[18] >= binary[6]);
+  model.addConstr(binary[19] >= binary[6]);
+  model.addConstr(binary[20] >= binary[7]);         // capsule 3 / ground contact.
+  model.addConstr(binary[21] >= binary[7]);
+  model.addConstr(binary[22] >= binary[7]);
+  model.addConstr(binary[23] >= binary[7]);
 
   model.optimize();
 

@@ -551,6 +551,8 @@ int DoMain(int argc, char* argv[]) {
             gains.vel_command_offset_x * ((model_iter - 1) / 300);
       }
     } else {
+      // cout << "gains.vel_max_sagital = " << gains.vel_max_sagital << endl;
+      // cout << "gains.vel_max_lateral = " << gains.vel_max_lateral << endl;
       high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
           plant_w_spr, context_w_spr.get(), gains.kp_yaw, gains.kd_yaw,
           gains.vel_max_yaw, gains.kp_pos_sagital, gains.kd_pos_sagital,
@@ -1169,11 +1171,12 @@ int DoMain(int argc, char* argv[]) {
     if (FLAGS_get_swing_hip_angle_from_planner) {
       osc->AddTrackingData(&swing_hip_yaw_traj);
     } else {
-      if (FLAGS_offset_swing_hip_yaw_for_heading) {
-        osc->AddTrackingData(&swing_hip_yaw_traj);
-      } else {
-        osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
-      }
+      // if (FLAGS_offset_swing_hip_yaw_for_heading) {
+      //   osc->AddTrackingData(&swing_hip_yaw_traj);
+      // } else {
+      //   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
+      // }
+      osc->AddConstTrackingData(&swing_hip_yaw_traj, -0.2 * VectorXd::Ones(1));
     }
 
     // Swing toe joint tracking

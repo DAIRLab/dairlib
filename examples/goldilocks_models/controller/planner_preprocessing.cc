@@ -244,8 +244,14 @@ void PlannerFinalPosition::CalcFinalPos(
     Eigen::Rotation2D<double> rot(-yaw);
 
     // Assign local_final_pos
+    // local_final_pos_output->get_mutable_value()
+    //     << rot.toRotationMatrix() * global_pos_diff;
+    double init_phase =
+        this->EvalVectorInput(context, phase_port_)->get_value()(0);
+    double const_step_length = 0.1;
+    double n_step = 2;
     local_final_pos_output->get_mutable_value()
-        << rot.toRotationMatrix() * global_pos_diff;
+        << rot.toRotationMatrix() * (const_step_length * (n_step - init_phase));
 
     /*cout << "current_pelvis_pos_xy = " << current_pelvis_pos_xy << endl;
     cout << "pelvis_x = " << pelvis_x.transpose() << endl;
@@ -595,6 +601,7 @@ EventStatus InitialStateForPlanner::AdjustState(
   VectorXd x_adjusted3 = x_adjusted2;
   Quaterniond quat(x_adjusted3(0), x_adjusted3(1), x_adjusted3(2),
                    x_adjusted3(3));
+  // Quaterniond relative_qaut(1,0,0,0);
   Quaterniond relative_qaut;
   if (completely_use_trajs_from_model_opt_as_target_) {
     // Note that we only want to rotate about z axis and not the x and y!
@@ -613,7 +620,7 @@ EventStatus InitialStateForPlanner::AdjustState(
     relative_qaut = Quaterniond::FromTwoVectors(pelvis_x, world_x_);
   }
   Quaterniond rotated_quat = relative_qaut * quat;
-  x_adjusted3.head<4>() << rotated_quat.w(), rotated_quat.vec();
+  // x_adjusted3.head<4>() << rotated_quat.w(), rotated_quat.vec();
   // TODO (20220401): minor bug, the planner problem seems to be wrong when
   //  Cassie faces backward (-z world axis).
   //  I did the following change, but it didn't fix the bug:
@@ -645,10 +652,10 @@ EventStatus InitialStateForPlanner::AdjustState(
   x_adjusted3(pos_map_wo_spr_.at("base_z")) -= stance_foot_height_;
 
   // Also need to rotate floating base velocities (wrt global frame)
-  x_adjusted3.segment<3>(nq_) =
-      relative_qaut.toRotationMatrix() * x_adjusted3.segment<3>(nq_);
-  x_adjusted3.segment<3>(nq_ + 3) =
-      relative_qaut.toRotationMatrix() * x_adjusted3.segment<3>(nq_ + 3);
+  // x_adjusted3.segment<3>(nq_) =
+  //     relative_qaut.toRotationMatrix() * x_adjusted3.segment<3>(nq_);
+  // x_adjusted3.segment<3>(nq_ + 3) =
+  //     relative_qaut.toRotationMatrix() * x_adjusted3.segment<3>(nq_ + 3);
 
   ///
   /// Assign

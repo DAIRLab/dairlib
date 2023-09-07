@@ -53,14 +53,16 @@ def main():
     radio_channel_6_pos = 0
     radio_channel_6_delta = 0.05
 
-    if (pygame.joystick.get_count() != 1):
-        raise RuntimeError("Please connect exactly one controller")
+    # if (pygame.joystick.get_count() != 1):
+    #     raise RuntimeError("Please connect exactly one controller")
 
-    joystick = pygame.joystick.Joystick(0)
-    joystick.init()
+    # joystick = pygame.joystick.Joystick(0)
+    # joystick.init()
 
     done = False
 
+    tick = 0;
+    max_tick = 25;
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -69,22 +71,22 @@ def main():
         textPrint.reset()
 
         # Get the name from the OS for the controller/joystick
-        name = joystick.get_name()
-        textPrint.print(screen, "Welcome! remember to make this the active \nwindow when you wish to use the remote")
-        textPrint.print(screen, "Controller detected: {}".format(name) )
+        # name = joystick.get_name()
+        # textPrint.print(screen, "Welcome! remember to make this the active \nwindow when you wish to use the remote")
+        # textPrint.print(screen, "Controller detected: {}".format(name) )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # If user clicked close
                 done=True # Flag that we are done so we exit this loop
 
-            if event.type == pygame.JOYHATMOTION:
-                hat_val = joystick.get_hat(0)
-                radio_channel_6_pos += radio_channel_6_delta * hat_val[1]
-                # saturate between -1 and 1
-                radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
+            # if event.type == pygame.JOYHATMOTION:
+            #     hat_val = joystick.get_hat(0)
+            #     radio_channel_6_pos += radio_channel_6_delta * hat_val[1]
+            #     # saturate between -1 and 1
+            #     radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
 
 
-        textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
+        # textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
 
@@ -94,13 +96,17 @@ def main():
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        radio_msg.channel[0] = -joystick.get_axis(1)
+        # radio_msg.channel[0] = -joystick.get_axis(1)
         # radio_msg.channel[0] = 1  # full going forward
-        radio_msg.channel[1] = joystick.get_axis(0)
-        radio_msg.channel[2] = -joystick.get_axis(4)
-        radio_msg.channel[3] = joystick.get_axis(3)
+        radio_msg.channel[0] = 0.5
+        # radio_msg.channel[1] = joystick.get_axis(0)
+        # radio_msg.channel[2] = -joystick.get_axis(4)
+        # radio_msg.channel[3] = joystick.get_axis(3)
         # radio_msg.channel[3] = 1  # full turning right
-        radio_msg.channel[6] = radio_channel_6_pos
+        if tick < max_tick:
+            radio_msg.channel[3] = -0.5  
+        tick += 1
+        # radio_msg.channel[6] = radio_channel_6_pos
 
         # Method 1 -- send radio message to cassie simultion which packs the message into lcmt_cassie_out
         # publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())

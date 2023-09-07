@@ -1135,6 +1135,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (high_level_mode_ == radio) {
+    // cout << "radio\n";
     const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
         context, cassie_out_port_);
     // TODO(yangwill) make sure there is a message available
@@ -1149,6 +1150,7 @@ EventStatus HighLevelCommand::DiscreteVariableUpdate(
                                           // place at start
     discrete_state->get_mutable_vector(des_vel_idx_).set_value(des_vel);
   } else if (high_level_mode_ == desired_xy_position) {
+    // cout << "xy_pos mode\n";
     discrete_state->get_mutable_vector(des_vel_idx_)
         .set_value(CalcCommandFromTargetPosition(context));
   } else if (high_level_mode_ == open_loop_vel_command_traj) {
@@ -1189,8 +1191,9 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   // Get desired heading angle of pelvis
   Vector2d global_com_pos_to_target_pos =
       global_target_position_ - com_pos.segment(0, 2);
-  double desired_yaw =
-      atan2(global_com_pos_to_target_pos(1), global_com_pos_to_target_pos(0));
+  // double desired_yaw =
+  //     atan2(global_com_pos_to_target_pos(1), global_com_pos_to_target_pos(0));
+  double desired_yaw = 0.2;
 
   // Get current yaw velocity
   double yaw_vel = v(2);
@@ -1255,6 +1258,9 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
   }
   Vector3d des_vel;
   des_vel << desired_filtered_yaw_vel, des_sagital_vel, des_lateral_vel;
+  // cout << "desired_filtered_yaw_vel = " << desired_filtered_yaw_vel << endl;
+  // cout << "des_sagital_vel = " << des_sagital_vel << endl;
+  // cout << "des_lateral_vel = " << des_lateral_vel << endl;
 
   return des_vel;
 }

@@ -47,6 +47,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(orientation_degrees));
     a->Visit(DRAKE_NVP(axis_option));
     a->Visit(DRAKE_NVP(planning_timestep));
+    a->Visit(DRAKE_NVP(c3_planned_next_state_timestep));
     a->Visit(DRAKE_NVP(horizon_length));
 
     // initialization/simulation parameters
@@ -150,6 +151,7 @@ struct C3Parameters {
   double orientation_degrees;
   int axis_option;
   double planning_timestep;
+  double c3_planned_next_state_timestep;
   int horizon_length;
 
   // initialization/simulation parameters

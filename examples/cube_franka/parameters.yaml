@@ -23,7 +23,7 @@ Q_default: 0
 Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
-Q_ball_z: 1
+Q_ball_z: 1000
 Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 0.01                 # torque cost in xyz  # TODO may need to tune these
@@ -39,13 +39,14 @@ velocity_limit: 100
 orientation_degrees: 0 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
 axis_option: 1
 planning_timestep: 0.1
-horizon_length: 4
+c3_planned_next_state_timestep: 0.02
+horizon_length: 5
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
 q_init_ball: [0.847410781, 0.310617894, 0.311017672, -0.385788646] #[0.9239, 0.3827, 0, 0] (2 contacts) #[1, 0, 0, 0] (1 contact) # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
-initial_start: [0.55, 0 , 0.12]
-initial_finish: [0.55, 0.35, 0.07]  # [0.55, 0.53, 0.07] avoids contact between ee and jack when control begins
+initial_start: [0.55, 0 , 0.22]
+initial_finish: [0.35, 0.35, 0.07]  # [0.55, 0.53, 0.07] avoids contact between ee and jack when control begins
 stabilize_time1: 0.5 #0.5
 move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75

@@ -193,10 +193,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
 
   // Set up some variables and initialize warm start.
-  N_ = param_.horizon_length;   //5;
-  std::cout<<"N_ initial = "<<N_<<std::endl;
-  std::cout<<"horizon length initial = "<<param_.horizon_length<<std::endl;
-  std::cout<<"num_additional_samples_c3 = "<<param_.num_additional_samples_c3<<std::endl;
+  N_ = param_.horizon_length;
   n_ = 19;
   m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
   k_ = 3;
@@ -679,7 +676,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // std::cout<<"Linearization in C3"<<std::endl;
     auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
-        num_friction_directions_, mu_, 0.002, param_.horizon_length);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
+        num_friction_directions_, mu_, param_.c3_planned_next_state_timestep, param_.horizon_length);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
     double scaling2 = system_scaling_pair2.second;
     // std::cout<<"\tScaling "<<scaling2<<std::endl;

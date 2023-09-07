@@ -301,6 +301,9 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
 
+  // std::cout<<"z0: "<<z[0]<<std::endl;
+  // std::cout<<"z1: "<<z[1]<<std::endl;
+
 
 //  auto finish = std::chrono::high_resolution_clock::now();
 //std::chrono::duration<double> elapsed = finish - start;

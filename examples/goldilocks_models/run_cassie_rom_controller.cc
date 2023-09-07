@@ -1176,7 +1176,7 @@ int DoMain(int argc, char* argv[]) {
       // } else {
       //   osc->AddConstTrackingData(&swing_hip_yaw_traj, VectorXd::Zero(1));
       // }
-      osc->AddConstTrackingData(&swing_hip_yaw_traj, -0.25 * VectorXd::Ones(1));
+      osc->AddConstTrackingData(&swing_hip_yaw_traj, -0.2 * VectorXd::Ones(1));
     }
 
     // Swing toe joint tracking

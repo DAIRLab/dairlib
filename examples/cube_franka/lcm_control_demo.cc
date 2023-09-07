@@ -152,8 +152,13 @@ int DoMain(int argc, char* argv[]){
   // Ginit.block(nq+nv+4+4+4, nq+nv+4+4+4, 3*4, 3*4) = param.G_ground * MatrixXd::Identity(3*4, 3*4);  // Ground tangential forces.
 
   MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
-  Uinit.block(0,0,nq+nv,nq+nv) << 
-    param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);
+  //Penalizing change in position between projection steps
+  Uinit.block(0,0,nq,nq) << 
+    param.U_pos * MatrixXd::Identity(nq,nq);
+  //Penalizing change in velocity between projection steps
+  Uinit.block(nq,nq,nv,nv) << 
+    param.U_vel * MatrixXd::Identity(nv,nv);
+  //Penalizing change in input between projection steps
   Uinit.block(nq+nv+6*nc, nq+nv+6*nc, nu, nu) << 
     param.U_u * MatrixXd::Identity(nu, nu);
   

@@ -30,7 +30,8 @@ R: 0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
 G_ground: 0.00001
 U_default: 1              #ADMM projection step related
-U_pos_vel: 100 #1000           # first 19 diag elements of U  #ADMM projection step related
+U_pos: 10000 #1000           # first 19 diag elements of U  #ADMM projection step related
+U_vel: 100   #1000
 U_u: 10 #10                  # last 3 diag elements of U      #ADMM projection step related
 q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter

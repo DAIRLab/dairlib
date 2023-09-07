@@ -38,7 +38,8 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(G));
     a->Visit(DRAKE_NVP(G_ground));
     a->Visit(DRAKE_NVP(U_default));
-    a->Visit(DRAKE_NVP(U_pos_vel));
+    a->Visit(DRAKE_NVP(U_pos));
+    a->Visit(DRAKE_NVP(U_vel));
     a->Visit(DRAKE_NVP(U_u));
     a->Visit(DRAKE_NVP(q_init_finger));
     a->Visit(DRAKE_NVP(q_init_ball_c3));
@@ -142,7 +143,8 @@ struct C3Parameters {
   double G;
   double G_ground;
   double U_default;
-  double U_pos_vel;
+  double U_pos;
+  double U_vel;
   double U_u;
   VectorXd q_init_finger;
   VectorXd q_init_ball_c3;

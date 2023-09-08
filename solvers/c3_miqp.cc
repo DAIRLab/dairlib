@@ -129,6 +129,10 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     warm_start_binary_[warm_start_index] = binaryc;
   }
 
+//  std::cout << "here" << std::endl;
+//  std::cout << delta_kc.segment(n_, m_) << std::endl;
+//  std::cout << "here" << std::endl;
+
   return delta_kc;
 }
 

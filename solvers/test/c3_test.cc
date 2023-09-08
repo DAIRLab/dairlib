@@ -3,6 +3,8 @@
 
 #include "solvers/c3_miqp.h"
 
+#include "solvers/miqp.h"
+
 #include "drake/math/discrete_algebraic_riccati_equation.h"
 
 using Eigen::MatrixXd;
@@ -42,6 +44,7 @@ namespace solvers {
 
 int DoMain(int argc, char* argv[]) {
   int example = 2;  /// 0 for cartpole, 1 for finger gaiting, 2 for pivoting
+
 
   /// dimensions (n: state dimension, m: complementarity variable dimension, k:
   /// input dimension, N: MPC horizon)
@@ -94,9 +97,10 @@ int DoMain(int argc, char* argv[]) {
   const int k = kd;
 
   LCS system(A, B, D, d, E, F, H, c);
-  C3MIQP opt(system, Q, R, G, U, xdesired, options);
+  //C3MIQP opt(system, Q, R, G, U, xdesired, options,1);
+  MIQP opt(system, Q, R, G, U, xdesired, options,1);
 
-  if (example == 1) {
+/*  if (example == 1) {
     /// clear all user constraints
     opt.RemoveConstraints();
 
@@ -122,7 +126,7 @@ int DoMain(int argc, char* argv[]) {
     lowerbound = 3;
     upperbound = 5;
     opt.AddLinearConstraint(LinIneq2, lowerbound, upperbound, stateconstraint);
-  }
+  }*/
 
 
   /// initialize ADMM variables (delta, w)
@@ -162,7 +166,8 @@ int DoMain(int argc, char* argv[]) {
       init_pivoting(x[i], &nd, &md, &kd, &Nd, &Ad, &Bd, &Dd, &dd, &Ed, &Fd, &Hd,
                     &cd, &Qd, &Rd, &Gd, &Ud, &x0, &xdesired, &options);
       LCS system(A, B, D, d, E, F, H, c);
-      C3MIQP opt(system, Q, R, G, U, xdesired, options);
+      //C3MIQP opt(system, Q, R, G, U, xdesired, options,1);
+      MIQP opt(system, Q, R, G, U, xdesired, options,1);
     }
 
 
@@ -416,10 +421,10 @@ void init_fingergait(int* n_, int* m_, int* k_, int* N_, vector<MatrixXd>* A_,
   std::vector<MatrixXd> U(N, Us);
 
   C3Options optionsinit;
-  optionsinit.admm_iter = 10;
+  optionsinit.admm_iter = 5;
   optionsinit.rho = 1;
-  optionsinit.rho_scale = 1.2;
-  optionsinit.num_threads = 0;
+  optionsinit.rho_scale = 1.01;
+  optionsinit.num_threads = 2;
   optionsinit.delta_option = 1;
 
   *options = optionsinit;
@@ -457,8 +462,8 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
   int N = 10;
 
   float mu1 = 0.1;
-  float mu2 = 9.81;
-  float mu3 = 1.0;
+  float mu2 = 0.1;
+  float mu3 = 0.1;
   float g = 9.81;
   float dt = 0.01;
   float h = 1;
@@ -590,7 +595,7 @@ void init_pivoting(VectorXd xcurrent, int* n_, int* m_, int* k_, int* N_,
   optionsinit.admm_iter = 5;
   optionsinit.rho = 0.02;
   optionsinit.rho_scale = 1.1;
-  optionsinit.num_threads = 0;
+  optionsinit.num_threads = 2;
   optionsinit.delta_option = 1;
 
   MatrixXd Ginit(n + m + k, n + m + k);

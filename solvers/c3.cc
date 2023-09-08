@@ -111,20 +111,21 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
         LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i), x_.at(i + 1)});
   }
 
+
+  //prog_.AddQuadraticCost(MatrixXd::Identity(19,19), VectorXd::Zero(19), x_.at(1), 0);
   for (int i = 0; i < N_ + 1; i++) {
-    prog_.AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * xdesired_.at(i),
-                           x_.at(i), 1);
+    prog_.AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * xdesired_.at(i), x_.at(i), 1);
     if (i < N_) {
       prog_.AddQuadraticCost(R_.at(i) * 2, VectorXd::Zero(k_), u_.at(i), 1);
     }
   }
 
   OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-7);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-7);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
-  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);  //30
+//  OSQPoptions_.SetOption(OsqpSolver::id(), "ebs_abs", 1e-9);
+//  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-9);
+//  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-9);
+//  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-9);
+  //OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);  //30
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -135,6 +136,7 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 
   for (int i = 0; i < options_.admm_iter-1; i++) {
 
+    //////CHECKING STUFF
     //std::cout << "Iteration" << i <<  std::endl;
 
     z = ADMMStep(x0, &delta, &w, &Gv);
@@ -148,7 +150,12 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
+
+    //////CHECKING STUFF
+    //std::cout << "WD" << i << WD[i] << std::endl;
   }
+
+
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
 
@@ -209,6 +216,13 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //  std::cout << "zfin[3]" << zfin[3].segment(7,3) << std::endl;
 //  std::cout << "zfin[4]" << zfin[4].segment(7,3) << std::endl;
 
+//////CHECKING STUFF
+//  std::cout << "zfin[0]" << zfin[0] << std::endl;
+//  std::cout << "zfin[1]" << zfin[1] << std::endl;
+//  std::cout << "zfin[2]" << zfin[2] << std::endl;
+//  std::cout << "zfin[3]" << zfin[3] << std::endl;
+//  std::cout << "zfin[4]" << zfin[4] << std::endl;
+
   z = zfin[0];
 
 //  std::cout <<  "contact prediction" << std::endl;
@@ -258,12 +272,23 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta->at(i) - w->at(i);
+
+    //////CHECKING STUFF
+    //std::cout << "WD(inside)" << WD[i] << std::endl;
+
   }
+
 
 //  auto start = std::chrono::high_resolution_clock::now();
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
 
+  //////CHECKING STUFF
+//  std::cout << "z[0]" << z[0] << std::endl;
+//  std::cout << "z[1]" << z[1] << std::endl;
+//  std::cout << "z[2]" << z[2] << std::endl;
+//  std::cout << "z[3]" << z[3] << std::endl;
+//  std::cout << "z[4]" << z[4] << std::endl;
 
 //  auto finish = std::chrono::high_resolution_clock::now();
 //std::chrono::duration<double> elapsed = finish - start;

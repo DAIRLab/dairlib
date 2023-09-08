@@ -38,7 +38,7 @@ class C3MIQP : public C3 {
                                         const int& warm_start_index = -1);
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
-  
+
 
  private:
   GRBEnv env_;

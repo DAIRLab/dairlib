@@ -3,13 +3,14 @@
 
 package(default_visibility = ["//visibility:public"])
 
-#cc_binary(
-#    name = "c3_test",
-#    srcs = ["test/c3_test.cc"],
-#    deps = [
-#        ":c3"
-#    ],
-#)
+cc_binary(
+    name = "c3_test",
+    srcs = ["test/c3_test.cc"],
+    deps = [
+        ":c3",
+        ":miqp",
+    ],
+)
 
 
 #py_binary(
@@ -35,6 +36,28 @@ cc_library(
         ":lcs",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
+         "//solvers:fast_osqp_solver",
+    ],
+    copts = [
+        "-fopenmp"
+    ],
+    linkopts = [
+        "-lgomp"
+    ]
+)
+
+cc_library(
+    name = "miqp",
+    srcs = [
+        "miqp.cc",
+    ],
+    hdrs = [
+        "miqp.h",
+         "c3_options.h",
+    ],
+    deps = [
+        ":lcs",
+        "@drake//:drake_shared_library",
          "//solvers:fast_osqp_solver",
     ],
     copts = [

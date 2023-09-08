@@ -95,10 +95,17 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   MatrixXd d_q = ExtractValue(qdot_no_contact);
 
   ///checking this
-  //MatrixXd Nq = AB_q.block(0, n_state, n_state, n_vel);
+  //MatrixXd NqIII = AB_q.block(0, n_state, n_state, n_vel);
+
   Eigen::SparseMatrix<double> Nqt;
   Nqt = plant.MakeVelocityToQDotMap(context);
   MatrixXd Nq = MatrixXd(Nqt);
+
+//  AutoDiffVecXd vel_back(plant.num_velocities());
+//  plant_ad.MapQDotToVelocity(context_ad, qdot_no_contact, &vel_back);
+//  MatrixXd NqInverseIII = ExtractGradient(vel_back);
+
+//  Eigen::MatrixXd NqInverseIII = Nq.completeOrthogonalDecomposition().pseudoInverse();
 
   //plant_ad.MapQDotToVelocity(context_ad, qdot_no_contact, &vel);
 
@@ -106,6 +113,10 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   Eigen::SparseMatrix<double> NqI;
   NqI = plant.MakeQDotToVelocityMap(context);
   MatrixXd NqInverse = MatrixXd(NqI);
+
+//  std::cout << "here" << std::endl;
+//  std::cout << NqInverseIII - NqInverse << std::endl;
+//  std::cout << "here" << std::endl;
 
   ///
   /// Contact-related terms
@@ -266,6 +277,12 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();
   auto AnDn = An / Dn;
+
+//  std::cout << "here" << std::endl;
+//  std::cout << D << std::endl;
+//  std::cout << "here" << std::endl;
+
+  //std::cout << "scaling" << AnDn << std::endl;
 
   std::vector<MatrixXd> A_lcs(N, A);
   std::vector<MatrixXd> B_lcs(N, B);

@@ -5,6 +5,8 @@
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 
+#include <iostream>
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
@@ -39,7 +41,7 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
 
 //VectorXd dummy_input = VectorXd::Zero(9);
 
-  auto flag = LCPSolver.SolveLcpLemke(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
+  auto flag = LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x_init + c_[0] + H_[0] * input,
                           &force);
 
 //  VectorXd qval = E_[0] * x_init + c_[0] + H_[0] * input;
@@ -82,9 +84,9 @@ VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
   // update
   x_final = A_[0] * x_init + B_[0] * input + D_[0] * force + d_[0];
 
-    if (flag == 1){
+    if (flag == 0){
 
-
+  std::cout << "LCS SOLVE FAILED" << std::endl;
 
 
 //      std::cout << "Next state prediction" << std::endl;

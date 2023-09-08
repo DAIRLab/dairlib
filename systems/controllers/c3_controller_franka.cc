@@ -11,6 +11,8 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/lcs_factory.h"
 
+#include "solvers/miqp.h"
+
 #include "drake/solvers/moby_lcp_solver.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -290,22 +292,31 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   /// upwards phase
   else if (ts < roll_phase + return_phase / 3){
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
 
   }
   /// side ways phase
   else if( ts < roll_phase + 2 * return_phase / 3 ) {
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
   }
   /// position finger phase
   else{
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
@@ -434,11 +445,18 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
   solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, scaling,
-    warm_start_delta_, warm_start_binary_, warm_start_x_,
-    warm_start_lambda_, warm_start_u_, true);
+   warm_start_delta_, warm_start_binary_, warm_start_x_,
+   warm_start_lambda_, warm_start_u_, true);
+
+
+//  solvers::MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, scaling,
+//                      warm_start_delta_, warm_start_binary_, warm_start_x_,
+//                      warm_start_lambda_, warm_start_u_, true);
+
 
   /// calculate the input given x[i]
   VectorXd input = opt.Solve(state, delta, w);
+
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();
   warm_start_u_ = opt.GetWarmStartU();
@@ -471,6 +489,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
                                                  &force);
   (void)flag; // suppress compiler unused variable warning
+
+  //std::cout << "flag" << flag << std::endl;
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 

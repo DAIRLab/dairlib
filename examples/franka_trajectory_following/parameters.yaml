@@ -20,16 +20,16 @@ pushing_offset: 0 #-0.001
 mu: 1                  # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 500         # finger xyz cost
-Q_ball_x: 100000 #10000
-Q_ball_y: 100000  #10000
-Q_ball_z: 10000000 #1000000 #100000000 (almost no penetration )
+Q_ball_x: 100000 #100000 #10000
+Q_ball_y: 100000 #100000  #10000
+Q_ball_z: 100000 #100000 #1000000 #100000000 (almost no penetration )
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
-Qnew_finger: 1000000    # Qnew costs
+Qnew_finger: 1000000  #1000000  # Qnew costs
 Qnew_ball_x: 1
 Qnew_ball_y: 1
 R: 0.01                 # torque cost in xyz
-G: 0.01
+G: 0.001 #0.001
 U_default: 1
 U_pos_vel: 100       # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
@@ -80,7 +80,7 @@ ball_stddev: 0.000 # standard deviation of 0-mean noise on ball state estimation
 # gaiting parameters
 roll_phase: 1  #2.5
 return_phase: 0.5 #0.75
-gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] # try playing with first param here
+gait_parameters: [0.02, 0.0951, 0.0911, 0.0741] # try playing with first param here #[0.02, 0.0951, 0.0911, 0.0691]
 # gait parameters represent height above the table
 
 # filters

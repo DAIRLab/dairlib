@@ -17,3 +17,4 @@ log.txt
 *.ps
 *.out
 lcmlog*
+/examples/cube_franka/gurobi_autotune/*

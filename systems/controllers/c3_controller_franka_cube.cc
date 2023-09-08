@@ -650,6 +650,96 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
   }
 
+  /* =============================================================================================
+  Get the state information again, since the sampling loop could take significant time.
+  ============================================================================================= */
+  // FK:  Get the location of the end effector sphere based on franka's joint states.
+  // Update context once for FK.
+  plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
+  plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
+  const drake::math::RigidTransform<double> new_H_mat =
+      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
+  const RotationMatrix<double> new_R_current = new_H_mat.rotation();
+  end_effector = new_H_mat.translation() + new_R_current*EE_offset_;
+
+  // Get the jacobian and end_effector_dot.
+  EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
+  world_frame_ = &plant_franka_.world_frame();
+  J_fb (6, plant_franka_.num_velocities());
+  plant_franka_.CalcJacobianSpatialVelocity(
+      context_franka_, JacobianWrtVariable::kV,
+      *EE_frame_, EE_offset_,
+      *world_frame_, *world_frame_, &J_fb);
+  J_franka = J_fb.block(0, 0, 6, 7);
+  end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
+
+  // Ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
+  // TODO: Need to add noise; currently using noiseless simulation.
+  q_plant = robot_output->GetPositions();
+  v_plant = robot_output->GetVelocities();
+  // If doing in hardware, use state estimation here.
+  // StateEstimation(q_plant, v_plant, end_effector, timestamp);
+
+  // Update franka position again to include noise.
+  plant_franka_.SetPositions(&context_franka_, q_plant);
+  plant_franka_.SetVelocities(&context_franka_, v_plant);
+
+  // Parse franka state info.
+  ball = q_plant.tail(7);
+  ball_xyz = ball.tail(3);
+  ball_dot = v_plant.tail(6);
+  v_ball = ball_dot.tail(3);
+
+  // Build state vector from current configuration and velocity.
+  q << end_effector, ball;
+  v << end_effector_dot, ball_dot;
+  state << end_effector, ball, end_effector_dot, ball_dot;
+
+  // Build arbitrary control input vector.
+  // TODO: why is this set to all 1000s?
+  u = 1000*VectorXd::Ones(3);
+
+  // Compute object positional error (ignoring errors in z direction).
+  error_xy = ball_xyz_d - ball_xyz;
+  error_xy(2) = 0;    // Ignore z errors.
+  error_hat = error_xy / error_xy.norm();
+
+  // Compute desired orientation of end effector.
+  if (param_.axis_option == 1){
+    // OPTION 1: tilt EE away from the desired direction of the ball
+    axis << error_hat(1), -error_hat(0), 0;
+  }
+  else if (param_.axis_option == 2){
+    // OPTION 2: tilt EE toward the center of the circle trajectory
+    axis << ball_xyz(1)-y_c, -(ball_xyz(0)-x_c), 0;
+    axis = axis / axis.norm();
+  }
+  Eigen::AngleAxis<double> new_angle_axis(PI * param_.orientation_degrees / 180.0, axis);
+  RotationMatrix<double> new_rot(new_angle_axis);
+  Quaterniond new_temp(0, 1, 0, 0);
+  RotationMatrix<double> new_default_orientation(new_temp);
+  orientation_d = (new_rot * new_default_orientation).ToQuaternionAsVector4();
+
+
+  /// Update autodiff.
+  xu(plant_f_.num_positions() + plant_f_.num_velocities() +
+      plant_f_.num_actuators());
+  xu << q, v, u;
+  xu_ad = drake::math::InitializeAutoDiff(xu);
+
+  plant_ad_f_.SetPositionsAndVelocities(
+      &context_ad_f_,
+      xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
+  multibody::SetInputsIfNew<AutoDiffXd>(
+      plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
+
+
+  /// Update context.
+  plant_f_.SetPositions(&context_f_, q);
+  plant_f_.SetVelocities(&context_f_, v);
+  multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
+  // =============================================================================================
+
   // Take action based on whether trying to run C3 or reposition.
   // Initialize next state desired.
   VectorXd st_desired(STATE_VECTOR_SIZE);
@@ -743,16 +833,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Save the current reposition target so it is considered for the next control loop.
     reposition_target_ = best_additional_sample;
-
-    // Pick the current end effector location for defining the repositioning curve.
-    //TO DO : Figure out the best location to do this ee state update.
-    plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
-    plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
-    Vector3d EE_offset_ = param_.EE_offset;
-    const drake::math::RigidTransform<double> H_mat =
-        plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
-    const RotationMatrix<double> R_current = H_mat.rotation();
-    end_effector << H_mat.translation() + R_current*EE_offset_;
 
     // Build control points for the repositioning curve.
     std::vector<Vector3d> points(4, VectorXd::Zero(3));

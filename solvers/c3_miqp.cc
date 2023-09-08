@@ -81,6 +81,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
     if (warm_start_index != -1) {
       binary[i].set(GRB_DoubleAttr_Start, warm_start_binary_[warm_start_index](i));
+      // binary[i].set(GRB_DoubleAttr_VarHintVal, warm_start_binary_[warm_start_index](i));
     }
   }
 
@@ -88,6 +89,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     delta_k[i] = model.addVar(-10000.0, 10000.0, 0.0, GRB_CONTINUOUS);
     if (warm_start_index != -1) {
       delta_k[i].set(GRB_DoubleAttr_Start, warm_start_delta_[warm_start_index](i));
+      // delta_k[i].set(GRB_DoubleAttr_VarHintVal, warm_start_delta_[warm_start_index](i));
     }
   }
 
@@ -135,6 +137,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     for (int i = 0; i < n_; i++) {
       model.addConstr(delta_k[i] == x0[i]);
     }
+    // std::cout<<"Constraining delta0 to be: "<<x0<<std::endl;
   }
 
   // TODO:  Play around with fixing some of these constraints.  Eventually make these adaptive to model size instead of hard-coded for the jack.
@@ -203,7 +206,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     warm_start_binary_[warm_start_index] = binaryc;
   }
 
-  // std::cout<<"DELTA:  "<<delta_kc<<std::endl;
+  // std::cout<<"DELTA: "<<delta_kc<<std::endl;
 
   return delta_kc;
 }

@@ -239,7 +239,7 @@ return UU;
 // Calculate the C3 cost and feasible trajectory associated with applying a provided control input sequence to
 // a system at a provided initial state.
 std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(const VectorXd& x0, vector<VectorXd>& UU, bool use_full_cost) const{
-  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(k_)); //locally extracted state sequence
+  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); //locally extracted state sequence
   XX[0] = x0;
 
   // Get the N step lcs rollout.

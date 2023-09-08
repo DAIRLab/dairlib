@@ -302,8 +302,12 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
 
   // std::cout<<"z0: "<<z[0]<<std::endl;
+  // std::cout<<"Gap function with z0"<<E_[0]*z[0].segment(0, n_) + F_[0] *z[0].segment(n_, m_) + H_[0]*z[0].segment(n_+m_, k_) + c_[0]<<std::endl;
+  // std::cout<<"Ex + c with z0"<<E_[0]*z[0].segment(0, n_) + c_[0]<<std::endl;
   // std::cout<<"z1: "<<z[1]<<std::endl;
-
+  // std::cout<<"Gap function with z1"<<E_[1]*z[1].segment(0, n_) + F_[1] *z[1].segment(n_, m_) + H_[1]*z[1].segment(n_+m_, k_) + c_[1]<<std::endl;
+  // std::cout<<"Ex + c with z1"<<E_[1]*z[1].segment(0, n_) + c_[1]<<std::endl;
+  
 
 //  auto finish = std::chrono::high_resolution_clock::now();
 //std::chrono::duration<double> elapsed = finish - start;

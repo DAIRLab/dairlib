@@ -720,7 +720,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   RotationMatrix<double> new_default_orientation(new_temp);
   orientation_d = (new_rot * new_default_orientation).ToQuaternionAsVector4();
 
-
   /// Update autodiff.
   xu(plant_f_.num_positions() + plant_f_.num_velocities() +
       plant_f_.num_actuators());
@@ -733,7 +732,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   multibody::SetInputsIfNew<AutoDiffXd>(
       plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
 
-
   /// Update context.
   plant_f_.SetPositions(&context_f_, q);
   plant_f_.SetVelocities(&context_f_, v);
@@ -745,8 +743,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd st_desired(STATE_VECTOR_SIZE);
   // DO C3.
   if (C3_flag_ == true) {
-    // TODO:  We may want to re-query the current state of the simulation to update `state` since this might be old at this point.
-
     // TODO: this can be switched to a function call since it's a repeat of a few other sections.
     // Reset delta and w.
     std::vector<VectorXd> delta = delta_reset;
@@ -760,7 +756,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Get the control input from the previously solved full solution from current state.
     VectorXd input = fullsol_current_location[0].segment(n_ + m_, k_);
-    // std::cout<<"Using C3 "<<std::endl;
   
     // Calculate state and force using LCS from current location.
     // std::cout<<"Linearization in C3"<<std::endl;
@@ -829,8 +824,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   // REPOSITION.
   else {
-    // std::cout << "Decided to reposition"<<std::endl;
-
     // Save the current reposition target so it is considered for the next control loop.
     reposition_target_ = best_additional_sample;
 
@@ -891,7 +884,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Send desired output vector to output port.
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
-
 
   // Update moving average filter and prev variables.
   if (moving_average_.size() < dt_filter_length_){

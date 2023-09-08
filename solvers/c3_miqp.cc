@@ -51,11 +51,26 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   MatrixXd Mcons2(m_, n_ + m_ + k_);
   Mcons2 << MM1, MM2, MM3;
 
-  // Create an empty model
+  // Create an empty model.
   GRBModel model = GRBModel(env_);
-  //model.set("FeasibilityTol", "0.01");
-  // model.set("IterationLimit", "40");
-  model.set(GRB_DBL_PAR_TIMELIMIT, "0.5");    // Time limit in seconds for MIQP.
+
+  // Gurobi parameter tuning:  description, default, min/max values.
+  // model.set("FeasibilityTol", "0.01");     // Primal feasibility tolerance; higher = faster (1e-6 / 1e-9 / 1e-2).
+  // model.set("IntFeasTol", "0.01");         // Integer feasibility tolerance; higher = faster (1e-5 / 1e-9 / 1e-1).
+  // model.set("OptimalityTol", "0.01");      // Dual feasibility tolerance; higher = faster (1e-6 / 1e-9 / 1e-2).
+  // model.set("IterationLimit", "100");      // Simplex iteration limit; lower = faster (infinity / 0 / infinity).
+  // model.set("Heuristics", "0.0");         // Turn MIP heuristics up or down; lower = faster (0.05 / 0 / 1).
+  // model.set("MIPFocus", "1");              // Set the focus of the MIP solver; see docs for details (0 / 0 / 3).
+  // model.set("NumericFocus", "1");          // Set the numerical focus; see docs for details (0 / 0 / 3).
+  // model.set("Cuts", "1");                  // Global cut generation control; see docs for details (-1 / -1 / 3).
+  // model.set("TimeLimit", "0.25");          // Time limit in seconds for MIQP; lower = faster (infinity / 0 / infinity).
+
+  // model.set("ScaleFlag", "2");             // Model scaling; 2 uses geometric mean scaling (-1 / -1 / 3).
+  // model.set("NormAdjust", "3");            // Pricing norm variant; no information in docs on what these mean (-1, -1, 3).
+  // model.set("BranchDir", "-1");            // What child node to explore first; -1 explores down branch first (0, -1, 1).
+  // model.set("CoverCuts", "0");             // Cover cut generation; 0 disables cuts (-1, -1, 2).
+  // model.set("PrePasses", "1");             // Presolve pass limit (-1, -1, MAXINT).
+
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];
@@ -128,35 +143,40 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // model.addConstr(binary[1] == 1);
   // model.addConstr(binary[2] == 1);
   // model.addConstr(binary[3] == 1);
-  // Enforce opposing tangential forces can't both be non-zero (or binaries can't both be zero).
-  // (This alone doesn't improve speed noticeably; 2-3Hz.)
-  model.addConstr(binary[8] + binary[9] >= 1);      // end effector / jack contact.
-  model.addConstr(binary[10] + binary[11] >= 1);
-  model.addConstr(binary[12] + binary[13] >= 1);    // capsule 1 / ground contact.
-  model.addConstr(binary[14] + binary[15] >= 1);
-  model.addConstr(binary[16] + binary[17] >= 1);    // capsule 2 / ground contact.
-  model.addConstr(binary[18] + binary[19] >= 1);
-  model.addConstr(binary[20] + binary[21] >= 1);    // capsule 3 / ground contact.
-  model.addConstr(binary[22] + binary[23] >= 1);
-  // Enforce there can be tangential forces only if there's corresponding normal force (or binary tangential can
-  // be 0 only if binary normal is also 0).
-  // (This alone doesn't improve speed noticeably; 1-2Hz.)
-  model.addConstr(binary[8] >= binary[4]);          // end effector / jack contact.
-  model.addConstr(binary[9] >= binary[4]);
-  model.addConstr(binary[10] >= binary[4]);
-  model.addConstr(binary[11] >= binary[4]);
-  model.addConstr(binary[12] >= binary[5]);         // capsule 1 / ground contact.
-  model.addConstr(binary[13] >= binary[5]);
-  model.addConstr(binary[14] >= binary[5]);
-  model.addConstr(binary[15] >= binary[5]);
-  model.addConstr(binary[16] >= binary[6]);         // capsule 2 / ground contact.
-  model.addConstr(binary[17] >= binary[6]);
-  model.addConstr(binary[18] >= binary[6]);
-  model.addConstr(binary[19] >= binary[6]);
-  model.addConstr(binary[20] >= binary[7]);         // capsule 3 / ground contact.
-  model.addConstr(binary[21] >= binary[7]);
-  model.addConstr(binary[22] >= binary[7]);
-  model.addConstr(binary[23] >= binary[7]);
+  // // Enforce opposing tangential forces can't both be non-zero (or binaries can't both be zero).
+  // // (This alone doesn't improve speed noticeably; 2-3Hz.)
+  // model.addConstr(binary[8] + binary[9] >= 1);      // end effector / jack contact.
+  // model.addConstr(binary[10] + binary[11] >= 1);
+  // model.addConstr(binary[12] + binary[13] >= 1);    // capsule 1 / ground contact.
+  // model.addConstr(binary[14] + binary[15] >= 1);
+  // model.addConstr(binary[16] + binary[17] >= 1);    // capsule 2 / ground contact.
+  // model.addConstr(binary[18] + binary[19] >= 1);
+  // model.addConstr(binary[20] + binary[21] >= 1);    // capsule 3 / ground contact.
+  // model.addConstr(binary[22] + binary[23] >= 1);
+  // // Enforce there can be tangential forces only if there's corresponding normal force (or binary tangential can
+  // // be 0 only if binary normal is also 0).
+  // // (This alone doesn't improve speed noticeably; 1-2Hz.)
+  // model.addConstr(binary[8] >= binary[4]);          // end effector / jack contact.
+  // model.addConstr(binary[9] >= binary[4]);
+  // model.addConstr(binary[10] >= binary[4]);
+  // model.addConstr(binary[11] >= binary[4]);
+  // model.addConstr(binary[12] >= binary[5]);         // capsule 1 / ground contact.
+  // model.addConstr(binary[13] >= binary[5]);
+  // model.addConstr(binary[14] >= binary[5]);
+  // model.addConstr(binary[15] >= binary[5]);
+  // model.addConstr(binary[16] >= binary[6]);         // capsule 2 / ground contact.
+  // model.addConstr(binary[17] >= binary[6]);
+  // model.addConstr(binary[18] >= binary[6]);
+  // model.addConstr(binary[19] >= binary[6]);
+  // model.addConstr(binary[20] >= binary[7]);         // capsule 3 / ground contact.
+  // model.addConstr(binary[21] >= binary[7]);
+  // model.addConstr(binary[22] >= binary[7]);
+  // model.addConstr(binary[23] >= binary[7]);
+
+  // Write the model:
+  // std::cout<<"EXPORTING GUROBI MODEL"<<std::endl;
+  // model.write("examples/cube/franka/gurobi_autotune/jack_miqp_model.mps");
+  // std::cout<<"FINISHED EXPORTING GUROBI MODEL"<<std::endl;
 
   model.optimize();
 

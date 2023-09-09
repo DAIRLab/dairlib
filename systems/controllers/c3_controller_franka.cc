@@ -641,10 +641,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     double hyp = 5;
     if(C3_flag_ == 0){
-        hyp = 3;
+        hyp = 10;
     }
     else{
-        hyp = 17;
+        hyp = 1000;
     }
     // if (reposition_flag_ == 1){
     //     hyp = 0;
@@ -828,7 +828,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, dt);
+      num_friction_directions_, mu_, 0.002);
 
   solvers::LCS system2_ = system_scaling_pair2.first;
   double scaling2 = system_scaling_pair2.second;
@@ -895,7 +895,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 10){
+  if (curr_ee_cost - min >= 500){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;

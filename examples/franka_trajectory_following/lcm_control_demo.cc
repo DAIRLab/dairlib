@@ -139,6 +139,7 @@ int DoMain(int argc, char* argv[]){
   Qinit.block(0,0,3,3) << param.Q_finger * MatrixXd::Identity(3,3);
   Qinit(7,7) = param.Q_ball_x;
   Qinit(8,8) = param.Q_ball_y;
+  Qinit(9,9) = param.Q_ball_z;
   Qinit.block(10,10,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv);
   Qinit.block(10,10,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
@@ -310,7 +311,7 @@ int DoMain(int argc, char* argv[]){
                                   scene_graph, *diagram_f, contact_geoms, 
                                   num_friction_directions, mu, Q, R, G, U, 
                                   xdesired, pp);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 21);
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 27);
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
   builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));

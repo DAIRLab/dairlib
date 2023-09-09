@@ -883,7 +883,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
 
-  
     // Set desired next state.
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
@@ -962,7 +961,10 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
   test_q[0] = x_samplec + sampling_radius * cos(i*theta);
   test_q[1] = y_samplec + sampling_radius * sin(i*theta);
   test_q[2] = sampling_height;
-  test_v.head(3) << VectorXd::Zero(3);
+  // NOTE:  Commented out the below because could introduce ways that any other sample looks better than current location if
+  // EE velocity is penalized a lot.  Thus, a better equalizer to leave the initial velocities the same so the rest of the
+  // hypothetical state comparisons drive the actual cost differences.
+  // test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
@@ -998,7 +1000,10 @@ Eigen::VectorXd generate_random_sample_location_on_circle(
   test_q[0] = x_samplec + sampling_radius * cos(theta);
   test_q[1] = y_samplec + sampling_radius * sin(theta);
   test_q[2] = sampling_height;
-  test_v.head(3) << VectorXd::Zero(3);
+  // NOTE:  Commented out the below because could introduce ways that any other sample looks better than current location if
+  // EE velocity is penalized a lot.  Thus, a better equalizer to leave the initial velocities the same so the rest of the
+  // hypothetical state comparisons drive the actual cost differences.
+  // test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
@@ -1038,12 +1043,16 @@ Eigen::VectorXd generate_random_sample_location_on_sphere(
   std::uniform_real_distribution<> dis_height(min_angle_from_vertical, max_angle_from_vertical);
   double elevation_theta = dis_height(gen_height);
 
-  // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
+  // Update the hypothetical state's end effector location to the tested sample location.
   test_q[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
   test_q[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
   test_q[2] = z_samplec + sampling_radius * cos(elevation_theta);
   
-  test_v.head(3) << VectorXd::Zero(3);
+  // Set hypothetical EE velocity to 0.
+  // NOTE:  Commented out the below because could introduce ways that any other sample looks better than current location if
+  // EE velocity is penalized a lot.  Thus, a better equalizer to leave the initial velocities the same so the rest of the
+  // hypothetical state comparisons drive the actual cost differences.
+  // test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);

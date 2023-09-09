@@ -831,45 +831,45 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else {
     // Save the current reposition target so it is considered for the next control loop.
     reposition_target_ = best_additional_sample;
+    Eigen::Vector3d target = best_additional_sample.head(3);
 
-    // Build control points for the repositioning curve.
-    std::vector<Vector3d> points(4, VectorXd::Zero(3));
-
-    // Set the first point to the current end effector location.
-    points[0] = end_effector;
-
-    // Set the last point to the optimal sample location.
-    points[3] = best_additional_sample.head(3);
-
-    // Set the middle two points based on waypoints 25% and 75% through the first and last points.
-    // Expand the 25/75% waypoints away from the ball location by a distance of param_.spline_width.
-    Eigen::Vector3d ball_to_way_point1_vector = points[0] + 0.25*(points[3] - points[0]) - ball_xyz;
-    points[1] = ball_xyz + (param_.spline_width) * ball_to_way_point1_vector/ball_to_way_point1_vector.norm();
-
-    Eigen::Vector3d ball_to_way_point2_vector = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
-    points[2] = ball_xyz + (param_.spline_width) * ball_to_way_point2_vector/ball_to_way_point2_vector.norm();
+    Eigen::Vector3d curr_to_jack = ball_xyz - end_effector;
+    Eigen::Vector3d curr_to_target = target - end_effector;
 
     // Choose next end effector location based on fixed speed traversal of computed curve.
-    // double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();  // curve length overestimate
-    double len_of_curve = (points[3] - points[0]).norm();                                                                 // curve length underestimate
+    double curr_to_target_distance = curr_to_target.norm();        // NOTE: This is a curve length underestimate if a spline is employed.
     double desired_travel_len = param_.travel_speed * control_loop_dt;
-    double curve_fraction = desired_travel_len/len_of_curve;
 
-    // Clamp the curve fraction to 1.
-    if(curve_fraction > 1){
-      curve_fraction = 1;
-    }
-
-    // If desired travel step is larger than straight-line distance to target, avoid the spline and go straight to target.
-    // In which case, note that reaching the target was planned and make pursuing this reposition target more costly for future steps.
     Eigen::Vector3d next_point;
-    double dist_from_curr_to_destination = (points[3]-points[0]).norm();
-    if (desired_travel_len >= dist_from_curr_to_destination) {
-      next_point = points[3];
+    // Go straight to target location if close.
+    if (desired_travel_len > curr_to_target_distance) {
+      next_point = target;
       finished_reposition_flag_ = true;   // Set flag to indicate planned to reach end of reposition target, so extra cost can be added when comparing
                                           // this reposition target to other samples and current locations in the next loop.
     }
+    // Move along a straight line if the jack is roughly behind the end effector in its travel towards the target,
+    // or if the target is closer than the jack.
+    else if ((curr_to_jack.dot(curr_to_target) <= 0) | (curr_to_target_distance < curr_to_jack.norm())) {
+      next_point = end_effector + desired_travel_len * curr_to_target/curr_to_target_distance;
+    }
+    // Otherwise, avoid the jack using a spline.
     else {
+      double curve_fraction = desired_travel_len/curr_to_target_distance;  // This is guaranteed to be < 1 because of the first if statement to this else.
+
+      // Build control points for the repositioning curve.
+      // Set the first point to the current end effector location and the last point to the optimal sample location.
+      std::vector<Vector3d> points(4, VectorXd::Zero(3));
+      points[0] = end_effector;
+      points[3] = target;
+
+      // Set the middle two points based on waypoints 25% and 75% through the first and last points.
+      // Expand the 25/75% waypoints away from the ball location by a distance of param_.spline_width.
+      Eigen::Vector3d ball_to_way_point1_vector = points[0] + 0.25*(points[3] - points[0]) - ball_xyz;
+      points[1] = ball_xyz + (param_.spline_width) * ball_to_way_point1_vector/ball_to_way_point1_vector.norm();
+
+      Eigen::Vector3d ball_to_way_point2_vector = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
+      points[2] = ball_xyz + (param_.spline_width) * ball_to_way_point2_vector/ball_to_way_point2_vector.norm();
+
       next_point = points[0] + curve_fraction*(-3*points[0] + 3*points[1]) + 
                                   std::pow(curve_fraction,2) * (3*points[0] -6*points[1] + 3*points[2]) + 
                                   std::pow(curve_fraction,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);

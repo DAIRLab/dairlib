@@ -28,6 +28,7 @@ Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to t
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
+G_EE: 0.001
 G_ground: 0.00001
 U_default: 1              #ADMM projection step related
 U_pos: 1000000 #10000           # first 10 diag elements of U, corresponding to positions  #ADMM projection step related

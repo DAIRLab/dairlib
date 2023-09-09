@@ -24,9 +24,9 @@ Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
 Q_ball_z: 1000
-Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
+Q_finger_vel: 20000  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
-R: 0.01                 # torque cost in xyz  # TODO may need to tune these
+R: 500 #0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
 G_EE: 0.001
 G_ground: 0.00001
@@ -94,9 +94,9 @@ min_angle_from_vertical: 0.785    # radians minimum angle from vertical (i.e. cl
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
 num_additional_samples_repos: 2   # number of additional samples to consider when doing repositioning.
 num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
-spline_width: 0.12   #0.09
+spline_width: 0.13   #0.09
 travel_cost_per_meter: 100
-travel_speed: 0.5     # desired meters/second of repositioning
+travel_speed: 0.75     # desired meters/second of repositioning
 
 
 #Threading parameters

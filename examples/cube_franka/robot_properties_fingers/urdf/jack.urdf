@@ -18,8 +18,8 @@
         </collision>
         <drake:proximity_properties>
                 <!-- POINT CONTACT -->
-                <drake:mu_static value="1"/>
-                <drake:mu_dynamic value="1"/>
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
 
                 <!-- HYDROELASTIC CONTACT -->
                 <!-- <drake:compliant_hydroelastic/> -->
@@ -50,8 +50,8 @@
         </inertial>
         <drake:proximity_properties>
                 <!-- POINT CONTACT -->
-                <drake:mu_static value="1"/>
-                <drake:mu_dynamic value="1"/>
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
 
                 <!-- HYDROELASTIC CONTACT -->
                 <!-- <drake:compliant_hydroelastic/> -->
@@ -84,8 +84,8 @@
         </contact>
         <drake:proximity_properties>
                 <!-- POINT CONTACT -->
-                <drake:mu_static value="1"/>
-                <drake:mu_dynamic value="1"/>
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
 
                 <!-- HYDROELASTIC CONTACT -->
                 <!-- <drake:compliant_hydroelastic/> -->

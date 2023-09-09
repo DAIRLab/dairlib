@@ -2,7 +2,7 @@
 
 # impedance control parameters  # TODO may need to tune these
 translational_stiffness: 700 #500, 400
-rotational_stiffness: 900
+rotational_stiffness: 1200  #900
 translational_damping_ratio: 1
 rotational_damping: 20 # temporary increase for safety #10 to 50
 

@@ -2221,12 +2221,15 @@ if __name__ == "__main__":
   if external_rom_comparison:
     baseline_rom_iter = args.baseline_rom_iter
 
+  shared_idx_for_convenience = [180]
+
   # 2D plot (cost vs task)
   # model_slices = []
   model_slices = [1, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]
   model_slices = [1, 300, 400]
   model_slices = [1, 400]
   model_slices = [180]
+  model_slices = shared_idx_for_convenience
   # color_names = ["darkblue", "maroon"]
   # color_names = ["k", "maroon"]
 
@@ -2236,6 +2239,8 @@ if __name__ == "__main__":
   model_slices_cost_landsacpe = [1, 300, 400]
   model_slices_cost_landsacpe = [1, 400]
   model_slices_cost_landsacpe = [180]
+  model_slices_cost_landsacpe = shared_idx_for_convenience
+  
 
   # cost improvement for individual task
   task_grid_for_cost_improvement = {}
@@ -2297,6 +2302,7 @@ if __name__ == "__main__":
   model_indices = [1, 300, 400]
   model_indices = [1, 400]
   model_indices = [180]
+  model_indices = shared_idx_for_convenience
 
   ### Final setup for model indices
   if baseline_rom_iter not in model_indices:

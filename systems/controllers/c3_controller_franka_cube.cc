@@ -875,6 +875,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                   std::pow(curve_fraction,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
     }
 
+    // Make sure the desired next point is above the ground.
+    if (next_point[2] < param_.finger_radius + 0.002) {
+      next_point[2] = param_.finger_radius + 0.002;
+    }
+
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
 

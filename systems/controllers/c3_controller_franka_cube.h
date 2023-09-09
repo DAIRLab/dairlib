@@ -166,7 +166,7 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable Eigen::VectorXd reposition_target_ = VectorXd::Zero(19);
   mutable double optimal_cost_ = 999999;
   mutable bool C3_flag_ = true;
-  mutable bool reposition_flag_ = 0;
+  mutable bool finished_reposition_flag_ = false;
   enum SampleIndex { CURRENT_LOCATION_INDEX,
                      SAMPLE_INDEX_1, SAMPLE_INDEX_2, SAMPLE_INDEX_3,
                      SAMPLE_INDEX_4, SAMPLE_INDEX_5, SAMPLE_INDEX_6,

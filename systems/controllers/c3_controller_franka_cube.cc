@@ -604,6 +604,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       }
       // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
       // This encourages the system to use C3 once reached the end of a repositioning maneuver.
+      else if ((i == CURRENT_LOCATION_INDEX + 1) & (finished_reposition_flag_ == true)) {
+        cost_vector[i] = cost_vector[i] + param_.finished_reposition_cost;
+      }
       else {
         cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
@@ -641,12 +644,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Switch to repositioning if one of the other samples is better, with hysteresis.
     if (curr_ee_cost > best_additional_sample_cost + param_.switching_hysteresis) {
       C3_flag_ = false;
+      finished_reposition_flag_ = false;
     }
   }
   else {                    // Currently repositioning.
     // Switch to C3 if the current sample is better, with hysteresis.
     if (best_additional_sample_cost > curr_ee_cost + param_.switching_hysteresis) {
       C3_flag_ = true;
+      finished_reposition_flag_ = false;
     }
   }
 
@@ -856,10 +861,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
 
     // If desired travel step is larger than straight-line distance to target, avoid the spline and go straight to target.
+    // In which case, note that reaching the target was planned and make pursuing this reposition target more costly for future steps.
     Eigen::Vector3d next_point;
     double dist_from_curr_to_destination = (points[3]-points[0]).norm();
     if (desired_travel_len >= dist_from_curr_to_destination) {
       next_point = points[3];
+      finished_reposition_flag_ = true;   // Set flag to indicate planned to reach end of reposition target, so extra cost can be added when comparing
+                                          // this reposition target to other samples and current locations in the next loop.
     }
     else {
       next_point = points[0] + curve_fraction*(-3*points[0] + 3*points[1]) + 

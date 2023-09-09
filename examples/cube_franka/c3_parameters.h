@@ -109,6 +109,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(switching_hysteresis));
     a->Visit(DRAKE_NVP(reposition_fixed_cost));
+    a->Visit(DRAKE_NVP(finished_reposition_cost));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(travel_speed));
     a->Visit(DRAKE_NVP(num_threads));
@@ -200,6 +201,7 @@ struct C3Parameters {
   //switching parameters
   double switching_hysteresis;
   double reposition_fixed_cost;
+  double finished_reposition_cost;
   double travel_cost_per_meter;
   double travel_speed;
   int num_threads;

@@ -112,16 +112,16 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   }
 
   // Add the inequality portion of the complementarity constraints.
-  MatrixXd LinIneq(m_, n_ + k_ + m_);
+  // MatrixXd LinIneq(m_, n_ + k_ + m_);
 
   for (int i = 0; i < N_; i++) {
-    LinIneq.block(0, 0, m_, n_) = E_.at(i);
-    LinIneq.block(0, n_, m_, k_) = H_.at(i);
-    LinIneq.block(0, n_ + k_, m_, m_) = F_.at(i);
+    // LinIneq.block(0, 0, m_, n_) = E_.at(i);
+    // LinIneq.block(0, n_, m_, k_) = H_.at(i);
+    // LinIneq.block(0, n_ + k_, m_, m_) = F_.at(i);
 
-    prog_.AddLinearConstraint(
-      LinIneq, -c_.at(i), INFINITY * VectorXd::Ones(m_), {x_.at(i), u_.at(i), lambda_.at(i)}
-    );
+    // prog_.AddLinearConstraint(
+    //   LinIneq, -c_.at(i), INFINITY * VectorXd::Ones(m_), {x_.at(i), u_.at(i), lambda_.at(i)}
+    // );
     // Or an alternative way of doing the Ex + Fl + Hu + c >= 0 term (no observed difference).
     // prog_.AddLinearConstraint(
     //   E_.at(i)*x_.at(i) + F_.at(i)*lambda_.at(i) + H_.at(i)*u_.at(i) + c_.at(i) >= VectorXd::Zero(m_)
@@ -145,7 +145,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   //Commented out temporarily
-  // OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);  //30
+  // OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  1500);  //30
   prog_.SetSolverOptions(OSQPoptions_);
 }
 
@@ -322,13 +322,16 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
 
-  // std::cout<<"z0: "<<z[0]<<std::endl;
-  // std::cout<<"Gap function with z0"<<E_[0]*z[0].segment(0, n_) + F_[0] *z[0].segment(n_, m_) + H_[0]*z[0].segment(n_+m_, k_) + c_[0]<<std::endl;
-  // std::cout<<"Ex + c with z0"<<E_[0]*z[0].segment(0, n_) + c_[0]<<std::endl;
-  // std::cout<<"z1: "<<z[1]<<std::endl;
-  // std::cout<<"Gap function with z1"<<E_[1]*z[1].segment(0, n_) + F_[1] *z[1].segment(n_, m_) + H_[1]*z[1].segment(n_+m_, k_) + c_[1]<<std::endl;
-  // std::cout<<"Ex + c with z1"<<E_[1]*z[1].segment(0, n_) + c_[1]<<std::endl;
-  
+  std::cout<<"z0: "<<z[0]<<std::endl;
+  // std::cout<<"Gap function with z0 "<<E_[0]*z[0].segment(0, n_) + F_[0] *z[0].segment(n_, m_) + H_[0]*z[0].segment(n_+m_, k_) + c_[0]<<std::endl;
+  // std::cout<<"Ex + c with z0 "<<E_[0]*z[0].segment(0, n_) + c_[0]<<std::endl;
+  std::cout<<"z1: "<<z[1]<<std::endl;
+  // std::cout<<"Gap function with z1 "<<E_[1]*z[1].segment(0, n_) + F_[1] *z[1].segment(n_, m_) + H_[1]*z[1].segment(n_+m_, k_) + c_[1]<<std::endl;
+  // std::cout<<"Ex + c with z1 "<<E_[1]*z[1].segment(0, n_) + c_[1]<<std::endl;
+  std::cout<<"z2: "<<z[2]<<std::endl;
+  std::cout<<"z3: "<<z[3]<<std::endl;
+  std::cout<<"z4: "<<z[4]<<std::endl;
+
 
 //  auto finish = std::chrono::high_resolution_clock::now();
 //std::chrono::duration<double> elapsed = finish - start;
@@ -507,6 +510,12 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
           SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1, constrain_first_x, x0);
     }
   }
+
+  std::cout<<"delta0: "<<deltaProj[0]<<std::endl;
+  std::cout<<"delta1: "<<deltaProj[1]<<std::endl;
+  std::cout<<"delta2: "<<deltaProj[2]<<std::endl;
+  std::cout<<"delta3: "<<deltaProj[3]<<std::endl;
+  std::cout<<"delta4: "<<deltaProj[4]<<std::endl;
 
   return deltaProj;
 }

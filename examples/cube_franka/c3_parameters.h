@@ -73,8 +73,15 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(time_increment));
     a->Visit(DRAKE_NVP(hold_order));
     a->Visit(DRAKE_NVP(lead_angle));
+    a->Visit(DRAKE_NVP(start_point_x));
+    a->Visit(DRAKE_NVP(start_point_y));
+    a->Visit(DRAKE_NVP(end_point_x));
+    a->Visit(DRAKE_NVP(end_point_y));
     a->Visit(DRAKE_NVP(fixed_goal_x));
     a->Visit(DRAKE_NVP(fixed_goal_y));
+    a->Visit(DRAKE_NVP(step_size));
+    a->Visit(DRAKE_NVP(max_step_size));
+    
     
     // geometry parameters
     a->Visit(DRAKE_NVP(jack_half_width));
@@ -178,6 +185,12 @@ struct C3Parameters {
   int hold_order;
   double fixed_goal_x;
   double fixed_goal_y;
+  double step_size;
+  double start_point_x;
+  double start_point_y;
+  double end_point_x;
+  double end_point_y;
+  double max_step_size;
 
   // geometry parameters
   double jack_half_width;

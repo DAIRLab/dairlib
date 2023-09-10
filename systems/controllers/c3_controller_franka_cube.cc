@@ -126,7 +126,7 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (71) includes:
+  State output port (74) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
@@ -146,6 +146,7 @@ C3Controller_franka::C3Controller_franka(
       (3) optimistic predicted jack location at end of current end effector location's C3 plan
       (3) feasible predicted jack location at end of best sampled end effector location's C3 plan
       (3) optimistic predicted jack location at end of best sampled end effector location's C3 plan
+      (3) fixed goal location for jack when using 'fixed goal' trajectory type
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -348,9 +349,49 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   // Use a fixed goal if trajectory_type is 2.
   else if (param_.trajectory_type == 2){
-    traj_desired_vector(q_map_.at("base_x")) = param_.fixed_goal_x;
-    traj_desired_vector(q_map_.at("base_y")) = param_.fixed_goal_y;
-    traj_desired_vector(q_map_.at("base_z")) = jack_half_width + table_offset;
+    // initializing fixed goal vector that remains constant.
+    fixed_goal_[0] = param_.fixed_goal_x;
+    fixed_goal_[1] = param_.fixed_goal_y;
+    fixed_goal_[2] = jack_half_width + table_offset;
+
+    // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
+    VectorXd next_target = ball_xyz + param_.step_size * (fixed_goal_ - ball_xyz); 
+    traj_desired_vector(q_map_.at("base_x")) = next_target[0];
+    traj_desired_vector(q_map_.at("base_y")) = next_target[1];
+    traj_desired_vector(q_map_.at("base_z")) = next_target[2]; 
+  }
+  else if(param_.trajectory_type == 3){
+    // define the start and end points for the straight line.
+    start_point_[0] = param_.start_point_x; 
+    start_point_[1] = param_.start_point_y;
+    start_point_[2] = jack_half_width + table_offset;
+
+    end_point_[0] = param_.end_point_x; 
+    end_point_[1] = param_.end_point_y;
+    end_point_[2] = jack_half_width + table_offset;
+
+    // compute vector from start point to end point
+    VectorXd distance_vector = end_point_ - start_point_;
+    // project vector from start point to ball onto straight line vector.
+    double projection_length = (ball_xyz - start_point_).dot(distance_vector);
+    VectorXd projection_point = start_point_ + projection_length*(distance_vector/distance_vector.norm());
+
+    // compute error vector between projection point and current jack location
+    VectorXd error_vector = projection_point - ball_xyz;
+    
+    // declaring next_target vector
+    VectorXd next_target;
+    if (error_vector.norm() >= param_.max_step_size){ 
+        // if jack is max step size or further from the projection point, the next target will be one step size in that direction.
+        next_target = ball_xyz + param_.max_step_size*(error_vector/error_vector.norm());
+    }
+    else{
+        next_target = projection_point;
+    }
+    // set next target location for jack
+    traj_desired_vector(q_map_.at("base_x")) = next_target[0];
+    traj_desired_vector(q_map_.at("base_y")) = next_target[1];
+    traj_desired_vector(q_map_.at("base_z")) = next_target[2];
   }
   
   // In the original ball rolling example from C3 paper, this point in the code had a time-based phase switch.
@@ -820,7 +861,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
-                  predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic;
+                  predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
+                  start_point_, end_point_;
   }
   // REPOSITION.
   else {
@@ -877,7 +919,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
-                  predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic;
+                  predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
+                  start_point_, end_point_;
   }
   
 

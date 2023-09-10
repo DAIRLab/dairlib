@@ -184,6 +184,48 @@
                                "radius": 0.005
                              }
                 },
+
+                {"name": "Fixed goal location",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 71
+                                },
+                 "type_data": {"color":[1, 1, 0.8],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.009
+                             }
+                },
+
+                {"name": "Start of straight line trajectory",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 74
+                                },
+                 "type_data": {"color":[1, 0, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.01
+                             }
+                },
+
+                {"name": "End of straight line trajectory",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 77
+                                },
+                 "type_data": {"color":[0, 1, 0],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.01
+                             }
+                },
                 
                {"name": "x1",
                 "source_data" : {"category":"lcm",

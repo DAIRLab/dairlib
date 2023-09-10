@@ -56,7 +56,7 @@ sim_publish_dt: 0.001   # 1kHz for state publishing matches Franka hardware.
 realtime_rate: 0.2
 
 # trajectory parameters
-trajectory_type: 1    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal
+trajectory_type: 3    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
 traj_radius: 0.2
 phase: 0
 x_c: 0.35
@@ -65,12 +65,20 @@ degree_increment: 30
 time_increment: 1
 hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
-# adaptive path specific parameters
+# adaptive circular path specific parameters
 lead_angle: 40 #20 angle in degrees
 
 # fixed path specific parameters
 fixed_goal_x: 0.55
 fixed_goal_y: -0.25
+step_size: 0.10
+
+# adaptive straight line path specific parameters
+start_point_x: 0.55           # x coordinate of start point of straight line.           
+start_point_y: 0.45           # y coordinate of start point of straight line.
+end_point_x: 0.55             # x coordinate of end point of straight line.
+end_point_y: -0.25            # y coordinate of end point of straight line.
+max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # geometry parameters
 jack_half_width: 0.0625       # gives rough size of the jack object

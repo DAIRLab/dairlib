@@ -143,13 +143,14 @@ int DoMain(int argc, char* argv[]){
   Qinit(8,8) = param.Q_ball_y;
   Qinit(9,9) = param.Q_ball_z;
   // Qinit.block(10,10,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv);   // This is sketchy?  TODO
-   Qinit.block(16,16,3,3) << param.Q_ball_vel * MatrixXd::Identity(3,3); 
+  Qinit.block(16,16,3,3) << param.Q_ball_vel * MatrixXd::Identity(3,3);
   Qinit.block(10,10,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
   MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
-  Ginit.block(nq+nv+4+1, nq+nv+4+1, 3, 3) = param.G_ground * MatrixXd::Identity(3, 3);              // Ground normal forces.
-  // Ginit.block(nq+nv+4+4+4, nq+nv+4+4+4, 3*4, 3*4) = param.G_ground * MatrixXd::Identity(3*4, 3*4);  // Ground tangential forces.
+  Ginit.block(nq+nv+nc, nq+nv+nc, 1, 1) = param.G_EE * MatrixXd::Identity(1, 1);                        // End effector normal forces.
+  Ginit.block(nq+nv+nc+1, nq+nv+nc+1, nc-1, nc-1) = param.G_ground * MatrixXd::Identity(nc-1, nc-1);    // Ground normal forces.
+  // Ginit.block(nq+nv+4+4+4, nq+nv+4+4+4, 3*4, 3*4) = param.G_ground * MatrixXd::Identity(3*4, 3*4);      // Ground tangential forces.
 
   MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
   //Penalizing change in position between projection steps

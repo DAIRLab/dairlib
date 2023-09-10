@@ -36,6 +36,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(Q_ball_vel));
     a->Visit(DRAKE_NVP(R));
     a->Visit(DRAKE_NVP(G));
+    a->Visit(DRAKE_NVP(G_EE));
     a->Visit(DRAKE_NVP(G_ground));
     a->Visit(DRAKE_NVP(U_default));
     a->Visit(DRAKE_NVP(U_pos));
@@ -116,6 +117,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(switching_hysteresis));
     a->Visit(DRAKE_NVP(reposition_fixed_cost));
+    a->Visit(DRAKE_NVP(finished_reposition_cost));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(travel_speed));
     a->Visit(DRAKE_NVP(num_threads));
@@ -148,6 +150,7 @@ struct C3Parameters {
   double Q_ball_vel;
   double R;
   double G;
+  double G_EE;
   double G_ground;
   double U_default;
   double U_pos;
@@ -213,6 +216,7 @@ struct C3Parameters {
   //switching parameters
   double switching_hysteresis;
   double reposition_fixed_cost;
+  double finished_reposition_cost;
   double travel_cost_per_meter;
   double travel_speed;
   int num_threads;

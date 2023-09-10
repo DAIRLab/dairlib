@@ -645,6 +645,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       }
       // For not the current location, add some additional cost to reposition.  This needs to be more than the switching hysteresis.
       // This encourages the system to use C3 once reached the end of a repositioning maneuver.
+      else if ((i == CURRENT_LOCATION_INDEX + 1) & (finished_reposition_flag_ == true)) {
+        cost_vector[i] = cost_vector[i] + param_.finished_reposition_cost;
+      }
       else {
         cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
@@ -682,12 +685,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Switch to repositioning if one of the other samples is better, with hysteresis.
     if (curr_ee_cost > best_additional_sample_cost + param_.switching_hysteresis) {
       C3_flag_ = false;
+      finished_reposition_flag_ = false;
     }
   }
   else {                    // Currently repositioning.
     // Switch to C3 if the current sample is better, with hysteresis.
     if (best_additional_sample_cost > curr_ee_cost + param_.switching_hysteresis) {
       C3_flag_ = true;
+      finished_reposition_flag_ = false;
     }
   }
 
@@ -868,51 +873,58 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else {
     // Save the current reposition target so it is considered for the next control loop.
     reposition_target_ = best_additional_sample;
+    Eigen::Vector3d target = best_additional_sample.head(3);
 
-    // Build control points for the repositioning curve.
-    std::vector<Vector3d> points(4, VectorXd::Zero(3));
-
-    // Set the first point to the current end effector location.
-    points[0] = end_effector;
-
-    // Set the last point to the optimal sample location.
-    points[3] = best_additional_sample.head(3);
-
-    // Set the middle two points based on waypoints 25% and 75% through the first and last points.
-    // Expand the 25/75% waypoints away from the ball location by a distance of param_.spline_width.
-    Eigen::Vector3d ball_to_way_point1_vector = points[0] + 0.25*(points[3] - points[0]) - ball_xyz;
-    points[1] = ball_xyz + (param_.spline_width) * ball_to_way_point1_vector/ball_to_way_point1_vector.norm();
-
-    Eigen::Vector3d ball_to_way_point2_vector = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
-    points[2] = ball_xyz + (param_.spline_width) * ball_to_way_point2_vector/ball_to_way_point2_vector.norm();
+    Eigen::Vector3d curr_to_jack = ball_xyz - end_effector;
+    Eigen::Vector3d curr_to_target = target - end_effector;
 
     // Choose next end effector location based on fixed speed traversal of computed curve.
-    // double len_of_curve = (points[1]-points[0]).norm() + (points[2]-points[1]).norm() + (points[3]-points[2]).norm();  // curve length overestimate
-    double len_of_curve = (points[3] - points[0]).norm();                                                                 // curve length underestimate
+    double curr_to_target_distance = curr_to_target.norm();        // NOTE: This is a curve length underestimate if a spline is employed.
     double desired_travel_len = param_.travel_speed * control_loop_dt;
-    double curve_fraction = desired_travel_len/len_of_curve;
 
-    // Clamp the curve fraction to 1.
-    if(curve_fraction > 1){
-      curve_fraction = 1;
-    }
-
-    // If desired travel step is larger than straight-line distance to target, avoid the spline and go straight to target.
     Eigen::Vector3d next_point;
-    double dist_from_curr_to_destination = (points[3]-points[0]).norm();
-    if (desired_travel_len >= dist_from_curr_to_destination) {
-      next_point = points[3];
+    // Go straight to target location if close.
+    if (desired_travel_len > curr_to_target_distance) {
+      next_point = target;
+      finished_reposition_flag_ = true;   // Set flag to indicate planned to reach end of reposition target, so extra cost can be added when comparing
+                                          // this reposition target to other samples and current locations in the next loop.
     }
+    // Move along a straight line if the jack is roughly behind the end effector in its travel towards the target,
+    // or if the target is closer than the jack.
+    else if ((curr_to_jack.dot(curr_to_target) <= 0) | (curr_to_target_distance < curr_to_jack.norm())) {
+      next_point = end_effector + desired_travel_len * curr_to_target/curr_to_target_distance;
+    }
+    // Otherwise, avoid the jack using a spline.
     else {
+      double curve_fraction = desired_travel_len/curr_to_target_distance;  // This is guaranteed to be < 1 because of the first if statement to this else.
+
+      // Build control points for the repositioning curve.
+      // Set the first point to the current end effector location and the last point to the optimal sample location.
+      std::vector<Vector3d> points(4, VectorXd::Zero(3));
+      points[0] = end_effector;
+      points[3] = target;
+
+      // Set the middle two points based on waypoints 25% and 75% through the first and last points.
+      // Expand the 25/75% waypoints away from the ball location by a distance of param_.spline_width.
+      Eigen::Vector3d ball_to_way_point1_vector = points[0] + 0.25*(points[3] - points[0]) - ball_xyz;
+      points[1] = ball_xyz + (param_.spline_width) * ball_to_way_point1_vector/ball_to_way_point1_vector.norm();
+
+      Eigen::Vector3d ball_to_way_point2_vector = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
+      points[2] = ball_xyz + (param_.spline_width) * ball_to_way_point2_vector/ball_to_way_point2_vector.norm();
+
       next_point = points[0] + curve_fraction*(-3*points[0] + 3*points[1]) + 
                                   std::pow(curve_fraction,2) * (3*points[0] -6*points[1] + 3*points[2]) + 
                                   std::pow(curve_fraction,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
     }
 
+    // Make sure the desired next point is above the ground.
+    if (next_point[2] < param_.finger_radius + 0.002) {
+      next_point[2] = param_.finger_radius + 0.002;
+    }
+
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
 
-  
     // Set desired next state.
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
@@ -992,7 +1004,10 @@ Eigen::VectorXd generate_radially_symmetric_sample_location(
   test_q[0] = x_samplec + sampling_radius * cos(i*theta);
   test_q[1] = y_samplec + sampling_radius * sin(i*theta);
   test_q[2] = sampling_height;
-  test_v.head(3) << VectorXd::Zero(3);
+  // NOTE:  Commented out the below because could introduce ways that any other sample looks better than current location if
+  // EE velocity is penalized a lot.  Thus, a better equalizer to leave the initial velocities the same so the rest of the
+  // hypothetical state comparisons drive the actual cost differences.
+  // test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
@@ -1028,7 +1043,10 @@ Eigen::VectorXd generate_random_sample_location_on_circle(
   test_q[0] = x_samplec + sampling_radius * cos(theta);
   test_q[1] = y_samplec + sampling_radius * sin(theta);
   test_q[2] = sampling_height;
-  test_v.head(3) << VectorXd::Zero(3);
+  // NOTE:  Commented out the below because could introduce ways that any other sample looks better than current location if
+  // EE velocity is penalized a lot.  Thus, a better equalizer to leave the initial velocities the same so the rest of the
+  // hypothetical state comparisons drive the actual cost differences.
+  // test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);
@@ -1068,12 +1086,16 @@ Eigen::VectorXd generate_random_sample_location_on_sphere(
   std::uniform_real_distribution<> dis_height(min_angle_from_vertical, max_angle_from_vertical);
   double elevation_theta = dis_height(gen_height);
 
-  // Update the hypothetical state's end effector location to the tested sample location and set ee velocity to 0.
+  // Update the hypothetical state's end effector location to the tested sample location.
   test_q[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
   test_q[1] = y_samplec + sampling_radius * sin(theta) * sin(elevation_theta);
   test_q[2] = z_samplec + sampling_radius * cos(elevation_theta);
   
-  test_v.head(3) << VectorXd::Zero(3);
+  // Set hypothetical EE velocity to 0.
+  // NOTE:  Commented out the below because could introduce ways that any other sample looks better than current location if
+  // EE velocity is penalized a lot.  Thus, a better equalizer to leave the initial velocities the same so the rest of the
+  // hypothetical state comparisons drive the actual cost differences.
+  // test_v.head(3) << VectorXd::Zero(3);
   
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(candidate_state_size);

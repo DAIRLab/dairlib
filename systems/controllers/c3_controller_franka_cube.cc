@@ -699,6 +699,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /* =============================================================================================
   Get the state information again, since the sampling loop could take significant time.
   ============================================================================================= */
+  // // TODO:  I'm not sure this line is necessary, since I saw a big difference in performance without it
+  // // and just doing the FK+ portions.
+  // robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+
   // FK:  Get the location of the end effector sphere based on franka's joint states.
   // Update context once for FK.
   plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());

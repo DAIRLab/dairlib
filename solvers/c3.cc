@@ -98,6 +98,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     }
   }
 
+  // Add dynamics constraint.
   MatrixXd LinEq(n_, 2 * n_ + k_ + m_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
 
@@ -110,6 +111,26 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
         LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i), x_.at(i + 1)});
   }
 
+  // Add the inequality portion of the complementarity constraints.
+  MatrixXd LinIneq(m_, n_ + k_ + m_);
+
+  for (int i = 0; i < N_; i++) {
+    LinIneq.block(0, 0, m_, n_) = E_.at(i);
+    LinIneq.block(0, n_, m_, k_) = H_.at(i);
+    LinIneq.block(0, n_ + k_, m_, m_) = F_.at(i);
+
+    prog_.AddLinearConstraint(
+      LinIneq, -c_.at(i), INFINITY * VectorXd::Ones(m_), {x_.at(i), u_.at(i), lambda_.at(i)}
+    );
+    // Or an alternative way of doing the Ex + Fl + Hu + c >= 0 term (no observed difference).
+    // prog_.AddLinearConstraint(
+    //   E_.at(i)*x_.at(i) + F_.at(i)*lambda_.at(i) + H_.at(i)*u_.at(i) + c_.at(i) >= VectorXd::Zero(m_)
+    // );
+    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
+  }
+
+
+  // Build cost.
   for (int i = 0; i < N_ + 1; i++) {
     prog_.AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * xdesired_.at(i),
                            x_.at(i), 1);

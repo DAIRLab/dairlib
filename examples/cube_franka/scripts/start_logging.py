@@ -9,11 +9,15 @@ def main(argv):
     computer = "c3"
     dair = "/home/sharanya/workspace/dairlib"
     logdir, log_num = create_new_log("/home/sharanya/workspace/dairlib/logs")
-
+    
+    # print("\tlog number In start_logging")
+    # print(log_num)
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
 
     os.chdir('{}/{}'.format(logdir, log_num))
+    print("\tdirectory change after creating new log")
+    print(os.getcwd())
     
     with open('commit_tag%s' % log_num, 'w') as f:
         f.write(str(commit_tag))

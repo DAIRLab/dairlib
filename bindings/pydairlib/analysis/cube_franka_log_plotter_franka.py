@@ -168,6 +168,8 @@ def main():
     ''' set up log directory paths '''
     if len(sys.argv) == 1:
       logdir, log_num = get_most_recent_logs()
+      # print("In if statement of cube_franka_log_plotter_franka")
+      # print(log_num)
     else:
       filename = sys.argv[1]
       path_components = os.path.normpath(filename).split(os.sep)
@@ -177,21 +179,31 @@ def main():
         if comp == log_num:
           break
         logdir += '/{}'.format(comp)
-
+    
+    # print("log number after getting most recent log in cube_franka_log_plotter")
+    print(log_num)
     ''' Read the log '''
     filename = "{}/{}/lcmlog-{}".format(logdir, log_num, log_num)
+    print("Printing filename")
+    print(filename)
     print("Processing {}".format(filename))
     log = lcm.EventLog(filename, "r")
 
-    robot_output, robot_input, c3_output, \
-    cam0_output, cam1_output, cam2_output, vision_output = \
-        get_log_data(log,                                       # log
+    # robot_output, robot_input, c3_output, \
+    # cam0_output, cam1_output, cam2_output, vision_output = \
+        # get_log_data(log,                                       # log
+        #              franka_channels,                           # lcm channels
+        #              config['end_time'],                        # end time
+        #              mbp_plots.load_default_franka_channels,    # processing callback
+        #              plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
+        #              "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
+        #              "CAM2_OUTPUT", "VISION_OUTPUT")   
+    robot_output, robot_input = \
+    get_log_data(log,                                       # log
                      franka_channels,                           # lcm channels
                      config['end_time'],                        # end time
                      mbp_plots.load_default_franka_channels,    # processing callback
-                     plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
-                     "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
-                     "CAM2_OUTPUT", "VISION_OUTPUT")   
+                     plant, "FRANKA_OUTPUT", "CONTROLLER_INPUT")   
                      
     print('Finished processing log - making plots')
 

@@ -53,7 +53,7 @@ def get_most_recent_logs(log_root=default_log_root):
   #CIRCLE
   log_num = "{:02}".format(1)
 
-  print("printing log_num")
+  print("printing log_num in franka_trajectory_following")
   print(log_num)
 
   os.chdir(logdir)

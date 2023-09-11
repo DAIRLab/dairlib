@@ -9,6 +9,7 @@ DEFAULT_LOG_ROOT = "/home/sharanya/workspace/dairlib/logs"
 
 
 def create_new_log(log_root=DEFAULT_LOG_ROOT):
+  # print("HERE!!")
   ''' change this to change log location '''
   curr_date = date.today().strftime("%m_%d_%y")
   year = date.today().strftime("%Y")
@@ -19,6 +20,7 @@ def create_new_log(log_root=DEFAULT_LOG_ROOT):
   os.chdir(logdir)
 
   current_logs = sorted(glob.glob('*'))
+  # print("HERE!!")
   if len(current_logs) == 0:
     log_num = '00'
   elif current_logs[-1] == 'log_descriptions.txt':
@@ -27,6 +29,8 @@ def create_new_log(log_root=DEFAULT_LOG_ROOT):
   else:
     last_log = int(current_logs[-1])
     log_num = "{:02}".format(last_log+1)
+    # print("HERE LASTLOG + 1 = ")
+    # print(log_num)
   
   os.mkdir(log_num)
 
@@ -38,6 +42,8 @@ def get_most_recent_logs(log_root=DEFAULT_LOG_ROOT):
   curr_date = date.today().strftime("%m_%d_%y")
   year = date.today().strftime("%Y")
   logdir = "{}/{}/{}".format(log_root, year, curr_date)
+  # print("logdir in cube_franka_logging_utils get_most_recent_logs")
+  # print(logdir)
 
 
   # logdir = DEFAULT_LOG_ROOT
@@ -52,23 +58,25 @@ def get_most_recent_logs(log_root=DEFAULT_LOG_ROOT):
   # log_num = "{:02}".format(11)
 
   #CIRCLE
-  log_num = "{:02}".format(1)
+  # log_num = "{:02}".format(1)
 
-  print("printing log_num")
-  print(log_num)
+  
 
   os.chdir(logdir)
 
   current_logs = sorted(glob.glob('*'))
 
-  # if len(current_logs) == 0:
-  #   log_num = None
-  # elif current_logs[-1] == 'log_descriptions.txt':
-  #   last_log = int(current_logs[-2])
-  #   log_num = "{:02}".format(last_log)
-  # else:
-  #   last_log = int(current_logs[-1])
-  #   log_num = "{:02}".format(last_log)
+  if len(current_logs) == 0:
+    log_num = None
+  elif current_logs[-1] == 'log_descriptions.txt':
+    last_log = int(current_logs[-2])
+    log_num = "{:02}".format(last_log)
+  else:
+    last_log = int(current_logs[-1])
+    log_num = "{:02}".format(last_log)
+
+  print("printing log_num in get most recent logs")
+  print(log_num)
 
 
 

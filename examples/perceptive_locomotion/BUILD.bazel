@@ -138,7 +138,6 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/simulation:gps_receiver",
         "//systems/framework:vector",
         "//systems/primitives",
         "//systems/cameras:camera_utils",
@@ -179,15 +178,5 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-py_binary(
-    name = "publish_vio",
-    srcs = ["publish_vio.py"],
-    data = ["@lcm//:lcm-python"],
-    deps = [
-        "//bindings/pydairlib/lcm",
-        "//lcmtypes:lcmtypes_robot_py",
     ],
 )

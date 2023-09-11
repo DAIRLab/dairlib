@@ -141,6 +141,9 @@ int DoMain(int argc, char* argv[]){
   MatrixXd Rinit = param.R * MatrixXd::Identity(nu, nu);
 
   MatrixXd Ginit = param.G * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
+  Ginit(nq+nv+3,nq+nv+3) = param.G_ground * 1;
+  Ginit.block(nq+nv+8,nq+nv+8, 4, 4) = param.G_ground * MatrixXd::Identity(4,4);
+
   MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
   Uinit.block(0,0,nq+nv,nq+nv) << 
     param.U_pos_vel * MatrixXd::Identity(nq+nv,nq+nv);

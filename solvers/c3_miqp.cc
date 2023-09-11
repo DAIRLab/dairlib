@@ -34,7 +34,9 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const VectorXd& delta_c,
                                        const MatrixXd& E, const MatrixXd& F,
                                        const MatrixXd& H, const VectorXd& c,
-                                       const int& warm_start_index) {
+                                       const int& warm_start_index,
+                                       const bool& constrain_first_x,
+                                       const Eigen::VectorXd& x0) {
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
@@ -102,6 +104,13 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     model.addConstr(cexpr <= M * (1 - binary[i]));
 
     GRBLinExpr cexpr2 = 0;
+
+     //Constrain x0 if necessary.
+    if (constrain_first_x == true) {
+      for (int i = 0; i < n_; i++) {
+        model.addConstr(delta_k[i] == x0[i]);
+      }
+    }
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {

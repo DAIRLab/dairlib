@@ -63,7 +63,7 @@ class C3 {
   /// @param WZ (z + w) variables
   /// @param G The G variables from previous step
   std::vector<Eigen::VectorXd> SolveProjection(
-      std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
+      std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,  Eigen::VectorXd& x0);
 
   /// allow users to add constraints (adds for all timesteps)
   /// @param A, Lowerbound, Upperbound Lowerbound <= A^T x <= Upperbound
@@ -89,7 +89,9 @@ class C3 {
                                                 const Eigen::MatrixXd& F,
                                                 const Eigen::MatrixXd& H,
                                                 const Eigen::VectorXd& c,
-                                                const int& warm_start_index) = 0;
+                                                const int& warm_start_index,
+                                                const bool& constrain_first_x,
+                                                const Eigen::VectorXd& x0) = 0;
 
  public:
   const std::vector<Eigen::MatrixXd> A_;

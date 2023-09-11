@@ -38,6 +38,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(Qnew_ball_y));
     a->Visit(DRAKE_NVP(R));
     a->Visit(DRAKE_NVP(G));
+    a->Visit(DRAKE_NVP(G_ground));
     a->Visit(DRAKE_NVP(U_default));
     a->Visit(DRAKE_NVP(U_pos_vel));
     a->Visit(DRAKE_NVP(U_u));
@@ -122,6 +123,7 @@ struct C3Parameters {
   double Qnew_ball_y;
   double R;
   double G;
+  double G_ground;
   double U_default;
   double U_pos_vel;
   double U_u;

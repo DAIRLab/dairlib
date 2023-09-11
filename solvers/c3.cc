@@ -307,9 +307,12 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
     //std::cout << "W:" << w->at(0) << std::endl;
 
 
-    *delta = SolveProjection(Uv, ZW);
+    //*delta = SolveProjection(Uv, ZW);
+    *delta = SolveProjection(Uv, ZW, x0);
+
   } else {
-    *delta = SolveProjection(*Gv, ZW);
+    //*delta = SolveProjection(*Gv, ZW);
+    *delta = SolveProjection(*Gv, ZW, x0);
   }
 
 
@@ -449,7 +452,7 @@ void C3::RemoveConstraints() {
 }
 
 vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
-                                     vector<VectorXd>& WZ) {
+                                     vector<VectorXd>& WZ,  Eigen::VectorXd& x0) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
   int i;
 
@@ -462,13 +465,20 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
 
 #pragma omp parallel for
   for (i = 0; i < N_; i++) {
+
+    bool constrain_first_x = false;
+    if (i == 0) {
+      constrain_first_x = true;
+    }
+
+
     if (warm_start_){
       deltaProj[i] =
-          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i);
+          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i, constrain_first_x, x0);
     }
     else{
       deltaProj[i] =
-          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1);
+          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1, constrain_first_x, x0);
     }
   }
 

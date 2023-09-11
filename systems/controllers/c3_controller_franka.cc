@@ -246,7 +246,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   q << end_effector, ball;
   VectorXd v(9);
   v << end_effector_dot, ball_dot;
-  VectorXd u = 1000*VectorXd::Ones(3);
+  VectorXd u = 0*VectorXd::Ones(3);
 
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
   state << end_effector, q_plant.tail(7), end_effector_dot, v_plant.tail(6);
@@ -292,31 +292,31 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
   /// upwards phase
   else if (ts < roll_phase + return_phase / 3){
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
 
   }
   /// side ways phase
   else if( ts < roll_phase + 2 * return_phase / 3 ) {
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
   }
   /// position finger phase
   else{
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+//    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 
@@ -430,7 +430,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   }
 
   MatrixXd Qnew;
+  MatrixXd Gnew;
   Qnew = Q_[0];
+  Gnew = G_[0];
 
   if (ts > roll_phase){
     double Qnew_finger = param_.Qnew_finger;
@@ -439,12 +441,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     Qnew(2,2) = Qnew_finger;
     Qnew(7,7) = param_.Qnew_ball_x;
     Qnew(8,8) = param_.Qnew_ball_y;
-    Qnew(9,9) = param_.Qnew_ball_x;
+    Qnew(9,9) = 0;
+    //Gnew(19+3,19+3) = 0.01;
+    Gnew = 0.01 * MatrixXd::Identity(n+k+m, n+k+m);
   }
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
+  std::vector<MatrixXd> Gha(G_.size(), Gnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, scaling,
+  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options, scaling,
    warm_start_delta_, warm_start_binary_, warm_start_x_,
    warm_start_lambda_, warm_start_u_, true);
 

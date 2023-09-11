@@ -12,8 +12,8 @@ def main(argv):
       logdir, log_num = create_new_log()
     elif len(argv) == 2:
       computer = "c3"
-      dair = "/home/dairlab-alp/workspace/dairlib"
-      logdir, log_num = create_new_log("/home/dairlab-alp/workspace")
+      dair = "/home/sharanya/workspace/dairlib"
+      logdir, log_num = create_new_log("/home/sharanya/workspace")
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)

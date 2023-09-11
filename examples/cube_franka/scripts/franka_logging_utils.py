@@ -3,7 +3,8 @@ import glob
 from datetime import date
 
 # default_log_root = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
-DEFAULT_LOG_ROOT = "/home/sharanya/Desktop/logs"
+# DEFAULT_LOG_ROOT = "/home/sharanya/Desktop/logs"
+DEFAULT_LOG_ROOT = "/home/sharanya/workspace/dairlib/logs"
 #default_log_root = "/hdd_storage/c3-experiments/logs".format(os.getenv('HOME'))
 
 
@@ -36,10 +37,10 @@ def get_most_recent_logs(log_root=DEFAULT_LOG_ROOT):
 
   curr_date = date.today().strftime("%m_%d_%y")
   year = date.today().strftime("%Y")
-  #logdir = "{}/{}/{}".format(log_root, year, curr_date)
+  logdir = "{}/{}/{}".format(log_root, year, curr_date)
 
 
-  logdir = DEFAULT_LOG_ROOT
+  # logdir = DEFAULT_LOG_ROOT
 
   #SQUARE
   # log_num = "{:02}".format(7)

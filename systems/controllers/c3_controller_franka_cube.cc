@@ -386,6 +386,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         next_target = ball_xyz + param_.max_step_size*(error_vector/error_vector.norm());
     }
     else{
+        // else set the next target to be the projection point.
         next_target = projection_point;
     }
     // set next target location for jack

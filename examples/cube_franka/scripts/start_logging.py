@@ -8,7 +8,7 @@ from franka_logging_utils import *
 def main(argv):
     computer = "c3"
     dair = "/home/sharanya/workspace/dairlib"
-    logdir, log_num = create_new_log("/home/sharanya/workspace")
+    logdir, log_num = create_new_log("/home/sharanya/workspace/dairlib/logs")
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)

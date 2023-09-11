@@ -31,8 +31,8 @@ def update_filedata(filedata, param):
   return filedata
 
 def main():
-  urdf_path = "examples/franka_trajectory_following/robot_properties_fingers/urdf"
-  parameters_file = "examples/franka_trajectory_following/parameters.yaml"
+  urdf_path = "examples/cube_franka/robot_properties_fingers/urdf"
+  parameters_file = "examples/cube_franka/parameters.yaml"
   param = yaml_load(filename=parameters_file)
 
   update_urdf("{}/franka_box_template.urdf".format(urdf_path), \

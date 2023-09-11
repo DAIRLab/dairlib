@@ -1,0 +1,366 @@
+b'a1c215e4ee72f80fc53c32ccdc3eab2b4cd37025\n'
+
+git diff:
+
+diff --git a/bindings/pydairlib/analysis/BUILD.bazel b/bindings/pydairlib/analysis/BUILD.bazel
+index b4f2b22ae..c90cfce66 100644
+--- a/bindings/pydairlib/analysis/BUILD.bazel
++++ b/bindings/pydairlib/analysis/BUILD.bazel
+@@ -28,6 +28,23 @@ py_binary(
+     ],
+ )
+ 
++py_binary(
++    name = "cube_franka_process_lcm_log",
++    srcs = ["cube_franka_process_lcm_log.py"],
++    data = ["//examples/cube_franka:trifinger_urdf",
++            "@drake//manipulation/models/franka_description:models",
++            "@lcm//:lcm-python"],
++    deps = [
++        "//bindings/pydairlib/common",
++        "//bindings/pydairlib/common:plot_styler",
++        "//bindings/pydairlib/lcm",
++        "//bindings/pydairlib/multibody:kinematic_py",
++        "//bindings/pydairlib/multibody:multibody_py",
++        "//lcmtypes:lcmtypes_robot_py",
++        "//examples/cube_franka/scripts:franka_logging_utils"
++    ],
++)
++
+ py_library(
+     name = "osc_debug_py",
+     srcs = ["osc_debug.py"],
+@@ -105,3 +122,20 @@ py_binary(
+         "//examples/franka_trajectory_following/scripts:franka_logging_utils"
+     ],
+ )
++
++py_binary(
++    name = "cube_franka_log_plotter_franka",
++    srcs = ["cube_franka_log_plotter_franka.py"],
++    data = ["//examples/cube_franka:trifinger_urdf",
++            "@drake//manipulation/models/franka_description:models",
++            "@lcm//:lcm-python"],
++    deps = [
++        "//bindings/pydairlib/common",
++        "//bindings/pydairlib/common:plot_styler",
++        "//bindings/pydairlib/lcm",
++        "//bindings/pydairlib/multibody:kinematic_py",
++        "//bindings/pydairlib/multibody:multibody_py",
++        "//lcmtypes:lcmtypes_robot_py",
++        "//examples/cube_franka/scripts:franka_logging_utils"
++    ],
++)
+diff --git a/bindings/pydairlib/analysis/log_plotter_franka.py b/bindings/pydairlib/analysis/log_plotter_franka.py
+index 796b5f3dd..f0adfeb22 100644
+--- a/bindings/pydairlib/analysis/log_plotter_franka.py
++++ b/bindings/pydairlib/analysis/log_plotter_franka.py
+@@ -21,7 +21,7 @@ import scipy.io
+ 
+ 
+ #DAIR_PATH = "/home/dair-manipulation/adam_ws/dairlib"
+-DAIR_PATH = "/home/alpaydinoglu/workspace/dairlib"
++DAIR_PATH = "/home/sharanya/workspace/dairlib"
+ plot_dpi = 1000
+ 
+ def check_flag_and_save(ps, filename, format='svg', save_flag=False):
+@@ -176,8 +176,12 @@ def main():
+ 
+     ''' Read the log '''
+     filename = "{}/{}/lcmlog-{}".format(logdir, log_num, log_num)
++    print("Printing filename")
++    print(filename)
+     print("Processing {}".format(filename))
+     log = lcm.EventLog(filename, "r")
++    print("Printing filename again")
++    print(filename)
+ 
+     robot_output, robot_input, c3_output,      cam0_output, cam1_output, cam2_output, vision_output = @@ -203,18 +207,18 @@ def main():
+     #     ball_pos_names = ['base_x', 'base_y']
+     #     qs = [pos_map[name] for name in ball_pos_names]
+     #     qhold = robot_output['q']
+-    #
+-    #
++    
++    
+     #     tsize = robot_output['t_x'].size
+     #     circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+-    #
++    
+     #     xxx = qhold[:,qs[0]]
+     #     yyy = qhold[:,qs[1]]
+     #     plt.plot(xxx,yyy)
+     #     plt.xlim([0.4, 0.7])
+     #     plt.ylim([-0.15, 0.15])
+     #     plt.gca().add_patch(circle2)
+-    #
++    
+     #     plt.show()
+ 
+     ''' Plot Rectangle '''
+diff --git a/bindings/pydairlib/analysis/process_lcm_log.py b/bindings/pydairlib/analysis/process_lcm_log.py
+index 26193167c..a2d670bf0 100644
+--- a/bindings/pydairlib/analysis/process_lcm_log.py
++++ b/bindings/pydairlib/analysis/process_lcm_log.py
+@@ -79,7 +79,8 @@ def main():
+     import numpy as np
+     import scipy.io
+ 
+-    logfile = "/home/alpaydinoglu/workspace/dairlib/example_log"
++    # logfile = "/home/alpaydinoglu/workspace/dairlib/example_log"
++    logfile = "/home/sharanya/workspace/dairlib/example_log"
+     log = lcm.EventLog(logfile, "r")
+     # print_log_summary(logfile, log)
+     x, y = get_log_data(log, channels, -1, processing_callback, "FRANKA_OUTPUT")
+diff --git a/examples/cube_franka/procman_script_c3.pmd b/examples/cube_franka/procman_script_c3.pmd
+index 157ab5284..974cf6676 100644
+--- a/examples/cube_franka/procman_script_c3.pmd
++++ b/examples/cube_franka/procman_script_c3.pmd
+@@ -98,7 +98,7 @@ group "8.Logging, Utils" {
+         host = "localhost";
+     }
+     cmd "c.process_logs" {
+-        exec = "bazel-bin/bindings/pydairlib/analysis/log_plotter_franka";
++        exec = "bazel-bin/bindings/pydairlib/analysis/cube_franka_log_plotter_franka";
+         host = "localhost";
+     }
+     cmd "d.process_frames" {
+diff --git a/examples/cube_franka/scripts/franka_logging_utils.py b/examples/cube_franka/scripts/franka_logging_utils.py
+index fb1a83da1..71dc5a613 100644
+--- a/examples/cube_franka/scripts/franka_logging_utils.py
++++ b/examples/cube_franka/scripts/franka_logging_utils.py
+@@ -3,7 +3,8 @@ import glob
+ from datetime import date
+ 
+ # default_log_root = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
+-DEFAULT_LOG_ROOT = "/home/sharanya/Desktop/logs"
++# DEFAULT_LOG_ROOT = "/home/sharanya/Desktop/logs"
++DEFAULT_LOG_ROOT = "/home/sharanya/workspace/dairlib/logs"
+ #default_log_root = "/hdd_storage/c3-experiments/logs".format(os.getenv('HOME'))
+ 
+ 
+diff --git a/examples/cube_franka/scripts/start_logging.py b/examples/cube_franka/scripts/start_logging.py
+index 86e6c1c62..a5e752efb 100644
+--- a/examples/cube_franka/scripts/start_logging.py
++++ b/examples/cube_franka/scripts/start_logging.py
+@@ -8,7 +8,7 @@ from franka_logging_utils import *
+ def main(argv):
+     computer = "c3"
+     dair = "/home/sharanya/workspace/dairlib"
+-    logdir, log_num = create_new_log("/home/sharanya/workspace")
++    logdir, log_num = create_new_log("/home/sharanya/workspace/dairlib/logs")
+ 
+     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
+     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
+diff --git a/examples/cube_franka/scripts/update_urdfs.py b/examples/cube_franka/scripts/update_urdfs.py
+index 1b80bdd82..f50126552 100644
+--- a/examples/cube_franka/scripts/update_urdfs.py
++++ b/examples/cube_franka/scripts/update_urdfs.py
+@@ -31,8 +31,8 @@ def update_filedata(filedata, param):
+   return filedata
+ 
+ def main():
+-  urdf_path = "examples/franka_trajectory_following/robot_properties_fingers/urdf"
+-  parameters_file = "examples/franka_trajectory_following/parameters.yaml"
++  urdf_path = "examples/cube_franka/robot_properties_fingers/urdf"
++  parameters_file = "examples/cube_franka/parameters.yaml"
+   param = yaml_load(filename=parameters_file)
+ 
+   update_urdf("{}/franka_box_template.urdf".format(urdf_path), diff --git a/examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf b/examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf
+index dfd5f7c60..99c883470 100644
+--- a/examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf
++++ b/examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf
+@@ -1,82 +1,31 @@
+ <?xml version="1.0" ?>
+ <robot name="sphere_v2">
+-    <link name="capsule_1">
++    <link name="sphere">
+         <contact>
+-            <rolling_friction value="0.5"/>
+-            <spinning_friction value="0.5"/>
++            <!-- TODO: not sure if these values make sense -->
++            <!-- TODO: are these values even read by pybullet? -->
++            <lateral_friction value="1.0"/>
++            <rolling_friction value="0.0"/>
++            <contact_cfm value="0.0"/>
++            <contact_erp value="1.0"/>
+         </contact>
+         <inertial>
+             <origin rpy="0 0 0" xyz="0 0 0"/>
+-            <mass value="0.1"/>
+-            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
++            <mass value="0.132"/>
++            <inertia ixx="0.0000524" ixy="0" ixz="0" iyy="0.0000524" iyz="0" izz="0.0000524"/>
+         </inertial>
+-        <collision>
+-            <origin rpy="0 0 0" xyz="0 0 0"/>
+-            <geometry>
+-                <capsule length="0.125" radius="0.015"/> 
+-            </geometry>
+-        </collision>
+-        <drake:proximity_properties>
+-                <!-- POINT CONTACT -->
+-                <drake:mu_static value="1"/>
+-                <drake:mu_dynamic value="1"/>
+-
+-                <!-- HYDROELASTIC CONTACT -->
+-                <!-- <drake:compliant_hydroelastic/> -->
+-                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+-                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+-                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+-        </drake:proximity_properties>
+         <visual>
+             <origin rpy="0 0 0" xyz="0 0 0"/>
+             <geometry>
+-                <capsule length="0.125" radius="0.015"/> 
++                <mesh filename="sphere_with_texture.obj"/>
+             </geometry>
+         </visual>
+-    </link>
+-
+-    <link name="capsule_2">
+-        <contact>
+-            <rolling_friction value="0.5"/>
+-            <spinning_friction value="0.5"/>
+-        </contact>
+-        <inertial>
+-            <origin rpy="0 0 0" xyz="0 0 0"/>
+-            <mass value="0.1"/>
+-            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+-        </inertial>
+-        <drake:proximity_properties>
+-                <!-- POINT CONTACT -->
+-                <drake:mu_static value="1"/>
+-                <drake:mu_dynamic value="1"/>
+-
+-                <!-- HYDROELASTIC CONTACT -->
+-                <!-- <drake:compliant_hydroelastic/> -->
+-                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+-                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+-                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+-        </drake:proximity_properties>
+         <collision>
+-            <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
+-            <geometry>
+-                <capsule length="0.125" radius="0.015"/> 
+-            </geometry>
+-        </collision>
+-        <visual>
+-            <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
++            <origin rpy="0 0 0" xyz="0 0 0"/>
+             <geometry>
+-                <capsule length="0.125" radius="0.015"/> 
++                <sphere radius="0.0315"/>
+             </geometry>
+-        </visual>
+-    </link>
+-
+-    <link name="capsule_3">
+-        <!-- Third capsule (perpendicular to the first two capsules) -->
+-        <contact>
+-            <rolling_friction value="0.5"/>
+-            <spinning_friction value="0.5"/>
+-        </contact>
+-        <drake:proximity_properties>
++            <drake:proximity_properties>
+                 <!-- POINT CONTACT -->
+                 <drake:mu_static value="1"/>
+                 <drake:mu_dynamic value="1"/>
+@@ -86,41 +35,7 @@
+                 <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                 <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                 <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+-        </drake:proximity_properties>
+-        <inertial>
+-            <origin rpy="0 0 0" xyz="0 0 0"/>
+-            <mass value="0.1"/>
+-            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+-        </inertial>
+-        <collision>
+-            <origin rpy="0 0 0" xyz="0 0 0"/>
+-            <geometry>
+-                <capsule length="0.12" radius="0.015"/> 
+-            </geometry>
+-        </collision>
+-        <visual>
+-            <origin rpy="0 0 0" xyz="0 0 0"/>
+-            <geometry>
+-                <capsule length="0.12" radius="0.015"/> 
+-            </geometry>
+-        </visual>
++            </drake:proximity_properties>
++        </collision>        
+     </link>
+-
+-    
+-
+-
+-    <!-- Joints to connect the capsules-->
+-    <joint name="attach_joint" type="fixed">
+-        <parent link="capsule_1"/>
+-        <child link="capsule_2"/>
+-        <origin rpy="0 1.5708 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the y-axis -->
+-    </joint>
+-
+-    <joint name="attach_joint2" type="fixed">
+-        <parent link="capsule_2"/>
+-        <child link="capsule_3"/>
+-        <origin rpy="0 0 1.5708" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the z-axis -->
+-    </joint>
+-
+-    
+ </robot>
+diff --git a/examples/franka_trajectory_following/scripts/franka_logging_utils.py b/examples/franka_trajectory_following/scripts/franka_logging_utils.py
+index f7601e651..ace538035 100644
+--- a/examples/franka_trajectory_following/scripts/franka_logging_utils.py
++++ b/examples/franka_trajectory_following/scripts/franka_logging_utils.py
+@@ -2,7 +2,8 @@ import os
+ import glob
+ from datetime import date
+ 
+-default_log_root = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
++# default_log_root = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
++default_log_root = "/home/sharanya/workspace/logs"
+ #default_log_root = "/hdd_storage/c3-experiments/logs".format(os.getenv('HOME'))
+ 
+ 
+@@ -35,10 +36,10 @@ def get_most_recent_logs(log_root=default_log_root):
+ 
+   curr_date = date.today().strftime("%m_%d_%y")
+   year = date.today().strftime("%Y")
+-  #logdir = "{}/{}/{}".format(log_root, year, curr_date)
++  logdir = "{}/{}/{}".format(log_root, year, curr_date)
+ 
+ 
+-  logdir = "/home/alpaydinoglu/Desktop/experiment_logs/08_30_22".format(os.getenv('HOME'))
++  # logdir = "/home/sharanya/workspace/dairlib/logs".format(os.getenv('HOME'))
+ 
+   #SQUARE
+   log_num = "{:02}".format(7)
+diff --git a/examples/franka_trajectory_following/scripts/start_logging.py b/examples/franka_trajectory_following/scripts/start_logging.py
+index 145ab215f..1478cef17 100644
+--- a/examples/franka_trajectory_following/scripts/start_logging.py
++++ b/examples/franka_trajectory_following/scripts/start_logging.py
+@@ -12,8 +12,8 @@ def main(argv):
+       logdir, log_num = create_new_log()
+     elif len(argv) == 2:
+       computer = "c3"
+-      dair = "/home/dairlab-alp/workspace/dairlib"
+-      logdir, log_num = create_new_log("/home/dairlab-alp/workspace")
++      dair = "/home/sharanya/workspace/dairlib"
++      logdir, log_num = create_new_log("/home/sharanya/workspace")
+ 
+     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
+     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
+diff --git a/systems/controllers/c3_controller_franka_cube.cc b/systems/controllers/c3_controller_franka_cube.cc
+index e4840514b..8738a4a66 100644
+--- a/systems/controllers/c3_controller_franka_cube.cc
++++ b/systems/controllers/c3_controller_franka_cube.cc
+@@ -386,6 +386,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
+         next_target = ball_xyz + param_.max_step_size*(error_vector/error_vector.norm());
+     }
+     else{
++        // else set the next target to be the projection point.
+         next_target = projection_point;
+     }
+     // set next target location for jack

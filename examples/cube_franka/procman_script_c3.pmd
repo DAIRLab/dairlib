@@ -98,7 +98,7 @@ group "8.Logging, Utils" {
         host = "localhost";
     }
     cmd "c.process_logs" {
-        exec = "bazel-bin/bindings/pydairlib/analysis/log_plotter_franka";
+        exec = "bazel-bin/bindings/pydairlib/analysis/cube_franka_log_plotter_franka";
         host = "localhost";
     }
     cmd "d.process_frames" {

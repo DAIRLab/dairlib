@@ -8,13 +8,13 @@ import os
 from datetime import date
 
 import dairlib
-from process_lcm_log import get_log_data
+from cube_franka_process_lcm_log import get_log_data
 import mbp_plotting_utils as mbp_plots
 from pydairlib.common import plot_styler, plotting_utils
 from pydrake.all import *
 import pydairlib.common
 import yaml
-from examples.franka_trajectory_following.scripts.franka_logging_utils import get_most_recent_logs
+from examples.cube_franka.scripts.franka_logging_utils import get_most_recent_logs
 from matplotlib.patches import Rectangle
 
 import scipy.io
@@ -138,9 +138,9 @@ def main():
 
     parser = Parser(plant)
     parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-        "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf"))
+        "examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf"))
     parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
-        "examples/franka_trajectory_following/robot_properties_fingers/urdf/sphere.urdf"))
+        "examples/cube_franka/robot_properties_fingers/urdf/jack.urdf"))
 
     X_WI = RigidTransform.Identity()
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI)
@@ -155,16 +155,6 @@ def main():
     #    'FRANKA_INPUT_WO_G': dairlib.lcmt_robot_input,
     #    'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
     #    'FRANKA_STATE_ESTIMATE': dairlib.lcmt_robot_output,
-    #    'CONTROLLER_INPUT': dairlib.lcmt_c3,
-    #    'VISION_OUTPUT': dairlib.lcmt_ball_position,
-    #    'CAM0_OUTPUT': dairlib.lcmt_ball_position,
-    #    'CAM1_OUTPUT': dairlib.lcmt_ball_position,
-    #    'CAM2_OUTPUT': dairlib.lcmt_ball_position} 
-
-    # franka_channels = \
-    #   {'FRANKA_INPUT': dairlib.lcmt_robot_input,
-    #    'FRANKA_INPUT_WO_G': dairlib.lcmt_robot_input,
-    #    'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
     #    'CONTROLLER_INPUT': dairlib.lcmt_c3,
     #    'VISION_OUTPUT': dairlib.lcmt_ball_position,
     #    'CAM0_OUTPUT': dairlib.lcmt_ball_position,
@@ -190,31 +180,18 @@ def main():
 
     ''' Read the log '''
     filename = "{}/{}/lcmlog-{}".format(logdir, log_num, log_num)
-    print("Printing filename")
-    print(filename)
     print("Processing {}".format(filename))
     log = lcm.EventLog(filename, "r")
-    print("Printing filename again")
-    print(filename)
 
-    # robot_output, robot_input, c3_output, \
-    # cam0_output, cam1_output, cam2_output, vision_output = \
-    #     get_log_data(log,                                       # log
-    #                  franka_channels,                           # lcm channels
-    #                  config['end_time'],                        # end time
-    #                  mbp_plots.load_default_franka_channels,    # processing callback
-    #                  plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
-    #                  "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
-    #                  "CAM2_OUTPUT", "VISION_OUTPUT")   
-
-    #Reading log data here?
     robot_output, robot_input, c3_output, \
     cam0_output, cam1_output, cam2_output, vision_output = \
         get_log_data(log,                                       # log
                      franka_channels,                           # lcm channels
                      config['end_time'],                        # end time
                      mbp_plots.load_default_franka_channels,    # processing callback
-                     plant, "FRANKA_OUTPUT", "CONTROLLER_INPUT")   
+                     plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
+                     "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
+                     "CAM2_OUTPUT", "VISION_OUTPUT")   
                      
     print('Finished processing log - making plots')
 
@@ -225,45 +202,45 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
 
-    # ''' Plot Circle '''
-    # if config['plot_ball_position']:
-    #     ball_pos_names = ['base_x', 'base_y']
-    #     qs = [pos_map[name] for name in ball_pos_names]
-    #     qhold = robot_output['q']
-    
-    
-    #     tsize = robot_output['t_x'].size
-    #     circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
-    
-    #     xxx = qhold[:,qs[0]]
-    #     yyy = qhold[:,qs[1]]
-    #     plt.plot(xxx,yyy)
-    #     plt.xlim([0.4, 0.7])
-    #     plt.ylim([-0.15, 0.15])
-    #     plt.gca().add_patch(circle2)
-    
-    #     plt.show()
-
-    ''' Plot Rectangle '''
+    ''' Plot Circle '''
     if config['plot_ball_position']:
         ball_pos_names = ['base_x', 'base_y']
         qs = [pos_map[name] for name in ball_pos_names]
         qhold = robot_output['q']
-
+    
+    
         tsize = robot_output['t_x'].size
         circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
-        plt.gca().add_patch(circle2)
-
+    
         xxx = qhold[:,qs[0]]
         yyy = qhold[:,qs[1]]
         plt.plot(xxx,yyy)
-
-        #plt.xlim([0.3, 0.9])
-        #plt.ylim([-0.12, 0.12])
-        #rect = Rectangle((0.55,-0.1),0.1,0.2,0.0,  color='b', fill = False)
-        #plt.gca().add_patch(rect)
-
+        plt.xlim([0.4, 0.7])
+        plt.ylim([-0.15, 0.15])
+        plt.gca().add_patch(circle2)
+    
         plt.show()
+
+    # ''' Plot Rectangle '''
+    # if config['plot_ball_position']:
+    #     ball_pos_names = ['base_x', 'base_y']
+    #     qs = [pos_map[name] for name in ball_pos_names]
+    #     qhold = robot_output['q']
+
+    #     tsize = robot_output['t_x'].size
+    #     circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+    #     plt.gca().add_patch(circle2)
+
+    #     xxx = qhold[:,qs[0]]
+    #     yyy = qhold[:,qs[1]]
+    #     plt.plot(xxx,yyy)
+
+    #     #plt.xlim([0.3, 0.9])
+    #     #plt.ylim([-0.12, 0.12])
+    #     #rect = Rectangle((0.55,-0.1),0.1,0.2,0.0,  color='b', fill = False)
+    #     #plt.gca().add_patch(rect)
+
+    #     plt.show()
 
     print("creating mat file")
     mdic = {"x": xxx, "y": yyy}
@@ -326,7 +303,7 @@ def main():
         save_flag = config['save_plots'])
 
     ''' Read EE offset '''
-    c3_param_path = 'examples/franka_trajectory_following/parameters.yaml'
+    c3_param_path = 'examples/cube_franka/parameters.yaml'
     with open(c3_param_path, 'r') as stream:
       c3_params = yaml.safe_load(stream)
     offset = c3_params['EE_offset']

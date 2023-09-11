@@ -2469,7 +2469,7 @@ if __name__ == "__main__":
   ### Plotting
   print("Nominal cost is from: " + model_dir)
   print("Simulation cost is from: " + eval_dir)
-  RunCommand("rm " + eval_dir + "costs_info.txt")
+  #RunCommand("rm " + eval_dir + "costs_info.txt")
   # Copy this sim eval script for future reference
   RunCommand('cp examples/goldilocks_models/run_sim_cost_study.py ' + eval_dir + '/run_sim_cost_study__plot_cost.py')
 

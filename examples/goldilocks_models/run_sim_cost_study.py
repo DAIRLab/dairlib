@@ -1247,11 +1247,14 @@ def Generate2dLandscapePlots(model_indices, cmt, model_slices_cost_landsacpe, tr
       #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, True, True)
       #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, False, True)
       Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, True, False)
-      #Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, False, False)
+      Generate2dCostLandscapeComparison(superimposed_data, cmt, model_slice_value, tracking_error_instead_of_cost, False, False)
 
     value_name = "tracking_error" if tracking_error_instead_of_cost else "cost"
     f = open(eval_dir + "costs_info.txt", "a")
     x, y, z = superimposed_data
+    message = "%d (base) vs %d ======" % (baseline_rom_iter, model_slice_value)
+    print(message)
+    f.write(message + "\n")
     # Print average cost
     message = "Average %s ratio of the intersected task region: %.3f" % (value_name, np.average(z[(small_val < z)*(z < big_val)]))
     print(message)

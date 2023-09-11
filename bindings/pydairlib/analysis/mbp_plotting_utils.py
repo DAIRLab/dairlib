@@ -288,22 +288,26 @@ def load_default_channels(data, plant, state_channel, input_channel,
     return robot_output, robot_input, osc_debug
 
 # def load_default_franka_channels(data, plant, state_channel, input_channel, c3_channel):
-def load_default_franka_channels(data, plant, state_channel, input_channel, c3_channel,
-    cam0_channel, cam1_channel, cam2_channel, vision_channel):
+# def load_default_franka_channels(data, plant, state_channel, input_channel, c3_channel,
+#     cam0_channel, cam1_channel, cam2_channel, vision_channel):
+# Use the above defintion for more channel data/hardware experiments
+# The following definition of the load_default_franka_channels is used only for sim experiments for the ball and jack rolling.
+def load_default_franka_channels(data, plant, state_channel, c3_channel):
     
     print("\nDetected the following channels:")
     print(data.keys())
     print('')
 
     robot_output = process_state_channel(data[state_channel], plant)
-    robot_input = process_effort_channel(data[input_channel], plant)
+    # robot_input = process_effort_channel(data[input_channel], plant)
     c3_output = process_c3_channel(data[c3_channel])
-    cam0 = process_ball_position_channel(data[cam0_channel])
-    cam1 = process_ball_position_channel(data[cam1_channel])
-    cam2 = process_ball_position_channel(data[cam2_channel])
-    vision = process_ball_position_channel(data[vision_channel])
+    # cam0 = process_ball_position_channel(data[cam0_channel])
+    # cam1 = process_ball_position_channel(data[cam1_channel])
+    # cam2 = process_ball_position_channel(data[cam2_channel])
+    # vision = process_ball_position_channel(data[vision_channel])
 
-    return robot_output, robot_input, c3_output, cam0, cam1, cam2, vision
+    # return robot_output, robot_input, c3_output, cam0, cam1, cam2, vision
+    return robot_output, c3_output
 
 def load_franka_state_estimate_channel(data, plant, state_channel):
     return process_state_channel(data[state_channel], plant)

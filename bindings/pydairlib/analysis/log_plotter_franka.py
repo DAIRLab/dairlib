@@ -21,7 +21,7 @@ import scipy.io
 
 
 #DAIR_PATH = "/home/dair-manipulation/adam_ws/dairlib"
-DAIR_PATH = "/home/alpaydinoglu/workspace/dairlib"
+DAIR_PATH = "/home/sharanya/workspace/dairlib"
 plot_dpi = 1000
 
 def check_flag_and_save(ps, filename, format='svg', save_flag=False):
@@ -150,17 +150,21 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(plant)
 
-    franka_channels = \
-      {'FRANKA_INPUT': dairlib.lcmt_robot_input,
-       'FRANKA_INPUT_WO_G': dairlib.lcmt_robot_input,
-       'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
-       'FRANKA_STATE_ESTIMATE': dairlib.lcmt_robot_output,
-       'CONTROLLER_INPUT': dairlib.lcmt_c3,
-       'VISION_OUTPUT': dairlib.lcmt_ball_position,
-       'CAM0_OUTPUT': dairlib.lcmt_ball_position,
-       'CAM1_OUTPUT': dairlib.lcmt_ball_position,
-       'CAM2_OUTPUT': dairlib.lcmt_ball_position} 
+    # franka_channels = \
+    #   {'FRANKA_INPUT': dairlib.lcmt_robot_input,
+    #    'FRANKA_INPUT_WO_G': dairlib.lcmt_robot_input,
+    #    'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
+    #    'FRANKA_STATE_ESTIMATE': dairlib.lcmt_robot_output,
+    #    'CONTROLLER_INPUT': dairlib.lcmt_c3,
+    #    'VISION_OUTPUT': dairlib.lcmt_ball_position,
+    #    'CAM0_OUTPUT': dairlib.lcmt_ball_position,
+    #    'CAM1_OUTPUT': dairlib.lcmt_ball_position,
+    #    'CAM2_OUTPUT': dairlib.lcmt_ball_position} 
     
+    franka_channels = \
+      {'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
+       'CONTROLLER_INPUT': dairlib.lcmt_c3} 
+
     ''' set up log directory paths '''
     if len(sys.argv) == 1:
       logdir, log_num = get_most_recent_logs()
@@ -179,15 +183,20 @@ def main():
     print("Processing {}".format(filename))
     log = lcm.EventLog(filename, "r")
 
-    robot_output, robot_input, c3_output, \
-    cam0_output, cam1_output, cam2_output, vision_output = \
-        get_log_data(log,                                       # log
-                     franka_channels,                           # lcm channels
-                     config['end_time'],                        # end time
-                     mbp_plots.load_default_franka_channels,    # processing callback
-                     plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
-                     "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
-                     "CAM2_OUTPUT", "VISION_OUTPUT")   
+    # robot_output, robot_input, c3_output, \
+    # cam0_output, cam1_output, cam2_output, vision_output = \
+        # get_log_data(log,                                       # log
+        #              franka_channels,                           # lcm channels
+        #              config['end_time'],                        # end time
+        #              mbp_plots.load_default_franka_channels,    # processing callback
+        #              plant, "FRANKA_STATE_ESTIMATE", "FRANKA_INPUT_WO_G",
+        #              "CONTROLLER_INPUT", "CAM0_OUTPUT", "CAM1_OUTPUT",
+        #              "CAM2_OUTPUT", "VISION_OUTPUT")   
+    robot_output, c3_output = get_log_data(log,                                       # log
+                                           franka_channels,                           # lcm channels
+                                           config['end_time'],                        # end time
+                                           mbp_plots.load_default_franka_channels,    # processing callback
+                                           plant, "FRANKA_OUTPUT", "CONTROLLER_INPUT")  
                      
     print('Finished processing log - making plots')
 
@@ -198,45 +207,45 @@ def main():
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
 
-    # ''' Plot Circle '''
-    # if config['plot_ball_position']:
-    #     ball_pos_names = ['base_x', 'base_y']
-    #     qs = [pos_map[name] for name in ball_pos_names]
-    #     qhold = robot_output['q']
-    #
-    #
-    #     tsize = robot_output['t_x'].size
-    #     circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
-    #
-    #     xxx = qhold[:,qs[0]]
-    #     yyy = qhold[:,qs[1]]
-    #     plt.plot(xxx,yyy)
-    #     plt.xlim([0.4, 0.7])
-    #     plt.ylim([-0.15, 0.15])
-    #     plt.gca().add_patch(circle2)
-    #
-    #     plt.show()
-
-    ''' Plot Rectangle '''
+    ''' Plot Circle '''
     if config['plot_ball_position']:
         ball_pos_names = ['base_x', 'base_y']
         qs = [pos_map[name] for name in ball_pos_names]
         qhold = robot_output['q']
-
+    
+    
         tsize = robot_output['t_x'].size
         circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
-        plt.gca().add_patch(circle2)
-
+    
         xxx = qhold[:,qs[0]]
         yyy = qhold[:,qs[1]]
         plt.plot(xxx,yyy)
-
-        #plt.xlim([0.3, 0.9])
-        #plt.ylim([-0.12, 0.12])
-        #rect = Rectangle((0.55,-0.1),0.1,0.2,0.0,  color='b', fill = False)
-        #plt.gca().add_patch(rect)
-
+        plt.xlim([0.4, 0.7])
+        plt.ylim([-0.15, 0.15])
+        plt.gca().add_patch(circle2)
+    
         plt.show()
+
+    # ''' Plot Rectangle '''
+    # if config['plot_ball_position']:
+    #     ball_pos_names = ['base_x', 'base_y']
+    #     qs = [pos_map[name] for name in ball_pos_names]
+    #     qhold = robot_output['q']
+
+    #     tsize = robot_output['t_x'].size
+    #     circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+    #     plt.gca().add_patch(circle2)
+
+    #     xxx = qhold[:,qs[0]]
+    #     yyy = qhold[:,qs[1]]
+    #     plt.plot(xxx,yyy)
+
+    #     #plt.xlim([0.3, 0.9])
+    #     #plt.ylim([-0.12, 0.12])
+    #     #rect = Rectangle((0.55,-0.1),0.1,0.2,0.0,  color='b', fill = False)
+    #     #plt.gca().add_patch(rect)
+
+    #     plt.show()
 
     print("creating mat file")
     mdic = {"x": xxx, "y": yyy}

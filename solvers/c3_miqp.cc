@@ -16,11 +16,12 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
               const std::vector<Eigen::VectorXd>& warm_start_x,
               const std::vector<Eigen::VectorXd>& warm_start_lambda,
               const std::vector<Eigen::VectorXd>& warm_start_u,
-              bool warm_start)
+              bool warm_start,
+              const double& scaling)
     : C3(LCS, Q, R, G, U, xdesired, options, 
          warm_start_delta, warm_start_binary,
          warm_start_x, warm_start_lambda,
-         warm_start_u, warm_start), env_(true) {
+         warm_start_u, warm_start, scaling), env_(true) {
 
   // Create an environment
   env_.set("LogToConsole", "0");
@@ -56,24 +57,24 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // Create an empty model.
   GRBModel model = GRBModel(env_);
 
-  // Gurobi parameter tuning:  description, default, min/max values.
-  // Gurobi's automatic parameter tuning tool suggested Heuristics=0 and BranchDir=-1.  Adding TimeLimit=0.25 as well.
-  // model.set("FeasibilityTol", "0.01");     // Primal feasibility tolerance; higher = faster (1e-6 / 1e-9 / 1e-2).
-  // model.set("IntFeasTol", "0.01");         // Integer feasibility tolerance; higher = faster (1e-5 / 1e-9 / 1e-1).
-  // model.set("OptimalityTol", "0.01");      // Dual feasibility tolerance; higher = faster (1e-6 / 1e-9 / 1e-2).
-  // model.set("IterationLimit", "100");      // Simplex iteration limit; lower = faster (infinity / 0 / infinity).
-  model.set("Heuristics", "0.0");         // Turn MIP heuristics up or down; lower = faster (0.05 / 0 / 1).
-  // model.set("MIPFocus", "1");              // Set the focus of the MIP solver; see docs for details (0 / 0 / 3).
-  // model.set("NumericFocus", "1");          // Set the numerical focus; see docs for details (0 / 0 / 3).
-  // model.set("Cuts", "1");                  // Global cut generation control; see docs for details (-1 / -1 / 3).
-  model.set("TimeLimit", "0.25");          // Time limit in seconds for MIQP; lower = faster (infinity / 0 / infinity).
-  // model.set("ScaleFlag", "2");             // Model scaling; 2 uses geometric mean scaling (-1 / -1 / 3).
-  // model.set("NormAdjust", "3");            // Pricing norm variant; no information in docs on what these mean (-1 / -1 / 3).
-  model.set("BranchDir", "-1");            // What child node to explore first; -1 explores down branch first (0 / -1 / 1).
-  // model.set("CoverCuts", "0");             // Cover cut generation; 0 disables cuts (-1 / -1 / 2).
-  // model.set("PrePasses", "1");             // Presolve pass limit (-1 / -1 / MAXINT).
-  // model.set("MIRCuts", "0");               // MIR cut generation (overrides "Cuts" parameter); 0 disables cuts (-1 / -1 / 2).
-  // model.set("PreQLinearize", "0");         // Presolve quadratic linearization; see docs for details (-1 / -1 / 2).
+  // // Gurobi parameter tuning:  description, default, min/max values.
+  // // Gurobi's automatic parameter tuning tool suggested Heuristics=0 and BranchDir=-1.  Adding TimeLimit=0.25 as well.
+  // // model.set("FeasibilityTol", "0.01");     // Primal feasibility tolerance; higher = faster (1e-6 / 1e-9 / 1e-2).
+  // // model.set("IntFeasTol", "0.01");         // Integer feasibility tolerance; higher = faster (1e-5 / 1e-9 / 1e-1).
+  // // model.set("OptimalityTol", "0.01");      // Dual feasibility tolerance; higher = faster (1e-6 / 1e-9 / 1e-2).
+  // // model.set("IterationLimit", "100");      // Simplex iteration limit; lower = faster (infinity / 0 / infinity).
+  // model.set("Heuristics", "0.0");         // Turn MIP heuristics up or down; lower = faster (0.05 / 0 / 1).
+  // // model.set("MIPFocus", "1");              // Set the focus of the MIP solver; see docs for details (0 / 0 / 3).
+  // // model.set("NumericFocus", "1");          // Set the numerical focus; see docs for details (0 / 0 / 3).
+  // // model.set("Cuts", "1");                  // Global cut generation control; see docs for details (-1 / -1 / 3).
+  // model.set("TimeLimit", "0.25");          // Time limit in seconds for MIQP; lower = faster (infinity / 0 / infinity).
+  // // model.set("ScaleFlag", "2");             // Model scaling; 2 uses geometric mean scaling (-1 / -1 / 3).
+  // // model.set("NormAdjust", "3");            // Pricing norm variant; no information in docs on what these mean (-1 / -1 / 3).
+  // model.set("BranchDir", "-1");            // What child node to explore first; -1 explores down branch first (0 / -1 / 1).
+  // // model.set("CoverCuts", "0");             // Cover cut generation; 0 disables cuts (-1 / -1 / 2).
+  // // model.set("PrePasses", "1");             // Presolve pass limit (-1 / -1 / MAXINT).
+  // // model.set("MIRCuts", "0");               // MIR cut generation (overrides "Cuts" parameter); 0 disables cuts (-1 / -1 / 2).
+  // // model.set("PreQLinearize", "0");         // Presolve quadratic linearization; see docs for details (-1 / -1 / 2).
 
 
   GRBVar delta_k[n_ + m_ + k_];

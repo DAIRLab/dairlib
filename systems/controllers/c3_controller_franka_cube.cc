@@ -488,6 +488,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Items are appended to the vectors in the below for loop.  Be careful about possible memory issues as a result.
   std::vector<VectorXd> candidate_states;
   std::vector<solvers::LCS> candidate_lcs_objects;
+  std::vector<double> candidate_lcs_scalings;
   for (int i = 0; i < num_samples; i++) {
     Eigen::VectorXd candidate_state;
 
@@ -540,12 +541,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
     solvers::LCS test_lcs = test_system_scaling_pair.first;
-    // double test_scaling = test_system_scaling_pair.second;   // Might be necessary to use this in computing LCS if getting LCS
-                                                                // solve errors frequently in the future.
+    double test_scaling = test_system_scaling_pair.second;   // Might be necessary to use this in computing LCS if getting LCS
+                                                             // solve errors frequently in the future.
 
     // Store the candidate states and LCS objects.
     candidate_states.push_back(candidate_state);
     candidate_lcs_objects.push_back(test_lcs);
+    candidate_lcs_scalings.push_back(test_scaling);
   }
 
   // For visualization only, we need there to be at least 4 items in the candidate_states vector.  Add vectors of zeros to fill
@@ -583,6 +585,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // Get the candidate state and its LCS representation.
       VectorXd test_state = candidate_states.at(i);
       solvers::LCS test_system = candidate_lcs_objects.at(i);
+      double test_scaling = candidate_lcs_scalings.at(i);
 
       // By default use zeros for warm start.  Overwrite for current end effector location.
       std::vector<VectorXd> warm_start_delta = warm_start_delta_zeros_;
@@ -603,7 +606,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // Set up C3 MIQP.
       solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
                                warm_start_delta, warm_start_binary, warm_start_x,
-                               warm_start_lambda, warm_start_u, do_warm_start);
+                               warm_start_lambda, warm_start_u, do_warm_start, test_scaling);
 
       // TODO:  this code is nearly identical to some code higher; could be replaced with a function call in both places.
       // Reset delta and w.

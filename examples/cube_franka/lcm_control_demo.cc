@@ -152,6 +152,8 @@ int DoMain(int argc, char* argv[]){
   Ginit.block(nq+nv+nc+1, nq+nv+nc+1, nc-1, nc-1) = param.G_ground * MatrixXd::Identity(nc-1, nc-1);    // Ground normal forces.
   // Ginit.block(nq+nv+4+4+4, nq+nv+4+4+4, 3*4, 3*4) = param.G_ground * MatrixXd::Identity(3*4, 3*4);      // Ground tangential forces.
 
+  // std::cout<<"USING G: "<<Ginit<<std::endl;
+
   MatrixXd Uinit = param.U_default * MatrixXd::Identity(nq+nv+nu+6*nc, nq+nv+nu+6*nc);
   //Penalizing change in position between projection steps
   Uinit.block(0,0,nq,nq) << 
@@ -287,6 +289,8 @@ int DoMain(int argc, char* argv[]){
   int N = param.horizon_length;   //5
   std::vector<MatrixXd> Q, R, G, U;
   std::vector<VectorXd> xdesired;
+
+  // std::cout<<"USING Q: "<<Qinit<<std::endl;
 
   for (int i = 0; i < N; i++){
     Q.push_back(Qinit);

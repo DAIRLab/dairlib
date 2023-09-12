@@ -29,7 +29,8 @@ class C3 {
      const std::vector<Eigen::VectorXd>& warm_start_x_ = {},
      const std::vector<Eigen::VectorXd>& warm_start_lambda_ = {},
      const std::vector<Eigen::VectorXd>& warm_start_u_ = {},
-     bool warm_start = false);
+     bool warm_start = false,
+     const double& scaling = 1.0);
 
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
@@ -121,6 +122,7 @@ class C3 {
   const int m_;
   const int k_;
   const bool hflag_;
+  const double scaling_;
 
 protected:
   std::vector<Eigen::VectorXd> warm_start_delta_;

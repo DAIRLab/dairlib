@@ -52,6 +52,9 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(hyp1));
     a->Visit(DRAKE_NVP(hyp2));
     a->Visit(DRAKE_NVP(hyp3));
+    a->Visit(DRAKE_NVP(sampling_radius));
+    a->Visit(DRAKE_NVP(num_samples));
+    a->Visit(DRAKE_NVP(num_sample_threads));
 
     // initialization/simulation parameters
     a->Visit(DRAKE_NVP(q_init_franka));
@@ -141,6 +144,9 @@ struct C3Parameters {
   double hyp1;
   double hyp2;
   double hyp3;
+  double sampling_radius;
+  double num_samples;
+  int num_sample_threads;
 
   // initialization/simulation parameters
   VectorXd q_init_franka;

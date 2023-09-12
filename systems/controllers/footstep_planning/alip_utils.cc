@@ -67,11 +67,11 @@ Matrix<double, 4, 8> CalcResetMap(
       Bd = Ainv * (Ad - I) * B;
       break;
     case ResetDiscretization::kFOH:
-      Bd = Ad * Ainv * (I + (1.0 / Tds) * Ainv * (I - Adinv) - Adinv) * B;
+      Bd = Ad * Ainv * ((1.0 / Tds) * Ainv * (I - Adinv) - Adinv) * B;
       break;
     case ResetDiscretization::kSPLIT:
       Matrix<double, 4, 2> Bd_ZOH = Ainv * (Ad - I) * B;
-      Matrix<double, 4, 2> Bd_FOH = Ad * Ainv * (I + (1.0 / Tds) * Ainv * (I - Adinv) - Adinv) * B;
+      Matrix<double, 4, 2> Bd_FOH = Ad * Ainv * ((1.0 / Tds) * Ainv * (I - Adinv) - Adinv) * B;
       Bd.row(0) = Bd_FOH.row(0);
       Bd.row(1) = Bd_ZOH.row(1);
       Bd.row(2) = Bd_ZOH.row(2);

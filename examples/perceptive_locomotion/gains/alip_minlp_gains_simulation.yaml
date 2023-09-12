@@ -2,8 +2,8 @@ t_commit: 0.25
 t_min: 0.24
 t_max: 0.5
 u_max: 4
-h_des: 0.9
-stance_width: 0.4
+h_des: 0.85
+stance_width: 0.3
 retraction_dist: 0.05
 xlim: 0.4
 ss_time: 0.32

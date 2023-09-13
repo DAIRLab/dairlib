@@ -232,6 +232,61 @@ def main():
         plt.gca().add_patch(circle2)
     
         plt.show()
+    
+
+    # ''' Plot Line '''
+    # if config['plot_ball_position']:
+    #       ball_pos_names = ['base_x', 'base_y']
+    #       qs = [pos_map[name] for name in ball_pos_names]
+    #       qhold = robot_output['q']
+
+    #       tsize = robot_output['t_x'].size
+          
+    #       # Define the two points for the straight line
+    #       # Replace the below points with the start and end points defined in our param file
+    #       point1 = (3, 4)
+    #       point2 = (5, 6)
+
+    #       # Create a figure and axis
+    #       fig, ax = plt.subplots()
+
+    #       # Plot the straight line
+    #       ax.plot([point1[0], point2[0]], [point1[1], point2[1]], color='b', label='Line')
+
+    #       # Plot the data
+    #       xxx = qhold[:, qs[0]]
+    #       yyy = qhold[:, qs[1]]
+    #       ax.plot(xxx, yyy, label='Logged Data')
+
+    #       # Set axis limits (optional and to be modified according to our start and end points)
+    #       # ax.set_xlim([0.4, 0.7])
+    #       # ax.set_ylim([-0.15, 0.15])
+
+    #       # Add a legend
+    #       ax.legend()
+
+    #       # Display the plot
+    #       plt.show()
+    
+    # '''Plot Straight Line trajectory'''
+    # if config['plot_ball_position']:
+    #     ball_pos_names = ['base_x', 'base_y']
+    #     qs = [pos_map[name] for name in ball_pos_names]
+    #     qhold = robot_output['q']
+    
+    
+    #     tsize = robot_output['t_x'].size
+    #     reference_line = plt.plot(0.55,0 ,-0.55,0 , 'ro-')
+    #     # circle2 = plt.Circle((0.55, 0), 0.1, color='b', fill=False)
+    
+    #     xxx = qhold[:,qs[0]]
+    #     yyy = qhold[:,qs[1]]
+    #     plt.plot(xxx,yyy)
+    #     plt.xlim([0.4, 0.7])
+    #     plt.ylim([-0.15, 0.15])
+    #     plt.gca().add_patch(reference_line)
+    
+    #     plt.show()
 
     # ''' Plot Rectangle '''
     # if config['plot_ball_position']:

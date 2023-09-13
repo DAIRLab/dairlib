@@ -1,0 +1,881 @@
+b'24299fe52ef8bef7135c334b6ed0c63e00f1f31a\n'
+
+git diff:
+
+diff --git a/examples/franka_trajectory_following/c3_parameters.h b/examples/franka_trajectory_following/c3_parameters.h
+index 4b3322e0f..1be79b396 100644
+--- a/examples/franka_trajectory_following/c3_parameters.h
++++ b/examples/franka_trajectory_following/c3_parameters.h
+@@ -52,6 +52,8 @@ struct C3Parameters {
+     a->Visit(DRAKE_NVP(hyp1));
+     a->Visit(DRAKE_NVP(hyp2));
+     a->Visit(DRAKE_NVP(hyp3));
++    a->Visit(DRAKE_NVP(sampling_radius));
++    a->Visit(DRAKE_NVP(num_samples));
+ 
+     // initialization/simulation parameters
+     a->Visit(DRAKE_NVP(q_init_franka));
+@@ -141,6 +143,8 @@ struct C3Parameters {
+   double hyp1;
+   double hyp2;
+   double hyp3;
++  double sampling_radius;
++  double num_samples;
+ 
+   // initialization/simulation parameters
+   VectorXd q_init_franka;
+diff --git a/examples/franka_trajectory_following/parameters.yaml b/examples/franka_trajectory_following/parameters.yaml
+index 6f5bc5361..25d642277 100644
+--- a/examples/franka_trajectory_following/parameters.yaml
++++ b/examples/franka_trajectory_following/parameters.yaml
+@@ -22,16 +22,16 @@ Q_default: 0
+ Q_finger: 500         # finger xyz cost
+ Q_ball_x: 100000 #10000
+ Q_ball_y: 100000  #10000
+-Q_ball_z: 100000
+-Q_finger_vel: 100        # translational velocity cost
+-Q_ball_vel: 1 #0.1         # angular & translational velocity cost
++Q_ball_z: 10000000
++Q_finger_vel: 10        # translational velocity cost
++Q_ball_vel: 0.1 #0.1         # angular & translational velocity cost
+ Qnew_finger: 1000000    # Qnew costs
+ Qnew_ball_x: 1
+ Qnew_ball_y: 1
+ R: 0.01                 # torque cost in xyz
+ G: 0.001
+ U_default: 1
+-U_pos_vel: 10000           # first 19 diag elements of U
++U_pos_vel: 100           # first 19 diag elements of U
+ U_u: 1                  # last 3 diag elements of U
+ q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
+ q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
+@@ -44,6 +44,8 @@ axis_option: 1
+ hyp1: 0
+ hyp2: 1000
+ hyp3: 100
++sampling_radius: 0.052
++num_samples: 4
+ 
+ # initialization/simulation parameters
+ q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
+diff --git a/solvers/c3_options.h b/solvers/c3_options.h
+index 52dc8bab7..6e02c69b9 100644
+--- a/solvers/c3_options.h
++++ b/solvers/c3_options.h
+@@ -2,9 +2,9 @@
+ 
+ struct C3Options {
+   // Hyperparameters
+-  int admm_iter = 2;    // total number of ADMM iterations
++  int admm_iter = 3;    // total number of ADMM iterations
+   float rho = 0.1;       // inital value of the rho parameter
+-  float rho_scale = 3;  // scaling of rho parameter (/rho = rho_scale * /rho)
+-  int num_threads = 2;   // 0 is dynamic, greater than 0 for a fixed count
++  float rho_scale = 2.2;  // scaling of rho parameter (/rho = rho_scale * /rho)
++  int num_threads = 0;   // 0 is dynamic, greater than 0 for a fixed count
+   int delta_option = 1;  // different options for delta update
+ };
+\ No newline at end of file
+diff --git a/systems/controllers/c3_controller_franka.cc b/systems/controllers/c3_controller_franka.cc
+index dda3d89e5..8c0034676 100644
+--- a/systems/controllers/c3_controller_franka.cc
++++ b/systems/controllers/c3_controller_franka.cc
+@@ -298,48 +298,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
+   double ts = shifted_time - period * floor((shifted_time / period));
+   double back_dist = param_.gait_parameters(0);
+   
+-  /// rolling phase
+-  // if ( ts < roll_phase ) {
+-    //Maintaining roll phase without time based heuristic. Instead constantly rolling except when making decision to reposition instead.
+-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
+-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
+-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+-  // }
+-  /// upwards phase
+-  // else if (ts < roll_phase + return_phase / 3){
+-  //   traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
+-  //   traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
+-  //   traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+-
+-  // }
+-  // /// side ways phase
+-  // else if( ts < roll_phase + 2 * return_phase / 3 ) {
+-  //   // optimal_cost_ = min;
+-  //   // optimal_sample_ = candidate_states[index];
+-
+-  //   traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; // state[7] - back_dist*error_hat(0);
+-  //   traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; // state[8] - back_dist*error_hat(1);
+-  //   traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.07; //param_.gait_parameters(2) + table_offset; //optimal_sample_[2]; //
+-  // }
+-  /// position finger phase
+-  // else{
+-    //isolating repositioning to the best state selected in the previous sampling run
+-    // traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = optimal_sample_[0]; //state[7] - back_dist*error_hat(0);
+-    // traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = optimal_sample_[1]; //state[8] - back_dist*error_hat(1);
+-    // traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.07; //param_.gait_parameters(3) + table_offset;  //optimal_sample_[2]; //
+-  // }
++  traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
++  traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
++  traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
++  
+   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
+ 
+-//  std::cout << "LOOP" << std::endl;
+-//  std::cout << "CURRENT_X" << std::endl;
+-//  std::cout << ball_xyz(0) << std::endl;
+-//  std::cout << "DESIRED X" << std::endl;
+-//  std::cout << traj_desired_vector(q_map_.at("base_x")) << std::endl;
+-//  std::cout << "CURRENT_Y" << std::endl;
+-//  std::cout << ball_xyz(1) << std::endl;
+-//  std::cout << "DESIRED Y" << std::endl;
+-//  std::cout << traj_desired_vector(q_map_.at("base_y")) << std::endl;
+-
+ 
+   /// compute desired orientation
+   Vector3d axis = VectorXd::Zero(3);
+@@ -353,31 +317,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
+     axis = axis / axis.norm();
+   }
+ 
+-//  Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
+-//  RotationMatrix<double> rot(angle_axis);
+-
+-
+-//eski olan
+-//  RotationMatrix<double> rot = RotationMatrix<double>::MakeYRotation(-param_.orientation_degrees * 3.14 / 180);
+-//  RotationMatrix<double> default_orientation(Quaterniond(0, 1, 0, 0));
+-//  RotationMatrix<double> R_desired = rot * default_orientation;  /// compute interpolated orientation
+-//  Eigen::AngleAxis<double> R_cd = (R_current.inverse() * R_desired).ToAngleAxis();
+-//  double max_delta_angle = 0.5 * 3.14 / 180.0;
+-//  R_cd.angle() = (R_cd.angle() > max_delta_angle) ? max_delta_angle : R_cd.angle();
+-//  R_cd.angle() = (R_cd.angle() < -max_delta_angle) ? -max_delta_angle : R_cd.angle();
+-//  VectorXd orientation_d = (R_current * RotationMatrix<double>(R_cd)).ToQuaternionAsVector4();
+-
+-
+ Eigen::AngleAxis<double> angle_axis(PI * param_.orientation_degrees / 180.0, axis);
+ RotationMatrix<double> rot(angle_axis);
+ Quaterniond temp(0, 1, 0, 0);
+ RotationMatrix<double> default_orientation(temp);
+ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
+ 
+-
+-
+-  // VectorXd orientation_d = (R_desired).ToQuaternionAsVector4();
+-
+   /// update autodiff
+   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
+       plant_f_.num_actuators());
+@@ -442,226 +387,50 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
+   MatrixXd Qnew;
+   Qnew = Q_[0];
+ 
+-  // if (ts > roll_phase){
+-  //   double Qnew_finger = param_.Qnew_finger;
+-  //   Qnew(0,0) = Qnew_finger;
+-  //   Qnew(1,1) = Qnew_finger;
+-  //   Qnew(2,2) = Qnew_finger;
+-  //   Qnew(7,7) = param_.Qnew_ball_x;
+-  //   Qnew(8,8) = param_.Qnew_ball_y;
+-  // }
+-
+   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
+ 
+   solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+     warm_start_delta_, warm_start_binary_, warm_start_x_,
+     warm_start_lambda_, warm_start_u_, true);
+ 
+-
+-  
+-  
+-  //Position sampling
+-  // Eigen::VectorXd ball_orientation_vector = q_plant.head(4);
+-  // // std::cout<<"quaternion orientation of ball "<<ball_orientation_vector<<std::endl;
+-  // Eigen::Quaternion<double> ball_orientation(ball_orientation_vector[0],ball_orientation_vector[1],ball_orientation_vector[2],ball_orientation_vector[3]);
+-  // // ball_orientation.w
+-  // Matrix3d ball_rot_matrix = ball_orientation.toRotationMatrix();
+-  // std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
+-  // // Eigen::RotationMatrix ball_rot_matrix(&ball_orientation);
+-  // // std::cout<<"rot matrix orientation of all "<<ball_rot_matrix<<std::endl;
+-
+-
+  ////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////
+-
+-  // if (ts < roll_phase) {
+-
+-
+-
+-    //Multi-sample code piece
+-    double x_samplec; //center of sampling circle
+-    double y_samplec; //center of sampling circle
+-    double radius = 0.052; //radius of sampling circle (0.05) //0.06 //0.08
+-    int num_samples = 4;
+-    double theta = 360 / num_samples * PI / 180;
+-    double angular_offset = 0 * PI/180;
+-
+-    
+-    std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
++    // Declaring st_desired outside loop
+     VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size() + 3 + 3 + 3 + 3 + 3 + 3);
+-
+-    VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
+-    // Vector3d curr_ee = end_effector; //end effector current position
+-    Vector3d ee = end_effector; //end effector test position
+-    // VectorXd cost_vector = VectorXd::Zero(num_samples);
+-
+-    // double theta = 360/num_samples;
+-    // std::cout<<"Theta"<<theta<<std::endl;
+-    // std::cout<<"state vector"<<state<<std::endl;
+-    // std::cout<<"Ball x position"<<state[7]<<std::endl;
+-    // Vector3d ball_xyz = ball.tail(3);
+-    // std::cout<< "Ball xyz here :::::: "<< ball_xyz <<std::endl;
+-    x_samplec = ball_xyz[0]; //state[7];
+-    y_samplec = ball_xyz[1]; //state[8];
+-    // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
+-
+-    // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
+-    double phase = 0;
+-   
+-    // std::cout<<"phase angle = "<< phase * 180/PI << std::endl;
+-
+-    std::vector<double> cost_vector(num_samples);
+-
+-
+-    for (int i = 0; i < num_samples; i++) {
+-      
+-      double pos_x = 0;
+-      double pos_y = 0;
+-
+-      // std::cout<<"sample "<< i << " angle = "<< (i*theta + phase + angular_offset) * 180/PI <<std::endl;
+-
+-      pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset); //state[7]
+-      pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
+-
+-      // std::cout<<"sample position "<< i << " : "<< pos_x <<" , "<< pos_y <<std::endl;
+-
+-      // test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);  //current state with modified ee position
+-
+-      VectorXd test_q(10);
+-
+-      VectorXd test_v(9);
+-
+-      test_q << q;
+-      test_v << v;
+-
+-      test_q[0] = pos_x;
+-      test_q[1] = pos_y;
+-      test_q[2] = 0.02;
+-
+-//      std::cout << "test_q" << std::endl;
+-
+-      /// update autodiff
+-      VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
+-          plant_f_.num_actuators());
+-      xu_test << test_q, test_v, u;
+-      auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
+-
+-      plant_ad_f_.SetPositionsAndVelocities(
+-          &context_ad_f_,
+-          xu_ad_test.head(plant_f_.num_positions() + plant_f_.num_velocities()));
+-      multibody::SetInputsIfNew<AutoDiffXd>(
+-          plant_ad_f_, xu_ad_test.tail(plant_f_.num_actuators()), &context_ad_f_);
+-
+-      plant_f_.SetPositions(&context_f_, test_q);
+-      plant_f_.SetVelocities(&context_f_, test_v);
+-      multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
+-
+-      auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+-          plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+-          num_friction_directions_, mu_, 0.1);
+-
+-      solvers::LCS test_system = test_system_scaling_pair.first;
+-
+-      test_state << test_q.head(3), state.tail(16);
+-
+-      candidate_states[i] = test_state;
+-
+-      solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
+-                               warm_start_delta_, warm_start_binary_, warm_start_x_,
+-                               warm_start_lambda_, warm_start_u_, true);
+-
+-
+-    // solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options,
+-    // warm_start_delta_, warm_start_binary_, warm_start_x_,
+-    // warm_start_lambda_, warm_start_u_, true);
+     
+-      ///ADDING DELTA
+-        if (options.delta_option == 1) {
+-        /// reset delta and w (option 1)
+-        delta = delta_reset;
+-        w = w_reset;
+-        for (int j = 0; j < N; j++) {
+-          //delta[j].head(n) = xdesired_[0]; //state
+-          delta[j].head(n) << test_state; //state
+-        }
+-      } else {
+-        /// reset delta and w (default option)
+-        delta = delta_reset;
+-        w = w_reset;
+-  }
+-
+-      vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  //outputs full z
+-
+-      //std::cout << "test state" << test_state.head(10) - test_q << std::endl;
+-
+-      vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
+-      // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
+-      // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
+-      double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
+-      cost_vector[i] = cost;
+-
+-      // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
+-
+-
+-    }
++    // Don't do sampling if num_samples == 0
++    if (param_.num_samples == 0){
++           //hard coding 4 samples of 0s so that visualization doesn't get messed up.
++           std::vector<VectorXd> candidate_states(4, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
++
++           ///ADDING DELTA
++            if (options.delta_option == 1) {
++            /// reset delta and w (option 1)
++            delta = delta_reset;
++            w = w_reset;
++            for (int j = 0; j < N; j++) {
++              //delta[j].head(n) = xdesired_[0]; //state
++              delta[j].head(n) << state; //state
++            }
++          } else {
++            /// reset delta and w (default option)
++            delta = delta_reset;
++            w = w_reset;
++          }
+ 
+-    double min = *std::min_element(cost_vector.begin(), cost_vector.end());
+-    // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+-    // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
+-    // std::cout << " minimum value is " << min << std::endl;
+ 
+-    
++          VectorXd input = opt.Solve(state, delta, w);
++          std::cout<<"	Using purely C3 "<<std::endl;
++          
+ 
+-    std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
+-    int index = std::distance(std::begin(cost_vector), it);
+-    // std::cout << "index of smallest element: " << index <<std::endl;
+-    // std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
+-    
+-    vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
+-  vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
+-  double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
+-  std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
+-
+-    double hyp = 5;
+-    if(C3_flag_ == false){
+-        hyp = param_.hyp1;
+-    }
+-    else{
+-        hyp = param_.hyp2;
+-    }
+-    // if (reposition_flag_ == 1){
+-    //     hyp = 0;
+-    // }
+-    
+-    //update to best state
+-    if(curr_ee_cost - min >= hyp){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
+-      //if(min < optimal_cost_) 
+-         //if the min cost you have is lesser than the previous optimal cost, then reposition. 
+-        //  C3_flag_ = 0;
+-         std::cout << "Decided to reposition"<<std::endl;
+-         optimal_cost_ = min; 
+-         optimal_sample_ = candidate_states[index];
+-
+-         std::cout<<"Min : "<<min<<std::endl;
+-                
+-         std::vector<Vector3d> points(4, VectorXd::Zero(3));
+-         
+-         points[0] = end_effector;
+-        //  points[1] = way_point;
+-         points[3] = optimal_sample_.head(3);
+-        //  std::cout<<"optimal sample"<<points[3]<<std::endl;
+-
+-         Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
+-         points[1] = ball_xyz + (radius + 0.01) * way_point1/way_point1.norm();
+-         Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
+-         points[2] = ball_xyz + (radius + 0.01) * way_point2/way_point2.norm();
+-        // std::cout << "The norm of v2 is: " << points[1].norm() << std::endl;
+-         
+-         double t = 0.02;
+-
+-         Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
++          warm_start_x_ = opt.GetWarmStartX();
++          warm_start_lambda_ = opt.GetWarmStartLambda();
++          warm_start_u_ = opt.GetWarmStartU();
++          warm_start_delta_ = opt.GetWarmStartDelta();
++          warm_start_binary_ = opt.GetWarmStartBinary();
+ 
++          // compute dt based on moving average filter
+           double dt = 0;
+           if (moving_average_.empty()){
+             dt = param_.dt;
+@@ -672,127 +441,342 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
+             }
+             dt /= moving_average_.size();
+           }
+-         
+-          Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
+-          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), 
+-                        candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), 
+-                        candidate_states[3].head(3), optimal_sample_.head(3), next_point.head(3), 
+-                        ball_xyz, traj_desired.at(0).segment(7,3), indicator_xyz;
+-
+-         std::cout<<"hyp in reposition "<< hyp <<std::endl;
+-    
+-    }
+-    else{
+-      // VectorXd input = opt.Solve(candidate_states[index], delta, w);
+-        C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
+-        optimal_sample_ = candidate_states[index];
+-  /// calculate the input given x[i]
+-  //std::cout<<"original sol"<< std::endl;
+-  
+-    ///ADDING DELTA
+-    if (options.delta_option == 1) {
+-    /// reset delta and w (option 1)
+-    delta = delta_reset;
+-    w = w_reset;
+-    for (int j = 0; j < N; j++) {
+-      //delta[j].head(n) = xdesired_[0]; //state
+-      delta[j].head(n) << state; //state
+-    }
+-  } else {
+-    /// reset delta and w (default option)
+-    delta = delta_reset;
+-    w = w_reset;
+-}
+-
+ 
+-  VectorXd input = opt.Solve(state, delta, w);
+-  std::cout<<"Using C3 "<<std::endl;
+-  std::cout<<"Min : "<<min<<std::endl;
+-  
++          ///calculate state and force
++          auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
++              plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
++              num_friction_directions_, mu_, dt);
++
++          solvers::LCS system2_ = system_scaling_pair2.first;
++          double scaling2 = system_scaling_pair2.second;
++
++          drake::solvers::MobyLCPSolver<double> LCPSolver;
++          VectorXd force; //This contains the contact forces. 
++          //tangential forces and normal forces for two contacts --> gamma slack variable, ball+ee and ball+ground from stewart trinkle formulation
++
++          auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
++                                                        &force);
++                                                        //The final force solution comes with 12 components (stewart trinkle formulation). 
++          //In order, these components are : 
++          //gamma_ee, gamma_bg (slack ee and slack ball-ground)
++          //normal force between ee and ball lambda_eeb^n
++          //normal force between ball and ground lambda_bg^n
++          //4 tangential forces between ee and ball lambda_eeb^{t1-t4}
++          //4 tangential forces between ball and ground lambda_bg^{t1-t4}
++
++          (void)flag; // suppress compiler unused variable warning
++
++          VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
++
++          // check if the desired end effector position is unreasonably far from the current location
++          Vector3d vd = state_next.segment(10, 3);
++          if (vd.norm() > max_desired_velocity_){
++            /// update new desired position accordingly
++            Vector3d dx = state_next.head(3) - state.head(3);
++            state_next.head(3) << max_desired_velocity_ * dt * dx / dx.norm() + state.head(3);
++            
++            /// update new desired velocity accordingly
++            Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
++            state_next(10) = clamped_velocity(0);
++            state_next(11) = clamped_velocity(1);
++            state_next(12) = clamped_velocity(2);
++
++            std::cout << "velocity limit(c3)" << std::endl;
++            
++            
++            /// update the user
++            // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
++            // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
++          }
+ 
+-  warm_start_x_ = opt.GetWarmStartX();
+-  warm_start_lambda_ = opt.GetWarmStartLambda();
+-  warm_start_u_ = opt.GetWarmStartU();
+-  warm_start_delta_ = opt.GetWarmStartDelta();
+-  warm_start_binary_ = opt.GetWarmStartBinary();
++          VectorXd force_des = VectorXd::Zero(6);
++          force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
+ 
+-  // compute dt based on moving average filter
+-  double dt = 0;
+-  if (moving_average_.empty()){
+-    dt = param_.dt;
+-  }
+-  else{
+-    for (int i = 0; i < (int) moving_average_.size(); i++){
+-      dt += moving_average_[i];
++          Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
++          st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), 
++                        candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), 
++                        state_next.head(3), ball_xyz, traj_desired.at(0).segment(7,3), indicator_xyz;
+     }
+-    dt /= moving_average_.size();
+-  }
+-
+-  ///calculate state and force
+-  auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
+-      num_friction_directions_, mu_, dt);
+-
+-  solvers::LCS system2_ = system_scaling_pair2.first;
+-  double scaling2 = system_scaling_pair2.second;
+-
+-  drake::solvers::MobyLCPSolver<double> LCPSolver;
+-  VectorXd force; //This contains the contact forces. 
+-  //tangential forces and normal forces for two contacts --> gamma slack variable, ball+ee and ball+ground from stewart trinkle formulation
+-
+-  auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
+-                                                 &force);
+-                                                 //The final force solution comes with 12 components (stewart trinkle formulation). 
+-  //In order, these components are : 
+-  //gamma_ee, gamma_bg (slack ee and slack ball-ground)
+-  //normal force between ee and ball lambda_eeb^n
+-  //normal force between ball and ground lambda_bg^n
+-  //4 tangential forces between ee and ball lambda_eeb^{t1-t4}
+-  //4 tangential forces between ball and ground lambda_bg^{t1-t4}
+-
+-  (void)flag; // suppress compiler unused variable warning
+-
+-  VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
+-
+-  // check if the desired end effector position is unreasonably far from the current location
+-  Vector3d vd = state_next.segment(10, 3);
+-  if (vd.norm() > max_desired_velocity_){
+-    /// update new desired position accordingly
+-    Vector3d dx = state_next.head(3) - state.head(3);
+-    state_next.head(3) << max_desired_velocity_ * dt * dx / dx.norm() + state.head(3);
+-    
+-    /// update new desired velocity accordingly
+-    Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
+-    state_next(10) = clamped_velocity(0);
+-    state_next(11) = clamped_velocity(1);
+-    state_next(12) = clamped_velocity(2);
+-
+-    std::cout << "velocity limit(c3)" << std::endl;
+-    
+-    
+-    /// update the user
+-    // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
+-    // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
+-  }
+-
+-  VectorXd force_des = VectorXd::Zero(6);
+-  force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
++    else{
++              //Multi-sample code piece
++              double x_samplec; //center of sampling circle
++              double y_samplec; //center of sampling circle
++              double radius = param_.sampling_radius; //radius of sampling circle (0.05) //0.06 //0.08
++              int num_samples = param_.num_samples;
++              double theta = 360 / num_samples * PI / 180;
++              double angular_offset = 0 * PI/180;
++
++              std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
++
++              VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
++              Vector3d ee = end_effector; //end effector test position
++              x_samplec = ball_xyz[0]; //state[7];
++              y_samplec = ball_xyz[1]; //state[8];
++              // std::cout<<"current ball position: "<< x_samplec <<" , "<< y_samplec <<std::endl;
++
++              // double phase = atan2(ee[1]-y_samplec, ee[0]-x_samplec);    //What would happen if the ee is right above the ball? Unlikely to happen, at least numerically ee will lean to one direction
++              double phase = 0;
++            
++              std::vector<double> cost_vector(num_samples, 0); //initializing with 0s
++              for (int i = 0; i < num_samples; i++) {
++                double pos_x = 0;
++                double pos_y = 0;
++
++                // std::cout<<"sample "<< i << " angle = "<< (i*theta + phase + angular_offset) * 180/PI <<std::endl;
++                pos_x  = x_samplec + radius * cos(i*theta + phase + angular_offset); //state[7]
++                pos_y = y_samplec + radius * sin(i*theta + phase + angular_offset);
++
++                // std::cout<<"sample position "<< i << " : "<< pos_x <<" , "<< pos_y <<std::endl;
++                // test_state << ee, q_plant.head(4), ball_xyz, end_effector_dot, v_plant.tail(6);  //current state with modified ee position
++                VectorXd test_q(10);
++                VectorXd test_v(9);
++
++                test_q << q;
++                test_v << v;
++
++                test_q[0] = pos_x;
++                test_q[1] = pos_y;
++                test_q[2] = 0.02;
++
++                //  std::cout << "test_q" << std::endl;
++                /// update autodiff
++                VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
++                    plant_f_.num_actuators());
++                xu_test << test_q, test_v, u;
++                auto xu_ad_test = drake::math::InitializeAutoDiff(xu_test);
++
++                plant_ad_f_.SetPositionsAndVelocities(
++                    &context_ad_f_,
++                    xu_ad_test.head(plant_f_.num_positions() + plant_f_.num_velocities()));
++                multibody::SetInputsIfNew<AutoDiffXd>(
++                    plant_ad_f_, xu_ad_test.tail(plant_f_.num_actuators()), &context_ad_f_);
++
++                plant_f_.SetPositions(&context_f_, test_q);
++                plant_f_.SetVelocities(&context_f_, test_v);
++                multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
++
++                auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
++                    plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
++                    num_friction_directions_, mu_, 0.1);
++
++                solvers::LCS test_system = test_system_scaling_pair.first;
++                test_state << test_q.head(3), state.tail(16);
++                candidate_states[i] = test_state;
++                solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
++                                        warm_start_delta_, warm_start_binary_, warm_start_x_,
++                                        warm_start_lambda_, warm_start_u_, true);
++
++                ///ADDING DELTA
++                  if (options.delta_option == 1) {
++                  /// reset delta and w (option 1)
++                  delta = delta_reset;
++                  w = w_reset;
++                  for (int j = 0; j < N; j++) {
++                    //delta[j].head(n) = xdesired_[0]; //state
++                    delta[j].head(n) << test_state; //state
++                  }
++                } else {
++                  /// reset delta and w (default option)
++                  delta = delta_reset;
++                  w = w_reset;
++            }
+ 
+-// state_next = candidate_states[index];
+-  std::cout<<"hyp in C3 "<< hyp <<std::endl;
+-  if (curr_ee_cost - min >= param_.hyp3){
+-    std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
+-    C3_flag_ = 0;
+-    // reposition_flag_ = 1;
++                vector<VectorXd> fullsol = opt_test.SolveFullSolution(test_state, delta, w);  //outputs full z
++                //std::cout << "test state" << test_state.head(10) - test_q << std::endl;
++                vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol);  //outputs u over horizon
++                // double cost = opt_test.CalcCost(test_state, optimalinputseq); //purely positional cost
++                // std::cout<< "purely translational cost of sample "<< i << " = " << std::sqrt(std::pow((test_q[0]-ee[0]),2)+std::pow((test_q[1]-ee[1]),2)) << std::endl;
++                double cost = opt_test.CalcCost(test_state, optimalinputseq) + 1 * std::sqrt(std::pow((test_q[0]-ee[0]),2) + std::pow((test_q[1]-ee[1]),2)); //+ std::pow((test_q[2]-ee[2]),2)); 
++                cost_vector[i] = cost;
++                // std::cout << "This is the cost of sample " << i << " : " << cost << std::endl;
++              }
++
++              double min = *std::min_element(cost_vector.begin(), cost_vector.end());
++              // double* min_index = std::min_element(std::begin(cost_vector), std::end(cost_vector));
++              // std::cout << "index of smallest element: " << std::distance(std::begin(cost_vector), min_index);
++              // std::cout << " minimum value is " << min << std::endl;
++
++              std::vector<double>::iterator it = std::min_element(std::begin(cost_vector), std::end(cost_vector));
++              int index = std::distance(std::begin(cost_vector), it);
++              // std::cout << "index of smallest element: " << index <<std::endl;
++              // std::cout << " chosen sample " << index << " and state ee position : " << candidate_states[index] << std::endl;
++              
++              vector<VectorXd> fullsol = opt.SolveFullSolution(state, delta, w);  //outputs full z
++              vector<VectorXd> optimalinputseq = opt.OptimalInputSeq(fullsol);  //outputs u over horizon
++              double curr_ee_cost = opt.CalcCost(state, optimalinputseq); //computes cost for given x0
++              std::cout<<"This is the current cost "<<curr_ee_cost<<std::endl;
++              
++
++              // DO this if param_.num-samples > 0
++              double hyp = 5;
++              if(C3_flag_ == false){
++                  hyp = param_.hyp1;
++              }
++              else{
++                  hyp = param_.hyp2;
++              }
++              
++              // Repositioning vs C3 decision
++                    //update to best state
++                    if(curr_ee_cost - min >= hyp){//75){ //heuristic threshold for if the difference between where I am and where I want to be is more than the threshold, then move towards that point
++                        //if(min < optimal_cost_) 
++                          //if the min cost you have is lesser than the previous optimal cost, then reposition. 
++                          //  C3_flag_ = 0;
++                          std::cout << "Decided to reposition"<<std::endl;
++                          optimal_cost_ = min; 
++                          optimal_sample_ = candidate_states[index];
++
++                          std::cout<<"Min : "<<min<<std::endl;
++                                  
++                          std::vector<Vector3d> points(4, VectorXd::Zero(3));
++                          
++                          points[0] = end_effector;
++                          //  points[1] = way_point;
++                          points[3] = optimal_sample_.head(3);
++                          //  std::cout<<"optimal sample"<<points[3]<<std::endl;
++
++                          Eigen::Vector3d way_point1  = points[0] + 0.25*(points[3] - points[0]) - ball_xyz  ;
++                          points[1] = ball_xyz + (radius + 0.01) * way_point1/way_point1.norm();
++                          Eigen::Vector3d way_point2  = points[0] + 0.75*(points[3] - points[0]) - ball_xyz;
++                          points[2] = ball_xyz + (radius + 0.01) * way_point2/way_point2.norm();
++                          // std::cout << "The norm of v2 is: " << points[1].norm() << std::endl;
++                          
++                          double t = 0.02;
++
++                          Eigen::Vector3d next_point = points[0] + t*(-3*points[0] + 3*points[1]) + std::pow(t,2) * (3*points[0] -6*points[1] + 3*points[2]) + std::pow(t,3) * (-1*points[0] +3*points[1] -3*points[2] + points[3]);
++
++                            double dt = 0;
++                            if (moving_average_.empty()){
++                              dt = param_.dt;
++                            }
++                            else{
++                              for (int i = 0; i < (int) moving_average_.size(); i++){
++                                dt += moving_average_[i];
++                              }
++                              dt /= moving_average_.size();
++                            }
++                          
++                            Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
++                            st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), 
++                                          candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), 
++                                          candidate_states[3].head(3), optimal_sample_.head(3), next_point.head(3), 
++                                          ball_xyz, traj_desired.at(0).segment(7,3), indicator_xyz;
++
++                          std::cout<<"hyp in reposition "<< hyp <<std::endl;
++                      
++                    }
++                    else{
++                        // VectorXd input = opt.Solve(candidate_states[index], delta, w);
++                          C3_flag_ = 1; //when repositioning is good enough, switch flag to 0
++                          optimal_sample_ = candidate_states[index];
++                    /// calculate the input given x[i]
++                    //std::cout<<"original sol"<< std::endl;
++                    
++                      ///ADDING DELTA
++                      if (options.delta_option == 1) {
++                      /// reset delta and w (option 1)
++                      delta = delta_reset;
++                      w = w_reset;
++                      for (int j = 0; j < N; j++) {
++                        //delta[j].head(n) = xdesired_[0]; //state
++                        delta[j].head(n) << state; //state
++                      }
++                      } 
++                    else {
++                      /// reset delta and w (default option)
++                      delta = delta_reset;
++                      w = w_reset;
++                      }
++
++
++                    VectorXd input = opt.Solve(state, delta, w);
++                    std::cout<<"Using C3 "<<std::endl;
++                    std::cout<<"Min : "<<min<<std::endl;
++                    
++
++                    warm_start_x_ = opt.GetWarmStartX();
++                    warm_start_lambda_ = opt.GetWarmStartLambda();
++                    warm_start_u_ = opt.GetWarmStartU();
++                    warm_start_delta_ = opt.GetWarmStartDelta();
++                    warm_start_binary_ = opt.GetWarmStartBinary();
++
++                    // compute dt based on moving average filter
++                    double dt = 0;
++                    if (moving_average_.empty()){
++                      dt = param_.dt;
++                    }
++                    else{
++                      for (int i = 0; i < (int) moving_average_.size(); i++){
++                        dt += moving_average_[i];
++                      }
++                      dt /= moving_average_.size();
++                    }
++
++                    ///calculate state and force
++                    auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
++                        plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
++                        num_friction_directions_, mu_, dt);
++
++                    solvers::LCS system2_ = system_scaling_pair2.first;
++                    double scaling2 = system_scaling_pair2.second;
++
++                    drake::solvers::MobyLCPSolver<double> LCPSolver;
++                    VectorXd force; //This contains the contact forces. 
++                    //tangential forces and normal forces for two contacts --> gamma slack variable, ball+ee and ball+ground from stewart trinkle formulation
++
++                    auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
++                                                                  &force);
++                                                                  //The final force solution comes with 12 components (stewart trinkle formulation). 
++                    //In order, these components are : 
++                    //gamma_ee, gamma_bg (slack ee and slack ball-ground)
++                    //normal force between ee and ball lambda_eeb^n
++                    //normal force between ball and ground lambda_bg^n
++                    //4 tangential forces between ee and ball lambda_eeb^{t1-t4}
++                    //4 tangential forces between ball and ground lambda_bg^{t1-t4}
++
++                    (void)flag; // suppress compiler unused variable warning
++
++                    VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
++
++                    // check if the desired end effector position is unreasonably far from the current location
++                    Vector3d vd = state_next.segment(10, 3);
++                    if (vd.norm() > max_desired_velocity_){
++                      /// update new desired position accordingly
++                      Vector3d dx = state_next.head(3) - state.head(3);
++                      state_next.head(3) << max_desired_velocity_ * dt * dx / dx.norm() + state.head(3);
++                      
++                      /// update new desired velocity accordingly
++                      Vector3d clamped_velocity = max_desired_velocity_ * vd / vd.norm();
++                      state_next(10) = clamped_velocity(0);
++                      state_next(11) = clamped_velocity(1);
++                      state_next(12) = clamped_velocity(2);
++
++                      std::cout << "velocity limit(c3)" << std::endl;
++                      
++                      
++                      /// update the user
++                      // std::cout << "The desired EE velocity was " << vd.norm() << "m/s. ";
++                      // std::cout << "Clamping the desired EE velocity to " << max_desired_velocity_ << "m/s." << std::endl;
++                    }
++
++                    VectorXd force_des = VectorXd::Zero(6);
++                    force_des << force(0), force(2), force(4), force(5), force(6), force(7);  //We only care about the ee and ball forces when we send deired forces and here we extract those from the solution and send it in force_des.
++
++                  // state_next = candidate_states[index];
++                    std::cout<<"hyp in C3 "<< hyp <<std::endl;
++                    if (curr_ee_cost - min >= param_.hyp3){
++                      std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
++                      C3_flag_ = 0;
++                      // reposition_flag_ = 1;
++                    }
++
++                    Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
++                    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), 
++                                  candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), 
++                                  state_next.head(3), ball_xyz, traj_desired.at(0).segment(7,3), indicator_xyz;
++                    // std::cout<<"here"<<std::endl;
++                      }
+   }
+-
+-  Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
+-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), 
+-                candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), 
+-                state_next.head(3), ball_xyz, traj_desired.at(0).segment(7,3), indicator_xyz;
+-  // std::cout<<"here"<<std::endl;
+-    }
+-   
+   //Full state is 19 dimensions.
+   //state_next.head(3) - first three elements --- this is the ee position
+   //followed by ball orientation (4 elements as it is represented using quaternions) used for visualization probably

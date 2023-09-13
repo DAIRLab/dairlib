@@ -126,7 +126,7 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (74) includes:
+  State output port (82) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
@@ -147,6 +147,8 @@ C3Controller_franka::C3Controller_franka(
       (3) feasible predicted jack location at end of best sampled end effector location's C3 plan
       (3) optimistic predicted jack location at end of best sampled end effector location's C3 plan
       (3) fixed goal location for jack when using 'fixed goal' trajectory type
+      (4) Quaternion associated with the jack at the end of the horizon as predicted from current location
+      (4) Quaternion associated with the jack at the end of the horizon as predicted from best sample location
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -675,6 +677,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd predicted_jack_loc_current_optimistic = predicted_states_at_end_horizon_optimistic[CURRENT_LOCATION_INDEX].segment(7, 3);
   VectorXd predicted_jack_loc_best_sample_feasible   = predicted_states_at_end_horizon_feasible[  index].segment(7, 3);
   VectorXd predicted_jack_loc_best_sample_optimistic = predicted_states_at_end_horizon_optimistic[index].segment(7, 3);
+  // Grab the optimistic predicted end object orientation for the current and best sampled end effector locations.
+  VectorXd predicted_jack_orientation_current_optimistic = predicted_states_at_end_horizon_optimistic[CURRENT_LOCATION_INDEX].segment(3, 4);
+  VectorXd predicted_jack_orientation_best_sample_optimistic = predicted_states_at_end_horizon_optimistic[index].segment(3, 4);
 
   // Inspect the current and best other sample C3 costs.
   double curr_ee_cost = cost_vector[CURRENT_LOCATION_INDEX];
@@ -872,7 +877,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
                   predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
-                  start_point_, end_point_;
+                  start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic;
   }
   // REPOSITION.
   else {
@@ -937,7 +942,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
                   predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
-                  start_point_, end_point_;
+                  start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic;
   }
   
 

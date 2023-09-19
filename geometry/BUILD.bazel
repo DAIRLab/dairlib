@@ -66,7 +66,7 @@ cc_library(
 cc_binary(
     name = "polytest",
     srcs = ["test/polytest.cc"],
-    tags = ["@ros"],
+    tags = ["ros"],
     deps = [
         ":poly_utils",
         "@gflags",

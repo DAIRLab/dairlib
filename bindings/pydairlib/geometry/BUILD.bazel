@@ -58,8 +58,10 @@ py_library(
 
 PY_LIBRARIES = [
     ":convex_foothold_py",
-    ":poly_utils_py",
-]
+] + select({
+    "//tools/workspace/ros:dair_ros_on": ["poly_utils_py"],
+    "//tools/workspace/ros:dair_ros_off": [],
+})
 
 # Package roll-up (for Bazel dependencies).
 py_library(

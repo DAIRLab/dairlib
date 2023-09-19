@@ -36,4 +36,5 @@ py_binary(
         "//bindings/pydairlib/geometry:poly_utils_py",
         "@drake//bindings/pydrake",
     ],
+    tags = ["ros"]
 )

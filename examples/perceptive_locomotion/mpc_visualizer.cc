@@ -3,11 +3,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_mpc_debug.hpp"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/perceptive_locomotion/meshcat_mpc_debug_visualizer.h"
-
-#include "multibody/com_pose_system.h"
-#include "multibody/multibody_utils.h"
-#include "multibody/visualization_utils.h"
+#include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualization_driver.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -29,7 +25,7 @@ DEFINE_string(channel_terrain, "", "lcm channel with processed footholds from "
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
-using dairlib::perceptive_locomotion::MeshcatMPCDebugVisualizer;
+using dairlib::perceptive_locomotion::AlipMPFCMeshcatVisualizationDriver;
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
@@ -81,7 +77,7 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  auto foothold_vis = builder.AddSystem<MeshcatMPCDebugVisualizer>(meshcat, plant);
+  auto foothold_vis = builder.AddSystem<AlipMPFCMeshcatVisualizationDriver>(meshcat, plant);
   builder.Connect(mpc_sub->get_output_port(),
                   foothold_vis->get_input_port_mpc());
   builder.Connect(state_receiver->get_output_port(),

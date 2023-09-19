@@ -154,7 +154,7 @@ void OutputVectorButterworthFilter::CopyFilterValues(
   const auto& y_filt = context.get_discrete_state(filter_state_idx_).get_value();
   for (int i = 0; i < filter_idxs_.size(); i++) {
       y->get_mutable_value()[filter_idxs_.at(i)] =
-          filter_utils::StateSpaceButterworthFilter::GetFilterOutput(
+          filter_utils::DiscreteSISOButterworthFilter::GetFilterOutput(
               y_filt.segment(i*order_, order_));
   }
 }

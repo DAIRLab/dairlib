@@ -4,7 +4,7 @@
 #include <dairlib/lcmt_mpc_solution.hpp>
 
 #include "alip_utils.h"
-#include "alip_minlp_footstep_controller.h"
+#include "alip_mpfc.h"
 #include "geometry/convex_foothold_set.h"
 #include "systems/filters/s2s_kalman_filter.h"
 

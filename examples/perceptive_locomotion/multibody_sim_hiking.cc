@@ -130,12 +130,6 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  std::string renderer_name = "hiking_sim_renderer";
-  scene_graph.AddRenderer(renderer_name,
-                          drake::geometry::MakeRenderEngineVtk(
-                              drake::geometry::RenderEngineVtkParams()));
-
-
   const double time_step = FLAGS_time_stepping ? FLAGS_dt : 0.0;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   multibody::AddSteppingStonesToSimFromYaml(
@@ -151,6 +145,11 @@ int do_main(int argc, char* argv[]) {
   plant.set_discrete_contact_solver(drake::multibody::DiscreteContactSolver::kSap);
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
+
+  std::string renderer_name = "hiking_sim_renderer";
+  scene_graph.AddRenderer(renderer_name,
+                          drake::geometry::MakeRenderEngineVtk(
+                          drake::geometry::RenderEngineVtkParams()));
 
   double camera_pitch = - 74 * M_PI / 180.0;
   const auto camera_position = Vector3d(0.175, 0, 0.15);

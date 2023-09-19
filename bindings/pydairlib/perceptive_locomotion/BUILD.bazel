@@ -12,6 +12,16 @@ load(
 )
 
 py_binary(
+    name = "make_alip_miqp_simulation_figures",
+    srcs = ["make_alip_miqp_simulation_figures.py"],
+    deps = [":visualize_lcm_log"],
+    data = [
+        "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python"
+    ]
+)
+
+py_binary(
     name = "test_minsnap",
     srcs = ["test_minsnap.py"],
     deps = [

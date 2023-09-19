@@ -42,6 +42,8 @@ class LcmLogPlayer:
 
 
 def get_log_names(logfolder, logtemplate):
+    if isinstance(logtemplate, list):
+        logtemplate = logtemplate[0]
     logpath_template = os.path.join(logfolder, logtemplate)
     logs = glob.glob(f'{logpath_template}[0-9][0-9]')
     print("Found logs:")

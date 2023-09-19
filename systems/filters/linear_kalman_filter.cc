@@ -20,7 +20,8 @@ LinearKalmanFilter::LinearKalmanFilter(const KalmanFilterData& sys, double rate,
   Initialize(0, VectorXd::Zero(nx_), sys.Q);
 }
 
-void LinearKalmanFilter::Initialize(double t, VectorXd x, MatrixXd P) {
+void LinearKalmanFilter::Initialize(
+    double t, const VectorXd& x, const MatrixXd& P) {
   t_ = t;
   x_ = x;
   P_ = P;

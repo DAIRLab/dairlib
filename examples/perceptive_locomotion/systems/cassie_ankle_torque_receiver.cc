@@ -1,14 +1,10 @@
-//
-// Created by brian on 3/5/23.
-//
-
-#include "alip_input_receiver.h"
+#include "cassie_ankle_torque_receiver.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 
 namespace dairlib::perceptive_locomotion {
 
-AlipInputReceiver::AlipInputReceiver(
+CassieAnkleTorqueReceiver::CassieAnkleTorqueReceiver(
     const drake::multibody::MultibodyPlant<double> &plant,
     std::vector<int> left_right_fsm_states,
     std::vector<std::string> left_right_ankle_motor_names) :
@@ -23,13 +19,13 @@ AlipInputReceiver::AlipInputReceiver(
         act_map.at(left_right_ankle_motor_names.at(i));
   }
 
-  DeclareVectorOutputPort("ud", nu_, &AlipInputReceiver::CopyInput);
+  DeclareVectorOutputPort("ud", nu_, &CassieAnkleTorqueReceiver::CopyInput);
   fsm_input_port_ = DeclareVectorInputPort("fsm", 1).get_index();
   input_traj_input_port_ = DeclareAbstractInputPort(
       "input_traj", drake::Value<lcmt_saved_traj>()).get_index();
 }
 
-void AlipInputReceiver::CopyInput(
+void CassieAnkleTorqueReceiver::CopyInput(
     const drake::systems::Context<double> &context,
     drake::systems::BasicVector<double> *out) const {
   auto lcm_traj = EvalInputValue<lcmt_saved_traj>(

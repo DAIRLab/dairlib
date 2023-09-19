@@ -65,6 +65,34 @@ def make_plant_and_context(floating_base=True, springs=True):
     return plant, plant.CreateDefaultContext()
 
 
+def get_timestamp_of_first_liftoff(lcmlog: lcm.EventLog, channel_x : str,
+                                    vel_thresh=0.05):
+    """
+        :param lcmlog: an lcmlog object containing a cassie state dispatcher channel
+        :param channel_x: Channel with state info
+        :return: timestamp (in seconds) of the first swing foot liftoff
+    """
+    lcmlog.seek(0)
+    event = lcmlog.read_next_event()
+    log_start_time = event.timestamp
+    timestamp = log_start_time
+    motion = False
+    while event and not motion:
+        timestamp = event.timestamp
+        if event.channel == channel_x:
+            msg = dairlib.lcmt_robot_output.decode(event.data)
+            motion = np.any(np.abs(msg.velocity) > vel_thresh)
+        event = lcmlog.read_next_event()
+
+    # reset the log
+    lcmlog.seek(0)
+    if not event:
+        raise RuntimeError('No motion found in log. Double check the '
+                           'log file name state channel name used.')
+
+    return (timestamp - log_start_time) * 1e-6
+
+
 def get_toe_frames_and_points(plant):
     front_contact_pt = np.array((-0.0457, 0.112, 0))
     rear_contact_pt = np.array((0.088, 0, 0))

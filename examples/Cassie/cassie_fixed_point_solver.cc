@@ -326,7 +326,7 @@ void CassieInitStateSolver(
   auto u = program.AddInputVariables();
   auto lambda = program.AddConstraintForceVariables(evaluators);
   auto kinematic_constraints =
-      program.AddHolonomicConstraint(evaluators, q, v, u ,lambda);
+      program.AddHolonomicConstraint(evaluators, q, v, u, lambda);
   program.AddJointLimitConstraints(q);
 
 

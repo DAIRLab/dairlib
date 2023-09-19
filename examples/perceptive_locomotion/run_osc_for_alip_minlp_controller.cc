@@ -24,7 +24,7 @@
 
 // MPC related
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
-#include "examples/perceptive_locomotion/systems/alip_input_receiver.h"
+#include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
@@ -378,7 +378,7 @@ int DoMain(int argc, char* argv[]) {
 
 
   auto alip_input_receiver =
-      builder.AddSystem<perceptive_locomotion::AlipInputReceiver>(
+      builder.AddSystem<perceptive_locomotion::CassieAnkleTorqueReceiver>(
           plant_w_spr,
           left_right_support_fsm_states,
           std::vector<std::string>({"toe_left_motor", "toe_right_motor"}));

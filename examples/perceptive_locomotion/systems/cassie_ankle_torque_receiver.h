@@ -6,12 +6,12 @@
 /// System to translate an incoming lcmt_saved_traj message containing an ankle
 /// torque to a vector of desired robot ankle torques
 namespace dairlib::perceptive_locomotion {
-class AlipInputReceiver : public drake::systems::LeafSystem<double> {
+class CassieAnkleTorqueReceiver : public drake::systems::LeafSystem<double> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(AlipInputReceiver);
-  AlipInputReceiver(const drake::multibody::MultibodyPlant<double>& plant,
-                    std::vector<int> left_right_fsm_states,
-                    std::vector<std::string> left_right_ankle_motor_names);
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieAnkleTorqueReceiver);
+  CassieAnkleTorqueReceiver(const drake::multibody::MultibodyPlant<double>& plant,
+                            std::vector<int> left_right_fsm_states,
+                            std::vector<std::string> left_right_ankle_motor_names);
 
   const drake::systems::InputPort<double>& get_input_port_fsm() {
     return this->get_input_port(fsm_input_port_);

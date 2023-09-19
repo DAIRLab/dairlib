@@ -1,4 +1,4 @@
-#include "alip_minlp_footstep_controller.h"
+#include "alip_mpfc.h"
 #include "common/eigen_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
@@ -28,7 +28,7 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
 
-AlipMINLPFootstepController::AlipMINLPFootstepController(
+AlipMPFC::AlipMPFC(
     const MultibodyPlant<double>& plant, Context<double>* plant_context,
     std::vector<int> left_right_stance_fsm_states,
     std::vector<int> post_left_right_fsm_states,
@@ -104,7 +104,7 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 
   // State Update
   this->DeclareForcedUnrestrictedUpdateEvent(
-      &AlipMINLPFootstepController::UnrestrictedUpdate);
+      &AlipMPFC::UnrestrictedUpdate);
 
   // Input ports
   state_input_port_ = DeclareVectorInputPort(
@@ -117,16 +117,16 @@ AlipMINLPFootstepController::AlipMINLPFootstepController(
 
   // output ports
   mpc_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_alip_mpc_output", &AlipMINLPFootstepController::CopyMpcOutput
+      "lcmt_alip_mpc_output", &AlipMPFC::CopyMpcOutput
       ).get_index();
   mpc_debug_output_port_ = DeclareAbstractOutputPort(
-      "lcmt_mpc_debug", &AlipMINLPFootstepController::CopyMpcDebugToLcm
+      "lcmt_mpc_debug", &AlipMPFC::CopyMpcDebugToLcm
       ).get_index();
   fsm_output_port_ = DeclareVectorOutputPort(
-      "fsm", 1, &AlipMINLPFootstepController::CopyFsmOutput).get_index();
+      "fsm", 1, &AlipMPFC::CopyFsmOutput).get_index();
 }
 
-drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
+drake::systems::EventStatus AlipMPFC::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
 
   // evaluate input ports
@@ -307,12 +307,12 @@ drake::systems::EventStatus AlipMINLPFootstepController::UnrestrictedUpdate(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void AlipMINLPFootstepController::CopyFsmOutput(
+void AlipMPFC::CopyFsmOutput(
     const Context<double> &context, BasicVector<double> *fsm) const {
   fsm->get_mutable_value() << GetFsmForOutput(context);
 }
 
-void AlipMINLPFootstepController::CopyMpcOutput(
+void AlipMPFC::CopyMpcOutput(
     const Context<double> &context, lcmt_alip_mpc_output* mpc_output) const {
 
   // Copy next footstep
@@ -337,7 +337,7 @@ void AlipMINLPFootstepController::CopyMpcOutput(
   CopyAnkleTorque(context, &(mpc_output->u_traj));
 }
 
-void AlipMINLPFootstepController::CopyMpcDebugToLcm(
+void AlipMPFC::CopyMpcDebugToLcm(
     const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
 
   mpc_debug->success = trajopt_.success();
@@ -381,7 +381,7 @@ void AlipMINLPFootstepController::CopyMpcDebugToLcm(
 
 }
 
-void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
+void AlipMPFC::CopyMpcSolutionToLcm(
     const std::vector<Vector3d> &pp,
     const std::vector<VectorXd> &xx,
     const std::vector<VectorXd> &uu,
@@ -422,7 +422,7 @@ void AlipMINLPFootstepController::CopyMpcSolutionToLcm(
   solution->tt = CopyVectorXdToStdVector(tt);
 }
 
-int AlipMINLPFootstepController::GetFsmForOutput(
+int AlipMPFC::GetFsmForOutput(
     const Context<double> &context) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
@@ -437,7 +437,7 @@ int AlipMINLPFootstepController::GetFsmForOutput(
   return left_right_stance_fsm_states_.at(fsm_idx);
 }
 
-double AlipMINLPFootstepController::GetPrevImpactTimeForOutput(
+double AlipMPFC::GetPrevImpactTimeForOutput(
     const Context<double> &context) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
@@ -450,7 +450,7 @@ double AlipMINLPFootstepController::GetPrevImpactTimeForOutput(
 }
 
 
-void AlipMINLPFootstepController::CopyAnkleTorque(
+void AlipMPFC::CopyAnkleTorque(
     const Context<double> &context, lcmt_saved_traj *traj) const {
   double t  = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_))->get_timestamp();

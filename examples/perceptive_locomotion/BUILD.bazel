@@ -169,9 +169,9 @@ cc_binary(
     name = "mpc_visualizer",
     srcs = ["mpc_visualizer.cc"],
     deps = [
-        ":meshcat_mpc_debug_visualizer",
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
+        "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -179,18 +179,6 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-cc_library(
-    name = "meshcat_mpc_debug_visualizer",
-    srcs = ["meshcat_mpc_debug_visualizer.cc"],
-    hdrs = ["meshcat_mpc_debug_visualizer.h"],
-    deps = [
-        "//geometry:convex_foothold_set",
-        "//lcmtypes:lcmt_robot",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
     ],
 )
 

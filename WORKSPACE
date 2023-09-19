@@ -11,9 +11,11 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "69f4a77b22d001d487b37b212ece579d7672e938"
+DRAKE_COMMIT = "v1.20.0"
 
-DRAKE_CHECKSUM = "351cea7481c3bcbaaa38d147e8b923c4106555941fd2df60f67714b6094102d6"
+DRAKE_STRIP = "1.20.0"
+
+DRAKE_CHECKSUM = "e343bc558f840be17c05053c6fc3fff899a3bf4540f3b285f6cd7ca5937f7b46"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -42,7 +44,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = _http_drake_repo_name,
     sha256 = DRAKE_CHECKSUM,
-    strip_prefix = "drake-{}".format(DRAKE_COMMIT),
+    strip_prefix = "drake-{}".format(DRAKE_STRIP),
     urls = [x.format(DRAKE_COMMIT) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],
@@ -63,8 +65,8 @@ load("@drake//tools/workspace:default.bzl", "add_default_workspace")
 
 add_default_workspace()
 
-
 load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
+
 osqp_repository(name = "osqp")
 
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
@@ -76,6 +78,13 @@ load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 pydrake_repository(name = "pydrake_pegged")
 
 # Prebuilt ROS workspace
+new_local_repository(
+    name = "ros",
+    build_file = "tools/workspace/ros/ros.bazel",
+    path = "tools/workspace/ros/bundle_ws/install",
+)
+
+# Locally developed and installed ROS packages
 environ_repository(
     name = "environ_local_ros",
     vars = ["LOCAL_ROS_INSTALL_PATH"],
@@ -84,23 +93,11 @@ environ_repository(
 load("@environ_local_ros//:environ.bzl", "LOCAL_ROS_INSTALL_PATH")
 
 new_local_repository(
-    name = "ros",
-    build_file = "tools/workspace/ros/ros.bazel",
-    path = "tools/workspace/ros/bundle_ws/install",
-)
-
-new_local_repository(
     name = "ros-local",
     build_file = "tools/workspace/ros/ros-local.bazel",
     path = LOCAL_ROS_INSTALL_PATH,
 )
 
-#new_local_repository(
-#    name = "acd2d",
-#    build_file = "tools/workspace/acd2d/acd2d.bazel",
-#    path = "/home/brian/workspace/acd2d",
-#)
-##
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",

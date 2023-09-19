@@ -8,9 +8,11 @@
 namespace dairlib {
 namespace perceptive_locomotion {
 
-class MeshcatMPCDebugVisualizer : public drake::systems::LeafSystem<double> {
+class AlipMPFCMeshcatVisualizationDriver :
+    public drake::systems::LeafSystem<double> {
+
  public:
-  MeshcatMPCDebugVisualizer(
+  AlipMPFCMeshcatVisualizationDriver(
       std::shared_ptr<drake::geometry::Meshcat> meshcat,
       const drake::multibody::MultibodyPlant<double>& plant);
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -23,10 +25,9 @@ class MeshcatMPCDebugVisualizer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(foothold_input_port_);
   }
  private:
-  static std::string make_path(int i) {
+  static std::string make_foothold_path(int i) {
     return "/foothold_meshes/" + std::to_string(i);
   }
-
 
   void DrawFootholds(geometry::ConvexFootholdSet& footholds,
                      int n_prev_footholds,

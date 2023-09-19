@@ -4,12 +4,24 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "alip_input_receiver",
-    srcs = ["alip_input_receiver.cc"],
-    hdrs = ["alip_input_receiver.h"],
+    srcs = ["cassie_ankle_torque_receiver.cc"],
+    hdrs = ["cassie_ankle_torque_receiver.h"],
     deps = [
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "meshcat_mpc_debug_visualizer",
+    srcs = ["alip_mpfc_meshcat_visualization_driver.cc"],
+    hdrs = ["alip_mpfc_meshcat_visualization_driver.h"],
+    deps = [
+        "//geometry:convex_foothold_set",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

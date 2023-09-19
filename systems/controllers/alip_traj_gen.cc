@@ -300,7 +300,8 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(const drake::systems::Context<
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
+  start_time = std::clamp(start_time,
+                          -std::numeric_limits<double>::infinity(),
                           end_time - 0.001);
 
   // Assign traj

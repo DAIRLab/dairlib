@@ -1,6 +1,6 @@
 #include <utility>
 #include "drake/geometry/shape_specification.h"
-#include "meshcat_mpc_debug_visualizer.h"
+#include "alip_mpfc_meshcat_visualization_driver.h"
 #include "systems/framework/output_vector.h"
 #include "drake/geometry/rgba.h"
 
@@ -12,7 +12,7 @@ using Eigen::Matrix3d;
 using Eigen::Matrix3Xd;
 using systems::OutputVector;
 
-MeshcatMPCDebugVisualizer::MeshcatMPCDebugVisualizer(
+AlipMPFCMeshcatVisualizationDriver::AlipMPFCMeshcatVisualizationDriver(
     std::shared_ptr<drake::geometry::Meshcat> meshcat,
     const drake::multibody::MultibodyPlant<double>& plant) :
     meshcat_(std::move(meshcat)) {
@@ -34,10 +34,10 @@ MeshcatMPCDebugVisualizer::MeshcatMPCDebugVisualizer(
   n_footholds_idx_ = DeclareDiscreteState(1);
 
   DeclarePerStepUnrestrictedUpdateEvent(
-      &MeshcatMPCDebugVisualizer::UnrestrictedUpdate);
+      &AlipMPFCMeshcatVisualizationDriver::UnrestrictedUpdate);
 }
 
-void MeshcatMPCDebugVisualizer::DrawComTrajSolution(
+void AlipMPFCMeshcatVisualizationDriver::DrawComTrajSolution(
     const std::string &path,
     const dairlib::lcmt_mpc_solution &com_traj_solution,
     const Matrix3d& R_yaw, const double z_com) const {
@@ -64,7 +64,7 @@ void MeshcatMPCDebugVisualizer::DrawComTrajSolution(
 }
 
 
-void MeshcatMPCDebugVisualizer::DrawFootsteps(
+void AlipMPFCMeshcatVisualizationDriver::DrawFootsteps(
     const dairlib::lcmt_mpc_solution &solution,
     const Eigen::Matrix3d &R_yaw) const {
 
@@ -84,9 +84,9 @@ void MeshcatMPCDebugVisualizer::DrawFootsteps(
   }
 }
 
-void MeshcatMPCDebugVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
-                                              int n_prev,
-                                              const std::string& prefix) const {
+void AlipMPFCMeshcatVisualizationDriver::DrawFootholds(ConvexFootholdSet& foothold_set,
+                                                       int n_prev,
+                                                       const std::string& prefix) const {
   std::vector<drake::geometry::Rgba> rgb = {
       drake::geometry::Rgba(1, 0, 0, 0.5),
       drake::geometry::Rgba(0, 1, 0, 0.5),
@@ -96,17 +96,21 @@ void MeshcatMPCDebugVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
     auto foothold = foothold_set.footholds().at(i);
     const auto [verts, faces] = foothold.GetSurfaceMesh();
     auto faces_reversed = faces;
+    Eigen::Matrix3Xd verts_line = verts;
+    verts_line.rightCols<1>() = verts_line.leftCols<1>();
     faces_reversed.row(0).swap(faces_reversed.row(2));
-    meshcat_->SetTriangleMesh(prefix + make_path(i) + "top", verts, faces, rgb.at(1));
-    meshcat_->SetTriangleMesh(prefix + make_path(i) + "bottom", verts, faces_reversed, rgb.at(1));
+    meshcat_->SetTriangleMesh(prefix + make_foothold_path(i) + "top", verts, faces, rgb.at(1));
+    meshcat_->SetTriangleMesh(prefix + make_foothold_path(i) + "bottom", verts, faces_reversed, rgb.at(1));
+    meshcat_->SetLine(prefix + make_foothold_path(i) + "boundary", verts_line, 2.0, drake::geometry::Rgba(0, 0, 0, 0));
   }
   for (int i = foothold_set.size(); i < n_prev; i++) {
-    meshcat_->Delete(make_path(i) + "top");
-    meshcat_->Delete(make_path(i) + "bottom");
+    meshcat_->Delete(prefix + make_foothold_path(i) + "top");
+    meshcat_->Delete(prefix + make_foothold_path(i) + "bottom");
+    meshcat_->Delete(prefix + make_foothold_path(i) + "boundary");
   }
 }
 
-Eigen::Matrix3d MeshcatMPCDebugVisualizer::R_WB(
+Eigen::Matrix3d AlipMPFCMeshcatVisualizationDriver::R_WB(
     const Eigen::Vector4d& wxyz) {
   if (wxyz.norm() < 0.98 or wxyz.norm() > 1.02) {
     return Matrix3d::Identity();
@@ -120,7 +124,7 @@ Eigen::Matrix3d MeshcatMPCDebugVisualizer::R_WB(
   ).matrix();
 }
 
-drake::systems::EventStatus MeshcatMPCDebugVisualizer::UnrestrictedUpdate(
+drake::systems::EventStatus AlipMPFCMeshcatVisualizationDriver::UnrestrictedUpdate(
     const drake::systems::Context<double> &context,
     drake::systems::State<double> *state) const {
 
@@ -150,7 +154,7 @@ drake::systems::EventStatus MeshcatMPCDebugVisualizer::UnrestrictedUpdate(
   state->get_mutable_discrete_state(n_footholds_idx_).set_value(
       Eigen::VectorXd::Constant(1, foothold_set.size()));
 
-
+//  meshcat_->Flush();
   return drake::systems::EventStatus::Succeeded();
 }
 

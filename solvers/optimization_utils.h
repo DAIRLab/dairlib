@@ -86,7 +86,7 @@ class LinearBigMConstraint {
                        double M,
                        const drake::solvers::VectorXDecisionVariable& x,
                        const drake::solvers::DecisionVariable& z) :
-      M_(M), constraint_(AddBigMInequalityConstraint(prog, A, b, M, x, z)),
+      constraint_(AddBigMInequalityConstraint(prog, A, b, M, x, z)), M_(M),
       z_(z), x_(x){};
 
   void update(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {

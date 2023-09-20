@@ -52,11 +52,6 @@ class CassieUDPInSerializer : public drake::systems::lcm::SerializerInterface {
 
     pack_cassie_user_in_t(&message, &message_bytes->data()[2]);
   }
-
-  std::unique_ptr<drake::systems::lcm::SerializerInterface> Clone()
-      const override {
-    return std::make_unique<CassieUDPInSerializer>();
-  }
 };
 
 

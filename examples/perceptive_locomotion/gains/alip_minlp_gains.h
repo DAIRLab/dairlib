@@ -1,7 +1,6 @@
 #pragma once
 #include "systems/controllers/footstep_planning/alip_mpfc.h"
 #include "drake/common/yaml/yaml_read_archive.h"
-#include "yaml-cpp/yaml.h"
 
 using Eigen::MatrixXd;
 using Eigen::Matrix4d;

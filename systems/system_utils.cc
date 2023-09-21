@@ -15,8 +15,8 @@ void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
   out << diagram.GetGraphvizString();
   out.close();
 
-  // Use dot command to convert Graphviz string to a image file
-  // The command is `dot -Tps input_file -o output_file`
+  // Use dot command to convert Graphviz string to a pdf
+  // The command is `dot -Tpdf input_file -o output_file`
   std::regex r(" ");
   path = std::regex_replace(path, r, "\\ ");
   std::string cmd = "dot -Tpdf " + path + " -o " + path + ".pdf";

@@ -19,7 +19,7 @@ void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
   // The command is `dot -Tps input_file -o output_file`
   std::regex r(" ");
   path = std::regex_replace(path, r, "\\ ");
-  std::string cmd = "dot -Tps " + path + " -o " + path + ".ps";
+  std::string cmd = "dot -Tpdf " + path + " -o " + path + ".pdf";
   (void) std::system(cmd.c_str());
 
   // Remove Graphviz string file

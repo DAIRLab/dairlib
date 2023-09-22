@@ -28,7 +28,6 @@
 
 // drake
 #include "drake/common/yaml/yaml_io.h"
-#include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_scope_system.h"
 
@@ -73,11 +72,17 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(MpfcOscDiagram)
 
-
+  // TODO (@Brian-Acosta) Add factory method for getting the plant
+  MpfcOscDiagram(drake::multibody::MultibodyPlant<double>& plant,
+                 const string& osc_gains_filename,
+                 const string& mpc_gains_filename,
+                 const string& osqp_settings_filename);
 
  private:
 
   drake::multibody::MultibodyPlant<double>* plant_;
+  std::unique_ptr<drake::systems::Context<double>> plant_context;
+
 
   std::pair<const Vector3d, const Frame<double>&> left_toe;
   std::pair<const Vector3d, const Frame<double>&> left_heel;
@@ -94,9 +99,9 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   int right_stance_state = 1;
   int post_left_double_support_state = 3;
   int post_right_double_support_state = 4;
-  double left_support_duration = gains_mpc.ss_time;
-  double right_support_duration = gains_mpc.ss_time;
-  double double_support_duration = gains_mpc.ds_time;
+  double left_support_duration;
+  double right_support_duration;
+  double double_support_duration;
 
   vector<int> fsm_states;
   vector<double> state_durations;
@@ -114,10 +119,9 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
   // Swing toe joint trajectory
   map<string, int> pos_map;
+  map<string, int> vel_map;
   vectorpair<const Vector3d, const Frame<double>&>> left_foot_points;
   vectorpair<const Vector3d, const Frame<double>&>> right_foot_points;
-  vector<std::pair<const Vector3d, const Frame<double>&>> right_foot_points = {
-      right_heel, right_toe};
 
 
   // Constraints in OSC
@@ -129,7 +133,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
   std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
 
-  multibody::WorldYawViewFrame view_frame(pelvis);
+  WorldYawViewFrame<double> view_frame;
   WorldPointEvaluator left_toe_evaluator;
   WorldPointEvaluator left_heel_evaluator;
   WorldPointEvaluator right_toe_evaluator;

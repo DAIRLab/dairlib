@@ -1,26 +1,10 @@
-#include <gflags/gflags.h>
-#include <iostream>
+#include "mpfc_osc_diagram.h"
 
 // lcmtypes
 #include "dairlib/lcmt_alip_mpc_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
-#include "dairlib/lcmt_fsm_info.hpp"
-#include "dairlib/lcmt_footstep_target.hpp"
 
-// Cassie and multibody
-#include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/osc/high_level_command.h"
-#include "examples/Cassie/osc/hip_yaw_traj_gen.h"
-#include "examples/Cassie/osc/heading_traj_generator.h"
-#include "examples/Cassie/osc/pelvis_pitch_traj_generator.h"
-#include "examples/Cassie/osc/osc_walking_gains_alip.h"
-#include "examples/Cassie/osc/swing_toe_traj_generator.h"
-#include "examples/Cassie/systems/cassie_out_to_radio.h"
-#include "multibody/kinematic/fixed_joint_evaluator.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "multibody/multibody_utils.h"
 
 // MPC related
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
@@ -29,28 +13,15 @@
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
 
-// OSC
-#include "systems/controllers/osc/com_tracking_data.h"
-#include "systems/controllers/osc/joint_space_tracking_data.h"
-#include "systems/controllers/osc/operational_space_control.h"
-#include "systems/controllers/osc/options_tracking_data.h"
-#include "systems/controllers/osc/relative_translation_tracking_data.h"
-#include "systems/controllers/osc/rot_space_tracking_data.h"
-#include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/framework/lcm_driven_loop.h"
-#include "systems/robot_lcm_systems.h"
-
 // misc
 #include "systems/system_utils.h"
 
 // drake
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_scope_system.h"
 
 
-namespace dairlib {
+namespace dairlib::perceptive_locomotion {
 
 using std::cout;
 using std::endl;
@@ -72,6 +43,8 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmScopeSystem;
 using drake::systems::TriggerTypeSet;
+using drake::trajectories::PiecewisePolynomial;
+using drake::yaml::LoadYamlFile;
 
 using multibody::WorldYawViewFrame;
 using systems::FsmReceiver;
@@ -84,127 +57,76 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using multibody::FixedJointEvaluator;
+using multibody::WorldPointEvaluator;
 using multibody::MakeNameToVelocitiesMap;
 using multibody::MakeNameToPositionsMap;
 
-using drake::trajectories::PiecewisePolynomial;
 
-DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
-              "LCM channel for receiving state. "
-              "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
-              "use CASSIE_STATE_DISPATCHER to get state from state estimator");
-
-DEFINE_string(channel_u, "OSC_WALKING",
-              "The name of the channel which publishes command");
-
-DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
-              "The name of the channel to receive the cassie "
-              "out structure from.");
-
-DEFINE_string(gains_filename,
-              "examples/perceptive_locomotion/gains/osc_gains.yaml",
-              "Filepath containing gains");
-
-DEFINE_string(minlp_gains_filename,
-              "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
-              "Filepath to alip minlp gains");
-
-DEFINE_string(channel_mpc, "ALIP_MPC", "alip mpc output lcm channel");
-
-DEFINE_bool(publish_osc_data, true,
-            "whether to publish lcm messages for OscTrackData");
-
-DEFINE_bool(is_two_phase, false,
-            "true: only right/left single support"
-            "false: both double and single support");
-
-DEFINE_bool(use_spring_model, false,
-            "whether to use the cassie spring model in the controller");
-
-DEFINE_bool(add_camera_inertia, true,
-            "whether to add the camera assembly to the robot model");
-
-DEFINE_bool(com_height_track_terrain, true,
-            "track the terrain with the COM height, use for "
-            "piecewise steep terrain");
-
-//DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
-
-int DoMain(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+MpfcOscDiagram::MpfcOscDiagram(
+    drake::multibody::MultibodyPlant<double>& plant,
+    const string& osc_gains_filename, const string& mpc_gains_filename,
+    const string& osqp_settings_filename, bool add_camera_inertia)
+    :
+    plant_(plant),
+    pos_map(MakeNameToPositionsMap(plant)),
+    vel_map(MakeNameToVelocitiesMap(plant)),
+    left_toe(LeftToeFront(plant)),
+    right_toe(RightToeFront(plant)),
+    left_heel(LeftHeelFront(plant)),
+    right_heel(RightHeelFront(plant)),
+    left_toe_mid({left_toe.first + left_heel.first) / 2,
+                  plant.GetFrameByName("toe_left")}),
+    right_toe_mid({right_toe.first + right_heel.first) / 2,
+                   plant.GetFrameByName("toe_right")}),
+    left_toe_origin({Vector3d::Zero(), plant.GetFrameByName("toe_left")}),
+    right_toe_origin({Vector3d::Zero(), plant.GetFrameByName("toe_right")}),
+    left_right_foot({left_toe_origin, right_toe_origin}),
+    left_foot_points({left_heel, left_toe}),
+    right_foot_points({right_heel, right_toe}),
+    view_frame(WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))),
+    left_toe_evaluator(WorldPointEvaluator(
+        plant, left_toe.first, left_toe.second, view_frame,
+        Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
+    left_heel_evaluator(WorldPointEvaluator(
+        plant, left_heel.first, left_heel.second, view_frame,
+        Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
+    right_toe_evaluator(WorldPointEvaluator(
+        plant, right_toe.first, right_toe.second, view_frame,
+        Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
+    right_heel_evaluator(WorldPointEvaluator(
+        plant, right_heel.first, right_heel.second, view_frame,
+        Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
+    left_loop(LeftLoopClosureEvaluator(plant)),
+    right_loop(RightLoopClosureEvaluator(plant)),
+    evaluators(multibody::KinematicEvaluatorSet<double>(plant)),
+    left_fixed_knee_spring(
+        FixedJointEvaluator(plant, pos_map.at("knee_joint_left"),
+                            vel_map.at("knee_joint_leftdot"), 0)),
+    right_fixed_knee_spring(
+        FixedJointEvaluator(plant, pos_map.at("knee_joint_right"),
+                            vel_map.at("knee_joint_rightdot"), 0)),
+    left_fixed_ankle_spring(
+        FixedJointEvaluator(plant, pos_map.at("ankle_spring_joint_left"),
+                            vel_map.at("ankle_spring_joint_leftdot"), 0)),
+    right_fixed_ankle_spring(
+        FixedJointEvaluator(plant, pos_map.at("ankle_spring_joint_right"),
+                            vel_map.at("ankle_spring_joint_rightdot"), 0))
+    {
 
   // Read-in the parameters
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
-  auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
-
-  const std::string urdf_w_spr = "examples/Cassie/urdf/cassie_v2.urdf";
-  const std::string urdf_wo_spr = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-
-  // Build Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
-  plant_w_spr.set_name("plant_w_spr");
-  plant_wo_spr.set_name("plant_wo_spr");
-
-  auto instance_w_spr =
-      AddCassieMultibody(&plant_w_spr, nullptr, true, urdf_w_spr, true, false);
-
-  drake::multibody::ModelInstanceIndex instance_wo_spr;
-  if (FLAGS_use_spring_model) {
-    instance_wo_spr = AddCassieMultibody(&plant_wo_spr, nullptr, true, urdf_w_spr, true, false);
-  } else {
-    instance_wo_spr = AddCassieMultibody(&plant_wo_spr, nullptr, true, urdf_wo_spr, false, false);
-  }
-  if (FLAGS_add_camera_inertia) {
-    auto camera_inertia_about_com =
-        RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
-            0.04, 0.04, 0.04, 0, 0, 0);
-    auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
-        1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
-    plant_w_spr.AddRigidBody("camera_inertia", instance_w_spr, camera_inertia);
-    plant_wo_spr.AddRigidBody("camera_inertia", instance_wo_spr, camera_inertia);
-    plant_w_spr.WeldFrames(
-        plant_w_spr.GetBodyByName("pelvis").body_frame(),
-        plant_w_spr.GetBodyByName("camera_inertia").body_frame()
-    );
-    plant_wo_spr.WeldFrames(
-        plant_wo_spr.GetBodyByName("pelvis").body_frame(),
-        plant_wo_spr.GetBodyByName("camera_inertia").body_frame()
-    );
-  }
-  plant_w_spr.Finalize();
-  plant_wo_spr.Finalize();
-
-  auto context_w_spr = plant_w_spr.CreateDefaultContext();
-  auto context_wo_spr = plant_wo_spr.CreateDefaultContext();
+  auto gains = LoadYamlFile<OSCWalkingGainsALIP>(osc_gains_filename);
+  auto gains_mpc = LoadYamlFile<AlipMINLPGainsImport>(mpc_gains_filename);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
-
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
-
-  // Get contact frames and position
-  auto left_toe = LeftToeFront(plant_wo_spr);
-  auto left_heel = LeftToeRear(plant_wo_spr);
-  auto right_toe = RightToeFront(plant_wo_spr);
-  auto right_heel = RightToeRear(plant_wo_spr);
-
-  // Get body frames and points
-  Vector3d center_of_pressure = left_heel.first +
-      gains.contact_point_pos * (left_toe.first - left_heel.first);
-  auto left_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      center_of_pressure, plant_w_spr.GetFrameByName("toe_left"));
-  auto right_toe_mid = std::pair<const Vector3d, const Frame<double>&>(
-      center_of_pressure, plant_w_spr.GetFrameByName("toe_right"));
-  auto left_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
-      Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_left"));
-  auto right_toe_origin = std::pair<const Vector3d, const Frame<double>&>(
-      Vector3d::Zero(), plant_w_spr.GetFrameByName("toe_right"));
+  auto plant_context = plant.CreateDefaultContext();
 
   // Create state receiver.
-  auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
+      plant, plant_context.get(), gains.vel_scale_rot,
+      gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
 
   // Create the MPC receiver.
   auto mpc_subscriber = builder.AddSystem(
@@ -214,13 +136,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*mpc_subscriber, *mpc_receiver);
 
 
-  // Create command sender.
-  auto command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          FLAGS_channel_u, &lcm_local, TriggerTypeSet({TriggerType::kForced})));
-  auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
-
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
@@ -229,13 +144,7 @@ int DoMain(int argc, char* argv[]) {
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_cassie_out>(
           FLAGS_cassie_out_channel, &lcm_local));
-  auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr,
-      context_w_spr.get(),
-      gains.vel_scale_rot,
-      gains.vel_scale_trans_sagital,
-      gains.vel_scale_trans_lateral,
-      1.0);
+
 
 
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);

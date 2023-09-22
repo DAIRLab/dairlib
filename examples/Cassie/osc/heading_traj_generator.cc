@@ -102,6 +102,12 @@ void HeadingTrajGenerator::CalcHeadingTraj(
   Quaterniond relative_quat(cos(des_delta_yaw / 2), 0, 0,
                             sin(des_delta_yaw / 2));
   Quaterniond final_quat = relative_quat * init_quat;
+
+  double pitch = -0.4;
+  Quaterniond relative_quat2(cos(pitch / 2), 0, sin(pitch / 2), 0);
+  final_quat = relative_quat2 * final_quat;
+
+
   Eigen::Vector4d pelvis_rotation_f;
   pelvis_rotation_f << final_quat.w(), final_quat.vec();
 

@@ -8,6 +8,7 @@
 #include "multibody/visualization_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "drake/multibody/parsing/parser.h"
 
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/analysis/simulator.h"
@@ -107,9 +108,17 @@ int do_main(int argc, char* argv[]) {
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
+
+  auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
+  std::string full_name = FindResourceOrThrow("multibody/ball.urdf");
+
   // *******Add COM visualization**********
-  auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
+  //    auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
   if (FLAGS_com) {
+    drake::multibody::Parser parser(ball_plant.get(), &scene_graph);
+    parser.AddModelFromFile(full_name);
+    ball_plant->Finalize();
+
     // connect
     auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
         state_receiver->get_output_port(0).size(), 0, plant.num_positions());

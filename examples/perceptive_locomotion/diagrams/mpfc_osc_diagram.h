@@ -24,6 +24,7 @@
 #include "systems/controllers/osc/trans_space_tracking_data.h"
 
 // misc
+#include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
 #include "systems/system_utils.h"
 
 // drake
@@ -64,6 +65,7 @@ using systems::controllers::TransTaskSpaceTrackingData;
 using multibody::FixedJointEvaluator;
 using multibody::WorldYawViewFrame;
 using multibody::DistanceEvaluator;
+using multibody::WorldPointEvaluator;
 using multibody::KinematicEvaluatorSet;
 using multibody::MakeNameToVelocitiesMap;
 using multibody::MakeNameToPositionsMap;
@@ -78,11 +80,14 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
                  const string& mpc_gains_filename,
                  const string& osqp_settings_filename);
 
+  drake::multibody::MultibodyPlant<double>& get_plant() {
+    return *plant_;
+  }
+
  private:
 
   drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context;
-
 
   std::pair<const Vector3d, const Frame<double>&> left_toe;
   std::pair<const Vector3d, const Frame<double>&> left_heel;
@@ -120,24 +125,24 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   // Swing toe joint trajectory
   map<string, int> pos_map;
   map<string, int> vel_map;
-  vectorpair<const Vector3d, const Frame<double>&>> left_foot_points;
-  vectorpair<const Vector3d, const Frame<double>&>> right_foot_points;
+  vector<pair<const Vector3d, const Frame<double>&>> left_foot_points;
+  vector<pair<const Vector3d, const Frame<double>&>> right_foot_points;
 
 
   // Constraints in OSC
   KinematicEvaluatorSet<double> evaluators;
   DistanceEvaluator<double> left_loop;
   DistanceEvaluator<double> right_loop;
-  std::unique_ptr<FixedJointEvaluator<double>> left_fixed_knee_spring;
-  std::unique_ptr<FixedJointEvaluator<double>> right_fixed_knee_spring;
-  std::unique_ptr<FixedJointEvaluator<double>> left_fixed_ankle_spring;
-  std::unique_ptr<FixedJointEvaluator<double>> right_fixed_ankle_spring;
+  FixedJointEvaluator<double> left_fixed_knee_spring;
+  FixedJointEvaluator<double> right_fixed_knee_spring;
+  FixedJointEvaluator<double> left_fixed_ankle_spring;
+  FixedJointEvaluator<double> right_fixed_ankle_spring;
 
   WorldYawViewFrame<double> view_frame;
-  WorldPointEvaluator left_toe_evaluator;
-  WorldPointEvaluator left_heel_evaluator;
-  WorldPointEvaluator right_toe_evaluator;
-  WorldPointEvaluator right_heel_evaluator;
+  WorldPointEvaluator<double> left_toe_evaluator;
+  WorldPointEvaluator<double> left_heel_evaluator;
+  WorldPointEvaluator<double> right_toe_evaluator;
+  WorldPointEvaluator<double> right_heel_evaluator;
 
   // gain multipliers
   std::shared_ptr<PiecewisePolynomial<double>> swing_ft_gain_multiplier_gain_multiplier;

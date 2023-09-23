@@ -31,3 +31,12 @@ cc_library(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "mpfc_osc_diagram_test",
+    srcs = ["test/mpfc_osc_diagram_test.cc"],
+    deps = [
+        ":mpfc_osc_diagram",
+        "//examples/Cassie:cassie_utils",
+    ],
+)

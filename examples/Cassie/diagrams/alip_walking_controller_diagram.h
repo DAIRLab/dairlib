@@ -6,7 +6,7 @@
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/multibody/plant/multibody_plant.h>
 
-#include "examples/Cassie/osc/osc_walking_gains.h"
+#include "examples/Cassie/osc/osc_walking_gains_alip.h"
 #include "multibody/kinematic/distance_evaluator.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -139,6 +139,8 @@ class AlipWalkingControllerDiagram final
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples;
   std::shared_ptr<drake::trajectories::PiecewisePolynomial<double>>
       swing_ft_accel_gain_multiplier_gain_multiplier;
+  std::shared_ptr<multibody::WorldYawViewFrame<double>> pelvis_view_frame;
+  OSCWalkingGainsALIP gains;
 
   multibody::KinematicEvaluatorSet<double> evaluators;
 
@@ -147,14 +149,14 @@ class AlipWalkingControllerDiagram final
   multibody::FixedJointEvaluator<double> left_fixed_ankle_spring;
   multibody::FixedJointEvaluator<double> right_fixed_ankle_spring;
 
+  std::unique_ptr<TransTaskSpaceTrackingData> swing_foot_data;
+  std::unique_ptr<ComTrackingData> com_data;
+  std::unique_ptr<ComTrackingData> center_of_mass_traj;
   std::unique_ptr<TransTaskSpaceTrackingData> pelvis_traj;
-
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_balance_traj;
   std::unique_ptr<RotTaskSpaceTrackingData> pelvis_heading_traj;
-
   std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_left;
   std::unique_ptr<JointSpaceTrackingData> swing_toe_traj_right;
-
   std::unique_ptr<JointSpaceTrackingData> swing_hip_yaw_traj;
 
   const int state_input_port_index_ = 0;

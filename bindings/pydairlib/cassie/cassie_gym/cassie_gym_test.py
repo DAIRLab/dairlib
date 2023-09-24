@@ -23,7 +23,6 @@ def main():
         controller_plant, True, osc_gains, osqp_settings)
     gym_env = DrakeCassieGym(visualize=True)
     gym_env.make(controller)
-    import pdb; pdb.set_trace()
     while 1:
         gym_env.advance_to(5.0)
         gym_env.free_sim()

@@ -125,7 +125,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   DiagramBuilder<double> builder;
   plant_context = plant.CreateDefaultContext();
 
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(
+  gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(
       FindResourceOrThrow(osc_gains_filename));
 
   /*** FSM and contact mode configuration ***/
@@ -273,7 +273,6 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   osc->SetContactFriction(gains.mu);
 
   // Add contact points (The position doesn't matter. It's not used in OSC)
-  const auto& pelvis = plant.GetBodyByName("pelvis");
   osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
   osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
   osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
@@ -299,9 +298,6 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
   }
 
   /*** Tracking Datas ***/
-  std::unique_ptr<TransTaskSpaceTrackingData> swing_foot_data;
-  std::unique_ptr<ComTrackingData> com_data;
-  std::unique_ptr<ComTrackingData> center_of_mass_traj;
   std::unique_ptr<RelativeTranslationTrackingData> swing_ft_traj_local;
   swing_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
@@ -318,7 +314,7 @@ AlipWalkingControllerDiagram::AlipWalkingControllerDiagram(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant, plant, swing_foot_data.get(),
       com_data.get());
-  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
+  pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
   swing_ft_traj_local->SetTimeVaryingPDGainMultiplier(

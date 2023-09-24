@@ -172,6 +172,8 @@ class OscTrackingData {
   const drake::multibody::BodyFrame<double>& world_w_spr_;
   const drake::multibody::BodyFrame<double>& world_wo_spr_;
 
+  // Trajectory name
+  std::string name_;
  private:
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
                      double t, double t_since_state_switch);
@@ -198,8 +200,6 @@ class OscTrackingData {
   // correctly.
   virtual void CheckDerivedOscTrackingData() = 0;
 
-  // Trajectory name
-  std::string name_;
 };
 
 }  // namespace controllers

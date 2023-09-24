@@ -118,7 +118,6 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   // Create state receiver.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant, plant_context.get(), gains.vel_scale_rot,
       gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
@@ -434,12 +433,15 @@ MpfcOscDiagram::MpfcOscDiagram(
   builder.Connect(alip_input_receiver->get_output_port(),
                   osc->get_feedforward_input_port());
 
-  builder.Connect(osc->get_output_port(0), command_sender->get_input_port(0));
+  input_port_state_ = builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
+  input_port_alip_mpc_output_ = builder.ExportInput(mpc_receiver->get_input_port(), "mpc");
+  input_port_radio_ = builder.ExportInput(high_level_command->get_input_port_radio(), "radio");
+  output_port_u_cmd_ = builder.ExportOutput(osc->get_output_port_osc_command(), "u");
 
   // Create the diagram
-  auto owned_diagram = builder.Build();
-  owned_diagram->set_name("osc controller for alip mpfc");
-  DrawAndSaveDiagramGraph(*owned_diagram, "../mpfc_osc_diagram");
+  builder.BuildInto(this);
+  this->set_name("osc controller for alip mpfc");
+  DrawAndSaveDiagramGraph(*this, "../mpfc_osc_diagram");
 }
 
 }  // namespace dairlib

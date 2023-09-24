@@ -166,6 +166,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_alip_mpc_output_;
   drake::systems::InputPortIndex input_port_radio_;
 
+  drake::systems::OutputPortIndex output_port_u_cmd_;
 };
 
 }

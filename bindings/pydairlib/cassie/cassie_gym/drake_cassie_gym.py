@@ -16,11 +16,11 @@ from pydairlib.multibody import *
 from pydairlib.systems.primitives import *
 from pydairlib.cassie.simulators import CassieVisionSimDiagram
 from pydairlib.cassie.cassie_gym.cassie_env_state import CassieEnvState
-from pydairlib.cassie.cassie_gym.config_types import StepnetDataClass, \
+from pydairlib.cassie.cassie_gym.config_types import CassieGymDataClass, \
     DomainRandomizationBounds, CassieGymParams
 
 
-class FixedVectorInputPort(StepnetDataClass):
+class FixedVectorInputPort(CassieGymDataClass):
     input_port: InputPort = None
     context: Context = None
     value: np.ndarray = None
@@ -88,15 +88,15 @@ class DrakeCassieGym:
         #     self.builder.Connect(self.image_array_sender.get_output_port(),
         #                          self.image_array_publisher.get_input_port())
 
-        self.builder.Connect(self.controller.get_control_output_port(),
+        self.builder.Connect(self.controller.get_output_port_control(),
                              self.cassie_sim.get_actuation_input_port())
         self.builder.Connect(self.cassie_sim.get_state_output_port(),
-                             self.controller.get_state_input_port())
+                             self.controller.get_input_port_state())
 
         self.diagram = self.builder.Build()
         self.drake_simulator = Simulator(self.diagram)
         self.set_context_members(self.drake_simulator.get_mutable_context())
-        self.controller_output_port = self.controller.get_torque_output_port()
+        self.controller_output_port = self.controller.get_output_port_torque()
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         self.reset()
         self.initialized = True
@@ -163,7 +163,7 @@ class DrakeCassieGym:
         self.cassie_sim.get_radio_input_port().FixValue(
             context=self.cassie_sim_context,
             value=radio)
-        self.controller.get_radio_input_port().FixValue(
+        self.controller.get_input_port_radio().FixValue(
             context=self.controller_context,
             value=radio)
 

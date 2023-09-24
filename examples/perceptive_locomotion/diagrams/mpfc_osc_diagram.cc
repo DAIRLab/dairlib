@@ -443,6 +443,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   input_port_footstep_command_ = builder.ExportInput(footstep_passthrough->get_input_port_footstep(), "footstep");
   input_port_radio_ = builder.ExportInput(high_level_command->get_input_port_radio(), "radio");
   output_port_u_cmd_ = builder.ExportOutput(osc->get_output_port_osc_command(), "u");
+  output_port_fsm_ = builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");
 
   // Create the diagram
   builder.BuildInto(this);

@@ -11,12 +11,12 @@ def default_array(default):
     return Field(default_factory=lambda: np.array(default))
 
 
-class StepnetDataClass(BaseModel):
+class CassieGymDataClass(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
 
-class DomainRandomizationBounds(StepnetDataClass):
+class DomainRandomizationBounds(CassieGymDataClass):
     normal: np.ndarray = default_array([0.1, 0.1, 0.0])
     map_yaw: np.ndarray = default_array([-np.pi, np.pi])
     mu: np.ndarray = default_array([0.4, 1.0])
@@ -31,7 +31,7 @@ class DomainRandomizationBounds(StepnetDataClass):
     ])
 
 
-class CassieGymParams(StepnetDataClass):
+class CassieGymParams(CassieGymDataClass):
     """
         Container class for the parameters which could
         be randomized for simulation
@@ -99,7 +99,7 @@ class CassieGymParams(StepnetDataClass):
         return CassieGymParams(x_init=x)
 
 
-class DepthCameraInfo(StepnetDataClass):
+class DepthCameraInfo(CassieGymDataClass):
     width: int = 640
     height: int = 480
     focal_x: float = 390.743
@@ -122,7 +122,7 @@ class DepthCameraInfo(StepnetDataClass):
                X_CP.inverse().GetAsMatrix34()
 
 
-class DataGeneratorParams(StepnetDataClass):
+class DataGeneratorParams(CassieGymDataClass):
     """ Depth Camera Info """
     depth_camera_info: DepthCameraInfo = DepthCameraInfo()
 
@@ -147,7 +147,7 @@ class DataGeneratorParams(StepnetDataClass):
     max_error: float = 1.0
 
 
-class DataCollectionParams(StepnetDataClass):
+class DataCollectionParams(CassieGymDataClass):
     """ Dataset size"""
     nmaps: int
     nsteps: int

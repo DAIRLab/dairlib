@@ -14,11 +14,11 @@ load(
 py_binary(
     name = "make_alip_miqp_simulation_figures",
     srcs = ["make_alip_miqp_simulation_figures.py"],
-    deps = [":visualize_lcm_log"],
     data = [
         "//examples/Cassie:cassie_urdf",
-        "@lcm//:lcm-python"
-    ]
+        "@lcm//:lcm-python",
+    ],
+    deps = [":visualize_lcm_log"],
 )
 
 py_binary(
@@ -55,17 +55,17 @@ py_binary(
     name = "visualize_lcm_log",
     srcs = ["visualize_lcm_log.py"],
     data = [
-            "//examples/Cassie:cassie_urdf",
-            "@lcm//:lcm-python",
+        "//examples/Cassie:cassie_urdf",
+        "@lcm//:lcm-python",
     ],
     deps = [
-        "//bindings/pydairlib/analysis:process_lcm_log",
-        "//bindings/pydairlib/analysis:mbp_plotting_utils",
-        "//lcmtypes:lcmtypes_robot_py",
         "//bindings/pydairlib/analysis:cassie_plotting_utils",
-        "//bindings/pydairlib/multibody",
-        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:process_lcm_log",
         "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/multibody",
+        "//lcmtypes:lcmtypes_robot_py",
     ],
 )
 
@@ -87,6 +87,7 @@ py_library(
 pybind_py_library(
     name = "controllers_py",
     cc_deps = [
+        "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
         "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
         "//systems/controllers/footstep_planning:alip_miqp",

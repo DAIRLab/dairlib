@@ -1,7 +1,7 @@
 import cProfile
 import numpy as np
 
-from drake_cassie_gym import DrakeCassieGym
+from pydairlib.cassie.cassie_gym.drake_cassie_gym import DrakeCassieGym
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
 from pydairlib.cassie.controllers import AlipWalkingControllerFactory
@@ -17,12 +17,13 @@ def main():
 
     radio = np.zeros(18)
     controller_plant = MultibodyPlant(8e-5)
-    AddCassieMultibody(controller_plant, None, True, urdf, False, False)
+    AddCassieMultibody(controller_plant, None, True, urdf, False, False, True)
     controller_plant.Finalize()
     controller = AlipWalkingControllerFactory(
         controller_plant, True, osc_gains, osqp_settings)
     gym_env = DrakeCassieGym(visualize=True)
     gym_env.make(controller)
+    import pdb; pdb.set_trace()
     while 1:
         gym_env.advance_to(5.0)
         gym_env.free_sim()

@@ -41,8 +41,8 @@ int DoMain(int argc, char* argv[]){
   auto& plant = sim_diagram->get_plant();
 
   builder.Connect(sim_diagram->get_state_output_port(),
-                  controller_diagram->get_state_input_port());
-  builder.Connect(controller_diagram->get_control_output_port(),
+                  controller_diagram->get_input_port_state());
+  builder.Connect(controller_diagram->get_output_port_control(),
                   sim_diagram->get_actuation_input_port());
   auto diagram = builder.Build();
   Simulator<double> sim(*diagram);
@@ -62,7 +62,7 @@ int DoMain(int argc, char* argv[]){
 
   plant.SetPositionsAndVelocities(&plant_context, x_init);
   sim_diagram->get_radio_input_port().FixValue(&sim_diagram_context, radio);
-  controller_diagram->get_radio_input_port().FixValue(&controller_diagram_context, radio);
+  controller_diagram->get_input_port_radio().FixValue(&controller_diagram_context, radio);
 
   std::cout << "Initialize simulation\n";
   sim.Initialize();

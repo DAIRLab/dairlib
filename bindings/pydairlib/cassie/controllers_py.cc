@@ -30,22 +30,22 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_plant", &AlipWalkingControllerDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_input_port_state",
-           &AlipWalkingControllerDiagram::get_state_input_port,
+           &AlipWalkingControllerDiagram::get_input_port_state,
            py_rvp::reference_internal)
-      .def("get_radio_input_port",
-           &AlipWalkingControllerDiagram::get_radio_input_port,
+      .def("get_input_port_radio",
+           &AlipWalkingControllerDiagram::get_input_port_radio,
            py_rvp::reference_internal)
-      .def("get_control_output_port",
-           &AlipWalkingControllerDiagram::get_control_output_port,
+      .def("get_output_port_control",
+           &AlipWalkingControllerDiagram::get_output_port_control,
            py_rvp::reference_internal)
-      .def("get_torque_output_port",
-           &AlipWalkingControllerDiagram::get_torque_output_port,
+      .def("get_output_port_torque",
+           &AlipWalkingControllerDiagram::get_output_port_torque,
            py_rvp::reference_internal)
-      .def("get_controller_failure_output_port",
-           &AlipWalkingControllerDiagram::get_controller_failure_output_port,
+      .def("get_output_port_controller_failure",
+           &AlipWalkingControllerDiagram::get_output_port_controller_failure,
            py_rvp::reference_internal)
       .def("get_output_port_fsm",
-          &AlipWalkingControllerDiagram::get_fsm_output_port,
+          &AlipWalkingControllerDiagram::get_output_port_fsm,
           py_rvp::reference_internal);
 
   py::class_<FootstepTargetControllerDiagram, drake::systems::Diagram<double>>(

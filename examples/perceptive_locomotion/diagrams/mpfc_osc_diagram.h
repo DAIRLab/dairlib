@@ -53,6 +53,8 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using drake::multibody::Frame;
+using drake::systems::InputPort;
+using drake::systems::OutputPort;
 using drake::trajectories::PiecewisePolynomial;
 
 
@@ -80,6 +82,21 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
                  const string& mpc_gains_filename,
                  const string& osqp_settings_filename);
 
+  const InputPort<double>& get_input_port_state() const {
+    return get_input_port(input_port_state_);
+  }
+  const InputPort<double>& get_input_port_footstep_command() const {
+    return get_input_port(input_port_footstep_command_);
+  }
+  const InputPort<double>& get_input_port_radio() const {
+    return get_input_port(input_port_radio_);
+  }
+  const OutputPort<double>& get_output_port_u_cmd() const {
+    return get_output_port(output_port_u_cmd_);
+  }
+  const OutputPort<double>& get_output_port_fsm() const {
+    return get_output_port(output_port_fsm_);
+  }
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }

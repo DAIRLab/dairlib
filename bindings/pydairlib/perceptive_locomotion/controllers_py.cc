@@ -7,6 +7,7 @@
 #include "systems/controllers/footstep_planning/alip_multiqp.h"
 #include "systems/controllers/footstep_planning/alip_utils.h"
 #include "systems/controllers/minimum_snap_trajectory_generation.h"
+#include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 
 namespace py = pybind11;
 
@@ -16,6 +17,7 @@ namespace pydairlib{
 using systems::controllers::AlipMultiQP;
 using systems::controllers::alip_utils::Stance;
 using systems::controllers::alip_utils::ResetDiscretization;
+using perceptive_locomotion::MpfcOscDiagram;
 
 PYBIND11_MODULE(controllers, m) {
   m.doc() = "Binding generic controllers";
@@ -67,6 +69,29 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_solution", &AlipMultiQP::get_solution, py_rvp::reference_internal)
       .def("nmodes", &AlipMultiQP::nmodes)
       .def("nknots", &AlipMultiQP::nknots);
+
+  py::class_<MpfcOscDiagram>(
+      m, "MpfcOscDiagram")
+      .def(py::init<drake::multibody::MultibodyPlant<double>&,
+           const std::string&, const std::string&, const std::string&>(),
+           py::arg("plant"), py::arg("osc_gains_filename"),
+           py::arg("mpc_gains_filename"), py::arg("oscp_settings_filename"))
+      .def("get_input_port_state",
+           &MpfcOscDiagram::get_input_port_state,
+           py_rvp::reference_internal)
+      .def("get_input_port_footstep_command",
+           &MpfcOscDiagram::get_input_port_footstep_command,
+           py_rvp::reference_internal)
+      .def("get_input_port_radio",
+           &MpfcOscDiagram::get_input_port_radio,
+           py_rvp::reference_internal)
+      .def("get_output_port_u_cmd",
+           &MpfcOscDiagram::get_output_port_u_cmd,
+           py_rvp::reference_internal)
+      .def("get_output_port_fsm",
+           &MpfcOscDiagram::get_output_port_fsm,
+           py_rvp::reference_internal)
+      .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal);
 
   m.def("MakeMinSnapTrajFromWaypoints",
         &minsnap::MakeMinSnapTrajFromWaypoints, py::arg("waypoints"),

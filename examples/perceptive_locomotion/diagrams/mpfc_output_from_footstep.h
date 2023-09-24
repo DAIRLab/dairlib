@@ -19,6 +19,10 @@ private:
   void CalcOutput(const drake::systems::Context<double>& context,
                   lcmt_alip_mpc_output* output) const;
 
+  const int left_stance_state_ = 0;
+  const int right_stance_state_ = 1;
+  const int post_left_double_support_state_ = 3;
+  const int post_right_double_support_state_ = 4;
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_footstep_;
 

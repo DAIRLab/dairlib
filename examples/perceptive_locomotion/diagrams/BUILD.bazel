@@ -37,6 +37,7 @@ cc_library(
     srcs = ["mpfc_output_from_footstep.cc"],
     hdrs = ["mpfc_output_from_footstep.h"],
     deps = [
+        "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

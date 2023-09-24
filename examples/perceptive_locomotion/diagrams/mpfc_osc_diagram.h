@@ -163,10 +163,11 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   std::unique_ptr<JointSpaceTrackingData> swing_toe_data_right;
 
   drake::systems::InputPortIndex input_port_state_;
-  drake::systems::InputPortIndex input_port_alip_mpc_output_;
+  drake::systems::InputPortIndex input_port_footstep_command_;
   drake::systems::InputPortIndex input_port_radio_;
 
   drake::systems::OutputPortIndex output_port_u_cmd_;
+  drake::systems::OutputPortIndex output_port_fsm_;
 };
 
 }

@@ -7,6 +7,7 @@ cc_library(
     srcs = ["mpfc_osc_diagram.cc"],
     hdrs = ["mpfc_osc_diagram.h"],
     deps = [
+        ":mpfc_output_from_footstep",
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",

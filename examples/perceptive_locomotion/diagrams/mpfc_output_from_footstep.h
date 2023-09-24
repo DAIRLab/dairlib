@@ -13,6 +13,13 @@ class MpfcOutputFromFootstep : public drake::systems::LeafSystem<double> {
 
   MpfcOutputFromFootstep(double T_ss, double T_ds,
                          const drake::multibody::MultibodyPlant<double>& plant);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return get_input_port(input_port_state_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_footstep() const {
+    return get_input_port(input_port_footstep_);
+  }
 private:
 
   lcmt_fsm_info MakeFsmInfo(double t) const;

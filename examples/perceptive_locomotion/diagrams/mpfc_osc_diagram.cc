@@ -6,6 +6,7 @@
 // MPC related
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
+#include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
@@ -123,6 +124,11 @@ MpfcOscDiagram::MpfcOscDiagram(
       gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
 
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
+  auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
+      gains_mpc.ss_time, gains_mpc.ds_time, plant);
+  builder.Connect(state_receiver->get_output_port(0),
+                  footstep_passthrough->get_input_port_state());
+  builder.Connect(*footstep_passthrough, *mpc_receiver);
 
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_input_port_state());
@@ -434,7 +440,7 @@ MpfcOscDiagram::MpfcOscDiagram(
                   osc->get_feedforward_input_port());
 
   input_port_state_ = builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
-  input_port_alip_mpc_output_ = builder.ExportInput(mpc_receiver->get_input_port(), "mpc");
+  input_port_footstep_command_ = builder.ExportInput(footstep_passthrough->get_input_port_footstep(), "footstep");
   input_port_radio_ = builder.ExportInput(high_level_command->get_input_port_radio(), "radio");
   output_port_u_cmd_ = builder.ExportOutput(osc->get_output_port_osc_command(), "u");
 

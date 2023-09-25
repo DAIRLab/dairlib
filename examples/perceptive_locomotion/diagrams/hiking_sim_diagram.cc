@@ -3,8 +3,6 @@
 #include <memory>
 #include <cmath>
 
-#include <gflags/gflags.h>
-
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"

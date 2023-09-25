@@ -34,7 +34,6 @@ void SigintHandler(int sig) {
 #endif
 
 #include "drake/lcm/drake_lcm.h"
-#include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/plant/contact_results_to_lcm.h"
 #include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
@@ -151,12 +150,8 @@ int do_main(int argc, char* argv[]) {
                           drake::geometry::MakeRenderEngineVtk(
                           drake::geometry::RenderEngineVtkParams()));
 
-  double camera_pitch = - 74 * M_PI / 180.0;
-  const auto camera_position = Vector3d(0.175, 0, 0.15);
-
   const auto cam_transform = camera::ReadCameraPoseFromYaml(FLAGS_camera_calib_yaml);
-//      RigidTransformd(
-//          camera::MakeXZAlignedCameraRotation(camera_pitch), camera_position);
+
   plant.Finalize();
 
   auto context = plant.CreateDefaultContext();

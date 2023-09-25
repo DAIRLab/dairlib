@@ -29,7 +29,26 @@ cc_library(
         "//systems/primitives",
         "//systems/primitives:fsm_lcm_systems",
         "@drake//:drake_shared_library",
-        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "hiking_sim_diagram",
+    srcs = ["hiking_sim_diagram.cc"],
+    hdrs = ["hiking_sim_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/systems:cassie_encoder",
+        "//multibody:utils",
+        "//solvers:optimization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/cameras:camera_utils",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
     ],
 )
 

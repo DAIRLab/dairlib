@@ -118,7 +118,8 @@ class DrakeCassieGym:
         self.set_context_members(
             self.drake_simulator.get_mutable_context()
         )
-        self.sim_plant.SetPositionsAndVelocities(self.plant_context, self.params.x_init)
+        self.sim_plant.SetPositionsAndVelocities(self.plant_context,
+                                                 self.params.x_init)
         self.drake_simulator.get_mutable_context().SetTime(self.start_time)
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
         u = np.zeros(10)
@@ -130,58 +131,36 @@ class DrakeCassieGym:
         return
 
     def advance_to(self, time):
-        while self.current_time < time and not self.terminated:
+        while self.current_time < time:
             self.step()
         return
 
-    def check_termination(self):
-        left_foot_pos = self.sim_plant.CalcPointsPositions(
-            context=self.plant_context,
-            frame_B=self.sim_plant.GetBodyByName("toe_left").body_frame(),
-            p_BQi=np.zeros(3).T,
-            frame_A=self.sim_plant.world_frame()
-        ).flatten()[2]
-        right_foot_pos = self.sim_plant.CalcPointsPositions(
-            context=self.plant_context,
-            frame_B=self.sim_plant.GetBodyByName("toe_right").body_frame(),
-            p_BQi=np.zeros(3).T,
-            frame_A=self.sim_plant.world_frame()
-        ).flatten()[2]
-        pelvis_z = self.cassie_state.get_fb_positions()[2]
-        return pelvis_z < 0.4 or right_foot_pos > pelvis_z - 0.3 or \
-               left_foot_pos > pelvis_z - 0.3
-
-    def step(self, radio=np.zeros(18), fixed_ports=None, time=None):
+    def step(self, radio=np.zeros(18), fixed_ports=None, dt=None):
         if not self.initialized:
-            print("Call make() before calling step() or advance()")
+            raise RuntimeError("Call make() before calling step() or advance()")
 
-        # Calculate next timestep
-        next_timestep = self.drake_simulator.get_context().get_time() + \
-                        (self.sim_dt if time is None else time)
+        next_time = self.drake_simulator.get_context().get_time() + \
+                    (self.sim_dt if dt is None else dt)
 
-        # Set simulator inputs and advance simulator
         self.cassie_sim.get_radio_input_port().FixValue(
             context=self.cassie_sim_context,
-            value=radio)
+            value=radio
+        )
         self.controller.get_input_port_radio().FixValue(
             context=self.controller_context,
-            value=radio)
-
+            value=radio
+        )
         if fixed_ports is not None:
-            for port in fixed_ports:
-                port.input_port.FixValue(
-                    context=port.context,
-                    value=port.value
-                )
-        self.drake_simulator.AdvanceTo(next_timestep)
+            for fp in fixed_ports:
+                fp.input_port.FixValue(context=fp.context, value=fp.value)
+
+        self.drake_simulator.AdvanceTo(next_time)
         self.current_time = self.drake_simulator.get_context().get_time()
 
         # Get the state
         x = self.sim_plant.GetPositionsAndVelocities(self.plant_context)
-        u = self.controller_output_port.Eval(
-            self.controller_context)[:-1]  # remove the timestamp
+        u = self.controller_output_port.Eval(self.controller_context)[:-1]
         self.cassie_state = CassieEnvState(self.current_time, x, u)
-        self.terminated = self.check_termination()
         self.prev_cassie_state = self.cassie_state
         return self.cassie_state
 

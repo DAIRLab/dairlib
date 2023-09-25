@@ -13,7 +13,7 @@ from pydrake.multibody.plant import MultibodyPlant
 def main():
     osc_gains = 'examples/Cassie/osc/osc_walking_gains_alip.yaml'
     osqp_settings = 'examples/Cassie/osc/solver_settings/osqp_options_walking.yaml'
-    urdf = 'examples/Cassie/urdf/cassie_v2.urdf'
+    urdf = 'examples/Cassie/urdf/cassie_v2_shells.urdf'
 
     radio = np.zeros(18)
     controller_plant = MultibodyPlant(8e-5)
@@ -22,7 +22,7 @@ def main():
     controller = AlipWalkingControllerFactory(
         controller_plant, True, osc_gains, osqp_settings)
     gym_env = DrakeCassieGym(visualize=True)
-    gym_env.make(controller)
+    gym_env.make(controller, urdf=urdf)
     while 1:
         gym_env.advance_to(5.0)
         gym_env.free_sim()

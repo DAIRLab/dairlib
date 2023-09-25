@@ -102,12 +102,6 @@ DEFINE_string(
 DEFINE_bool(publish_ros, false, "whether to publish state to ROS");
 DEFINE_double(ros_pub_period, 0.01, "period to publish to ROS at");
 
-DEFINE_string(channel_gps, "CASSIE_GPS_POSITION",
-              "lcm channel for spoofing a GPS signal giving the position of "
-              "a receiver on Cassie");
-
-DEFINE_bool(use_gps, false, "use gps measuement in EKF");
-
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
@@ -339,12 +333,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
 
-  if (FLAGS_use_gps) {
-    auto gps_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<lcmt_gps_signal>(FLAGS_channel_gps, lcm));
-    builder.Connect(gps_sub->get_output_port(),
-                    state_estimator->get_gps_input_port());
-  }
 
 #ifdef DAIR_ROS_ON
   if (FLAGS_publish_ros){

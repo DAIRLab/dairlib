@@ -9,7 +9,6 @@
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
 #include "dairlib/lcmt_contact.hpp"
-#include "dairlib/lcmt_gps_signal.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -67,12 +66,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       bool test_with_ground_truth_state = false,
       bool print_info_to_terminal = false, int hardware_test_mode = -1,
       double contact_force_threshold = 60);
-
-  // (testing) accept a gps signal (can also be from properly initialized VIO)
-  // as an additional EKF measurement
-  const drake::systems::InputPort<double>& get_gps_input_port() const {
-    return this->get_input_port(gps_input_port_);
-  }
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
@@ -192,7 +185,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // Input/output port indices
   drake::systems::InputPortIndex cassie_out_input_port_;
   drake::systems::InputPortIndex state_input_port_;
-  drake::systems::InputPortIndex gps_input_port_;
   drake::systems::OutputPortIndex estimated_state_output_port_;
   drake::systems::OutputPortIndex contact_output_port_;
   drake::systems::OutputPortIndex contact_forces_output_port_;
@@ -203,7 +195,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // A state which stores previous timestamp
   drake::systems::DiscreteStateIndex time_idx_;
   // States related to EKF
-  drake::systems::DiscreteStateIndex prev_gps_time_idx_;
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;

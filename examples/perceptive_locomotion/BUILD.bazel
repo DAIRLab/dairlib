@@ -22,10 +22,10 @@ cc_binary(
         "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/filters:floating_base_velocity_filter",
         "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
         "//systems/controllers/footstep_planning:flat_terrain_foothold_source",
         "//systems/controllers/footstep_planning:footstep_lcm_systems",
+        "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives:fsm_lcm_systems",
         "@drake//:drake_shared_library",
@@ -33,8 +33,8 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//systems/ros:dairlib_ros",
                 "//examples/perceptive_locomotion/systems:stance_foot_ros_sender",
+                "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],
         },
@@ -138,10 +138,9 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/simulation:gps_receiver",
+        "//systems/cameras:camera_utils",
         "//systems/framework:vector",
         "//systems/primitives",
-        "//systems/cameras:camera_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ] + select(
@@ -179,15 +178,5 @@ cc_binary(
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-py_binary(
-    name = "publish_vio",
-    srcs = ["publish_vio.py"],
-    data = ["@lcm//:lcm-python"],
-    deps = [
-        "//bindings/pydairlib/lcm",
-        "//lcmtypes:lcmtypes_robot_py",
     ],
 )

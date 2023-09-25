@@ -16,7 +16,6 @@
 #include "systems/cameras/camera_utils.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "systems/simulation/gps_receiver.h"
 
 
 #ifdef DAIR_ROS_ON
@@ -56,7 +55,6 @@ using camera::DrakeToRosPointCloud;
 #endif
 
 using systems::SubvectorPassThrough;
-using systems::simulation::GpsReceiver;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
@@ -119,9 +117,6 @@ DEFINE_string(camera_calib_yaml,
               "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
               "yaml with camera calib");
 
-DEFINE_string(channel_gps,
-              "CASSIE_GPS_POSITION", "lcm channel for simulated gps measurement");
-
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -179,12 +174,6 @@ int do_main(int argc, char* argv[]) {
           "CASSIE_STATE_SIMULATION", lcm, 1.0 / FLAGS_publish_rate));
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
       plant, FLAGS_publish_efforts);
-
-  Vector3d p_GB(0.1, 0, 0);
-  auto gps = builder.AddSystem<GpsReceiver>(
-      plant, context.get(), plant.GetBodyByName("pelvis"), p_GB);
-  auto gps_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_gps_signal>(FLAGS_channel_gps, lcm, 0.001));
 
   // Sensor aggregator and publisher of lcmt_cassie_out
   auto radio_sub =
@@ -309,9 +298,6 @@ int do_main(int argc, char* argv[]) {
                   sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
-  builder.Connect(plant.get_state_output_port(),
-                  gps->get_input_port());
-  builder.Connect(*gps, *gps_publisher);
 
   auto diagram = builder.Build();
   diagram->set_name(("multibody_sim"));

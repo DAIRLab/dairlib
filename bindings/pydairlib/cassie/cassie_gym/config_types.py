@@ -22,12 +22,12 @@ class DomainRandomizationBounds(CassieGymDataClass):
     mu: np.ndarray = default_array([0.4, 1.0])
     camera_position: np.ndarray = default_array([0, 0, 0])
     camera_pitch: float = 0
-    terrain_cumulative_likelihoods: np.ndarray=default_array([
-        0.60,   # Cubic
-        0.75,   # Cubic with voids
-        0.85,   # Stairs
-        0.95,   # Boxy
-        1.00    # Flat
+    terrain_cumulative_likelihoods: np.ndarray = default_array([
+        0.60,  # Cubic
+        0.75,  # Cubic with voids
+        0.85,  # Stairs
+        0.95,  # Boxy
+        1.00  # Flat
     ])
 
 
@@ -62,15 +62,15 @@ class CassieGymParams(CassieGymDataClass):
         )
         mu = np.random.uniform(low=domain.mu[0], high=domain.mu[1])
         camera_position = CassieGymParams().camera_position + \
-            np.random.uniform(
-                low=-domain.camera_position,
-                high=domain.camera_position
-            )
+                          np.random.uniform(
+                              low=-domain.camera_position,
+                              high=domain.camera_position
+                          )
         camera_pitch = CassieGymParams().camera_pitch + \
-            np.random.uniform(
-                low=-domain.camera_pitch,
-                high=domain.camera_pitch
-            )
+                       np.random.uniform(
+                           low=-domain.camera_pitch,
+                           high=domain.camera_pitch
+                       )
         terrain_type = VisionSimTerrainType.kFlat
         # terr_draw = np.random.uniform(low=0.0, high=1.0)
         # if terr_draw > domain.terrain_cumulative_likelihoods[0]:
@@ -119,7 +119,7 @@ class DepthCameraInfo(CassieGymDataClass):
     def get_pelvis_to_image_tf(self):
         X_CP = CassieVisionSimDiagram.default_camera_transform()
         return self.as_drake_camera_info().intrinsic_matrix() @ \
-               X_CP.inverse().GetAsMatrix34()
+            X_CP.inverse().GetAsMatrix34()
 
 
 class DataGeneratorParams(CassieGymDataClass):
@@ -162,7 +162,7 @@ class DataCollectionParams(CassieGymDataClass):
     target_to_map_tf: np.ndarray = None
 
     """ Depth scaling for conversion to .png  """
-    depth_scale: float = 6553.5 # (2^16 - 1) / 2
+    depth_scale: float = 6553.5  # (2^16 - 1) / 2
 
     """ Terrain and terrain parameters """
     randomization_bounds: DomainRandomizationBounds = \

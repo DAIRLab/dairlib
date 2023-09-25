@@ -1,9 +1,0 @@
-package dairlib;
-
-struct lcmt_gps_signal {
-    int64_t mtime;
-    string parent_body_name;
-    double receiver_pos_in_world[3];
-    double receiver_pos_in_parent_body[3];
-    double cov;
-}

@@ -27,6 +27,10 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+# enable platform specific build configurations
+common --enable_platform_specific_config
+build:linux --force_pic
+
 # Default to an optimized build.
 build -c opt
 
@@ -37,9 +41,12 @@ build --strip=never
 test --test_output=errors
 test --test_summary=terse
 
-# Use C++14.
-build --cxxopt=-std=c++20
-build --host_cxxopt=-std=c++20
+# Use appropriate C++ version
+build:linux --cxxopt=-std=c++17
+build:linux --host_cxxopt=-std=c++17
+
+build:macos --cxxopt=-std=c++20
+build:maocs --host_cxxopt=-std=c++20
 
 # https://github.com/bazelbuild/bazel/issues/1164
 build --action_env=CCACHE_DISABLE=1
@@ -51,7 +58,8 @@ build --action_env=LD_LIBRARY_PATH=
 # customizations somehow.
 
 # build with snopt
-build --define=WITH_SNOPT=OFF
+build:linux --define=WITH_SNOPT=ON
+build:macos --define=WITH_SNOPT=OFF
 build --define=WITH_MOSEK=OFF
 build --define=WITH_GUROBI=ON
 

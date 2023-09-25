@@ -91,16 +91,18 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   const InputPort<double>& get_input_port_radio() const {
     return get_input_port(input_port_radio_);
   }
-  const OutputPort<double>& get_output_port_u_cmd() const {
+  const OutputPort<double>& get_output_port_actuation() const {
     return get_output_port(output_port_u_cmd_);
   }
   const OutputPort<double>& get_output_port_fsm() const {
     return get_output_port(output_port_fsm_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_alip() const {
+    return get_output_port(output_port_alip_);
+  }
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
-
  private:
 
   drake::multibody::MultibodyPlant<double>* plant_;
@@ -185,6 +187,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
   drake::systems::OutputPortIndex output_port_u_cmd_;
   drake::systems::OutputPortIndex output_port_fsm_;
+  drake::systems::OutputPortIndex output_port_alip_;
 };
 
 }

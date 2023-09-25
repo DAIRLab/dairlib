@@ -10,6 +10,7 @@
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
+#include "systems/controllers/footstep_planning/alip_state_calculator.h"
 
 // misc
 #include "systems/robot_lcm_systems.h"
@@ -53,6 +54,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::alip_utils::AlipStateCalculator;
 
 using multibody::FixedJointEvaluator;
 using multibody::WorldPointEvaluator;
@@ -199,6 +201,24 @@ MpfcOscDiagram::MpfcOscDiagram(
       contact_points_in_each_state,
       false
   };
+
+  vector<int> post_left_post_right_ds_states =
+      {post_left_double_support_state, post_right_double_support_state};
+  vector<systems::controllers::alip_utils::PointOnFramed> left_right_contacts(
+      {left_toe_mid, right_toe_mid}
+  );
+  auto alip_calc = builder.AddSystem<AlipStateCalculator>(
+      plant,
+      plant_context.get(),
+      left_right_support_fsm_states,
+      post_left_post_right_ds_states,
+      left_right_contacts,
+      "pelvis"
+  );
+  builder.Connect(state_receiver->get_output_port(),
+                  alip_calc->get_input_port_state());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  alip_calc->get_input_port_fsm());
 
   auto mpc_interface = builder.AddSystem<AlipMPCInterfaceSystem>(
       plant, plant_context.get(), com_params, swing_params);
@@ -442,9 +462,9 @@ MpfcOscDiagram::MpfcOscDiagram(
   input_port_state_ = builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
   input_port_footstep_command_ = builder.ExportInput(footstep_passthrough->get_input_port_footstep(), "footstep");
   input_port_radio_ = builder.ExportInput(high_level_command->get_input_port_radio(), "radio");
-  output_port_u_cmd_ = builder.ExportOutput(osc->get_output_port_osc_command(), "u");
+  output_port_u_cmd_ = builder.ExportOutput(osc->get_output_port_osc_command(), "u, t");
   output_port_fsm_ = builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");
-
+  output_port_alip_ = builder.ExportOutput(alip_calc->get_output_port(), "alip");
   // Create the diagram
   builder.BuildInto(this);
   this->set_name("osc controller for alip mpfc");

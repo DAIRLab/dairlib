@@ -91,6 +91,17 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_state_calculator",
+    srcs = ["alip_state_calculator.cc"],
+    hdrs = ["alip_state_calculator.h"],
+    deps = [
+        ":alip_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "flat_terrain_foothold_source",
     srcs = ["flat_terrain_foothold_source.cc"],
     hdrs = ["flat_terrain_foothold_source.h"],

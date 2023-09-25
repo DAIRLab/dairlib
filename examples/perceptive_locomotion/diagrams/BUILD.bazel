@@ -24,6 +24,7 @@ cc_library(
         "//systems/controllers:lcm_trajectory_receiver",
         "//systems/controllers/footstep_planning:alip_mpc_interface_system",
         "//systems/controllers/footstep_planning:alip_mpc_output_reciever",
+        "//systems/controllers/footstep_planning:alip_state_calculator",
         "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
@@ -68,6 +69,7 @@ cc_binary(
     name = "mpfc_osc_diagram_test",
     srcs = ["test/mpfc_osc_diagram_test.cc"],
     deps = [
+        ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         "//examples/Cassie:cassie_utils",
     ],

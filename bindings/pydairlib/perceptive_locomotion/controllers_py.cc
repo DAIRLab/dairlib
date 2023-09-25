@@ -85,8 +85,8 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_input_port_radio",
            &MpfcOscDiagram::get_input_port_radio,
            py_rvp::reference_internal)
-      .def("get_output_port_u_cmd",
-           &MpfcOscDiagram::get_output_port_u_cmd,
+      .def("get_output_port_actuation",
+           &MpfcOscDiagram::get_output_port_actuation,
            py_rvp::reference_internal)
       .def("get_output_port_fsm",
            &MpfcOscDiagram::get_output_port_fsm,

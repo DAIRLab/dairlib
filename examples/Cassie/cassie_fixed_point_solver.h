@@ -53,3 +53,9 @@ void CassieInitStateSolver(
     Eigen::VectorXd* q_result, Eigen::VectorXd* v_result,
     Eigen::VectorXd* u_result, Eigen::VectorXd* lambda_result);
 }  // namespace dairlib
+
+/// Get the initial state for a floating base cassie model. This function
+/// handles all of the boilerplate of creating the plant.
+std::pair<Eigen::VectorXd, Eigen::VectorXd> GetInitialCassieState(
+    const std::string& urdf, bool use_springs,
+    const Eigen::Vector3d& pelvis_vel, double toe_spread, double height);

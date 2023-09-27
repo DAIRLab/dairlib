@@ -1,7 +1,6 @@
-#include "hiking_sim_diagram.h"
-
-#include <memory>
 #include <cmath>
+
+#include "hiking_sim_diagram.h"
 
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
@@ -10,19 +9,13 @@
 #include "systems/system_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/cameras/camera_utils.h"
-#include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/primitives/radio_parser.h"
 
 #include "drake/lcm/drake_lcm.h"
-#include "drake/multibody/plant/contact_results_to_lcm.h"
-#include "drake/systems/analysis/runge_kutta2_integrator.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/perception/depth_image_to_point_cloud.h"
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
@@ -107,6 +100,9 @@ HikingSimDiagram::HikingSimDiagram(const std::string& terrain_yaml,
           parent_body_id.value(), cam_transform, color_camera, depth_camera
   );
 
+  // Add radio just in case
+  const auto radio_parser = builder.AddSystem<systems::RadioParser>();
+
   // wire it up
   builder.Connect(
       discrete_time_delay->get_output_port(), passthrough->get_input_port()
@@ -137,12 +133,25 @@ HikingSimDiagram::HikingSimDiagram(const std::string& terrain_yaml,
   builder.Connect(
       scene_graph_->get_query_output_port(), camera->query_object_input_port()
   );
+  builder.Connect(
+      radio_parser->get_output_port(), sensor_aggregator.get_input_port_radio()
+  );
 
+  // export the output ports
   input_port_control_ = builder.ExportInput(
       discrete_time_delay->get_input_port(), "u, t"
   );
+  input_port_radio_ = builder.ExportInput(
+      radio_parser->get_input_port(), "radio channels"
+  );
   output_port_state_ = builder.ExportOutput(
       state_sender->get_output_port(), "x, u, t"
+  );
+  output_port_cassie_out_ = builder.ExportOutput(
+      sensor_aggregator.get_output_port(), "lcmt_cassie_out"
+  );
+  output_port_lcm_radio_ = builder.ExportOutput(
+      radio_parser->get_output_port(), "lcmt_radio_out"
   );
 
   builder.BuildInto(this);

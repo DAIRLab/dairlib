@@ -49,6 +49,7 @@ cc_library(
         "//systems/cameras:camera_utils",
         "//systems/framework:vector",
         "//systems/primitives",
+        "//systems/primitives:radio_parser",
         "@drake//:drake_shared_library",
     ],
 )
@@ -71,6 +72,7 @@ cc_binary(
     deps = [
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
+        "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
     ],
 )

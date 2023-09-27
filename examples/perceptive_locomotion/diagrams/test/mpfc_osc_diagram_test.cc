@@ -1,6 +1,9 @@
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
+
+#include "drake/systems/analysis/simulator.h"
 
 namespace dairlib::perceptive_locomotion {
 
@@ -30,13 +33,33 @@ int DoMain() {
       sim_diagram->get_output_port_state(), osc_diagram->get_input_port_state()
   );
   builder.Connect(
+      sim_diagram->get_output_port_lcm_radio(),
+      osc_diagram->get_input_port_radio()
+  );
+  builder.Connect(
       osc_diagram->get_output_port_actuation(),
       sim_diagram->get_input_port_actuation()
   );
 
   auto diagram = builder.Build();
-
   DrawAndSaveDiagramGraph(*diagram, "../mpfc_with_sim");
+
+  auto context = diagram->CreateDefaultContext();
+  auto [q, v] = GetInitialCassieState(urdf, true, Vector3d::Zero(), 0.3, 0.95);
+  auto& sim_plant = sim_diagram->get_plant();
+  auto& plant_context = diagram->GetMutableSubsystemContext(
+      sim_plant, context.get()
+  );
+  plant.SetPositions(&plant_context, q);
+  plant.SetVelocities(&plant_context, v);
+
+  drake::systems::Simulator<double> simulator(*diagram, std::move(context));
+
+  simulator.set_publish_every_time_step(false);
+  simulator.set_publish_at_initialization(false);
+  simulator.set_target_realtime_rate(1.0);
+  simulator.Initialize();
+  simulator.AdvanceTo(1.0);
   return 0;
 }
 }

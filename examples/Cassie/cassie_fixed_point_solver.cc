@@ -18,6 +18,7 @@
 namespace dairlib {
 
 using Eigen::MatrixXd;
+using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -467,6 +468,114 @@ void CassieInitStateSolver(
   // //  std::cout << "vdot_cost_binding = "
   // //            << solvers::EvalCostGivenSolution(result, vdot_cost_binding)
   // //            << std::endl;
+}
+
+std::pair<VectorXd, VectorXd> GetInitialCassieState(
+    const std::string& urdf, bool use_springs, const Vector3d& pelvis_vel,
+    double toe_spread, double height) {
+
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  AddCassieMultibody(&plant, nullptr, true, urdf, use_springs, false);
+  plant.Finalize();
+
+  multibody::KinematicEvaluatorSet<double> evaluators(plant);
+
+  // Add loop closures
+  auto left_loop = LeftLoopClosureEvaluator(plant);
+  auto right_loop = RightLoopClosureEvaluator(plant);
+  evaluators.add_evaluator(&left_loop);
+  evaluators.add_evaluator(&right_loop);
+
+  // Add contact points
+  auto left_toe = LeftToeFront(plant);
+  auto left_heel = LeftToeRear(plant);
+  auto right_toe = RightToeFront(plant);
+  auto right_heel = RightToeRear(plant);
+
+  auto left_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
+      Eigen::Vector3d(0, toe_spread, 1e-4), {1, 2});
+  auto left_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, left_heel.first, left_heel.second, Vector3d::UnitZ(),
+      Eigen::Vector3d(0, 0, 1e-4), false);
+  auto right_toe_evaluator = multibody::WorldPointEvaluator(
+      plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
+      Eigen::Vector3d(0, -toe_spread, 0), {1, 2});
+  auto right_heel_evaluator = multibody::WorldPointEvaluator(
+      plant, right_heel.first, right_heel.second, Vector3d::UnitZ(),
+      Eigen::Vector3d(0, 0, 1e-4), false);
+
+  evaluators.add_evaluator(&left_toe_evaluator);
+  evaluators.add_evaluator(&left_heel_evaluator);
+  evaluators.add_evaluator(&right_toe_evaluator);
+  evaluators.add_evaluator(&right_heel_evaluator);
+
+  auto program = multibody::MultibodyProgram(plant);
+
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
+  auto q = program.AddPositionVariables();
+  auto v = program.AddVelocityVariables();
+  auto u = program.AddInputVariables();
+  auto lambda = program.AddConstraintForceVariables(evaluators);
+  auto kinematic_constraints =
+      program.AddHolonomicConstraint(evaluators, q, v, u, lambda);
+  program.AddJointLimitConstraints(q);
+
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
+
+  // Fix floating base
+  program.AddBoundingBoxConstraint(1, 1, q(positions_map.at("base_qw")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qx")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qy")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qz")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_x")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_y")));
+  program.AddBoundingBoxConstraint(height, height, q(positions_map.at("base_z")));
+  program.AddBoundingBoxConstraint(-10, 10, v);
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wz")));
+
+  program.AddBoundingBoxConstraint(pelvis_vel(0), pelvis_vel(0), v(vel_map.at("base_vx")));
+  program.AddBoundingBoxConstraint(pelvis_vel(1), pelvis_vel(1), v(vel_map.at("base_vy")));
+  program.AddBoundingBoxConstraint(pelvis_vel(2), pelvis_vel(2), v(vel_map.at("base_vz")));
+
+  // Add symmetry constraints, and zero roll/pitch on the hip
+  program.AddConstraint(q(positions_map.at("knee_left")) == q(positions_map.at("knee_right")));
+  program.AddConstraint(q(positions_map.at("hip_pitch_left")) == q(positions_map.at("hip_pitch_right")));
+  program.AddConstraint(q(positions_map.at("hip_roll_left")) == -q(positions_map.at("hip_roll_right")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("hip_yaw_right")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("hip_yaw_left")));
+
+
+    int nfaces = 20;  // try lots of faces!
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(1, nfaces),
+        lambda.segment(2, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(1, nfaces),
+        lambda.segment(5, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(1, nfaces),
+        lambda.segment(8, 3));
+    program.AddConstraint(
+        solvers::CreateLinearFrictionConstraint(1, nfaces),
+        lambda.segment(11, 3));
+
+  program.AddQuadraticCost(0.01 * u.dot(1.0 * u));
+  program.AddQuadraticCost(v.dot(1.0 * v));
+  // Added contact forces so that the COM is at the center of support polygon
+  program.AddQuadraticCost(lambda(4) * lambda(4));
+  program.AddQuadraticCost(lambda(7) * lambda(7));
+  program.AddQuadraticCost(lambda(10) * lambda(10));
+  program.AddQuadraticCost(lambda(13) * lambda(13));
+
+  program.SetInitialGuessForAllVariables(0.1 * Eigen::VectorXd::Random(program.num_vars()));
+  program.SetInitialGuess(q.head<4>(), Eigen::Vector4d::UnitX());
+  program.SetInitialGuess(q.segment<3>(4), Vector3d(0,0,height));
+
+  const auto result = drake::solvers::Solve(program, program.initial_guess());
+  return { result.GetSolution(q), result.GetSolution(v) };
 }
 
 }  // namespace dairlib

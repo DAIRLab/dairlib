@@ -20,17 +20,19 @@ pushing_offset: 0 #-0.001
 mu: 1                  # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 500         # finger xyz cost
-Q_ball_x: 10000 #10000
-Q_ball_y: 10000  #10000
+Q_ball_x: 5000 #10000
+Q_ball_y: 5000  #10000
+Q_ball_z: 1000
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
-Qnew_finger: 1000000    # Qnew costs
+Qnew_finger: 100000000    # Qnew costs
 Qnew_ball_x: 1
 Qnew_ball_y: 1
 R: 0.01                 # torque cost in xyz
-G: 0.01
+G: 0.001
+G_ground: 0.0000001
 U_default: 1
-U_pos_vel: 10           # first 19 diag elements of U
+U_pos_vel: 100           # first 19 diag elements of U
 U_u: 1                  # last 3 diag elements of U
 q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
@@ -49,6 +51,11 @@ move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75
 sim_dt: 0.0001 # 0.00005
 realtime_rate: 0.2
+
+# Sampling parameters
+hyp1: 0
+hyp2: 1000
+hyp3: 20
 
 # trajectory parameters
 traj_radius: 0.1

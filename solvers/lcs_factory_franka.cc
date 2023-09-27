@@ -34,7 +34,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
     int num_friction_directions, double mu, float dt) {
 
 
-    std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
+    // std::cout<<"contact pairs size  "<<contact_geoms.size()<<std::endl;
   ///
   /// First, calculate vdot and derivatives from non-contact dynamics
   ///
@@ -95,6 +95,8 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   MatrixXd Nq = AB_q.block(0, n_state, n_state, n_vel);
 
+  ///(FIXING BUG - ALP (let me know if there are issues))
+  Eigen::MatrixXd NqInverse = Nq.completeOrthogonalDecomposition().pseudoInverse();
 
   ///
   /// Contact-related terms
@@ -192,7 +194,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   E = MatrixXd::Zero(n_contact, n_total);
   E.block(contact_geoms.size(), 0, contact_geoms.size(), n_state) =
-      dt * dt * J_n * AB_v_q;
+      dt * dt * J_n * AB_v_q + J_n * NqInverse;
   E.block(2 * contact_geoms.size(), 0,
           2 * contact_geoms.size() * num_friction_directions, n_state) =
       dt * J_t * AB_v_q;
@@ -245,7 +247,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
   c = VectorXd::Zero(n_contact);
   c.segment(contact_geoms.size(), contact_geoms.size()) =
-      phi + dt * dt * J_n * d_v;
+      phi + dt * dt * J_n * d_v - J_n * NqInverse * plant.GetPositions(context);
   c.segment(2 * contact_geoms.size(),
             2 * contact_geoms.size() * num_friction_directions) =
       J_t * dt * d_v;

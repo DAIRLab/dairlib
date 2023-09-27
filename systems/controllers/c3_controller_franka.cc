@@ -124,7 +124,7 @@ C3Controller_franka::C3Controller_franka(
 
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(50), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(53), &C3Controller_franka::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -489,7 +489,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     
     std::vector<VectorXd> candidate_states(num_samples, VectorXd::Zero(plant_.num_positions() + plant_.num_velocities()));
-    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size() + 3 + 3 + 3 + 3);
+    VectorXd st_desired(6 + optimal_sample_.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size() + 3 + 3 + 3 + 3 + 3);
 
     VectorXd test_state(plant_.num_positions() + plant_.num_velocities());
     // Vector3d curr_ee = end_effector; //end effector current position
@@ -641,10 +641,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
     double hyp = 5;
     if(C3_flag_ == 0){
-        hyp = 3;
+        hyp = param_.hyp1;
     }
     else{
-        hyp = 17;
+        hyp = param_.hyp2;
     }
     // if (reposition_flag_ == 1){
     //     hyp = 0;
@@ -748,7 +748,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
         //      double next_z = generate_next_z(end_effector[2], 0.08, i*0.015); 
              
         //      std::cout<<"Moving up"<<std::endl;
-          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), next_point.head(3), ball_xyz;
+        // Set the indicator in visualization to repositioning location, at a positive y value.
+          Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
+          st_desired << next_point.head(3), orientation_d, optimal_sample_.tail(16), VectorXd::Zero(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), next_point.head(3), ball_xyz, indicator_xyz;
 
         //      state_contact_desired->SetDataVector(st_desired);
         //      state_contact_desired->set_timestamp(timestamp);
@@ -828,7 +830,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   ///calculate state and force
   auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_, dt);
+      num_friction_directions_, mu_, 0.02); //changing from control loop dt to a different hard coded number
 
   solvers::LCS system2_ = system_scaling_pair2.first;
   double scaling2 = system_scaling_pair2.second;
@@ -895,13 +897,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 // state_next = candidate_states[index];
   std::cout<<"hyp in C3 "<< hyp <<std::endl;
-  if (curr_ee_cost - min >= 10){
+  if (curr_ee_cost - min >= param_.hyp3){
     std::cout<< "Can't make any progress from here and flag is : " << C3_flag_ << std::endl;
     C3_flag_ = 0;
     // reposition_flag_ = 1;
   }
-
-  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), state_next.head(3), ball_xyz;
+  
+  // Set the indicator in visualization to C3 location, at a negative y value.
+  Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
+  st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), candidate_states[0].head(3), candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3), optimal_sample_.head(3), state_next.head(3), ball_xyz, indicator_xyz;
   // std::cout<<"here"<<std::endl;
     }
    

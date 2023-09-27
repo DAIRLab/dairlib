@@ -35,8 +35,10 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(Qnew_finger));
     a->Visit(DRAKE_NVP(Qnew_ball_x));
     a->Visit(DRAKE_NVP(Qnew_ball_y));
+    a->Visit(DRAKE_NVP(Q_ball_z));
     a->Visit(DRAKE_NVP(R));
     a->Visit(DRAKE_NVP(G));
+    a->Visit(DRAKE_NVP(G_ground));
     a->Visit(DRAKE_NVP(U_default));
     a->Visit(DRAKE_NVP(U_pos_vel));
     a->Visit(DRAKE_NVP(U_u));
@@ -68,6 +70,11 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(hold_order));
     a->Visit(DRAKE_NVP(lead_angle));
     a->Visit(DRAKE_NVP(enable_adaptive_path));
+
+    // Sampling parameters
+    a->Visit(DRAKE_NVP(hyp1));
+    a->Visit(DRAKE_NVP(hyp2));
+    a->Visit(DRAKE_NVP(hyp3));
     
     // geometry parameters
     a->Visit(DRAKE_NVP(ball_radius));
@@ -113,6 +120,7 @@ struct C3Parameters {
   double Q_finger;
   double Q_ball_x;
   double Q_ball_y;
+  double Q_ball_z;
   double Q_finger_vel;
   double Q_ball_vel;
   double Qnew_finger;
@@ -120,6 +128,7 @@ struct C3Parameters {
   double Qnew_ball_y;
   double R;
   double G;
+  double G_ground;
   double U_default;
   double U_pos_vel;
   double U_u;
@@ -140,6 +149,11 @@ struct C3Parameters {
   double stabilize_time2;
   double sim_dt;
   double realtime_rate;
+
+  // Sampling parameters
+  double hyp1;
+  double hyp2;
+  double hyp3;
 
   // trajectory parameters
   double traj_radius;

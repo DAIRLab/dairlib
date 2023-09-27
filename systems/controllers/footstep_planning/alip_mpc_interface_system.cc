@@ -309,7 +309,7 @@ ComTrajInterfaceSystem::ComTrajInterfaceSystem(
   prev_slope_idx_ = DeclareDiscreteState(2);
   m_ = plant_.CalcTotalMass(*context);
 
-  DeclareForcedUnrestrictedUpdateEvent(
+  DeclarePerStepUnrestrictedUpdateEvent(
       &ComTrajInterfaceSystem::UnrestrictedUpdate);
 }
 

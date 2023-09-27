@@ -15,8 +15,7 @@ int DoMain() {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  auto instance = AddCassieMultibody(
-      &plant, nullptr, true, urdf, true, false);
+  auto instance = AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
   plant.Finalize();
 
   std::string gains_file = "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
@@ -64,13 +63,14 @@ int DoMain() {
   DrawAndSaveDiagramGraph(*diagram, "../mpfc_with_sim");
 
   auto context = diagram->CreateDefaultContext();
-  auto [q, v] = GetInitialCassieState(urdf, true, Vector3d::Zero(), 0.3, 0.95);
-  auto& sim_plant = sim_diagram->get_plant();
-  auto& plant_context = diagram->GetMutableSubsystemContext(
-      sim_plant, context.get()
+
+  sim_diagram->SetPlantInitialConditionFromIK(
+      diagram.get(),
+      context.get() ,
+      Vector3d::Zero(),
+      0.3,
+      0.95
   );
-  sim_plant.SetPositions(&plant_context, q);
-  sim_plant.SetVelocities(&plant_context, v);
 
   drake::systems::Simulator<double> simulator(*diagram, std::move(context));
 

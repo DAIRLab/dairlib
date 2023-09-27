@@ -469,8 +469,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   builder.ConnectInput("lcmt_radio_out", hip_yaw_traj_gen->get_radio_input_port());
   // Create the diagram
   builder.BuildInto(this);
-  this->set_name("osc controller for alip mpfc");
-  DrawAndSaveDiagramGraph(*this, "../mpfc_osc_diagram");
+  this->set_name("osc_controller_for_alip_mpfc");
 }
 
 }  // namespace dairlib

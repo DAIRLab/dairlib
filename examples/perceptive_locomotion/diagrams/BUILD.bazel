@@ -68,7 +68,7 @@ cc_library(
 
 cc_binary(
     name = "mpfc_osc_diagram_test",
-    srcs = ["test/mpfc_osc_diagram_test.cc"],
+    srcs = ["test/test_mpfc_osc_diagram.cc"],
     deps = [
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",

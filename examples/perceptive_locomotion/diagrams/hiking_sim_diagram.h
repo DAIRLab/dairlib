@@ -31,7 +31,25 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
     return *plant_;
   }
 
+  void SetPlantInitialConditionFromIK(
+      const drake::systems::Diagram<double>* parent_diagram,
+      drake::systems::Context<double>* parent_context,
+      const Eigen::Vector3d& pelvis_vel,
+      double foot_spread,
+      double height
+  ) const;
+
+  void SetPlantInitialCondition(
+      const drake::systems::Diagram<double>* parent_diagram,
+      drake::systems::Context<double>* parent_context,
+      const Eigen::VectorXd& q,
+      const Eigen::VectorXd& v
+  ) const;
+
  private:
+
+  const std::string urdf_;
+
   drake::multibody::MultibodyPlant<double>* plant_;
   drake::geometry::SceneGraph<double>* scene_graph_;
 

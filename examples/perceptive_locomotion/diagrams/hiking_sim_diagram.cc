@@ -24,6 +24,9 @@
 
 namespace dairlib::perceptive_locomotion {
 
+using Eigen::VectorXd;
+using Eigen::Vector3d;
+
 using systems::SubvectorPassThrough;
 using systems::RobotOutputSender;
 using systems::RobotInputReceiver;
@@ -38,8 +41,10 @@ using drake::perception::pc_flags::BaseField::kXYZs;
 using drake::perception::pc_flags::BaseField::kRGBs;
 using drake::perception::DepthImageToPointCloud;
 
-HikingSimDiagram::HikingSimDiagram(const std::string& terrain_yaml,
-                                   const std::string& camera_pose_yaml) {
+HikingSimDiagram::HikingSimDiagram(
+    const std::string& terrain_yaml, const std::string& camera_pose_yaml)
+    : urdf_("examples/Cassie/urdf/cassie_v2_shells.urdf") {
+
 
   // magic numbers:
   static constexpr double sim_dt = 5e-4;
@@ -49,7 +54,6 @@ HikingSimDiagram::HikingSimDiagram(const std::string& terrain_yaml,
 
   // other constants
   auto contact_solver = drake::multibody::DiscreteContactSolver::kSap;
-  const std::string urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf";
   const std::string renderer_name = "hiking_sim_renderer";
 
   DiagramBuilder<double> builder;
@@ -62,7 +66,7 @@ HikingSimDiagram::HikingSimDiagram(const std::string& terrain_yaml,
   multibody::AddSteppingStonesToSimFromYaml(
       plant_, scene_graph_, terrain_yaml, terrain_friction
   );
-  AddCassieMultibody(plant_, scene_graph_, true, urdf, true, true);
+  AddCassieMultibody(plant_, scene_graph_, true, urdf_, true, true);
   plant_->Finalize();
 
   scene_graph_->AddRenderer(renderer_name,
@@ -156,10 +160,27 @@ HikingSimDiagram::HikingSimDiagram(const std::string& terrain_yaml,
 
   builder.BuildInto(this);
   this->set_name("hiking_sim_diagram");
-  DrawAndSaveDiagramGraph(*this, "../hiking_sim_diagram");
-
-
 }
 
+void HikingSimDiagram::SetPlantInitialConditionFromIK(
+    const drake::systems::Diagram<double>* parent_diagram,
+    Context<double>* parent_context, const Vector3d& pelvis_vel,
+    double foot_spread, double height) const {
+
+  auto [q, v] = GetInitialCassieState(urdf_, true, pelvis_vel, foot_spread, height);
+  SetPlantInitialCondition(parent_diagram, parent_context, q, v);
+}
+
+void HikingSimDiagram::SetPlantInitialCondition(
+    const drake::systems::Diagram<double>* parent_diagram,
+    Context<double>* parent_context, const VectorXd& q, const VectorXd& v)
+    const {
+
+  auto& plant_context = parent_diagram->GetMutableSubsystemContext(
+      *plant_, parent_context
+  );
+  plant_->SetPositions(&plant_context, q);
+  plant_->SetVelocities(&plant_context, v);
+}
 
 }

@@ -4,8 +4,12 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 
 #include "drake/systems/analysis/simulator.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 
-namespace dairlib::perceptive_locomotion {
+namespace dairlib {
+namespace perceptive_locomotion {
+
+using drake::systems::ConstantVectorSource;
 
 int DoMain() {
 
@@ -29,6 +33,13 @@ int DoMain() {
   auto sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml
   );
+  auto foothold_source = builder.AddSystem<ConstantVectorSource<double>>(
+      -0.3 * Eigen::Vector3d::UnitY()
+  );
+  auto radio_source = builder.AddSystem<ConstantVectorSource<double>>(
+      Eigen::VectorXd::Zero(18)
+  );
+
   builder.Connect(
       sim_diagram->get_output_port_state(), osc_diagram->get_input_port_state()
   );
@@ -40,6 +51,14 @@ int DoMain() {
       osc_diagram->get_output_port_actuation(),
       sim_diagram->get_input_port_actuation()
   );
+  builder.Connect(
+      foothold_source->get_output_port(),
+      osc_diagram->get_input_port_footstep_command()
+  );
+  builder.Connect(
+      radio_source->get_output_port(),
+      sim_diagram->get_input_port_radio()
+  );
 
   auto diagram = builder.Build();
   DrawAndSaveDiagramGraph(*diagram, "../mpfc_with_sim");
@@ -50,8 +69,8 @@ int DoMain() {
   auto& plant_context = diagram->GetMutableSubsystemContext(
       sim_plant, context.get()
   );
-  plant.SetPositions(&plant_context, q);
-  plant.SetVelocities(&plant_context, v);
+  sim_plant.SetPositions(&plant_context, q);
+  sim_plant.SetVelocities(&plant_context, v);
 
   drake::systems::Simulator<double> simulator(*diagram, std::move(context));
 
@@ -59,8 +78,9 @@ int DoMain() {
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-  simulator.AdvanceTo(1.0);
+  simulator.AdvanceTo(0.5);
   return 0;
+}
 }
 }
 

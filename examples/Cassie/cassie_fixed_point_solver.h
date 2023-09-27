@@ -20,11 +20,11 @@ namespace dairlib {
 /// @param visualize_model_urdf Draw the resulting pose via DrakeVisualizer
 ///    Requires a model file location to draw. Default is "" (no draw)
 void CassieFixedPointSolver(
-    const drake::multibody::MultibodyPlant<double>& plant, double height,
+    const drake::multibody::MultibodyPlant<double> &plant, double height,
     double mu, double min_normal_force, bool linear_friction_cone,
-    double toe_spread, Eigen::VectorXd* q_result, Eigen::VectorXd* u_result,
-    Eigen::VectorXd* lambda_result, std::string visualize_model_urdf = "",
-    double ground_incline = 0, Eigen::VectorXd* all_sol = nullptr);
+    double toe_spread, Eigen::VectorXd *q_result, Eigen::VectorXd *u_result,
+    Eigen::VectorXd *lambda_result, std::string visualize_model_urdf = "",
+    double ground_incline = 0, Eigen::VectorXd *all_sol = nullptr);
 
 /// Utility method to solve for loop constraints for Cassie for a neutral
 /// position
@@ -37,25 +37,27 @@ void CassieFixedPointSolver(
 /// @param visualize_model_urdf Draw the resulting pose via DrakeVisualizer
 ///    Requires a model file location to draw. Default is "" (no draw)
 void CassieFixedBaseFixedPointSolver(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    Eigen::VectorXd* q_result, Eigen::VectorXd* u_result,
-    Eigen::VectorXd* lambda_result, std::string visualize_model_urdf = "");
+    const drake::multibody::MultibodyPlant<double> &plant,
+    Eigen::VectorXd *q_result, Eigen::VectorXd *u_result,
+    Eigen::VectorXd *lambda_result, std::string visualize_model_urdf = "");
 
 /// Solve for a dynamically feasible state given Cassie's pelvis xy velocity.
 /// This class is similar to CassieFixedPointSolver expect for the target pelvis
 /// velocity.
 void CassieInitStateSolver(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const Eigen::VectorXd& pelvis_xy_vel, double height, double mu,
+    const drake::multibody::MultibodyPlant<double> &plant,
+    const Eigen::VectorXd &pelvis_xy_vel, double height, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,
-    double ground_incline, const Eigen::VectorXd& q_desired,
-    const Eigen::VectorXd& u_desired, const Eigen::VectorXd& lambda_desired,
-    Eigen::VectorXd* q_result, Eigen::VectorXd* v_result,
-    Eigen::VectorXd* u_result, Eigen::VectorXd* lambda_result);
-}  // namespace dairlib
+    double ground_incline, const Eigen::VectorXd &q_desired,
+    const Eigen::VectorXd &u_desired, const Eigen::VectorXd &lambda_desired,
+    Eigen::VectorXd *q_result, Eigen::VectorXd *v_result,
+    Eigen::VectorXd *u_result, Eigen::VectorXd *lambda_result);
+
 
 /// Get the initial state for a floating base cassie model. This function
 /// handles all of the boilerplate of creating the plant.
 std::pair<Eigen::VectorXd, Eigen::VectorXd> GetInitialCassieState(
-    const std::string& urdf, bool use_springs,
-    const Eigen::Vector3d& pelvis_vel, double toe_spread, double height);
+    const std::string &urdf, bool use_springs,
+    const Eigen::Vector3d &pelvis_vel, double toe_spread, double height);
+
+} // namespace dairlib

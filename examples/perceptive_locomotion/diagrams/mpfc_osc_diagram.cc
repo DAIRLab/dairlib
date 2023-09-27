@@ -459,12 +459,14 @@ MpfcOscDiagram::MpfcOscDiagram(
   builder.Connect(alip_input_receiver->get_output_port(),
                   osc->get_feedforward_input_port());
 
-  input_port_state_ = builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
-  input_port_footstep_command_ = builder.ExportInput(footstep_passthrough->get_input_port_footstep(), "footstep");
-  input_port_radio_ = builder.ExportInput(high_level_command->get_input_port_radio(), "radio");
+
   output_port_u_cmd_ = builder.ExportOutput(osc->get_output_port_osc_command(), "u, t");
   output_port_fsm_ = builder.ExportOutput(fsm->get_output_port_fsm(), "fsm");
   output_port_alip_ = builder.ExportOutput(alip_calc->get_output_port(), "alip");
+  input_port_state_ = builder.ExportInput(state_receiver->get_input_port(), "x, u, t");
+  input_port_footstep_command_ = builder.ExportInput(footstep_passthrough->get_input_port_footstep(), "footstep");
+  input_port_radio_ = builder.ExportInput(high_level_command->get_input_port_radio(), "lcmt_radio_out");
+  builder.ConnectInput("lcmt_radio_out", hip_yaw_traj_gen->get_radio_input_port());
   // Create the diagram
   builder.BuildInto(this);
   this->set_name("osc controller for alip mpfc");

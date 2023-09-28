@@ -205,7 +205,6 @@ Matrix4d SolveDareTwoStep(
   Matrix<double, 4, 2> B = CalcResetMap(com_z, tds, tds).rightCols<2>();
   Matrix2d R = 0.01 * Matrix2d::Identity();
   Matrix4d S = drake::math::DiscreteAlgebraicRiccatiEquation(A, B, Q, R);
-  std::cout << "S: \n" << S << std::endl;
   return S;
 }
 

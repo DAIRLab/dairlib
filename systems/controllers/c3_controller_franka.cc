@@ -399,27 +399,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
   
+  // ALL OF THIS STUFF IS BROKEN!! THIS IS ONLY TO MAKE SURE THE BUILD PASSES
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;
  
 
   // contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[5]));
-  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
-  ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
+  // ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  // ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
+  // ee_contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
 
-  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
-  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
-  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
+  // std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
+  // std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
+  // std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
 
-  // contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
-  // contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
+  std::vector<SortedPair<GeometryId>> contact_pairs; 
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
   
-  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
-  contact_pairs.push_back(ee_contact_pairs);
-  contact_pairs.push_back(ground_contact1);
-  contact_pairs.push_back(ground_contact2);
-  contact_pairs.push_back(ground_contact3);
+  // std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
+  // contact_pairs.push_back(ee_contact_pairs);
+  // contact_pairs.push_back(ground_contact1);
+  // contact_pairs.push_back(ground_contact2);
+  // contact_pairs.push_back(ground_contact3);
 
 
   auto system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(

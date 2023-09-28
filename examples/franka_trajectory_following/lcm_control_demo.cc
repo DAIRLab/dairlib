@@ -282,20 +282,14 @@ int DoMain(int argc, char* argv[]){
   Q.push_back(Qinit);
   xdesired.push_back(xdesiredinit);
 
-  drake::geometry::GeometryId finger_geoms = 
+   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
-    // drake::geometry::GeometryId sphere_geoms = 
-    // plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere_v2"))[0];
-  drake::geometry::GeometryId capsule1_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_1"))[0];
-  drake::geometry::GeometryId capsule2_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_2"))[0];
-  drake::geometry::GeometryId capsule3_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_3"))[0];
+  drake::geometry::GeometryId sphere_geoms = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId ground_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = 
-    {finger_geoms, capsule1_geoms, capsule2_geoms, capsule3_geoms, ground_geoms};
+    {finger_geoms, sphere_geoms, ground_geoms};
 
   /* -------------------------------------------------------------------------------------------*/
 

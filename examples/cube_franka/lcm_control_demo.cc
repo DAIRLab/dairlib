@@ -64,7 +64,7 @@ int DoMain(int argc, char* argv[]){
   parser.package_map().Add("robot_properties_fingers",
                         "examples/cube_franka/robot_properties_fingers");
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
 
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -83,7 +83,7 @@ int DoMain(int argc, char* argv[]){
   parser_f.package_map().Add("robot_properties_fingers",
                         "examples/cube_franka/robot_properties_fingers");
   parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
-  parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
+  parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI_f = RigidTransform<double>::Identity();
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f);
   plant_f.Finalize();
@@ -106,7 +106,7 @@ int DoMain(int argc, char* argv[]){
   auto [plant_franka, scene_graph_franka] = AddMultibodyPlantSceneGraph(&builder_franka, sim_dt);
   Parser parser_franka(&plant_franka);
   parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
+  parser_franka.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI_franka = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka);
   plant_franka.Finalize();
@@ -298,20 +298,14 @@ int DoMain(int argc, char* argv[]){
   Q.push_back(Qinit);
   xdesired.push_back(xdesiredinit);
 
-  drake::geometry::GeometryId finger_geoms = 
+   drake::geometry::GeometryId finger_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
-    // drake::geometry::GeometryId sphere_geoms = 
-    // plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere_v2"))[0];
-  drake::geometry::GeometryId capsule1_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_1"))[0];
-  drake::geometry::GeometryId capsule2_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_2"))[0];
-  drake::geometry::GeometryId capsule3_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("capsule_3"))[0];
+  drake::geometry::GeometryId sphere_geoms = 
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId ground_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = 
-    {finger_geoms, capsule1_geoms, capsule2_geoms, capsule3_geoms, ground_geoms};
+    {finger_geoms, sphere_geoms, ground_geoms};
 
   /* -------------------------------------------------------------------------------------------*/
 

@@ -38,10 +38,10 @@ q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
 velocity_limit: 100
-orientation_degrees: 0 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
+orientation_degrees: 15 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
 axis_option: 1
 planning_timestep: 0.1
-c3_planned_next_state_timestep: 0.03
+c3_planned_next_state_timestep: 0.02
 horizon_length: 5
 
 # initialization/simulation parameters
@@ -57,7 +57,7 @@ sim_publish_dt: 0.001   # 1kHz for state publishing matches Franka hardware.
 realtime_rate: 0.2
 
 # trajectory parameters
-trajectory_type: 3    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
+trajectory_type: 1    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
 traj_radius: 0.2
 phase: 0
 x_c: 0.35
@@ -67,7 +67,7 @@ time_increment: 1
 hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
 # adaptive circular path specific parameters
-lead_angle: 40 #20 angle in degrees
+lead_angle: 20 #20 angle in degrees
 
 # fixed path specific parameters
 fixed_goal_x: 0.55
@@ -83,7 +83,7 @@ lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # geometry parameters
-jack_half_width: 0.0625       # gives rough size of the jack object
+jack_half_width: 0.0315       # gives rough size of the jack object
 finger_radius: 0.0195         # changes need to be consistent with franka_box and model urdfs
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
 table_offset: -0.0245 #-0.0245      # chances need to be consistent with franka_box, model urdf, AND vision
@@ -93,15 +93,15 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 
 #Sampling parameters
 force_skip_sampling: false    # flag to skip doing sampling and just run C3 on its own.
-sampling_strategy: 2          # Select sampling strategy. 
+sampling_strategy: 0          # Select sampling strategy. 
                               # 0 means radially symmetric sampling on a circle. 
                               # 1 means random sampling on a 2D circle. 
                               # 2 means random sampling on a 3D sphere.
-sampling_radius: 0.12         # size of sampling circle; used for both circle perimeter (0, 1) and spherical surface sampling (2).
-sample_height: 0.04           # height of sampling circle; used for circle perimeter (0, 1).
+sampling_radius: 0.052         # size of sampling circle; used for both circle perimeter (0, 1) and spherical surface sampling (2).
+sample_height: 0.02           # height of sampling circle; used for circle perimeter (0, 1).
 min_angle_from_vertical: 0  #0.785    # radians minimum angle from vertical (i.e. closest to top of sphere) used for spherical surface sampling (2).
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
-num_additional_samples_repos: 2   # number of additional samples to consider when doing repositioning.
+num_additional_samples_repos: 3   # number of additional samples to consider when doing repositioning.
 num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
 spline_width: 0.13   #0.09
 travel_cost_per_meter: 100

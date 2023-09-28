@@ -112,7 +112,7 @@ class C3Controller_franka : public LeafSystem<double> {
   const drake::systems::Diagram<double>& diagram_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
   std::vector<SortedPair<GeometryId>> ee_contact_pairs_;
-  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs_;
+  std::vector<SortedPair<GeometryId>> contact_pairs_;
   int num_friction_directions_;
   double mu_;
   const std::vector<Eigen::MatrixXd> Q_;

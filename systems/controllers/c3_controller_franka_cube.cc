@@ -173,22 +173,8 @@ C3Controller_franka::C3Controller_franka(
   /// (potentially pass a matrix 2xnum_pairs?)
 
   // PASSING CONTACT PAIRS
-  // Define contact pairs between end effector and capsules.
-  ee_contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  ee_contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[2]));
-  ee_contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
-
-  // Define contact pairs between ground and capsules.
-  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms_[1], contact_geoms_[4])};
-  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms_[2], contact_geoms_[4])};
-  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms_[3], contact_geoms_[4])};
-  
-  // Will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]].
-  contact_pairs_.push_back(ee_contact_pairs_);
-  contact_pairs_.push_back(ground_contact1);
-  contact_pairs_.push_back(ground_contact2);
-  contact_pairs_.push_back(ground_contact3);
-  // TODO:  double check that the closest ee-capsule pair is chosen in LCS factory.
+  contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
+  contact_pairs_.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
 }
 
 // Gets called with every loop to calculate the next control input.

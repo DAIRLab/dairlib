@@ -82,7 +82,7 @@ int DoMain(int argc, char* argv[]){
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
+  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]){
   auto [plant_f, scene_graph] = AddMultibodyPlantSceneGraph(&builder_f, 0.0);
   Parser parser_f(&plant_f);
   parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
+  parser_f.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/sphere.urdf");
 
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("panda_link0"), X_WI);
   plant_f.Finalize();
@@ -128,13 +128,13 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B_null = param.damping_null * MatrixXd::Identity(7,7);
   VectorXd qd = param.q_null_desired;
 
-  drake::geometry::GeometryId jack_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("capsule_1"))[0];
+  drake::geometry::GeometryId sphere_geoms = 
+    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0];
   // drake::geometry::GeometryId cube_v3_geoms = 
   //   plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"))[0];
   drake::geometry::GeometryId EE_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link10"))[0];
-  std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, jack_geoms};
+  std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
 
   int num_friction_directions = 2;
   double moving_offset = param.moving_offset;

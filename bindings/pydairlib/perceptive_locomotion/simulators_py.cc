@@ -3,7 +3,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram"
+#include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
+
+namespace py = pybind11;
+
 
 namespace dairlib{
 namespace pydairlib {
@@ -33,9 +36,14 @@ PYBIND11_MODULE(simulators, m) {
     .def("get_output_port_lcm_radio",
          &HikingSimDiagram::get_output_port_lcm_radio,
          py_rvp::reference_internal)
-    .def("get_plant", &HikingSimDiagram::get_plant(), py_rvp__Reference_internal);
+    .def("get_plant",
+         &HikingSimDiagram::get_plant,
+         py_rvp::reference_internal)
+    .def("SetPlantInitialConditionFromIK",
+         &HikingSimDiagram::SetPlantInitialConditionFromIK)
+    .def("SetPlantInitialCondition",
+         &HikingSimDiagram::SetPlantInitialCondition);
 }
-
 
 }
 }

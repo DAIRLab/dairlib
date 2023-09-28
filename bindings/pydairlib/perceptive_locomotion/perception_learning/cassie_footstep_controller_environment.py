@@ -16,7 +16,7 @@ from pydrake.systems.all import (
 )
 
 from pydrake.multibody.plant import MultibodyPlant
-from pydrake.geometry.all import MeshcatVisualizer
+from pydrake.geometry.all import MeshcatVisualizer, Meshcat
 
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
@@ -50,11 +50,13 @@ class CassieFootstepControllerEnvironmentOptions:
         'params/osqp_options_osc.yaml'
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
+    visualize: bool = True
 
 
 class CassieFootstepControllerEnvironment(Diagram):
 
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
+        super().__init__()
         self.controller_plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
             self.controller_plant,
@@ -65,7 +67,6 @@ class CassieFootstepControllerEnvironment(Diagram):
             False,
             True
         )
-        super().__init__()
         self.controller_plant.Finalize()
 
         builder = DiagramBuilder()
@@ -99,6 +100,10 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.radio_source.get_output_port(),
             self.cassie_sim.get_input_port_radio()
         )
+
+        self.visualizer = None
+        if params.visualize:
+            self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)
@@ -146,9 +151,5 @@ if __name__ == '__main__':
     opts = CassieFootstepControllerEnvironmentOptions()
     env = CassieFootstepControllerEnvironment(opts)
 
-    builder = DiagramBuilder
+    builder = DiagramBuilder()
     builder.AddSystem(env)
-    meshcat = MeshcatVisualizer.AddToBuilder(
-        builder,
-        env.cassie_sim.get_scene_graph()
-    )

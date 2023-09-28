@@ -32,6 +32,7 @@ using systems::RobotOutputSender;
 using systems::RobotInputReceiver;
 
 using drake::geometry::SceneGraph;
+using drake::geometry::DrakeVisualizer;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
@@ -157,6 +158,9 @@ HikingSimDiagram::HikingSimDiagram(
   output_port_lcm_radio_ = builder.ExportOutput(
       radio_parser->get_output_port(), "lcmt_radio_out"
   );
+  output_port_scene_graph_query_  = builder.ExportOutput(
+      scene_graph_->get_query_output_port(), "Scene_graph_query_port"
+  );
 
   builder.BuildInto(this);
   this->set_name("hiking_sim_diagram");
@@ -181,6 +185,16 @@ void HikingSimDiagram::SetPlantInitialCondition(
   );
   plant_->SetPositions(&plant_context, q);
   plant_->SetVelocities(&plant_context, v);
+}
+
+const DrakeVisualizer<double>& HikingSimDiagram::AddDrakeVisualizer(
+    DiagramBuilder<double>* builder) const {
+  auto& visualizer = *builder->AddSystem<DrakeVisualizer<double>>();
+  builder->Connect(
+      get_output_port_scene_graph_query(),
+      visualizer.query_object_input_port()
+  );
+  return visualizer;
 }
 
 }

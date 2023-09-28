@@ -39,8 +39,8 @@ PYBIND11_MODULE(simulators, m) {
     .def("get_plant",
          &HikingSimDiagram::get_plant,
          py_rvp::reference_internal)
-    .def("get_scene_graph",
-         &HikingSimDiagram::get_scene_graph,
+    .def("AddDrakeVisualizer",
+         &HikingSimDiagram::AddDrakeVisualizer,
          py_rvp::reference_internal)
     .def("SetPlantInitialConditionFromIK",
          &HikingSimDiagram::SetPlantInitialConditionFromIK)

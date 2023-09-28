@@ -1,6 +1,8 @@
 #pragma once
 
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/framework/diagram.h"
+#include "drake/systems/framework/diagram_builder.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib::perceptive_locomotion {
@@ -26,12 +28,17 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   const drake::systems::OutputPort<double>& get_output_port_lcm_radio() const {
     return get_output_port(output_port_lcm_radio_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_scene_graph_query()
+  const {
+    return get_output_port(output_port_scene_graph_query_);
+  }
+
+  const drake::geometry::DrakeVisualizer<double>& AddDrakeVisualizer(
+      drake::systems::DiagramBuilder<double>* builder
+  ) const;
 
   [[nodiscard]] drake::multibody::MultibodyPlant<double>& get_plant() const {
     return *plant_;
-  }
-  [[nodiscard]] drake::geometry::SceneGraph<double>& get_scene_graph() const {
-    return *scene_graph_;
   }
 
   void SetPlantInitialConditionFromIK(
@@ -61,6 +68,7 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   drake::systems::OutputPortIndex output_port_state_;
   drake::systems::OutputPortIndex output_port_cassie_out_;
   drake::systems::OutputPortIndex output_port_lcm_radio_;
+  drake::systems::OutputPortIndex output_port_scene_graph_query_;
 };
 
 }

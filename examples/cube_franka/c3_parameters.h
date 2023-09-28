@@ -78,6 +78,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(start_point_y));
     a->Visit(DRAKE_NVP(end_point_x));
     a->Visit(DRAKE_NVP(end_point_y));
+    a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(fixed_goal_x));
     a->Visit(DRAKE_NVP(fixed_goal_y));
     a->Visit(DRAKE_NVP(step_size));
@@ -193,6 +194,7 @@ struct C3Parameters {
   double start_point_y;
   double end_point_x;
   double end_point_y;
+  double lookahead_step_size;
   double max_step_size;
 
   // geometry parameters

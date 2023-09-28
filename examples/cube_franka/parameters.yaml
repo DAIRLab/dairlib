@@ -1,8 +1,8 @@
 # bouncy ball parameters
 
 # impedance control parameters  # TODO may need to tune these
-translational_stiffness: 700 #500, 400
-rotational_stiffness: 1200  #900
+translational_stiffness: 900  #700 #500, 400
+rotational_stiffness: 1500  #900
 translational_damping_ratio: 1
 rotational_damping: 20 # temporary increase for safety #10 to 50
 
@@ -41,7 +41,7 @@ velocity_limit: 100
 orientation_degrees: 0 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
 axis_option: 1
 planning_timestep: 0.1
-c3_planned_next_state_timestep: 0.02
+c3_planned_next_state_timestep: 0.03
 horizon_length: 5
 
 # initialization/simulation parameters
@@ -75,10 +75,11 @@ fixed_goal_y: -0.25
 step_size: 0.10
 
 # adaptive straight line path specific parameters
-start_point_x: 0.55           # x coordinate of start point of straight line.           
-start_point_y: 0.45           # y coordinate of start point of straight line.
-end_point_x: 0.55             # x coordinate of end point of straight line.
-end_point_y: -0.25            # y coordinate of end point of straight line.
+start_point_x: 0.45           # x coordinate of start point of straight line.           
+start_point_y: 0.35           # y coordinate of start point of straight line.
+end_point_x: 0.45             # x coordinate of end point of straight line.
+end_point_y: -0.35            # y coordinate of end point of straight line.
+lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # geometry parameters
@@ -98,7 +99,7 @@ sampling_strategy: 2          # Select sampling strategy.
                               # 2 means random sampling on a 3D sphere.
 sampling_radius: 0.12         # size of sampling circle; used for both circle perimeter (0, 1) and spherical surface sampling (2).
 sample_height: 0.04           # height of sampling circle; used for circle perimeter (0, 1).
-min_angle_from_vertical: 0.785    # radians minimum angle from vertical (i.e. closest to top of sphere) used for spherical surface sampling (2).
+min_angle_from_vertical: 0  #0.785    # radians minimum angle from vertical (i.e. closest to top of sphere) used for spherical surface sampling (2).
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
 num_additional_samples_repos: 2   # number of additional samples to consider when doing repositioning.
 num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.

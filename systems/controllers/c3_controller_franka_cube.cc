@@ -362,6 +362,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     traj_desired_vector(q_map_.at("base_y")) = next_target[1];
     traj_desired_vector(q_map_.at("base_z")) = next_target[2]; 
   }
+  // Use a straight line trajectory with adaptive next goal if trajectory type is 3.
   else if(param_.trajectory_type == 3){
     // define the start and end points for the straight line.
     start_point_[0] = param_.start_point_x; 
@@ -374,12 +375,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // compute vector from start point to end point
     VectorXd distance_vector = end_point_ - start_point_;
-    // project vector from start point to ball onto straight line vector.
-    double projection_length = (ball_xyz - start_point_).dot(distance_vector);
+    // project current jack location onto straight line vector.
+    double projection_length = (ball_xyz - start_point_).dot(distance_vector)/distance_vector.norm();
     VectorXd projection_point = start_point_ + projection_length*(distance_vector/distance_vector.norm());
 
+    // Step ahead along the path to the goal from the projection point, without overshooting past the goal.
+    VectorXd target_on_line_with_lookahead;
+    if ((ball_xyz - end_point_).norm() < param_.lookahead_step_size) {
+      target_on_line_with_lookahead = end_point_;
+    }
+    else {
+      VectorXd step_vector = param_.lookahead_step_size * distance_vector/distance_vector.norm();
+      target_on_line_with_lookahead = projection_point + step_vector;
+    }
+
     // compute error vector between projection point and current jack location
-    VectorXd error_vector = projection_point - ball_xyz;
+    VectorXd error_vector = target_on_line_with_lookahead - ball_xyz;
     
     // declaring next_target vector
     VectorXd next_target;
@@ -389,7 +400,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
     else{
         // else set the next target to be the projection point.
-        next_target = projection_point;
+        next_target = target_on_line_with_lookahead;
     }
     // set next target location for jack
     traj_desired_vector(q_map_.at("base_x")) = next_target[0];

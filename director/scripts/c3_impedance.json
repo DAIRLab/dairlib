@@ -226,22 +226,6 @@
                                "radius": 0.01
                              }
                 },
-
-                {"name": "Current frame predicted jack end (optimistic)",
-                "source_data" : {"category":"lcm",
-                                 "abstract_channel" : "CONTROLLER_INPUT",
-                                 "abstract_type" : "dairlib.lcmt_c3",
-                                 "abstract_field" : "data",
-                                 "quaternion_index": 80,
-                                 "frame": ,
-                                 "point": 
-                                },
-                 "type_data": {"alpha": 0.5,
-                               "type": "axes",
-                               "thickness": 0.01,
-                               "length": 0.03
-                             }
-                },
                 
                {"name": "x1",
                 "source_data" : {"category":"lcm",

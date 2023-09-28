@@ -25,9 +25,9 @@ Q_ball_y: 5000 #100000  #10000
 Q_ball_z: 1000 #100000 #1000000 #100000000 (almost no penetration )
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1         # angular & translational velocity cost
-Qnew_finger: 1000000000  #1000000  # Qnew costs
-Qnew_ball_x: 1
-Qnew_ball_y: 1
+Qnew_finger: 1000000000  #1000000  # Qnew costs  #1000000000
+Qnew_ball_x: 0
+Qnew_ball_y: 5
 R: 0.01                 # torque cost in xyz
 G: 0.001 #0.001
 G_ground: 0.0000001

@@ -210,11 +210,11 @@ VectorXd C3::Solve(VectorXd& x0, vector<VectorXd>& delta, vector<VectorXd>& w) {
 //  std::cout << "zfin[3]" << zfin[3](9) + 0.0245 - 0.0315<< std::endl;
 //  std::cout << "zfin[4]" << zfin[4](9) + 0.0245 - 0.0315 << std::endl;
 
-//  std::cout << "zfin[0]" << zfin[0].segment(7,3) << std::endl;
-//  std::cout << "zfin[1]" << zfin[1].segment(7,3) << std::endl;
-//  std::cout << "zfin[2]" << zfin[2].segment(7,3) << std::endl;
-//  std::cout << "zfin[3]" << zfin[3].segment(7,3) << std::endl;
-//  std::cout << "zfin[4]" << zfin[4].segment(7,3) << std::endl;
+  std::cout << "zfin[0]" << zfin[0].segment(7,3) << std::endl;
+  std::cout << "zfin[1]" << zfin[1].segment(7,3) << std::endl;
+  std::cout << "zfin[2]" << zfin[2].segment(7,3) << std::endl;
+  std::cout << "zfin[3]" << zfin[3].segment(7,3) << std::endl;
+  std::cout << "zfin[4]" << zfin[4].segment(7,3) << std::endl;
 
 //////CHECKING STUFF
 //  std::cout << "zfin[0]" << zfin[0] << std::endl;

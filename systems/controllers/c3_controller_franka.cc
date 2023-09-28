@@ -440,10 +440,10 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     Qnew(1,1) = Qnew_finger;
     Qnew(2,2) = Qnew_finger;
     Qnew(7,7) = param_.Qnew_ball_x;
-    Qnew(8,8) = param_.Qnew_ball_y;
-    Qnew(9,9) = 0;
-    //Gnew(19+3,19+3) = 0.01;
-    Gnew = 0.01 * MatrixXd::Identity(n+k+m, n+k+m);
+    Qnew(8,8) = param_.Qnew_ball_x;
+    Qnew(9,9) = param_.Qnew_ball_y;
+    Gnew = 0.001 * MatrixXd::Identity(n+k+m, n+k+m);
+    Gnew(19+3,19+3) = 0.0000001;
   }
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);

@@ -15,6 +15,7 @@ namespace dairlib{
 namespace pydairlib{
 
 using systems::controllers::AlipMultiQP;
+using systems::controllers::AlipMIQP;
 using systems::controllers::alip_utils::Stance;
 using systems::controllers::alip_utils::ResetDiscretization;
 using perceptive_locomotion::MpfcOscDiagram;
@@ -69,6 +70,45 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_solution", &AlipMultiQP::get_solution, py_rvp::reference_internal)
       .def("nmodes", &AlipMultiQP::nmodes)
       .def("nknots", &AlipMultiQP::nknots);
+
+  py::class_<AlipMIQP>(
+      m, "AlipMIQP")
+      .def(
+          py::init<double, double, int, ResetDiscretization, int>(),
+          py::arg("m"), py::arg("H"), py::arg("nk"),
+          py::arg("reset_discretization_method"), py::arg("nmodes"))
+      .def("AddFootholds", &AlipMIQP::AddFootholds)
+      .def("AddMode", &AlipMIQP::AddMode)
+      .def("AddInputCost", &AlipMIQP::AddInputCost)
+      .def("ActivateInitialTimeEqualityConstraint", &AlipMIQP::ActivateInitialTimeEqualityConstraint)
+      .def("UpdateMaximumCurrentStanceTime", &AlipMIQP::UpdateMaximumCurrentStanceTime)
+      .def("UpdateTrackingCost", &AlipMIQP::UpdateTrackingCost)
+      .def("AddTrackingCost", &AlipMIQP::AddTrackingCost)
+      .def("Build", py::overload_cast<>(&AlipMIQP::Build))
+      .def("UpdateFootholds", &AlipMIQP::UpdateFootholds)
+      .def("MakeXdesTrajForVdes", &AlipMIQP::MakeXdesTrajForVdes)
+      .def("UpdateNominalStanceTime", &AlipMIQP::UpdateNominalStanceTime)
+      .def("SetInputLimit", &AlipMIQP::SetInputLimit)
+      .def("SetMinimumStanceTime", &AlipMIQP::SetMinimumStanceTime)
+      .def("SetMaximumStanceTime", &AlipMIQP::SetMaximumStanceTime)
+      .def("SetDoubleSupportTime", &AlipMIQP::SetDoubleSupportTime)
+      .def("CalcOptimalFootstepPlan", &AlipMIQP::CalcOptimalFootstepPlan)
+      .def("GetFootstepSolution", &AlipMIQP::GetFootstepSolution)
+      .def("GetStateSolution", &AlipMIQP::GetStateSolution)
+      .def("GetInputSolution", &AlipMIQP::GetInputSolution)
+      .def("GetTimingSolution", &AlipMIQP::GetTimingSolution)
+      .def("GetFootstepGuess", &AlipMIQP::GetFootstepGuess)
+      .def("GetStateGuess", &AlipMIQP::GetStateGuess)
+      .def("GetInputGuess", &AlipMIQP::GetInputGuess)
+      .def("GetTimingSGuess", &AlipMIQP::GetTimingGuess)
+      .def("GetStateDesired", &AlipMIQP::GetTimingDesired)
+      .def("GetDesiredInput", &AlipMIQP::GetTimingDesired)
+      .def("GetTimingDesired", &AlipMIQP::GetTimingDesired)
+      .def("GetDesiredFootstep", &AlipMIQP::GetTimingDesired)
+      .def("get_prog", &AlipMIQP::get_prog, py_rvp::reference_internal)
+      .def("get_solution", &AlipMIQP::get_solution, py_rvp::reference_internal)
+      .def("nmodes", &AlipMIQP::nmodes)
+      .def("nknots", &AlipMIQP::nknots);
 
   py::class_<MpfcOscDiagram>(
       m, "MpfcOscDiagram")

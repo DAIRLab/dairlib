@@ -18,22 +18,12 @@ py_binary(
         "//examples/Cassie:cassie_urdf",
         "@lcm//:lcm-python",
     ],
-    deps = [":visualize_lcm_log"],
+    deps = [":multipose_visualizer_from_lcm_log"],
 )
 
 py_binary(
-    name = "test_minsnap",
-    srcs = ["test_minsnap.py"],
-    deps = [
-        ":perceptive_locomotion",
-        "//bindings/pydairlib/common:plot_shapes",
-        "//bindings/pydairlib/common:plot_styler",
-    ],
-)
-
-py_binary(
-    name = "alip_minlp_test",
-    srcs = ["alip_minlp_test.py"],
+    name = "alip_miqp_test",
+    srcs = ["alip_miqp_test.py"],
     deps = [
         ":perceptive_locomotion",
         "//bindings/pydairlib/common:plot_styler",
@@ -42,18 +32,8 @@ py_binary(
 )
 
 py_binary(
-    name = "find_foothold_distance",
-    srcs = ["find_foothold_distance.py"],
-    deps = [
-        ":perceptive_locomotion",
-        "//bindings/pydairlib/common:plot_styler",
-        "//bindings/pydairlib/geometry:convex_foothold_py",
-    ],
-)
-
-py_binary(
-    name = "visualize_lcm_log",
-    srcs = ["visualize_lcm_log.py"],
+    name = "multipose_visualizer_from_lcm_log",
+    srcs = ["multipose_visualizer_from_lcm_log.py"],
     data = [
         "//examples/Cassie:cassie_urdf",
         "@lcm//:lcm-python",

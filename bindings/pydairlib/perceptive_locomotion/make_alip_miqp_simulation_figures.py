@@ -32,8 +32,8 @@ from pydairlib.analysis.process_lcm_log import get_log_data_from_first_message
 from pydairlib.multibody import MultiposeVisualizer
 
 from pydairlib.common.plot_styler import PlotStyler
-    from pydairlib.perceptive_locomotion.multipose_visualizer_from_lcm_log \
-        import multipose_visualizer_main
+from pydairlib.perceptive_locomotion.multipose_visualizer_from_lcm_log \
+    import multipose_visualizer_main
 
 stairs_up_logpath = '/home/brian/workspace/data/alip_mpc_paper/sim_stair_log_up'
 stairs_up_yamlpath = stairs_up_logpath + '.yaml'

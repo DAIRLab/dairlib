@@ -1,0 +1,10 @@
+rotation: # Rotation of the camera depth_optical_frame in the pelvis frame
+  [0.025134932525102478, 0.9559293186448007, 0.2925190129243859,
+   0.9996837516717747, -0.024267464856090232, -0.006594451691562538,
+   0.0007948651535307242, 0.29259225537392297, -0.9562369686875671]
+
+translation: # Translation of the camera base_link in the pelvis frame
+  [0.18818161767445526, -0.06818055821911634, 0.12351220454073104]
+
+# Calibration data file :
+# /media/brian/tb2/cassie_backup/logs/calibration/ros/calib_2023-04-26-16-21-57.bag

@@ -1,0 +1,35 @@
+t_commit: 0.25
+t_min: 0.24
+t_max: 0.5
+u_max: 4
+h_des: 0.9
+stance_width: 0.4
+retraction_dist: 0.05
+xlim: 0.4
+ss_time: 0.32
+ds_time: 0.1
+nmodes: 3
+knots_per_mode: 5
+pelvis_vel_butter_order: 2
+pelvis_vel_butter_wc: [199, 199, 199]
+solver_threads: 8
+qf:
+  [100.0, 0, 0, 0,
+   0, 100.0, 0, 0,
+   0, 0, 100.0, 0,
+   0, 0, 0, 100.0]
+q:
+  [1, 0, 0, 0,
+   0, 2, 0, 0,
+   0, 0, 0.02, 0,
+   0, 0, 0, 0.02]
+r: [100]
+w_footstep_reg:
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 4 ]
+r_foostep_const: 0.1
+reset_discretization_method: 'FOH'
+filter_alip_state: false
+qfilt: [.001, .001, .01, .01]
+rfilt: [.0001, .0001, .01, .01]

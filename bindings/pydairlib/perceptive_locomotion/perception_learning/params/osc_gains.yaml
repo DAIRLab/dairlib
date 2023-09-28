@@ -1,0 +1,137 @@
+controller_frequency: 1000
+
+# roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
+W_input_reg: [1, 0.9, 0.5, 0.1, 5,
+              1, 0.9, 0.5, 0.1, 5]
+W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
+W_lambda_c_reg: [1, 0.001, 0.01,
+                 1, 0.001, 0.01,
+                 1, 0.1, 0.01,
+                 1, 0.1, 0.01]
+W_lambda_h_reg: [0.01, 0.01, 0.01,
+                 0.01, 0.02, 0.02]
+
+rows: 3
+cols: 3
+
+# High level command gains (with radio)
+vel_scale_rot: -1.5
+vel_scale_trans_sagital: 0.0
+vel_scale_trans_lateral: 0.0
+
+# Filter settings
+pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
+
+# High level command gains (without radio)
+global_target_position_x: 0
+global_target_position_y: 0
+yaw_deadband_blur: 5
+yaw_deadband_radius: 1000
+kp_yaw: 1
+kd_yaw: 0.2
+vel_max_yaw: 0.5
+
+kp_pos_sagital: 0  # 0.3
+kd_pos_sagital: 0  # 0.3
+vel_max_sagital: 0  # 0.5
+kp_pos_lateral: 0  # 0.3
+kd_pos_lateral: 0  # 0.3
+vel_max_lateral: 0  # 0.3
+target_pos_offset: 0  # -0.16
+
+# Finite state machine
+ss_time: 0.3
+ds_time: 0.1
+
+# Distance of contact point from foot rear (0 is heel, 1 is toe)
+contact_point_pos: 0.5
+
+# Swing foot trajectory
+max_CoM_to_footstep_dist: 0.55
+footstep_offset: 0.6
+center_line_offset: 0.04
+mid_foot_height: 0.14
+final_foot_height: 0.02
+final_foot_velocity_z: 1.0
+
+# LIPM trajectory
+lipm_height: 0.78
+
+# OSC gains
+mu: 1.0
+
+w_accel: 0.0
+w_soft_constraint: 80000
+w_input_reg: 0.001
+w_input: 0.0000
+w_lambda: 0.0000
+impact_threshold: 0.025
+impact_tau: 0.005
+
+w_swing_toe: 1
+swing_toe_kp: 1500
+swing_toe_kd: 10
+
+w_hip_yaw: 2
+hip_yaw_kp: 100
+hip_yaw_kd: 4
+
+CoMW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    10]
+CoMKp:
+  [   0,   0,     0,
+      0,    0,    0,
+      0,    0,   80]
+CoMKd:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,    5]
+PelvisBalanceW:
+  [ 2,    0,     0,
+    0,    4,     0,
+    0,    0,     0]
+PelvisBalanceKp:
+  [200,    0,    0,
+   0,    200,    0,
+   0,      0,    0]
+PelvisBalanceKd:
+  [   10,     0,    0,
+      0,    10,    0,
+      0,     0,    0]
+
+PelvisHeadingW:
+  [   0,    0,     0,
+      0,    0,     0,
+      0,    0,   0.02]
+PelvisHeadingKp:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,   0]
+PelvisHeadingKd:
+  [   0,     0,    0,
+      0,     0,    0,
+      0,     0,    6]
+period_of_no_heading_control: 0.0
+
+SwingFootW:
+  [ 4,    0,     0,
+    0,    4,     0,
+    0,    0,     2]
+SwingFootKp:
+  [ 400,  0,    0,
+    0,  400,    0,
+    0,    0,   400]
+SwingFootKd:
+  [20,   0,    0,
+   0,   20,    0,
+   0,    0,   25]
+
+AlipKalmanQ:
+  [.001, .001, .01, .01]
+
+AlipKalmanR:
+  [.0001, .0001, .01, .01]

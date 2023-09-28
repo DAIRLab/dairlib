@@ -11,10 +11,12 @@ load(
     "pybind_py_library",
 )
 
-py_library(
+py_binary(
     name = "cassie_footstep_controller_environment",
     srcs = ["cassie_footstep_controller_environment.py"],
     deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:controllers_py",
         "//bindings/pydairlib/perceptive_locomotion:simulators_py",
         "@drake//bindings/pydrake",

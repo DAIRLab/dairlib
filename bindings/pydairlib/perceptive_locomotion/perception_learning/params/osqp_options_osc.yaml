@@ -1,0 +1,29 @@
+print_to_console: 0
+log_file_name: ""
+int_options:
+  max_iter: 2000
+  linsys_solver: 0
+  verbose: 0
+  warm_start: 1
+  polish: 1
+  scaled_termination: 1
+  check_termination: 25
+  polish_refine_iter: 3
+  scaling: 10
+  adaptive_rho: 1
+
+double_options:
+  rho: 0.0001
+  sigma: 1e-6
+  eps_abs: 1e-6
+  eps_rel: 1e-6
+  eps_prim_inf: 1e-5
+  eps_dual_inf: 1e-5
+  alpha: 1.6
+  delta: 1e-6
+  adaptive_rho_interval: 0
+  adaptive_rho_tolerance: 5
+  adaptive_rho_fraction: 0.4
+  time_limit: 0.1
+
+string_options: {}

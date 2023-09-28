@@ -162,7 +162,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_feedforward_input_port() const {
     if (W_input_.isZero()) {
       std::cout << "Warning: wired feedforward input port "
-                   "without specifying an input cost";
+                   "without specifying an input cost\n";
     }
     return this->get_input_port(ff_input_port_);
   }

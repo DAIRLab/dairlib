@@ -30,6 +30,9 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   [[nodiscard]] drake::multibody::MultibodyPlant<double>& get_plant() const {
     return *plant_;
   }
+  [[nodiscard]] drake::geometry::SceneGraph<double>& get_scene_graph() const {
+    return *scene_graph_;
+  }
 
   void SetPlantInitialConditionFromIK(
       const drake::systems::Diagram<double>* parent_diagram,

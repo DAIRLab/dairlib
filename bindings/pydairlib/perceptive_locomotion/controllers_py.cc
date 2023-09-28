@@ -110,7 +110,7 @@ PYBIND11_MODULE(controllers, m) {
       .def("nmodes", &AlipMIQP::nmodes)
       .def("nknots", &AlipMIQP::nknots);
 
-  py::class_<MpfcOscDiagram>(
+  py::class_<MpfcOscDiagram, drake::systems::Diagram<double>>(
       m, "MpfcOscDiagram")
       .def(py::init<drake::multibody::MultibodyPlant<double>&,
            const std::string&, const std::string&, const std::string&>(),
@@ -130,6 +130,9 @@ PYBIND11_MODULE(controllers, m) {
            py_rvp::reference_internal)
       .def("get_output_port_fsm",
            &MpfcOscDiagram::get_output_port_fsm,
+           py_rvp::reference_internal)
+      .def("get_output_port_alip",
+           &MpfcOscDiagram::get_output_port_alip,
            py_rvp::reference_internal)
       .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal);
 

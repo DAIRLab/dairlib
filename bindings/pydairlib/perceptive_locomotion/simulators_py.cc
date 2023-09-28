@@ -17,7 +17,7 @@ PYBIND11_MODULE(simulators, m) {
   m.doc() = "Bindings for perceptive locomotion simulators";
   using py_rvp = py::return_value_policy;
 
-  py::class_<HikingSimDiagram>(
+  py::class_<HikingSimDiagram, drake::systems::Diagram<double>>(
       m, "HikingSimDiagram")
       .def(py::init<const std::string&, const std::string&>(),
            py::arg("tarrain_yaml"), py::arg("camera_pose_yaml"))
@@ -38,6 +38,9 @@ PYBIND11_MODULE(simulators, m) {
          py_rvp::reference_internal)
     .def("get_plant",
          &HikingSimDiagram::get_plant,
+         py_rvp::reference_internal)
+    .def("get_scene_graph",
+         &HikingSimDiagram::get_scene_graph,
          py_rvp::reference_internal)
     .def("SetPlantInitialConditionFromIK",
          &HikingSimDiagram::SetPlantInitialConditionFromIK)

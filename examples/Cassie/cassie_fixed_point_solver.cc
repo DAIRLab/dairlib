@@ -519,6 +519,8 @@ std::pair<VectorXd, VectorXd> GetInitialCassieState(
   auto lambda = program.AddConstraintForceVariables(evaluators);
   auto kinematic_constraints =
       program.AddHolonomicConstraint(evaluators, q, v, u, lambda);
+  auto fixed_point_constraint = program.AddFixedPointConstraint(
+      evaluators, q, u, lambda);
   program.AddJointLimitConstraints(q);
 
   auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
@@ -570,9 +572,18 @@ std::pair<VectorXd, VectorXd> GetInitialCassieState(
   program.AddQuadraticCost(lambda(10) * lambda(10));
   program.AddQuadraticCost(lambda(13) * lambda(13));
 
-  program.SetInitialGuessForAllVariables(0.1 * Eigen::VectorXd::Random(program.num_vars()));
-  program.SetInitialGuess(q.head<4>(), Eigen::Vector4d::UnitX());
-  program.SetInitialGuess(q.segment<3>(4), Vector3d(0,0,height));
+  Eigen::VectorXd q_guess = Eigen::VectorXd::Zero(plant.num_positions());
+  q_guess(positions_map.at("base_z")) = height;
+  q_guess(positions_map.at("hip_pitch_left")) = 1;
+  q_guess(positions_map.at("knee_left")) = -2;
+  q_guess(positions_map.at("ankle_joint_left")) = 2;
+  q_guess(positions_map.at("toe_left")) = -2;
+  q_guess(positions_map.at("hip_pitch_right")) = 1;
+  q_guess(positions_map.at("knee_right")) = -2;
+  q_guess(positions_map.at("ankle_joint_right")) = 2;
+  q_guess(positions_map.at("toe_right")) = -2;
+
+  program.SetInitialGuess(q, q_guess);
 
   const auto result = drake::solvers::Solve(program, program.initial_guess());
   return { result.GetSolution(q), result.GetSolution(v) };

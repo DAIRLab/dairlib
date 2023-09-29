@@ -111,10 +111,6 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":cassie_utils_py",
-]
-
-PY_LIBRARIES = [
     ":cassie_traj_visualizer",
     ":cassie_utils_py",
     ":controllers_py",

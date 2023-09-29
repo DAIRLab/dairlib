@@ -11,7 +11,7 @@ load(
     "pybind_py_library",
 )
 
-py_binary(
+py_library(
     name = "cassie_footstep_controller_environment",
     srcs = ["cassie_footstep_controller_environment.py"],
     deps = [
@@ -21,4 +21,30 @@ py_binary(
         "//bindings/pydairlib/perceptive_locomotion:simulators_py",
         "@drake//bindings/pydrake",
     ],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":cassie_footstep_controller_environment",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "perception_learning",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
 )

@@ -153,3 +153,28 @@ if __name__ == '__main__':
 
     builder = DiagramBuilder()
     builder.AddSystem(env)
+    footstep_source = ConstantVectorSource(np.array([0.1, -0.3, 0.0]))
+    builder.AddSystem(footstep_source)
+
+    builder.Connect(
+        footstep_source.get_output_port(),
+        env.get_input_port_by_name("footstep_command")
+    )
+
+    diagram = builder.Build()
+    simulator = Simulator(diagram)
+
+    # repeat the simulation a few times
+    for _ in range(5):
+        context = diagram.CreateDefaultContext()
+        env.cassie_sim.SetPlantInitialConditionFromIK(
+            diagram,
+            context,
+            np.zeros((3,)),
+            0.15,
+            1.0
+        )
+        simulator.reset_context(context)
+        simulator.Initialize()
+        simulator.set_target_realtime_rate(1.0)
+        simulator.AdvanceTo(1.0)

@@ -19,6 +19,7 @@ def main():
     controller_params = AlipFootstepLQROptions(
         height=1.0,
         mass=30.0,
+        stance_width=0.35,
         single_stance_duration=0.3,
         double_stance_duration=0.1
     )

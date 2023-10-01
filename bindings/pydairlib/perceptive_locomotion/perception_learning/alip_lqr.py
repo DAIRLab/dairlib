@@ -1,8 +1,10 @@
 import numpy as np
+from typing import Tuple
 from dataclasses import dataclass, field
 
 from pydrake.systems.all import (
     DiscreteTimeLinearQuadraticRegulator,
+    BasicVector,
     LeafSystem,
     Context,
 )
@@ -11,6 +13,7 @@ from pydairlib.perceptive_locomotion.controllers import (
     AlipStepToStepDynamics,
     ResetDiscretization,
     AlipGaitParams,
+    CalcAd,
     Stance,
 )
 
@@ -20,6 +23,7 @@ from pydairlib.perceptive_locomotion.controllers import (
 class AlipFootstepLQROptions:
     height: float
     mass: float
+    stance_width: float
     single_stance_duration: float
     double_stance_duration: float
     reset_discretization: ResetDiscretization = ResetDiscretization.kFOH
@@ -50,7 +54,7 @@ class AlipFootstepLQR(LeafSystem):
             self.params.R
         )
 
-        self.input_ports_indices = {
+        self.input_port_indices = {
             'desired_velocity': self.DeclareVectorInputPort(
                 "vdes", 2
             ).get_index(),
@@ -65,13 +69,80 @@ class AlipFootstepLQR(LeafSystem):
             ).get_index()
         }
         self.output_port_indices = {
-            'footstep_command': None #TODO
+            'footstep_command': self.DeclareVectorOutputPort(
+                "footstep_command", 3, self.calculate_optimal_footstep
+            ).get_index()
         }
 
+    def calculate_optimal_footstep(
+            self, context: Context, footstep: BasicVector) -> None:
+        """
+            Calculate the optimal (LQR) footstep location.
+            This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
+            using the LQR gain instead of the deadbeat gain. It also involves
+            some bookkeeping to get the appropriate states and deal with
+            left/right stance.
+        """
+        vdes = self.EvalVectorInput(
+            context,
+            self.input_port_indices['desired_velocity']
+        ).value().ravel()
+        fsm = self.EvalVectorInput(
+            context,
+            self.input_port_indices['fsm']
+        ).value().ravel()[0]
+        current_alip_state = self.EvalVectorInput(
+            context,
+            self.input_port_indices['state']
+        ).value().ravel()
+        switch_time = self.EvalVectorInput(
+            context,
+            self.input_port_indices['switch_time']
+        ).value().ravel()[0]
 
-    def calculate_optimal_footstep(self, context: Context) -> None:
-        pass
+        # if not in single stance, just return 0
+        if fsm > 1:
+            footstep.set_value(np.zeros((3,)))
+            return
+
+        # get the reference trajectory for the current stance mode
+        stance = Stance.kLeft if fsm < 1 else Stance.kRight
+        xd, ud = self.make_lqr_reference(stance, vdes)
+
+        # get the predicted ALIP state at touchdown
+        x = CalcAd(switch_time) @ current_alip_state
+
+        # LQR feedback
+        footstep.set_value(ud + self.K @ (x - xd))
+
+    def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
+            Tuple[np.ndarray, np.ndarray]:
+        """
+            Calculate a reference ALIP trajectory following the philosophy
+            outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D
+        """
+
+        # First get the input sequence corresponding to the desired velocity
+        s = -1.0 if stance == Stance.kLeft else 1.0
+        u0 = np.zeros((2,))
+        u0[0] = vdes[0] * (
+                self.params.single_stance_duration +
+                self.params.double_stance_duration
+        )
+        u0[1] = s * self.params.stance_width + vdes[1] * (
+                self.params.single_stance_duration +
+                self.params.double_stance_duration
+        )
+        u1 = np.copy(u0)
+        u1[1] -= 2 * s * self.params.stance_width
+
+        # Solve for period-2 orbit, x0 = A(Ax0 + Bu0) + Bu1
+        # \therefore (I - A^2)x0 = ABu0 + Bu1
+        x0 = np.linalg.solve(
+            np.eye(4) - self.A @ self.A,
+            self.A @ self.B @ u0 + self.B @ u1
+        )
+        return x0, u0
 
     def get_value_estimate(self, x) -> float:
         return x.T @ self.S @ x
-

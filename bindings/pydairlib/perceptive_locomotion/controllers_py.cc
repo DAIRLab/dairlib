@@ -16,6 +16,7 @@ namespace pydairlib{
 
 using systems::controllers::AlipMultiQP;
 using systems::controllers::AlipMIQP;
+using systems::controllers::alip_utils::CalcAd;
 using systems::controllers::alip_utils::Stance;
 using systems::controllers::alip_utils::AlipGaitParams;
 using systems::controllers::alip_utils::ResetDiscretization;
@@ -173,7 +174,8 @@ PYBIND11_MODULE(controllers, m) {
 
   m.def("AlipStepToStepDynamics", &AlipStepToStepDynamics, py::arg("com_z"),
         py::arg("m"), py::arg("Tss"), py::arg("Tds"),
-        py::arg("discretization"));
+        py::arg("discretization"))
+    .def("CalcAd", &CalcAd, py::arg("com_z"), py::arg("m"), py::arg(""));
 }
 
 

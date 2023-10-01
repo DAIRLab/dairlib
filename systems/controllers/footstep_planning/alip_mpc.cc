@@ -396,7 +396,7 @@ vector<VectorXd> AlipMPC::MakeXdesTrajForVdes(
   params.stance_width = step_width;
   params.desired_velocity = vdes;
   params.reset_discretization_method = reset_discretization_;
-  params.intial_stance_foot = stance;
+  params.initial_stance_foot = stance;
   return alip_utils::MakePeriodicAlipGaitTrajectory(params, nmodes(), nk);
 }
 

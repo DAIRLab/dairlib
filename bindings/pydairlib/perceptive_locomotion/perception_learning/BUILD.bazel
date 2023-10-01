@@ -12,6 +12,15 @@ load(
 )
 
 py_library(
+    name = "alip_lqr",
+    srcs = ["alip_lqr.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion:controllers_py",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
     name = "cassie_footstep_controller_environment",
     srcs = ["cassie_footstep_controller_environment.py"],
     deps = [
@@ -20,6 +29,15 @@ py_library(
         "//bindings/pydairlib/perceptive_locomotion:controllers_py",
         "//bindings/pydairlib/perceptive_locomotion:simulators_py",
         "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "alip_lqr_test",
+    srcs = ["alip_lqr_test.py"],
+    deps = [
+        ":alip_lqr",
+        ":cassie_footstep_controller_environment",
     ],
 )
 

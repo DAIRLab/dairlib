@@ -7,6 +7,7 @@
 namespace dairlib::systems::controllers::alip_utils {
 
 using std::vector;
+using std::pair;
 
 using drake::EigenPtr;
 using drake::multibody::MultibodyPlant;
@@ -87,6 +88,15 @@ Matrix<double, 4, 8> CalcResetMap(
   return Aeq;
 }
 
+pair<MatrixXd, MatrixXd> AlipStepToStepDynamics(
+    double com_z, double m, double Tss, double Tds,
+    ResetDiscretization discretization) {
+  auto M = CalcResetMap(com_z, m, Tds, discretization);
+  MatrixXd A = CalcAd(com_z, m, Tss);
+  MatrixXd B = CalcAd(com_z, m, Tss) * M.rightCols<2>();
+  return {A, B};
+}
+
 Vector4d CalcReset(double com_z, double m, double Tds,
                    const Vector4d& x, const Vector3d& p0, const Vector3d& p1,
                    ResetDiscretization reset_discretization) {
@@ -135,7 +145,7 @@ Vector4d CalcBd(double com_z, double m, double t) {
 std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params) {
 
-  double s = gait_params.intial_stance_foot == Stance::kLeft ? -1 : 1;
+  double s = gait_params.initial_stance_foot == Stance::kLeft ? -1 : 1;
 
   const Vector2d u0 = Vector2d(
       gait_params.desired_velocity(0) * (gait_params.single_stance_duration +

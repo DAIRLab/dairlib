@@ -17,7 +17,10 @@ namespace pydairlib{
 using systems::controllers::AlipMultiQP;
 using systems::controllers::AlipMIQP;
 using systems::controllers::alip_utils::Stance;
+using systems::controllers::alip_utils::AlipGaitParams;
 using systems::controllers::alip_utils::ResetDiscretization;
+using systems::controllers::alip_utils::MakePeriodicAlipGait;
+using systems::controllers::alip_utils::AlipStepToStepDynamics;
 using perceptive_locomotion::MpfcOscDiagram;
 
 PYBIND11_MODULE(controllers, m) {
@@ -31,6 +34,35 @@ PYBIND11_MODULE(controllers, m) {
   py::enum_<ResetDiscretization>(m, "ResetDiscretization")
       .value("kZOH", ResetDiscretization::kZOH)
       .value("kFOH", ResetDiscretization::kFOH);
+
+  py::class_<AlipGaitParams>(
+      m, "AlipGaitParams")
+      .def(py::init<double, double, double, double, double, Eigen::Vector2d,
+           Stance, ResetDiscretization>(),
+           py::arg("height"),
+           py::arg("mass"),
+           py::arg("single_stance_duration"),
+           py::arg("double_stance_duration"),
+           py::arg("stance_width"),
+           py::arg("desired_velocity"),
+           py::arg("initial_stance_foot"),
+           py::arg("reset_discretization_method"))
+      .def_readwrite("height",
+                      &AlipGaitParams::height)
+      .def_readwrite("mass",
+                      &AlipGaitParams::mass)
+      .def_readwrite("single_stance_duration",
+                      &AlipGaitParams::single_stance_duration)
+      .def_readwrite("double_stance_duration",
+                      &AlipGaitParams::double_stance_duration)
+      .def_readwrite("stance_width",
+                      &AlipGaitParams::stance_width)
+      .def_readwrite("desired_velocity",
+                      &AlipGaitParams::desired_velocity)
+      .def_readwrite("initial_stance_foot",
+                      &AlipGaitParams::initial_stance_foot)
+      .def_readwrite("reset_discretization_method",
+                      &AlipGaitParams::reset_discretization_method);
 
   py::class_<AlipMultiQP>(
       m, "AlipMultiQP")
@@ -134,11 +166,14 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_output_port_alip",
            &MpfcOscDiagram::get_output_port_alip,
            py_rvp::reference_internal)
+      .def("get_output_port_switching_time",
+           &MpfcOscDiagram::get_output_port_switching_time,
+           py_rvp::reference_internal)
       .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal);
 
-  m.def("MakeMinSnapTrajFromWaypoints",
-        &minsnap::MakeMinSnapTrajFromWaypoints, py::arg("waypoints"),
-        py::arg("breaks"), py::arg("initial_velocity"), py::arg("final_velocity"));
+  m.def("AlipStepToStepDynamics", &AlipStepToStepDynamics, py::arg("com_z"),
+        py::arg("m"), py::arg("Tss"), py::arg("Tds"),
+        py::arg("discretization"));
 }
 
 

@@ -127,6 +127,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_alip(),
                 'alip_state'
             ),
+            'switching_time': builder.ExportOutput(
+                self.controller.get_output_port_switching_time(),
+                'switching_time'
+            ),
             'state': builder.ExportOutput(
                 self.cassie_sim.get_output_port_state(),
                 'x, u, t'

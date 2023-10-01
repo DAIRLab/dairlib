@@ -18,7 +18,7 @@ struct AlipGaitParams {
   double double_stance_duration;
   double stance_width;
   Eigen::Vector2d desired_velocity;
-  Stance intial_stance_foot;
+  Stance initial_stance_foot;
   ResetDiscretization reset_discretization_method;
   friend std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data);
 };
@@ -27,14 +27,14 @@ inline std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data) {
 
   os << "Periodic Alip Gait Parameters:"
         "\nHeight: " << data.height <<
-        "\nMass: " << data.mass <<
-        "\nT_ss: " << data.single_stance_duration <<
-        "\nT_ds: " << data.double_stance_duration <<
-        "\nStance Width: " << data.stance_width <<
-        "\nVdes: " << data.desired_velocity.transpose() <<
-        "\nInitial stance foot: " <<
-        (data.intial_stance_foot == Stance::kLeft? "kLeft" : "kRight") <<
-        "\nReset Discretization method: " <<
+     "\nMass: " << data.mass <<
+     "\nT_ss: " << data.single_stance_duration <<
+     "\nT_ds: " << data.double_stance_duration <<
+     "\nStance Width: " << data.stance_width <<
+     "\nVdes: " << data.desired_velocity.transpose() <<
+     "\nInitial stance foot: " <<
+     (data.initial_stance_foot == Stance::kLeft ? "kLeft" : "kRight") <<
+     "\nReset Discretization method: " <<
         (data.reset_discretization_method == ResetDiscretization::kZOH ?
          "kZOH" : "kFOH") << "\n";
 
@@ -103,6 +103,12 @@ void CalcAlipState(const drake::multibody::MultibodyPlant<double>& plant,
 Eigen::Matrix<double, 4, 8> CalcResetMap(
     double com_z, double m, double Tds,
     ResetDiscretization discretization = ResetDiscretization::kZOH);
+
+/// Step to step alip dynamics where the state is the ALIP state at the end of
+/// double stance. returns A_s2s, B_s2s
+std::pair<Eigen::MatrixXd, Eigen::MatrixXd> AlipStepToStepDynamics(
+    double com_z, double m, double Tss, double Tds,
+    ResetDiscretization discretization);
 
 /// Applies the reset map described in CalcResetMap to the pre-impact
 /// ALIP state x

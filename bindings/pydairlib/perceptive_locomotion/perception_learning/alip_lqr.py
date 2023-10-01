@@ -112,8 +112,10 @@ class AlipFootstepLQR(LeafSystem):
         # get the predicted ALIP state at touchdown
         x = CalcAd(switch_time) @ current_alip_state
 
-        # LQR feedback
-        footstep.set_value(ud + self.K @ (x - xd))
+        # LQR feedback - for now assume the height of the ground is zero
+        footstep_command = np.zeros((3,))
+        footstep_command[:2] = ud + self.K @ (x - xd)
+        footstep.set_value(footstep_command)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
             Tuple[np.ndarray, np.ndarray]:

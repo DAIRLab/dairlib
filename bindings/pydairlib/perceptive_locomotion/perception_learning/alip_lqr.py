@@ -50,6 +50,25 @@ class AlipFootstepLQR(LeafSystem):
             self.params.R
         )
 
+        self.input_ports_indices = {
+            'desired_velocity': self.DeclareVectorInputPort(
+                "vdes", 2
+            ).get_index(),
+            'fsm': self.DeclareVectorInputPort(
+                "fsm", 1
+            ).get_index,
+            'switch_time': self.DeclareVectorInputPort(
+                "time_until_switch", 1
+            ).get_index(),
+            'state': self.DeclareVectorInputPort(
+                "alip_state", 4
+            ).get_index()
+        }
+        self.output_port_indices = {
+            'footstep_command': None #TODO
+        }
+
+
     def calculate_optimal_footstep(self, context: Context) -> None:
         pass
 

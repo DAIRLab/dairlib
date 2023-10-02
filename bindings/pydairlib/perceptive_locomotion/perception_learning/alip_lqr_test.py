@@ -48,28 +48,28 @@ def main():
 
     # controller give footstep command to sim_environment (i.e. cassie)
     builder.Connect(
-        controller.get_output_port(),
+        controller.get_output_port_by_name("footstep_command"),
         sim_env.get_input_port_by_name("footstep_command")
     )
 
     # external user assign desire velocity to controller
     builder.Connect(
         desired_velocity.get_output_port(),
-        controller.get_input_port(0)
+        controller.get_input_port_by_name("desired_velocity")
     )
 
     # sim_env (cassie) returns state_feedback to controller
     builder.Connect(
         sim_env.get_output_port_by_name("fsm"),
-        controller.get_input_port(1)
+        controller.get_input_port_by_name("fsm")
     )
     builder.Connect(
         sim_env.get_output_port_by_name("switching_time"),
-        controller.get_input_port(2)
+        controller.get_input_port_by_name("switch_time")
     )
     builder.Connect(
         sim_env.get_output_port_by_name("alip_state"),
-        controller.get_input_port(3)
+        controller.get_input_port_by_name("state")
     )
 
 

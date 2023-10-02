@@ -159,7 +159,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         assert (name in self.input_port_indices)
         return self.get_input_port(self.input_port_indices[name])
 
-    def get_output_port_by_name(self, name: str) -> InputPort:
+    def get_output_port_by_name(self, name: str) -> OutputPort:
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 

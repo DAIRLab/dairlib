@@ -21,7 +21,7 @@ from pydrake.geometry.all import MeshcatVisualizer, Meshcat
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.systems.framework import OutputVector
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
-from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram
+from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram, Stance
 from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
     import HeightMapServer
@@ -164,7 +164,14 @@ class CassieFootstepControllerEnvironment(Diagram):
         return self.get_output_port(self.output_port_indices[name])
 
     def get_heightmap(self, context):
-        robot_state = self.EvalVectpr
+        robot_output = self.get_output_port_by_name('state').Eval(context)
+        fsm = self.get_output_port_by_name('fsm').Eval(context).value()(0)
+
+        # TODO: fix this to use the fsm state to determine the stance
+        return self.height_map_server.get_heightmap(
+            robot_output.GetState(),
+            Stance.kLeft
+        )
 
 
 if __name__ == '__main__':

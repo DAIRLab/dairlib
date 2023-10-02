@@ -32,6 +32,15 @@ py_library(
     ],
 )
 
+py_library(
+    name = "height_map_server",
+    srcs = ["height_map_server.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "@drake//bindings/pydrake",
+    ],
+)
+
 py_binary(
     name = "alip_lqr_test",
     srcs = ["alip_lqr_test.py"],

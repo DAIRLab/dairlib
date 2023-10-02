@@ -4,6 +4,7 @@
 #include <pybind11/stl.h>
 
 #include "geometry/convex_foothold.h"
+#include "geometry/convex_foothold_set.h"
 
 namespace py = pybind11;
 
@@ -11,6 +12,7 @@ namespace dairlib {
 namespace pydairlib {
 
 using geometry::ConvexFoothold;
+using geometry::ConvexFootholdSet;
 
 PYBIND11_MODULE(convex_foothold, m) {
 m.doc() = "Binding geometry utils";
@@ -29,7 +31,8 @@ py::class_<ConvexFoothold>(m, "ConvexFoothold")
     .def("AddFace", &ConvexFoothold::AddFace)
     .def("GetConstraintMatrices", &ConvexFoothold::GetConstraintMatrices)
     .def("GetEqualityConstraintMatrices", &ConvexFoothold::GetEqualityConstraintMatrices)
-    .def("GetVertices", &ConvexFoothold::GetVertices);
+    .def("GetVertices", &ConvexFoothold::GetVertices)
+    .def("Get2dViolation", &ConvexFoothold::Get2dViolation);
 }
 
 }

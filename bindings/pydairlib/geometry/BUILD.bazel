@@ -31,6 +31,7 @@ pybind_py_library(
     name = "convex_foothold_py",
     cc_deps = [
         "//geometry:convex_foothold",
+        "//geometry:convex_foothold_set",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "convex_foothold",

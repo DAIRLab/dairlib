@@ -533,6 +533,20 @@ Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<T>& plant,
 }
 
 template <typename T>
+Eigen::Vector3d ReExpressBodyYawVector3InWorldFrame(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::systems::Context<T>& context,
+    const std::string& body_name,
+    const Eigen::Vector3d& vec) {
+  Vector3d body_x =
+      plant.GetBodyByName(body_name).EvalPoseInWorld(context).rotation().col(0);
+  double yaw  = atan2(body_x(1), body_x(0));
+  return Vector3d(cos(yaw) * vec(0) - sin(yaw)*vec(1),
+                  sin(yaw) * vec(0) + cos(yaw)*vec(1),
+                  vec(2));
+}
+
+template <typename T>
 Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<T>& plant,
                                              const Context<T>& context,
                                              const std::string& body_name,
@@ -598,6 +612,7 @@ template std::vector<int> QuaternionStartIndices(const MultibodyPlant<AutoDiffXd
 template bool HasQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
 template bool HasQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec); //NOLINT
+template Vector3d ReExpressBodyYawVector3InWorldFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec); //NOLINT
 template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector2d& vec); //NOLINT
 template Matrix3d GetBodyYawRotation_R_WB(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name); // NOLINT
 template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT

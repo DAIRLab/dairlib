@@ -5,6 +5,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
+#include "multibody/stepping_stone_utils.h"
 
 namespace py = pybind11;
 
@@ -12,9 +13,11 @@ namespace dairlib {
 namespace pydairlib {
 
 using multibody::MultiposeVisualizer;
+using multibody::SquareSteppingStoneList;
+using geometry::ConvexFoothold;
 
 PYBIND11_MODULE(multibody, m) {
-  py::module::import("pydrake.all");
+  py::module::import("pydrake.multibody.all");
 
   m.doc() = "Binding utility functions for MultibodyPlant";
 
@@ -26,6 +29,18 @@ PYBIND11_MODULE(multibody, m) {
       .def("AddSteppingStonesFromYaml",
            &MultiposeVisualizer::AddSteppingStonesFromYaml, py::arg("filename"))
       .def("GetMeshcat", &MultiposeVisualizer::GetMeshcat);
+
+  py::class_<SquareSteppingStoneList>(m, "SquareSteppingStoneList")
+      .def(py::init<std::vector<std::vector<std::vector<double>>>,
+                    std::vector<std::pair<RigidTransformd, Eigen::Vector3d>>,
+                    std::vector<ConvexFoothold>>())
+      .def("GetFootholdsWithMargin", &SquareSteppingStoneList::GetFootholdsWithMargin)
+      .def_readwrite("stones", &SquareSteppingStoneList::stones)
+      .def_readwrite("cubes", &SquareSteppingStoneList::cubes)
+      .def_readwrite("footholds", &SquareSteppingStoneList::footholds);
+
+  m.def("LoadSteppingStonesFromYaml", &multibody::LoadSteppingStonesFromYaml,
+        py::arg("filename"));
 
   m.def("MakeNameToPositionsMap",
         &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
@@ -48,6 +63,12 @@ PYBIND11_MODULE(multibody, m) {
            py::arg("show_ground") = 1)
       .def("ReExpressWorldVector3InBodyYawFrame",
           &dairlib::multibody::ReExpressWorldVector3InBodyYawFrame<double>,
+          py::arg("plant"),
+          py::arg("context"),
+          py::arg("body_name"),
+          py::arg("vec"))
+      .def("ReExpressBodyYawVector3InWorldFrame",
+          &dairlib::multibody::ReExpressBodyYawVector3InWorldFrame<double>,
           py::arg("plant"),
           py::arg("context"),
           py::arg("body_name"),

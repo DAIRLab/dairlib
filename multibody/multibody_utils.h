@@ -168,6 +168,14 @@ Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(
     const std::string& body_name,
     const Eigen::Vector3d& vec);
 
+template <typename T>
+Eigen::Vector3d ReExpressBodyYawVector3InWorldFrame(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    const drake::systems::Context<T>& context,
+    const std::string& body_name,
+    const Eigen::Vector3d& vec);
+
+
 
 /// Same as above except only considering the x and y components of 'vec'
 template <typename T>

@@ -18,6 +18,7 @@
 
 // drake
 #include "drake/common/yaml/yaml_io.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/framework/diagram_builder.h"
 
 
@@ -125,12 +126,22 @@ MpfcOscDiagram::MpfcOscDiagram(
       plant, plant_context.get(), gains.vel_scale_rot,
       gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
 
+  auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
   auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
+      gains_mpc.ss_time, gains_mpc.ds_time, plant);
+  auto fsm_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
       gains_mpc.ss_time, gains_mpc.ds_time, plant);
   builder.Connect(state_receiver->get_output_port(0),
                   footstep_passthrough->get_input_port_state());
   builder.Connect(*footstep_passthrough, *mpc_receiver);
+  builder.Connect(state_receiver->get_output_port(0),
+                  fsm_passthrough->get_input_port_state());
+  builder.Connect(*fsm_passthrough, *mpc_receiver_fsm);
+  auto dummy_foothold_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(Vector3d::Zero());
+  builder.Connect(dummy_foothold_source->get_output_port(),
+                  fsm_passthrough->get_input_port_footstep());
 
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_input_port_state());
@@ -159,7 +170,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   double_support_duration = gains_mpc.ds_time;
 
   auto fsm = builder.AddSystem<FsmReceiver>(plant);
-  builder.Connect(mpc_receiver->get_output_port_fsm(),
+  builder.Connect(mpc_receiver_fsm->get_output_port_fsm(),
                   fsm->get_input_port_fsm_info());
   builder.Connect(state_receiver->get_output_port(),
                   fsm->get_input_port_state());

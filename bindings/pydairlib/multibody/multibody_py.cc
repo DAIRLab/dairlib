@@ -17,8 +17,7 @@ using multibody::SquareSteppingStoneList;
 using geometry::ConvexFoothold;
 
 PYBIND11_MODULE(multibody, m) {
-  py::module::import("pydrake.multibody.all");
-
+  m.import("pydrake.all");
   m.doc() = "Binding utility functions for MultibodyPlant";
 
   py::class_<MultiposeVisualizer>(m, "MultiposeVisualizer")

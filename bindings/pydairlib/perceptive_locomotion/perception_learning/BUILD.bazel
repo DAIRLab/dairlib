@@ -24,10 +24,12 @@ py_library(
     name = "cassie_footstep_controller_environment",
     srcs = ["cassie_footstep_controller_environment.py"],
     deps = [
+        ":height_map_server",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:controllers_py",
         "//bindings/pydairlib/perceptive_locomotion:simulators_py",
+        "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
     ],
 )
@@ -37,6 +39,8 @@ py_library(
     srcs = ["height_map_server.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",
     ],
 )

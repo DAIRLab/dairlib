@@ -19,9 +19,12 @@ from pydrake.multibody.plant import MultibodyPlant
 from pydrake.geometry.all import MeshcatVisualizer, Meshcat
 
 from pydairlib.common import FindResourceOrThrow
+from pydairlib.systems.framework import OutputVector
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram
 from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
+from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
+    import HeightMapServer
 
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
@@ -57,6 +60,12 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
         super().__init__()
+
+        self.height_map_server = HeightMapServer(
+            params.terrain_yaml,
+            params.urdf
+        )
+
         self.controller_plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
             self.controller_plant,
@@ -127,6 +136,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_alip(),
                 'alip_state'
             ),
+            'fsm': builder.ExportOutput(
+                self.controller.get_output_port_fsm(),
+                'fsm'
+            ),
             'switching_time': builder.ExportOutput(
                 self.controller.get_output_port_switching_time(),
                 'switching_time'
@@ -149,6 +162,9 @@ class CassieFootstepControllerEnvironment(Diagram):
     def get_output_port_by_name(self, name: str) -> InputPort:
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
+
+    def get_heightmap(self, context):
+        robot_state = self.EvalVectpr
 
 
 if __name__ == '__main__':

@@ -38,8 +38,10 @@ class HeightMapServer:
         and calculates a height map in the stance frame
     """
 
-    def __init__(self, terrain_yaml: str, urdf: str, map_opts:
-    HeightMapOptions = HeightMapOptions()):
+    def __init__(self,
+                 terrain_yaml: str,
+                 urdf: str,
+                 map_opts: HeightMapOptions = HeightMapOptions()):
         self.map_opts = map_opts
         self.plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
@@ -57,7 +59,7 @@ class HeightMapServer:
         stepping_stones = LoadSteppingStonesFromYaml(terrain_yaml)
         self.convex_terrain_segments = \
             SquareSteppingStoneList.GetFootholdsWithMargin(
-                stepping_stones.stones
+                stepping_stones.stones, 0.0
             )
 
         # preallocate grids in local frame for faster lookup times
@@ -71,6 +73,14 @@ class HeightMapServer:
             self.map_opts.resolution * self.map_opts.ny / 2,
             self.map_opts.ny
         )
+        self.contact_point = \
+            0.5 * (
+                RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
+            ).ravel()
+        self.contact_frame = {
+            Stance.kLeft: LeftToeRear(self.plant)[1],
+            Stance.kRight: RightToeRear(self.plant)[1]
+        }
 
     def get_height_at_point(self, query_point: np.ndarray) -> float:
         zvals = []
@@ -84,5 +94,23 @@ class HeightMapServer:
         else:
             return np.nan
 
-    def get_heightmap(self, robot_state: np.ndarray, stance: Stance):
+    def get_heightmap(self, robot_state: np.ndarray, stance: Stance) -> \
+        np.ndarray:
         self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
+        stance_pos = self.plant.CalcPointsPositions(
+            self.plant_context,
+            self.contact_frame[stance],
+            self.contact_point,
+            self.plant.world_frame()
+        )
+        heightmap = np.zeros((self.map_opts.ny, self.map_opts.nx))
+        for i, x in enumerate(self.ygrid):
+            for j, y in enumerate(self.xgrid):
+                query_point = stance_pos + ReExpressBodyYawVector3InWorldFrame(
+                    plant=self.plant,
+                    context=self.plant_context,
+                    body_name="pelvis",
+                    vec=np.array([x, y, 0.0])
+                )
+                heightmap[i, j] = self.get_height_at_point(query_point)
+        return heightmap

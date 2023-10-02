@@ -73,6 +73,21 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "system_utils_py",
+    cc_deps = [
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "system_utils",
+    cc_srcs = ["system_utils_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -89,6 +104,7 @@ py_library(
 )
 
 PY_LIBRARIES = [
+    ":system_utils_py",
     ":robot_lcm_systems_py",
     ":primitives_py",
     ":framework_py",

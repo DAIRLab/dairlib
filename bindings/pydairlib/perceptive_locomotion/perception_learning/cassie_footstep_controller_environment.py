@@ -165,16 +165,15 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def get_heightmap(self, context):
         robot_output = self.get_output_port_by_name('state').Eval(context)
-        fsm = self.get_output_port_by_name('fsm').Eval(context).value()(0)
-
-        # TODO: fix this to use the fsm state to determine the stance
+        fsm = int(self.get_output_port_by_name('fsm').Eval(context).value()(0))
+        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
         return self.height_map_server.get_heightmap(
             robot_output.GetState(),
-            Stance.kLeft
+            stance
         )
 
 
-if __name__ == '__main__':
+def main():
     opts = CassieFootstepControllerEnvironmentOptions()
     env = CassieFootstepControllerEnvironment(opts)
 
@@ -205,3 +204,7 @@ if __name__ == '__main__':
         simulator.Initialize()
         simulator.set_target_realtime_rate(1.0)
         simulator.AdvanceTo(1.0)
+
+
+if __name__ == '__main__':
+    main()

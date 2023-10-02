@@ -7,6 +7,8 @@ from pydrake.systems.all import (
     BasicVector,
     LeafSystem,
     Context,
+    InputPort,
+    OutputPort
 )
 
 from pydairlib.perceptive_locomotion.controllers import (
@@ -60,7 +62,7 @@ class AlipFootstepLQR(LeafSystem):
             ).get_index(),
             'fsm': self.DeclareVectorInputPort(
                 "fsm", 1
-            ).get_index,
+            ).get_index(),
             'switch_time': self.DeclareVectorInputPort(
                 "time_until_switch", 1
             ).get_index(),
@@ -73,6 +75,13 @@ class AlipFootstepLQR(LeafSystem):
                 "footstep_command", 3, self.calculate_optimal_footstep
             ).get_index()
         }
+
+    def get_input_port_by_name(self, name: str) -> InputPort:
+        assert (name in self.input_port_indices)
+        return self.get_input_port(self.input_port_indices[name])
+    def get_output_port_by_name(self, name: str) -> OutputPort:
+        assert (name in self.output_port_indices)
+        return self.get_output_port(self.output_port_indices[name])
 
     def calculate_optimal_footstep(
             self, context: Context, footstep: BasicVector) -> None:

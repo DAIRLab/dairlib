@@ -140,9 +140,9 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_fsm(),
                 'fsm'
             ),
-            'switching_time': builder.ExportOutput(
+            'time_until_switch': builder.ExportOutput(
                 self.controller.get_output_port_switching_time(),
-                'switching_time'
+                'time_until_switch'
             ),
             'state': builder.ExportOutput(
                 self.cassie_sim.get_output_port_state(),

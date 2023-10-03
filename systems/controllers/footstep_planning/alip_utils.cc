@@ -92,7 +92,7 @@ pair<MatrixXd, MatrixXd> AlipStepToStepDynamics(
     double com_z, double m, double Tss, double Tds,
     ResetDiscretization discretization) {
   auto M = CalcResetMap(com_z, m, Tds, discretization);
-  MatrixXd A = CalcAd(com_z, m, Tss);
+  MatrixXd A = CalcAd(com_z, m, Tss + Tds);
   MatrixXd B = CalcAd(com_z, m, Tss) * M.rightCols<2>();
   return {A, B};
 }

@@ -21,7 +21,7 @@ AlipStateCalculator::AlipStateCalculator(
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t",
       OutputVector<double>(
-          plant.num_positions(), plant.num_velocities(),plant.num_actuators()
+          plant.num_positions(), plant.num_velocities(), plant.num_actuators()
       )).get_index();
 
   DeclareVectorOutputPort("alip_state", 4, &AlipStateCalculator::CalcOutput);
@@ -62,6 +62,8 @@ void AlipStateCalculator::CalcOutput(
       plant_, context_, robot_output->GetState(), {stance_foot_map_.at(fsm)},
       {1.0}, &CoM, &L, &stance
   );
+
+  CoM = CoM - stance;
 
   if (!expressed_in_frame_.empty()) {
     CoM = ReExpressWorldVector3InBodyYawFrame<double>(

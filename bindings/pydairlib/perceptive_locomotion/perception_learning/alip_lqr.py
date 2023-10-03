@@ -63,7 +63,7 @@ class AlipFootstepLQR(LeafSystem):
             'fsm': self.DeclareVectorInputPort(
                 "fsm", 1
             ).get_index(),
-            'switch_time': self.DeclareVectorInputPort(
+            'time_until_switch': self.DeclareVectorInputPort(
                 "time_until_switch", 1
             ).get_index(),
             'state': self.DeclareVectorInputPort(
@@ -79,12 +79,13 @@ class AlipFootstepLQR(LeafSystem):
     def get_input_port_by_name(self, name: str) -> InputPort:
         assert (name in self.input_port_indices)
         return self.get_input_port(self.input_port_indices[name])
+
     def get_output_port_by_name(self, name: str) -> OutputPort:
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
     def calculate_optimal_footstep(
-            self, context: Context, footstep: BasicVector) -> None:
+        self, context: Context, footstep: BasicVector) -> None:
         """
             Calculate the optimal (LQR) footstep location.
             This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
@@ -104,9 +105,9 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['state']
         ).value().ravel()
-        switch_time = self.EvalVectorInput(
+        time_until_switch = self.EvalVectorInput(
             context,
-            self.input_port_indices['switch_time']
+            self.input_port_indices['time_until_switch']
         ).value().ravel()[0]
 
         # if not in single stance, just return 0
@@ -122,16 +123,16 @@ class AlipFootstepLQR(LeafSystem):
         x = CalcAd(
             self.params.height,
             self.params.mass,
-            switch_time
+            time_until_switch
         ) @ current_alip_state
 
         # LQR feedback - for now assume the height of the ground is zero
         footstep_command = np.zeros((3,))
-        footstep_command[:2] = ud + self.K @ (x - xd)
+        footstep_command[:2] = ud + self.K @ (xd - x)
         footstep.set_value(footstep_command)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
-            Tuple[np.ndarray, np.ndarray]:
+        Tuple[np.ndarray, np.ndarray]:
         """
             Calculate a reference ALIP trajectory following the philosophy
             outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D
@@ -141,12 +142,12 @@ class AlipFootstepLQR(LeafSystem):
         s = -1.0 if stance == Stance.kLeft else 1.0
         u0 = np.zeros((2,))
         u0[0] = vdes[0] * (
-                self.params.single_stance_duration +
-                self.params.double_stance_duration
+            self.params.single_stance_duration +
+            self.params.double_stance_duration
         )
         u0[1] = s * self.params.stance_width + vdes[1] * (
-                self.params.single_stance_duration +
-                self.params.double_stance_duration
+            self.params.single_stance_duration +
+            self.params.double_stance_duration
         )
         u1 = np.copy(u0)
         u1[1] -= 2 * s * self.params.stance_width

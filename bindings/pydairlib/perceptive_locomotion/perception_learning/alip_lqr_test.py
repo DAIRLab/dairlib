@@ -17,7 +17,7 @@ from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.\
+from pydairlib.perceptive_locomotion.perception_learning. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
@@ -30,13 +30,13 @@ import numpy as np
 
 def main():
     controller_params = AlipFootstepLQROptions(
-        height=1.0,
+        height=0.9,
         mass=30.0,
-        stance_width=0.35,
-        single_stance_duration=0.3,
+        stance_width=0.4,
+        single_stance_duration=0.32,
         double_stance_duration=0.1,
-        Q=np.eye(4),
-        R=0.05 * np.eye(2)
+        Q=np.diag([1.0, 1.0, 0.01, 0.01]),
+        R=200.0 * np.eye(2)
     )
     sim_params = CassieFootstepControllerEnvironmentOptions()
     controller = AlipFootstepLQR(controller_params)
@@ -45,7 +45,7 @@ def main():
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
 
-    desired_velocity = ConstantVectorSource(np.array([0.1, 0.1]))
+    desired_velocity = ConstantVectorSource(np.array([0.1, 0.0]))
     builder.AddSystem(controller)
     builder.AddSystem(desired_velocity)
 
@@ -67,8 +67,8 @@ def main():
         controller.get_input_port_by_name("fsm")
     )
     builder.Connect(
-        sim_env.get_output_port_by_name("switching_time"),
-        controller.get_input_port_by_name("switch_time")
+        sim_env.get_output_port_by_name("time_until_switch"),
+        controller.get_input_port_by_name("time_until_switch")
     )
     builder.Connect(
         sim_env.get_output_port_by_name("alip_state"),
@@ -85,7 +85,7 @@ def main():
         context,
         np.zeros((3,)),
         0.15,
-        1.0
+        1.01
     )
     simulator.reset_context(context)
     simulator.Initialize()

@@ -481,7 +481,7 @@ MpfcOscDiagram::MpfcOscDiagram(
       alip_calc->get_output_port(), "alip"
   );
   output_port_switching_time_ = builder.ExportOutput(
-      fsm->get_output_port_next_switch_time(), "switching_time"
+      fsm->get_output_port_time_until_switch(), "time_until_switch"
   );
   input_port_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "x, u, t"

@@ -17,10 +17,13 @@ from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.cassie_footstep_controller_environment import (
+from pydairlib.perceptive_locomotion.perception_learning.\
+    cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
 )
+
+from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 import numpy as np
 
@@ -32,8 +35,8 @@ def main():
         stance_width=0.35,
         single_stance_duration=0.3,
         double_stance_duration=0.1,
-        Q = np.eye(4),
-        R = np.eye(2)
+        Q=np.eye(4),
+        R=0.05 * np.eye(2)
     )
     sim_params = CassieFootstepControllerEnvironmentOptions()
     controller = AlipFootstepLQR(controller_params)
@@ -72,8 +75,9 @@ def main():
         controller.get_input_port_by_name("state")
     )
 
-
     diagram = builder.Build()
+    DrawAndSaveDiagramGraph(diagram, '../alip_lqr.pdf')
+
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
     sim_env.cassie_sim.SetPlantInitialConditionFromIK(
@@ -85,7 +89,7 @@ def main():
     )
     simulator.reset_context(context)
     simulator.Initialize()
-    simulator.set_target_realtime_rate(1.0)
+    simulator.set_target_realtime_rate(0.1)
     simulator.AdvanceTo(5.0)
 
 

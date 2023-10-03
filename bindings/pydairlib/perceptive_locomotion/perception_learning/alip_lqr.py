@@ -2,6 +2,14 @@ import numpy as np
 from typing import Tuple
 from dataclasses import dataclass, field
 
+import io
+from yaml import load, dump
+
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
+
 from pydrake.systems.all import (
     DiscreteTimeLinearQuadraticRegulator,
     BasicVector,
@@ -10,6 +18,8 @@ from pydrake.systems.all import (
     InputPort,
     OutputPort
 )
+
+from pydrake.multibody.plant import MultibodyPlant
 
 from pydairlib.perceptive_locomotion.controllers import (
     AlipStepToStepDynamics,
@@ -31,6 +41,29 @@ class AlipFootstepLQROptions:
     reset_discretization: ResetDiscretization = ResetDiscretization.kFOH
     Q: np.ndarray = field(default_factory=lambda: np.eye(4))
     R: np.ndarray = field(default_factory=lambda: np.eye(2))
+
+    @staticmethod
+    def calculate_default_options(
+        mpfc_gains_yaml: str, plant:
+        MultibodyPlant, plant_context: Context) -> "AlipFootstepLQROptions":
+        with io.open(mpfc_gains_yaml, 'r') as file:
+            data = load(file, Loader=Loader)
+
+        disc = {
+            'FOH': ResetDiscretization.kFOH,
+            'ZOH': ResetDiscretization.kZOH,
+        }
+
+        return AlipFootstepLQROptions(
+            height=data['h_des'],
+            mass=plant.CalcTotalMass(plant_context),
+            stance_width=data['stance_width'],
+            single_stance_duration=data['ss_time'],
+            double_stance_duration=data['ds_time'],
+            reset_discretization=disc[data['reset_discretization_method']],
+            Q=np.array(data['q']).reshape((4, 4)),
+            R=np.array(data['w_footstep_reg']).reshape(3, 3)[:2, :2],
+        )
 
 
 class AlipFootstepLQR(LeafSystem):

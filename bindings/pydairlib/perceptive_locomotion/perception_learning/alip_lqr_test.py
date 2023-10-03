@@ -29,18 +29,15 @@ import numpy as np
 
 
 def main():
-    controller_params = AlipFootstepLQROptions(
-        height=0.9,
-        mass=30.0,
-        stance_width=0.4,
-        single_stance_duration=0.32,
-        double_stance_duration=0.1,
-        Q=np.diag([1.0, 1.0, 0.01, 0.01]),
-        R=200.0 * np.eye(2)
-    )
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    controller = AlipFootstepLQR(controller_params)
     sim_env = CassieFootstepControllerEnvironment(sim_params)
+
+    controller_params = AlipFootstepLQROptions.calculate_default_options(
+        sim_params.mpfc_gains_yaml,
+        sim_env.controller_plant,
+        sim_env.controller_plant.CreateDefaultContext(),
+    )
+    controller = AlipFootstepLQR(controller_params)
 
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
@@ -89,7 +86,7 @@ def main():
     )
     simulator.reset_context(context)
     simulator.Initialize()
-    simulator.set_target_realtime_rate(0.1)
+    simulator.set_target_realtime_rate(1.0)
     simulator.AdvanceTo(5.0)
 
 

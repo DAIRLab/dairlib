@@ -9,8 +9,8 @@ namespace py = pybind11;
 using py_rvp = py::return_value_policy;
 
 namespace dairlib::pydairlib {
-PYBIND11_MODULE(system_utils, m) {
-m.doc() = "Binding system utilities";
-m.def("DrawAndSaveDiagramGraph", &dairlib::DrawAndSaveDiagramGraph, py::arg("diagram"), py::arg("path"));
+  PYBIND11_MODULE(system_utils, m) {
+  m.doc() = "Binding system utilities";
+  m.def("DrawAndSaveDiagramGraph", &dairlib::DrawAndSaveDiagramGraph, py::arg("diagram"), py::arg("path"));
 }
 }

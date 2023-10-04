@@ -7,6 +7,7 @@
 #include "common/find_resource.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
 #include "multibody/kinematic/distance_evaluator.h"
+#include "multibody/view_frame.h"
 #include "systems/framework/geared_motor.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -55,6 +56,17 @@ multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
 template <typename T>
 multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
     const drake::multibody::MultibodyPlant<T>& plant);
+
+/// get a view frame to re-express world frame quantities in a frame pinned to
+/// the right toe with x pointing forward, y to the left, and z pointing away
+/// from the contact surface. Allows us to (more) correctly consider the contact
+/// normal when walking on non-flat ground in the sagittal plane
+multibody::RotationFromBodyViewFrame<double> GroundAlignedRightToeViewFrame(
+    const drake::multibody::MultibodyPlant<double>& plant);
+
+/// Same as GroundAlignedRightToeViewFrame but for the left toe.
+multibody::RotationFromBodyViewFrame<double> GroundAlignedLeftToeViewFrame(
+    const drake::multibody::MultibodyPlant<double>& plant);
 
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant

@@ -23,6 +23,7 @@ using drake::multibody::RevoluteSpring;
 using drake::systems::sensors::Accelerometer;
 using drake::systems::sensors::Gyroscope;
 using Eigen::Vector3d;
+using Eigen::Matrix3d;
 using Eigen::VectorXd;
 
 template <typename T>
@@ -99,6 +100,36 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
   return multibody::DistanceEvaluator<T>(
       plant, rod_on_heel.first, rod_on_heel.second, rod_on_thigh.first,
       rod_on_thigh.second, kCassieAchillesLength);
+}
+
+multibody::RotationFromBodyViewFrame<double> GroundAlignedRightToeViewFrame(
+    const MultibodyPlant<double>& plant) {
+  Vector3d front(-0.0457, 0.112, 0);
+  Vector3d rear(0.088, 0, 0);
+  Vector3d x = (front - rear).normalized();
+  Vector3d y = -Vector3d::UnitZ();
+  Vector3d z = x.cross(y);
+  Matrix3d R_BF = drake::math::RotationMatrixd::MakeFromOrthonormalColumns(
+      x, y, z
+  ).matrix();
+  return multibody::RotationFromBodyViewFrame(
+      plant.GetBodyByName("toe_right"), R_BF
+  );
+}
+
+multibody::RotationFromBodyViewFrame<double> GroundAlignedLeftToeViewFrame(
+    const MultibodyPlant<double>& plant) {
+  Vector3d front(-0.0457, 0.112, 0);
+  Vector3d rear(0.088, 0, 0);
+  Vector3d x = (front - rear).normalized();
+  Vector3d y = -Vector3d::UnitZ();
+  Vector3d z = x.cross(y);
+  Matrix3d R_BF = drake::math::RotationMatrixd::MakeFromOrthonormalColumns(
+      x, y, z
+  ).matrix();
+  return multibody::RotationFromBodyViewFrame(
+      plant.GetBodyByName("toe_left"), R_BF
+  );
 }
 
 /// Add a fixed base cassie to the given multibody plant and scene graph

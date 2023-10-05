@@ -6,8 +6,6 @@
 
 #include "multibody/multibody_utils.h"
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;

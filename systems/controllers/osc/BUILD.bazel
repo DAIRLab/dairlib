@@ -11,6 +11,7 @@ cc_library(
         "operational_space_control.h",
     ],
     deps = [
+        ":osc_gains",
         ":osc_tracking_datas",
         "//common:eigen_utils",
         "//common:find_resource",
@@ -18,7 +19,7 @@ cc_library(
         "//multibody:utils",
         "//multibody/kinematic",
         "//solvers:fast_osqp_solver",
-        "//solvers:osqp_solver_options",
+        "//solvers:solver_options_io",
         "//systems/controllers:control_utils",
         "//systems/controllers:controller_failure_aggregator",
         "//systems/framework:vector",
@@ -55,6 +56,7 @@ cc_library(
     hdrs = ["options_tracking_data.h"],
     deps = [
         ":osc_tracking_data",
+        "//common:eigen_utils",
         "//multibody:utils",
         "//multibody:view_frame",
         "//systems/framework:vector",
@@ -119,6 +121,14 @@ cc_library(
         ":trans_space_tracking_data",
         "//multibody:utils",
         "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "osc_gains",
+    hdrs = ["osc_gains.h"],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

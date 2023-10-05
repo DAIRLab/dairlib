@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <chrono>
+#include <iostream>
 
 #include <gflags/gflags.h>
 
@@ -109,8 +110,8 @@ void runDircon() {
   trajopt.AddRunningCost(u.transpose()*R*u);
 
 
-  auto positions_map = multibody::makeNameToPositionsMap(plant);
-  auto velocities_map = multibody::makeNameToVelocitiesMap(plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(plant);
+  auto velocities_map = multibody::MakeNameToVelocitiesMap(plant);
   // // Print out position names
   // for (const auto& it : positions_map) {
   //   std::cout << it.first << std::endl;
@@ -175,7 +176,7 @@ void runDircon() {
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          pp_xtraj);
   auto diagram = builder.Build();
 

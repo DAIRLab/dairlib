@@ -1,16 +1,37 @@
+controller_frequency: 1000
+
+# OSC gains
+w_input: 0.0000
+w_input_reg: 0.000001
+w_accel: 0.00000001
+w_lambda: 0.00000001
+w_soft_constraint: 80
+impact_threshold: 0.025
+impact_tau: 0.005
+mu: 0.6
+# roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
+W_input_reg: [1, 0.9, 0.5, 0.1, 5,
+              1, 0.9, 0.5, 0.1, 5]
+W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
+          1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
+W_lambda_c_reg: [1, 0.001, 0.01,
+                 1, 0.001, 0.01,
+                 1, 0.1, 0.01,
+                 1, 0.1, 0.01]
+W_lambda_h_reg: [0.01, 0.01, 0.01,
+                 0.01, 0.02, 0.02]
+
 rows: 3
 cols: 3
 
-# TrackingDataSettings
-relative_swing_ft: true
-
 # High level command gains (with radio)
-vel_scale_rot: -3.5
-vel_scale_trans_sagital: 0.6
-vel_scale_trans_lateral: -0.25
+vel_scale_rot: -1.5
+vel_scale_trans_sagital: 0.8
+vel_scale_trans_lateral: -0.4
 
 # Filter settings
-pelvis_xyz_vel_filter_tau: [0.01, 0.01, 0.01]
+pelvis_xyz_vel_filter_tau: [0.001, 0.001, 0.001]
 
 # High level command gains (without radio)
 global_target_position_x: 0
@@ -29,41 +50,31 @@ kd_pos_lateral: 0  # 0.3
 vel_max_lateral: 0  # 0.3
 target_pos_offset: 0  # -0.16
 
-# Speed control gains
-k_ff_sagittal: 0
-k_fb_sagittal: 0.2
-k_ff_lateral: 0
-k_fb_lateral: 0.1
-
 # Finite state machine
 ss_time: 0.3
 ds_time: 0.1
 
+# Distance of contact point from foot rear (0 is heel, 1 is toe)
+contact_point_pos: 0.35
+
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.25
-center_line_offset: 0.03
-mid_foot_height: 0.2
+footstep_offset: 0.18
+center_line_offset: 0.04
+mid_foot_height: 0.15
 final_foot_height: 0.0
 final_foot_velocity_z: 0.0
 
 # LIPM trajectory
 lipm_height: 0.85
 
-# OSC gains
-mu: 0.75
-
-w_accel: 0.00000001
-w_soft_constraint: 80
-w_input_reg: 0.0000003
-
 w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 0.5
+w_hip_yaw: 0.1
 hip_yaw_kp: 40
-hip_yaw_kd: 0.5
+hip_yaw_kd: 1
 
 CoMW:
   [   0,    0,     0,
@@ -77,19 +88,6 @@ CoMKd:
   [   0,    0,     0,
       0,    0,     0,
       0,    0,     5]
-#CoMW:
-#  [   1,    0,     0,
-#      0,    1,     0,
-#      0,    0,    10]
-#CoMKp:
-#  [  50,    0,     0,
-#      0,   50,     0,
-#      0,    0,    50]
-#CoMKd:
-#  [   5,    0,     0,
-#      0,    5,     0,
-#      0,    0,     5]
-
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
@@ -114,7 +112,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    10]
+      0,     0,    4]
 period_of_no_heading_control: 0.0
 
 SwingFootW:
@@ -129,3 +127,9 @@ SwingFootKd:
   [   1,    0,     0,
       0,    1,     0,
       0,    0,     1]
+
+AlipKalmanQ:
+  [.001, .001, .01, .01]
+
+AlipKalmanR:
+  [.0001, .0001, .01, .01]

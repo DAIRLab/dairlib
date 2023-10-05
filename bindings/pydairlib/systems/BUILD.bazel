@@ -41,7 +41,6 @@ pybind_py_library(
     py_imports = ["."],
 )
 
-
 pybind_py_library(
     name = "framework_py",
     cc_deps = [

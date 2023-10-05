@@ -1,6 +1,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
 #include <drake/solvers/choose_best_solver.h>
@@ -22,7 +23,7 @@
 
 #include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/solve.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 
 using std::cout;
 using std::endl;
@@ -63,7 +64,7 @@ using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::SolutionResult;
 using drake::solvers::VectorXDecisionVariable;
-using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::planning::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_int32(knot_points, 10, "Number of knot points per contact mode");
@@ -137,7 +138,7 @@ class JointAccelCost : public solvers::NonlinearCost<double> {
     const auto u0 = x.segment(n_x_, n_u_);
     VectorXd l0 = x.segment(n_x_ + n_u_, n_lambda_);
 
-    multibody::setContext<double>(plant_, x0, u0, context_.get());
+    multibody::SetContext<double>(plant_, x0, u0, context_.get());
     const VectorX<double> xdot0 =
         constraints_->CalcTimeDerivatives(*context_, &l0);
 
@@ -171,7 +172,7 @@ void DoMain() {
     file_name = "examples/Cassie/urdf/cassie_v2_conservative.urdf";
   }
 
-  addCassieMultibody(&plant, nullptr, true, file_name, FLAGS_use_springs,
+  AddCassieMultibody(&plant, nullptr, true, file_name, FLAGS_use_springs,
                      false);
 
   Parser parser_vis(&plant_vis, &scene_graph);
@@ -195,9 +196,9 @@ void DoMain() {
   }
 
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   // Set up contact/distance constraints
   auto left_toe_pair = LeftToeFront(plant);
@@ -393,7 +394,7 @@ void DoMain() {
             << std::endl;
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
       trajopt.ReconstructStateTrajectory(result);
-  multibody::connectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant_vis, &builder, &scene_graph,
                                          optimal_traj);
 
   auto diagram = builder.Build();
@@ -409,9 +410,9 @@ void DoMain() {
 void SetKinematicConstraints(Dircon<double>* trajopt,
                              const MultibodyPlant<double>& plant) {
   // Create maps for joints
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_q = plant.num_positions();
   int n_v = plant.num_velocities();
@@ -697,9 +698,9 @@ void AddCosts(Dircon<double>* trajopt, const MultibodyPlant<double>& plant,
   auto x = trajopt->state();
   auto u = trajopt->input();
 
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();
@@ -818,9 +819,9 @@ void AddCostsSprings(Dircon<double>* trajopt,
   auto x = trajopt->state();
   auto u = trajopt->input();
 
-  map<string, int> pos_map = multibody::makeNameToPositionsMap(plant);
-  map<string, int> vel_map = multibody::makeNameToVelocitiesMap(plant);
-  map<string, int> act_map = multibody::makeNameToActuatorsMap(plant);
+  map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
+  map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  map<string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
 
   int n_v = plant.num_velocities();
   int n_u = plant.num_actuators();

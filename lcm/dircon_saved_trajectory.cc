@@ -1,6 +1,9 @@
 #include "dircon_saved_trajectory.h"
+#include <iostream>
 
 #include "multibody/multibody_utils.h"
+
+#include <iostream>
 
 using drake::multibody::MultibodyPlant;
 using drake::trajectories::PiecewisePolynomial;
@@ -36,14 +39,14 @@ DirconTrajectory::DirconTrajectory(
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
     state_traj.time_vector = state_breaks[mode];
-    state_traj.datatypes = multibody::createStateNameVectorFromMap(plant);
+    state_traj.datatypes = multibody::CreateStateNameVectorFromMap(plant);
 
     state_derivative_traj.traj_name =
         "state_derivative_traj" + std::to_string(mode);
     state_derivative_traj.datapoints = xdot[mode];
     state_derivative_traj.time_vector = state_breaks[mode];
     state_derivative_traj.datatypes =
-        multibody::createStateNameVectorFromMap(plant);
+        multibody::CreateStateNameVectorFromMap(plant);
 
     // Force vars
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -124,7 +127,7 @@ DirconTrajectory::DirconTrajectory(
   input_traj.traj_name = "input_traj";
   input_traj.datapoints = dircon.GetInputSamples(result);
   input_traj.time_vector = dircon.GetSampleTimes(result);
-  input_traj.datatypes = multibody::createActuatorNameVectorFromMap(plant);
+  input_traj.datatypes = multibody::CreateActuatorNameVectorFromMap(plant);
   AddTrajectory(input_traj.traj_name, input_traj);
   u_ = &input_traj;
 
@@ -163,14 +166,14 @@ DirconTrajectory::DirconTrajectory(
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
     state_traj.time_vector = state_breaks[mode];
-    state_traj.datatypes = multibody::createStateNameVectorFromMap(plant);
+    state_traj.datatypes = multibody::CreateStateNameVectorFromMap(plant);
 
     state_derivative_traj.traj_name =
         "state_derivative_traj" + std::to_string(mode);
     state_derivative_traj.datapoints = xdot[mode];
     state_derivative_traj.time_vector = state_breaks[mode];
     state_derivative_traj.datatypes =
-        multibody::createStateNameVectorFromMap(plant);
+        multibody::CreateStateNameVectorFromMap(plant);
 
     // Force vars
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -248,7 +251,7 @@ DirconTrajectory::DirconTrajectory(
   input_traj.traj_name = "input_traj";
   input_traj.datapoints = dircon.GetInputSamples(result);
   input_traj.time_vector = dircon.GetSampleTimes(result);
-  input_traj.datatypes = multibody::createActuatorNameVectorFromMap(plant);
+  input_traj.datatypes = multibody::CreateActuatorNameVectorFromMap(plant);
   AddTrajectory(input_traj.traj_name, input_traj);
   u_ = &input_traj;
 
@@ -451,9 +454,9 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
   // Finished loading in trajectories, now constructing maps to be compatible
   // with old trajectories
 
-  auto pos_map = multibody::makeNameToPositionsMap(plant);
-  auto vel_map = multibody::makeNameToVelocitiesMap(plant);
-  auto act_map = multibody::makeNameToActuatorsMap(plant);
+  auto pos_map = multibody::MakeNameToPositionsMap(plant);
+  auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
+  auto act_map = multibody::MakeNameToActuatorsMap(plant);
   state_map_ = MatrixXd::Zero(plant.num_positions() + plant.num_velocities(),
                               x_[0]->datapoints.rows());
   int nq = plant.num_positions();

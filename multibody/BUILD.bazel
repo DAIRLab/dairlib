@@ -109,17 +109,17 @@ cc_library(
     hdrs = ["geom_geom_collider.h"],
     deps = [
         "@drake//:drake_shared_library",
-    ]
+    ],
 )
 
 cc_binary(
     name = "geom_geom_collider_test",
     srcs = ["test/geom_geom_collider_test.cc"],
+    data = ["//examples/trifinger:trifinger_urdf"],
     deps = [
         ":geom_geom_collider",
         ":utils",
         "//common",
         "@drake//:drake_shared_library",
     ],
-    data = ["//examples/trifinger:trifinger_urdf"],
 )

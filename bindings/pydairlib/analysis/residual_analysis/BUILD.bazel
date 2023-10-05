@@ -1,0 +1,44 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+
+py_library(
+    name = "log_processor",
+    srcs = ["log_processor.py"],
+    deps = [
+        "//bindings/pydairlib/lcm",
+    ],
+)
+
+py_library(
+    name = "cassie_model",
+    srcs = ["cassie_model.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/multibody",
+    ],
+)
+
+py_binary(
+    name = "residual_analysis",
+    srcs = ["residual_analysis.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        ":cassie_model",
+        ":log_processor",
+    ],
+)

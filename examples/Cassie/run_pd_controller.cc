@@ -47,7 +47,7 @@ int doMain(int argc, char* argv[]) {
   scene_graph.set_name("scene_graph");
 
   MultibodyPlant<double>& plant = *builder_null.AddSystem<MultibodyPlant>(1.0);
-  addCassieMultibody(&plant, &scene_graph_null, FLAGS_floating_base);
+  AddCassieMultibody(&plant, &scene_graph_null, FLAGS_floating_base);
   plant.Finalize();
 
   const std::string channel_x = FLAGS_channel_x;
@@ -89,8 +89,6 @@ int doMain(int argc, char* argv[]) {
   builder.Connect(config_receiver->get_output_port(0),
                   controller->get_input_port_config());
 
-  std::cout << controller->get_output_port(0).size() << std::endl;
-  std::cout << command_sender->get_input_port(0).size() << std::endl;
   builder.Connect(controller->get_output_port(0),
                   command_sender->get_input_port(0));
 

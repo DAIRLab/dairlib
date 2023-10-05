@@ -1,4 +1,5 @@
 #include "multibody/geom_geom_collider.h"
+#include "multibody/geom_geom_collider.h"
 
 #include "drake/math/rotation_matrix.h"
 

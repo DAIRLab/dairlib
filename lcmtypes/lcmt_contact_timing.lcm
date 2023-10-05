@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_contact_timing
+{
+  int64_t utime;
+  int16_t n_transitions;
+  int16_t active_fsm_state;
+  int16_t transition_states[n_transitions];
+  double transition_times[n_transitions];
+  string fsm_state_names[n_transitions];
+}

@@ -5,13 +5,10 @@
 #include <fstream>
 #include <string>
 
-#include "drake/math/saturate.h"
 #include "drake/math/roll_pitch_yaw.h"
 #include "systems/controllers/control_utils.h"
 #include "multibody/multibody_utils.h"
 
-using std::cout;
-using std::endl;
 using std::string;
 
 using Eigen::MatrixXd;
@@ -45,7 +42,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
     double max_com_to_footstep_dist, double footstep_offset,
-    double center_line_offset, bool wrt_com_in_local_frame)
+    double center_line_offset)
     : plant_(plant),
       context_(context),
       world_(plant_.world_frame()),
@@ -64,10 +61,6 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
   DRAKE_DEMAND(left_right_support_durations.size() == 2);
   DRAKE_DEMAND(left_right_foot.size() == 2);
-  if (!wrt_com_in_local_frame) {
-    std::cerr << "ALIP swing foot trajectory only supports relative to CoM\n";
-  }
-  DRAKE_DEMAND(wrt_com_in_local_frame);
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
@@ -325,7 +318,7 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     // creating trajectory.
     // Ensure "current_time < end_time" to avoid error in
     // creating trajectory.
-    start_time_of_this_interval = drake::math::saturate(
+    start_time_of_this_interval = std::clamp(
         start_time_of_this_interval, -std::numeric_limits<double>::infinity(),
         end_time_of_this_interval - 0.001);
 

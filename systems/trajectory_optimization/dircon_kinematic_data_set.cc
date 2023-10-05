@@ -70,7 +70,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
   const VectorX<T> q = state.head(num_positions_);
   const VectorX<T> v = state.tail(num_velocities_);
 
-  VectorX<T> input = multibody::getInput(plant_, context);
+  VectorX<T> input = multibody::GetInput(plant_, context);
 
   // Create a CacheKey element by discarding gradient information (if AutoDiff)
   CacheKey<T> key{state, forces, input};

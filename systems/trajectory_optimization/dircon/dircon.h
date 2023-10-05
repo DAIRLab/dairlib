@@ -9,10 +9,10 @@
 #include "systems/trajectory_optimization/dircon/dynamics_cache.h"
 
 #include "drake/common/drake_copyable.h"
-#include "drake/common/symbolic.h"
+#include "drake/common/symbolic/expression.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/solvers/constraint.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 
 namespace dairlib {
 namespace systems {
@@ -31,7 +31,7 @@ namespace trajectory_optimization {
 /// and corresponding acceleration, velocity, and position constraints.
 template <typename T>
 class Dircon
-    : public drake::systems::trajectory_optimization::MultipleShooting {
+    : public drake::planning::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Dircon)
 
@@ -186,8 +186,8 @@ class Dircon
   drake::symbolic::Expression SubstitutePostImpactVelocityVariables(
       const drake::symbolic::Expression& e, int mode) const;
 
-  using drake::systems::trajectory_optimization::MultipleShooting::N;
-  using drake::systems::trajectory_optimization::MultipleShooting::
+  using drake::planning::trajectory_optimization::MultipleShooting::N;
+  using drake::planning::trajectory_optimization::MultipleShooting::
   SubstitutePlaceholderVariables;
 
   int num_modes() const;

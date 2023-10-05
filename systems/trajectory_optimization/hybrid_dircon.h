@@ -11,12 +11,12 @@
 #include "systems/trajectory_optimization/dircon_options.h"
 
 #include "drake/common/drake_copyable.h"
-#include "drake/common/symbolic.h"
+#include "drake/common/symbolic/expression.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 
 namespace dairlib {
 namespace systems {
@@ -36,7 +36,7 @@ namespace trajectory_optimization {
 
 template <typename T>
 class HybridDircon
-    : public drake::systems::trajectory_optimization::MultipleShooting {
+    : public drake::planning::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HybridDircon)
 
@@ -201,8 +201,8 @@ class HybridDircon
   drake::symbolic::Expression SubstitutePostImpactVelocityVariables(
       const drake::symbolic::Expression& e, int mode) const;
 
-  using drake::systems::trajectory_optimization::MultipleShooting::N;
-  using drake::systems::trajectory_optimization::MultipleShooting::
+  using drake::planning::trajectory_optimization::MultipleShooting::N;
+  using drake::planning::trajectory_optimization::MultipleShooting::
   SubstitutePlaceholderVariables;
 
   void ScaleTimeVariables(double scale);

@@ -1,0 +1,69 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:drake_lcm.bzl",
+    "drake_lcm_cc_library",
+    "drake_lcm_java_library",
+    "drake_lcm_py_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+cc_library(
+    name = "osc_run",
+    deps = [
+        ":foot_traj_generator",
+        ":osc_running_gains",
+        ":pelvis_trans_traj_generator",
+    ],
+)
+
+cc_library(
+    name = "osc_running_gains",
+    hdrs = ["osc_running_gains.h"],
+    deps = [
+        "//systems/controllers/osc:osc_gains",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "pelvis_trans_traj_generator",
+    srcs = ["pelvis_trans_traj_generator.cc"],
+    hdrs = ["pelvis_trans_traj_generator.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/controllers/osc:osc_gains",
+        "//examples/Cassie/contact_scheduler:all",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "foot_traj_generator",
+    srcs = ["foot_traj_generator.cc"],
+    hdrs = ["foot_traj_generator.h"],
+    deps = [
+        "//multibody:utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems/controllers/osc:osc_gains",
+        "//examples/Cassie/contact_scheduler:all",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

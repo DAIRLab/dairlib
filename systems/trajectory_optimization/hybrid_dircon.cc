@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "multibody/multibody_utils.h"
 
@@ -24,7 +25,7 @@ using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
-using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::planning::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -54,7 +55,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
   DRAKE_ASSERT(constraints.size() == num_modes_);
   DRAKE_ASSERT(options.size() == num_modes_);
 
-  bool is_quaternion = multibody::isQuaternion(plant);
+  bool is_quaternion = multibody::HasQuaternion(plant);
 
   // Initialization is looped over the modes
   int counter = 0;
@@ -64,12 +65,12 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // set timestep bounds
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       prog().AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i],
-                               timestep(mode_start_[i] + j));
+                               time_step(mode_start_[i] + j));
     }
     for (int j = 0; j < mode_lengths_[i] - 2; j++) {
       // all timesteps must be equal
-      prog().AddLinearConstraint(timestep(mode_start_[i] + j) ==
-          timestep(mode_start_[i] + j + 1));
+      prog().AddLinearConstraint(time_step(mode_start_[i] + j) ==
+          time_step(mode_start_[i] + j + 1));
     }
 
     // initialize constraint lengths
@@ -310,9 +311,6 @@ VectorXDecisionVariable HybridDircon<T>::state_vars_by_mode(
     VectorXDecisionVariable ret(num_states());
     return x_vars().segment((mode_start_[mode] + time_index) * num_states(),
                             num_states());
-    // std::cout << Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0,
-    // num_states())  << std::endl; return
-    // Eigen::VectorBlock<VectorXDecisionVariable>(ret, 0, num_states());
   }
 }
 
@@ -385,7 +383,7 @@ void HybridDircon<T>::GetStateAndDerivativeSamples(
 
       VectorX<T> xk = result.GetSolution(state_vars_by_mode(i, j));
       VectorX<T> uk = result.GetSolution(input(k_data));
-      auto context = multibody::createContext<T>(plant_, xk, uk);
+      auto context = multibody::CreateContext<T>(plant_, xk, uk);
       constraints_[i]->updateData(*context, result.GetSolution(force(i, j)));
 
       states_i.col(j) = drake::math::DiscardGradient(xk);
@@ -434,10 +432,10 @@ void HybridDircon<T>::SetInitialForceTrajectory(
     const PiecewisePolynomial<double>& traj_init_vc) {
   double start_time = 0;
   double h;
-  if (timesteps_are_decision_variables())
+  if (time_steps_are_decision_variables())
     h = prog().GetInitialGuess(h_vars()[0]);
   else
-    h = fixed_timestep();
+    h = fixed_time_step();
 
   VectorXd guess_force(force_vars_[mode].size());
   if (traj_init_l.empty()) {
@@ -487,7 +485,7 @@ void HybridDircon<T>::ScaleTimeVariables(double scale) {
 }
 template <typename T>
 void HybridDircon<T>::ScaleQuaternionSlackVariables(double scale) {
-  DRAKE_DEMAND(multibody::isQuaternion(plant_));
+  DRAKE_DEMAND(multibody::HasQuaternion(plant_));
   for (size_t mode = 0; mode < mode_lengths_.size(); mode++) {
     for (int j = 0; j < mode_lengths_[mode] - 1; j++) {
       prog().SetVariableScaling(quaternion_slack_vars_[mode](j), scale);

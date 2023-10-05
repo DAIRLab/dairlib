@@ -1,5 +1,6 @@
 #include <chrono>
 #include <thread>
+#include <iostream>
 
 #include <gflags/gflags.h>
 
@@ -84,8 +85,8 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
     vector<PiecewisePolynomial<double>> init_l_traj,
     vector<PiecewisePolynomial<double>> init_lc_traj,
     vector<PiecewisePolynomial<double>> init_vc_traj) {
-  auto positions_map = multibody::makeNameToPositionsMap(*plant);
-  auto velocities_map = multibody::makeNameToVelocitiesMap(*plant);
+  auto positions_map = multibody::MakeNameToPositionsMap(*plant);
+  auto velocities_map = multibody::MakeNameToVelocitiesMap(*plant);
 
   // Start of constraint specification
   const Body<double>& left_lower_leg = plant->GetBodyByName("left_lower_leg");
@@ -164,7 +165,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
 
   // Set initial guesses
   for (uint j = 0; j < timesteps.size(); j++) {
-    trajopt->drake::systems::trajectory_optimization::MultipleShooting::
+    trajopt->drake::planning::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
                                        init_vc_traj[j]);
@@ -348,7 +349,7 @@ int doMain(int argc, char* argv[]) {
   drake::trajectories::PiecewisePolynomial<double> optimal_traj =
       run_traj_opt(&plant, init_x_traj, init_u_traj, init_l_traj, init_lc_traj,
                    init_vc_traj);
-  multibody::connectTrajectoryVisualizer(&plant, &builder, &scene_graph,
+  multibody::ConnectTrajectoryVisualizer(&plant, &builder, &scene_graph,
                                          optimal_traj);
   return 0;
 }

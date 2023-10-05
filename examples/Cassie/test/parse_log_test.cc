@@ -1,4 +1,5 @@
 #include "drake/lcm/drake_lcm_log.h"
+#include <iostream>
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_log_playback_system.h"
@@ -23,7 +24,7 @@ using systems::VectorAggregator;
 
 int ParseLog(string filename) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  addCassieMultibody(&plant);
+  AddCassieMultibody(&plant);
   
   drake::lcm::DrakeLcmLog r_log(filename, false);
 

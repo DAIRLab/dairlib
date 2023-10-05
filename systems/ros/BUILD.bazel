@@ -13,6 +13,7 @@ cc_library(
         "@drake//:drake_shared_library",
         "@ros",
     ],
+<<<<<<< HEAD
 )
 
 cc_library(
@@ -27,6 +28,8 @@ cc_library(
     "@drake//:drake_shared_library",
   ],
   tags=["ros"],
+=======
+>>>>>>> jammy_dev
 )
 
 cc_binary(

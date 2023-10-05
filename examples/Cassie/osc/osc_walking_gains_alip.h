@@ -1,7 +1,6 @@
 #pragma once
 
 #include "systems/controllers/osc/osc_gains.h"
-#include "yaml-cpp/yaml.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 

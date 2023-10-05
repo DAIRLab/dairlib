@@ -220,6 +220,18 @@ def get_floating_base_velocity_in_body_frame(
     return vel
 
 
+def get_floating_base_velocity_in_body_frame(
+    robot_output, plant, context, fb_frame):
+    vel = np.zeros((robot_output['q'].shape[0], 3))
+    for i, (q, v) in enumerate(zip(robot_output['q'], robot_output['v'])):
+        plant.SetPositions(context, q)
+        plant.SetVelocities(context, v)
+        vel[i] = fb_frame.CalcSpatialVelocity(
+            context, plant.world_frame(), fb_frame).translational()
+
+    return vel
+
+
 def process_osc_channel(data):
     t_osc = []
     if hasattr(data[0], 'regularization_cost_names'):
@@ -395,6 +407,26 @@ def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=Non
     plotting_utils.make_plot(
         robot_output,  # data dict
         't_x',  # time channel
+        time_slice,
+        [key],  # key to plot
+        {key: x_slice},  # slice of key to plot
+        {key: x_names},  # legend entries
+        {'xlabel': 'Time',
+         'ylabel': ylabel,
+         'title': title}, ps)
+    return ps
+
+
+def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, title=None):
+    ps = plot_styler.PlotStyler()
+    if ylabel is None:
+        ylabel = key
+    if title is None:
+        title = key
+
+    plotting_utils.make_plot(
+        robot_input,  # data dict
+        't_u',  # time channel
         time_slice,
         [key],  # key to plot
         {key: x_slice},  # slice of key to plot
@@ -602,6 +634,12 @@ def plot_commanded_efforts(robot_input, u_names, time_slice):
                       title='Commanded Joint Efforts')
 
 
+def plot_commanded_efforts(robot_input, u_names, time_slice):
+    return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
+                      time_slice, ylabel='Efforts (Nm)',
+                      title='Commanded Joint Efforts')
+
+
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
                           pts, dims):
     dim_map = ['_x', '_y', '_z']
@@ -650,6 +688,28 @@ def plot_points_velocities(robot_output, time_slice, plant, context, frame_names
         'ylabel': 'vel (m/s)'}, ps)
 
     return ps 
+
+def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
+                                             context, fb_frame_name):
+    data_dict = {'t': robot_output['t_x']}
+    data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
+        robot_output, plant, context,
+        plant.GetBodyByName(fb_frame_name).body_frame())
+    legend_entries = {'base_vel': ['base_vx', 'base_vy', 'base_vz']}
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        ['base_vel'],
+        {},
+        legend_entries,
+        {'title': 'Floating Base Velocity (Body Frame)',
+         'xlabel': 'time (s)',
+         'ylabel': 'Velocity (m/s)'}, ps)
+
+    return ps
+
 
 def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
                                              context, fb_frame_name):

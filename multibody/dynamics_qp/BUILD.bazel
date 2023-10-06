@@ -1,0 +1,16 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "dynamics_qp",
+    srcs = ["dynamics_qp.cc"],
+    hdrs = ["dynamics_qp.h"],
+    deps = [
+        "//multibody:utils",
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from typing import Tuple, overload
 from dataclasses import dataclass, field
 
 import io
@@ -109,7 +109,10 @@ class AlipFootstepLQR(LeafSystem):
             ).get_index(),
             'lqr_reference': self.DeclareVectorOutputPort(
                 "xd_ud[x,y]", 6, self.calc_lqr_reference
-            )
+            ).get_index(),
+            'x': self.DeclareVectorOutputPort(
+                'x', 4, self.calc_discrete_alip_state
+            ).get_index()
         }
 
     def get_input_port_by_name(self, name: str) -> InputPort:
@@ -143,16 +146,8 @@ class AlipFootstepLQR(LeafSystem):
         output[4:] = ud
         xd_ud.set_value(output)
 
-    def calculate_optimal_footstep(
-        self, context: Context, footstep: BasicVector) -> None:
-        """
-            Calculate the optimal (LQR) footstep location.
-            This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
-            using the LQR gain instead of the deadbeat gain. It also involves
-            some bookkeeping to get the appropriate states and deal with
-            left/right stance.
-        """
-
+    def calc_discrete_alip_state(self, context: Context,
+                                 x_disc: BasicVector) -> None:
         current_alip_state = self.EvalVectorInput(
             context,
             self.input_port_indices['state']
@@ -168,10 +163,25 @@ class AlipFootstepLQR(LeafSystem):
             time_until_switch
         ) @ current_alip_state
 
+        x_disc.set_value(x)
+
+    def calculate_optimal_footstep(
+        self, context: Context, footstep: BasicVector) -> None:
+        """
+            Calculate the optimal (LQR) footstep location.
+            This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
+            using the LQR gain instead of the deadbeat gain. It also involves
+            some bookkeeping to get the appropriate states and deal with
+            left/right stance.
+        """
         xd_ud = BasicVector(6)
         self.calc_lqr_reference(context, xd_ud)
         xd = xd_ud.value()[:4]
         ud = xd_ud.value()[4:]
+
+        x = BasicVector(4)
+        self.calc_discrete_alip_state(context, x)
+        x = x.value()
 
         # LQR feedback - for now assume the height of the ground is zero
         footstep_command = np.zeros((3,))
@@ -208,9 +218,25 @@ class AlipFootstepLQR(LeafSystem):
         return x0, u0
 
     def get_next_value_estimate(self, x, u, xd, ud) -> float:
-        return self.get_value_estimate(
+        return self._get_value_estimate(
             self.A @ (xd - x) + self.B @ (ud - u)
         )
 
-    def get_value_estimate(self, xe: np.ndarray) -> float:
+    def get_next_value_estimate_for_footstep(self, u: np.ndarray,
+                                             context: Context) -> float:
+        x = self.get_output_port_by_name('x').Eval(context)
+        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+        xd = xd_ud[:4]
+        ud = xd_ud[4:]
+        return self.get_next_value_estimate(x, u[:2], xd, ud)
+
+    def _get_value_estimate(self, xe: np.ndarray) -> float:
         return xe.T @ self.S @ xe
+
+    def get_value_estimate(self, context: Context) -> float:
+        x = self.get_output_port_by_name('x').Eval(context)
+        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+        xd = xd_ud[:4]
+        return self._get_value_estimate(x - xd)
+
+

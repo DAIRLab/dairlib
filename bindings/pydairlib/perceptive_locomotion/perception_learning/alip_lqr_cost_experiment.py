@@ -82,14 +82,27 @@ def main():
     simulator.reset_context(context)
     simulator.Initialize()
 
-    map = sim_env.get_heightmap(sim_env.get_subcontext(diagram, context))
+    controller_context = controller.GetMyMutableContextFromRoot(context)
+    sim_context = sim_env.GetMyMutableContextFromRoot(context)
 
+    hmap = sim_env.get_heightmap(sim_context)
     sim_env.get_input_port_by_name("footstep_command").FixValue(
-        context=sim_env.get_subcontext(diagram, context),
-        value=map[:, 0, 0]
+        context=sim_context,
+        value=hmap[:, 0, 0]
     )
 
-    simulator.AdvanceTo(0.45)
+    Ts2s = controller_params.single_stance_duration + \
+           controller_params.double_stance_duration
+
+    simulator.AdvanceTo(Ts2s + controller_params.double_stance_duration)
+
+    while context.get_time() < 2 * Ts2s - 2e-2:
+        command = controller.get_output_port().Eval(controller_context)
+        sim_env.get_input_port_by_name("footstep_command").FixValue(
+            context=sim_context,
+            value=command
+        )
+        simulator.AdvanceTo(context.get_time() + 1e-2)
 
 
 if __name__ == '__main__':

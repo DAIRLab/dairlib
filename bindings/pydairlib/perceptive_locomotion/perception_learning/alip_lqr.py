@@ -198,5 +198,5 @@ class AlipFootstepLQR(LeafSystem):
             self.A @ (xd - x) + self.B @ (ud - u)
         )
 
-    def get_value_estimate(self, xe) -> float:
+    def get_value_estimate(self, xe: np.ndarray) -> float:
         return xe.T @ self.S @ xe

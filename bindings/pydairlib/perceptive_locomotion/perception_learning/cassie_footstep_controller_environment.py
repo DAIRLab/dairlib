@@ -175,9 +175,6 @@ class CassieFootstepControllerEnvironment(Diagram):
             stance
         )
 
-    def get_subcontext(self, parent_diagram, parent_context) -> Context:
-        return parent_diagram.GetMutableSubsystemContext(self, parent_context)
-
 
 def main():
     opts = CassieFootstepControllerEnvironmentOptions()

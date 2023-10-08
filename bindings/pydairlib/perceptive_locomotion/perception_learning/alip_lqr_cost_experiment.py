@@ -1,3 +1,9 @@
+"""
+    This file is for a proof of concept example of residual LQR learning
+    where we just look at one initial state and one heightmap and see what the
+    landscape of the residual function looks like. 
+"""
+
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
 from pydrake.systems.all import (

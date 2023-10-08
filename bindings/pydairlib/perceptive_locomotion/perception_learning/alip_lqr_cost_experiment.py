@@ -94,7 +94,10 @@ def main():
     simulator.AdvanceTo(Ts2s + controller_params.double_stance_duration)
 
     while context.get_time() < 2 * Ts2s - 2e-2:
-        command = controller.get_output_port_by_name.Eval(controller_context)
+        command = controller.get_output_port_by_name(
+            'footstep_command'
+        ).Eval(controller_context).ravel()
+        command[2] = sim_env.query_heightmap(sim_context, command)
         sim_env.get_input_port_by_name("footstep_command").FixValue(
             context=sim_context,
             value=command

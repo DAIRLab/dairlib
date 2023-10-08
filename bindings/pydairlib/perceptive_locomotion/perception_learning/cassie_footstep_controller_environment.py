@@ -184,7 +184,9 @@ class CassieFootstepControllerEnvironment(Diagram):
             point = point[:2]
 
         return self.height_map_server.query_height_in_stance_frame(
-            xy=point, robot_state=robot_output, stance=stance
+            xy=point,
+            robot_state=robot_output[:self.nq + self.nv],
+            stance=stance
         )
 
 

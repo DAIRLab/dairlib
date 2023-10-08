@@ -90,7 +90,7 @@ class HeightMapServer:
                 z = b - A[:, :2] @ query_point[:2]
                 zvals.append(z)
         if zvals:
-            return max(zvals)
+            return np.max(zvals)
         else:
             return np.nan
 

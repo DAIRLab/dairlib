@@ -175,6 +175,18 @@ class CassieFootstepControllerEnvironment(Diagram):
             stance
         )
 
+    def query_heightmap(self, context, query_point):
+        robot_output = self.get_output_port_by_name('state').Eval(context)
+        fsm = int(self.get_output_port_by_name('fsm').Eval(context)[0])
+        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
+        point = query_point.ravel()
+        if np.size(point) > 2:
+            point = point[:2]
+
+        return self.height_map_server.query_height_in_stance_frame(
+            xy=point, robot_state=robot_output, stance=stance
+        )
+
 
 def main():
     opts = CassieFootstepControllerEnvironmentOptions()

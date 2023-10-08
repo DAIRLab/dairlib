@@ -106,7 +106,10 @@ class AlipFootstepLQR(LeafSystem):
         self.output_port_indices = {
             'footstep_command': self.DeclareVectorOutputPort(
                 "footstep_command", 3, self.calculate_optimal_footstep
-            ).get_index()
+            ).get_index(),
+            'lqr_reference': self.DeclareVectorOutputPort(
+                "xd_ud[x,y]", 6, self.calc_lqr_reference
+            )
         }
 
     def get_input_port_by_name(self, name: str) -> InputPort:
@@ -117,14 +120,9 @@ class AlipFootstepLQR(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def calculate_optimal_footstep(
-        self, context: Context, footstep: BasicVector) -> None:
+    def calc_lqr_reference(self, context: Context, xd_ud: BasicVector) -> None:
         """
-            Calculate the optimal (LQR) footstep location.
-            This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
-            using the LQR gain instead of the deadbeat gain. It also involves
-            some bookkeeping to get the appropriate states and deal with
-            left/right stance.
+            Calculates the LQR reference trajectory for an output port
         """
         vdes = self.EvalVectorInput(
             context,
@@ -134,6 +132,27 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['fsm']
         ).value().ravel()[0]
+
+        # get the reference trajectory for the current stance mode
+        stance = Stance.kLeft if fsm < 1 else Stance.kRight
+
+        xd, ud = self.make_lqr_reference(stance, vdes)
+
+        output = np.zeros((6,))
+        output[:4] = xd
+        output[4:] = ud
+        xd_ud.set_value(output)
+
+    def calculate_optimal_footstep(
+        self, context: Context, footstep: BasicVector) -> None:
+        """
+            Calculate the optimal (LQR) footstep location.
+            This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
+            using the LQR gain instead of the deadbeat gain. It also involves
+            some bookkeeping to get the appropriate states and deal with
+            left/right stance.
+        """
+
         current_alip_state = self.EvalVectorInput(
             context,
             self.input_port_indices['state']
@@ -143,21 +162,16 @@ class AlipFootstepLQR(LeafSystem):
             self.input_port_indices['time_until_switch']
         ).value().ravel()[0]
 
-        # if not in single stance, just return 0
-        if fsm > 1:
-            footstep.set_value(np.zeros((3,)))
-            return
-
-        # get the reference trajectory for the current stance mode
-        stance = Stance.kLeft if fsm < 1 else Stance.kRight
-        xd, ud = self.make_lqr_reference(stance, vdes)
-
-        # get the predicted ALIP state at touchdown
         x = CalcAd(
             self.params.height,
             self.params.mass,
             time_until_switch
         ) @ current_alip_state
+
+        xd_ud = BasicVector(6)
+        self.calc_lqr_reference(context, xd_ud)
+        xd = xd_ud.value()[:4]
+        ud = xd_ud.value()[4:]
 
         # LQR feedback - for now assume the height of the ground is zero
         footstep_command = np.zeros((3,))

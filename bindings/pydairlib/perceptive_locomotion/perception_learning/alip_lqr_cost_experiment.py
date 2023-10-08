@@ -42,17 +42,14 @@ def main():
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
 
-    desired_velocity = ConstantVectorSource(np.array([0.2, 0.0]))
+    desired_velocity = ConstantVectorSource(np.array([0.0, 0.0]))
     builder.AddSystem(controller)
     builder.AddSystem(desired_velocity)
 
-    # external user assign desire velocity to controller
     builder.Connect(
         desired_velocity.get_output_port(),
         controller.get_input_port_by_name("desired_velocity")
     )
-
-    # sim_env (cassie) returns state_feedback to controller
     builder.Connect(
         sim_env.get_output_port_by_name("fsm"),
         controller.get_input_port_by_name("fsm")
@@ -97,7 +94,7 @@ def main():
     simulator.AdvanceTo(Ts2s + controller_params.double_stance_duration)
 
     while context.get_time() < 2 * Ts2s - 2e-2:
-        command = controller.get_output_port().Eval(controller_context)
+        command = controller.get_output_port_by_name.Eval(controller_context)
         sim_env.get_input_port_by_name("footstep_command").FixValue(
             context=sim_context,
             value=command

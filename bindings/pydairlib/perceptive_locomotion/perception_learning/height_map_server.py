@@ -75,7 +75,7 @@ class HeightMapServer:
         )
         self.contact_point = \
             0.5 * (
-                RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
+                    RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
             ).ravel()
         self.contact_frame = {
             Stance.kLeft: LeftToeRear(self.plant)[1],
@@ -94,14 +94,32 @@ class HeightMapServer:
         else:
             return np.nan
 
+    def query_height_in_stance_frame(self, xy: np.ndarray,
+                                     robot_state: np.ndarray,
+                                     stance: Stance) -> np.ndarray:
+        self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
+        stance_pos = self.plant.CalcPointsPositions(
+            self.plant_context,
+            self.contact_frame[stance],
+            self.contact_point,
+            self.plant.world_frame()
+        ).ravel()
+        query_point = stance_pos + ReExpressBodyYawVector3InWorldFrame(
+            plant=self.plant,
+            context=self.plant_context,
+            body_name="pelvis",
+            vec=np.array([xy[0], xy[1], 0.0])
+        )
+        return self.get_height_at_point(query_point)
+
     def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance) -> \
-        np.ndarray:
+            np.ndarray:
         X, Y = np.meshgrid(self.xgrid, self.ygrid)
         Z = self.get_heightmap(robot_state, stance)
         return np.stack([X, Y, Z])
 
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance) -> \
-        np.ndarray:
+            np.ndarray:
         self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
         stance_pos = self.plant.CalcPointsPositions(
             self.plant_context,

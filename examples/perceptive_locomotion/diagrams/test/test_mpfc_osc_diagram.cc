@@ -40,7 +40,8 @@ int DoMain() {
   );
 
   builder.Connect(
-      sim_diagram->get_output_port_state(), osc_diagram->get_input_port_state()
+      sim_diagram->get_output_port_state_lcm(),
+      osc_diagram->get_input_port_state()
   );
   builder.Connect(
       sim_diagram->get_output_port_lcm_radio(),

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Tuple
 from os import path
 import numpy as np
 
@@ -77,6 +77,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             True
         )
         self.controller_plant.Finalize()
+        self.nq = self.controller_plant.num_positions()
+        self.nv = self.controller_plant.num_velocities()
 
         builder = DiagramBuilder()
         self.controller = MpfcOscDiagram(
@@ -94,7 +96,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
         builder.Connect(
-            self.cassie_sim.get_output_port_state(),
+            self.cassie_sim.get_output_port_state_lcm(),
             self.controller.get_input_port_state(),
         )
         builder.Connect(
@@ -163,14 +165,18 @@ class CassieFootstepControllerEnvironment(Diagram):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def get_heightmap(self, context):
+    def get_heightmap(self, context) -> np.ndarray:
         robot_output = self.get_output_port_by_name('state').Eval(context)
-        fsm = int(self.get_output_port_by_name('fsm').Eval(context).value()(0))
+        fsm = int(self.get_output_port_by_name('fsm').Eval(context)[0])
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
-        return self.height_map_server.get_heightmap(
-            robot_output.GetState(),
+
+        return self.height_map_server.get_heightmap_3d(
+            robot_output[:self.nq + self.nv],
             stance
         )
+
+    def get_subcontext(self, parent_diagram, parent_context) -> Context:
+        return parent_diagram.GetMutableSubsystemContext(self, parent_context)
 
 
 def main():

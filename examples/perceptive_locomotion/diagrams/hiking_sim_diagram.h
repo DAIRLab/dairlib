@@ -22,6 +22,9 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   const drake::systems::OutputPort<double>& get_output_port_state() const {
     return get_output_port(output_port_state_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_state_lcm() const {
+    return get_output_port(output_port_state_lcm_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_cassie_out() const {
     return get_output_port(output_port_cassie_out_);
   }
@@ -41,7 +44,8 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
     return *plant_;
   }
 
-  void SetPlantInitialConditionFromIK(
+  /// returns the q, v IK solution as a pair
+  std::pair<Eigen::VectorXd, Eigen::VectorXd> SetPlantInitialConditionFromIK(
       const drake::systems::Diagram<double>* parent_diagram,
       drake::systems::Context<double>* parent_context,
       const Eigen::Vector3d& pelvis_vel,
@@ -66,6 +70,7 @@ class HikingSimDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_control_;
   drake::systems::InputPortIndex input_port_radio_;
   drake::systems::OutputPortIndex output_port_state_;
+  drake::systems::OutputPortIndex output_port_state_lcm_;
   drake::systems::OutputPortIndex output_port_cassie_out_;
   drake::systems::OutputPortIndex output_port_lcm_radio_;
   drake::systems::OutputPortIndex output_port_scene_graph_query_;

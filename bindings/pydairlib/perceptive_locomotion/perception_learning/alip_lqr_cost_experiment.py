@@ -42,15 +42,9 @@ def main():
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
 
-    desired_velocity = ConstantVectorSource(np.array([0.1, 0.0]))
+    desired_velocity = ConstantVectorSource(np.array([0.2, 0.0]))
     builder.AddSystem(controller)
     builder.AddSystem(desired_velocity)
-
-    # controller give footstep command to sim_environment (i.e. cassie)
-    builder.Connect(
-        controller.get_output_port_by_name("footstep_command"),
-        sim_env.get_input_port_by_name("footstep_command")
-    )
 
     # external user assign desire velocity to controller
     builder.Connect(
@@ -73,22 +67,30 @@ def main():
     )
 
     diagram = builder.Build()
-    # DrawAndSaveDiagramGraph(diagram, '../alip_lqr')
+    DrawAndSaveDiagramGraph(diagram, '../alip_lqr')
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
-    sim_env.cassie_sim.SetPlantInitialConditionFromIK(
+    q, v = sim_env.cassie_sim.SetPlantInitialConditionFromIK(
         diagram,
         context,
         np.zeros((3,)),
         0.15,
-        1.01
+        1.0
     )
+
     simulator.reset_context(context)
     simulator.Initialize()
-    simulator.set_target_realtime_rate(1.0)
-    simulator.AdvanceTo(5.0)
 
+    map = sim_env.get_heightmap(sim_env.get_subcontext(diagram, context))
 
-if __name__ == "__main__":
+    sim_env.get_input_port_by_name("footstep_command").FixValue(
+        context=sim_env.get_subcontext(diagram, context),
+        value=map[:, 0, 0]
+    )
+
+    simulator.AdvanceTo(0.45)
+    
+
+if __name__ == '__main__':
     main()

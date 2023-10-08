@@ -193,5 +193,10 @@ class AlipFootstepLQR(LeafSystem):
         )
         return x0, u0
 
-    def get_value_estimate(self, x) -> float:
-        return x.T @ self.S @ x
+    def get_next_value_estimate(self, x, u, xd, ud) -> float:
+        return self.get_value_estimate(
+            self.A @ (xd - x) + self.B @ (ud - u)
+        )
+
+    def get_value_estimate(self, xe) -> float:
+        return xe.T @ self.S @ xe

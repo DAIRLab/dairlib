@@ -60,7 +60,7 @@ class HeightMapServer:
         self.convex_terrain_segments = \
             SquareSteppingStoneList.GetFootholdsWithMargin(
                 stepping_stones.stones, 0.0
-            )
+            )[0]
 
         # preallocate grids in local frame for faster lookup times
         self.xgrid = np.linspace(
@@ -94,6 +94,12 @@ class HeightMapServer:
         else:
             return np.nan
 
+    def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance) -> \
+        np.ndarray:
+        X, Y = np.meshgrid(self.xgrid, self.ygrid)
+        Z = self.get_heightmap(robot_state, stance)
+        return np.stack([X, Y, Z])
+
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance) -> \
         np.ndarray:
         self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
@@ -102,10 +108,10 @@ class HeightMapServer:
             self.contact_frame[stance],
             self.contact_point,
             self.plant.world_frame()
-        )
+        ).ravel()
         heightmap = np.zeros((self.map_opts.ny, self.map_opts.nx))
-        for i, x in enumerate(self.ygrid):
-            for j, y in enumerate(self.xgrid):
+        for i, x in enumerate(self.xgrid):
+            for j, y in enumerate(self.ygrid):
                 query_point = stance_pos + ReExpressBodyYawVector3InWorldFrame(
                     plant=self.plant,
                     context=self.plant_context,
@@ -113,4 +119,5 @@ class HeightMapServer:
                     vec=np.array([x, y, 0.0])
                 )
                 heightmap[i, j] = self.get_height_at_point(query_point)
+
         return heightmap

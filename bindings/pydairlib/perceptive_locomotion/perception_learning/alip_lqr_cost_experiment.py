@@ -148,6 +148,9 @@ def plot_results(data):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     ax.plot_surface(data[0], data[1], data[2])
+    ax.xlabel('x')
+    ax.ylabel('y')
+    ax.zlabel('LQR Cost to go residual')
     plt.show()
 
 

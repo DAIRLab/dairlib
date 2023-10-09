@@ -29,7 +29,7 @@ from pydairlib.perceptive_locomotion.controllers import Stance
 class HeightMapOptions:
     nx: int = 20
     ny: int = 20
-    resolution: float = 0.04
+    resolution: float = 0.025
 
 
 class HeightMapServer:
@@ -112,14 +112,15 @@ class HeightMapServer:
         )
         return self.get_height_at_point(query_point)
 
-    def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance) -> \
-            np.ndarray:
-        X, Y = np.meshgrid(self.xgrid, self.ygrid)
-        Z = self.get_heightmap(robot_state, stance)
+    def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance,
+                         center: np.ndarray = None) -> np.ndarray:
+        center = np.zeros((3,)) if center is None else center
+        X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1])
+        Z = self.get_heightmap(robot_state, stance, center)
         return np.stack([X, Y, Z])
 
-    def get_heightmap(self, robot_state: np.ndarray, stance: Stance) -> \
-            np.ndarray:
+    def get_heightmap(self, robot_state: np.ndarray, stance: Stance,
+                      center: np.ndarray = np.zeros((3,))) -> np.ndarray:
         self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
         stance_pos = self.plant.CalcPointsPositions(
             self.plant_context,
@@ -127,15 +128,16 @@ class HeightMapServer:
             self.contact_point,
             self.plant.world_frame()
         ).ravel()
-        heightmap = np.zeros((self.map_opts.ny, self.map_opts.nx))
+        heightmap = np.zeros((self.map_opts.nx, self.map_opts.ny))
         for i, x in enumerate(self.xgrid):
             for j, y in enumerate(self.ygrid):
-                query_point = stance_pos + ReExpressBodyYawVector3InWorldFrame(
+                offset = ReExpressBodyYawVector3InWorldFrame(
                     plant=self.plant,
                     context=self.plant_context,
                     body_name="pelvis",
                     vec=np.array([x, y, 0.0])
                 )
+                query_point = stance_pos + center + offset
                 heightmap[i, j] = self.get_height_at_point(query_point)
 
         return heightmap

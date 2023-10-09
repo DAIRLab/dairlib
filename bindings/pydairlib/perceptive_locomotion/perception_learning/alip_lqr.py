@@ -44,8 +44,8 @@ class AlipFootstepLQROptions:
 
     @staticmethod
     def calculate_default_options(
-        mpfc_gains_yaml: str, plant:
-        MultibodyPlant, plant_context: Context) -> "AlipFootstepLQROptions":
+            mpfc_gains_yaml: str, plant:
+            MultibodyPlant, plant_context: Context) -> "AlipFootstepLQROptions":
         with io.open(mpfc_gains_yaml, 'r') as file:
             data = load(file, Loader=Loader)
 
@@ -166,12 +166,12 @@ class AlipFootstepLQR(LeafSystem):
         x_disc.set_value(x)
 
     def calculate_optimal_footstep(
-        self, context: Context, footstep: BasicVector) -> None:
+            self, context: Context, footstep: BasicVector) -> None:
         """
             Calculate the optimal (LQR) footstep location.
             This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
             using the LQR gain instead of the deadbeat gain. It also involves
-            some bookkeeping to get the appropriate states and deal with
+            some book-keeping to get the appropriate states and deal with
             left/right stance.
         """
         xd_ud = BasicVector(6)
@@ -189,22 +189,21 @@ class AlipFootstepLQR(LeafSystem):
         footstep.set_value(footstep_command)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
-        Tuple[np.ndarray, np.ndarray]:
+            Tuple[np.ndarray, np.ndarray]:
         """
             Calculate a reference ALIP trajectory following the philosophy
             outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D
         """
-
         # First get the input sequence corresponding to the desired velocity
         s = -1.0 if stance == Stance.kLeft else 1.0
         u0 = np.zeros((2,))
         u0[0] = vdes[0] * (
-            self.params.single_stance_duration +
-            self.params.double_stance_duration
+                self.params.single_stance_duration +
+                self.params.double_stance_duration
         )
         u0[1] = s * self.params.stance_width + vdes[1] * (
-            self.params.single_stance_duration +
-            self.params.double_stance_duration
+                self.params.single_stance_duration +
+                self.params.double_stance_duration
         )
         u1 = np.copy(u0)
         u1[1] -= 2 * s * self.params.stance_width
@@ -238,5 +237,3 @@ class AlipFootstepLQR(LeafSystem):
         xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
         xd = xd_ud[:4]
         return self._get_value_estimate(x - xd)
-
-

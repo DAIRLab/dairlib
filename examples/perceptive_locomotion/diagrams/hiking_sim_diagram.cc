@@ -45,7 +45,7 @@ using drake::perception::DepthImageToPointCloud;
 
 HikingSimDiagram::HikingSimDiagram(
     const std::string& terrain_yaml, const std::string& camera_pose_yaml)
-    : urdf_("examples/Cassie/urdf/cassie_v2_shells.urdf") {
+    : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf") {
 
 
   // magic numbers:

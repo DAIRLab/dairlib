@@ -1,8 +1,10 @@
 """
     This file is for a proof of concept example of residual LQR learning
     where we just look at one initial state and one heightmap and see what the
-    landscape of the residual function looks like. 
+    landscape of the residual function looks like.
 """
+import os
+import sys
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -27,6 +29,7 @@ from pydairlib.perceptive_locomotion.perception_learning. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
+    perception_learning_base_folder
 )
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
@@ -34,8 +37,12 @@ from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 import numpy as np
 
 
-def main():
+def run_experiment():
     sim_params = CassieFootstepControllerEnvironmentOptions()
+    # sim_params.terrain_yaml = os.path.join(
+    #     perception_learning_base_folder,
+    #     'params/alip_lqr_cost_experiment_terrain.yaml'
+    # )
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -74,6 +81,7 @@ def main():
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
+    context.SetTime(0.2)
     q, v = sim_env.cassie_sim.SetPlantInitialConditionFromIK(
         diagram,
         context,
@@ -83,12 +91,21 @@ def main():
     )
 
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
-    hmap = sim_env.get_heightmap(sim_context)
+    controller_context = controller.GetMyMutableContextFromRoot(context)
+
+    ud = controller.get_output_port_by_name('lqr_reference').Eval(
+        controller_context
+    )[-2:]
+    heightmap_center = np.zeros((3,))
+    heightmap_center[:2] = ud
+    hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
+    print(heightmap_center)
     Ts2s = controller_params.single_stance_duration + \
            controller_params.double_stance_duration
 
     def residual_datapoint(footstep_command: np.ndarray) -> float:
         context = diagram.CreateDefaultContext()
+        context.SetTime(0.11)
         sim_env.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
         simulator.reset_context(context)
         simulator.Initialize()
@@ -99,13 +116,14 @@ def main():
         V_kp1 = controller.get_next_value_estimate_for_footstep(
             footstep_command, controller_context
         )
+
         sim_env.get_input_port_by_name("footstep_command").FixValue(
             context=sim_context,
             value=footstep_command
         )
 
         simulator.AdvanceTo(Ts2s + controller_params.double_stance_duration)
-        while context.get_time() < 2 * Ts2s - 2e-2:
+        while context.get_time() < 2 * Ts2s - 0.03:
             command = controller.get_output_port_by_name(
                 'footstep_command'
             ).Eval(controller_context).ravel()
@@ -123,6 +141,23 @@ def main():
         for j in range(hmap.shape[2]):
             residual[i, j] = residual_datapoint(footstep_command=hmap[:, i, j])
 
+    return hmap, residual
+
+
+def plot_results(data):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    ax.plot_surface(data[0], data[1], data[2])
+    plt.show()
+
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        fname = sys.argv[1]
+        data = np.load(fname)
+        plot_results(data)
+    else:
+        xyz, residual = run_experiment()
+        xyz[-1] = residual
+        np.save(f'{perception_learning_base_folder}/tmp/residual_test_flat.npy', xyz)
+        plot_results(xyz)

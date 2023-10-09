@@ -1,11 +1,18 @@
 from dataclasses import dataclass
-from typing import Dict, Tuple
 from os import path
+from typing import Dict
+
 import numpy as np
 
+from pydairlib.cassie.cassie_utils import AddCassieMultibody
+from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram, Stance
+from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
+from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
+    import HeightMapServer
+
+from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.all import (
     Diagram,
-    Context,
     Simulator,
     InputPort,
     OutputPort,
@@ -14,17 +21,6 @@ from pydrake.systems.all import (
     OutputPortIndex,
     ConstantVectorSource,
 )
-
-from pydrake.multibody.plant import MultibodyPlant
-from pydrake.geometry.all import MeshcatVisualizer, Meshcat
-
-from pydairlib.common import FindResourceOrThrow
-from pydairlib.systems.framework import OutputVector
-from pydairlib.cassie.cassie_utils import AddCassieMultibody
-from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram, Stance
-from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
-from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
-    import HeightMapServer
 
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
@@ -165,14 +161,17 @@ class CassieFootstepControllerEnvironment(Diagram):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def get_heightmap(self, context) -> np.ndarray:
+    def get_heightmap(self, context, center=None) -> np.ndarray:
         robot_output = self.get_output_port_by_name('state').Eval(context)
-        fsm = int(self.get_output_port_by_name('fsm').Eval(context)[0])
-        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
+        fsm = int(
+            self.get_output_port_by_name('fsm').Eval(context)[0]
+        )
+        stance = Stance.kLeft if (fsm == 0 or fsm == 3) else Stance.kRight
 
         return self.height_map_server.get_heightmap_3d(
             robot_output[:self.nq + self.nv],
-            stance
+            stance,
+            center
         )
 
     def query_heightmap(self, context, query_point):

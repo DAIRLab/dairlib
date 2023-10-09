@@ -161,6 +161,7 @@ if __name__ == '__main__':
         plot_results(data)
     else:
         xyz, residual = run_experiment()
+        np.save(f'{perception_learning_base_folder}/tmp/height_map_obstacle.npy', xyz)
         xyz[-1] = residual
         np.save(f'{perception_learning_base_folder}/tmp/residual_test_obstacle.npy', xyz)
         plot_results(xyz)

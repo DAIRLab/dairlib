@@ -221,5 +221,5 @@ def run_experiment():
 
 
 if __name__ == '__main__':
-    q_list, v_list, phase_list, stance_list, hmap_list,\
+    q_list, v_list, phase_list, stance_list, hmap_list, desired_velocity_list, \
             value_residual_list, lqr_desired_state_list = run_experiment()

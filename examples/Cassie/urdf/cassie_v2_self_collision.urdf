@@ -566,9 +566,9 @@
 
         <collision>
             <geometry>
-                <box size="0.1 0.03 0.03"/>
+                <box size="0.17 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -0.7"/>
+            <origin xyz="0.02 0.05 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
 
         <!-- Toe spheres -->
@@ -653,9 +653,9 @@
 
         <collision>
             <geometry>
-                <box size="0.1 0.03 0.03"/>
+                <box size="0.17 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -0.7"/>
+            <origin xyz="0.02 0.05 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
     </link>
 

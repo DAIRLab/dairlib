@@ -39,10 +39,10 @@ import numpy as np
 
 def run_experiment():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    # sim_params.terrain_yaml = os.path.join(
-    #     perception_learning_base_folder,
-    #     'params/alip_lqr_cost_experiment_terrain.yaml'
-    # )
+    sim_params.terrain_yaml = os.path.join(
+        perception_learning_base_folder,
+        'params/alip_lqr_cost_experiment_terrain.yaml'
+    )
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -148,9 +148,9 @@ def plot_results(data):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     ax.plot_surface(data[0], data[1], data[2])
-    ax.xlabel('x')
-    ax.ylabel('y')
-    ax.zlabel('LQR Cost to go residual')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('LQR Cost to go residual')
     plt.show()
 
 
@@ -162,5 +162,5 @@ if __name__ == '__main__':
     else:
         xyz, residual = run_experiment()
         xyz[-1] = residual
-        np.save(f'{perception_learning_base_folder}/tmp/residual_test_flat.npy', xyz)
+        np.save(f'{perception_learning_base_folder}/tmp/residual_test_obstacle.npy', xyz)
         plot_results(xyz)

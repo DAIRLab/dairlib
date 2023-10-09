@@ -148,15 +148,17 @@ def compare_contours(hmap, obstacle_data, flat_data):
     import matplotlib.pyplot as plt
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     fig.suptitle('LQR Cost to Go Experiment')
-    ax1.contour(hmap[0], hmap[1], hmap[2])
+    ax1.contourf(hmap[0], hmap[1], hmap[2])
     ax1.set_title('Height Map')
-    ax2.contour(obstacle_data[0], obstacle_data[1], obstacle_data[2])
+    ax2.contourf(obstacle_data[0], obstacle_data[1], obstacle_data[2])
     ax2.set_title('Obstacle Residual')
-    ax3.contour(flat_data[0], flat_data[1], flat_data[2])
+    ax3.contourf(flat_data[0], flat_data[1], flat_data[2])
     ax3.set_title('Control Residual')
     for ax in [ax1, ax2, ax3]:
         ax.set_xlabel('x')
         ax.set_ylabel('y')
+
+    plt.show()
 
 
 def plot_results(data):
@@ -170,7 +172,28 @@ def plot_results(data):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and sys.argv[1] == 'contours':
+        hmap = np.load(
+            os.path.join(
+                perception_learning_base_folder,
+                'tmp/height_map_obstacle.npy'
+            )
+        )
+        obs_data = np.load(
+            os.path.join(
+                perception_learning_base_folder,
+                'tmp/residual_test_obstacle.npy'
+            )
+        )
+        flat_data = np.load(
+            os.path.join(
+                perception_learning_base_folder,
+                'tmp/residual_test_flat.npy'
+            )
+        )
+        compare_contours(hmap, obs_data, flat_data)
+
+    elif len(sys.argv) > 1:
         fname = sys.argv[1]
         data = np.load(fname)
         plot_results(data)

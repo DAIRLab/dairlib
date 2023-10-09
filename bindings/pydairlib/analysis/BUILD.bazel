@@ -94,13 +94,16 @@ py_binary(
 )
 
 py_binary(
-    name = "parse_log_to_learning_data",
-    srcs = ["parse_log_to_learning_data.py"],
+    name = "parse_log_to_initial_conditions",
+    srcs = ["parse_log_to_initial_conditions.py"],
     data = [
         "//examples/Cassie:cassie_urdf",
         "@lcm//:lcm-python",
     ],
     deps = [
+        ":cassie_plotting_utils",
+        ":mbp_plotting_utils",
+        ":process_lcm_log",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",
@@ -120,9 +123,10 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
-        ":mbp_plotting_utils",
-        ":cassie_plotting_utils",
         ":cassie_plot_config",
+        ":cassie_plotting_utils",
+        ":mbp_plotting_utils",
+        ":process_lcm_log",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",
@@ -163,10 +167,10 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
-        ":video_tools",
         ":cassie_plotting_utils",
-        ":process_lcm_log",
         ":mpc_plotting_utils",
+        ":process_lcm_log",
+        ":video_tools",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",
@@ -177,7 +181,6 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
-
 
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
@@ -202,7 +205,7 @@ PY_LIBRARIES = [
     ":process_lcm_log",
     ":mpc_plot_config",
     ":mpc_plotting_utils",
-    ":cassie_plot_config"
+    ":cassie_plot_config",
 ]
 
 # Package roll-up (for Bazel dependencies).

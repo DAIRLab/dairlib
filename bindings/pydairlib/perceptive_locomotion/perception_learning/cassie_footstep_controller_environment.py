@@ -26,6 +26,27 @@ perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
 
+class InitialConditionsServer:
+    def __init__(self, fname=path.join(
+        perception_learning_base_folder,
+        'tmp/initial_conditions.npz'
+    )):
+        datafile = np.load(fname, allow_pickle=True)
+        self.data = datafile['arr_0']
+        self.idx = 0
+        self.rng = np.random.default_rng()
+
+    def next(self):
+        if self.idx >= len(self.data):
+            return None
+        data = self.data[self.idx]
+        self.idx += 1
+        return data
+
+    def random(self):
+        return self.rng.choice(self.data)
+
+
 @dataclass
 class CassieFootstepControllerEnvironmentOptions:
     terrain_yaml: str = path.join(

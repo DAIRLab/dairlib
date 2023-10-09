@@ -10,9 +10,9 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-from process_lcm_log import get_log_data
-import cassie_plotting_utils as cassie_plots
-import mbp_plotting_utils as mbp_plots
+from pydairlib.analysis.process_lcm_log import get_log_data
+import pydairlib.analysis.cassie_plotting_utils as cassie_plots
+import pydairlib.analysis.mbp_plotting_utils as mbp_plots
 
 
 def nans(shape, dtype=float):
@@ -21,7 +21,7 @@ def nans(shape, dtype=float):
     return a
 
 
-def make_foostep_target_global_to_local(pelvis_pose, footstep_target_global):
+def make_footstep_target_global_to_local(pelvis_pose, footstep_target_global):
     target = np.zeros((3,))
     xy = (footstep_target_global[:2] - pelvis_pose.translation().ravel()[:2])
     target[:2] = xy
@@ -40,19 +40,24 @@ def parse_single_log_to_robot_ds_states(filename, plant, context, channel_x,
     ''' Read the log '''
     log = lcm.EventLog(filename, "r")
     robot_output, robot_input, osc_debug = \
-        get_log_data(log,  # log
-                     cassie_plots.cassie_default_channels,  # lcm channels
-                     -1, -1,
-                     mbp_plots.load_default_channels,  # processing callback
-                     plant, channel_x, channel_u, channel_osc)
+        get_log_data(
+            log,  # log
+            cassie_plots.cassie_default_channels,  # lcm channels
+            -1, -1,  # start and end times
+            mbp_plots.load_default_channels,  # processing callback
+            plant, channel_x, channel_u, channel_osc  # callback args
+        )
 
     ''' Find the middle of the first "post left" double stance period'''
     osc_idx_start = np.argwhere(osc_debug['fsm'] == 3).ravel()[0]
-    t_start = osc_debug['t_osc'].ravel()[osc_idx_start] + (T_ds/2.0)
+    t_start = osc_debug['t_osc'].ravel()[osc_idx_start] + (T_ds / 2.0)
 
     # Give some margin by subtracting about 20 seconds from the end of the log
-    n_steps = int(np.floor_divide(
-        robot_output['t_x'].ravel()[-1] - t_start, T_step)) - int(10.0/T_step)
+    n_steps = int(
+        np.floor_divide(
+            robot_output['t_x'].ravel()[-1] - t_start, T_step
+        )
+    ) - int(10.0 / T_step)
     print(f'Processing {n_steps} steps')
     if n_steps < 1:
         return None
@@ -66,13 +71,54 @@ def parse_single_log_to_robot_ds_states(filename, plant, context, channel_x,
 
         # Append data only if we have a good OSC solve - heuristic for
         # eliminating failed steps
-        if osc_debug['regularization_costs']['soft_constraint_cost'][osc_idx] < osc_cost_thresh:
+        if osc_debug['regularization_costs']['soft_constraint_cost'][
+            osc_idx] < osc_cost_thresh:
             state[k, :nq] = robot_output['q'][x_idx]
             state[k, nq:] = robot_output['v'][x_idx]
         else:
             state[k] = nans((nx,))
     return state[~np.isnan(state).any(axis=1)]
-    return state
+
+
+def parse_single_log_to_perception_learning_initial_condition(
+    filename, plant, channel_x, channel_u, channel_osc, Tds, Tss):
+    ''' Read the log '''
+    log = lcm.EventLog(filename, "r")
+    robot_output, _, osc_debug, _ = \
+        get_log_data(
+            log,  # log
+            cassie_plots.cassie_default_channels,  # lcm channels
+            -1, -1,  # start and end times
+            mbp_plots.load_default_channels,  # processing callback
+            plant, plant, channel_x, channel_u, channel_osc  # callback args
+        )
+
+    osc_idx_start = np.argwhere(osc_debug['fsm'] == 0).ravel()[0]
+    t_start_osc = osc_debug['t_osc'].ravel()[osc_idx_start]
+
+    def stance(t):
+        periods = int((t - t_start_osc) / (Tss + Tds))
+        return 'left' if periods % 2 == 0 else 'right'
+
+    def phase(t):
+        phase = (t - t_start_osc) / (Tss + Tds) - \
+                int((t - t_start_osc) / (Tss + Tds))
+        phase *= (Tss + Tds)
+        return phase if phase < Tss else 0
+
+    data = []
+    for i, t in enumerate(robot_output['t_x']):
+        if t < t_start_osc:
+            continue
+
+        q = robot_output['q'][i].ravel()
+        q[4] = 0
+        q[5] = 0  # move us back to the origin
+        v = robot_output['v'][i].ravel()
+        data.append(
+            {'stance': stance(t), 'phase': phase(t), 'q': q, 'v': v}
+        )
+    return data
 
 
 def parse_single_log_to_learning_data(filename, plant, context, channel_x,
@@ -86,19 +132,24 @@ def parse_single_log_to_learning_data(filename, plant, context, channel_x,
 
     ''' Read the log '''
     log = lcm.EventLog(filename, "r")
-    robot_output, robot_input, osc_debug = \
-        get_log_data(log,  # log
+    robot_output, _, osc_debug, _ = \
+        get_log_data(
+            log,  # log
             cassie_plots.cassie_default_channels,  # lcm channels
             -1, -1,
             mbp_plots.load_default_channels,  # processing callback
-            plant, channel_x, channel_u, channel_osc)  # processing callback arguments
+            plant, channel_x, channel_u, channel_osc
+        )  # processing callback arguments
     swing_ft_data = osc_debug['osc_debug_tracking_datas']['swing_ft_traj']
 
     ''' Find the middle of the first "post left" double stance period'''
     osc_idx_start = np.argwhere(osc_debug['fsm'] == 3).ravel()[0]
-    t_start = osc_debug['t_osc'].ravel()[osc_idx_start] + (T_ds/2.0)
-    n_steps = int(np.floor_divide(
-                  robot_output['t_x'].ravel()[-1] - t_start, T_step)) - 1
+    t_start = osc_debug['t_osc'].ravel()[osc_idx_start] + (T_ds / 2.0)
+    n_steps = int(
+        np.floor_divide(
+            robot_output['t_x'].ravel()[-1] - t_start, T_step
+        )
+    ) - 1
 
     state = np.zeros((n_steps, nx))
     footstep_target = np.zeros((n_steps, 3))
@@ -110,7 +161,7 @@ def parse_single_log_to_learning_data(filename, plant, context, channel_x,
         x_idx = np.argwhere(robot_output['t_x'] >= ti)[0]
         x_idx_2 = np.argwhere(robot_output['t_x'] >= tf)[0] - 1
         swing_ft_idx = np.argwhere(swing_ft_data.t >= tf).ravel()[0] - 2
-        assert(abs(swing_ft_data.t[swing_ft_idx] - tf) < 0.01)
+        assert (abs(swing_ft_data.t[swing_ft_idx] - tf) < 0.01)
 
         # Append data
         state[k, :nq] = robot_output['q'][x_idx]
@@ -124,8 +175,9 @@ def parse_single_log_to_learning_data(filename, plant, context, channel_x,
 
         plant.SetPositionsAndVelocities(context, state[k])
         pelvis_pose = plant.GetBodyByName("pelvis").EvalPoseInWorld(context)
-        footstep_target[k] = make_foostep_target_global_to_local(
-            pelvis_pose, foostep_target_global)
+        footstep_target[k] = make_footstep_target_global_to_local(
+            pelvis_pose, foostep_target_global
+        )
 
     data = np.hstack((state, footstep_target, footstep_error.reshape(-1, 1)))
     np.save("sample_data.npy", data)
@@ -140,10 +192,13 @@ def simulation_main(logpath):
     channel_osc = "OSC_DEBUG_WALKING"
 
     plant, context = cassie_plots.make_plant_and_context(
-        floating_base=use_floating_base, springs=use_springs)
+        floating_base=use_floating_base, springs=use_springs
+    )
 
-    parse_single_log_to_learning_data(logpath, plant, context, channel_x,
-                                      channel_u, channel_osc, 0.1, 0.4)
+    parse_single_log_to_learning_data(
+        logpath, plant, context, channel_x,
+        channel_u, channel_osc, 0.1, 0.4
+    )
 
 
 def parse_log_folders_to_ds_states(folder_list, savepath):
@@ -155,7 +210,8 @@ def parse_log_folders_to_ds_states(folder_list, savepath):
     use_springs = True
 
     plant, context = cassie_plots.make_plant_and_context(
-        floating_base=use_floating_base, springs=use_springs)
+        floating_base=use_floating_base, springs=use_springs
+    )
 
     dataset = []
     for folder in folder_list:
@@ -195,16 +251,38 @@ def parse_hardware_main():
     savepath = '.learning_data/hardware_ics_v2.npy'
     folder_list = \
         [
-            f'/media/brian/tb2/cassie_backup/logs/cassie_hardware/2022/{subfolder}/' for
-            subfolder in [
-                '08_11_22'
-            ]
+            f'/media/brian/tb2/cassie_backup/logs/cassie_hardware/2022/'
+            f'{subfolder}/' for subfolder in ['08_11_22']
         ]
     parse_log_folders_to_ds_states(folder_list, savepath)
 
 
+def parse_sim_main():
+    savepath = 'bindings/pydairlib/perceptive_locomotion/perception_learning' \
+               '/tmp/initial_conditions.npz'
+    logpath = '/home/brian/logs/2023/10_09_23/lcmlog-03'
+
+    channel_x = "CASSIE_STATE_SIMULATION"
+    channel_u = "OSC_WALKING"
+    channel_osc = "OSC_DEBUG_WALKING"
+
+    use_floating_base = True
+    use_springs = True
+
+    plant, _ = cassie_plots.make_plant_and_context(
+        floating_base=use_floating_base, springs=use_springs
+    )
+
+    Tds = 0.1
+    Tss = 0.32
+    data = parse_single_log_to_perception_learning_initial_condition(
+        logpath, plant, channel_x, channel_u, channel_osc, Tds, Tss
+    )
+    np.savez(savepath, data)
+
+
 def main():
-    parse_hardware_main()
+    parse_sim_main()
 
 
 if __name__ == '__main__':

@@ -1,0 +1,4 @@
+# Yaml description of rectangular stepping stones
+stones:
+#  [ CENTER XYZ      NORMAL       DIMENSIONS XYZ        YAW ]
+  - [[0, 0, 0], [0, 0.0, 1.0], [10.0, 10.0, 0.1], [0]]

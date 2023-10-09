@@ -44,8 +44,8 @@ class AlipFootstepLQROptions:
 
     @staticmethod
     def calculate_default_options(
-            mpfc_gains_yaml: str, plant:
-            MultibodyPlant, plant_context: Context) -> "AlipFootstepLQROptions":
+        mpfc_gains_yaml: str, plant:
+        MultibodyPlant, plant_context: Context) -> "AlipFootstepLQROptions":
         with io.open(mpfc_gains_yaml, 'r') as file:
             data = load(file, Loader=Loader)
 
@@ -135,9 +135,10 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['fsm']
         ).value().ravel()[0]
+        fsm = int(fsm)
 
         # get the reference trajectory for the current stance mode
-        stance = Stance.kLeft if fsm < 1 else Stance.kRight
+        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
 
         xd, ud = self.make_lqr_reference(stance, vdes)
 
@@ -166,7 +167,7 @@ class AlipFootstepLQR(LeafSystem):
         x_disc.set_value(x)
 
     def calculate_optimal_footstep(
-            self, context: Context, footstep: BasicVector) -> None:
+        self, context: Context, footstep: BasicVector) -> None:
         """
             Calculate the optimal (LQR) footstep location.
             This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
@@ -189,7 +190,7 @@ class AlipFootstepLQR(LeafSystem):
         footstep.set_value(footstep_command)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
-            Tuple[np.ndarray, np.ndarray]:
+        Tuple[np.ndarray, np.ndarray]:
         """
             Calculate a reference ALIP trajectory following the philosophy
             outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D
@@ -198,12 +199,12 @@ class AlipFootstepLQR(LeafSystem):
         s = -1.0 if stance == Stance.kLeft else 1.0
         u0 = np.zeros((2,))
         u0[0] = vdes[0] * (
-                self.params.single_stance_duration +
-                self.params.double_stance_duration
+            self.params.single_stance_duration +
+            self.params.double_stance_duration
         )
         u0[1] = s * self.params.stance_width + vdes[1] * (
-                self.params.single_stance_duration +
-                self.params.double_stance_duration
+            self.params.single_stance_duration +
+            self.params.double_stance_duration
         )
         u1 = np.copy(u0)
         u1[1] -= 2 * s * self.params.stance_width

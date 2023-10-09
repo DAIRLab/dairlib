@@ -17,9 +17,9 @@
         <visual>
             <origin
                     xyz="0 0 0"
-                    rpy="0 0 0" />
+                    rpy="1.570796 0 0" />
             <geometry>
-                <mesh filename="meshes/pelvis.obj" />
+                <mesh filename="meshes/agility/pelvis.obj" />
             </geometry>
             <material name="">
                 <color
@@ -160,9 +160,9 @@
         <visual>
             <origin
                     xyz="0 0 0"
-                    rpy="0 0 0" />
+                    rpy="1.570796 0 0" />
             <geometry>
-                <mesh filename="meshes/agility/left_thigh.obj" />
+                <mesh filename="meshes/agility/hip-pitch.obj" />
             </geometry>
             <material name="">
                 <color rgba="0.024 0.24 0.5 1.0" />
@@ -188,9 +188,10 @@
         <visual>
             <origin
                     xyz="0 0 0"
-                    rpy="0 0 0" />
+                    rpy="-1.570796 3.14159 0" />
             <geometry>
-                <mesh filename="meshes/agility/right_thigh.obj" />
+                <mesh filename="meshes/agility/hip-pitch.obj"
+                 scale="-1 -1 -1"/>
             </geometry>
             <material name="">
                 <color rgba="0.024 0.24 0.5 1.0" />
@@ -271,9 +272,9 @@
         <visual>
           <origin
             xyz="0 0 0"
-            rpy="0 0 0" />
+            rpy="1.570796 0 0" />
           <geometry>
-            <mesh filename="meshes/agility/left_shin.obj" />
+            <mesh filename="meshes/agility/shin.obj" />
           </geometry>
           <material name="">
             <color rgba="0.024 0.24 0.5 1.0" />
@@ -307,9 +308,10 @@
         <visual>
           <origin
             xyz="0 0 0"
-            rpy="0 0 0" />
+            rpy="-1.570796 3.14159 0" />
           <geometry>
-            <mesh filename="meshes/agility/right_shin.obj" />
+            <mesh filename="meshes/agility/shin.obj"
+            scale="-1 -1 -1"/>
           </geometry>
           <material name="">
             <color rgba="0.024 0.24 0.5 1.0" />
@@ -397,9 +399,9 @@
         <visual>
           <origin
             xyz="0 0 0"
-            rpy="0 0 0" />
+            rpy="1.570796 0 0" />
           <geometry>
-            <mesh filename="meshes/tarsus.obj" />
+            <mesh filename="meshes/agility/tarsus.obj" />
           </geometry>
           <material name="">
             <color rgba="0.024 0.24 0.5 1.0" />
@@ -432,9 +434,10 @@
         <visual>
           <origin
             xyz="0 0 0"
-            rpy="0 0 0" />
+            rpy="1.570796 0 3.14159" />
           <geometry>
-            <mesh filename="meshes/tarsus-r.obj" />
+            <mesh filename="meshes/agility/tarsus.obj"
+            scale="-1 -1 -1"/>
           </geometry>
           <material name="">
             <color rgba="0.024 0.24 0.5 1.0" />
@@ -563,9 +566,9 @@
 
         <collision>
             <geometry>
-                <box size="0.1 0.03 0.03"/>
+                <box size="0.17 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -0.7"/>
+            <origin xyz="0.02 0.05 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
 
         <!-- Toe spheres -->
@@ -650,9 +653,9 @@
 
         <collision>
             <geometry>
-                <box size="0.1 0.03 0.03"/>
+                <box size="0.17 0.01 0.01"/>
             </geometry>
-            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 -0.7"/>
+            <origin xyz="0.02 0.05 0.0" rpy="0.0 0.0 -0.7"/>
         </collision>
     </link>
 

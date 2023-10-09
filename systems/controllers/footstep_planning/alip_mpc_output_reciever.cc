@@ -48,7 +48,12 @@ void AlipMpcOutputReceiver::CopySlopeParameters(const Context<double>& context,
   Vector2d b(p(2), 0.0);
   A << p(0), p(1), -p(1), p(0);
   Vector2d kx_ky = A.inverse() * b;
-  DRAKE_DEMAND(not kx_ky.hasNaN());
+
+  // handle degenerate case when p = 0
+  if (kx_ky.hasNaN()) {
+    kx_ky = Vector2d::Zero();
+  }
+
   out->SetFromVector(kx_ky);
 }
 
@@ -61,7 +66,12 @@ void AlipMpcOutputReceiver::CopyPitch(const Context<double> &context,
   Vector2d b(p(2), 0.0);
   A << p(0), p(1), -p(1), p(0);
   Vector2d kx_ky = A.inverse() * b;
-  DRAKE_DEMAND(not kx_ky.hasNaN());
+
+  // handle degenerate case when p = 0
+  if (kx_ky.hasNaN()) {
+    kx_ky = Vector2d::Zero();
+  }
+
   out->get_mutable_value() << atan(kx_ky(0));
 }
 

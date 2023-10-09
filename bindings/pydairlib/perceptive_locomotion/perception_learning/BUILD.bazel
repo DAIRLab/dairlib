@@ -63,6 +63,15 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "alip_lqr_cost_experiment",
+    srcs = ["alip_lqr_cost_experiment.py"],
+    deps = [
+        ":alip_lqr",
+        ":cassie_footstep_controller_environment",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

@@ -27,6 +27,9 @@ PYBIND11_MODULE(simulators, m) {
     .def("get_input_port_radio",
          &HikingSimDiagram::get_input_port_radio,
          py_rvp::reference_internal)
+    .def("get_output_port_state_lcm",
+         &HikingSimDiagram::get_output_port_state_lcm,
+         py_rvp::reference_internal)
     .def("get_output_port_state",
          &HikingSimDiagram::get_output_port_state,
          py_rvp::reference_internal)

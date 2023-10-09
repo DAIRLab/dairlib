@@ -1,11 +1,18 @@
 from dataclasses import dataclass
-from typing import Dict
 from os import path
+from typing import Dict
+
 import numpy as np
 
+from pydairlib.cassie.cassie_utils import AddCassieMultibody
+from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram, Stance
+from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
+from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
+    import HeightMapServer
+
+from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.all import (
     Diagram,
-    Context,
     Simulator,
     InputPort,
     OutputPort,
@@ -14,17 +21,6 @@ from pydrake.systems.all import (
     OutputPortIndex,
     ConstantVectorSource,
 )
-
-from pydrake.multibody.plant import MultibodyPlant
-from pydrake.geometry.all import MeshcatVisualizer, Meshcat
-
-from pydairlib.common import FindResourceOrThrow
-from pydairlib.systems.framework import OutputVector
-from pydairlib.cassie.cassie_utils import AddCassieMultibody
-from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram, Stance
-from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
-from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
-    import HeightMapServer
 
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
@@ -77,6 +73,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             True
         )
         self.controller_plant.Finalize()
+        self.nq = self.controller_plant.num_positions()
+        self.nv = self.controller_plant.num_velocities()
 
         builder = DiagramBuilder()
         self.controller = MpfcOscDiagram(
@@ -94,7 +92,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
         builder.Connect(
-            self.cassie_sim.get_output_port_state(),
+            self.cassie_sim.get_output_port_state_lcm(),
             self.controller.get_input_port_state(),
         )
         builder.Connect(
@@ -163,13 +161,31 @@ class CassieFootstepControllerEnvironment(Diagram):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def get_heightmap(self, context):
+    def get_heightmap(self, context, center=None) -> np.ndarray:
         robot_output = self.get_output_port_by_name('state').Eval(context)
-        fsm = int(self.get_output_port_by_name('fsm').Eval(context).value()(0))
+        fsm = int(
+            self.get_output_port_by_name('fsm').Eval(context)[0]
+        )
+        stance = Stance.kLeft if (fsm == 0 or fsm == 3) else Stance.kRight
+
+        return self.height_map_server.get_heightmap_3d(
+            robot_output[:self.nq + self.nv],
+            stance,
+            center
+        )
+
+    def query_heightmap(self, context, query_point):
+        robot_output = self.get_output_port_by_name('state').Eval(context)
+        fsm = int(self.get_output_port_by_name('fsm').Eval(context)[0])
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
-        return self.height_map_server.get_heightmap(
-            robot_output.GetState(),
-            stance
+        point = query_point.ravel()
+        if np.size(point) > 2:
+            point = point[:2]
+
+        return self.height_map_server.query_height_in_stance_frame(
+            xy=point,
+            robot_state=robot_output[:self.nq + self.nv],
+            stance=stance
         )
 
 

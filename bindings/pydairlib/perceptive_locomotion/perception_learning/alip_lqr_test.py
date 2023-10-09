@@ -73,7 +73,7 @@ def main():
     )
 
     diagram = builder.Build()
-    DrawAndSaveDiagramGraph(diagram, '../alip_lqr.pdf')
+    # DrawAndSaveDiagramGraph(diagram, '../alip_lqr')
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()

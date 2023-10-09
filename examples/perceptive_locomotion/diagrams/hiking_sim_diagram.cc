@@ -29,6 +29,7 @@ using Eigen::Vector3d;
 
 using systems::SubvectorPassThrough;
 using systems::RobotOutputSender;
+using systems::RobotOutputReceiver;
 using systems::RobotInputReceiver;
 
 using drake::geometry::SceneGraph;
@@ -44,7 +45,7 @@ using drake::perception::DepthImageToPointCloud;
 
 HikingSimDiagram::HikingSimDiagram(
     const std::string& terrain_yaml, const std::string& camera_pose_yaml)
-    : urdf_("examples/Cassie/urdf/cassie_v2_shells.urdf") {
+    : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf") {
 
 
   // magic numbers:
@@ -86,6 +87,7 @@ HikingSimDiagram::HikingSimDiagram(
           plant_->num_actuators() + 1
       );
   auto state_sender = builder.AddSystem<RobotOutputSender>(*plant_, true);
+  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(*plant_);
 
   const auto& cassie_motor = AddMotorModel(&builder, *plant_);
 
@@ -141,6 +143,7 @@ HikingSimDiagram::HikingSimDiagram(
   builder.Connect(
       radio_parser->get_output_port(), sensor_aggregator.get_input_port_radio()
   );
+  builder.Connect(*state_sender, *state_receiver);
 
   // export the output ports
   input_port_control_ = builder.ExportInput(
@@ -150,7 +153,10 @@ HikingSimDiagram::HikingSimDiagram(
       radio_parser->get_input_port(), "radio channels"
   );
   output_port_state_ = builder.ExportOutput(
-      state_sender->get_output_port(), "x, u, t"
+      state_receiver->get_output_port(), "x, u, t"
+  );
+  output_port_state_lcm_ = builder.ExportOutput(
+      state_sender->get_output_port(), "lcmt_robot_output"
   );
   output_port_cassie_out_ = builder.ExportOutput(
       sensor_aggregator.get_output_port(), "lcmt_cassie_out"
@@ -166,13 +172,15 @@ HikingSimDiagram::HikingSimDiagram(
   this->set_name("hiking_sim_diagram");
 }
 
-void HikingSimDiagram::SetPlantInitialConditionFromIK(
+std::pair<VectorXd, VectorXd>  HikingSimDiagram::SetPlantInitialConditionFromIK(
     const drake::systems::Diagram<double>* parent_diagram,
     Context<double>* parent_context, const Vector3d& pelvis_vel,
     double foot_spread, double height) const {
 
   auto [q, v] = GetInitialCassieState(urdf_, true, pelvis_vel, foot_spread, height);
   SetPlantInitialCondition(parent_diagram, parent_context, q, v);
+
+  return {q, v};
 }
 
 void HikingSimDiagram::SetPlantInitialCondition(

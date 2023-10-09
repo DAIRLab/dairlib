@@ -144,6 +144,21 @@ def run_experiment():
     return hmap, residual
 
 
+def compare_contours(hmap, obstacle_data, flat_data):
+    import matplotlib.pyplot as plt
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    fig.suptitle('LQR Cost to Go Experiment')
+    ax1.contour(hmap[0], hmap[1], hmap[2])
+    ax1.set_title('Height Map')
+    ax2.contour(obstacle_data[0], obstacle_data[1], obstacle_data[2])
+    ax2.set_title('Obstacle Residual')
+    ax3.contour(flat_data[0], flat_data[1], flat_data[2])
+    ax3.set_title('Control Residual')
+    for ax in [ax1, ax2, ax3]:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+
+
 def plot_results(data):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
@@ -161,7 +176,13 @@ if __name__ == '__main__':
         plot_results(data)
     else:
         xyz, residual = run_experiment()
-        np.save(f'{perception_learning_base_folder}/tmp/height_map_obstacle.npy', xyz)
+        np.save(
+            f'{perception_learning_base_folder}/tmp/height_map_flat'
+            f'.npy', xyz
+        )
         xyz[-1] = residual
-        np.save(f'{perception_learning_base_folder}/tmp/residual_test_obstacle.npy', xyz)
+        np.save(
+            f'{perception_learning_base_folder}/tmp'
+            f'/residual_test_flat.npy', xyz
+        )
         plot_results(xyz)

@@ -11,6 +11,7 @@ cc_library(
     deps = [
         "//multibody:utils",
         "//multibody/kinematic",
+        "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
     ],
 )

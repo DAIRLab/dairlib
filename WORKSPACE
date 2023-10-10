@@ -59,12 +59,12 @@ local_repository(
 # Reference external software libraries and tools per Drake's defaults.  Some
 # software will come from the host system (Ubuntu or macOS); other software
 # will be downloaded in source or binary form from github or other sites.
-load("@drake//tools/workspace:default.bzl", "add_default_repositories")
+load("@drake//tools/workspace:default.bzl", "add_default_workspace")
 
-add_default_repositories()
-
+add_default_workspace()
 
 load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
+
 osqp_repository(name = "osqp")
 
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")

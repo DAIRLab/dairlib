@@ -31,7 +31,7 @@
 build -c opt
 
 # Default build options.
-build --force_pic
+build:linux --force_pic
 build --strip=never
 
 # Default test options.
@@ -52,6 +52,7 @@ build --action_env=LD_LIBRARY_PATH=
 # customizations somehow.
 
 # build with snopt
+# TODO (@mposa) sync snopt version with Drake to build on Jammy
 build --define=WITH_SNOPT=ON
 
 # use python3 by default

@@ -18,6 +18,8 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "examples/cube_franka/c3_parameters.h"
 
+#include <iostream>
+
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
               "Use FRANKA_OUTPUT to get state from simulator, and "
@@ -60,8 +62,8 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
-  parser.AddModelFromFile("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
+  parser.AddModels("examples/cube_franka/robot_properties_fingers/urdf/franka_box.urdf");
+  parser.AddModels("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf");
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
 
@@ -94,6 +96,10 @@ int do_main(int argc, char* argv[]) {
   // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_visualizer");
 
   auto context = diagram->CreateDefaultContext();
+
+  auto& state_sub_context = diagram->GetMutableSubsystemContext(
+      *state_sub, context.get());
+  state_receiver->InitializeSubscriberPositions(plant, state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

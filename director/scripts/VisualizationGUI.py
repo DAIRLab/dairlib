@@ -84,6 +84,8 @@ class VisualizationGui(QWidget):
         if not filename:
           return
 
+
+        # Loading json file containing interface between lcm message and visualization
         # load only if input is not empty
         self.json_file = filename
         with open(self.json_file) as json_file:

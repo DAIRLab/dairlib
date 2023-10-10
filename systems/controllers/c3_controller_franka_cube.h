@@ -12,7 +12,7 @@
 
 #include "drake/systems/framework/leaf_system.h"
 #include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
+// #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "multibody/geom_geom_collider.h"
@@ -33,7 +33,7 @@
 //CHANGE FOR WHEN YOU DO THE SPHERE EXAMPLE
 #include "examples/cube_franka/c3_parameters.h"
 // #include "examples/franka_trajectory_following_cube/c3_parameters.h"
-#include "yaml-cpp/yaml.h"
+// #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 #include <random>
 

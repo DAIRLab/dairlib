@@ -18,6 +18,8 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "examples/franka_trajectory_following/c3_parameters.h"
 
+#include <iostream>
+
 DEFINE_string(channel, "FRANKA_OUTPUT",
               "LCM channel for receiving state. "
               "Use FRANKA_OUTPUT to get state from simulator, and "

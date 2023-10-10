@@ -21,7 +21,7 @@ int doMain(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
   // Adds a plant.
   const char* kModelPath =
-      "drake/manipulation/models/iiwa_description/"
+      "drake_models/iiwa_description/"
       "urdf/iiwa14_polytope_collision.urdf";
   const std::string urdf = drake::FindResourceOrThrow(kModelPath);
   int num_joints;

@@ -6,6 +6,8 @@
 
 #include "drake/math/autodiff_gradient.h"
 
+#include <iostream>
+
 
 
 namespace dairlib {

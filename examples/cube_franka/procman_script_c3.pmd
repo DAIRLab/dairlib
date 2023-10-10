@@ -1,6 +1,6 @@
 group "1.director" {
     cmd "drake-director" {
-        exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
+        exec = "bazel run @drake//tools:meldis -- -w ";
         host = "localhost";
     }
 }

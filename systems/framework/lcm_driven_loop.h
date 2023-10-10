@@ -15,6 +15,8 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
 
+#include <iostream>
+
 namespace dairlib {
 namespace systems {
 

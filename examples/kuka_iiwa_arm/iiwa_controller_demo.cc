@@ -90,7 +90,7 @@ int do_main(int argc, char* argv[]) {
       double>::FirstOrderHold(orient_times, orient_points);
 
   // Initialize Kuka model URDF-- from Drake kuka simulation files
-  std::string kModelPath = "../drake/manipulation/models/iiwa_description"
+  std::string kModelPath = "../drake_models/iiwa_description"
                            "/iiwa7/iiwa7_no_collision.sdf";
   const std::string urdf_string = FindResourceOrThrow(kModelPath);
 

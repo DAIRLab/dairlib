@@ -5,6 +5,8 @@
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 
+#include <iostream>
+
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;

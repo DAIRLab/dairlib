@@ -27,6 +27,8 @@
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
+#include <iostream>
+
 // #include "ros/ros.h"
 // #include "std_msgs/Float64MultiArray.h"
 // #include "systems/ros/ros_publisher_system.h"
@@ -43,8 +45,8 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Context;
 using drake::multibody::Parser;
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;

@@ -13,7 +13,7 @@
 //#include
 //"external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
 #include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
+// #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "multibody/geom_geom_collider.h"

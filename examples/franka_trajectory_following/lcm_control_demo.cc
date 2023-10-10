@@ -27,6 +27,8 @@
 #include "systems/controllers/c3_controller_franka.h"
 #include "systems/framework/lcm_driven_loop.h"
 
+#include <iostream>
+
 DEFINE_int32(TTL, 0,
               "TTL level for publisher. "
               "Default value is 0.");
@@ -42,8 +44,8 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Context;
 using drake::multibody::Parser;
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;
@@ -118,8 +120,8 @@ int DoMain(int argc, char* argv[]){
   int nc = 4;  //number of contacts 
 
   VectorXd q = VectorXd::Zero(nq);
-  std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
-  std::map<std::string, int> v_map = makeNameToVelocitiesMap(plant);
+  std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
+  std::map<std::string, int> v_map = MakeNameToVelocitiesMap(plant);
   
   q(0) = param.q_init_finger(0);
   q(1) = param.q_init_finger(1);

@@ -32,7 +32,7 @@ parser = Parser(plant)
 # parser.package_map().Add("robot_properties_fingers",
 #                          "examples/trajectory_following/robot_properties_fingers")
 # parser.AddModelFromFile(FindResourceOrThrow(
-#     "drake/manipulation/models/franka_description/urdf/panda_arm.urdf"))
+#     "drake_models/franka_description/urdf/panda_arm.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
     "examples/franka_trajectory_following/robot_properties_fingers/urdf/franka_box.urdf"))
 parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(

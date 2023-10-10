@@ -70,7 +70,7 @@ int DoMain() {
 
   // Get the Iiwa model. TODO: grab this from pegged drake libraries
   const char* kModelPath =
-      "drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf";
+      "drake_models/iiwa_description/iiwa7/iiwa7_no_collision.sdf";
   const std::string kuka_urdf = drake::FindResourceOrThrow(kModelPath);
   const auto X_WI = RigidTransform<double>::Identity();
 

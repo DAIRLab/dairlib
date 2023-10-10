@@ -31,6 +31,8 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 
+#include <iostream>
+
 namespace dairlib {
 
 using drake::geometry::SceneGraph;
@@ -44,8 +46,8 @@ using drake::systems::Context;
 using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
 using drake::systems::VectorLogSink;
-using multibody::makeNameToPositionsMap;
-using multibody::makeNameToVelocitiesMap;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
 
 using Eigen::VectorXd;
@@ -113,7 +115,7 @@ int DoMain(int argc, char* argv[]){
       plant, &simulator.get_mutable_context());
   
   VectorXd q = VectorXd::Zero(nq);
-  std::map<std::string, int> q_map = makeNameToPositionsMap(plant);
+  std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
   
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
   q[q_map["panda_joint1"]] = param.q_init_franka(0);

@@ -19,7 +19,7 @@
 //#include
 //"external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
 #include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
+// #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "multibody/geom_geom_collider.h"
@@ -58,7 +58,7 @@
 
 // #include "examples/franka_trajectory_following_cube/c3_parameters.h"
 #include "examples/cube_franka/c3_parameters.h"
-#include "yaml-cpp/yaml.h"
+// #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 
 

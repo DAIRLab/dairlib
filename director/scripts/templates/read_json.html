@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Object Visibility Control</title>
+</head>
+<body>
+    <form method="POST" enctype="multipart/form-data" action="/read_json">
+        <ul>
+            {% for obj_name, obj_visible in names.items() %}
+            <label>
+                <li>
+                    <input type="checkbox" name="{{ obj_name }}" {% if obj_visible %}checked{% endif %}>
+                    {{ obj_name }}
+                    <!-- TO DO : DISPLAY COLOUR NEXT TO LABEL OR DISPLAY LABEL IN COLOUR -->
+                </li>
+            </label>
+            {% endfor %}
+        </ul>
+        <button type="submit">Submit</button>
+    </form>
+    
+</body>
+</html>
+

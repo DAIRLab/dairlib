@@ -4,39 +4,12 @@
     <title>Object Visibility Control</title>
 </head>
 <body>
-    <h1>Object Visibility Control</h1>
-    <form method="POST">
-        <ul>
-            {% for obj_name, obj_visible in objects.items() %}
-                <li>
-                    <label>
-                        <input type="checkbox" name="{{ obj_name }}" {% if obj_visible %}checked{% endif %}>
-                        {{ obj_name }}
-                    </label>
-                </li>
-            {% endfor %}
-        </ul>
-        <input type="submit" value="Update Visibility">
-    </form>
-
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" action="/read_json">
         <!-- Add a file input field for JSON file upload -->
         <input type="file" name="json_file" accept=".json">
-        <!-- <input type="submit" value="Upload and Read JSON"> -->
-        <button id="json-upload-button" type="button">Upload JSON</button>
+        <!-- Use the submit type to trigger the action /read_json associated with the read_json functioon in the python program -->
+        <input type="submit" value="Upload and Read JSON"> 
     </form>
     
 </body>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const jsonUploadButton = document.getElementById('json-upload-button');
-        const fileInput = document.querySelector('input[type="file"]');
-
-        jsonUploadButton.addEventListener('click', function () {
-            // Trigger a click on the file input to open the file dialog
-            fileInput.click();
-        });
-    });
-</script>
-
 </html>

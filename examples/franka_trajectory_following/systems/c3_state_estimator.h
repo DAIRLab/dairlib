@@ -20,7 +20,7 @@
 #include <drake/math/rotation_matrix.h>
 
 #include "examples/franka_trajectory_following/c3_parameters.h"
-#include "yaml-cpp/yaml.h"
+// #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 
 #include "dairlib/lcmt_robot_output.hpp"

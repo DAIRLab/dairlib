@@ -9,7 +9,7 @@
     1. different starting configurations of Cassie (q, v)
     2. left and right foot (stance, use 0,1 to represent)
     3. different timing during the swing foot stage (phase)
-    4. desired velocity that is input by user
+    4. desired velocity that is input to controller by user
     5. different hmap (constant input for swing foot stage)
 
     Should at least collect the following things:
@@ -22,7 +22,6 @@
     TODO::
     1. try to polish the functions, check and debug
     2. cut down unnecessary data or operations
-    3. use a reasonable distribution for q and v
 """
 
 # Even if all of these aren't explicitly used, they may be needed for python to
@@ -41,7 +40,7 @@ from pydrake.systems.all import (
     DiagramBuilder,
     InputPortIndex,
     OutputPortIndex,
-    ConstantVectorSource,
+    ConstantVectorSource
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
@@ -53,16 +52,20 @@ from pydairlib.perceptive_locomotion.perception_learning. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
-    perception_learning_base_folder
+    perception_learning_base_folder,
+    InitialConditionsServer
 )
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 import numpy as np
+import pdb
 
 
 def run_experiment():
     ################################################# block definition #################################################
+    # since we also test different desired speed, so need not to use constant vector port for desired speed
+    # instead just use port.FixValue to achieve the same effect
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain_yaml = os.path.join(
         perception_learning_base_folder,
@@ -107,10 +110,7 @@ def run_experiment():
 
     # define the distribution of the initial conditions, can be changed in the future
     eps = 0.01                                      # small number that prevent impact
-    q_dis = np.linspace(-0.05, 0.05, 50)            # distribution of cassie joint position
-    v_dis= np.linspace(-0.05, 0.05, 50)             # distribution of cassie joint velocity
-    phase_dis = np.linspace(0, ss_duration, 50)     # distribution of phase timing
-    stance_dis = np.array([0,1])                    # distribution of stance, should 1 means right stance
+    Init_Generator = InitialConditionsServer()      # call random() to get a dictionary with elements stance, phase,q ,v
     desired_velocity_dis = np.linspace(-0.05, 0.05, 50)
     Ts2s = ss_duration + ds_duration
 
@@ -135,6 +135,7 @@ def run_experiment():
 
         controller_context = controller.GetMyMutableContextFromRoot(context)
         sim_context = sim_env.GetMyMutableContextFromRoot(context)
+        alip_state = sim_env.get_output_port_by_name("alip_state").Eval(sim_context).ravel()
 
         controller.get_input_port_by_name("desired_velocity").FixValue(
             context=controller_context,
@@ -164,23 +165,29 @@ def run_experiment():
         xd_ud = controller.get_output_port_by_name('footstep_command').Eval(controller_context).ravel()
         x_desired = xd_ud[:4]
 
-        return V_k - V_kp1, x_desired
+        return V_k - V_kp1, alip_state, x_desired
 
     # ----------------------------------- random initial condition setting --------------------------------------------#
-    num_data = 10 # 1000000
-    q_list = []
-    v_list = []
-    phase_list = []
-    stance_list = []
-    hmap_list = []
-    desired_velocity_list = []
+    # number of data collected
+    num_data = 1000 # 1000000
+
+    # list to store the data and corresponding initial condition (probably not needed?)
+    alip_state_list = []
+    input_list = []
     value_residual_list = []
     lqr_desired_state_list = []
+
+    # loop for num_data times to get the residual and x_desired in LQR stage
     for i in range(num_data):
-        q = np.random.choice(q_dis, size=23)
-        v = np.random.choice(v_dis, size=22)
-        phase = np.random.choice(phase_dis, size=1)
-        stance = np.random.choice(stance_dis, size=1)
+
+        # randomly generate the initial condition
+        data = Init_Generator.random()
+        q = data['q']
+        v = data['v']
+        # translate stance command into binary for the sack of computing timespot
+        stance_string = data['stance']
+        stance = 0 if stance_string == 'left' else 1
+        phase = data['phase']
         desired_velocity = np.random.choice(desired_velocity_dis, size=2)
 
         #  NOTE: set context align with the current stance, so that hmap is aligned with stance
@@ -203,21 +210,18 @@ def run_experiment():
         hmap_index2 = int(np.random.choice(np.arange(0, hmap.shape[2], 1), size=1))
         hmap_random = hmap[:, hmap_index1, hmap_index2]
 
+        # run the simulation experiment to get residual and desired state for LQR stage
         random_initial = [q, v, phase, stance, hmap_random, desired_velocity]
-        value_residual, lqr_desired_state = residual_datapoint(initial_condition=random_initial)
+        value_residual, alip_state, lqr_desired_state = residual_datapoint(initial_condition=random_initial)
 
         # data list
-        q_list.append(q)
-        v_list.append(v)
-        phase_list.append(phase)
-        stance_list.append(stance)
-        hmap_list.append(hmap_random)
-        desired_velocity_list.append(desired_velocity)
 
+        alip_state_list.append(alip_state)
+        input_list.append(hmap_random)
         value_residual_list.append(value_residual)
         lqr_desired_state_list.append(lqr_desired_state)
 
-    return q_list, v_list, phase_list, stance_list, hmap_list, desired_velocity_list, value_residual_list, lqr_desired_state_list
+    return value_residual_list, alip_state_list, input_list, lqr_desired_state_list
 
 
 if __name__ == '__main__':

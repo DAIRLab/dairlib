@@ -1,4 +1,4 @@
-#include "systems/cameras/camera_utils.h"
+#include "systems/perception/camera_utils.h"
 #include "common/find_resource.h"
 
 #include "drake/common/yaml/yaml_io.h"

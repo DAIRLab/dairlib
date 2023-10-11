@@ -23,7 +23,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "systems/cameras/camera_utils.h"
+#include "systems/perception/camera_utils.h"
 
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/lcm/drake_lcm.h"

@@ -77,6 +77,18 @@ load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 
 pydrake_repository(name = "pydrake_pegged")
 
+# elevation mapping dependencies
+ELEVATION_MAPPING_COMMIT = "bazel"
+
+http_archive(
+    name = "elevation_mapping_cupy",
+    sha256 = "0" * 64,
+    strip_prefix = "elevation_mapping_cupy".format(ELEVATION_MAPPING_COMMIT),
+    urls = [x.format(ELEVATION_MAPPING_COMMIT) for x in [
+        "https://github.com/DAIRLab/elevation_mapping_cupy/archive/{}.tar.gz",
+    ]],
+)
+
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",
@@ -157,9 +169,7 @@ load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
     "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
 )
 
-# Maybe download InEKF.
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
+# Maybe download InEKF
 http_archive(
     name = _http_inekf_repo_name,
     sha256 = INEKF_CHECKSUM,
@@ -176,8 +186,6 @@ local_repository(
     name = _local_inekf_repo_name,
     path = DAIRLIB_LOCAL_INEKF_PATH,
 )
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.

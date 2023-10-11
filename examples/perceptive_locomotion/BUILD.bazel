@@ -138,15 +138,15 @@ cc_binary(
         "//solvers:optimization_utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/cameras:camera_utils",
         "//systems/framework:vector",
+        "//systems/perception:camera_utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//systems/cameras:drake_to_ros_pointcloud",
+                "//systems/perception:drake_to_ros_pointcloud",
                 "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],

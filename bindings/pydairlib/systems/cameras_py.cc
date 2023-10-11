@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "systems/cameras/camera_utils.h"
+#include "systems/perception/camera_utils.h"
 
 namespace py = pybind11;
 using py_rvp = py::return_value_policy;

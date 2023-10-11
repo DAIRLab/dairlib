@@ -8,7 +8,7 @@
 #include "multibody/stepping_stone_utils.h"
 #include "systems/system_utils.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/cameras/camera_utils.h"
+#include "systems/perception/camera_utils.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/primitives/radio_parser.h"
 

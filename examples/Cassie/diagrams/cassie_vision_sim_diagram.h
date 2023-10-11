@@ -9,7 +9,7 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/framework/system.h"
-#include "systems/cameras/camera_utils.h"
+#include "systems/perception/camera_utils.h"
 
 namespace dairlib {
 namespace examples {

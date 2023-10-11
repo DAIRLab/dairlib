@@ -98,7 +98,7 @@ std::pair<drake::geometry::render::ColorRenderCamera,
   // Intrinsics specific to the D455 realsense for use with Cassie
   auto camera_info = LoadRealsenseCalibrationsAsCameraInfo(
       FindResourceOrThrow(
-          "systems/cameras/dair_d455.yaml")).at(image_size);
+          "systems/perception/dair_d455.yaml")).at(image_size);
 
   drake::geometry::render::ColorRenderCamera color_camera{
       {renderer_name,

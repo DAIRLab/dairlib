@@ -38,20 +38,27 @@ import numpy as np
 
 
 def run_experiment():
-    sim_params = CassieFootstepControllerEnvironmentOptions()
+    # Instantiating the data required for sim environment with cassie urdf, terrain etc. read from param/( ).yaml
+    sim_params = CassieFootstepControllerEnvironmentOptions()      
+
     # sim_params.terrain_yaml = os.path.join(
     #     perception_learning_base_folder,
     #     'params/alip_lqr_cost_experiment_terrain.yaml'
     # )
+
+    # Instantiating the sim environment
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
+    # Get controller parameters from reading the yaml file provided in method definition.
     controller_params = AlipFootstepLQROptions.calculate_default_options(
         sim_params.mpfc_gains_yaml,
         sim_env.controller_plant,
         sim_env.controller_plant.CreateDefaultContext(),
     )
+    # Instantiate controller with parameters as above.
     controller = AlipFootstepLQR(controller_params)
 
+    # Creating drake scene and diagram
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
 
@@ -80,8 +87,16 @@ def run_experiment():
     DrawAndSaveDiagramGraph(diagram, '../alip_lqr')
 
     simulator = Simulator(diagram)
+    # Sets a default starting state for the entire system.
     context = diagram.CreateDefaultContext()
     context.SetTime(0.2)
+
+    # Function definition to compute cassie condition using IK based on inputs.
+    # SetPlantInitialConditionFromIK(parent_diagram, 
+                                #    parent_context,
+                                #    Vector3d& pelvis_vel,
+                                #    double foot_spread, 
+                                #    double height) 
     q, v = sim_env.cassie_sim.SetPlantInitialConditionFromIK(
         diagram,
         context,
@@ -89,13 +104,18 @@ def run_experiment():
         0.15,
         1.0
     )
-
+    print('This is q = ')
+    print(q)
+    print('This is v = ')
+    print(v)
+    
+    # Query latest context on sim.
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
     controller_context = controller.GetMyMutableContextFromRoot(context)
 
+    
     ud = controller.get_output_port_by_name('lqr_reference').Eval(
-        controller_context
-    )[-2:]
+        controller_context)[-2:]
     heightmap_center = np.zeros((3,))
     heightmap_center[:2] = ud
     hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
@@ -207,6 +227,7 @@ if __name__ == '__main__':
         plot_results(data)
     else:
         xyz, residual = run_experiment()
+        print('I am here')
         np.save(
             f'{perception_learning_base_folder}/tmp/height_map_flat'
             f'.npy', xyz

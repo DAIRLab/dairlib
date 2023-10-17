@@ -90,29 +90,15 @@ class AlipFootstepLQR(LeafSystem):
         )
 
         self.input_port_indices = {
-            'desired_velocity': self.DeclareVectorInputPort(
-                "vdes", 2
-            ).get_index(),
-            'fsm': self.DeclareVectorInputPort(
-                "fsm", 1
-            ).get_index(),
-            'time_until_switch': self.DeclareVectorInputPort(
-                "time_until_switch", 1
-            ).get_index(),
-            'state': self.DeclareVectorInputPort(
-                "alip_state", 4
-            ).get_index()
+            'desired_velocity': self.DeclareVectorInputPort("vdes", 2).get_index(),
+            'fsm': self.DeclareVectorInputPort("fsm", 1).get_index(),
+            'time_until_switch': self.DeclareVectorInputPort("time_until_switch", 1).get_index(),
+            'state': self.DeclareVectorInputPort("alip_state", 4).get_index()
         }
         self.output_port_indices = {
-            'footstep_command': self.DeclareVectorOutputPort(
-                "footstep_command", 3, self.calculate_optimal_footstep
-            ).get_index(),
-            'lqr_reference': self.DeclareVectorOutputPort(
-                "xd_ud[x,y]", 6, self.calc_lqr_reference
-            ).get_index(),
-            'x': self.DeclareVectorOutputPort(
-                'x', 4, self.calc_discrete_alip_state
-            ).get_index()
+            'footstep_command': self.DeclareVectorOutputPort("footstep_command", 3, self.calculate_optimal_footstep).get_index(),
+            'lqr_reference': self.DeclareVectorOutputPort("xd_ud[x,y]", 6, self.calc_lqr_reference).get_index(),
+            'x': self.DeclareVectorOutputPort('x', 4, self.calc_discrete_alip_state).get_index()
         }
 
     def get_input_port_by_name(self, name: str) -> InputPort:
@@ -127,14 +113,8 @@ class AlipFootstepLQR(LeafSystem):
         """
             Calculates the LQR reference trajectory for an output port
         """
-        vdes = self.EvalVectorInput(
-            context,
-            self.input_port_indices['desired_velocity']
-        ).value().ravel()
-        fsm = self.EvalVectorInput(
-            context,
-            self.input_port_indices['fsm']
-        ).value().ravel()[0]
+        vdes = self.EvalVectorInput(context,self.input_port_indices['desired_velocity']).value().ravel()
+        fsm = self.EvalVectorInput(context,self.input_port_indices['fsm']).value().ravel()[0]
         fsm = int(fsm)
 
         # get the reference trajectory for the current stance mode

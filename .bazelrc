@@ -52,7 +52,6 @@ build --action_env=LD_LIBRARY_PATH=
 # customizations somehow.
 
 # build with snopt
-# TODO (@mposa) sync snopt version with Drake to build on Jammy
 build --define=WITH_SNOPT=ON
 
 # use python3 by default

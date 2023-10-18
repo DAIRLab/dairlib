@@ -278,8 +278,12 @@ MpfcOscDiagram::MpfcOscDiagram(
   int n_u = plant.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingCostWeights(
-      gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  if (gains.w_input_reg > 0) {
+    osc->SetInputSmoothingCostWeights(
+        gains.w_input_reg * MatrixXd::Identity(n_u, n_u)
+    );
+  }
+
 
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);

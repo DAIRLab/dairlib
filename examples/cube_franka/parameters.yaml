@@ -1,8 +1,8 @@
 # bouncy ball parameters
 
 # impedance control parameters  # TODO may need to tune these
-translational_stiffness: 900  #700 #500, 400
-rotational_stiffness: 1500  #900
+translational_stiffness: 500  #700 #500, 400
+rotational_stiffness: 900  #900
 translational_damping_ratio: 1
 rotational_damping: 20 # temporary increase for safety #10 to 50
 
@@ -20,35 +20,35 @@ pushing_offset: 0 #-0.001
 mu: 1                  # changes need to be consistent with urdf
 use_full_cost: true        # debugging parameter, if false uses ball location error only to compare current with sample c3 costs.
 Q_default: 0
-Q_finger: 1000      # finger xyz cost  # TODO tune these
+Q_finger: 500      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
-Q_ball_z: 1000
-Q_finger_vel: 20000  #10        # translational velocity cost  # TODO may need to tune these
+Q_ball_z: 10000000
+Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
-R: 500 #0.01                 # torque cost in xyz  # TODO may need to tune these
-G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
+R: 0.01 #0.01                 # torque cost in xyz  # TODO may need to tune these
+G: 0.001 #0.1             #ADMM related  # TODO may need to tune these
 G_EE: 0.001
-G_ground: 0.00001
+G_ground: 0.0000001
 U_default: 1              #ADMM projection step related
-U_pos: 1000000 #10000           # first 10 diag elements of U, corresponding to positions  #ADMM projection step related
+U_pos: 100 #10000           # first 10 diag elements of U, corresponding to positions  #ADMM projection step related
 U_vel: 100   #1000              # next 9 diag elements of U, corresponding to velocities
-U_u: 10 #10                  # last 3 diag elements of U, corresponding to control input      #ADMM projection step related
+U_u: 1 #10                  # last 3 diag elements of U, corresponding to control input      #ADMM projection step related
 q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter
 dt: 0.015 # 0.03
-velocity_limit: 100
+velocity_limit: 1
 orientation_degrees: 15 #15  # TODO may need to tune these, steeper angle can decrease torque on the end effector
 axis_option: 1
-planning_timestep: 0.1
+planning_timestep: 0.1   # Same as in Alp's code
 c3_planned_next_state_timestep: 0.02
 horizon_length: 5
 
 # initialization/simulation parameters
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
-q_init_ball: [0.847410781, 0.310617894, 0.311017672, -0.385788646] #[0.9239, 0.3827, 0, 0] (2 contacts) #[1, 0, 0, 0] (1 contact) # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
-initial_start: [0.55, 0 , 0.22]
-initial_finish: [0.35, 0.35, 0.07]  # [0.55, 0.53, 0.07] avoids contact between ee and jack when control begins
+q_init_ball: [1, 0, 0, 0] #[0.9239, 0.3827, 0, 0] (2 contacts) #[1, 0, 0, 0] (1 contact) # xyz computed according to x_c, y_c, traj_radius, phase, and ball_radius
+initial_start: [0.55, 0, 0.12]
+initial_finish: [0, 0, 0.07]  # [0.55, 0.53, 0.07] avoids contact between ee and jack when control begins
 stabilize_time1: 0.5 #0.5
 move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75
@@ -58,11 +58,11 @@ realtime_rate: 0.2
 
 # trajectory parameters
 trajectory_type: 1    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
-traj_radius: 0.2
+traj_radius: 0.1
 phase: 0
-x_c: 0.35
+x_c: 0.55
 y_c: 0
-degree_increment: 30  
+degree_increment: 20  
 time_increment: 1
 hold_order: 0 # 0 for zero order hold, 1 for first order hold
 
@@ -88,7 +88,7 @@ finger_radius: 0.0195         # changes need to be consistent with franka_box an
 EE_offset: [0, 0, 0.0153]     # changes need to be consistent with franka_box urdf
 table_offset: -0.0245 #-0.0245      # chances need to be consistent with franka_box, model urdf, AND vision
 model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model urdf
-# number_contact_pairs: 9 #9 contact pairs for cube - 1 for ee-->cube and 8 for each corner-->ground 
+num_contact_pairs: 2 #9 contact pairs for cube - 1 for ee-->cube and 8 for each corner-->ground 
 
 
 #Sampling parameters
@@ -103,7 +103,7 @@ min_angle_from_vertical: 0  #0.785    # radians minimum angle from vertical (i.e
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
 num_additional_samples_repos: 3   # number of additional samples to consider when doing repositioning.
 num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
-spline_width: 0.13   #0.09
+spline_width: 0.062   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.75     # desired meters/second of repositioning
 
@@ -112,8 +112,8 @@ travel_speed: 0.75     # desired meters/second of repositioning
 num_threads: 1     # Total number of threads to use. 0 means use all threads on machine.
 
 #Switching parameters
-switching_hysteresis: 400 #150
-reposition_fixed_cost: 500    # This needs to be higher than the switching hysteresis to ensure switching
+switching_hysteresis: 150 #150
+reposition_fixed_cost: 100    # This needs to be higher than the switching hysteresis to ensure switching
                               # back to C3 once it repositions and reaches a repositioning goal.
 finished_reposition_cost: 1000000   # Added cost to repositioning target if travel reached the end of the spline last step.
 

@@ -130,10 +130,10 @@ int DoMain(int argc, char* argv[]){
   q[q_map["base_qx"]] = param.q_init_ball(1);
   q[q_map["base_qy"]] = param.q_init_ball(2);
   q[q_map["base_qz"]] = param.q_init_ball(3);
-  q[q_map["base_x"]] = 0.09 + param.x_c + traj_radius * sin(M_PI * param.phase / 180.0); //moving the object ahead by 2.5 cms so the ee doesn't hit it during initialization
+  q[q_map["base_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0); //moving the object ahead by 2.5 cms so the ee doesn't hit it during initialization
                                                                                          //could also reduce size of object with necessary changes in moments of inertia
   q[q_map["base_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
-  q[q_map["base_z"]] = 0.1 + param.jack_half_width + param.table_offset;
+  q[q_map["base_z"]] = param.jack_half_width + param.table_offset;
 
   plant.SetPositions(&plant_context, q);
 

@@ -57,7 +57,7 @@ int DoMain(int argc, char* argv[]){
   drake::lcm::DrakeLcm drake_lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
 
-  //This plant that is created is mainly to allow access to the drake methods of accessing parts by name etc. and is a very general version of the plant
+  // This plant that is created is mainly to allow access to the drake methods of accessing parts by name etc. and is a very general version of the plant
   /// parse plant from urdfs
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
@@ -117,7 +117,8 @@ int DoMain(int argc, char* argv[]){
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
-  int nc = 4;  //number of contacts 
+  // TODO: Remove the hard coding on this line.
+  int nc = param.num_contact_pairs;  // number of contacts  
 
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = makeNameToPositionsMap(plant);

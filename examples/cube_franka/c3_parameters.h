@@ -91,6 +91,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(EE_offset));
     a->Visit(DRAKE_NVP(table_offset));
     a->Visit(DRAKE_NVP(model_table_offset));
+    a->Visit(DRAKE_NVP(num_contact_pairs));
 
     // misc
     a->Visit(DRAKE_NVP(contact_threshold));
@@ -203,6 +204,7 @@ struct C3Parameters {
   VectorXd EE_offset;
   double table_offset;
   double model_table_offset;
+  int num_contact_pairs;
 
   //sampling parameters
   bool force_skip_sampling;

@@ -184,7 +184,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Set up some variables and initialize warm start.
   N_ = param_.horizon_length;
   n_ = 19;
-  m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
+  m_ = 6*param_.num_contact_pairs;     // 6 forces per contact pair, 1 pairs for ball with ground, 1 pair for ee and ball.
   k_ = 3;
 
   // Do separate warm starting for samples than for current end effector location.
@@ -228,6 +228,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   if (timestamp <= settling_time){
     Eigen::Vector3d start = param_.initial_start;
     Eigen::Vector3d finish = param_.initial_finish;
+    // The following two lines are removed in the jacktoy code but these make sure the start and end positions of the franka are where we want them to be.
+    finish(0) = x_c + traj_radius * sin(param_.phase * PI/ 180) + finish(0);
+    finish(1) = y_c + traj_radius * cos(param_.phase * PI / 180) + finish(1);
     std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
                                                                    param_.stabilize_time1 + first_message_time_,
                                                                    param_.move_time, param_.stabilize_time2);
@@ -401,7 +404,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
   traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
   // For the z location, do some fixed height.
-  traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = 0.08;
+  traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
 
   // Store the goal end effector location used by C3 for visualization later.
   Vector3d goal_ee_location_c3(traj_desired_vector[q_map_.at("tip_link_1_to_base_x")],
@@ -688,7 +691,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Switch to repositioning if one of the other samples is better, with hysteresis.
     if (curr_ee_cost > best_additional_sample_cost + param_.switching_hysteresis) {
       C3_flag_ = false;
-      finished_reposition_flag_ = false;
+      finished_reposition_flag_ = false;  // TODO: What is this exactly? Ask @bibit
     }
   }
   else {                    // Currently repositioning.

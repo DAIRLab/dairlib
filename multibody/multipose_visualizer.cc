@@ -2,7 +2,6 @@
 
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/scene_graph.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
@@ -89,12 +88,6 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
     }
   }
 
-  drake::geometry::MeshcatVisualizerParams params;
-  params.publish_period = 1.0/60.0;
-  meshcat_ = std::make_shared<drake::geometry::Meshcat>();
-  meshcat_visualizer_ = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-      &builder, *scene_graph, meshcat_, std::move(params));
-
   DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph, lcm);
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();
@@ -112,8 +105,7 @@ void MultiposeVisualizer::DrawPoses(MatrixXd poses) {
   }
 
   // Publish diagram
-  diagram_->Publish(*diagram_context_);
-
+  diagram_->ForcedPublish(*diagram_context_);
 }
 
 }  // namespace multibody

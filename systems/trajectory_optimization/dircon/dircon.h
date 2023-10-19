@@ -12,7 +12,7 @@
 #include "drake/common/symbolic/expression.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/solvers/constraint.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 
 namespace dairlib {
 namespace systems {
@@ -31,7 +31,7 @@ namespace trajectory_optimization {
 /// and corresponding acceleration, velocity, and position constraints.
 template <typename T>
 class Dircon
-    : public drake::systems::trajectory_optimization::MultipleShooting {
+    : public drake::planning::trajectory_optimization::MultipleShooting {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Dircon)
 
@@ -95,7 +95,7 @@ class Dircon
   ///
   /// Creates a callback using a single pose count parameter, num_poses
   /// Evenly divides the poses among the different modes, weighting by number
-  /// of frames in that mode. Since start/end poses per mode are required, must
+  /// of frames in that mode. Since start/end poses per mdoe are required, must
   /// have num_poses >= num_modes + 1
   void CreateVisualizationCallback(std::string model_file,
                                    unsigned int num_poses, double alpha,
@@ -186,9 +186,9 @@ class Dircon
   drake::symbolic::Expression SubstitutePostImpactVelocityVariables(
       const drake::symbolic::Expression& e, int mode) const;
 
-  using drake::systems::trajectory_optimization::MultipleShooting::N;
-  using drake::systems::trajectory_optimization::MultipleShooting::
-      SubstitutePlaceholderVariables;
+  using drake::planning::trajectory_optimization::MultipleShooting::N;
+  using drake::planning::trajectory_optimization::MultipleShooting::
+  SubstitutePlaceholderVariables;
 
   int num_modes() const;
 
@@ -202,8 +202,6 @@ class Dircon
   const DirconMode<T>& get_mode(int mode) const {
     return mode_sequence_.mode(mode);
   }
-
-  const int get_mode_start(int index) { return mode_start_[index]; }
 
   const drake::systems::Context<T>& get_context(int mode, int knotpoint_index) {
     return *contexts_.at(mode).at(knotpoint_index);

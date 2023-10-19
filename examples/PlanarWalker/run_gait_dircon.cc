@@ -118,7 +118,7 @@ void runDircon(
                            "Major iterations limit", 200);
 
   for (int j = 0; j < sequence.num_modes(); j++) {
-    trajopt.drake::systems::trajectory_optimization::MultipleShooting::
+    trajopt.drake::planning::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt.SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
                                       init_vc_traj[j]);

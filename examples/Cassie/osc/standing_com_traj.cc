@@ -1,9 +1,9 @@
 #include "examples/Cassie/osc/standing_com_traj.h"
 
+#include <algorithm>
 #include <math.h>
 
 #include <dairlib/lcmt_cassie_out.hpp>
-#include <drake/math/saturate.h>
 
 #include "multibody/multibody_utils.h"
 
@@ -87,7 +87,7 @@ void StandingComTraj::CalcDesiredTraj(
   target_height += kHeightScale * radio_out->channel[0];
 
   // Saturate based on min and max height
-  target_height = drake::math::saturate(target_height, kMinHeight, kMaxHeight);
+  target_height = std::clamp(target_height, kMinHeight, kMaxHeight);
   double x_offset = kCoMXScale * radio_out->channel[4];
   double y_offset = kCoMYScale * radio_out->channel[5];
   Vector3d target_pos;

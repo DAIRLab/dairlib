@@ -947,7 +947,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
       }
       // initial condition for timestep
       for (int i = 0; i < N - 1; i++) {
-        auto h_var = trajopt->timestep(i);
+        auto h_var = trajopt->time_step(i);
         prog.SetInitialGuess(h_var(0), duration / (N - 1));
       }
       // initial condition for post impact velocity

@@ -11,11 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.21.0"
+DRAKE_COMMIT = "v1.22.0"
 
-DRAKE_STRIP = "1.21.0"
-
-DRAKE_CHECKSUM = "6571295843aff8e11620340739bf5eab7a25130f8f06667b2d3e6df85567509a"
+DRAKE_CHECKSUM = "78cf62c177c41f8415ade172c1e6eb270db619f07c4b043d5148e1f35be8da09"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -44,7 +42,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = _http_drake_repo_name,
     sha256 = DRAKE_CHECKSUM,
-    strip_prefix = "drake-{}".format(DRAKE_STRIP),
+    strip_prefix = "drake-{}".format(DRAKE_COMMIT.strip("v")),
     urls = [x.format(DRAKE_COMMIT) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],

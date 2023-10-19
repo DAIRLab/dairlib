@@ -29,12 +29,12 @@
 
 # enable platform specific build configurations
 common --enable_platform_specific_config
-build:linux --force_pic
 
 # Default to an optimized build.
 build -c opt
 
 # Default build options.
+build:linux --force_pic
 build --strip=never
 
 # Default test options.

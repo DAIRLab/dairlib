@@ -79,13 +79,42 @@ pydrake_repository(name = "pydrake_pegged")
 ELEVATION_MAPPING_COMMIT = "bazel"
 
 http_archive(
-    name = "elevation_mapping_cupy",
-    sha256 = "0" * 64,
-    strip_prefix = "elevation_mapping_cupy".format(ELEVATION_MAPPING_COMMIT),
+    name = "elevation_mapping",
+    sha256 = "2f73dba4e91e53dbbb4e34694f1bcbd5be1711224dd8961135ba3060314ee3e9",
+    strip_prefix = "elevation_mapping-{}".format(ELEVATION_MAPPING_COMMIT),
     urls = [x.format(ELEVATION_MAPPING_COMMIT) for x in [
-        "https://github.com/DAIRLab/elevation_mapping_cupy/archive/{}.tar.gz",
+        "https://github.com/Brian-Acosta/elevation_mapping/archive/{}.tar.gz",
     ]],
 )
+
+load(
+    "@elevation_mapping//tools/workspace:deps.bzl",
+    "add_elevation_mapping_dependencies",
+)
+
+# we already have drake
+add_elevation_mapping_dependencies(excludes = ["drake"])
+
+# setup
+load("@grid_map//tools/workspace:deps.bzl", "add_grid_map_dependencies")
+
+add_grid_map_dependencies(excludes = ["gtest"])
+
+load("@rules_pcl//bzl:repositories.bzl", "pcl_repositories")
+
+# exclude pcl dependencies brought in by drake
+pcl_repositories(
+    excludes = [
+        "gtest",
+        "eigen",
+        "libpng",
+        "zlib",
+    ],
+)
+
+load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
+
+setup_pcl()
 
 # Prebuilt ROS workspace
 new_local_repository(

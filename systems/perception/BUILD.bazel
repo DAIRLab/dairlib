@@ -21,3 +21,15 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "elevation_mapping_system",
+    srcs = ["elevation_mapping_system.cc"],
+    hdrs = ["elevation_mapping_system.h"],
+    deps = [
+        ":camera_utils",
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:elevation_map",
+        "@elevation_mapping//elevation_mapping:robot_motion_map_updater",
+        "@elevation_mapping//elevation_mapping:sensor_processors",
+    ],
+)

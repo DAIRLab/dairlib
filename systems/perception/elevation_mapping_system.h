@@ -26,6 +26,17 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
                          drake::systems::Context<double>* context,
                          const std::vector<sensor_pose_params>& sensor_poses);
 
+  const drake::systems::InputPort<double>& get_input_port_pointcloud(
+      const std::string& sensor_name) const {
+    DRAKE_DEMAND(input_ports_pcl_.count(sensor_name) == 1);
+    return get_input_port(input_ports_pcl_.at(sensor_name));
+  }
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return get_input_port(input_port_state_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_covariance() const {
+    return get_input_port(input_port_pose_covariance_);
+  }
  private:
 
   drake::systems::EventStatus PeriodicUnrestrictedUpdateEvent(
@@ -42,12 +53,14 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   // ports
   std::map<std::string, drake::systems::InputPortIndex> input_ports_pcl_;
-  drake::systems::InputPortIndex input_port_robot_state_;
+  drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_pose_covariance_;
   drake::systems::OutputPortIndex output_port_elevation_map_;
 
   // states
   drake::systems::AbstractStateIndex map_state_index_;
+  std::map<std::string,
+           drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;
 
 };
 

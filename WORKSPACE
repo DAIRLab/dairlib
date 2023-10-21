@@ -78,9 +78,11 @@ pydrake_repository(name = "pydrake_pegged")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
+ELEVATION_MAPPING_CHECKSUM = "9be9ed90a90ec18754f38d31c006e41a265b40432a1a60c1b6fb410c3977819e"
+
 http_archive(
     name = "elevation_mapping",
-    sha256 = "2f73dba4e91e53dbbb4e34694f1bcbd5be1711224dd8961135ba3060314ee3e9",
+    sha256 = ELEVATION_MAPPING_CHECKSUM,
     strip_prefix = "elevation_mapping-{}".format(ELEVATION_MAPPING_COMMIT),
     urls = [x.format(ELEVATION_MAPPING_COMMIT) for x in [
         "https://github.com/Brian-Acosta/elevation_mapping/archive/{}.tar.gz",

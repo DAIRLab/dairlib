@@ -49,7 +49,7 @@ ElevationMappingSystem::ElevationMappingSystem(
 
   // TODO (@Brian-Acosta) need to make elevation maps cloneable
   //  (still need mutexes?)
-  //  auto model_value = drake::Value<elevation_mapping::ElevationMap>(map);
+  auto model_value = drake::Value<elevation_mapping::ElevationMap>(map);
 }
 
 }

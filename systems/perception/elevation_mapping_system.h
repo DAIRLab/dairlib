@@ -18,13 +18,21 @@ struct sensor_pose_params {
   drake::math::RigidTransformd sensor_pose_in_parent_body_;
 };
 
+struct elevation_map_update_params {
+  drake::systems::TriggerType map_update_type_ = drake::systems::TriggerType::kPeriodic;
+  drake::systems::TriggerType pose_update_type_ = drake::systems::TriggerType::kPeriodic;
+  double pose_update_rate_hz_ = 100;
+  double map_update_rate_hz_ = 30;
+};
+
 class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ElevationMappingSystem);
 
   ElevationMappingSystem(const drake::multibody::MultibodyPlant<double>& plant,
                          drake::systems::Context<double>* context,
-                         const std::vector<sensor_pose_params>& sensor_poses);
+                         const std::vector<sensor_pose_params>& sensor_poses,
+                         elevation_map_update_params update_params);
 
   const drake::systems::InputPort<double>& get_input_port_pointcloud(
       const std::string& sensor_name) const {
@@ -37,14 +45,23 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_covariance() const {
     return get_input_port(input_port_pose_covariance_);
   }
+
+  void AddSensorPreprocessor(
+      const std::string& sensor_name,
+      std::unique_ptr<elevation_mapping::SensorProcessorBase> processor) {
+    DRAKE_DEMAND(sensor_poses_.count(sensor_name) == 1);
+    sensor_preprocessors_.insert({sensor_name, std::move(processor)});
+  }
+
  private:
 
-  drake::systems::EventStatus PeriodicUnrestrictedUpdateEvent(
+  drake::systems::EventStatus ElevationMapUpdateEvent(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
-  void CopyElevationMap(const drake::systems::Context<double>& context,
-                        elevation_mapping::ElevationMap* map) const;
+  drake::systems::EventStatus RobotPoseUpdateEvent(
+      const drake::systems::Context<double>& context,
+      drake::systems::State<double>* state) const;
 
   // multibody
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -58,10 +75,13 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex output_port_elevation_map_;
 
   // states
-  drake::systems::AbstractStateIndex map_state_index_;
+  drake::systems::AbstractStateIndex elevation_map_state_index_;
+  drake::systems::AbstractStateIndex motion_updater_state_index_;
   std::map<std::string,
            drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;
 
+  std::map<std::string,
+           std::unique_ptr<elevation_mapping::SensorProcessorBase>> sensor_preprocessors_;
 };
 
 }

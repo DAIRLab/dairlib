@@ -82,9 +82,11 @@ int DoMain() {
   elevation_mapping::PointCloudType::Ptr pc_input(new elevation_mapping::PointCloudType);
   pcl::copyPointCloud(pc, *pc_input);
 
+  Eigen::MatrixXd base_cov = Eigen::MatrixXd::Identity(6, 6);
+  base_cov.resize(36,1);
   auto context = mapper.CreateDefaultContext();
   mapper.get_input_port_state().FixValue(context.get(), robot_output);
-  mapper.get_input_port_covariance().FixValue(context.get(), Eigen::VectorXd::Zero(36));
+  mapper.get_input_port_covariance().FixValue(context.get(), base_cov);
   mapper.get_input_port_pointcloud("oracle").FixValue(context.get(), pc_input);
 
   mapper.CalcForcedUnrestrictedUpdate(

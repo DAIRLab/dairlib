@@ -58,8 +58,7 @@ build --action_env=LD_LIBRARY_PATH=
 # customizations somehow.
 
 # build with snopt
-build:linux --define=WITH_SNOPT=ON
-build:macos --define=WITH_SNOPT=OFF
+build --define=WITH_SNOPT=ON
 build --define=WITH_MOSEK=OFF
 build --define=WITH_GUROBI=ON
 

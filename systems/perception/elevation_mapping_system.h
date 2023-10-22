@@ -1,5 +1,6 @@
 #pragma once
 
+
 // Elevation mapping
 #include "elevation_mapping/ElevationMap.hpp"
 #include "elevation_mapping/RobotMotionMapUpdater.hpp"
@@ -20,9 +21,14 @@ struct sensor_pose_params {
 
 struct elevation_map_update_params {
   drake::systems::TriggerType map_update_type_ = drake::systems::TriggerType::kPeriodic;
-  drake::systems::TriggerType pose_update_type_ = drake::systems::TriggerType::kPeriodic;
-  double pose_update_rate_hz_ = 100;
   double map_update_rate_hz_ = 30;
+};
+
+struct elevation_mapping_params {
+  std::vector<sensor_pose_params> sensor_poses;
+  elevation_map_update_params update_params;
+  std::string base_frame_name;
+  Eigen::Vector3d track_point;
 };
 
 class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
@@ -31,8 +37,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   ElevationMappingSystem(const drake::multibody::MultibodyPlant<double>& plant,
                          drake::systems::Context<double>* context,
-                         const std::vector<sensor_pose_params>& sensor_poses,
-                         elevation_map_update_params update_params);
+                         elevation_mapping_params params);
 
   const drake::systems::InputPort<double>& get_input_port_pointcloud(
       const std::string& sensor_name) const {
@@ -59,14 +64,13 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
-  drake::systems::EventStatus RobotPoseUpdateEvent(
-      const drake::systems::Context<double>& context,
-      drake::systems::State<double>* state) const;
-
   // multibody
   const drake::multibody::MultibodyPlant<double>& plant_;
+  const drake::multibody::Body<double>& robot_base_;
   drake::systems::Context<double>* context_;
   std::map<std::string, sensor_pose_params> sensor_poses_;
+  const Eigen::Vector3d track_point_; // point in the base frame to pin the map
+
 
   // ports
   std::map<std::string, drake::systems::InputPortIndex> input_ports_pcl_;

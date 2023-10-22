@@ -27,6 +27,7 @@ cc_library(
     hdrs = ["elevation_mapping_system.h"],
     deps = [
         ":camera_utils",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:elevation_map",

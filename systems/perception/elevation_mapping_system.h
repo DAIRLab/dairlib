@@ -50,8 +50,11 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_covariance() const {
     return get_input_port(input_port_pose_covariance_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_map() const {
+    return get_output_port(output_port_elevation_map_);
+  }
 
-  void AddSensorPreprocessor(
+  void AddSensorPreProcessor(
       const std::string& sensor_name,
       std::unique_ptr<elevation_mapping::SensorProcessorBase> processor) {
     DRAKE_DEMAND(sensor_poses_.count(sensor_name) == 1);

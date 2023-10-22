@@ -35,3 +35,13 @@ cc_library(
         "@elevation_mapping//elevation_mapping:sensor_processors",
     ],
 )
+
+cc_binary(
+    name = "elevation_mapping_test",
+    srcs = ["elevation_mapping_test.cc"],
+    data = ["@drake//examples/atlas:models"],
+    deps = [
+        ":camera_utils",
+        ":elevation_mapping_system",
+    ],
+)

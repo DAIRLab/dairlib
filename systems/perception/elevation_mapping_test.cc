@@ -1,0 +1,106 @@
+#include "systems/perception/elevation_mapping_system.h"
+#include "systems/framework/output_vector.h"
+
+#include "drake/geometry/scene_graph.h"
+#include "drake/multibody/parsing/parser.h"
+
+#include "elevation_mapping/sensor_processors/PerfectSensorProcessor.hpp"
+
+#include "pcl/common/io.h"
+
+namespace dairlib {
+namespace perception {
+
+int DoMain() {
+
+  elevation_mapping_params params{
+      {{
+          "oracle",
+          "r_situational_awareness_camera_link",
+          drake::math::RigidTransformd{},
+      }}, // sensors
+      {
+        drake::systems::TriggerType::kForced,
+        0
+      },
+      "utorso",
+      Eigen::Vector3d::Zero()
+  };
+
+  drake::multibody::MultibodyPlant<double> plant(0.0);
+  drake::multibody::Parser(&plant).AddModelsFromUrl(
+      "package://drake_models/atlas/atlas_convex_hull.urdf");
+  plant.Finalize();
+  auto plant_context = plant.CreateDefaultContext();
+
+  ElevationMappingSystem mapper(plant, plant_context.get(), params);
+  auto sensor_preprocessor =
+      std::make_unique<elevation_mapping::PerfectSensorProcessor>(
+          elevation_mapping::SensorProcessorBase::GeneralParameters{}
+          );
+  mapper.AddSensorPreProcessor("oracle", std::move(sensor_preprocessor));
+
+  /*
+   * <Setup ATLAS>
+   */
+  DRAKE_DEMAND(plant.num_velocities() == 36);
+  DRAKE_DEMAND(plant.num_positions() == 37);
+  const drake::multibody::Body<double>& pelvis = plant.GetBodyByName("pelvis");
+  DRAKE_DEMAND(pelvis.is_floating());
+  DRAKE_DEMAND(pelvis.has_quaternion_dofs());
+  DRAKE_DEMAND(pelvis.floating_positions_start() == 0);
+  DRAKE_DEMAND(pelvis.floating_velocities_start() == plant.num_positions());
+  const Eigen::Translation3d X_WP(0.0, 0.0, 0.95);
+  plant.SetFreeBodyPoseInWorldFrame(plant_context.get(), pelvis, X_WP);
+
+  auto robot_output = systems::OutputVector<double>(
+      plant.num_positions(), plant.num_velocities(), plant.num_actuators());
+  robot_output.SetZero();
+  robot_output.SetPositions(plant.GetPositions(*plant_context));
+
+  /*
+  * </Setup ATLAS>
+  */
+
+  /* get a dummy pointcloud */
+  const auto X_WS = plant.EvalBodyPoseInWorld(
+      *plant_context,
+      plant.GetBodyByName("r_situational_awareness_camera_link")
+  );
+  const auto X_SW = X_WS.inverse();
+
+  pcl::PointCloud<pcl::PointXYZ> pc;
+  for (int i = -101; i < 101; ++i) {
+    for (int j = -101; j < 101; ++j) {
+      Eigen::Vector3d p(0.01 * i, 0.01 * j, 0.1);
+      p = X_SW * p;
+      pcl::PointXYZ pt;
+      pt.getVector3fMap() = p.cast<float>();
+      pc.push_back(pt);
+    }
+  }
+  elevation_mapping::PointCloudType::Ptr pc_input(new elevation_mapping::PointCloudType);
+  pcl::copyPointCloud(pc, *pc_input);
+
+  auto context = mapper.CreateDefaultContext();
+  mapper.get_input_port_state().FixValue(context.get(), robot_output);
+  mapper.get_input_port_covariance().FixValue(context.get(), Eigen::VectorXd::Zero(36));
+  mapper.get_input_port_pointcloud("oracle").FixValue(context.get(), pc_input);
+
+  mapper.CalcForcedUnrestrictedUpdate(
+      *context,
+      &context->get_mutable_state()
+  );
+
+  auto map = mapper.get_output_port_map().Eval<elevation_mapping::ElevationMap>(*context);
+  std::cout << map.getRawGridMap().get("elevation") << std::endl;
+  return 0;
+}
+
+
+}
+}
+
+int main(int argc, char** argv) {
+  return dairlib::perception::DoMain();
+}

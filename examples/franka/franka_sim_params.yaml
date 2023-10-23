@@ -6,10 +6,10 @@ franka_model: examples/franka/urdf/franka_no_collision.urdf
 publish_rate: 1000
 publish_efforts: true
 actuator_delay: 0.000
-visualize: false
+visualize: true
 
-dt: 0.0001
-realtime_rate: 0.1
+dt: 0.0005
+realtime_rate: 1.0
 #q_init_franka: [-0.85, 1.45, 1.25, -1.5, 1.70, 1.2, -0.6]
 q_init_franka: [-1.0, 1.25, 1.25, -1.7, 1.85, 1.23, -0.67]
 #q_init_plate: [1, 0, 0, 0, 0.68, 0, 1.16]

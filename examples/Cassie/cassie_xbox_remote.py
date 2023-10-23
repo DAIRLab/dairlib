@@ -96,7 +96,7 @@ def main():
         publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())
 
         # Limit to 20 frames per second
-        clock.tick(20)
+        clock.tick(100)
         i += 1
 
     pygame.quit()

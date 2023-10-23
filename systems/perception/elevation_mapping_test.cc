@@ -1,8 +1,11 @@
+#include "gtest/gtest.h"
+
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/common/test_utilities/eigen_matrix_compare.h"
 
 #include "elevation_mapping/sensor_processors/PerfectSensorProcessor.hpp"
 
@@ -11,7 +14,7 @@
 namespace dairlib {
 namespace perception {
 
-int DoMain() {
+GTEST_TEST(PerceptionTests, ElevationMappingSystemTest){
 
   elevation_mapping_params params{
       {{
@@ -70,6 +73,7 @@ int DoMain() {
   const auto X_SW = X_WS.inverse();
 
   pcl::PointCloud<pcl::PointXYZ> pc;
+  // Approx 200 x 200 pointcloud
   for (int i = -101; i < 101; ++i) {
     for (int j = -101; j < 101; ++j) {
       Eigen::Vector3d p(0.01 * i, 0.01 * j, 0.1);
@@ -95,14 +99,22 @@ int DoMain() {
   );
 
   auto map = mapper.get_output_port_map().Eval<elevation_mapping::ElevationMap>(*context);
-  std::cout << map.getRawGridMap().get("elevation") << std::endl;
-  return 0;
+  const auto& elevation = map.getRawGridMap().get("elevation");
+  const auto expected_result = Eigen::MatrixXf::Constant(elevation.rows(), elevation.cols(), 0.1);
+  bool pass = drake::CompareMatrices(elevation, expected_result, 1e-6);
+  if (pass) {
+    drake::log()->info("PASSED!");
+  } else {
+    drake::log()->error("TEST FAILED!");
+    std::cout << "expected matrix: \n" << expected_result <<
+                 "\nbut received\n" << elevation << std::endl;
+  }
+  EXPECT_TRUE(pass);
 }
-
-
 }
 }
 
 int main(int argc, char** argv) {
-  return dairlib::perception::DoMain();
+  testing::InitGoogleTest();
+  return RUN_ALL_TESTS();
 }

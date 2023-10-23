@@ -36,12 +36,14 @@ cc_library(
     ],
 )
 
-cc_binary(
+cc_test(
     name = "elevation_mapping_test",
     srcs = ["elevation_mapping_test.cc"],
     data = ["@drake//examples/atlas:models"],
     deps = [
         ":camera_utils",
         ":elevation_mapping_system",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
     ],
 )

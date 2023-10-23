@@ -60,7 +60,7 @@ ElevationMappingSystem::ElevationMappingSystem(
   // TODO (@Brian-Acosta) expose the elevation mapping parameters
   grid_map::Length length(2.0, 2.0);
   grid_map::Position position(0.0, 0.0);
-  double resolution = 0.25;
+  double resolution = 0.025;
   ElevationMap map;
   map.setGeometry(length, resolution, position);
 

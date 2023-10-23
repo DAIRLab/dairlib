@@ -38,6 +38,9 @@ class PerceptiveLocomotionPreprocessor : public elevation_mapping::StereoSensorP
   drake::systems::Context<double>* context() {return context_;}
  private:
 
+  bool filterPointCloudSensorType(
+      elevation_mapping::PointCloudType::Ptr pointCloud) override;
+
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
 

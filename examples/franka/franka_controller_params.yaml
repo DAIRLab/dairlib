@@ -5,15 +5,17 @@ radio_channel: CASSIE_VIRTUAL_RADIO
 osc_debug_channel: OSC_DEBUG_FRANKA
 c3_channel: C3_TRAJECTORY_ACTOR
 
+franka_model: examples/franka/urdf/franka.urdf
+
 w_input: 0.00
-w_input_reg: 0.001
-w_accel: 0.001
+w_input_reg: 0.0
+w_accel: 0.00001
 w_soft_constraint: 10000
 w_lambda: 0.1
 impact_threshold: 0.000
 impact_tau: 0.000
 mu: 0.6
-end_effector_acceleration: 20.0
+end_effector_acceleration: 5.0
 track_end_effector_orientation: false
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -40,7 +42,7 @@ EndEffectorKd:
 MidLinkW:
   [0, 0, 0,
    0, 0, 0,
-   0, 0, 1]
+   0, 0, 2]
 MidLinkKp:
   [ 0, 0, 0,
     0, 0, 0,
@@ -56,7 +58,7 @@ EndEffectorRotW:
 EndEffectorRotKp:
   [ 4000, 0, 0,
     0, 4000, 0,
-    0, 0, 500 ]
+    0, 0,  500]
 EndEffectorRotKd:
   [ 200, 0, 0,
     0, 200, 0,

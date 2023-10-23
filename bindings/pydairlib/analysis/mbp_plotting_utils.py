@@ -2,16 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
+from pydrake.all import JacobianWrtVariable
+
 from bindings.pydairlib.common import plot_styler, plotting_utils
-from bindings.pydairlib.analysis.osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
+from bindings.pydairlib.analysis.osc_debug import lcmt_osc_tracking_data_t, \
+    osc_tracking_cost, osc_regularlization_tracking_cost
 from bindings.pydairlib.multibody import MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
 
+OSC_DERIV_UNITS = {'pos': 'Position $(m)$',
+                   'vel': 'Velocity $(m/s)$',
+                   'accel': 'Acceleration $(m/s^2)$'}
 
-OSC_DERIV_UNITS = {'pos' : 'Position $(m)$',
-                   'vel' : 'Velocity $(m/s)$',
-                   'accel' : 'Acceleration $(m/s^2)$'}
 
 def make_name_to_mbp_maps(plant):
     return MakeNameToPositionsMap(plant), \
@@ -114,6 +117,27 @@ def make_point_positions_from_q(
     return pos
 
 
+def make_point_velocities_from_qv(
+    q, v, plant, context, frame, pt_on_frame, frame_measured_in=None,
+    frame_expressed_in=None):
+    if frame_measured_in is None:
+        frame_measured_in = plant.world_frame()
+    if frame_expressed_in is None:
+        frame_expressed_in = plant.world_frame()
+
+    vel = np.zeros((v.shape[0], 3))
+    for i, generalized_pos_vel in enumerate(zip(q, v)):
+        plant.SetPositions(context, generalized_pos_vel[0])
+        J = plant.CalcJacobianTranslationalVelocity(context,
+                                                    JacobianWrtVariable.kV,
+                                                    frame, pt_on_frame,
+                                                    frame_measured_in,
+                                                    frame_expressed_in)
+        vel[i] = J @ generalized_pos_vel[1]
+
+    return vel
+
+
 def get_floating_base_velocity_in_body_frame(
     robot_output, plant, context, fb_frame):
     vel = np.zeros((robot_output['q'].shape[0], 3))
@@ -129,9 +153,11 @@ def get_floating_base_velocity_in_body_frame(
 def process_osc_channel(data):
     t_osc = []
     if hasattr(data[0], 'regularization_cost_names'):
-        regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
+        regularization_costs = osc_regularlization_tracking_cost(
+            data[0].regularization_cost_names)
     else:
-        regularization_costs = osc_regularlization_tracking_cost(['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
+        regularization_costs = osc_regularlization_tracking_cost(
+            ['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
     qp_solve_time = []
     u_sol = []
     lambda_c_sol = []
@@ -145,11 +171,15 @@ def process_osc_channel(data):
     for msg in data:
         t_osc.append(msg.utime / 1e6)
         if hasattr(msg, 'regularization_cost_names'):
-            regularization_costs.append(msg.regularization_cost_names, msg.regularization_costs)
+            regularization_costs.append(msg.regularization_cost_names,
+                                        msg.regularization_costs)
         else:
-            regularization_cost_names = ['input_cost', 'acceleration_cost', 'soft_constraint_cost']
-            regularization_cost_list = [msg.input_cost, msg.acceleration_cost, msg.soft_constraint_cost]
-            regularization_costs.append(regularization_cost_names, regularization_cost_list)
+            regularization_cost_names = ['input_cost', 'acceleration_cost',
+                                         'soft_constraint_cost']
+            regularization_cost_list = [msg.input_cost, msg.acceleration_cost,
+                                        msg.soft_constraint_cost]
+            regularization_costs.append(regularization_cost_names,
+                                        regularization_cost_list)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
         lambda_c_sol.append(msg.qp_output.lambda_c_sol)
@@ -170,9 +200,11 @@ def process_osc_channel(data):
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
     for msg in data:
         if hasattr(msg, 'tracking_costs'):
-            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_costs)
+            tracking_cost_handler.append(msg.tracking_data_names,
+                                         msg.tracking_costs)
         else:
-            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
+            tracking_cost_handler.append(msg.tracking_data_names,
+                                         msg.tracking_cost)
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:
@@ -267,6 +299,7 @@ def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
 
+
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,
     ylabel=None, title=None):
@@ -311,7 +344,8 @@ def plot_u_cmd(
     return ps
 
 
-def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, title=None):
+def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None,
+               title=None):
     ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
@@ -402,7 +436,6 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
                                                       plant, context, frame, pt)
         legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
 
-
     plotting_utils.make_plot(
         data_dict,
         't',
@@ -411,6 +444,37 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         dims,
         legend_entries,
         {'title': 'Point Positions',
+         'xlabel': 'time (s)',
+         'ylabel': 'pos (m)'}, ps)
+
+    return ps
+
+
+def plot_points_velocities(robot_output, time_slice, plant, context, frame_names,
+                          pts, dims, ps=None):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
+
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t_x']}
+    legend_entries = {}
+    for name in frame_names:
+        frame = plant.GetBodyByName(name).body_frame()
+        pt = pts[name]
+        data_dict[name] = make_point_velocities_from_qv(robot_output['q'],
+                                                                  robot_output['v'],
+                                                                  plant, context,
+                                                                  frame, np.zeros(3))
+        legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
+
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        frame_names,
+        dims,
+        legend_entries,
+        {'title': 'Point Velocities',
          'xlabel': 'time (s)',
          'ylabel': 'pos (m)'}, ps)
 
@@ -473,6 +537,7 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
     return ps
 
+
 def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
     ps = plot_styler.PlotStyler()
     keys = [key for key in data.keys() if key != 't']
@@ -488,6 +553,7 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
     return ps
 
+
 def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     tracking_data = osc_debug['osc_debug_tracking_datas'][traj]
     data = {}
@@ -498,7 +564,9 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]
-        data['error_ydot'] = tracking_data.ydot_des[:, dim] - tracking_data.ydot[:, dim]
+        data['error_ydot'] = tracking_data.ydot_des[:,
+                             dim] - tracking_data.ydot[:,
+                                    dim]
         data['projected_error_ydot'] = tracking_data.error_ydot[:, dim]
     elif deriv == 'accel':
         data['yddot_des'] = tracking_data.yddot_des[:, dim]
@@ -508,6 +576,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     data['t'] = tracking_data.t
 
     return plot_general_osc_tracking_data(traj, deriv, dim, data, time_slice)
+
 
 def plot_osc_tracking_data_in_space(osc_debug, traj, dims, deriv, time_slice):
     tracking_data = osc_debug['osc_debug_tracking_datas'][traj]
@@ -520,19 +589,29 @@ def plot_osc_tracking_data_in_space(osc_debug, traj, dims, deriv, time_slice):
         elif deriv == 'vel':
             data['ydot_des_' + str(dim)] = tracking_data.ydot_des[:, dim]
             data['ydot_' + str(dim)] = tracking_data.ydot[:, dim]
-            data['error_ydot_' + str(dim)] = tracking_data.ydot_des[:, dim] - tracking_data.ydot[:, dim]
-            data['projected_error_ydot_' + str(dim)] = tracking_data.error_ydot[:, dim]
+            data['error_ydot_' + str(dim)] = tracking_data.ydot_des[:,
+                                             dim] - tracking_data.ydot[:, dim]
+            data['projected_error_ydot_' + str(dim)] = tracking_data.error_ydot[
+                                                       :,
+                                                       dim]
         elif deriv == 'accel':
             data['yddot_des_' + str(dim)] = tracking_data.yddot_des[:, dim]
-            data['yddot_command_' + str(dim)] = tracking_data.yddot_command[:, dim]
-            data['yddot_command_sol_' + str(dim)] = tracking_data.yddot_command_sol[:, dim]
+            data['yddot_command_' + str(dim)] = tracking_data.yddot_command[:,
+                                                dim]
+            data['yddot_command_sol_' + str(
+                dim)] = tracking_data.yddot_command_sol[:,
+                        dim]
 
     data['t'] = tracking_data.t
     ps = plot_styler.PlotStyler()
-    ps.plot(data['y_des_' + str(0)], data['y_des_' + str(2)] - data['y_des_' + str(2)][0], xlabel='Forward Position (m)', ylabel='Vertical Position (m)', grid=False)
+    ps.plot(data['y_des_' + str(0)],
+            data['y_des_' + str(2)] - data['y_des_' + str(2)][0],
+            xlabel='Forward Position (m)', ylabel='Vertical Position (m)',
+            grid=False)
     # ps.tight_layout()
     # ps.axes[0].set_ylim([-0.05, 0.5])
     return ps
+
 
 def plot_qp_costs(osc_debug, time_slice):
     ps = plot_styler.PlotStyler()
@@ -639,16 +718,21 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
     # uses default color map
     legend_elements = []
     for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i),
+                        color=ps.cmap(2 * i), alpha=0.2)
         if fsm_state_names:
-            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+            legend_elements.append(
+                Patch(facecolor=ps.cmap(2 * i), alpha=0.3,
+                      label=fsm_state_names[i]))
 
     if len(legend_elements) > 0:
         legend = ax.legend(handles=legend_elements, loc=4)
         # ax.add_artist(legend)
         ax.relim()
 
-def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_state_names):
+
+def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,
+                               fsm_state_names):
     ps = plot_styler.PlotStyler()
 
     ax = ps.fig.axes[0]
@@ -673,20 +757,26 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal, fsm_
         # tracking_data_name = tracking_data_names[i]
         tracking_data = osc_debug['osc_debug_tracking_datas'][
             tracking_data_name]
-        ax.fill_between(fsm_time, ymax - (i+0.25)/n_tracking_datas, ymax -
-                        (i+0.75)/n_tracking_datas,
+        ax.fill_between(fsm_time, ymax - (i + 0.25) / n_tracking_datas, ymax -
+                        (i + 0.75) / n_tracking_datas,
                         where=tracking_data.is_active.astype(bool)[
                               :fsm_time.shape[0]],
                         color=ps.cmap(2 * i), alpha=0.7)
         tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
-                                                   alpha=0.7, label=tracking_data_name_dict[tracking_data_name]))
+                                                   alpha=0.7,
+                                                   label=
+                                                   tracking_data_name_dict[
+                                                       tracking_data_name]))
 
     # uses default color map
     legend_elements = []
     for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i),
+                        color=ps.cmap(2 * i), alpha=0.2)
         if fsm_state_names:
-            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+            legend_elements.append(
+                Patch(facecolor=ps.cmap(2 * i), alpha=0.3,
+                      label=fsm_state_names[i]))
     ps.tight_layout()
 
     if len(legend_elements) > 0:

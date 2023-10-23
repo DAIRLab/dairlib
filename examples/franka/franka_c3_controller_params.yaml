@@ -1,3 +1,4 @@
+
 c3_options_file: examples/franka/franka_c3_options_translation.yaml
 #c3_options_file: examples/franka/franka_c3_options_floating.yaml
 c3_channel_actor: C3_TRAJECTORY_ACTOR
@@ -12,5 +13,7 @@ plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 tray_model: examples/franka/urdf/tray.sdf
 
 include_end_effector_orientation: false
+# Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
+target_frequency: 3
 
 

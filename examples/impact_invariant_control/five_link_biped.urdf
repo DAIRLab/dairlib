@@ -2,7 +2,7 @@
 <robot name="rabbit">
 
     <material name="blue">
-        <color rgba="0 0 1 1"/>
+        <color rgba="0 0 0.4 1"/>
     </material>
 
     <material name="green">
@@ -10,11 +10,15 @@
     </material>
 
     <material name="red">
-        <color rgba="1 0 0 1"/>
+        <color rgba="0.4 0 0 1"/>
     </material>
 
     <material name="white">
         <color rgba="1 1 1 1"/>
+    </material>
+
+    <material name="grey">
+        <color rgba="0.4 0.4 0.4 1"/>
     </material>
 
     <link name="base"/>
@@ -29,7 +33,7 @@
             <geometry>
                 <sphere radius="0.025"/>
             </geometry>
-            <material name="green"/>
+            <material name="grey"/>
         </visual>
     </link>
     <link name="torso">
@@ -38,7 +42,7 @@
             <geometry>
                 <cylinder length="0.625" radius="0.0075"/>
             </geometry>
-            <material name="green"/>
+            <material name="grey"/>
         </visual>
     </link>
     <link name="left_upper_leg">

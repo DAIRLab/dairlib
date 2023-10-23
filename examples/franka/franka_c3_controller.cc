@@ -155,11 +155,13 @@ int DoMain(int argc, char* argv[]) {
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel_actor, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 0.2));
+          TriggerTypeSet({TriggerType::kPeriodic}),
+          1 / controller_params.target_frequency));
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           controller_params.c3_channel_object, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 0.2));
+          TriggerTypeSet({TriggerType::kPeriodic}),
+          1 / controller_params.target_frequency));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           controller_params.radio_channel, &lcm));
@@ -200,6 +202,8 @@ int DoMain(int argc, char* argv[]) {
       *controller, &loop.get_diagram_mutable_context());
   //      loop.get_diagram_mutable_context()
   controller->get_input_port_target().FixValue(&controller_context, x_des);
+  LcmHandleSubscriptionsUntil(&lcm, [&]() {
+    return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

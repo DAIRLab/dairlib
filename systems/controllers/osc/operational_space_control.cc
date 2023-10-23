@@ -86,7 +86,7 @@ OperationalSpaceControl::OperationalSpaceControl(
             .get_index();
 
     // Discrete update to record the last state event time
-    DeclarePerStepDiscreteUpdateEvent(
+    DeclareForcedDiscreteUpdateEvent(
         &OperationalSpaceControl::DiscreteVariableUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
@@ -240,6 +240,27 @@ void OperationalSpaceControl::AddTrackingData(
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
 }
+
+// Tracking data methods
+void OperationalSpaceControl::AddForceTrackingData(
+    std::unique_ptr<ExternalForceTrackingData> tracking_data) {
+  force_tracking_data_vec_->push_back(std::move(tracking_data));
+
+  // Construct input ports and add element to traj_name_to_port_index_map_ if
+  // the port for the traj is not created yet
+  string traj_name = force_tracking_data_vec_->back()->GetName();
+  if (traj_name_to_port_index_map_.find(traj_name) ==
+      traj_name_to_port_index_map_.end()) {
+    PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+    int port_index =
+        this->DeclareAbstractInputPort(
+                traj_name,
+                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            .get_index();
+    traj_name_to_port_index_map_[traj_name] = port_index;
+  }
+}
+
 void OperationalSpaceControl::AddConstTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
@@ -290,6 +311,12 @@ void OperationalSpaceControl::Build() {
              ? 0
              : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
+
+  n_ee_ = 0;
+  for (auto& force_tracking_data : *force_tracking_data_vec_){
+    n_ee_ += force_tracking_data->GetYDim();
+  }
+
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
     n_c_active_ += evaluator->num_active();
@@ -312,12 +339,14 @@ void OperationalSpaceControl::Build() {
   u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
+  lambda_ee_sol_ = std::make_unique<Eigen::VectorXd>(n_ee_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
   u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   dv_sol_->setZero();
   u_sol_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
+  lambda_ee_sol_->setZero();
   u_prev_->setZero();
 
   // Add decision variables
@@ -325,6 +354,7 @@ void OperationalSpaceControl::Build() {
   u_ = prog_->NewContinuousVariables(n_u_, "u");
   lambda_c_ = prog_->NewContinuousVariables(n_c_, "lambda_contact");
   lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
+  lambda_ee_ = prog_->NewContinuousVariables(n_ee_, "lambda_ee");
   epsilon_ = prog_->NewContinuousVariables(n_c_active_, "epsilon");
 
   // Add constraints
@@ -426,6 +456,15 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
   }
+  // 3. external force cost
+//  for (auto& force_tracking_data: *force_tracking_data_vec_){
+//    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
+//    lambda_ee_cost_ =
+//        prog_
+//            ->AddQuadraticCost(, VectorXd::Zero(n_h_), lambda_h_)
+//            .evaluator()
+//            .get();
+//  }
   // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     soft_constraint_cost_ =

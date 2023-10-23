@@ -32,19 +32,19 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0.2 0.0 0.01"/>
+      <origin rpy="0 0 0" xyz="0.5 0.0 0.01"/>
     </collision>
     <collision name="top_left">
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.2 0.2 0.01"/>
+      <origin rpy="0 0 0" xyz="-0.5 0.5 0.01"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.2 -0.2 0.01"/>
+      <origin rpy="0 0 0" xyz="-0.5 -0.5 0.01"/>
     </collision>
   </link>
   <joint name="plate_x" type="prismatic">

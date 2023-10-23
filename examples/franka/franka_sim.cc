@@ -32,8 +32,8 @@
 namespace dairlib {
 
 using dairlib::systems::SubvectorPassThrough;
-using drake::geometry::SceneGraph;
 using drake::geometry::GeometrySet;
+using drake::geometry::SceneGraph;
 using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -74,9 +74,12 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModelFromFile(
           dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
           "table1");
-  drake::multibody::ModelInstanceIndex tray_index =
-      parser.AddModelFromFile(FindResourceOrThrow(
-          "examples/franka/urdf/tray.sdf"));
+  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(
+      FindResourceOrThrow("examples/franka/urdf/tray.sdf"));
+
+  drake::multibody::ModelInstanceIndex box_index = parser.AddModelFromFile(
+      FindResourceOrThrow("examples/franka/urdf/default_box.urdf"));
+  multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
@@ -93,17 +96,19 @@ int DoMain(int argc, char* argv[]) {
                    plant.GetFrameByName("table", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
-  
-//  drake::geometry::CollisionFilterDeclaration plate_table = drake::geometry::CollisionFilterDeclaration::ExcludeBetween(plant.GetCollisionGeometriesForBody());
-  const drake::geometry::GeometrySet &paddle_geom_set = plant.CollectRegisteredGeometries({&plant.GetBodyByName(
-      "paddle"), &plant.GetBodyByName(
-      "panda_link4"), &plant.GetBodyByName(
-      "panda_link5"), &plant.GetBodyByName(
-      "panda_link6"),&plant.GetBodyByName(
-      "panda_link7"), });
-  auto table_support_set = GeometrySet(plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
-  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair({"paddle", paddle_geom_set}, {"table_support", table_support_set});
-  
+
+  const drake::geometry::GeometrySet& paddle_geom_set =
+      plant.CollectRegisteredGeometries({
+          &plant.GetBodyByName("paddle"),
+          &plant.GetBodyByName("panda_link4"),
+          &plant.GetBodyByName("panda_link5"),
+          &plant.GetBodyByName("panda_link6"),
+          &plant.GetBodyByName("panda_link7"),
+      });
+  auto table_support_set = GeometrySet(
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
+  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+      {"paddle", paddle_geom_set}, {"table_support", table_support_set});
 
   VectorXd rotor_inertias(plant.num_actuators());
   rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
@@ -137,17 +142,26 @@ int DoMain(int argc, char* argv[]) {
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           sim_params.tray_state_channel, lcm, 1.0 / sim_params.publish_rate));
+  auto box_state_sender =
+      builder.AddSystem<systems::RobotOutputSender>(plant, box_index);
+  auto box_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          sim_params.box_state_channel, lcm, 1.0 / sim_params.publish_rate));
 
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
+  builder.Connect(plant.get_state_output_port(box_index),
+                  box_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
+  builder.Connect(box_state_sender->get_output_port(),
+                  box_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
 
-  if (sim_params.visualize){
+  if (sim_params.visualize) {
     drake::visualization::AddDefaultVisualization(&builder);
   }
 
@@ -174,13 +188,21 @@ int DoMain(int argc, char* argv[]) {
   q[q_map["panda_joint6"]] = sim_params.q_init_franka[5];
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
 
-  q[q_map["base_qw"]] = sim_params.q_init_plate[0];
-  q[q_map["base_qx"]] = sim_params.q_init_plate[1];
-  q[q_map["base_qy"]] = sim_params.q_init_plate[2];
-  q[q_map["base_qz"]] = sim_params.q_init_plate[3];
-  q[q_map["base_x"]] = sim_params.q_init_plate[4];
-  q[q_map["base_y"]] = sim_params.q_init_plate[5];
-  q[q_map["base_z"]] = sim_params.q_init_plate[6];
+  q[q_map.at("tray_qw")] = sim_params.q_init_plate[0];
+  q[q_map.at("tray_qx")] = sim_params.q_init_plate[1];
+  q[q_map.at("tray_qy")] = sim_params.q_init_plate[2];
+  q[q_map.at("tray_qz")] = sim_params.q_init_plate[3];
+  q[q_map.at("tray_x")] = sim_params.q_init_plate[4];
+  q[q_map.at("tray_y")] = sim_params.q_init_plate[5];
+  q[q_map.at("tray_z")] = sim_params.q_init_plate[6];
+
+  q[q_map["box_qw"]] = sim_params.q_init_box[0];
+  q[q_map["box_qx"]] = sim_params.q_init_box[1];
+  q[q_map["box_qy"]] = sim_params.q_init_box[2];
+  q[q_map["box_qz"]] = sim_params.q_init_box[3];
+  q[q_map["box_x"]] = sim_params.q_init_box[4];
+  q[q_map["box_y"]] = sim_params.q_init_box[5];
+  q[q_map["box_z"]] = sim_params.q_init_box[6];
 
   plant.SetPositions(&plant_context, q);
 

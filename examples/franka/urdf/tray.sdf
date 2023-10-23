@@ -19,14 +19,17 @@
       <visual name="tray">
         <geometry>
           <box>
-            <size>0.6 0.6 0.02</size>
+            <size>0.4 0.4 0.02</size>
           </box>
         </geometry>
+        <material>
+          <diffuse>0.3 0.3 0.3 1</diffuse>
+        </material>
       </visual>
       <collision name="box">
         <geometry>
           <box>
-            <size>0.6 0.6 0.02</size>
+            <size>0.4 0.4 0.02</size>
           </box>
         </geometry>
         <drake:proximity_properties>

@@ -110,10 +110,13 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   VectorXd x_des_adjusted = x_des.value();
   VectorXd current = x_des_adjusted.head(n_q_).tail(3);
-  current(0) += radio_out->channel[0] * 0.4;
-  current(1) += radio_out->channel[1] * 0.4;
-  current(2) += radio_out->channel[2] * 0.4;
+  current(0) += radio_out->channel[0] * 0.2;
+  current(1) += radio_out->channel[1] * 0.2;
+  current(2) += radio_out->channel[2] * 0.2;
   x_des_adjusted.head(n_q_).tail(3) = current;
+  if (radio_out->channel[13] > 0){
+    x_des_adjusted.head(3) = current;
+  }
   //  std::cout << x_des_adjusted.transpose() << std::endl;
 
   std::vector<VectorXd> x_desired =
@@ -148,6 +151,11 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, 0.25, 0.75, 1);
+  }
+  for (int i : vector<int>({1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -0.25, 0.25, 1);
   }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   return drake::systems::EventStatus::Succeeded();

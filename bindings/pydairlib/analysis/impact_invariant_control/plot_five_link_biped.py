@@ -151,10 +151,24 @@ def main():
     ydot_post = J_r @ v_post
     # transform = J_r @ M_inv @ J_r.T @ np.linalg.pinv(J_r @ M_inv @ J_r.T)
     transform = M_inv @ J_r.T @ np.linalg.pinv(J_y @ M_inv @ J_r.T)
-
+    joint_vel_plot = plot_styler.PlotStyler()
+    start_time = state_traj.start_time()
+    end_time = state_traj.end_time()
+    t = np.linspace(start_time, end_time, 1000)
+    v_samples = []
+    for i in t:
+      v_samples.append(state_traj.value(i)[7:14, 0])
+    joint_vel_plot.plot(t, v_samples, xlabel='Time (s)', ylabel='Velocity (rad/s)', grid=False)
+    # joint_vel_plot.add_legend(["Left Hip", "Right Hip", "Left Knee", "Right Knee"])
+    joint_vel_plot.tight_layout()
+    joint_vel_plot.save_fig('rabbit_gen_vel.png')
+    plt.show()
 
     start_time = t_impact - 2 * window_length
     end_time = t_impact + 2 * window_length
+
+
+
     start_idx = np.argwhere(np.abs(robot_output['t_x'] - start_time) < 1e-3)[0][0]
     end_idx = np.argwhere(np.abs(robot_output['t_x'] - end_time) < 1e-3)[0][0]
     t = np.linspace(start_time, end_time,

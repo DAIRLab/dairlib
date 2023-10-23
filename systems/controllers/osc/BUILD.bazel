@@ -33,6 +33,7 @@ cc_library(
         ":com_tracking_data",
         ":joint_space_tracking_data",
         ":osc_tracking_data",
+        ":external_force_tracking_data",
         ":relative_transform_tracking_data",
         ":rot_space_tracking_data",
         ":trans_space_tracking_data",
@@ -119,6 +120,18 @@ cc_library(
     deps = [
         ":options_tracking_data",
         ":trans_space_tracking_data",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "external_force_tracking_data",
+    srcs = ["external_force_tracking_data.cc"],
+    hdrs = ["external_force_tracking_data.h"],
+    deps = [
+        ":osc_tracking_data",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

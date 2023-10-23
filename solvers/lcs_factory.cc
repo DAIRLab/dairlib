@@ -77,8 +77,16 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   plant_ad.MapVelocityToQDot(context_ad, vel_ad, &qdot_no_contact);
   MatrixXd AB_q = ExtractGradient(qdot_no_contact);
   MatrixXd d_q = ExtractValue(qdot_no_contact);
-  MatrixXd Nq = AB_q.block(0, n_q, n_q, n_v);
+  Eigen::SparseMatrix<double> Nqt;
+  Nqt = plant.MakeVelocityToQDotMap(context);
+  MatrixXd Nq = MatrixXd(Nqt);
 
+  //plant_ad.MapQDotToVelocity(context_ad, qdot_no_contact, &vel);
+
+  //std::optional<Eigen::SparseMatrix<double>> NqI = std::nullopt;
+  Eigen::SparseMatrix<double> NqI;
+  NqI = plant.MakeQDotToVelocityMap(context);
+  MatrixXd NqInverse = MatrixXd(NqI);
   ///
   /// Contact-related terms
   ///
@@ -149,7 +157,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   d.tail(n_v) = dt * d_v;
 
   E = MatrixXd::Zero(n_contact_vars, n_x);
-  E.block(n_contacts, 0, n_contacts, n_q) = dt * dt * J_n * AB_v_q;
+  E.block(n_contacts, 0, n_contacts, n_q) = dt * dt * J_n * AB_v_q + J_n * NqInverse;;
   E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
       dt * J_t * AB_v_q;
   E.block(n_contacts, n_q, n_contacts, n_v) = dt * J_n + dt * dt * J_n * AB_v_v;
@@ -195,7 +203,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
 
   c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
-      J_t * dt * d_v;
+      J_t * dt * d_v - J_n * NqInverse * plant.GetPositions(context);
 
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();

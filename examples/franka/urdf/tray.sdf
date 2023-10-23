@@ -3,16 +3,17 @@
   <model name="tray">
     <link name="tray">
       <inertial>
+        <pose>0 0 0 0 0 0</pose>
         <mass>2</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-          <ixx>0.06</ixx>
+          <ixx>0.060067</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.015</iyy>
+          <iyy>0.060067</iyy>
           <iyz>0</iyz>
-          <izz>0.075</izz>
+          <izz>0.12</izz>
         </inertia>
       </inertial>
       <visual name="tray">
@@ -29,16 +30,16 @@
           </box>
         </geometry>
         <drake:proximity_properties>
-          <drake:rigid_hydroelastic/>
-<!--          <drake:compliant_hydroelastic/>-->
-<!--          <drake:hydroelastic_modulus> 3.0e4 </drake:hydroelastic_modulus>-->
-<!--          <drake:mesh_resolution_hint> 1.0 </drake:mesh_resolution_hint>-->
+<!--          <drake:rigid_hydroelastic/>-->
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 1.0 </drake:mesh_resolution_hint>
           <!-- geometry/box does not take mesh_resolution_hint into account
             because it always uses the coarsest mesh. We place it here in
             case you want to change the box to something else like capsules,
             cylinders, ellipsoids, or spheres.
           -->
-          <drake:mesh_resolution_hint>1</drake:mesh_resolution_hint>
+<!--          <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>-->
           <!-- Both mu_dynamic and mu_static are used in Continuous system.
             Only mu_dynamic is used in Discrete system.
           -->

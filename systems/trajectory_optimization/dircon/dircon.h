@@ -203,6 +203,8 @@ class Dircon
     return mode_sequence_.mode(mode);
   }
 
+  const int get_mode_start(int index) { return mode_start_[index]; }
+
   const drake::systems::Context<T>& get_context(int mode, int knotpoint_index) {
     return *contexts_.at(mode).at(knotpoint_index);
   }

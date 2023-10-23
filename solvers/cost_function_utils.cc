@@ -22,7 +22,7 @@ void AddPositiveWorkCost(
       int n_v = plant.num_velocities();
       int n_u = plant.num_actuators();
       drake::solvers::VectorXDecisionVariable variables(n_vars);
-      variables(0) = trajopt.timestep(i)(0);
+      variables(0) = trajopt.time_step(i)(0);
       variables.segment(1, n_v) =
           trajopt.state_vars(mode, i - mode_start).tail(n_v);
       variables.segment(1 + n_v, n_v) =

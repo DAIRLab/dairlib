@@ -17,7 +17,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link0.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link0.obj"/>
       </geometry>
     </visual>
   </link>
@@ -33,7 +33,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link1.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link1.obj"/>
       </geometry>
     </visual>
   </link>
@@ -56,7 +56,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link2.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link2.obj"/>
       </geometry>
     </visual>
   </link>
@@ -79,7 +79,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link3.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link3.obj"/>
       </geometry>
     </visual>
   </link>
@@ -102,7 +102,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link4.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link4.obj"/>
       </geometry>
     </visual>
   </link>
@@ -125,7 +125,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link5.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link5.obj"/>
       </geometry>
     </visual>
   </link>
@@ -148,7 +148,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link6.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link6.obj"/>
       </geometry>
     </visual>
   </link>
@@ -171,7 +171,7 @@
       <origin rpy="1.57079632679 0 0"/>
       <geometry>
         <mesh
-            filename="package://drake/manipulation/models/franka_description/meshes/visual/link7.obj"/>
+            filename="package://drake_models/franka_description/meshes/visual/link7.obj"/>
       </geometry>
     </visual>
   </link>
@@ -197,7 +197,7 @@
     <collision name="collision">
       <origin rpy="0 0 0" xyz="0 0 0.01"/>
       <geometry>
-        <box size="0.2 0.2 0.02"/>
+        <box size="0.4 0.4 0.02"/>
       </geometry>
       <drake:proximity_properties>
         <drake:rigid_hydroelastic/>
@@ -209,7 +209,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.01"/>
       <geometry>
-        <box size="0.2 0.2 0.02"/>
+        <box size="0.4 0.4 0.02"/>
       </geometry>
     </visual>
     <visual>

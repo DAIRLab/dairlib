@@ -56,10 +56,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   void AddSensorPreProcessor(
       const std::string& sensor_name,
-      std::unique_ptr<elevation_mapping::SensorProcessorBase> processor) {
-    DRAKE_DEMAND(sensor_poses_.count(sensor_name) == 1);
-    sensor_preprocessors_.insert({sensor_name, std::move(processor)});
-  }
+      std::unique_ptr<elevation_mapping::SensorProcessorBase> processor);
 
  private:
 

@@ -1,7 +1,8 @@
 
-// dairlib
+//dairlib
 #include "multibody/multibody_utils.h"
 #include "systems/perception/elevation_mapping_system.h"
+#include "systems/perception/perceptive_locomotion_preprocessor.h"
 #include "systems/framework/output_vector.h"
 
 namespace dairlib {
@@ -23,6 +24,7 @@ using drake::multibody::MultibodyPlant;
 using elevation_mapping::ElevationMap;
 using elevation_mapping::PointCloudType;
 using elevation_mapping::RobotMotionMapUpdater;
+using elevation_mapping::SensorProcessorBase;
 
 ElevationMappingSystem::ElevationMappingSystem(
     const MultibodyPlant<double>& plant,
@@ -94,6 +96,22 @@ ElevationMappingSystem::ElevationMappingSystem(
       throw std::runtime_error(
           "Elevation map update type must be kPeriodic or kForced");
   }
+}
+
+void ElevationMappingSystem::AddSensorPreProcessor(
+    const std::string& sensor_name,
+    std::unique_ptr<SensorProcessorBase> processor) {
+
+  DRAKE_DEMAND(sensor_poses_.count(sensor_name) == 1);
+  auto processor_derived = dynamic_cast<PerceptiveLocomotionPreprocessor*>(
+      processor.get()
+  );
+  if (processor_derived != nullptr) {
+    // processor must share the plant context in order for state info to be
+    // propagated correctly
+    DRAKE_DEMAND(processor_derived->context() == context_);
+  }
+  sensor_preprocessors_.insert({sensor_name, std::move(processor)});
 }
 
 drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(

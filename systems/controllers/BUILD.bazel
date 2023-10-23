@@ -76,6 +76,23 @@ cc_library(
 )
 
 cc_library(
+    name = "c3_controller_franka_cvx",
+    srcs = [
+        "c3_controller_franka_cvx.cc",
+    ],
+    hdrs = [
+        "c3_controller_franka_cvx.h",
+    ],
+    deps = [
+        "//examples/franka_trajectory_following:c3_parameters",
+        "//systems/framework:vector",
+        "//solvers:c3",
+        "//solvers:lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "impedance_controller",
     srcs = [
         "impedance_controller.cc",

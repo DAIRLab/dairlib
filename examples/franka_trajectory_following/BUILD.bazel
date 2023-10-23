@@ -75,6 +75,23 @@ cc_binary(
             "@drake//manipulation/models/franka_description:models"]
 )
 
+cc_binary(
+    name = "lcm_control_demo_cvx",
+    srcs = ["lcm_control_demo_cvx.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:c3_controller_franka_cvx",
+        "//examples/franka_trajectory_following:c3_parameters",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = [":urdf",
+            "@drake//manipulation/models/franka_description:models"]
+)
+
 # cc_binary(
 #    name = "run_impedance_experiment",
 #    srcs = ["run_impedance_experiment.cc"],

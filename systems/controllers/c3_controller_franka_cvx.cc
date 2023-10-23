@@ -1,4 +1,4 @@
-#include "c3_controller_franka.h"
+#include "c3_controller_franka_cvx.h"
 
 #include <utility>
 #include <chrono>
@@ -9,12 +9,13 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/c3.h"
 #include "solvers/c3_miqp.h"
+#include "solvers/c3_approx.h"
 #include "solvers/lcs_factory.h"
 
 #include "drake/solvers/moby_lcp_solver.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_cvx.h"
 #include "drake/math/autodiff_gradient.h"
 
 using std::vector;
@@ -46,7 +47,7 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-C3Controller_franka::C3Controller_franka(
+C3Controller_franka_Convex::C3Controller_franka_Convex(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::MultibodyPlant<double>& plant_f,
     const drake::multibody::MultibodyPlant<double>& plant_franka,
@@ -95,7 +96,7 @@ C3Controller_franka::C3Controller_franka(
   int num_ee_orientation = 4;
   int num_visualizer_states = 9;
   //output [ (finger) end effector next state (x,y,z), (finger) end effector orientation (generated via heuristic), ball positions , finger + ball velocities, force_desired, num_visualizer_states  ]
-  num_output_ = num_ee_xyz_pos + num_ee_orientation + num_ee_xyz_vel + 5*num_balls_ + 1;
+  num_output_ = num_ee_xyz_pos + num_ee_orientation + num_ee_xyz_vel + 4*num_balls_ + 1;
 
 
   /// declare the input port ( franka + balls state, franka + balls velocities, franka + balls inputs = franka inputs )
@@ -109,7 +110,7 @@ C3Controller_franka::C3Controller_franka(
   /// output [ (finger) end effector next state (x,y,z), (finger) end effector orientation (generated via heuristic), ball positions , finger + ball velocities, force_desired, num_visualizer_states  ]
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(num_output_), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(num_output_), &C3Controller_franka_Convex::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::makeNameToPositionsMap(plant_franka_);
@@ -128,7 +129,7 @@ C3Controller_franka::C3Controller_franka(
   dt_filter_length_ = param_.dt_filter_length;
 }
 
-void C3Controller_franka::CalcControl(const Context<double>& context,
+void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
 
   // for timing the code
@@ -236,7 +237,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_franka_.SetVelocities(&context_franka_, v_plant);
 
   // parse franka state info
-  ///for two balls, change for n-balls!!!!! (CHECK THIS PART)
+  ///for three balls, change for n-balls!!!!! (CHECK THIS PART)
   VectorXd ball1 = q_plant.segment(7,7); //first 7 are Franka
   VectorXd ball2 = q_plant.segment(14,7);
   VectorXd ball3 = q_plant.segment(21,7);
@@ -481,22 +482,22 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   /// figure out a nice way to do this as SortedPairs with pybind is not working
   /// (potentially pass a matrix 2xnum_pairs?)
 
-  ///change for more than 2 spheres!!! (0: finger, 1: sphere1, 2: ground, 3: sphere2)
+  ///change for more than 2 spheres!!! (0: finger, 1: sphere1, 2: ground, 3: sphere2, 4: sphere3)
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[3]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));    // ee & ball1
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));    // ball1 & ground
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[3]));    // ee & ball2
+  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));    // ball2 & ground
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[3]));    // ball1 & ball2
   ///3rd ball
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));
-  contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
+  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[4]));    // ee & ball3
+  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[4]));    // ball3 & ground
+  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[4]));    // ball1 & ball3
+  contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));    // ball2 & ball3
 
 
-  auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
+  auto system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, 0.1, time_horizon_);
 
@@ -521,30 +522,23 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //  active_lambda_inds.insert(11);
 //  inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
 
-  active_lambda_inds.insert(10);   ///\lambda_n for sphere1 - ground contact
-  active_lambda_inds.insert(12);   ///\lambda_n for sphere2 - ground contact
-  active_lambda_inds.insert(15);   ///\lambda_n for sphere3 - ground contact
+  active_lambda_inds.insert(4);   ///\lambda for sphere1 - ground contact
+  active_lambda_inds.insert(5);
+  active_lambda_inds.insert(6);
+  active_lambda_inds.insert(7);
 
-  active_lambda_inds.insert(22);   ///\lambda_t for sphere1 - ground contact
-  active_lambda_inds.insert(23);
-  active_lambda_inds.insert(24);
+  active_lambda_inds.insert(12);   ///\lambda for sphere2 - ground contact
+  active_lambda_inds.insert(13);
+  active_lambda_inds.insert(14);
+  active_lambda_inds.insert(15);
+
+  active_lambda_inds.insert(24);   ///\lambda for sphere3 - ground contact
   active_lambda_inds.insert(25);
+  active_lambda_inds.insert(26);
+  active_lambda_inds.insert(27);
 
-  active_lambda_inds.insert(30);   ///\lambda_t for sphere2 - ground contact
-  active_lambda_inds.insert(31);
-  active_lambda_inds.insert(32);
-  active_lambda_inds.insert(33);
 
-  active_lambda_inds.insert(42);   ///\lambda_t for sphere3 - ground contact
-  active_lambda_inds.insert(43);
-  active_lambda_inds.insert(44);
-  active_lambda_inds.insert(45);
-
-  inactive_lambda_inds.insert(1);  ///gamma for sphere1 - ground contact
-  inactive_lambda_inds.insert(3);  ///gamma for sphere2 - ground contact
-  inactive_lambda_inds.insert(6);  ///gamma for sphere2 - ground contact
-
-  auto lcs_system_fixed = solvers::LCSFactory::FixSomeModes(lcs_system_full,
+  auto lcs_system_fixed = solvers::LCSFactoryConvex::FixSomeModes(lcs_system_full,
       active_lambda_inds, inactive_lambda_inds);
 
   if (param_.fix_sticking_ground) {
@@ -803,7 +797,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
      }
    }
 
-  solvers::C3MIQP opt(*lcs, Qha, R_, G, U, traj_desired, options,
+  solvers::C3APPROX opt(*lcs, Qha, R_, G, U, traj_desired, options,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 
@@ -839,7 +833,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   }
 
   ///calculate state and force
-  auto system_scaling_pair2 = solvers::LCSFactory::LinearizePlantToLCS(
+  auto system_scaling_pair2 = solvers::LCSFactoryConvex::LinearizePlantToLCS(
       plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
       num_friction_directions_, mu_, dt, time_horizon_);
 
@@ -852,13 +846,11 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
                                                  &force);
   //(void)flag; // suppress compiler unused variable warning
-  //std::cout << flag << std::endl;
-    std::cout << "force" << std::endl;
-    std::cout << force << std::endl;
+  std::cout << "force" << std::endl;
+  std::cout << force << std::endl;
 
 
-
-    VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
+  VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
 
   // check if the desired end effector position is unreasonably far from the current location
   Vector3d vd = state_next.segment(3+7*num_balls_, 3); ///needs to change for n balls
@@ -883,7 +875,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   ///COMMENT UP
 
-  VectorXd force_des = VectorXd::Zero(2*num_balls_);
+  VectorXd force_des = VectorXd::Zero(4*num_balls_);
   //force_des << force(2), force(4), force(5), force(6), force(7);
 //
 //  //VectorXd st_desired(10 + 5*num_balls_ + 1);
@@ -934,7 +926,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //std::cout << state_contact_desired->size() << std::endl;
 }
 
-void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
+void C3Controller_franka_Convex::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
                                           const Eigen::Vector3d end_effector, double timestamp) const {
   /// estimate q_plant
   if (abs(param_.ball_stddev) > 1e-9) {
@@ -994,7 +986,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
 }
 
-Eigen::Vector3d C3Controller_franka::ProjectStateEstimate(
+Eigen::Vector3d C3Controller_franka_Convex::ProjectStateEstimate(
     const Eigen::Vector3d& endeffector,
     const Eigen::Vector3d& estimate) const {
 

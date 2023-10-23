@@ -96,7 +96,34 @@ group "7.[SIM] C3" {
     }
 }
 
-group "8.Logging, Utils" {
+group "8.[SIM] C3_Convex" {
+    cmd "a.[SIM] C3_cvx" {
+        exec = "bazel-bin/examples/franka_trajectory_following/lcm_control_demo_cvx --TTL 0";
+        host = "localhost";
+    }
+    cmd "b.[SIM] franka" {
+        exec = "bazel-bin/examples/franka_trajectory_following/simulate_franka_lcm";
+        host = "localhost";
+    }
+    cmd "c.[SIM] impedance controller" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_c3_impedance_experiment";
+        host = "localhost";
+    }
+    cmd "d.[SIM]run_state_estimator" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_state_estimator --TTL 0";
+        host = "localhost";
+    }
+    cmd "e.[SIM] sim visualizer" {
+        exec = "bazel-bin/examples/franka_trajectory_following/visualizer --channel=FRANKA_OUTPUT";
+        host = "localhost";
+    }
+    cmd "f.[TESTING] position control" {
+        exec = "bazel-bin/examples/franka_trajectory_following/run_c3_position_experiment";
+        host = "localhost";
+    }
+}
+
+group "9.Logging, Utils" {
     cmd "a.start_logging" {
         exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
         host = "localhost";
@@ -122,7 +149,7 @@ cmd "3.safety" {
     exec = "rosrun franka_safety safety.py";
     host = "localhost";
 }
-cmd "9.lcmspy" {
+cmd "10.lcmspy" {
     exec = "bazel-bin/lcmtypes/dair-lcm-spy";
     host = "localhost";
 }

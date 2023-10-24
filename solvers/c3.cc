@@ -298,9 +298,10 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
   if (options_.num_threads > 0) {
     omp_set_dynamic(0);  // Explicitly disable dynamic teams
     omp_set_num_threads(options_.num_threads);  // Set number of threads
+    omp_set_nested(1);
   }
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(N_)
   for (i = 0; i < N_; i++) {
     if (warm_start_) {
       deltaProj[i] =

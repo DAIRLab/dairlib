@@ -62,9 +62,9 @@ int DoMain(int argc, char* argv[]) {
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
-          "examples/franka/franka_controller_params.yaml");
+          "examples/franka/franka_osc_controller_params.yaml");
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow("examples/franka/franka_controller_params.yaml"), {},
+      FindResourceOrThrow("examples/franka/franka_osc_controller_params.yaml"), {},
       {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
@@ -74,7 +74,7 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-  parser.AddModelFromFile(controller_params.franka_model);
+  parser.AddModels(controller_params.franka_model);
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);

@@ -1,17 +1,17 @@
 admm_iter: 3
 rho: 0.1
 rho_scale: 2
-num_threads: 4
+num_threads: 6
 delta_option: 1
 
-mu: 0.2
+mu: 0.4
 mu_plate: 1
 dt: 0.1
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
 N: 5
-w_Q: 10
+w_Q: 5
 w_R: 0
 # Penalty on all decision variables, assuming scalar
 w_G: 0.5

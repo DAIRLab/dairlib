@@ -7,6 +7,7 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/franka/franka_sim_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -58,6 +59,8 @@ using drake::systems::DiagramBuilder;
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
+      "examples/franka/franka_sim_params.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -68,37 +71,42 @@ int do_main(int argc, char* argv[]) {
 
   Parser parser(&plant, &scene_graph);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelFromFile("examples/franka/urdf/franka.urdf");
-  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(
-      drake::FindResourceOrThrow(
-          "drake/examples/kuka_iiwa_arm/models/table/"
-          "extra_heavy_duty_table_surface_only_collision.sdf"),
-      "table0");
-  drake::multibody::ModelInstanceIndex second_table_index =
-      parser.AddModelFromFile(
-          dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
-          "table1");
-  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(
-      FindResourceOrThrow("examples/franka/urdf/tray.sdf"));
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  drake::multibody::ModelInstanceIndex table_index =
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.table_model))[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+      FindResourceOrThrow(sim_params.end_effector_model))[0];
+  plant.RenameModelInstance(table_index, "table0");
+  drake::multibody::ModelInstanceIndex second_table_index = parser.AddModels(
+      drake::FindResourceOrThrow(sim_params.table_w_supports_model))[0];
+  plant.RenameModelInstance(second_table_index, "table1");
+  drake::multibody::ModelInstanceIndex tray_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
   drake::multibody::ModelInstanceIndex box_index =
-      parser.AddModelFromFile(FindResourceOrThrow(
-          "examples/franka/urdf/default_box.urdf"));
+      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
+  multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
+  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
   franka_origin(2) = 0.7645;
   second_table_origin(0) = 0.75;
+  tool_attachment_frame(2) = 0.157;
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), second_table_origin);
+  RigidTransform<double> T_EE_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), tool_attachment_frame);
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("link", table_index), X_WI);
   plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("table", second_table_index), T_X_W);
+                   plant.GetFrameByName("link", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
+  plant.WeldFrames( plant.GetFrameByName("panda_link7"), plant.GetFrameByName("plate", end_effector_index),
+                   T_EE_W);
 
   plant.Finalize();
 
@@ -111,9 +119,8 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           "TRAY_OUTPUT", lcm));
-  auto box_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          "BOX_OUTPUT", lcm));
+  auto box_state_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>("BOX_OUTPUT", lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
@@ -146,17 +153,18 @@ int do_main(int argc, char* argv[]) {
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
-//  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
+  //  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / 60.0;
   params.enable_alpha_slider = true;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  auto trajectory_drawer_actor = builder.AddSystem<systems::LcmTrajectoryDrawer>(
-      meshcat, "end_effector_traj");
-  auto trajectory_drawer_object = builder.AddSystem<systems::LcmTrajectoryDrawer>(
-      meshcat, "object_traj");
+  auto trajectory_drawer_actor =
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
+                                                      "end_effector_traj");
+  auto trajectory_drawer_object =
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_traj");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
@@ -196,7 +204,7 @@ int do_main(int argc, char* argv[]) {
   tray_state_receiver->InitializeSubscriberPositions(plant,
                                                      tray_state_sub_context);
   box_state_receiver->InitializeSubscriberPositions(plant,
-                                                     box_state_sub_context);
+                                                    box_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

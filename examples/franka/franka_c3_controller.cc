@@ -75,7 +75,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.package_map().Add("franka_urdfs", "examples/franka/urdf");
-  parser_franka.AddModelFromFile(controller_params.franka_model);
+  parser_franka.AddModels(controller_params.franka_model);
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
@@ -85,7 +85,7 @@ int DoMain(int argc, char* argv[]) {
   ///
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
-  parser_tray.AddModelFromFile(controller_params.tray_model);
+  parser_tray.AddModels(controller_params.tray_model);
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
@@ -93,8 +93,8 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_plate, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_plate(&plant_plate);
-  parser_plate.AddModelFromFile(controller_params.plate_model);
-  parser_plate.AddModelFromFile(controller_params.tray_model);
+  parser_plate.AddModels(controller_params.plate_model);
+  parser_plate.AddModels(controller_params.tray_model);
 
   plant_plate.WeldFrames(plant_plate.world_frame(),
                          plant_plate.GetFrameByName("base_link"), X_WI);

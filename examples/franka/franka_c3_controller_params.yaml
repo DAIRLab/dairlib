@@ -7,13 +7,13 @@ state_channel: FRANKA_OUTPUT
 radio_channel: CASSIE_VIRTUAL_RADIO
 
 
-franka_model: examples/franka/urdf/franka.urdf
+franka_model: examples/franka/urdf/franka_no_collision.urdf
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 #plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
-target_frequency: 3
+target_frequency: 4
 
 

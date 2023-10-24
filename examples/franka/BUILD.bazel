@@ -103,6 +103,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
+        ":franka_sim_params",
         "//common:find_resource",
         "//multibody:utils",
         "//multibody:visualization_utils",

@@ -147,15 +147,17 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   delta_init.head(n_x_) = lcs_x->get_data();
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+
+  // Set actor bounds
   for (int i : vector<int>({0, 2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.25, 0.75, 1);
+    c3_->AddLinearConstraint(A, 0.3, 0.7, 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.25, 0.25, 1);
+    c3_->AddLinearConstraint(A, -0.2, 0.2, 1);
   }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   return drake::systems::EventStatus::Succeeded();

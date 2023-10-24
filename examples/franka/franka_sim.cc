@@ -64,51 +64,55 @@ int DoMain(int argc, char* argv[]) {
 
   Parser parser(&plant);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModelFromFile(sim_params.franka_model);
-  drake::multibody::ModelInstanceIndex table_index = parser.AddModelFromFile(
-      drake::FindResourceOrThrow(
-          "drake/examples/kuka_iiwa_arm/models/table/"
-          "extra_heavy_duty_table_surface_only_collision.sdf"),
-      "table0");
-  drake::multibody::ModelInstanceIndex second_table_index =
-      parser.AddModelFromFile(
-          dairlib::FindResourceOrThrow("examples/franka/urdf/table.sdf"),
-          "table1");
-  drake::multibody::ModelInstanceIndex tray_index = parser.AddModelFromFile(
-      FindResourceOrThrow("examples/franka/urdf/tray.sdf"));
-
-  drake::multibody::ModelInstanceIndex box_index = parser.AddModelFromFile(
-      FindResourceOrThrow("examples/franka/urdf/default_box.urdf"));
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  drake::multibody::ModelInstanceIndex table_index =
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.table_model))[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+      FindResourceOrThrow(sim_params.end_effector_model))[0];
+  plant.RenameModelInstance(table_index, "table0");
+  drake::multibody::ModelInstanceIndex second_table_index = parser.AddModels(
+      drake::FindResourceOrThrow(sim_params.table_w_supports_model))[0];
+  plant.RenameModelInstance(second_table_index, "table1");
+  drake::multibody::ModelInstanceIndex tray_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
+  drake::multibody::ModelInstanceIndex box_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
+  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
   franka_origin(2) = 0.7645;
   second_table_origin(0) = 0.75;
+  tool_attachment_frame(2) = 0.157;
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), second_table_origin);
+  RigidTransform<double> T_EE_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), tool_attachment_frame);
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("link", table_index), X_WI);
   plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("table", second_table_index), T_X_W);
+                   plant.GetFrameByName("link", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
+  plant.WeldFrames( plant.GetFrameByName("panda_link7"), plant.GetFrameByName("plate", end_effector_index),
+                   T_EE_W);
 
-  const drake::geometry::GeometrySet& paddle_geom_set =
-      plant.CollectRegisteredGeometries({
-          &plant.GetBodyByName("paddle"),
-          &plant.GetBodyByName("panda_link4"),
-          &plant.GetBodyByName("panda_link5"),
-          &plant.GetBodyByName("panda_link6"),
-          &plant.GetBodyByName("panda_link7"),
-      });
-  auto table_support_set = GeometrySet(
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
-  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-      {"paddle", paddle_geom_set}, {"table_support", table_support_set});
+  //  const drake::geometry::GeometrySet& paddle_geom_set =
+  //      plant.CollectRegisteredGeometries({
+  //          &plant.GetBodyByName("paddle"),
+  //          &plant.GetBodyByName("panda_link4"),
+  //          &plant.GetBodyByName("panda_link5"),
+  //          &plant.GetBodyByName("panda_link6"),
+  //          &plant.GetBodyByName("panda_link7"),
+  //      });
+  //  auto table_support_set = GeometrySet(
+  //      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
+  //  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+  //      {"paddle", paddle_geom_set}, {"table_support", table_support_set});
 
   VectorXd rotor_inertias(plant.num_actuators());
   rotor_inertias << 61, 61, 61, 61, 61, 61, 61;

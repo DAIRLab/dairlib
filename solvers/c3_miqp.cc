@@ -25,7 +25,9 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
   // Create an environment
   env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
-  // env_.set("Threads", "2");
+  env_.set("Threads", "5");   // This is the number of threads gurobi will use. 
+                              // This needs to be at least as big as the maximum number of samples we have.
+                              // TODO: Understand exactly how this works. Make this adaptive to the number of samples we have.
   env_.start();
 }
 

@@ -587,7 +587,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else {
     n_threads_to_use = param_.num_threads;
   }
-  omp_set_num_threads(n_threads_to_use);
+  omp_set_num_threads(n_threads_to_use);        // Set number of threads to use when not explicitly defined in pragma directive. 
+                                                // This is currently used by the pragma directive in c3.cc
 
   // Parallelize over computing C3 costs for each sample.
   // std::cout << "\nLOOP" << std::endl;

@@ -2,6 +2,7 @@
 #include <chrono>
 
 #include <omp.h>
+#include <iostream>
 
 #include "solvers/lcs.h"
 

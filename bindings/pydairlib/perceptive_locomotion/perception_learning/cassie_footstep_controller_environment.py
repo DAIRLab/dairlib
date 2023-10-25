@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from os import path
-from typing import Dict
+from typing import Dict, Union
 
 import numpy as np
 
@@ -9,6 +9,7 @@ from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram, Stance
 from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
     import HeightMapServer
+from pydairlib.multibody import SquareSteppingStoneList
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.all import (
@@ -49,7 +50,7 @@ class InitialConditionsServer:
 
 @dataclass
 class CassieFootstepControllerEnvironmentOptions:
-    terrain_yaml: str = path.join(
+    terrain: Union[str, SquareSteppingStoneList] = path.join(
         perception_learning_base_folder,
         'params/terrain.yaml'
     )
@@ -79,7 +80,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         super().__init__()
 
         self.height_map_server = HeightMapServer(
-            params.terrain_yaml,
+            params.terrain,
             params.urdf
         )
 
@@ -105,7 +106,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.osqp_options_yaml
         )
         self.cassie_sim = HikingSimDiagram(
-            params.terrain_yaml,
+            params.terrain,
             params.rgdb_extrinsics_yaml
         )
         self.radio_source = ConstantVectorSource(np.zeros(18, ))

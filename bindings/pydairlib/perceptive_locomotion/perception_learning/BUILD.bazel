@@ -45,6 +45,17 @@ py_library(
     ],
 )
 
+py_library(
+    name = "terrain_utils",
+    srcs = ["terrain_utils.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+    ],
+)
+
 py_binary(
     name = "alip_lqr_test",
     srcs = ["alip_lqr_test.py"],
@@ -60,6 +71,7 @@ py_binary(
     deps = [
         ":alip_lqr",
         ":cassie_footstep_controller_environment",
+        ":terrain_utils",
     ],
 )
 

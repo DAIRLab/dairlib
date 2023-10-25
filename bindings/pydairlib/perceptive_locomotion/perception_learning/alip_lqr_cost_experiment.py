@@ -39,7 +39,7 @@ import numpy as np
 
 def run_experiment():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain_yaml = os.path.join(
+    sim_params.terrain = os.path.join(
         perception_learning_base_folder,
         'params/alip_lqr_cost_experiment_terrain.yaml'
     )

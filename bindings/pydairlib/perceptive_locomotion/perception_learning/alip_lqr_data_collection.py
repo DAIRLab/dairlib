@@ -51,6 +51,9 @@ from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQROptions,
     AlipFootstepLQR
 )
+from pydairlib.perceptive_locomotion.perception_learning.terrain_utils import (
+    make_stairs
+)
 
 from pydairlib.perceptive_locomotion.perception_learning. \
     cassie_footstep_controller_environment import (
@@ -69,10 +72,7 @@ def run_experiment():
     # vector port for desired speed
     # instead just use port.FixValue to achieve the same effect
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain_yaml = os.path.join(
-        perception_learning_base_folder,
-        'params/alip_lqr_cost_experiment_terrain.yaml'
-    )
+    sim_params.terrain = make_stairs(5.0, 1.0, 0.1, 11, 'up')
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(

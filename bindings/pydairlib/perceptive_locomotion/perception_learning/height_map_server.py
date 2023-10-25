@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 import numpy as np
+from typing import Union
+from dataclasses import dataclass
 
 from pydrake.multibody.plant import (
     MultibodyPlant
@@ -38,9 +39,7 @@ class HeightMapServer:
         and calculates a height map in the stance frame
     """
 
-    def __init__(self,
-                 terrain_yaml: str,
-                 urdf: str,
+    def __init__(self, terrain: Union[str, SquareSteppingStoneList], urdf: str,
                  map_opts: HeightMapOptions = HeightMapOptions()):
         self.map_opts = map_opts
         self.plant = MultibodyPlant(0.0)
@@ -56,7 +55,10 @@ class HeightMapServer:
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
 
-        stepping_stones = LoadSteppingStonesFromYaml(terrain_yaml)
+        stepping_stones = LoadSteppingStonesFromYaml(terrain) if isinstance(
+            terrain, str
+        ) else terrain
+
         self.convex_terrain_segments = \
             SquareSteppingStoneList.GetFootholdsWithMargin(
                 stepping_stones.stones, 0.0

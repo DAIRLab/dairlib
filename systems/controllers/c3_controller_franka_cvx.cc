@@ -728,6 +728,7 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
 //  std::cout << "here" << std::endl;
 //  std::cout << Qnew << std::endl;
 
+  auto t_opt_start = std::chrono::high_resolution_clock::now();
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
   /// initialize warm start for the MIQP
@@ -846,8 +847,8 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
   auto flag = LCPSolver.SolveLcpLemkeRegularized(system2_.F_[0], system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
                                                  &force);
   //(void)flag; // suppress compiler unused variable warning
-  std::cout << "force" << std::endl;
-  std::cout << force << std::endl;
+//  std::cout << "force" << std::endl;
+//  std::cout << force / dt << std::endl;
 
 
   VectorXd state_next = system2_.A_[0] * state + system2_.B_[0] * input + system2_.D_[0] * force / scaling2 + system2_.d_[0];
@@ -918,10 +919,16 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
   // }
 
   /// timing the code
-//  auto t_end = std::chrono::high_resolution_clock::now();
-//  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
-//  auto duration_solve = std::chrono::duration_cast<std::chrono::milliseconds>(t_solve - t_setup);
-//  auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
+  auto t_end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
+  auto duration_solve = std::chrono::duration_cast<std::chrono::milliseconds>(t_solve - t_setup);
+  auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
+  auto duration_opt_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_opt_start);
+
+  std::cout<< "solve time: " << duration_solve.count() << std::endl;
+  std::cout<< "opt set up time: " << duration_opt_setup.count() << std::endl;
+  std::cout<< "setup time: " << duration_setup.count() << std::endl;
+  std::cout<< "whole duration: " << duration.count() << std::endl;
 //  std::cout << duration.count() << " " << duration_setup.count() << " " << duration_solve.count() << std::endl;
   //std::cout << state_contact_desired->size() << std::endl;
 }

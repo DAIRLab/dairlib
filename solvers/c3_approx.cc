@@ -102,7 +102,7 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
   //prog.AddLinearEqualityConstraint(LinIneq, -c/scaling, {xn, ln, un});
   projprog_.AddLinearConstraint(MatrixXd::Identity(m_, m_), VectorXd::Zero(m_), 10000*VectorXd::Ones(m_), ln_);
 
-  double alpha = 0.1;
+  double alpha = 0.3;
   MatrixXd New_U = U;
   New_U.block(n_,n_,m_,m_) = alpha * F;
 
@@ -135,7 +135,7 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-9);
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-8);
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-8);
-  //OSQPoptions.SetOption(OsqpSolver::id(), "max_iter",  100);
+  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);
   OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
   projprog_.SetSolverOptions(OSQPoptions_);
 

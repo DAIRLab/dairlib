@@ -12,6 +12,7 @@ namespace dairlib{
 namespace pydairlib {
 
 using perceptive_locomotion::HikingSimDiagram;
+using multibody::SquareSteppingStoneList;
 
 PYBIND11_MODULE(simulators, m) {
   m.doc() = "Bindings for perceptive locomotion simulators";
@@ -19,7 +20,8 @@ PYBIND11_MODULE(simulators, m) {
 
   py::class_<HikingSimDiagram, drake::systems::Diagram<double>>(
       m, "HikingSimDiagram")
-      .def(py::init<const std::string&, const std::string&>(),
+      .def(py::init<const std::variant<std::string, SquareSteppingStoneList>&,
+                    const std::string&>(),
            py::arg("tarrain_yaml"), py::arg("camera_pose_yaml"))
     .def("get_input_port_actuation",
          &HikingSimDiagram::get_input_port_actuation,

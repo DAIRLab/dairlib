@@ -233,7 +233,6 @@ def run_experiment():
         )
 
         # data list
-
         alip_state_list.append(alip_state)
         input_list.append(hmap_random)
         value_residual_list.append(value_residual)

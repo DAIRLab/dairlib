@@ -84,8 +84,14 @@ SquareSteppingStoneList LoadSteppingStonesFromYaml(const std::string& filename);
 
 void AddSteppingStonesToSim(drake::multibody::MultibodyPlant<double>* plant,
                             drake::geometry::SceneGraph<double>* scene_graph,
-                            SquareSteppingStoneList stones,
+                            const SquareSteppingStoneList& stones,
                             double mu);
+
+void AddSteppingStonesToSim(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    const std::variant<std::string, SquareSteppingStoneList>& stones,
+    double mu);
 
 void AddSteppingStonesToMeshcatFromYaml(std::shared_ptr<drake::geometry::Meshcat> meshcat,
                                         const std::string& filename);

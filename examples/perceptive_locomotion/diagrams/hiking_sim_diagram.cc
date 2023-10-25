@@ -27,6 +27,7 @@ namespace dairlib::perceptive_locomotion {
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
+using multibody::SquareSteppingStoneList;
 using systems::SubvectorPassThrough;
 using systems::RobotOutputSender;
 using systems::RobotOutputReceiver;
@@ -44,7 +45,8 @@ using drake::perception::pc_flags::BaseField::kRGBs;
 using drake::perception::DepthImageToPointCloud;
 
 HikingSimDiagram::HikingSimDiagram(
-    const std::string& terrain_yaml, const std::string& camera_pose_yaml)
+    const std::variant<std::string, SquareSteppingStoneList>& terrain,
+    const std::string& camera_pose_yaml)
     : urdf_("examples/Cassie/urdf/cassie_v2_self_collision.urdf") {
 
 
@@ -65,8 +67,8 @@ HikingSimDiagram::HikingSimDiagram(
   plant_ = builder.AddSystem<MultibodyPlant<double>>(sim_dt);
   plant_->set_discrete_contact_solver(contact_solver);
 
-  multibody::AddSteppingStonesToSimFromYaml(
-      plant_, scene_graph_, terrain_yaml, terrain_friction
+  multibody::AddSteppingStonesToSim(
+      plant_, scene_graph_, terrain, terrain_friction
   );
   AddCassieMultibody(plant_, scene_graph_, true, urdf_, true, true);
   plant_->Finalize();

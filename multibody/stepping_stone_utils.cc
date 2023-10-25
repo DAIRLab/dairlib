@@ -11,11 +11,23 @@ namespace dairlib::multibody {
 
 void AddSteppingStonesToSim(MultibodyPlant<double>* plant,
                             SceneGraph<double>* scene_graph,
-                            SquareSteppingStoneList stones,
+                            const SquareSteppingStoneList& stones,
                             double mu) {
   for (const auto& cube: stones.cubes) {
     AddBox(plant, scene_graph, cube.first, cube.second,mu);
   }
+}
+
+void AddSteppingStonesToSim(
+    MultibodyPlant<double>* plant,
+    SceneGraph<double>* scene_graph,
+    const std::variant<std::string, SquareSteppingStoneList>& stones,
+    double mu) {
+
+  const auto& stepping_stone_list = holds_alternative<std::string>(stones) ?
+                     LoadSteppingStonesFromYaml(get<std::string>(stones)) :
+                     get<SquareSteppingStoneList>(stones);
+  AddSteppingStonesToSim(plant, scene_graph, stepping_stone_list, mu);
 }
 
 void AddSteppingStonesToSimFromYaml(MultibodyPlant<double>* plant,
@@ -34,8 +46,9 @@ LoadSteppingStonesFromYaml(const std::string& filename) {
   return drake::yaml::LoadYamlFile<SquareSteppingStoneList>(filename);
 }
 
-void AddSteppingStonesToMeshcatFromYaml(std::shared_ptr<drake::geometry::Meshcat> meshcat,
-                                        const std::string& filename) {
+void AddSteppingStonesToMeshcatFromYaml(
+    std::shared_ptr<drake::geometry::Meshcat> meshcat,
+    const std::string& filename) {
   auto boxes = LoadSteppingStonesFromYaml(filename).cubes;
   static int i = 0;
   for (const auto& box_params : boxes) {

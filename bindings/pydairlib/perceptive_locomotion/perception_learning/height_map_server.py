@@ -75,7 +75,7 @@ class HeightMapServer:
         )
         self.contact_point = \
             0.5 * (
-                RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
+                    RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
             ).ravel()
         self.contact_frame = {
             Stance.kLeft: LeftToeRear(self.plant)[1],
@@ -120,7 +120,7 @@ class HeightMapServer:
         # Heightmap has X axis along the 0 dimension while meshgrid has
         # X axis on the 1 dimensions
         Z = self.get_heightmap(robot_state, stance, center).transpose()
-        
+
         return np.stack([X, Y, Z])
 
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance,

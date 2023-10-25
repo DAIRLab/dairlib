@@ -159,7 +159,7 @@ def run_experiment():
 
         # -----------LQR input stage (DS + the end of next SS) ----------------#
         while context.get_time() < (t_init - phase + ss_duration) + (
-            Ts2s - 3 * eps):
+                Ts2s - 3 * eps):
             command = controller.get_output_port_by_name(
                 'footstep_command'
             ).Eval(controller_context).ravel()
@@ -221,8 +221,8 @@ def run_experiment():
         #  NOTE ENDS
 
         rng = np.random.default_rng()
-        hmap_index1 = rng.integers(0, hmap.shape[1])
-        hmap_index2 = rng.integers(0, hmap.shape[2])
+        hmap_index1 = rng.integers(hmap.shape[1] / 3, 2 * hmap.shape[1] / 2)
+        hmap_index2 = rng.integers(hmap.shape[2] / 3, 2 * hmap.shape[2] / 2)
         hmap_random = hmap[:, hmap_index1, hmap_index2]
 
         # run the simulation experiment to get residual and desired state for
@@ -239,9 +239,9 @@ def run_experiment():
         lqr_desired_state_list.append(lqr_desired_state)
 
     return value_residual_list, alip_state_list, input_list, \
-           lqr_desired_state_list
+        lqr_desired_state_list
 
 
 if __name__ == '__main__':
     q_list, v_list, phase_list, stance_list, hmap_list, desired_velocity_list, \
-    value_residual_list, lqr_desired_state_list = run_experiment()
+        value_residual_list, lqr_desired_state_list = run_experiment()

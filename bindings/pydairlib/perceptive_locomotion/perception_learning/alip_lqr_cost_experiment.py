@@ -39,10 +39,10 @@ import numpy as np
 
 def run_experiment():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    # sim_params.terrain_yaml = os.path.join(
-    #     perception_learning_base_folder,
-    #     'params/alip_lqr_cost_experiment_terrain.yaml'
-    # )
+    sim_params.terrain_yaml = os.path.join(
+        perception_learning_base_folder,
+        'params/alip_lqr_cost_experiment_terrain.yaml'
+    )
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -154,7 +154,7 @@ def compare_contours(hmap, obstacle_data, flat_data):
 
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     fig.suptitle('LQR Cost to Go Experiment')
-    ax1.contourf(hmap[0], hmap[1], hmap[2], levels=1)
+    ax1.contourf(hmap[0], hmap[1], hmap[2], levels=20)
     ax1.set_title('Height Map')
     ax2.contourf(
         obstacle_data[0], obstacle_data[1], obstacle_data[2], levels=20
@@ -208,12 +208,12 @@ if __name__ == '__main__':
     else:
         xyz, residual = run_experiment()
         np.save(
-            f'{perception_learning_base_folder}/tmp/height_map_flat'
+            f'{perception_learning_base_folder}/tmp/height_map_obstacle'
             f'.npy', xyz
         )
         xyz[-1] = residual
         np.save(
             f'{perception_learning_base_folder}/tmp'
-            f'/residual_test_flat.npy', xyz
+            f'/residual_test_obstacle.npy', xyz
         )
         plot_results(xyz)

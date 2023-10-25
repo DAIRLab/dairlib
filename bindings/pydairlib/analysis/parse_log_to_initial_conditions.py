@@ -110,7 +110,8 @@ def parse_single_log_to_perception_learning_initial_condition(
     for i, t in enumerate(robot_output['t_x']):
         if t < t_start_osc:
             continue
-
+        if phase(t) == 0:
+            continue
         q = robot_output['q'][i].ravel()
         q[4] = 0
         q[5] = 0  # move us back to the origin
@@ -259,8 +260,8 @@ def parse_hardware_main():
 
 def parse_sim_main():
     savepath = 'bindings/pydairlib/perceptive_locomotion/perception_learning' \
-               '/tmp/initial_conditions.npz'
-    logpath = '/home/brian/logs/2023/10_09_23/lcmlog-03'
+               '/tmp/initial_conditions_2.npz'
+    logpath = '/home/brian/logs/2023/10_25_23/lcmlog-06'
 
     channel_x = "CASSIE_STATE_SIMULATION"
     channel_u = "OSC_WALKING"

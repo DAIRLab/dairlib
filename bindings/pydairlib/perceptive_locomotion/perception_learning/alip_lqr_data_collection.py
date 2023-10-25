@@ -113,8 +113,11 @@ def run_experiment():
     # define the distribution of the initial conditions, can be changed in
     # the future
     eps = 0.01  # small number that prevent impact
-    Init_Generator = InitialConditionsServer()  # call random() to get a
-    # dictionary with elements stance, phase,q ,v
+    Init_Generator = InitialConditionsServer(
+        fname=os.path.join(
+            perception_learning_base_folder, 'tmp/initial_conditions_2.npz'
+        )
+    )  # call random() to get a dictionary with elements stance, phase, q ,v
     desired_velocity_dis = np.linspace(-0.05, 0.05, 50)
     Ts2s = ss_duration + ds_duration
 

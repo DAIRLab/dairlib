@@ -106,6 +106,10 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
+  void SetSwingFootPositionAtLiftoff(
+      drake::systems::Context<double>* context,
+      const Eigen::Vector3d& init_swing_pos) const;
+
  private:
 
   drake::multibody::MultibodyPlant<double>* plant_;

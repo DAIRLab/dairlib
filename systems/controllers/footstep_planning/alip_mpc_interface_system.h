@@ -64,6 +64,11 @@ class SwingFootInterfaceSystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(swing_foot_traj_output_port_);
   }
 
+  const drake::systems::DiscreteStateIndex liftoff_swing_foot_pos_state_idx()
+  const {
+    return liftoff_swing_foot_pos_idx_;
+  }
+
  private:
 
   bool is_single_support(int fsm_state) const;

@@ -31,7 +31,7 @@
 
 import os
 import numpy as np
-from typing import Tuple, Any
+from typing import Any, Dict, Tuple
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -122,21 +122,26 @@ def run_experiment():
     Ts2s = ss_duration + ds_duration
 
     ################### data points collection #################################
-    def residual_datapoint(initial_condition: list) -> Tuple[Any, Any, Any]:
+    def residual_datapoint(initial_condition: Dict) -> Tuple[Any, Any, Any]:
 
         # -------------------- initial condition ------------------------------#
-        q = initial_condition[0]
-        v = initial_condition[1]
-        phase = initial_condition[2]
-        stance = initial_condition[3]
-        footstep_command = initial_condition[4]
-        desired_velocity = initial_condition[5]
+        q = initial_condition['q']
+        v = initial_condition['v']
+        phase = initial_condition['phase']
+        stance = initial_condition['stance']
+        footstep_command = initial_condition['footstep_command']
+        desired_velocity = initial_condition['desired_velocity']
+        initial_swing_pos = initial_condition['initial_swing_foot_pos']
 
         # --------constant input swing stage (to the end of SS) ---------------#
         t_init = ds_duration + eps + stance * (Ts2s) + phase
         context = diagram.CreateDefaultContext()
         context.SetTime(t_init)
         sim_env.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
+        sim_env.controller.SetSwingFootPositionAtLiftoff(
+            context,
+            initial_swing_pos
+        )
         simulator.reset_context(context)
         # simulator.set_target_realtime_rate
         simulator.Initialize()
@@ -195,19 +200,17 @@ def run_experiment():
     for i in range(num_data):
         # randomly generate the initial condition
         data = Init_Generator.random()
-        q = data['q']
-        v = data['v']
 
         # translate stance command into binary for the sack of computing
         # timespot
-        stance_string = data['stance']
-        stance = 0 if stance_string == 'left' else 1
-        phase = data['phase']
+        stance = 0 if data['stance'] == 'left' else 1
+        data['stance'] = stance
+
         desired_velocity = np.random.choice(desired_velocity_dis, size=2)
 
         #  NOTE: set context align with the current stance, so that hmap is
         #  aligned with stance
-        t_init = ds_duration + eps + stance * (Ts2s) + phase
+        t_init = ds_duration + eps + stance * (Ts2s) + data['phase']
         context.SetTime(t_init)
         sim_context = sim_env.GetMyMutableContextFromRoot(context)
         controller_context = controller.GetMyMutableContextFromRoot(context)
@@ -230,9 +233,10 @@ def run_experiment():
 
         # run the simulation experiment to get residual and desired state for
         # LQR stage
-        random_initial = [q, v, phase, stance, hmap_random, desired_velocity]
+        data['footstep_command'] = hmap_random
+        data['desired_velocity'] = desired_velocity
         value_residual, alip_state, lqr_desired_state = residual_datapoint(
-            initial_condition=random_initial
+            initial_condition=data
         )
 
         # data list

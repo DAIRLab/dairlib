@@ -170,7 +170,10 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_output_port_switching_time",
            &MpfcOscDiagram::get_output_port_switching_time,
            py_rvp::reference_internal)
-      .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal);
+      .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal)
+      .def("SetSwingFootPositionAtLiftoff",
+           &MpfcOscDiagram::SetSwingFootPositionAtLiftoff);
+
 
   m.def("AlipStepToStepDynamics", &AlipStepToStepDynamics, py::arg("com_z"),
         py::arg("m"), py::arg("Tss"), py::arg("Tds"),

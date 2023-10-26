@@ -3,7 +3,7 @@
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 
-#include "examples/franka/franka_controller_params.h"
+#include "examples/franka/franka_osc_controller_params.h"
 #include "examples/franka/systems/end_effector_orientation.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
@@ -64,8 +64,8 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/franka/franka_osc_controller_params.yaml");
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow("examples/franka/franka_osc_controller_params.yaml"), {},
-      {}, yaml_options);
+      FindResourceOrThrow("examples/franka/franka_osc_controller_params.yaml"),
+      {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -74,26 +74,20 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-  parser.AddModels(controller_params.franka_model);
+  parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+      FindResourceOrThrow(controller_params.end_effector_model))[0];
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
+  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
 
-  VectorXd rotor_inertias(plant.num_actuators());
-  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
-  rotor_inertias *= 1e-6;
-  VectorXd gear_ratios(plant.num_actuators());
-  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
-  std::vector<std::string> motor_joint_names = {
-      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
-      "panda_motor5", "panda_motor6", "panda_motor7"};
-  for (int i = 0; i < rotor_inertias.size(); ++i) {
-    auto& joint_actuator = plant.get_mutable_joint_actuator(
-        drake::multibody::JointActuatorIndex(i));
-    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
-    joint_actuator.set_default_gear_ratio(gear_ratios(i));
-    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
-  }
+  tool_attachment_frame(2) = 0.157;
+
+  RigidTransform<double> T_EE_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), tool_attachment_frame);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
+                   plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
@@ -127,10 +121,17 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorTrajectoryGenerator>(plant,
                                                         plant_context.get());
+  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+      controller_params.neutral_position.data(),
+      controller_params.neutral_position.size());
+  end_effector_trajectory->SetRemoteControlParameters(
+      neutral_position, controller_params.x_scale, controller_params.y_scale,
+      controller_params.z_scale);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationGenerator>(plant,
                                                          plant_context.get());
-  end_effector_orientation_trajectory->SetTrackOrientation(controller_params.track_end_effector_orientation);
+  end_effector_orientation_trajectory->SetTrackOrientation(
+      controller_params.track_end_effector_orientation);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           controller_params.radio_channel, &lcm));
@@ -150,7 +151,8 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_target", controller_params.K_p_end_effector,
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
-  end_effector_position_tracking_data->AddPointToTrack("paddle");
+  end_effector_position_tracking_data->AddPointToTrack(
+      controller_params.end_effector_name);
   const VectorXd& bound =
       controller_params.end_effector_acceleration * Vector3d::Ones();
   end_effector_position_tracking_data->SetCmdAccelerationBounds(-bound, bound);
@@ -159,7 +161,8 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_target", controller_params.K_p_end_effector,
           controller_params.K_d_end_effector, controller_params.W_end_effector,
           plant, plant);
-  end_effector_position_tracking_data_for_rel->AddPointToTrack("paddle");
+  end_effector_position_tracking_data_for_rel->AddPointToTrack(
+      controller_params.end_effector_name);
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<TransTaskSpaceTrackingData>(
           "mid_link", controller_params.K_p_mid_link,
@@ -182,7 +185,8 @@ int DoMain(int argc, char* argv[]) {
           controller_params.K_p_end_effector_rot,
           controller_params.K_d_end_effector_rot,
           controller_params.W_end_effector_rot, plant, plant);
-  end_effector_orientation_tracking_data->AddFrameToTrack("paddle");
+  end_effector_orientation_tracking_data->AddFrameToTrack(
+      controller_params.end_effector_name);
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
 
@@ -219,14 +223,14 @@ int DoMain(int argc, char* argv[]) {
       end_effector_orientation_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_orientation_receiver->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_trajectory());
+  builder.Connect(
+      end_effector_orientation_receiver->get_output_port(0),
+      end_effector_orientation_trajectory->get_input_port_trajectory());
   builder.Connect(end_effector_trajectory->get_output_port(0),
                   osc->get_input_port_tracking_data("end_effector_target"));
-  builder.Connect(end_effector_orientation_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_orientation_target"));
-
-
+  builder.Connect(
+      end_effector_orientation_trajectory->get_output_port(0),
+      osc->get_input_port_tracking_data("end_effector_orientation_target"));
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));

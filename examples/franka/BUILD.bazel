@@ -59,7 +59,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_controller_params",
+        ":franka_osc_controller_params",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
@@ -125,8 +125,8 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_controller_params",
-    hdrs = ["franka_controller_params.h"],
+    name = "franka_osc_controller_params",
+    hdrs = ["franka_osc_controller_params.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],

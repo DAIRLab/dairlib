@@ -9,10 +9,12 @@
 
 namespace dairlib {
 
-class EndEffectorTrajectoryGenerator : public drake::systems::LeafSystem<double> {
+class EndEffectorTrajectoryGenerator
+    : public drake::systems::LeafSystem<double> {
  public:
-  EndEffectorTrajectoryGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-                    drake::systems::Context<double>* context);
+  EndEffectorTrajectoryGenerator(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -23,6 +25,9 @@ class EndEffectorTrajectoryGenerator : public drake::systems::LeafSystem<double>
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
+
+  void SetRemoteControlParameters(const Eigen::Vector3d& neutral_pose, double x_scale,
+                              double y_scale, double z_scale);
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -46,6 +51,11 @@ class EndEffectorTrajectoryGenerator : public drake::systems::LeafSystem<double>
   drake::systems::InputPortIndex trajectory_port_;
   drake::systems::InputPortIndex radio_port_;
 
+  Eigen::Vector3d neutral_pose_;
+  double x_scale_;
+  double y_scale_;
+  double z_scale_;
+  std::vector<Eigen::Vector4d> half_plane_bounds_;
 };
 
-}  // namespace dairlib::examples::osc_run
+}  // namespace dairlib

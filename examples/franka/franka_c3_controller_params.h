@@ -14,6 +14,8 @@ struct FrankaC3ControllerParams {
   std::string state_channel;
   std::string radio_channel;
   std::string franka_model;
+  std::string end_effector_model;
+  std::string end_effector_name;
   std::string plate_model;
   std::string tray_model;
   bool include_end_effector_orientation;
@@ -28,6 +30,8 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(state_channel));
     a->Visit(DRAKE_NVP(radio_channel));
     a->Visit(DRAKE_NVP(franka_model));
+    a->Visit(DRAKE_NVP(end_effector_model));
+    a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(plate_model));
     a->Visit(DRAKE_NVP(tray_model));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));

@@ -6,8 +6,10 @@ c3_channel_object: C3_TRAJECTORY_TRAY
 state_channel: FRANKA_OUTPUT
 radio_channel: CASSIE_VIRTUAL_RADIO
 
-
-franka_model: examples/franka/urdf/franka_no_collision.urdf
+franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+end_effector_model: examples/franka/urdf/plate_end_effector.urdf
+end_effector_name: plate
+#franka_model: examples/franka/urdf/franka_no_collision.urdf
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 #plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf

@@ -75,10 +75,20 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.package_map().Add("franka_urdfs", "examples/franka/urdf");
-  parser_franka.AddModels(controller_params.franka_model);
+  parser_franka.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
+  drake::multibody::ModelInstanceIndex end_effector_index = parser_franka.AddModels(
+      FindResourceOrThrow(controller_params.end_effector_model))[0];
+
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
+  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
+  tool_attachment_frame(2) = 0.157;
+  RigidTransform<double> T_EE_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), tool_attachment_frame);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
+                   plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
+
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
@@ -150,7 +160,7 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          "paddle", "tray", controller_params.include_end_effector_orientation);
+          controller_params.end_effector_name, "tray", controller_params.include_end_effector_orientation);
 
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(

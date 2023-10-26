@@ -54,29 +54,12 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
 }
 
-PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateCircle(
-    const drake::systems::Context<double>& context) const {
-  const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context, state_port_);
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-  double t = robot_output->get_timestamp();
-  double dt = 0.1;
-  double frequency = 0.5 * (1 + radio_out->channel[2]) * M_PI;
-  double radius = radio_out->channel[0] * 0.2;
-  int index = 1 - std::max(0.0, radio_out->channel[15]);
-  VectorXd y0 = VectorXd::Zero(3);
-  y0(1 - index) = 0.7;
-  y0(index) = radius * cos(frequency * t);
-  y0(2) = radius * sin(frequency * t) + 0.3;
-  VectorXd ydot0 = VectorXd::Zero(3);
-  ydot0(1 - index) = 0;
-  ydot0(index) = -radius * frequency * sin(frequency * t);
-  ydot0(2) = -radius * frequency * cos(frequency * t);
-  std::vector<double> breaks = {t, t + dt};
-  std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
-  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      breaks, samples);
+void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
+    const Eigen::Vector3d& neutral_pose, double x_scale, double y_scale, double z_scale){
+    neutral_pose_ = neutral_pose;
+    x_scale_ = x_scale;
+    y_scale_ = y_scale;
+    z_scale_ = z_scale;
 }
 
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
@@ -87,32 +70,11 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   double t = robot_output->get_timestamp();
   double dt = 0.1;
-  VectorXd y0 = VectorXd::Zero(3);
-  y0(0) = 0.65 + radio_out->channel[0] * 0.2;
-  y0(0) = std::clamp(y0(0), 0.0, 0.75);
-  y0(1) = radio_out->channel[1] * 0.2;
-  y0(2) = 0.3 + radio_out->channel[2] * 0.2;
+  VectorXd y0 = neutral_pose_;
+  y0(0) += radio_out->channel[0] * x_scale_;
+  y0(1) += radio_out->channel[1] * y_scale_;
+  y0(2) += radio_out->channel[2] * z_scale_;
   VectorXd ydot0 = VectorXd::Zero(3);
-  std::vector<double> breaks = {t, t + dt};
-  std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
-  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      breaks, samples);
-}
-
-PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GenerateLine(
-    const drake::systems::Context<double>& context) const {
-  const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context, state_port_);
-  double t = robot_output->get_timestamp();
-  double dt = 0.1;
-  VectorXd y0 = VectorXd::Zero(3);
-  y0(0) = 0;
-  y0(1) = 0.8;
-  y0(2) = 0.2 * sin(M_PI * t) + 0.5;
-  VectorXd ydot0 = VectorXd::Zero(3);
-  ydot0(0) = 0;
-  ydot0(1) = 0;
-  ydot0(2) = -0.2 * M_PI * cos(M_PI * t);
   std::vector<double> breaks = {t, t + dt};
   std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
   return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(

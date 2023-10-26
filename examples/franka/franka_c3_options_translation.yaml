@@ -10,7 +10,7 @@ dt: 0.1
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
-N: 5
+N: 7
 w_Q: 5
 w_R: 0
 # Penalty on all decision variables, assuming scalar
@@ -26,5 +26,5 @@ q_vector: [10, 10, 5000, 0, 0, 0, 0, 10000, 10000, 10000,
 # Penalty on efforts, assuming diagonal
 r_vector: [1, 1, 1]
 
-q_des_vector: [0.55, 0.02, 0.4, 1, 0, 0, 0, 0.55, 0.02, 0.42]
+q_des_vector: [0.55, 0.00, 0.4, 1, 0, 0, 0, 0.55, 0.00, 0.42]
 v_des_vector: [0, 0, 0, 0, 0, 0, 0, 0, 0]

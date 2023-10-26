@@ -4,8 +4,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-using Eigen::MatrixXd;
-
 struct FrankaControllerParams : OSCGains {
   std::string state_channel;
   std::string controller_channel;
@@ -14,10 +12,17 @@ struct FrankaControllerParams : OSCGains {
   std::string c3_channel;
 
   std::string franka_model;
+  std::string end_effector_model;
+  std::string end_effector_name;
 
   double end_effector_acceleration;
   bool track_end_effector_orientation;
 
+  double x_scale;
+  double y_scale;
+  double z_scale;
+
+  std::vector<double> neutral_position;
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
   std::vector<double> EndEffectorKd;
@@ -28,15 +33,16 @@ struct FrankaControllerParams : OSCGains {
   std::vector<double> EndEffectorRotKp;
   std::vector<double> EndEffectorRotKd;
 
-  MatrixXd W_end_effector;
-  MatrixXd K_p_end_effector;
-  MatrixXd K_d_end_effector;
-  MatrixXd W_mid_link;
-  MatrixXd K_p_mid_link;
-  MatrixXd K_d_mid_link;
-  MatrixXd W_end_effector_rot;
-  MatrixXd K_p_end_effector_rot;
-  MatrixXd K_d_end_effector_rot;
+//  Eigen::Vector3d neutral_position;
+  Eigen::MatrixXd W_end_effector;
+  Eigen::MatrixXd K_p_end_effector;
+  Eigen::MatrixXd K_d_end_effector;
+  Eigen::MatrixXd W_mid_link;
+  Eigen::MatrixXd K_p_mid_link;
+  Eigen::MatrixXd K_d_mid_link;
+  Eigen::MatrixXd W_end_effector_rot;
+  Eigen::MatrixXd K_p_end_effector_rot;
+  Eigen::MatrixXd K_d_end_effector_rot;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -48,6 +54,8 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(osc_debug_channel));
     a->Visit(DRAKE_NVP(c3_channel));
     a->Visit(DRAKE_NVP(franka_model));
+    a->Visit(DRAKE_NVP(end_effector_model));
+    a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(track_end_effector_orientation));
     a->Visit(DRAKE_NVP(EndEffectorW));
@@ -59,6 +67,11 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorRotW));
     a->Visit(DRAKE_NVP(EndEffectorRotKp));
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
+
+    a->Visit(DRAKE_NVP(neutral_position));
+    a->Visit(DRAKE_NVP(x_scale));
+    a->Visit(DRAKE_NVP(y_scale));
+    a->Visit(DRAKE_NVP(z_scale));
 
     W_end_effector = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(

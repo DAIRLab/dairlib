@@ -157,7 +157,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.2, 0.2, 1);
+    c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
   }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   return drake::systems::EventStatus::Succeeded();

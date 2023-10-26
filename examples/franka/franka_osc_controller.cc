@@ -3,6 +3,7 @@
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 
+#include "common/eigen_utils.h"
 #include "examples/franka/franka_osc_controller_params.h"
 #include "examples/franka/systems/end_effector_orientation.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
@@ -80,9 +81,7 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
-  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
-
-  tool_attachment_frame(2) = 0.157;
+  Vector3d tool_attachment_frame = StdVectorToVectorXd(controller_params.tool_attachment_frame);
 
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), tool_attachment_frame);

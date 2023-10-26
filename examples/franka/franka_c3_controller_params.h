@@ -20,6 +20,7 @@ struct FrankaC3ControllerParams {
   std::string tray_model;
   bool include_end_effector_orientation;
   double target_frequency;
+  std::vector<double> tool_attachment_frame;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -36,5 +37,6 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(tray_model));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(target_frequency));
+    a->Visit(DRAKE_NVP(tool_attachment_frame));
   }
 };

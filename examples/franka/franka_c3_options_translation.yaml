@@ -5,7 +5,7 @@ num_threads: 6
 delta_option: 1
 
 mu: 0.4
-mu_plate: 1
+mu_plate: 0.4
 dt: 0.1
 solve_dt: 0.05
 num_friction_directions: 2

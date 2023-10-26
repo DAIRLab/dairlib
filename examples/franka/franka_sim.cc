@@ -12,6 +12,7 @@
 #include <drake/visualization/visualization_config_functions.h>
 
 #include "common/find_resource.h"
+#include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka/franka_sim_params.h"
@@ -82,10 +83,11 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
-  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
+  Vector3d tool_attachment_frame =
+      StdVectorToVectorXd(sim_params.tool_attachment_frame);
   franka_origin(2) = 0.7645;
   second_table_origin(0) = 0.75;
-  tool_attachment_frame(2) = 0.157;
+
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_X_W = RigidTransform<double>(

@@ -28,6 +28,7 @@ struct FrankaSimParams {
   std::vector<double> q_init_franka;
   std::vector<double> q_init_plate;
   std::vector<double> q_init_box;
+  std::vector<double> tool_attachment_frame;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -53,6 +54,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));
     a->Visit(DRAKE_NVP(q_init_box));
+    a->Visit(DRAKE_NVP(tool_attachment_frame));
 
   }
 };

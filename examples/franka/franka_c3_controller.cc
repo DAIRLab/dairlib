@@ -2,6 +2,7 @@
 #include <dairlib/lcmt_radio_out.hpp>
 #include <gflags/gflags.h>
 
+#include "common/eigen_utils.h"
 #include "examples/franka/franka_c3_controller_params.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "examples/franka/systems/franka_kinematics.h"
@@ -82,8 +83,8 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
-  Vector3d tool_attachment_frame = Eigen::VectorXd::Zero(3);
-  tool_attachment_frame(2) = 0.157;
+  Vector3d tool_attachment_frame = StdVectorToVectorXd(controller_params.tool_attachment_frame);
+
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), tool_attachment_frame);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),

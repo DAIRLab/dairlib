@@ -15,6 +15,7 @@ struct FrankaControllerParams : OSCGains {
   std::string end_effector_model;
   std::string end_effector_name;
 
+  std::vector<double> tool_attachment_frame;
   double end_effector_acceleration;
   bool track_end_effector_orientation;
 
@@ -68,6 +69,7 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorRotKp));
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
 
+    a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));

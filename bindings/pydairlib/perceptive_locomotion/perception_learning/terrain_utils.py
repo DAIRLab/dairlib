@@ -1,19 +1,4 @@
-from dataclasses import dataclass
 import numpy as np
-
-from pydrake.multibody.plant import (
-    MultibodyPlant
-)
-
-from pydairlib.geometry.convex_foothold import ConvexFoothold
-
-from pydairlib.cassie.cassie_utils import (
-    AddCassieMultibody,
-    RightToeFront,
-    RightToeRear,
-    LeftToeFront,
-    LeftToeRear,
-)
 
 from pydairlib.multibody import (
     SquareSteppingStoneList,
@@ -21,6 +6,11 @@ from pydairlib.multibody import (
     ReExpressWorldVector3InBodyYawFrame,
     ReExpressBodyYawVector3InWorldFrame,
 )
+
+
+def random_stairs() -> SquareSteppingStoneList:
+    # TODO (@Brian-Acosta) do this
+    pass
 
 
 def make_stairs(width: float, depth: float, height: float, n: int,

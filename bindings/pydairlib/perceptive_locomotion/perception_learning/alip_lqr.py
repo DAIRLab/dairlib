@@ -167,7 +167,7 @@ class AlipFootstepLQR(LeafSystem):
         x_disc.set_value(x)
 
     def calculate_optimal_footstep(
-        self, context: Context, footstep: BasicVector) -> None:
+            self, context: Context, footstep: BasicVector) -> None:
         """
             Calculate the optimal (LQR) footstep location.
             This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
@@ -190,7 +190,7 @@ class AlipFootstepLQR(LeafSystem):
         footstep.set_value(footstep_command)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
-        Tuple[np.ndarray, np.ndarray]:
+            Tuple[np.ndarray, np.ndarray]:
         """
             Calculate a reference ALIP trajectory following the philosophy
             outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D
@@ -222,8 +222,8 @@ class AlipFootstepLQR(LeafSystem):
             self.A @ (xd - x) + self.B @ (ud - u)
         )
 
-    def get_next_value_estimate_for_footstep(self, u: np.ndarray,
-                                             context: Context) -> float:
+    def get_next_value_estimate_for_footstep(
+            self, u: np.ndarray, context: Context) -> float:
         x = self.get_output_port_by_name('x').Eval(context)
         xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
         xd = xd_ud[:4]

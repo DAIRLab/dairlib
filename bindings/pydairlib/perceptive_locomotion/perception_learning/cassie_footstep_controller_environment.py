@@ -14,6 +14,7 @@ from pydairlib.multibody import SquareSteppingStoneList
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.all import (
     Diagram,
+    Context,
     Simulator,
     InputPort,
     OutputPort,
@@ -183,7 +184,8 @@ class CassieFootstepControllerEnvironment(Diagram):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def get_heightmap(self, context, center=None) -> np.ndarray:
+    def get_heightmap(self, context: Context,
+                      center: np.ndarray = None) -> np.ndarray:
         robot_output = self.get_output_port_by_name('state').Eval(context)
         fsm = int(
             self.get_output_port_by_name('fsm').Eval(context)[0]
@@ -196,7 +198,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             center
         )
 
-    def query_heightmap(self, context, query_point):
+    def query_heightmap(self, context: Context,
+                        query_point: np.ndarray) -> float:
         robot_output = self.get_output_port_by_name('state').Eval(context)
         fsm = int(self.get_output_port_by_name('fsm').Eval(context)[0])
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight

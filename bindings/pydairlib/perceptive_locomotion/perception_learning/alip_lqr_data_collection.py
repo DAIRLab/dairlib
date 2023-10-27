@@ -31,7 +31,7 @@
 
 import os
 import numpy as np
-from typing import Any, Dict, Tuple
+from typing import Dict, Tuple
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -63,7 +63,8 @@ from pydairlib.perceptive_locomotion.perception_learning. \
     InitialConditionsServer
 )
 
-from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+# Can use DrawAndSaveDiagramGraph for debugging if necessary
+# from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
@@ -207,8 +208,12 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
 
 
-if __name__ == '__main__':
+def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = make_stairs(5.0, 1.0, 0.1, 11, 'up')
     data = run_experiment(sim_params)
     import pdb; pdb.set_trace()
+
+
+if __name__ == '__main__':
+    main()

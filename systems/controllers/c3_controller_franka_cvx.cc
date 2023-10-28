@@ -89,7 +89,6 @@ C3Controller_franka_Convex::C3Controller_franka_Convex(
       num_balls_(num_balls){
 
 
-
   /// number of balls in simulation
   int num_ee_xyz_pos = 3;
   int num_ee_xyz_vel = 3;
@@ -98,6 +97,26 @@ C3Controller_franka_Convex::C3Controller_franka_Convex(
   //output [ (finger) end effector next state (x,y,z), (finger) end effector orientation (generated via heuristic), ball positions , finger + ball velocities, force_desired, num_visualizer_states  ]
   num_output_ = num_ee_xyz_pos + num_ee_orientation + num_ee_xyz_vel + 4*num_balls_ + 1;
 
+  /// initialize warm start, hand coded the dimension for now!
+  int time_horizon = 5;
+  int nx = 18;
+  int nlambda = 24;
+  int nu = 3;
+  for (int i = 0; i < time_horizon_; i++){
+      warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
+  }
+  for (int i = 0; i < time_horizon_; i++){
+      warm_start_binary_.push_back(VectorXd::Zero(nlambda));
+  }
+  for (int i = 0; i < time_horizon_+1; i++){
+      warm_start_x_.push_back(VectorXd::Zero(nx));
+  }
+  for (int i = 0; i < time_horizon_; i++){
+      warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
+  }
+  for (int i = 0; i < time_horizon_; i++){
+      warm_start_u_.push_back(VectorXd::Zero(nu));
+  }
 
   /// declare the input port ( franka + balls state, franka + balls velocities, franka + balls inputs = franka inputs )
   state_input_port_ =
@@ -728,7 +747,7 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
 //  std::cout << "here" << std::endl;
 //  std::cout << Qnew << std::endl;
 
-  auto t_opt_start = std::chrono::high_resolution_clock::now();
+//  auto t_opt_start = std::chrono::high_resolution_clock::now();
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
 
   /// initialize warm start for the MIQP
@@ -741,21 +760,27 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
   int nlambda = m;
   int nu = k;
 
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
-  }
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
-  }
-  for (int i = 0; i < time_horizon_+1; i++){
-    warm_start_x_.push_back(VectorXd::Zero(nx));
-  }
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
-  }
-  for (int i = 0; i < time_horizon_; i++){
-    warm_start_u_.push_back(VectorXd::Zero(nu));
-  }
+// put the following into constructer to fix initialization bugs
+//  std::cout<< "nx: "<< nx << std::endl;
+//  std::cout<< "nlambda: "<< nlambda << std::endl;
+//  std::cout<< "nu: "<< nu << std::endl;
+
+//
+//  for (int i = 0; i < time_horizon_; i++){
+//      warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
+//  }
+//  for (int i = 0; i < time_horizon_; i++){
+//      warm_start_binary_.push_back(VectorXd::Zero(nlambda));
+//  }
+//  for (int i = 0; i < time_horizon_+1; i++){
+//      warm_start_x_.push_back(VectorXd::Zero(nx));
+//  }
+//  for (int i = 0; i < time_horizon_; i++){
+//      warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
+//  }
+//  for (int i = 0; i < time_horizon_; i++){
+//      warm_start_u_.push_back(VectorXd::Zero(nu));
+//  }
 
    //TODO: fix other args to opt() --- fixed, double-check
    //G, U, traj_desired, warm starts;
@@ -798,7 +823,9 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
      }
    }
 
-  solvers::C3APPROX opt(*lcs, Qha, R_, G, U, traj_desired, options,
+
+   auto t_opt_start = std::chrono::high_resolution_clock::now();
+   solvers::C3APPROX opt(*lcs, Qha, R_, G, U, traj_desired, options,
     warm_start_delta_, warm_start_binary_, warm_start_x_,
     warm_start_lambda_, warm_start_u_, true);
 
@@ -925,10 +952,10 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
   auto duration_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_start);
   auto duration_opt_setup = std::chrono::duration_cast<std::chrono::milliseconds>(t_setup - t_opt_start);
 
-  std::cout<< "solve time: " << duration_solve.count() << std::endl;
-  std::cout<< "opt set up time: " << duration_opt_setup.count() << std::endl;
-  std::cout<< "setup time: " << duration_setup.count() << std::endl;
-  std::cout<< "whole duration: " << duration.count() << std::endl;
+//  std::cout<< "solve time: " << duration_solve.count() << std::endl;
+//  std::cout<< "opt set up time: " << duration_opt_setup.count() << std::endl;
+//  std::cout<< "setup time: " << duration_setup.count() << std::endl;
+//  std::cout<< "whole duration: " << duration.count() << std::endl;
 //  std::cout << duration.count() << " " << duration_setup.count() << " " << duration_solve.count() << std::endl;
   //std::cout << state_contact_desired->size() << std::endl;
 }

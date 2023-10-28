@@ -22,10 +22,10 @@ mu: 1                   # changes need to be consistent with urdf
 Q_default: 0
 Q_finger: 1      # finger xyz cost
 
-Q_ball_x: 2000000 #10000 #1000000
-Q_ball_y: 2000000 #10000 #1000000
-Q_ball_x2: 100000 #100000
-Q_ball_y2: 100000 #100000
+Q_ball_x: 1000000 #10000 #1000000
+Q_ball_y: 1000000 #10000 #1000000
+Q_ball_x2: 50000 #100000
+Q_ball_y2: 50000 #100000
 
 Q_finger_vel: 10        # translational velocity cost
 Q_ball_vel: 0.1       #0.1  # angular & translational velocity cost
@@ -33,7 +33,7 @@ Qnew_finger: 1000000    # Qnew costs
 Qnew_ball_x: 1
 Qnew_ball_y: 1
 R: 0.01                 # torque cost in xyz
-G: 0.01                 # 0.01 for S-T MIQP, 0.0005 for Anitescu
+G: 0.0005                 # 0.01 for S-T MIQP, 0.0005 for Anitescu
 U_default: 1
 U_pos_vel: 100          # first 19 diag elements of U   #10
 U_u: 1              #1   # last 3 diag elements of U

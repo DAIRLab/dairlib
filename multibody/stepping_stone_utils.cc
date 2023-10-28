@@ -24,9 +24,9 @@ void AddSteppingStonesToSim(
     const std::variant<std::string, SquareSteppingStoneList>& stones,
     double mu) {
 
-  const auto& stepping_stone_list = holds_alternative<std::string>(stones) ?
-                     LoadSteppingStonesFromYaml(get<std::string>(stones)) :
-                     get<SquareSteppingStoneList>(stones);
+  const auto& stepping_stone_list = std::holds_alternative<std::string>(stones) ?
+                     LoadSteppingStonesFromYaml(std::get<std::string>(stones)) :
+                                    std::get<SquareSteppingStoneList>(stones);
   AddSteppingStonesToSim(plant, scene_graph, stepping_stone_list, mu);
 }
 

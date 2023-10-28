@@ -13,7 +13,7 @@ def random_stairs(min_depth: float, max_depth: float, max_height: float) \
     return make_stairs(
         5.0,
         (max_depth - min_depth) * np.random.random_sample() + min_depth,
-        max_height * np.random_sample(),
+        max_height * np.random.random_sample(),
         11,
         'up' if np.random.random_sample() > 0.5 else 'down'
     )

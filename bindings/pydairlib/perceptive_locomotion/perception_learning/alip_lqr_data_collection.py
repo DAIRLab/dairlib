@@ -20,6 +20,7 @@
     1. ALIP state
     2. (constant) input
     3. target end state for the LQR controller
+    4. the corresponding hmap
 
     Many of the contents are grabbed from alip_lqr_cost_experiment,
     just iterate through different initial
@@ -32,6 +33,7 @@
 import os
 import numpy as np
 from typing import Dict, Tuple
+import multiprocessing
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -52,7 +54,7 @@ from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR
 )
 from pydairlib.perceptive_locomotion.perception_learning.terrain_utils import (
-    make_stairs
+    make_stairs, random_stairs
 )
 
 from pydairlib.perceptive_locomotion.perception_learning. \
@@ -97,7 +99,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram
 
 
-def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions):
+def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_data = 10):
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
 
@@ -108,8 +110,6 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions):
         )
     )
     v_des_distr = np.linspace(-0.05, 0.05, 50)
-
-    num_data = 10
     data = []
 
     # loop for num_data times to get the residual and x_desired in LQR stage
@@ -207,12 +207,32 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     datapoint['V_k'] = controller.get_value_estimate(controller_context)
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
 
+def data_process(i, q):
+    num_data = 1000
+    print("data_process", str(i))
+    sim_params = CassieFootstepControllerEnvironmentOptions()
+    sim_params.terrain = random_stairs(0.3, 1, 0.2)
+    data = run_experiment(sim_params, num_data)
+    q.put(data)
 
 def main():
-    sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain = make_stairs(5.0, 1.0, 0.1, 11, 'up')
-    data = run_experiment(sim_params)
-    import pdb; pdb.set_trace()
+    num_jobs = 16
+    job_queue = multiprocessing.Queue()
+    job_list = []
+
+    for i in range(num_jobs):
+        process = multiprocessing.Process(target = data_process,args = (i, job_queue))
+        job_list.append(process)
+        process.start()
+    results = [job_queue.get() for job in job_list]
+
+    data_rearrange = []
+    for i in range(len(results)):
+        for res in results[i]:
+            data_rearrange.append(res)
+
+    import pdb
+    pdb.set_trace()
 
 
 if __name__ == '__main__':

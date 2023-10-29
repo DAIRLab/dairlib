@@ -32,7 +32,9 @@
 
 import os
 import numpy as np
+from tqdm import tqdm
 from typing import Dict, Tuple
+import argparse
 import multiprocessing
 
 # Even if all of these aren't explicitly used, they may be needed for python to
@@ -99,7 +101,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram
 
 
-def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_data = 10):
+def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_data=10, job_id=None):
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
 
@@ -113,11 +115,14 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_d
     data = []
 
     # loop for num_data times to get the residual and x_desired in LQR stage
-    for i in range(num_data):
-        datapoint = ic_generator.random()
-        datapoint['desired_velocity'] = np.random.choice(v_des_distr, size=2)
-        get_residual(sim_env, controller, diagram, simulator, datapoint)
-        data.append(datapoint)
+    job_id = 1 if job_id is None else job_id
+    with tqdm(total=num_data, desc=f'Data collection Job {job_id}') as progress_bar:
+        for i in range(num_data):
+            datapoint = ic_generator.random()
+            datapoint['desired_velocity'] = np.random.choice(v_des_distr, size=2)
+            get_residual(sim_env, controller, diagram, simulator, datapoint)
+            data.append(datapoint)
+            progress_bar.update(1)
 
     return data
 
@@ -207,21 +212,24 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     datapoint['V_k'] = controller.get_value_estimate(controller_context)
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
 
+
 def data_process(i, q):
     num_data = 1000
     print("data_process", str(i))
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain = random_stairs(0.3, 1, 0.2)
-    data = run_experiment(sim_params, num_data)
+    sim_params.terrain = random_stairs(0.2, 0.5, 0.2)
+    sim_params.visualize = False
+    data = run_experiment(sim_params, num_data, i)
     q.put(data)
 
-def main():
-    num_jobs = 16
+
+def main(save_file):
+    num_jobs = multiprocessing.cpu_count() - 1  # leave one thread free
     job_queue = multiprocessing.Queue()
     job_list = []
 
     for i in range(num_jobs):
-        process = multiprocessing.Process(target = data_process,args = (i, job_queue))
+        process = multiprocessing.Process(target=data_process, args=(i, job_queue))
         job_list.append(process)
         process.start()
     results = [job_queue.get() for job in job_list]
@@ -231,9 +239,18 @@ def main():
         for res in results[i]:
             data_rearrange.append(res)
 
-    import pdb
-    pdb.set_trace()
+    data_path = os.path.join(perception_learning_base_folder, 'tmp', save_file)
+    np.savez(data_path, data_rearrange)
+    print(f'Data saved to {data_path}')
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--save_file',
+        type=str,
+        default='data.pt',
+        help='Filepath where data should be saved'
+    )
+    args = parser.parse_args()
+    main(args.save_file)

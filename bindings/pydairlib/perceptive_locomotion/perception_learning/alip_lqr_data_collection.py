@@ -249,7 +249,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--save_file',
         type=str,
-        default='data.pt',
+        default='data.npz',
         help='Filepath where data should be saved'
     )
     args = parser.parse_args()

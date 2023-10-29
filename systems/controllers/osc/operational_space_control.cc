@@ -697,6 +697,12 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
+      // TODO (@Brian-Acosta) figure out why alip_lqr_data_collection sometimes
+      //  sees nans in the swing foot traj
+      if (ddy_t.hasNaN()) {
+        continue;
+      };
+
       tracking_costs_.at(i)->UpdateCoefficients(
           2 * J_t.transpose() * W * J_t,
           2 * J_t.transpose() * W * (JdotV_t - ddy_t),
@@ -798,6 +804,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     *epsilon_sol_ = result.GetSolution(epsilon_);
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
+  }
+
+  if (u_sol_->hasNaN()) {
+    solver_->DisableWarmStart();
+    std::cout << "nan\n";
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

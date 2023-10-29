@@ -13,7 +13,7 @@ except ImportError:
 from pydairlib.analysis.process_lcm_log import get_log_data
 import pydairlib.analysis.cassie_plotting_utils as cassie_plots
 import pydairlib.analysis.mbp_plotting_utils as mbp_plots
-
+from pydairlib.multibody import ReExpressWorldVector3InBodyYawFrame
 
 def nans(shape, dtype=float):
     a = np.empty(shape, dtype)
@@ -96,6 +96,9 @@ def parse_single_log_to_perception_learning_initial_condition(
     osc_idx_start = np.argwhere(osc_debug['fsm'] == 0).ravel()[0]
     t_start_osc = osc_debug['t_osc'].ravel()[osc_idx_start]
 
+    context = plant.CreateDefaultContext()
+    frames, pts = cassie_plots.get_toe_frames_and_points(plant)
+
     def stance(t):
         periods = int((t - t_start_osc) / (Tss + Tds))
         return 'left' if periods % 2 == 0 else 'right'
@@ -106,17 +109,51 @@ def parse_single_log_to_perception_learning_initial_condition(
         phase *= (Tss + Tds)
         return phase if phase < Tss else 0
 
+    def swing_foot_pos(t, q):
+        plant.SetPositions(context, q)
+        points = {
+            'left': plant.CalcPointsPositions(
+                context, frames['left'].body_frame(), pts['mid'],
+                plant.world_frame()
+            ).ravel(),
+            'right': plant.CalcPointsPositions(
+                context, frames['right'].body_frame(), pts['mid'],
+                plant.world_frame()
+            ).ravel()
+        }
+
+        return ReExpressWorldVector3InBodyYawFrame(
+            plant=plant,
+            context=context,
+            body_name="pelvis",
+            vec=points[stance(t + (Tss + Tds))] - points[stance(t)]
+        )
+
     data = []
+    swing_start = True
+    init_swing_pos = np.zeros((3,))
     for i, t in enumerate(robot_output['t_x']):
         if t < t_start_osc:
             continue
-
+        if phase(t) == 0:
+            swing_start = True
+            continue
         q = robot_output['q'][i].ravel()
+        if swing_start:
+            init_swing_pos = swing_foot_pos(t, q)
+            swing_start = False
+
         q[4] = 0
         q[5] = 0  # move us back to the origin
         v = robot_output['v'][i].ravel()
         data.append(
-            {'stance': stance(t), 'phase': phase(t), 'q': q, 'v': v}
+            {
+                'stance': stance(t),
+                'phase': phase(t),
+                'initial_swing_foot_pos': init_swing_pos,
+                'q': q,
+                'v': v
+            }
         )
     return data
 
@@ -259,8 +296,8 @@ def parse_hardware_main():
 
 def parse_sim_main():
     savepath = 'bindings/pydairlib/perceptive_locomotion/perception_learning' \
-               '/tmp/initial_conditions.npz'
-    logpath = '/home/brian/logs/2023/10_09_23/lcmlog-03'
+               '/tmp/initial_conditions_2.npz'
+    logpath = '/home/brian/logs/2023/10_25_23/lcmlog-06'
 
     channel_x = "CASSIE_STATE_SIMULATION"
     channel_u = "OSC_WALKING"

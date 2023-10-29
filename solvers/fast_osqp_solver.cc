@@ -458,10 +458,12 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
     const c_int osqp_solve_err = osqp_solve(workspace_);
+    DisableWarmStart(); // will only be re-enabled if the solve was successful
     if (osqp_solve_err != 0) {
       solution_result = SolutionResult::kInvalidInput;
     }
   }
+
 
   // Extract results.
   if (!solution_result) {

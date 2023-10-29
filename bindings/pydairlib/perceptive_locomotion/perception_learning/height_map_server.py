@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 import numpy as np
+from typing import Union
+from dataclasses import dataclass
 
 from pydrake.multibody.plant import (
     MultibodyPlant
@@ -38,9 +39,7 @@ class HeightMapServer:
         and calculates a height map in the stance frame
     """
 
-    def __init__(self,
-                 terrain_yaml: str,
-                 urdf: str,
+    def __init__(self, terrain: Union[str, SquareSteppingStoneList], urdf: str,
                  map_opts: HeightMapOptions = HeightMapOptions()):
         self.map_opts = map_opts
         self.plant = MultibodyPlant(0.0)
@@ -56,7 +55,10 @@ class HeightMapServer:
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
 
-        stepping_stones = LoadSteppingStonesFromYaml(terrain_yaml)
+        stepping_stones = LoadSteppingStonesFromYaml(terrain) if isinstance(
+            terrain, str
+        ) else terrain
+
         self.convex_terrain_segments = \
             SquareSteppingStoneList.GetFootholdsWithMargin(
                 stepping_stones.stones, 0.0
@@ -75,7 +77,7 @@ class HeightMapServer:
         )
         self.contact_point = \
             0.5 * (
-                RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
+                    RightToeRear(self.plant)[0] + RightToeFront(self.plant)[0]
             ).ravel()
         self.contact_frame = {
             Stance.kLeft: LeftToeRear(self.plant)[1],
@@ -120,7 +122,7 @@ class HeightMapServer:
         # Heightmap has X axis along the 0 dimension while meshgrid has
         # X axis on the 1 dimensions
         Z = self.get_heightmap(robot_state, stance, center).transpose()
-        
+
         return np.stack([X, Y, Z])
 
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance,

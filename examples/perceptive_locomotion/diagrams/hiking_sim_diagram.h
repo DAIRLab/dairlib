@@ -1,5 +1,5 @@
 #pragma once
-
+#include "multibody/stepping_stone_utils.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -10,7 +10,8 @@ namespace dairlib::perceptive_locomotion {
 class HikingSimDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(HikingSimDiagram)
-  HikingSimDiagram(const std::string& terrain_yaml,
+  HikingSimDiagram(const std::variant<
+      std::string, multibody::SquareSteppingStoneList>& terrain,
                    const std::string& camera_pose_yaml);
 
   const drake::systems::InputPort<double>& get_input_port_actuation() const {

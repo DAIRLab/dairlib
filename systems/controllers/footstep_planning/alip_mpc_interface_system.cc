@@ -69,7 +69,7 @@ SwingFootInterfaceSystem::SwingFootInterfaceSystem(
           params.desired_final_vertical_foot_velocity),
       relative_to_com_(params.relative_to_com) {
 
-  this->set_name("swing_ft_traj");
+  this->set_name("swing_ft_traj_interface_system");
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
   DRAKE_DEMAND(params.left_right_foot.size() == 2);
 
@@ -422,7 +422,7 @@ AlipMPCInterfaceSystem::AlipMPCInterfaceSystem(
     drake::systems::Context<double> *context,
     ComTrajInterfaceParams com_params,
     SwingFootInterfaceSystemParams swing_params) {
-
+  set_name("alip_mpc_interface_system");
   drake::systems::DiagramBuilder<double> builder;
   auto swing_interface =
       builder.AddSystem<SwingFootInterfaceSystem>(plant, context, swing_params);

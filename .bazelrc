@@ -29,12 +29,12 @@
 
 # enable platform specific build configurations
 common --enable_platform_specific_config
-build:linux --force_pic
 
 # Default to an optimized build.
 build -c opt
 
 # Default build options.
+build:linux --force_pic
 build --strip=never
 
 # Default test options.
@@ -58,8 +58,7 @@ build --action_env=LD_LIBRARY_PATH=
 # customizations somehow.
 
 # build with snopt
-build:linux --define=WITH_SNOPT=ON
-build:macos --define=WITH_SNOPT=OFF
+build --define=WITH_SNOPT=ON
 build --define=WITH_MOSEK=OFF
 build --define=WITH_GUROBI=OFF
 

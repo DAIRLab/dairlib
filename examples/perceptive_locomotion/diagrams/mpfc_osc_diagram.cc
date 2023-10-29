@@ -278,8 +278,12 @@ MpfcOscDiagram::MpfcOscDiagram(
   int n_u = plant.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingCostWeights(
-      gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  if (gains.w_input_reg > 0) {
+    osc->SetInputSmoothingCostWeights(
+        gains.w_input_reg * MatrixXd::Identity(n_u, n_u)
+    );
+  }
+
 
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
@@ -498,6 +502,26 @@ MpfcOscDiagram::MpfcOscDiagram(
   // Create the diagram
   builder.BuildInto(this);
   this->set_name("osc_controller_for_alip_mpfc");
+}
+
+void MpfcOscDiagram::SetSwingFootPositionAtLiftoff(
+    drake::systems::Context<double>* context,
+    const Vector3d& init_swing_pos) const {
+  const auto& swing_traj_sys = dynamic_cast<const drake::systems::Diagram<double>&>(
+      GetSubsystemByName(
+      "alip_mpc_interface_system"
+  )).GetSubsystemByName(
+      "swing_ft_traj_interface_system"
+  );
+  const auto swing_traj_sys_casted =
+      dynamic_cast<const systems::controllers::SwingFootInterfaceSystem*>(
+          &swing_traj_sys
+      );
+  auto& swing_traj_ctx = swing_traj_sys_casted->GetMyMutableContextFromRoot(context);
+  swing_traj_ctx.SetDiscreteState(
+      swing_traj_sys_casted->liftoff_swing_foot_pos_state_idx(),
+      init_swing_pos
+  );
 }
 
 }  // namespace dairlib

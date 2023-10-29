@@ -21,3 +21,51 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "grid_map_visualizer",
+    srcs = ["grid_map_visualizer.cc"],
+    hdrs = ["grid_map_visualizer.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
+    ],
+)
+
+cc_library(
+    name = "elevation_mapping_system",
+    srcs = ["elevation_mapping_system.cc"],
+    hdrs = ["elevation_mapping_system.h"],
+    deps = [
+        ":camera_utils",
+        ":perceptive_locomotion_preprocessor",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:elevation_map",
+        "@elevation_mapping//elevation_mapping:robot_motion_map_updater",
+        "@elevation_mapping//elevation_mapping:sensor_processors",
+    ],
+)
+
+cc_library(
+    name = "perceptive_locomotion_preprocessor",
+    srcs = ["perceptive_locomotion_preprocessor.cc"],
+    hdrs = ["perceptive_locomotion_preprocessor.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:sensor_processors",
+        "@pcl//:filters",
+    ],
+)
+
+cc_test(
+    name = "elevation_mapping_test",
+    srcs = ["elevation_mapping_test.cc"],
+    data = ["@drake//examples/atlas:models"],
+    deps = [
+        ":camera_utils",
+        ":elevation_mapping_system",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
+    ],
+)

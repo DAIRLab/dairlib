@@ -64,7 +64,7 @@ mu: 1.0
 
 w_accel: 0.0
 w_soft_constraint: 80000
-w_input_reg: 0.001
+w_input_reg: 0.0
 w_input: 0.0000
 w_lambda: 0.0000
 impact_threshold: 0.025

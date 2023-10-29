@@ -16,18 +16,9 @@
     4. desired velocity that is input to controller by user
     5. different hmap (constant input for swing foot stage)
 
-    Should at least collect the following things:
-    1. ALIP state
-    2. (constant) input
-    3. target end state for the LQR controller
-    4. the corresponding hmap
+    TODO (@Brian-Acosta)
+    1. Vary footstep location in heightmap
 
-    Many of the contents are grabbed from alip_lqr_cost_experiment,
-    just iterate through different initial
-    conditions and record them
-    TODO::
-    1. try to polish the functions, check and debug
-    2. cut down unnecessary data or operations
 """
 
 import os
@@ -209,6 +200,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         simulator.AdvanceTo(t + 1e-2)
         t = context.get_time()
 
+    datapoint['x_kp1'] = controller.get_output_port_by_name('x').Eval(controller_context)
     datapoint['V_k'] = controller.get_value_estimate(controller_context)
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
 

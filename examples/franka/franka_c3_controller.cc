@@ -3,7 +3,8 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/franka/franka_c3_controller_params.h"
+#include "examples/franka/parameters/franka_c3_controller_params.h"
+#include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "examples/franka/systems/franka_kinematics.h"
 #include "lcm/lcm_trajectory.h"
@@ -45,12 +46,13 @@ using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
-DEFINE_string(controller_settings, "",
+DEFINE_string(controller_settings,
+              "examples/franka/parameters/franka_c3_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
-DEFINE_string(osqp_settings,
-              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
-              "Filepath containing qp settings");
+DEFINE_string(lcm_channels,
+              "examples/franka/parameters/lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -61,12 +63,14 @@ int DoMain(int argc, char* argv[]) {
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
-          "examples/franka/franka_c3_controller_params.yaml");
+          FLAGS_controller_settings);
+  FrankaLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options =
       drake::yaml::LoadYamlFile<C3Options>(controller_params.c3_options_file);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(FLAGS_osqp_settings))
+          FindResourceOrThrow(controller_params.osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   DiagramBuilder<double> plant_builder;
@@ -76,19 +80,23 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.package_map().Add("franka_urdfs", "examples/franka/urdf");
-  parser_franka.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
-  drake::multibody::ModelInstanceIndex end_effector_index = parser_franka.AddModels(
-      FindResourceOrThrow(controller_params.end_effector_model))[0];
+  parser_franka.AddModels(
+      drake::FindResourceOrThrow(controller_params.franka_model));
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser_franka.AddModels(
+          FindResourceOrThrow(controller_params.end_effector_model))[0];
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
-  Vector3d tool_attachment_frame = StdVectorToVectorXd(controller_params.tool_attachment_frame);
+  Vector3d tool_attachment_frame =
+      StdVectorToVectorXd(controller_params.tool_attachment_frame);
 
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), tool_attachment_frame);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                   plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
+  plant_franka.WeldFrames(
+      plant_franka.GetFrameByName("panda_link7"),
+      plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
@@ -137,23 +145,15 @@ int DoMain(int argc, char* argv[]) {
     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
 
-  ///
-
   VectorXd x_des = VectorXd::Zero(plant_plate.num_positions() +
                                   plant_plate.num_velocities());
   x_des << c3_options.q_des, c3_options.v_des;
-  //  x_des
-  /// default position
-  //  x_des[2] = 0.45 - 0.02 + radio_out->channel[2] * 0.2;
-  //  x_des(10) += radio_out->channel[0] * 0.2;
-  //  x_des(11) += radio_out->channel[1] * 0.2;
-  //  x_des(12) += radio_out->channel[2] * 0.2;
 
   DiagramBuilder<double> builder;
 
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          "TRAY_OUTPUT", &lcm));
+          lcm_channel_params.tray_state_channel, &lcm));
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
   auto tray_state_receiver =
@@ -161,21 +161,22 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          controller_params.end_effector_name, "tray", controller_params.include_end_effector_orientation);
+          controller_params.end_effector_name, "tray",
+          controller_params.include_end_effector_orientation);
 
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          controller_params.c3_channel_actor, &lcm,
+          lcm_channel_params.c3_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          controller_params.c3_channel_object, &lcm,
+          lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          controller_params.radio_channel, &lcm));
+          lcm_channel_params.radio_channel, &lcm));
 
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
@@ -207,14 +208,13 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
-      controller_params.state_channel, true);
+      lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
       *controller, &loop.get_diagram_mutable_context());
-  //      loop.get_diagram_mutable_context()
   controller->get_input_port_target().FixValue(&controller_context, x_des);
-  LcmHandleSubscriptionsUntil(&lcm, [&]() {
-    return tray_state_sub->GetInternalMessageCount() > 1; });
+  LcmHandleSubscriptionsUntil(
+      &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

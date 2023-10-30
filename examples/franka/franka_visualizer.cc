@@ -8,7 +8,8 @@
 #include "common/find_resource.h"
 #include "common/eigen_utils.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/franka/franka_sim_params.h"
+#include "examples/franka/parameters/franka_sim_params.h"
+#include "examples/franka/parameters/franka_lcm_channels.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -27,11 +28,6 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-
-DEFINE_string(channel, "FRANKA_OUTPUT",
-              "LCM channel for receiving state. "
-              "Use FRANKA_OUTPUT to get state from simulator, and "
-              "use FRANKA_ROS_OUTPUT to get state from state estimator");
 
 namespace dairlib {
 
@@ -58,10 +54,16 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
+DEFINE_string(lcm_channels,
+              "examples/franka/parameters/lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
+
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/franka/franka_sim_params.yaml");
+      "examples/franka/parameters/franka_sim_params.yaml");
+  FrankaLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -115,12 +117,12 @@ int do_main(int argc, char* argv[]) {
   // Create state receiver.
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_channel, lcm));
+          lcm_channel_params.franka_state_channel, lcm));
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          "TRAY_OUTPUT", lcm));
+          lcm_channel_params.tray_state_channel, lcm));
   auto box_state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>("BOX_OUTPUT", lcm));
+      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(lcm_channel_params.box_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
@@ -146,10 +148,10 @@ int do_main(int argc, char* argv[]) {
 
   auto trajectory_sub_actor = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          "C3_TRAJECTORY_ACTOR", lcm));
+          lcm_channel_params.c3_actor_channel, lcm));
   auto trajectory_sub_object = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          "C3_TRAJECTORY_TRAY", lcm));
+          lcm_channel_params.c3_object_channel, lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 

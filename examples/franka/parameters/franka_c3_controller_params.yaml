@@ -1,10 +1,7 @@
 
-c3_options_file: examples/franka/franka_c3_options_translation.yaml
+c3_options_file: examples/franka/parameters/franka_c3_options_translation.yaml
 #c3_options_file: examples/franka/franka_c3_options_floating.yaml
-c3_channel_actor: C3_TRAJECTORY_ACTOR
-c3_channel_object: C3_TRAJECTORY_TRAY
-state_channel: FRANKA_OUTPUT
-radio_channel: CASSIE_VIRTUAL_RADIO
+osqp_settings_file: examples/Cassie/osc_run/osc_running_qp_settings.yaml
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf

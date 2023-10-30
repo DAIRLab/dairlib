@@ -5,12 +5,6 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct FrankaControllerParams : OSCGains {
-  std::string state_channel;
-  std::string controller_channel;
-  std::string radio_channel;
-  std::string osc_debug_channel;
-  std::string c3_channel;
-
   std::string franka_model;
   std::string end_effector_model;
   std::string end_effector_name;
@@ -49,11 +43,6 @@ struct FrankaControllerParams : OSCGains {
   void Serialize(Archive* a) {
     OSCGains::Serialize(a);
 
-    a->Visit(DRAKE_NVP(state_channel));
-    a->Visit(DRAKE_NVP(controller_channel));
-    a->Visit(DRAKE_NVP(radio_channel));
-    a->Visit(DRAKE_NVP(osc_debug_channel));
-    a->Visit(DRAKE_NVP(c3_channel));
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(end_effector_name));

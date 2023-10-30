@@ -57,28 +57,34 @@ int DoMain(int argc, char* argv[]){
   drake::lcm::DrakeLcm drake_lcm;
   DiagramBuilder<double> builder;
 
+  MultibodyPlant<double> plant(0.0);
+
+  Parser parser(&plant, &scene_graph);
+  drake::multibody::ModelInstanceIndex franka_index =
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+
   /* -------------------------------------------------------------------------------------------*/
   /// convert franka joint states to lcm
-  auto franka_subscriber =
+  auto franka_joint_state_ros_subscriber =
       builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
           FLAGS_joint_channel, &node_handle));
-  auto to_robot_output = builder.AddSystem(ROSToRobotOutputLCM::Make(14, 13, 7));
+  auto ros_to_lcm_robot_state = builder.AddSystem(RosToLcmRobotState::Make(7, 7, 7));
 
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto robot_output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          "FRANKA_ROS_OUTPUT", &drake_lcm,
-          {drake::systems::TriggerType::kPeriodic}, 0.0005));
+          "FRANKA_STATE", &drake_lcm,
+          {drake::systems::TriggerType::kForced}));
   /// connections
-  builder.Connect(franka_subscriber->get_output_port(), to_robot_output->get_input_port());
-  builder.Connect(to_robot_output->get_output_port(), robot_output_pub->get_input_port());
+  builder.Connect(franka_joint_state_ros_subscriber->get_output_port(), ros_to_lcm_robot_state->get_input_port());
+  builder.Connect(ros_to_lcm_robot_state->get_output_port(), robot_output_pub->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
   /// convert ball position estimate to lcm
-  auto ball_subscriber =
+  auto tray_object_state_ros_subscriber =
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
           "/c3/position_estimate", &node_handle));
-  auto to_ball_position = builder.AddSystem(ROSToBallPositionLCM::Make());
+  auto ros_to_lcm_object_state = builder.AddSystem(RosToLcmObjectState::Make());
 
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto ball_position_pub = builder.AddSystem(
@@ -86,8 +92,8 @@ int DoMain(int argc, char* argv[]){
           "VISION_OUTPUT", &drake_lcm,
           {drake::systems::TriggerType::kPeriodic}, 0.005));
   /// connections
-  builder.Connect(ball_subscriber->get_output_port(), to_ball_position->get_input_port());
-  builder.Connect(to_ball_position->get_output_port(), ball_position_pub->get_input_port());
+  builder.Connect(tray_object_state_ros_subscriber->get_output_port(), ros_to_lcm_object_state->get_input_port());
+  builder.Connect(ros_to_lcm_object_state->get_output_port(), ball_position_pub->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
   /// convert individual camera measurements to lcm for logging

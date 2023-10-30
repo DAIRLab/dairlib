@@ -1,7 +1,3 @@
-state_channel: FRANKA_OUTPUT
-controller_channel: FRANKA_INPUT
-tray_state_channel: TRAY_OUTPUT
-box_state_channel: BOX_OUTPUT
 #franka_model: examples/franka/urdf/franka_no_collision.urdf
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf

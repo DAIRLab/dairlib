@@ -4,7 +4,8 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/franka/franka_osc_controller_params.h"
+#include "examples/franka/parameters/franka_osc_controller_params.h"
+#include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/end_effector_orientation.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
@@ -51,9 +52,12 @@ using systems::controllers::TransTaskSpaceTrackingData;
 DEFINE_string(osqp_settings,
               "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
               "Filepath containing qp settings");
-DEFINE_string(controller_settings, "",
+DEFINE_string(controller_parameters, "examples/franka/parameters/franka_osc_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
+DEFINE_string(lcm_channels,
+              "examples/franka/parameters/lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -63,9 +67,11 @@ int DoMain(int argc, char* argv[]) {
   yaml_options.allow_yaml_with_no_cpp = true;
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
-          "examples/franka/franka_osc_controller_params.yaml");
+          FLAGS_controller_parameters);
+  FrankaLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow("examples/franka/franka_osc_controller_params.yaml"),
+      FindResourceOrThrow(FLAGS_controller_parameters),
       {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
@@ -106,7 +112,7 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          controller_params.c3_channel, &lcm));
+          lcm_channel_params.c3_actor_channel, &lcm));
   auto end_effector_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>("end_effector_traj");
   auto end_effector_orientation_receiver =
@@ -114,7 +120,7 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_orientation_target");
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          controller_params.controller_channel, &lcm,
+          lcm_channel_params.osc_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
@@ -133,12 +139,12 @@ int DoMain(int argc, char* argv[]) {
       controller_params.track_end_effector_orientation);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          controller_params.radio_channel, &lcm));
+          lcm_channel_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          controller_params.osc_debug_channel, &lcm,
+          lcm_channel_params.osc_debug_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
   osc->SetAccelerationCostWeights(gains.W_acceleration);
@@ -236,7 +242,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), state_receiver,
-      controller_params.state_channel, true);
+      lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
   return 0;

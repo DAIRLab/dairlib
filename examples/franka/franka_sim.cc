@@ -1,6 +1,7 @@
 #include <math.h>
 
 #include <vector>
+#include <gflags/gflags.h>
 
 #include <drake/common/find_resource.h>
 #include <drake/geometry/drake_visualizer.h>
@@ -11,11 +12,12 @@
 #include <drake/systems/primitives/vector_log_sink.h>
 #include <drake/visualization/visualization_config_functions.h>
 
-#include "common/find_resource.h"
 #include "common/eigen_utils.h"
+#include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/franka/franka_sim_params.h"
+#include "examples/franka/parameters/franka_lcm_channels.h"
+#include "examples/franka/parameters/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -52,10 +54,16 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+DEFINE_string(lcm_channels,
+              "examples/franka/parameters/lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
+
 int DoMain(int argc, char* argv[]) {
   // load parameters
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
-      "examples/franka/franka_sim_params.yaml");
+      "examples/franka/parameters/franka_sim_params.yaml");
+  FrankaLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
   // load urdf and sphere
   DiagramBuilder<double> builder;
@@ -68,8 +76,8 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
   drake::multibody::ModelInstanceIndex table_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.table_model))[0];
-  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-      FindResourceOrThrow(sim_params.end_effector_model))[0];
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   plant.RenameModelInstance(table_index, "table0");
   drake::multibody::ModelInstanceIndex second_table_index = parser.AddModels(
       drake::FindResourceOrThrow(sim_params.table_w_supports_model))[0];
@@ -100,8 +108,8 @@ int DoMain(int argc, char* argv[]) {
                    plant.GetFrameByName("link", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
-  plant.WeldFrames( plant.GetFrameByName("panda_link7"), plant.GetFrameByName("plate", end_effector_index),
-                   T_EE_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
+                   plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   //  const drake::geometry::GeometrySet& paddle_geom_set =
   //      plant.CollectRegisteredGeometries({
@@ -140,19 +148,21 @@ int DoMain(int argc, char* argv[]) {
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
-      &builder, plant, lcm, sim_params.controller_channel,
-      sim_params.state_channel, sim_params.publish_rate, franka_index,
-      sim_params.publish_efforts, sim_params.actuator_delay);
+      &builder, plant, lcm, lcm_channel_params.osc_channel,
+      lcm_channel_params.franka_state_channel, sim_params.publish_rate,
+      franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto tray_state_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, tray_index);
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          sim_params.tray_state_channel, lcm, 1.0 / sim_params.publish_rate));
+          lcm_channel_params.tray_state_channel, lcm,
+          1.0 / sim_params.publish_rate));
   auto box_state_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, box_index);
   auto box_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          sim_params.box_state_channel, lcm, 1.0 / sim_params.publish_rate));
+          lcm_channel_params.box_state_channel, lcm,
+          1.0 / sim_params.publish_rate));
 
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());

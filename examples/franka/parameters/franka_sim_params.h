@@ -5,11 +5,6 @@
 using Eigen::MatrixXd;
 
 struct FrankaSimParams {
-
-  std::string state_channel;
-  std::string controller_channel;
-  std::string tray_state_channel;
-  std::string box_state_channel;
   std::string franka_model;
   std::string end_effector_model;
   std::string table_model;
@@ -32,10 +27,6 @@ struct FrankaSimParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(state_channel));
-    a->Visit(DRAKE_NVP(controller_channel));
-    a->Visit(DRAKE_NVP(tray_state_channel));
-    a->Visit(DRAKE_NVP(box_state_channel));
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(table_model));

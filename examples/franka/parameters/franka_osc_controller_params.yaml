@@ -1,9 +1,4 @@
 controller_frequency: 1000
-state_channel: FRANKA_OUTPUT
-controller_channel: FRANKA_INPUT
-radio_channel: CASSIE_VIRTUAL_RADIO
-osc_debug_channel: OSC_DEBUG_FRANKA
-c3_channel: C3_TRAJECTORY_ACTOR
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf

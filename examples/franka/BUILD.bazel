@@ -42,12 +42,14 @@ cc_binary(
     ],
     deps = [
         ":franka_sim_params",
+        ":franka_lcm_channels",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
         "//common",
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -60,6 +62,7 @@ cc_binary(
     ],
     deps = [
         ":franka_osc_controller_params",
+        ":franka_lcm_channels",
         "//common",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
@@ -83,6 +86,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
+        ":franka_lcm_channels",
         "//common",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
@@ -106,6 +110,7 @@ cc_binary(
     ],
     deps = [
         ":franka_sim_params",
+        ":franka_lcm_channels",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -118,9 +123,38 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "franka_ros_lcm_bridge",
+    srcs = ["franka_ros_lcm_bridge.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_sim_params",
+        ":franka_lcm_channels",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/ros:franka_ros_lcm_conversions",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    tags = ["ros"],
+)
+
+cc_library(
+    name = "franka_lcm_channels",
+    hdrs = ["parameters/franka_lcm_channels.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_library(
     name = "franka_sim_params",
-    hdrs = ["franka_sim_params.h"],
+    hdrs = ["parameters/franka_sim_params.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],
@@ -128,17 +162,15 @@ cc_library(
 
 cc_library(
     name = "franka_osc_controller_params",
-    hdrs = ["franka_osc_controller_params.h"],
+    hdrs = ["parameters/franka_osc_controller_params.h"],
     deps = [
         "@drake//:drake_shared_library",
     ],
 )
 
-
-
 cc_library(
     name = "franka_c3_controller_params",
-    hdrs = ["franka_c3_controller_params.h"],
+    hdrs = ["parameters/franka_c3_controller_params.h"],
     deps = [
         "//solvers:c3",
         "@drake//:drake_shared_library",

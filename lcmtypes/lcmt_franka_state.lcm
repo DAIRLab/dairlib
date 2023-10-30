@@ -1,0 +1,55 @@
+package dairlib;
+
+// mimics structure of FrankaState ROS message type
+// https://frankaemika.github.io/libfranka/structfranka_1_1RobotState.html
+struct lcmt_franka_state
+{
+  double O_T_EE[16];
+  double O_T_EE_d[16];
+  double F_T_EE[16];
+  double F_T_NE[16];
+  double NE_T_EE[16];
+  double EE_T_K[16];
+  double m_ee;
+  double I_ee[9];
+  double F_x_Cee[3];
+  double m_load;
+  double I_load[9];
+  double F_x_Cload[3];
+  double m_total;
+  double I_total[9];
+  double F_x_Ctotal[3];
+  double elbow[2];
+  double elbow_d[2];
+  double elbow_c[2];
+  double delbow_c[2];
+  double ddelbow_c[2];
+  double tau_J[7];
+  double tau_J_d[7];
+  double dtau_J[7];
+  double q[7];
+  double q_d[7];
+  double dq[7];
+  double dq_d[7];
+  double ddq_d[7];
+  double joint_contact[7];
+  double cartesian_contact[6];
+  double joint_collision[7];
+  double cartesian_collision[6];
+  double tau_ext_hat_filtered[7];
+  double O_F_ext_hat_K[6];
+  double K_F_ext_hat_K[6];
+  double O_dP_EE_d[16];
+  double O_T_EE_c[16];
+  double O_dP_EE_c[6];
+  double O_ddP_EE_c[6];
+  double theta[7];
+  double dtheta[7];
+  string current_errors;
+  string last_motion_errors;
+  double control_command_success_rate;
+  int16_t robot_mode;
+  double franka_time;
+  double utime;
+  boolean valid;
+}

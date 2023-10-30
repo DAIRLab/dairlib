@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_object_state
+{
+  int64_t utime;
+  string object_name;
+
+  int32_t num_positions;
+  int32_t num_velocities;
+
+  double position [num_positions];
+  double velocity [num_velocities];
+}

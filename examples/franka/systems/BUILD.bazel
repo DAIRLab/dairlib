@@ -51,6 +51,20 @@ cc_library(
 )
 
 cc_library(
+    name = "franka_ros_lcm_conversions",
+    srcs = ["franka_ros_lcm_conversions.cc"],
+    hdrs = ["franka_ros_lcm_conversions.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//common",
+        "@ros",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "franka_sim_controls",
     srcs = ["franka_sim_controls.cc"],
     hdrs = ["franka_sim_controls.h"],

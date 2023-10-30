@@ -53,6 +53,9 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_map() const {
     return get_output_port(output_port_elevation_map_);
   }
+  const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
+    return get_output_port(output_port_grid_map_);
+  }
 
   void AddSensorPreProcessor(
       const std::string& sensor_name,
@@ -63,6 +66,9 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   drake::systems::EventStatus ElevationMapUpdateEvent(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
+
+  void CopyGridMap(const drake::systems::Context<double>& context,
+                   grid_map::GridMap* grid_map) const;
 
   // multibody
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -77,6 +83,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_pose_covariance_;
   drake::systems::OutputPortIndex output_port_elevation_map_;
+  drake::systems::OutputPortIndex output_port_grid_map_;
 
   // states
   drake::systems::AbstractStateIndex elevation_map_state_index_;

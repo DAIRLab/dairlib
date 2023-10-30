@@ -21,6 +21,7 @@ using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using drake::multibody::MultibodyPlant;
 
+using grid_map::GridMap;
 using elevation_mapping::ElevationMap;
 using elevation_mapping::PointCloudType;
 using elevation_mapping::RobotMotionMapUpdater;
@@ -75,6 +76,10 @@ ElevationMappingSystem::ElevationMappingSystem(
 
   output_port_elevation_map_ = DeclareStateOutputPort(
       "elevation_map", elevation_map_state_index_
+  ).get_index();
+
+  output_port_grid_map_ = DeclareAbstractOutputPort(
+      "grid_map", &ElevationMappingSystem::CopyGridMap
   ).get_index();
 
   // create update event
@@ -209,6 +214,12 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   return drake::systems::EventStatus::Succeeded();
 }
 
+void ElevationMappingSystem::CopyGridMap(
+    const Context<double>& context, GridMap* grid_map) const {
+  *grid_map = context.get_abstract_state<ElevationMap>(
+      elevation_map_state_index_
+  ).getFusedGridMap();
+}
 
 }
 }

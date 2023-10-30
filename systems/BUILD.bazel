@@ -21,7 +21,9 @@ cc_library(
     srcs = ["plant_visualizer.cc"],
     hdrs = ["plant_visualizer.h"],
     deps = [
+        "//common:find_resource",
         "//systems/framework:vector",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )

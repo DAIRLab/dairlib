@@ -78,7 +78,7 @@ pydrake_repository(name = "pydrake_pegged")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "e1de69c2f51e972b9eab7ae78134ed3f6287a9982a37aa6fe2377ca2616b50d1"
+ELEVATION_MAPPING_CHECKSUM = "eff327ee91bccf0d461b71f8a4163c7953d7304f665832db4bd877dbc87401e2"
 
 http_archive(
     name = "elevation_mapping",

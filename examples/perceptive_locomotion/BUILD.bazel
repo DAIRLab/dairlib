@@ -188,6 +188,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody:visualization_utils",
+        "//systems:plant_visualizer",
         "//systems:robot_lcm_systems",
         "//systems/primitives",
         "@drake//:drake_shared_library",

@@ -15,10 +15,7 @@
     3. different timing during the swing foot stage (phase)
     4. desired velocity that is input to controller by user
     5. different hmap (constant input for swing foot stage)
-
-    TODO (@Brian-Acosta)
-    1. Vary footstep location in heightmap
-
+    
 """
 
 import os
@@ -161,9 +158,16 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     )[-2:]
     heightmap_center = np.zeros((3,))
     heightmap_center[:2] = ud
-    datapoint['hmap'] = sim_env.get_heightmap(sim_context, center=heightmap_center)
-    heightmap_center[-1] = sim_env.query_heightmap(sim_context, ud)
-    datapoint['footstep_command'] = heightmap_center
+    hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
+    datapoint['hmap'] = hmap[-1, :, :]
+    datapoint['U'] = hmap[:-1, :, :]
+
+    i = np.random.choice([i for i in range(hmap.shape[1])])
+    j = np.random.choice([j for j in range(hmap.shape[2])])
+
+    datapoint['i'] = i
+    datapoint['j'] = j
+    datapoint['footstep_command'] = hmap[:, i, j]
 
     sim_env.get_input_port_by_name("footstep_command").FixValue(
         context=sim_context,

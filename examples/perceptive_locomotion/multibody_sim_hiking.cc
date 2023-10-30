@@ -231,8 +231,8 @@ int do_main(int argc, char* argv[]) {
 
   if (FLAGS_publish_points) {
     const auto& [color_camera, depth_camera] =
-    camera::MakeDairD455CameraModel(renderer_name,
-                                    camera::D455ImageSize::k424x240);
+    perception::MakeDairD455CameraModel(renderer_name,
+                                    perception::D455ImageSize::k424x240);
     const auto parent_body_id = plant.GetBodyFrameIdIfExists(
             plant.GetFrameByName("pelvis").body().index());
 

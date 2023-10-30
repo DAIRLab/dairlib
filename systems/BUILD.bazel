@@ -17,6 +17,16 @@ cc_library(
 )
 
 cc_library(
+    name = "plant_visualizer",
+    srcs = ["plant_visualizer.cc"],
+    hdrs = ["plant_visualizer.h"],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "vector_scope",
     srcs = ["vector_scope.cc"],
     hdrs = ["vector_scope.h"],

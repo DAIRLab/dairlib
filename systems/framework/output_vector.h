@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 namespace systems {
@@ -43,6 +44,14 @@ public:
     this->SetVelocities(velocities);
     this->SetEfforts(efforts);
   }
+
+  /// Constructs an OutputVector for a given plant
+  explicit OutputVector(const drake::multibody::MultibodyPlant<T>& plant)
+      : OutputVector(
+          plant.num_positions(),
+          plant.num_velocities(),
+          plant.num_actuators()
+      ){}
 
   void SetPositions(VectorX<T> positions) {
     this->get_mutable_data().segment(position_start_,

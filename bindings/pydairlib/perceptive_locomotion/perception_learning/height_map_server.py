@@ -30,7 +30,7 @@ from pydairlib.perceptive_locomotion.controllers import Stance
 class HeightMapOptions:
     nx: int = 20
     ny: int = 20
-    resolution: float = 0.025
+    resolution: float = 0.02
 
 
 class HeightMapServer:

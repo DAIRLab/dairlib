@@ -83,7 +83,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(),
                   foothold_vis->get_input_port_state());
 
-  if (not FLAGS_channel_terrain.empty()) {
+  if (not FLAGS_channel_terrain.empty()) {;
     auto foothold_subscriber = builder.AddSystem(
         LcmSubscriberSystem::Make<dairlib::lcmt_foothold_set>(
             FLAGS_channel_terrain, lcm));

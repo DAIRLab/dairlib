@@ -7,6 +7,9 @@ cc_binary(
     srcs = ["elevation_mapping.cc"],
     deps = [
         "//examples/Cassie:cassie_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:grid_map_visualizer",
         "@gflags",

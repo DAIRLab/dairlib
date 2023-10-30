@@ -13,21 +13,21 @@ cc_library(
     ],
 )
 
+
 cc_library(
-    name = "ros_translator",
-    hdrs = [
-        "robot_lcm_ros_translator.h",
-    ],
-    srcs = [
-        "robot_lcm_ros_translator.cc",
-    ],
+    name = "franka_ros_lcm_conversions",
+    srcs = ["franka_ros_lcm_conversions.cc"],
+    hdrs = ["franka_ros_lcm_conversions.h"],
     tags = ["ros"],
     deps = [
-        "@drake//:drake_shared_library",
+        "//lcmtypes:lcmt_robot",
+        "//common",
         "@ros",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_binary(
     name = "test_ros_publisher_system",

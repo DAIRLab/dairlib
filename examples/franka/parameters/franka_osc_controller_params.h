@@ -13,11 +13,11 @@ struct FrankaControllerParams : OSCGains {
   double end_effector_acceleration;
   bool track_end_effector_orientation;
 
+  std::vector<double> neutral_position;
   double x_scale;
   double y_scale;
   double z_scale;
 
-  std::vector<double> neutral_position;
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
   std::vector<double> EndEffectorKd;
@@ -28,7 +28,6 @@ struct FrankaControllerParams : OSCGains {
   std::vector<double> EndEffectorRotKp;
   std::vector<double> EndEffectorRotKd;
 
-//  Eigen::Vector3d neutral_position;
   Eigen::MatrixXd W_end_effector;
   Eigen::MatrixXd K_p_end_effector;
   Eigen::MatrixXd K_d_end_effector;

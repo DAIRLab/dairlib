@@ -124,21 +124,21 @@ int DoMain(int argc, char* argv[]) {
   //  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
   //      {"paddle", paddle_geom_set}, {"table_support", table_support_set});
 
-  VectorXd rotor_inertias(plant.num_actuators());
-  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
-  rotor_inertias *= 1e-6;
-  VectorXd gear_ratios(plant.num_actuators());
-  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
-  std::vector<std::string> motor_joint_names = {
-      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
-      "panda_motor5", "panda_motor6", "panda_motor7"};
-  for (int i = 0; i < rotor_inertias.size(); ++i) {
-    auto& joint_actuator = plant.get_mutable_joint_actuator(
-        drake::multibody::JointActuatorIndex(i));
-    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
-    joint_actuator.set_default_gear_ratio(gear_ratios(i));
-    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
-  }
+//  VectorXd rotor_inertias(plant.num_actuators());
+//  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
+//  rotor_inertias *= 1e-6;
+//  VectorXd gear_ratios(plant.num_actuators());
+//  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
+//  std::vector<std::string> motor_joint_names = {
+//      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
+//      "panda_motor5", "panda_motor6", "panda_motor7"};
+//  for (int i = 0; i < rotor_inertias.size(); ++i) {
+//    auto& joint_actuator = plant.get_mutable_joint_actuator(
+//        drake::multibody::JointActuatorIndex(i));
+//    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+//    joint_actuator.set_default_gear_ratio(gear_ratios(i));
+//    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+//  }
 
   plant.Finalize();
 

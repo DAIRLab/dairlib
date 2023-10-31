@@ -23,18 +23,18 @@ def get_device():
 
     return torch.device('cpu')
 
-def data_loader():
+def data_reader():
     """
         :return: Returns the data from tmp folder
     """
     # TODO: The data collection will return a list of dictionaries. Each dictionary should contain the following:
     # 'stance': 1,
     # 'phase': 0.1805009999999996,
-    # 'initial_swing_foot_pos': numpy.ndarray,  # An array with shape (3,)
-    # 'q': numpy.ndarray,  # An array with shape (24,)
-    # 'v': numpy.ndarray,  # An array with shape (24,)
-    # 'desired_velocity': numpy.ndarray,  # An array with shape (2,)
-    # 'hmap': numpy.ndarray,  # An array with shape (3, M, N) where M and N can vary
+    # 'initial_swing_foot_pos': numpy.ndarray,                                                  # An array with shape (3,)
+    # 'q': numpy.ndarray,                                                                       # An array with shape (24,)
+    # 'v': numpy.ndarray,                                                                       # An array with shape (24,)
+    # 'desired_velocity': numpy.ndarray,                                                        # An array with shape (2,)
+    # 'hmap': numpy.ndarray,                                                                    # An array with shape (3, M, N) where M and N can vary
     # 'footstep_command': numpy.ndarray,  # An array with shape (3,)
     # 'x_k': numpy.ndarray,  # An array with shape (4,)
     # 'V_kp1': float,
@@ -54,32 +54,33 @@ def data_loader():
 def data_process(data):
     """
         :param data: The data from data_loader()
-        :return: Returns the tiled data where each data point is tiled to the size of the heightmap
+        :return: Returns the processed data in the form of a tensor of shape (number of data points, 7, 20, 20) and the target tensor of shape (number of data points, 1, 20, 20)
     """
     
     # data is a list of dictionaries by the name arr_0.
     # Getting list
     data_list = data['arr_0']
     
-    # Create a tensor of length = number of datapoints in data_list
+    # Create tensors of length = number of datapoints in data_list for input data and target data
     concatenated_data = []
+    ground_truth_residual = []
 
     # Iterating over each datapoint in list while displaying a progress bar
     for data_point in tqdm(data_list):
-        hmap = data_point['hmap']                                                # Getting the heightmap of size (20,20) for the data point.
+        hmap = data_point['hmap']                                                               # Getting the heightmap of size (20,20) for the data point.
         # Get hmap shape and reshape to (1,hmap.shape[0],hmap.shape[1])
         hmap = hmap.reshape(1, hmap.shape[0],hmap.shape[1])
         # print("shape of hmap is: ", hmap.shape)
 
-        U = data_point['U']                                                      # Getting all possible control inputs for the data point.
+        U = data_point['U']                                                                     # Getting all possible control inputs for the data point.
         # print("shape of U is: ", U.shape)
 
-        initial_state = data_point['x_k']                                        # Getting the initial state of the data point.
+        initial_state = data_point['x_k']                                                       # Getting the initial state of the data point.
         # print("shape of initial_state is: ", initial_state.shape)
 
-        # Repeat the initial state for all points in hmap
-        initial_state = np.broadcast_to(initial_state[:, np.newaxis, np.newaxis], (4, 20, 20))
-        # print("shape of initial_state after tiling is: ", initial_state.shape)   # Expected shape is (4, 20, 20)
+        # Repeat the initial state for all points in hmap to get an array of shape (4,20,20)
+        initial_state = np.broadcast_to(initial_state[:, np.newaxis, np.newaxis], (initial_state.shape[0], hmap.shape[1], hmap.shape[2]))
+        # print("shape of initial_state after tiling is: ", initial_state.shape)                
 
         # Converting the data to tensors
         hmap_tensor = torch.tensor(hmap, dtype=torch.float32)
@@ -87,7 +88,7 @@ def data_process(data):
         U_tensor = torch.tensor(U, dtype=torch.float32)
 
         # concatenate the tiled data for a single data point
-        combined_input = torch.cat([hmap_tensor, initial_state_tensor, U_tensor], dim=0)   # Confirm axis. Final shape should be 7,20,20
+        combined_input = torch.cat([hmap_tensor, initial_state_tensor, U_tensor], dim=0)        # Confirm axis. Final shape should be 7,20,20
         
         # Append the combined input to the list
         concatenated_data.append(combined_input)
@@ -95,7 +96,17 @@ def data_process(data):
         # Stack the list of concatenated tensors into a single tensor
         input_data_tensor = torch.stack(concatenated_data, dim=0)
 
-    return input_data_tensor
+        # ground truth residual data
+        residual = data_point['residual']
+        target = np.zeros((1, hmap.shape[1], hmap.shape[2]), dtype=float)
+        target[:, :, :] = residual
+        target_tensor = torch.tensor(target, dtype=torch.float32)
+        # Append the target tensor to the list
+        ground_truth_residual.append(target_tensor)
+        # Stack the list of target tensors into a single tensor
+        ground_truth_residual_tensor = torch.stack(ground_truth_residual, dim=0)
+
+    return input_data_tensor, ground_truth_residual_tensor
 
 
 def main() -> None:
@@ -110,9 +121,9 @@ def main() -> None:
     x = torch.ones(1, device=device)
     print(x)
     
-    data = data_loader()
-    input_data_tensor = data_process(data)
-    # print("input shape ", input_data_tensor.shape)   # Expected shape is (number of data points, 7, 20, 20)
+    data = data_reader()
+    input_data_tensor, ground_truth_residual = data_process(data)
+    print("input shape ", input_data_tensor.shape, "target shape ", ground_truth_residual.shape)   # Expected shape is (number of data points, 7, 20, 20)
 
 
 if __name__ == '__main__':

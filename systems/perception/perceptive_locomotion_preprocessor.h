@@ -1,6 +1,6 @@
 #pragma once
 
-#include "elevation_mapping/sensor_processors/StereoSensorProcessor.hpp"
+#include "elevation_mapping/sensor_processors/StructuredLightSensorProcessor.hpp"
 
 #include "drake/math/rigid_transform.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -26,7 +26,7 @@ struct perceptive_locomotion_preprocessor_params {
 
 /// Adapts the StereoSensorProcessor from elevation_mapping to include crop boxes
 /// to mask out parts of the robot.
-class PerceptiveLocomotionPreprocessor : public elevation_mapping::StereoSensorProcessor {
+class PerceptiveLocomotionPreprocessor : public elevation_mapping::StructuredLightSensorProcessor {
  public:
   PerceptiveLocomotionPreprocessor(
       const drake::multibody::MultibodyPlant<double>& plant,

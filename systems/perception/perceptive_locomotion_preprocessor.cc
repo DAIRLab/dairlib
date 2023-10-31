@@ -9,13 +9,13 @@ using drake::systems::Context;
 
 using elevation_mapping::PointCloudType;
 using elevation_mapping::SensorProcessorBase;
-using elevation_mapping::StereoSensorProcessor;
+using elevation_mapping::StructuredLightSensorProcessor;
 
 PerceptiveLocomotionPreprocessor::PerceptiveLocomotionPreprocessor(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const perceptive_locomotion_preprocessor_params &params,
     const SensorProcessorBase::GeneralParameters& general_params) :
-    StereoSensorProcessor(general_params), plant_(plant), context_(context) {
+    StructuredLightSensorProcessor(general_params), plant_(plant), context_(context) {
 
   // Read the sensor params into the super class
   this->readParameters(params.stereo_sensor_params_yaml_);

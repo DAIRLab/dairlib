@@ -4,9 +4,14 @@ import torch
 import torchvision
 from tqdm import tqdm
 
-# from pydairlib.perceptive_locomotion.perception_learning. \
-#     cassie_footstep_controller_environment import (perception_learning_base_folder)
+if not os.getcwd().split('/')[-1] == 'dairlib':
+    raise RuntimeError('To align with bazel-bin, run learning scripts from '
+                       'dairlib (e.g. python bindings/pydairlib/'
+                       'perceptive_locomotion/perception_learning/inference/'
+                       '<FILE>.py')
 
+perception_learning_base_folder = \
+    "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
 
 def get_device():
@@ -23,33 +28,35 @@ def get_device():
 
     return torch.device('cpu')
 
+
 def data_reader():
     """
         :return: Returns the data from tmp folder
     """
-    # TODO: The data collection will return a list of dictionaries. Each dictionary should contain the following:
-    # 'stance': 1,
-    # 'phase': 0.1805009999999996,
-    # 'initial_swing_foot_pos': numpy.ndarray,                                                  # An array with shape (3,)
-    # 'q': numpy.ndarray,                                                                       # An array with shape (24,)
-    # 'v': numpy.ndarray,                                                                       # An array with shape (24,)
-    # 'desired_velocity': numpy.ndarray,                                                        # An array with shape (2,)
-    # 'hmap': numpy.ndarray,                                                                    # An array with shape (3, M, N) where M and N can vary
-    # 'footstep_command': numpy.ndarray,  # An array with shape (3,)
-    # 'x_k': numpy.ndarray,  # An array with shape (4,)
+    # --- Data values ---
+    # 'stance': 0 or 1,
+    # 'phase': a scalar float,
+    # 'initial_swing_foot_pos': numpy.ndarray (3,)
+    # 'q':                      numpy.ndarray (23,)
+    # 'v':                      numpy.ndarray (24,)
+    # 'desired_velocity':       numpy.ndarray (2,)
+    # 'hmap':                   numpy.ndarray (M, N),  M and N can vary
+    # 'U':                      numpy.ndarray (2, M, N)
+    # 'footstep_command':       numpy.ndarray (3,)
+    # 'x_k':                    numpy.ndarray (4,)
     # 'V_kp1': float,
-    # 'x_kp1': numpy.ndarray,  # An array with shape (4,)
+    # 'x_kp1':                  numpy.ndarray (4,)
     # 'V_k': float,
     # 'residual': float
     
-    # load the data file by the name of 'data.npz'
-    # TODO: Change the path to the data file to be based on the perception_learning_base_folder
-    # data_path = os.path.join(perception_learning_base_folder, 'tmp', allow_pickle=True)
-    # data = np.load(data_path, 'data.npz')
-    
-    # TODO: Remove this when path is updated as above
-    data = np.load('/home/sharanya/workspace/cis7000/dairlib/bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/data.npz', allow_pickle=True)
+    data = np.load(
+        os.path.join(
+            perception_learning_base_folder,
+            'tmp/data.npz'
+        ), allow_pickle=True
+    )
     return data
+
 
 def data_process(data):
     """
@@ -66,6 +73,9 @@ def data_process(data):
     ground_truth_residual = []
 
     # Iterating over each datapoint in list while displaying a progress bar
+
+    import pdb; pdb.set_trace()
+
     for data_point in tqdm(data_list):
         hmap = data_point['hmap']                                                               # Getting the heightmap of size (20,20) for the data point.
         # Get hmap shape and reshape to (1,hmap.shape[0],hmap.shape[1])

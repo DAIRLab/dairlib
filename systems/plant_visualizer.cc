@@ -23,8 +23,6 @@ using drake::geometry::Meshcat;
 using drake::geometry::MeshcatVisualizer;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
-
-
 PlantVisualizer::PlantVisualizer(const std::string& urdf) : plant_(0.0) {
 
   drake::systems::DiagramBuilder<double> builder;

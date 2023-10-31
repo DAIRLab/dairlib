@@ -10,8 +10,10 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
+        "//systems/perception:camera_utils",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:grid_map_visualizer",
+        "//systems/perception:perceptive_locomotion_preprocessor",
         "@gflags",
     ],
 )

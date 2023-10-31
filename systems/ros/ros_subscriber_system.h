@@ -1,14 +1,15 @@
 #pragma once
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "ros/ros.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "ros/ros.h"
 
 namespace dairlib {
 namespace systems {
@@ -82,11 +83,15 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
         message_state_index);
 
     set_name(make_name(topic_));
+    start_ = std::chrono::steady_clock::now();
+    time_ = 0;
   }
 
   ~RosSubscriberSystem() override{};
 
   const std::string& get_topic_name() const { return topic_; }
+
+  double message_time() const { return time_; }
 
   /// Returns the default name for a system that publishes @p topic.
   static std::string make_name(const std::string& topic) {
@@ -187,6 +192,8 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     received_message_ = message;
     received_message_count_++;
     received_message_condition_variable_.notify_all();
+    time_ =
+        (duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start_)).count()/1.0e6;
   }
 
   // The topic on which to receive ROS messages.
@@ -197,6 +204,9 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
 
   // A condition variable that's signaled every time the handler is called.
   mutable std::condition_variable received_message_condition_variable_;
+
+  mutable double time_;
+  mutable std::chrono::time_point<std::chrono::steady_clock> start_;
 
   // The most recently received ROS message.
   RosMessage received_message_{};

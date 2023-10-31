@@ -24,7 +24,9 @@ void LcmToRosTimestampedVector::ConvertToROS(const drake::systems::Context<doubl
 
   // note: this function currently appends the timestamp to the end of the output
   output->data.clear();
+//  std::cout << "time: " << input->get_timestamp() << std::endl;
   for (int i = 0; i < vector_size_; i++){
+//    std::cout << "value: " << i << " " << input->GetAtIndex(i) << std::endl;
     if (std::isnan(input->GetAtIndex(i))){
       output->data.push_back(0);
     }

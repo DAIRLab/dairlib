@@ -1,4 +1,4 @@
-franka_state_channel: /franka/franka_robot_state
+franka_state_channel: /franka/joint_states
 tray_state_channel: /franka/tray_object_state
 box_state_channel: /franka/box_object_state
 franka_input_channel: /franka/franka_input

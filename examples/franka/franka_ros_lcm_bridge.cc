@@ -33,6 +33,7 @@
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/system_utils.h"
 
+using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
@@ -58,7 +59,7 @@ void SigintHandler(int sig) {
 }
 
 DEFINE_string(lcm_channels,
-              "examples/franka/parameters/lcm_channels_simulation.yaml",
+              "examples/franka/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(ros_channels, "systems/ros/parameters/franka_ros_channels.yaml",
               "Filepath containing ROS channels");
@@ -78,16 +79,20 @@ int DoMain(int argc, char* argv[]) {
   ros::init(argc, argv, "run_c3_ros_to_lcm");
   ros::NodeHandle node_handle;
 
-  drake::lcm::DrakeLcm drake_lcm;
+  drake::lcm::DrakeLcm drake_lcm("udpm://239.255.76.67:7667?ttl=0");
   DiagramBuilder<double> builder;
 
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-  drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);
+  RigidTransform<double> R_X_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), franka_origin);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   R_X_W);
+  plant.Finalize();
 
-  /* -------------------------------------------------------------------------------------------*/
   /// convert franka joint states to lcm
   auto franka_joint_state_ros_subscriber =
       builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
@@ -117,7 +122,7 @@ int DoMain(int argc, char* argv[]) {
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &drake_lcm,
-          {drake::systems::TriggerType::kPeriodic}, 0.005));
+          {drake::systems::TriggerType::kForced}));
   /// connections
   builder.Connect(tray_object_state_ros_subscriber->get_output_port(),
                   ros_to_lcm_object_state->get_input_port());
@@ -127,35 +132,75 @@ int DoMain(int argc, char* argv[]) {
   /* -------------------------------------------------------------------------------------------*/
   auto robot_input_lcm_subscriber =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.osc_channel, &drake_lcm));
+          lcm_channel_params.franka_input_channel, &drake_lcm));
   auto robot_input_receiver = builder.AddSystem<RobotInputReceiver>(plant);
-  auto robot_input_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      robot_input_receiver->get_output_port(0).size(), 0,
-      plant.get_actuation_input_port().size());
+  auto lcm_to_ros_robot_input = builder.AddSystem<LcmToRosTimestampedVector>(7);
   auto robot_input_ros_publisher = builder.AddSystem(
       systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make(
-          ros_channel_params.franka_input_channel, &node_handle, .001));
-  auto lcm_to_ros_robot_input = builder.AddSystem<LcmToRosTimestampedVector>(7);
-  // try making this kForced
+          ros_channel_params.franka_input_channel, &node_handle,
+          {drake::systems::TriggerType::kForced}));
 
-  builder.Connect(robot_input_passthrough->get_output_port(),
+  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
+                  robot_input_receiver->get_input_port());
+  builder.Connect(robot_input_receiver->get_output_port(),
                   lcm_to_ros_robot_input->get_input_port());
   builder.Connect(lcm_to_ros_robot_input->get_output_port(),
                   robot_input_ros_publisher->get_input_port());
 
-  auto sys = builder.Build();
-  // DrawAndSaveDiagramGraph(*sys,
-  // "examples/franka_trajectory_following/diagram_run_c3_ros_to_lcm");
+  auto owned_diagram = builder.Build();
+  owned_diagram->set_name(("franka_ros_lcm_bridge"));
+  const auto& diagram = *owned_diagram;
+  DrawAndSaveDiagramGraph(diagram);
+  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
+  auto& diagram_context = simulator.get_mutable_context();
+//  auto& robot_input_sub_context = robot_input_lcm_subscriber->
 
-  Simulator<double> simulator(*sys);
-  simulator.Initialize();
-  simulator.set_target_realtime_rate(1.0);
 
   // figure out what the arguments to this mean
   ros::AsyncSpinner spinner(1);
   spinner.start();
   signal(SIGINT, SigintHandler);
-  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
+
+  // Wait for the first message.
+  drake::log()->info("Waiting for first ROS message from Franka");
+  int old_message_count = 0;
+  old_message_count =
+      franka_joint_state_ros_subscriber->WaitForMessage(old_message_count);
+
+  // Initialize the context based on the first message.
+  const double t0 = franka_joint_state_ros_subscriber->message_time();
+  diagram_context.SetTime(t0);
+  simulator.Initialize();
+
+  drake::log()->info("dispatcher_robot_out started");
+
+  while (true) {
+    old_message_count =
+        franka_joint_state_ros_subscriber->WaitForMessage(old_message_count);
+    const double time = franka_joint_state_ros_subscriber->message_time();
+
+    // Check if we are very far ahead or behind
+    // (likely due to a restart of the driving clock)
+    if (time > simulator.get_context().get_time() + 1.0 ||
+        time < simulator.get_context().get_time()) {
+      std::cout << "Dispatcher time is " << simulator.get_context().get_time()
+                << ", but stepping to " << time << std::endl;
+      std::cout << "Difference is too large, resetting dispatcher time."
+                << std::endl;
+      simulator.get_mutable_context().SetTime(time);
+      simulator.Initialize();
+    }
+
+    simulator.AdvanceTo(time);
+    // Force-publish via the diagram
+    diagram.CalcForcedUnrestrictedUpdate(diagram_context,
+                                         &diagram_context.get_mutable_state());
+    diagram.CalcForcedDiscreteVariableUpdate(diagram_context,
+                                         &diagram_context.get_mutable_discrete_state());
+    diagram.ForcedPublish(diagram_context);
+  }
+
+  //  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }

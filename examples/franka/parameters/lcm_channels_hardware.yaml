@@ -1,6 +1,7 @@
 franka_state_channel: FRANKA_STATE
 tray_state_channel: TRAY_STATE
 box_state_channel: BOX_STATE
+franka_input_channel: FRANKA_INPUT
 
 osc_channel: FRANKA_INPUT
 osc_debug_channel: OSC_DEBUG_FRANKA

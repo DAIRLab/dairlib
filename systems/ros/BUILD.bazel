@@ -1,4 +1,5 @@
 # -*- python -*-
+package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "ros_pubsub_systems",
@@ -25,6 +26,14 @@ cc_library(
         "@ros",
         "//multibody:utils",
         "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_ros_channels",
+    hdrs = ["parameters/franka_ros_channels.h"],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

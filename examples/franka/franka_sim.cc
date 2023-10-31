@@ -1,16 +1,24 @@
 #include <math.h>
 
 #include <vector>
-#include <gflags/gflags.h>
 
 #include <drake/common/find_resource.h>
+#include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
+#include <drake/geometry/meshcat_visualizer.h>
+#include <drake/geometry/meshcat_visualizer_params.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/parsing/parser.h>
+#include <drake/systems/analysis/simulator.h>
+#include <drake/systems/framework/diagram_builder.h>
+#include <drake/systems/lcm/lcm_interface_system.h>
+#include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <drake/systems/primitives/vector_log_sink.h>
 #include <drake/visualization/visualization_config_functions.h>
+#include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
@@ -22,15 +30,6 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-
-#include "drake/common/yaml/yaml_io.h"
-#include "drake/geometry/meshcat_visualizer.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
 
@@ -68,7 +67,7 @@ int DoMain(int argc, char* argv[]) {
   // load urdf and sphere
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
-  double output_dt = sim_params.dt;
+  //  double output_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
@@ -124,21 +123,21 @@ int DoMain(int argc, char* argv[]) {
   //  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
   //      {"paddle", paddle_geom_set}, {"table_support", table_support_set});
 
-//  VectorXd rotor_inertias(plant.num_actuators());
-//  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
-//  rotor_inertias *= 1e-6;
-//  VectorXd gear_ratios(plant.num_actuators());
-//  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
-//  std::vector<std::string> motor_joint_names = {
-//      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
-//      "panda_motor5", "panda_motor6", "panda_motor7"};
-//  for (int i = 0; i < rotor_inertias.size(); ++i) {
-//    auto& joint_actuator = plant.get_mutable_joint_actuator(
-//        drake::multibody::JointActuatorIndex(i));
-//    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
-//    joint_actuator.set_default_gear_ratio(gear_ratios(i));
-//    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
-//  }
+  //  VectorXd rotor_inertias(plant.num_actuators());
+  //  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
+  //  rotor_inertias *= 1e-6;
+  //  VectorXd gear_ratios(plant.num_actuators());
+  //  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
+  //  std::vector<std::string> motor_joint_names = {
+  //      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
+  //      "panda_motor5", "panda_motor6", "panda_motor7"};
+  //  for (int i = 0; i < rotor_inertias.size(); ++i) {
+  //    auto& joint_actuator = plant.get_mutable_joint_actuator(
+  //        drake::multibody::JointActuatorIndex(i));
+  //    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
+  //    joint_actuator.set_default_gear_ratio(gear_ratios(i));
+  //    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
+  //  }
 
   plant.Finalize();
 
@@ -147,7 +146,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
-  auto passthrough = AddActuationRecieverAndStateSenderLcm(
+  AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.osc_channel,
       lcm_channel_params.franka_state_channel, sim_params.publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);

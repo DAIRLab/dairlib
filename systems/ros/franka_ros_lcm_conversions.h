@@ -11,9 +11,10 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
+
 #include "std_msgs/Float64MultiArray.h"
 #include "sensor_msgs/JointState.h"
-//#include "dairlib/lcmt_c3.hpp"
+#include "franka_msgs/FrankaState.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_franka_state.hpp"
 #include "dairlib/lcmt_estimated_object_state.hpp"

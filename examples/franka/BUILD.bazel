@@ -15,24 +15,6 @@ cc_library(
     deps = [],
 )
 
-cc_library(
-    name = "franka_dispatcher_in",
-    srcs = ["franka_dispatcher_in.cc"],
-    tags = ["ros"],
-    deps = [
-        "//systems/ros:ros_pubsub_systems"
-    ],
-)
-
-cc_library(
-    name = "franka_dispatcher_out",
-    srcs = ["franka_dispatcher_out.cc"],
-    tags = ["ros"],
-    deps = [
-        "//systems/ros:ros_pubsub_systems"
-    ],
-)
-
 cc_binary(
     name = "franka_sim",
     srcs = ["franka_sim.cc"],
@@ -135,10 +117,13 @@ cc_binary(
         ":franka_lcm_channels",
         "//common",
         "//systems:robot_lcm_systems",
+        "//systems/ros:ros_pubsub_systems",
+        "//systems/ros:franka_ros_channels",
         "//systems/ros:franka_ros_lcm_conversions",
         "//systems:system_utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
+        "@ros",
         "@gflags",
     ],
     tags = ["ros"],

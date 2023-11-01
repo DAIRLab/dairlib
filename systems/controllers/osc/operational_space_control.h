@@ -224,6 +224,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    */
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
+  void DisableGravityCompensation() {
+    with_gravity_compensation_ = false;
+  }
+
+  bool HasGravityCompensation(){
+    return with_gravity_compensation_;
+  }
+
   // Constraint methods
   void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
@@ -385,6 +393,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // floating base model flag
   bool is_quaternion_;
+
+  bool with_gravity_compensation_ = true;
 
   // Solver
   std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;

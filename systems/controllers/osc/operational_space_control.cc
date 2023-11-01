@@ -313,7 +313,7 @@ void OperationalSpaceControl::Build() {
   n_c_ = kSpaceDim * all_contacts_.size();
 
   n_ee_ = 0;
-  for (auto& force_tracking_data : *force_tracking_data_vec_){
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
     n_ee_ += force_tracking_data->GetYDim();
   }
 
@@ -457,14 +457,14 @@ void OperationalSpaceControl::Build() {
             .get();
   }
   // 3. external force cost
-//  for (auto& force_tracking_data: *force_tracking_data_vec_){
-//    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
-//    lambda_ee_cost_ =
-//        prog_
-//            ->AddQuadraticCost(, VectorXd::Zero(n_h_), lambda_h_)
-//            .evaluator()
-//            .get();
-//  }
+  //  for (auto& force_tracking_data: *force_tracking_data_vec_){
+  //    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
+  //    lambda_ee_cost_ =
+  //        prog_
+  //            ->AddQuadraticCost(, VectorXd::Zero(n_h_), lambda_h_)
+  //            .evaluator()
+  //            .get();
+  //  }
   // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     soft_constraint_cost_ =
@@ -590,7 +590,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   drake::multibody::MultibodyForces<double> f_app(plant_wo_spr_);
   plant_wo_spr_.CalcForceElementsContribution(*context_wo_spr_, &f_app);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
-  bias = bias - grav;
+  if (with_gravity_compensation_) {
+    bias = bias - grav;
+  }
   // TODO (yangwill): Characterize damping in cassie model
   //  std::cout << f_app.generalized_forces().transpose() << std::endl;
   //  bias = bias - f_app.generalized_forces();

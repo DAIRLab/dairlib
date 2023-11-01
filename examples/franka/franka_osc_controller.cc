@@ -4,8 +4,8 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/franka/parameters/franka_osc_controller_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
+#include "examples/franka/parameters/franka_osc_controller_params.h"
 #include "examples/franka/systems/end_effector_orientation.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
@@ -52,7 +52,8 @@ using systems::controllers::TransTaskSpaceTrackingData;
 DEFINE_string(osqp_settings,
               "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
               "Filepath containing qp settings");
-DEFINE_string(controller_parameters, "examples/franka/parameters/franka_osc_controller_params.yaml",
+DEFINE_string(controller_parameters,
+              "examples/franka/parameters/franka_osc_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
 DEFINE_string(lcm_channels,
@@ -71,8 +72,7 @@ int DoMain(int argc, char* argv[]) {
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
-      FindResourceOrThrow(FLAGS_controller_parameters),
-      {}, {}, yaml_options);
+      FindResourceOrThrow(FLAGS_controller_parameters), {}, {}, yaml_options);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(FLAGS_osqp_settings))
@@ -87,7 +87,8 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
-  Vector3d tool_attachment_frame = StdVectorToVectorXd(controller_params.tool_attachment_frame);
+  Vector3d tool_attachment_frame =
+      StdVectorToVectorXd(controller_params.tool_attachment_frame);
 
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), tool_attachment_frame);
@@ -150,6 +151,10 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
+
+  if (!controller_params.include_gravity_compensation) {
+    osc->DisableGravityCompensation();
+  }
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(

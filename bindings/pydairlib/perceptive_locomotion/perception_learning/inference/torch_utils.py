@@ -61,6 +61,9 @@ def data_reader():
 
 # try writing it as a DataLoader
 class CassieDataset(Dataset):
+    """
+        Pytorch internal Dataset utility, used for efficient batch Dataloader
+    """
     def __init__(self, data_list):
         self.data_list = data_list
 
@@ -73,15 +76,23 @@ class CassieDataset(Dataset):
         return input_data, target_data
 
 def Cassie_data_process(data_point):
-    hmap = data_point['hmap']                                                               # Getting the heightmap of size (20,20) for the data point.
+    """
+        function of tiling state and input to hmap grid, written for a single data point
+        :return: process input (hamp, tiled state and input) and target (residual)
+        for a single data point
+    """
+    # Getting the heightmap of size (20,20) for the data point.
+    hmap = data_point['hmap']
     # Get hmap shape and reshape to (1,hmap.shape[0],hmap.shape[1])
     hmap = hmap.reshape(1, hmap.shape[0],hmap.shape[1])
     # print("shape of hmap is: ", hmap.shape)
 
-    U = data_point['U']                                                                     # Getting all possible control inputs for the data point.
+    # Getting all possible control inputs for the data point.
+    U = data_point['U']
     # print("shape of U is: ", U.shape)
 
-    initial_state = data_point['x_k']                                                       # Getting the initial state of the data point.
+    # Getting the initial state of the data point.
+    initial_state = data_point['x_k']
     # print("shape of initial_state is: ", initial_state.shape)
 
     # Repeat the initial state for all points in hmap to get an array of shape (4,20,20)
@@ -94,45 +105,53 @@ def Cassie_data_process(data_point):
     U_tensor = torch.tensor(U, dtype=torch.float32)
 
     # concatenate the tiled data for a single data point
-    combined_input = torch.cat([hmap_tensor, initial_state_tensor, U_tensor], dim=0)        # Confirm axis. Final shape should be 7,20,20
+    # Confirm axis. Final shape should be 7,20,20
+    combined_input = torch.cat([hmap_tensor, initial_state_tensor, U_tensor], dim=0)
 
     # ground truth residual data
     residual = data_point['residual']
     target = np.zeros((1, hmap.shape[1], hmap.shape[2]), dtype=float)
     target[:, :, :] = residual
     target_tensor = torch.tensor(target, dtype=torch.float32)
+
     return combined_input, target_tensor
 
 def main() -> None:
     """
-    Tests what device is returned by get_device(). The output should look
-    something like:
-                       tensor([1.], device='cuda:0')
-
-    If no device is shown, you are using the CPU
+    Tests on torch related utilities
+    1. device test: The output should look something like: tensor([1.], device='cuda:0')
+        If no device is shown, you are using the CPU
+    2. Dataloader test: test the batch processing and loading using pytorch Dataset, DataLoader
+        Check the size
     """
+
+    # device test
     device = get_device()
     x = torch.ones(1, device=device)
     print(x)
-    
-    # data = data_reader()
-    # input_data_tensor, ground_truth_residual = data_process(data)
-    # print("input shape ", input_data_tensor.shape, "target shape ", ground_truth_residual.shape)   # Expected shape is (number of data points, 7, 20, 20)
 
-    # test pytorch Dataloader
+    # pytorch Dataloader test
+    # load raw data
     data = data_reader()
     data_list = data['arr_0']
-    custom_dataset = CassieDataset(data_list)
+
+    # create customize dataset
+    cassie_dataset = CassieDataset(data_list)
+
+    # dataloader parameters
     batch_size = 32  # Set your desired batch size
     shuffle = True  # Set to True if you want to shuffle the data
     num_workers = 4  # Number of parallel data loading processes
-    data_loader = DataLoader(custom_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+
+    # create dataloader
+    data_loader = DataLoader(cassie_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
     for input_data, target_data in tqdm(data_loader):
+        # input data is hmap, tiled state and input, should be (batchsize, 7, 20, 20)
         print(input_data.shape)
-        print(target_data.shape) # target_data is the ground truth residual
+        # target_data is the ground truth residual, should be (batchsize, 1, 20, 20)
+        print(target_data.shape)
         pdb.set_trace()
-
 
 if __name__ == '__main__':
     main()

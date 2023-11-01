@@ -17,3 +17,4 @@ attic/multibody/solver_log/
 # perception learning temp files
 /bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/
 *venv/
+/bindings/pydairlib/perceptive_locomotion/.idea/

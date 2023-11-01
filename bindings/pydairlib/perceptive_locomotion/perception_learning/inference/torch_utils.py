@@ -59,6 +59,7 @@ def data_reader():
     )
     return data
 
+
 # try writing it as a DataLoader
 class CassieDataset(Dataset):
     """
@@ -72,19 +73,22 @@ class CassieDataset(Dataset):
 
     def __getitem__(self, idx):
         data_point = self.data_list[idx]
-        input_data, target_data = Cassie_data_process(data_point)
+        input_data, target_data = cassie_data_process(data_point)
         return input_data, target_data
 
-def Cassie_data_process(data_point):
+
+def cassie_data_process(data_point):
     """
-        function of tiling state and input to hmap grid, written for a single data point
-        :return: process input (hamp, tiled state and input) and target (residual)
+        function of tiling state and input to hmap grid, written for a single
+        data point
+        :return: process input (hamp, tiled state and input) and target (
+        residual)
         for a single data point
     """
     # Getting the heightmap of size (20,20) for the data point.
     hmap = data_point['hmap']
     # Get hmap shape and reshape to (1,hmap.shape[0],hmap.shape[1])
-    hmap = hmap.reshape(1, hmap.shape[0],hmap.shape[1])
+    hmap = hmap.reshape(1, hmap.shape[0], hmap.shape[1])
     # print("shape of hmap is: ", hmap.shape)
 
     # Getting all possible control inputs for the data point.

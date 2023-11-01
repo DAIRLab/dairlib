@@ -18,7 +18,7 @@ PerceptiveLocomotionPreprocessor::PerceptiveLocomotionPreprocessor(
     StructuredLightSensorProcessor(general_params), plant_(plant), context_(context) {
 
   // Read the sensor params into the super class
-  this->readParameters(params.stereo_sensor_params_yaml_);
+  this->readParameters(params.sensor_params_yaml_);
 
   // make the crop_boxes
   for (const auto& crop_box_params : params.crop_boxes_) {

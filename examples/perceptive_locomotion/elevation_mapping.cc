@@ -15,6 +15,7 @@ namespace dairlib {
 using perception::ElevationMappingSystem;
 using perception::elevation_mapping_params;
 using perception::PerceptiveLocomotionPreprocessor;
+using perception::perceptive_locomotion_preprocessor_params;
 using camera::ReadCameraPoseFromYaml;
 
 DEFINE_bool(visualize, true, "whether to add visualization");
@@ -46,21 +47,25 @@ int DoMain(int argc, char* argv[]) {
       0.5 * Eigen::Vector3d::UnitX() // track point (in base frame)
   };
 
+  perceptive_locomotion_preprocessor_params processor_params {
+    "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
+    {}
+  };
+
   auto elevation_mapping = builder.AddSystem<ElevationMappingSystem>(
       plant, plant_context.get(), mapping_params
   );
-
-
-
-
-
+  auto processor = std::make_unique<PerceptiveLocomotionPreprocessor>(
+      plant, plant_context.get(), processor_params,
+      elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
+  );
+  elevation_mapping->AddSensorPreProcessor("pelvis_cam", std::move(processor));
 
   if (FLAGS_visualize) {
-
-
+    // TODO (@Brian-Acosta)
   }
 
-
+  return 0;
 }
 }
 

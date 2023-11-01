@@ -20,7 +20,7 @@ struct perceptive_locomotion_preprocessor_params {
     Eigen::Vector3d length_xyz;
     drake::math::RigidTransformd pose_in_parent_body;
   };
-  std::string stereo_sensor_params_yaml_ = "";
+  std::string sensor_params_yaml_;
   std::vector<cropbox_params> crop_boxes_;
 };
 

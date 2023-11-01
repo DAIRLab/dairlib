@@ -12,7 +12,7 @@ struct FrankaControllerParams : OSCGains {
   std::vector<double> tool_attachment_frame;
   double end_effector_acceleration;
   bool track_end_effector_orientation;
-  bool include_gravity_compensation;
+  bool cancel_gravity_compensation;
 
   std::vector<double> neutral_position;
   double x_scale;
@@ -48,7 +48,7 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(track_end_effector_orientation));
-    a->Visit(DRAKE_NVP(include_gravity_compensation));
+    a->Visit(DRAKE_NVP(cancel_gravity_compensation));
     a->Visit(DRAKE_NVP(EndEffectorW));
     a->Visit(DRAKE_NVP(EndEffectorKp));
     a->Visit(DRAKE_NVP(EndEffectorKd));

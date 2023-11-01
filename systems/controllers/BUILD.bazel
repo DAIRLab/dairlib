@@ -73,6 +73,20 @@ cc_library(
 )
 
 cc_library(
+    name = "gravity_compensator",
+    srcs = [
+        "gravity_compensator.cc",
+    ],
+    hdrs = [
+        "gravity_compensator.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "linear_controller",
     srcs = [
         "linear_controller.cc",
@@ -122,6 +136,7 @@ cc_library(
         ":affine_controller",
         ":constrained_lqr_controller",
         ":linear_controller",
+        ":gravity_compensator",
     ],
 )
 

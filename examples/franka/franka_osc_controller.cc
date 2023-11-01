@@ -18,6 +18,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/controllers/gravity_compensator.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
 #include "drake/common/find_resource.h"
@@ -119,11 +120,18 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_orientation_receiver =
       builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
           "end_effector_orientation_target");
-  auto command_pub =
+  auto franka_command_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          lcm_channel_params.franka_input_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto osc_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           lcm_channel_params.osc_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto franka_command_sender =
+      builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto osc_command_sender =
+      builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorTrajectoryGenerator>(plant,
                                                         plant_context.get());
@@ -151,10 +159,6 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-
-  if (!controller_params.include_gravity_compensation) {
-    osc->DisableGravityCompensation();
-  }
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
@@ -210,6 +214,18 @@ int DoMain(int argc, char* argv[]) {
 
   osc->Build();
 
+  if (controller_params.cancel_gravity_compensation) {
+    auto gravity_compensator =
+        builder.AddSystem<systems::GravityCompensationRemover>(plant, *plant_context);
+    builder.Connect(osc->get_output_port_osc_command(),
+                    gravity_compensator->get_input_port());
+    builder.Connect(gravity_compensator->get_output_port(),
+                    franka_command_sender->get_input_port());
+  } else {
+    builder.Connect(osc->get_output_port_osc_command(),
+                    franka_command_sender->get_input_port(0));
+  }
+
   builder.Connect(state_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
@@ -218,10 +234,12 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_orientation_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(command_sender->get_output_port(0),
-                  command_pub->get_input_port());
+  builder.Connect(franka_command_sender->get_output_port(),
+                  franka_command_pub->get_input_port());
+  builder.Connect(osc_command_sender->get_output_port(),
+                  osc_command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_command(),
-                  command_sender->get_input_port(0));
+                  osc_command_sender->get_input_port(0));
   builder.Connect(osc->get_output_port_osc_debug(),
                   osc_debug_pub->get_input_port());
   builder.Connect(state_receiver->get_output_port(0),

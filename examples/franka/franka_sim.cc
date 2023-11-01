@@ -147,7 +147,7 @@ int DoMain(int argc, char* argv[]) {
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   AddActuationRecieverAndStateSenderLcm(
-      &builder, plant, lcm, lcm_channel_params.osc_channel,
+      &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto tray_state_sender =

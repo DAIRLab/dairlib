@@ -3,7 +3,7 @@ tray_state_channel: TRAY_STATE_SIMULATION
 box_state_channel: BOX_STATE_SIMULATION
 franka_input_channel: FRANKA_INPUT
 
-osc_channel: FRANKA_INPUT
+osc_channel: OSC_FRANKA
 osc_debug_channel: OSC_DEBUG_FRANKA
 
 c3_actor_channel: C3_TRAJECTORY_ACTOR

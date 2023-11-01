@@ -32,6 +32,17 @@ cc_library(
 )
 
 cc_library(
+    name = "lcm_to_pcl_pointcloud",
+    srcs = ["lcm_to_pcl_pointcloud.cc"],
+    hdrs = ["lcm_to_pcl_pointcloud.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
+        "@pcl//:common",
+    ],
+)
+
+cc_library(
     name = "elevation_mapping_system",
     srcs = ["elevation_mapping_system.cc"],
     hdrs = ["elevation_mapping_system.h"],

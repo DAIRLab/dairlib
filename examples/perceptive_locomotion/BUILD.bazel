@@ -8,11 +8,13 @@ cc_binary(
     deps = [
         "//examples/Cassie:cassie_utils",
         "//lcmtypes:lcmt_robot",
+        "//systems:plant_visualizer",
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
         "//systems/perception:camera_utils",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:grid_map_visualizer",
+        "//systems/perception:lcm_to_pcl_pointcloud",
         "//systems/perception:perceptive_locomotion_preprocessor",
         "@gflags",
     ],

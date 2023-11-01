@@ -13,6 +13,7 @@
 #include "systems/perception/lcm_to_pcl_pointcloud.h"
 #include "systems/perception/camera_utils.h"
 #include "systems/plant_visualizer.h"
+#include "systems/system_utils.h"
 
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
@@ -20,6 +21,7 @@
 
 namespace dairlib {
 
+using systems::RobotOutputReceiver;
 using perception::ElevationMappingSystem;
 using perception::elevation_mapping_params;
 using perception::PerceptiveLocomotionPreprocessor;
@@ -28,10 +30,11 @@ using perception::perceptive_locomotion_preprocessor_params;
 using camera::ReadCameraPoseFromYaml;
 
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::systems::ConstantVectorSource;
 using drake::lcmt_point_cloud;
 
 DEFINE_bool(visualize, true, "whether to add visualization");
-DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHED", "state lcm channel");
+DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "state lcm channel");
 // TODO (@Brian-Acosta) Yaml config with option for multiple input sources
 DEFINE_string(channel_point_cloud, "CASSIE_DEPTH", "pointcloud lcm channel");
 DEFINE_string(camera_calib_yaml,
@@ -56,7 +59,8 @@ int DoMain(int argc, char* argv[]) {
         {"pelvis_cam", "pelvis", ReadCameraPoseFromYaml(FLAGS_camera_calib_yaml)},
       },
       { // map update params
-        drake::systems::TriggerType::kForced
+        drake::systems::TriggerType::kPeriodic,
+        30.0
       },
       "pelvis",                       // robot base frame
       0.5 * Eigen::Vector3d::UnitX() // track point (in base frame)
@@ -64,7 +68,7 @@ int DoMain(int argc, char* argv[]) {
 
   perceptive_locomotion_preprocessor_params processor_params {
     "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
-    {}
+    {} // crop boxes
   };
 
   auto elevation_mapping = builder.AddSystem<ElevationMappingSystem>(
@@ -76,9 +80,8 @@ int DoMain(int argc, char* argv[]) {
   );
   elevation_mapping->AddSensorPreProcessor("pelvis_cam", std::move(processor));
 
-  auto state_receiver = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_robot_output>(FLAGS_channel_x, &lcm_local)
-  );
+  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
+
   auto pcl_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<lcmt_point_cloud>(
           FLAGS_channel_point_cloud, &lcm_local
@@ -86,10 +89,54 @@ int DoMain(int argc, char* argv[]) {
   );
   auto pcl_receiver = builder.AddSystem<
       LcmToPclPointCloud<pcl::PointXYZRGBConfidenceRatio>>();
+
+  Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
+  base_cov_dummy.resize(36,1);
+  auto cov_source = builder.AddSystem<ConstantVectorSource<double>>(
+      base_cov_dummy
+  );
+
+  builder.Connect(*pcl_subscriber, *pcl_receiver);
+  builder.Connect(
+      pcl_receiver->get_output_port(),
+      elevation_mapping->get_input_port_pointcloud("pelvis_cam")
+  );
+  builder.Connect(
+      state_receiver->get_output_port(),
+      elevation_mapping->get_input_port_state()
+  );
+  builder.Connect(
+      cov_source->get_output_port(),
+      elevation_mapping->get_input_port_covariance()
+  );
+
   if (FLAGS_visualize) {
-    // TODO (@Brian-Acosta)
+    std::vector<std::string> layers_to_visualize = {"elevation"};
+    auto visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
+    auto grid_map_visualizer = builder.AddSystem<perception::GridMapVisualizer>(
+        visualizer->get_meshcat(), 30.0, layers_to_visualize
+    );
+    builder.Connect(
+        state_receiver->get_output_port(), visualizer->get_input_port()
+    );
+    builder.Connect(
+        elevation_mapping->get_output_port_grid_map(),
+        grid_map_visualizer->get_input_port()
+    );
   }
 
+  auto diagram = builder.Build();
+  DrawAndSaveDiagramGraph(*diagram, "../elevation_mapping_diagram");
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+      &lcm_local, std::move(diagram), state_receiver, FLAGS_channel_x,
+      true);
+
+  auto& loop_context = loop.get_diagram_mutable_context();
+
+  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
+    return pcl_subscriber->GetInternalMessageCount() > 1; });
+
+  loop.Simulate();
   return 0;
 }
 }

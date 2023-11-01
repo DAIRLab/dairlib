@@ -16,7 +16,8 @@ LcmToPclPointCloud<PointT>::LcmToPclPointCloud() {
 
 template <typename PointT>
 void LcmToPclPointCloud<PointT>::Calc(
-    const Context<double>&context, typename pcl::PointCloud<PointT>::Ptr* ptr) const {
+    const Context<double>&context,
+    typename pcl::PointCloud<PointT>::Ptr* ptr) const {
   auto lcm_cloud = EvalAbstractInput(
       context, 0)->template get_value<lcmt_point_cloud>();
   auto& pcl_cloud = *ptr;

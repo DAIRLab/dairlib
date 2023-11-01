@@ -7,6 +7,8 @@
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "drake/lcmt_point_cloud.hpp"
+
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
@@ -44,6 +46,7 @@ void SigintHandler(int sig) {
 #include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/perception/depth_image_to_point_cloud.h"
+#include "drake/perception/point_cloud_to_lcm.h"
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
 #include "drake/geometry/render_vtk/factory.h"
 
@@ -68,6 +71,7 @@ using drake::systems::TriggerType;
 using drake::perception::pc_flags::BaseField::kXYZs;
 using drake::perception::pc_flags::BaseField::kRGBs;
 using drake::perception::DepthImageToPointCloud;
+using drake::perception::PointCloudToLcm;
 
 using drake::math::RotationMatrix;
 using drake::math::RigidTransformd;
@@ -89,7 +93,7 @@ DEFINE_bool(time_stepping, true,
 DEFINE_double(publish_rate, 1000, "Publish rate for simulator");
 DEFINE_double(toe_spread, .15, "Initial toe spread in m.");
 DEFINE_double(ros_state_pub_period, 0.01, "tf and pose publish period");
-DEFINE_double(ros_points_pub_period, 1.0/30.0, "pointcloud publish period");
+DEFINE_double(points_pub_period, 1.0/30.0, "pointcloud publish period");
 DEFINE_double(dt, 5e-4,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
@@ -115,6 +119,7 @@ DEFINE_string(stepping_stone_filename,
 DEFINE_string(camera_calib_yaml,
               "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
               "yaml with camera calib");
+DEFINE_string(points_pub_channel, "CASSIE_DEPTH", "depth pointcloud channel");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -140,7 +145,7 @@ int do_main(int argc, char* argv[]) {
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 
-  std::string renderer_name = "hiking_sim_renderer";
+  std::string renderer_name = "pelvis_cam";
   scene_graph.AddRenderer(renderer_name,
                           drake::geometry::MakeRenderEngineVtk(
                           drake::geometry::RenderEngineVtkParams()));
@@ -228,11 +233,11 @@ int do_main(int argc, char* argv[]) {
                     pose_sender->get_input_port_covariance());
     builder.Connect(*pose_sender, *pose_publisher);
   }
-
+#endif
   if (FLAGS_publish_points) {
     const auto& [color_camera, depth_camera] =
-    perception::MakeDairD455CameraModel(renderer_name,
-                                    perception::D455ImageSize::k424x240);
+    camera::MakeDairD455CameraModel(renderer_name,
+                                    camera::D455ImageSize::k424x240);
     const auto parent_body_id = plant.GetBodyFrameIdIfExists(
             plant.GetFrameByName("pelvis").body().index());
 
@@ -247,13 +252,12 @@ int do_main(int argc, char* argv[]) {
         1.0,
         kXYZs | kRGBs);
 
-    const auto points_bridge = builder.AddSystem<DrakeToRosPointCloud>("camera_depth_optical_frame");
-    const auto points_pub = builder.AddSystem<
-        systems::RosPublisherSystem<sensor_msgs::PointCloud2>>(
-            "/camera/depth/color/points",
-            &node_handle,
-            TriggerTypeSet({TriggerType::kPeriodic}),
-            FLAGS_ros_points_pub_period);
+    const auto pc_to_lcm = builder.AddSystem<PointCloudToLcm>(renderer_name);
+    const auto pc_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
+            FLAGS_points_pub_channel, lcm, FLAGS_points_pub_period
+        ));
+
 
     builder.Connect(scene_graph.get_query_output_port(),
                     camera->query_object_input_port());
@@ -261,11 +265,22 @@ int do_main(int argc, char* argv[]) {
                     depth_to_points->depth_image_input_port());
     builder.Connect(camera->color_image_output_port(),
                     depth_to_points->color_image_input_port());
+    builder.Connect(*depth_to_points, *pc_to_lcm);
+    builder.Connect(*pc_to_lcm, *pc_pub);
+
+#ifdef DAIR_ROS_ON
+    const auto points_bridge = builder.AddSystem<DrakeToRosPointCloud>("camera_depth_optical_frame");
+    const auto points_pub = builder.AddSystem<
+        systems::RosPublisherSystem<sensor_msgs::PointCloud2>>(
+        "/camera/depth/color/points",
+            &node_handle,
+            TriggerTypeSet({TriggerType::kPeriodic}),
+            FLAGS_points_pub_period);
     builder.Connect(*depth_to_points, *points_bridge);
     builder.Connect(*points_bridge, *points_pub);
+#endif
   }
 
-#endif
 
   // connect leaf systems
   builder.Connect(*input_sub, *input_receiver);

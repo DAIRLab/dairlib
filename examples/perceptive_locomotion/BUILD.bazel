@@ -10,6 +10,7 @@ cc_binary(
         "//lcmtypes:lcmt_robot",
         "//systems:plant_visualizer",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/perception:camera_utils",
         "//systems/perception:elevation_mapping_system",

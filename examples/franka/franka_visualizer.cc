@@ -5,11 +5,11 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
-#include "common/find_resource.h"
 #include "common/eigen_utils.h"
+#include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/franka/parameters/franka_sim_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
+#include "examples/franka/parameters/franka_sim_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -76,8 +76,8 @@ int do_main(int argc, char* argv[]) {
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
 
-  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-      FindResourceOrThrow(sim_params.end_effector_model))[0];
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
   drake::multibody::ModelInstanceIndex box_index =
@@ -86,7 +86,8 @@ int do_main(int argc, char* argv[]) {
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-  Vector3d tool_attachment_frame = StdVectorToVectorXd(sim_params.tool_attachment_frame);
+  Vector3d tool_attachment_frame =
+      StdVectorToVectorXd(sim_params.tool_attachment_frame);
 
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
@@ -94,8 +95,8 @@ int do_main(int argc, char* argv[]) {
       drake::math::RotationMatrix<double>(), tool_attachment_frame);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
-  plant.WeldFrames( plant.GetFrameByName("panda_link7"), plant.GetFrameByName("plate", end_effector_index),
-                   T_EE_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
+                   plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   plant.Finalize();
 
@@ -108,8 +109,9 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.tray_state_channel, lcm));
-  auto box_state_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(lcm_channel_params.box_state_channel, lcm));
+  auto box_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          lcm_channel_params.box_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
@@ -154,6 +156,10 @@ int do_main(int argc, char* argv[]) {
                                                       "end_effector_traj");
   auto trajectory_drawer_object =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_traj");
+  auto object_trajectory_drawer_object =
+      builder.AddSystem<systems::LcmObjectTrajectoryDrawer>(
+          meshcat, FindResourceOrThrow(sim_params.tray_model), "object_traj",
+          "object_orientation_target");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
@@ -167,6 +173,8 @@ int do_main(int argc, char* argv[]) {
                   trajectory_drawer_actor->get_input_port_trajectory());
   builder.Connect(trajectory_sub_object->get_output_port(),
                   trajectory_drawer_object->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_object->get_output_port(),
+                  object_trajectory_drawer_object->get_input_port_trajectory());
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),

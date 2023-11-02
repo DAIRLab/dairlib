@@ -55,6 +55,7 @@ cc_library(
     ],
     deps = [
         "//lcm:lcm_trajectory_saver",
+        "//multibody:multipose_visualizer",
         "//common:find_resource",
         "//common:eigen_utils",
         "@drake//:drake_shared_library",

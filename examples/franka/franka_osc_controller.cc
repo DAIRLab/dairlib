@@ -179,10 +179,10 @@ int DoMain(int argc, char* argv[]) {
       controller_params.end_effector_name);
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<JointSpaceTrackingData>(
-          "panda_joint3_target", controller_params.K_p_mid_link,
+          "panda_joint2_target", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
           plant);
-  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint3", "panda_joint3dot");
+  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2", "panda_joint2dot");
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
@@ -197,7 +197,7 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            1.4 * VectorXd::Ones(1));
+                            1.6 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
 
   osc->SetContactFriction(controller_params.mu);

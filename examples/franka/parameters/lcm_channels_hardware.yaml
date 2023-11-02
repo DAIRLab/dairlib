@@ -1,5 +1,5 @@
 franka_state_channel: FRANKA_STATE
-tray_state_channel: TRAY_STATE
+tray_state_channel: TRAY_STATE_SIMULATION
 box_state_channel: BOX_STATE
 franka_input_channel: FRANKA_INPUT
 franka_input_echo: FRANKA_INPUT_ECHO

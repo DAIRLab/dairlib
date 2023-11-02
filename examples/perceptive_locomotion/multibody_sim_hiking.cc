@@ -237,36 +237,30 @@ int do_main(int argc, char* argv[]) {
   }
 #endif
   if (FLAGS_publish_points) {
-    const auto& [color_camera, depth_camera] =
-    camera::MakeDairD455CameraModel(renderer_name,
-                                    camera::D455ImageSize::k424x240);
-    const auto parent_body_id = plant.GetBodyFrameIdIfExists(
-            plant.GetFrameByName("pelvis").body().index());
-
-    const auto camera =
-        builder.AddSystem<drake::systems::sensors::RgbdSensor>(
-        parent_body_id.value(), cam_transform, color_camera, depth_camera);
-
+    const auto& [color_camera, depth_camera] = camera::MakeDairD455CameraModel(
+        renderer_name, camera::D455ImageSize::k424x240
+    );
     const auto intrinsics = depth_camera.core().intrinsics();
+    const auto parent_body_id = plant.GetBodyFrameIdIfExists(
+            plant.GetFrameByName("pelvis").body().index()
+    );
+    const auto camera = builder.AddSystem<drake::systems::sensors::RgbdSensor>(
+        parent_body_id.value(), cam_transform, color_camera, depth_camera
+    );
     const auto depth_to_points = builder.AddSystem<DepthImageToPointCloud>(
-        depth_camera.core().intrinsics(),
-        PixelType::kDepth32F,
-        1.0,
-        kXYZs | kRGBs);
-
+        depth_camera.core().intrinsics(), PixelType::kDepth32F, 1.0, kXYZs
+    );
     const auto pc_to_lcm = builder.AddSystem<PointCloudToLcm>(renderer_name);
     const auto pc_pub = builder.AddSystem(
         LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
             FLAGS_points_pub_channel, lcm, FLAGS_points_pub_period
-        ));
+    ));
 
 
     builder.Connect(scene_graph.get_query_output_port(),
                     camera->query_object_input_port());
     builder.Connect(camera->depth_image_32F_output_port(),
                     depth_to_points->depth_image_input_port());
-    builder.Connect(camera->color_image_output_port(),
-                    depth_to_points->color_image_input_port());
     builder.Connect(*depth_to_points, *pc_to_lcm);
     builder.Connect(*pc_to_lcm, *pc_pub);
 

@@ -128,13 +128,8 @@ int DoMain(int argc, char* argv[]) {
   auto diagram = builder.Build();
   DrawAndSaveDiagramGraph(*diagram, "../elevation_mapping_diagram");
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm_local, std::move(diagram), state_receiver, FLAGS_channel_x,
-      true);
-
-  auto& loop_context = loop.get_diagram_mutable_context();
-
-  LcmHandleSubscriptionsUntil(&lcm_local, [&]() {
-    return pcl_subscriber->GetInternalMessageCount() > 1; });
+      &lcm_local, std::move(diagram), state_receiver, FLAGS_channel_x, true
+  );
 
   loop.Simulate();
   return 0;

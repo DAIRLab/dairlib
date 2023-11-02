@@ -62,10 +62,9 @@ ElevationMappingSystem::ElevationMappingSystem(
   // create the elevation map
   // TODO (@Brian-Acosta) expose the elevation mapping parameters
   grid_map::Length length(2.0, 2.0);
-  grid_map::Position position(0.0, 0.0);
   double resolution = 0.025;
   ElevationMap map;
-  map.setGeometry(length, resolution, position);
+  map.setGeometry(length, resolution, track_point_.head<2>());
 
   //TODO (@Brian-Acosta) how to handle map and motion updater initialization?
 
@@ -181,7 +180,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   motion_updater.update(map, base_pose, pose_covariance, timestamp);
 
   // 4. cleanup the map
-  map.clear();
+  //  map.clear();
 
   // 5. add the point clouds to the map
   for (const auto& [name, cloud] : new_pointclouds) {

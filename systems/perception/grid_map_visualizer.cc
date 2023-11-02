@@ -26,22 +26,33 @@ GridMapVisualizer::GridMapVisualizer(
 drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
     const Context<double> &context, State<double> *state) const {
 
-  const auto& grid_map = EvalAbstractInput(context, 0)->get_value<GridMap>();
+  const auto& map = EvalAbstractInput(context, 0)->get_value<GridMap>();
 
-  const int nx = grid_map.getSize()(0);
-  const int ny = grid_map.getSize()(1);
-  const double cx = grid_map.getPosition()(0);
-  const double cy = grid_map.getPosition()(1);
-  const double hx = grid_map.getLength()(0) / 2.0;
-  const double hy = grid_map.getLength()(1) / 2.0;
+  const int nx = map.getSize()(0);
+  const int ny = map.getSize()(1);
+  const double cx = map.getPosition()(0);
+  const double cy = map.getPosition()(1);
+  const double hx = map.getLength()(0) / 2.0;
+  const double hy = map.getLength()(1) / 2.0;
 
-  MatrixXd X = VectorXd::LinSpaced(nx, cx + hx, cx - hx).replicate(1, ny);
-  MatrixXd Y = RowVectorXd::LinSpaced(ny, cy + hy, cy - hy).replicate(nx, 1);
+  // TODO (@Brian-Acosta) figure out how to efficiently do this
+  MatrixXd X = MatrixXd::Zero(nx, ny);
+  MatrixXd Y = MatrixXd::Zero(nx, ny);
+  for (int i = 0; i < nx; i++) {
+    for (int j = 0; j < ny; j++) {
+      Eigen::Array2i idx(i, j);
+      grid_map::Position xy;
+      map.getPosition(idx, xy);
+      X(i,j) = xy(0);
+      Y(i,j) = xy(1);
+    }
+  }
 
-  for (const auto& layer : grid_map.getLayers()) {
+  for (const auto& layer : map.getLayers()) {
     if (layers_.empty() or
         std::find(layers_.begin(), layers_.end(), layer) != layers_.end()) {
-      MatrixXd Z = grid_map.get(layer).cast<double>();
+
+      MatrixXd Z = map.get(layer).cast<double>();
       meshcat_->PlotSurface("grid_map_" + layer, X, Y, Z);
     }
   }

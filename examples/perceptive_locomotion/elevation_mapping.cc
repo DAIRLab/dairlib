@@ -63,7 +63,7 @@ int DoMain(int argc, char* argv[]) {
         30.0
       },
       "pelvis",                       // robot base frame
-      0.5 * Eigen::Vector3d::UnitX() // track point (in base frame)
+      Eigen::Vector3d::Zero() // track point (in base frame)
   };
 
   perceptive_locomotion_preprocessor_params processor_params {

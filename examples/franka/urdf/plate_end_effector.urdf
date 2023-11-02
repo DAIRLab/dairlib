@@ -4,8 +4,8 @@
   <link name="plate">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0.005"/>
-      <mass value="2"/>
-      <inertia ixx="0.0066833" ixy="0" ixz="0" iyy="0.0066833" iyz="0" izz="0.013333"/>
+      <mass value="1"/>
+      <inertia ixx="0.0029099" ixy="0" ixz="0" iyy="0.0029099" iyz="0" izz="0.0058064"/>
     </inertial>
     <collision name="collision">
       <origin rpy="0 0 0" xyz="0 0 0.005"/>

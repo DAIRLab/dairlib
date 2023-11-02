@@ -6,14 +6,14 @@
   <link name="plate_y"/>
   <link name="plate">
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.066667 0 0.01"/>
-      <mass value="2"/>
-      <inertia ixx="0.053413" ixy="0" ixz="-2.1684e-19" iyy="0.071191" iyz="0" izz="0.12452"/>
+      <origin rpy="0 0 0" xyz="-0.0254 0 0.00635"/>
+      <mass value="1"/>
+      <inertia ixx="0.0038714" ixy="0" ixz="2.7105e-20" iyy="0.0051617" iyz="0" izz="0.0090326"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.01"/>
       <geometry>
-        <box size="0.2 0.2 0.02"/>
+        <cylinder radius="0.0762" length="0.00635"/>
       </geometry>
     </visual>
     <!--    <collision name="collision">-->
@@ -30,21 +30,21 @@
     <!--    </collision>-->
     <collision name="middle_right">
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0.5 0.0 0.01"/>
+      <origin rpy="0 0 0" xyz="0.0762 0.0 0.00635"/>
     </collision>
     <collision name="top_left">
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.5 0.5 0.01"/>
+      <origin rpy="0 0 0" xyz="-0.0762 0.0762 0.00635"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.5 -0.5 0.01"/>
+      <origin rpy="0 0 0" xyz="-0.0762 -0.0762 0.00635"/>
     </collision>
   </link>
   <joint name="plate_x" type="prismatic">

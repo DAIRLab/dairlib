@@ -157,7 +157,6 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
         trajectory_block.time_vector, trajectory_block.datapoints);
     for (int i = 0; i < line_points.cols(); ++i) {
       line_points.col(i) = trajectory.value(breaks(i));
-      line_points(2, i) += 0.7645;
     }
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
@@ -165,7 +164,6 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
         trajectory_block.datapoints.bottomRows(3));
     for (int i = 0; i < line_points.cols(); ++i) {
       line_points.col(i) = trajectory.value(breaks(i));
-      line_points(2, i) += 0.7645;
     }
   }
 

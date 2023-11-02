@@ -49,9 +49,6 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
   num_object_positions_ = 7;
   num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
   num_object_velocities_ = 6;
-//  int total_state_length = num_end_effector_positions_ + num_object_positions_ +
-//                           num_end_effector_velocities_ +
-//                           num_object_velocities_;
   lcs_state_port_ =
       this->DeclareVectorOutputPort(
               "lcs_state",
@@ -111,7 +108,6 @@ void FrankaKinematics::ComputeLCSState(
 
   VectorXd object_position = q_object;
   object_position << q_object.head(4), object_pose.translation();
-  object_position.tail(1)(0) -= 0.7645;
 
   lcs_state->SetEndEffectorPositions(end_effector_positions);
   lcs_state->SetObjectPositions(object_position);

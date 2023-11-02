@@ -73,14 +73,8 @@ int DoMain(int argc, char* argv[]) {
   Parser parser(&plant);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
-  drake::multibody::ModelInstanceIndex table_index =
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.table_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  plant.RenameModelInstance(table_index, "table0");
-  drake::multibody::ModelInstanceIndex second_table_index = parser.AddModels(
-      drake::FindResourceOrThrow(sim_params.table_w_supports_model))[0];
-  plant.RenameModelInstance(second_table_index, "table1");
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
   drake::multibody::ModelInstanceIndex box_index =
@@ -89,57 +83,41 @@ int DoMain(int argc, char* argv[]) {
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-  Vector3d second_table_origin = Eigen::VectorXd::Zero(3);
   Vector3d tool_attachment_frame =
       StdVectorToVectorXd(sim_params.tool_attachment_frame);
-  franka_origin(2) = 0.7645;
-  second_table_origin(0) = 0.75;
+
 
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
-  RigidTransform<double> T_X_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), second_table_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), tool_attachment_frame);
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("link", table_index), X_WI);
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("link", second_table_index), T_X_W);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  //  const drake::geometry::GeometrySet& paddle_geom_set =
-  //      plant.CollectRegisteredGeometries({
-  //          &plant.GetBodyByName("paddle"),
-  //          &plant.GetBodyByName("panda_link4"),
-  //          &plant.GetBodyByName("panda_link5"),
-  //          &plant.GetBodyByName("panda_link6"),
-  //          &plant.GetBodyByName("panda_link7"),
-  //      });
-  //  auto table_support_set = GeometrySet(
-  //      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("table")));
-  //  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-  //      {"paddle", paddle_geom_set}, {"table_support", table_support_set});
-
-  //  VectorXd rotor_inertias(plant.num_actuators());
-  //  rotor_inertias << 61, 61, 61, 61, 61, 61, 61;
-  //  rotor_inertias *= 1e-6;
-  //  VectorXd gear_ratios(plant.num_actuators());
-  //  gear_ratios << 25, 25, 25, 25, 25, 25, 25;
-  //  std::vector<std::string> motor_joint_names = {
-  //      "panda_motor1", "panda_motor2", "panda_motor3", "panda_motor4",
-  //      "panda_motor5", "panda_motor6", "panda_motor7"};
-  //  for (int i = 0; i < rotor_inertias.size(); ++i) {
-  //    auto& joint_actuator = plant.get_mutable_joint_actuator(
-  //        drake::multibody::JointActuatorIndex(i));
-  //    joint_actuator.set_default_rotor_inertia(rotor_inertias(i));
-  //    joint_actuator.set_default_gear_ratio(gear_ratios(i));
-  //    DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
-  //  }
+  const drake::geometry::GeometrySet& paddle_geom_set =
+      plant.CollectRegisteredGeometries({
+          &plant.GetBodyByName("panda_link4"),
+          &plant.GetBodyByName("panda_link5"),
+          &plant.GetBodyByName("panda_link6"),
+          &plant.GetBodyByName("panda_link7"),
+          &plant.GetBodyByName("panda_link8"),
+      });
+  auto tray_collision_set = GeometrySet(
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
+  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+      {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
+
+  for (auto joint_actuator_index :
+       plant.GetJointActuatorIndices(franka_index)) {
+    std::cout << "Joint: " << joint_actuator_index << " reflected inertia: "
+              << plant.get_joint_actuator(joint_actuator_index)
+                     .default_reflected_inertia()
+              << std::endl;
+  }
 
   /* -------------------------------------------------------------------------------------------*/
 

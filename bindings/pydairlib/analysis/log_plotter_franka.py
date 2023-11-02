@@ -10,6 +10,7 @@ import franka_plotting_utils as franka_plots
 import pydairlib.analysis.mbp_plotting_utils as mbp_plots
 from pydairlib.common import plot_styler
 
+from pydrake.all import JointIndex, JointActuatorIndex
 
 def main():
     config_file = 'bindings/pydairlib/analysis/plot_configs/franka_translation_plot.yaml'
@@ -49,41 +50,54 @@ def main():
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
 
+    franka_joint_limits_lower = np.zeros(franka_plant.num_positions())
+    franka_joint_limits_upper = np.zeros(franka_plant.num_positions())
+    franka_joint_velocity_limits_lower = np.zeros(franka_plant.num_positions())
+    franka_joint_velocity_limits_upper = np.zeros(franka_plant.num_positions())
+    franka_joint_actuator_limits_lower = np.zeros(franka_plant.num_positions())
+    franka_joint_actuator_limits_upper = np.zeros(franka_plant.num_positions())
+    for i in range(franka_plant.num_positions()):
+        franka_joint_limits_upper[i] = franka_plant.get_joint(JointIndex(i)).position_upper_limits()[0]
+        franka_joint_limits_lower[i] = franka_plant.get_joint(JointIndex(i)).position_lower_limits()[0]
+        franka_joint_velocity_limits_lower[i] = franka_plant.get_joint(JointIndex(i)).velocity_upper_limits()[0]
+        franka_joint_velocity_limits_upper[i] = franka_plant.get_joint(JointIndex(i)).velocity_lower_limits()[0]
+        franka_joint_actuator_limits_lower[i] = -franka_plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
+        franka_joint_actuator_limits_upper[i] = franka_plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
+    franka_joint_limit_range = [np.min(franka_joint_limits_lower), np.max(franka_joint_limits_upper)]
+    franka_joint_velocity_limit_range = [np.min(franka_joint_velocity_limits_lower), np.max(franka_joint_velocity_limits_upper)]
+    franka_joint_actuator_limit_range = [np.min(franka_joint_actuator_limits_lower), np.max(franka_joint_actuator_limits_upper)]
+
     # Plot joint positions
     if plot_config.plot_joint_positions:
         plot = mbp_plots.plot_joint_positions(robot_output, pos_names,
                                               0, t_x_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
+        plt.ylim(franka_joint_limit_range)
 
     # Plot specific positions
     if plot_config.pos_names:
         plot = mbp_plots.plot_positions_by_name(robot_output,
                                                 plot_config.pos_names,
                                                 t_x_slice, pos_map)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:
         plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
                                                0,
                                                t_x_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
+        plt.ylim(franka_joint_velocity_limit_range)
 
-    # Plot specific velocities
+
+# Plot specific velocities
     if plot_config.vel_names:
         plot = mbp_plots.plot_velocities_by_name(robot_output,
                                                  plot_config.vel_names,
                                                  t_x_slice, vel_map)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
 
-    mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
-                                    franka_context, ['paddle'],
-                                    {'paddle': np.zeros(3)},
-                                    {'paddle': [0, 1, 2]})
+    if plot_config.plot_end_effector:
+        mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
+                                        franka_context, ['paddle'],
+                                        {'paddle': np.zeros(3)},
+                                        {'paddle': [0, 1, 2]})
 
     mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
                                      franka_context, ['paddle'],
@@ -119,40 +133,30 @@ def main():
     if plot_config.plot_measured_efforts:
         plot = mbp_plots.plot_measured_efforts(robot_output, act_names,
                                                t_x_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
+        plt.ylim(franka_joint_actuator_limit_range)
 
     if plot_config.plot_commanded_efforts:
         plot = mbp_plots.plot_commanded_efforts(robot_input, act_names,
                                                 t_osc_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
+        plt.ylim(franka_joint_actuator_limit_range)
 
     if plot_config.act_names:
         plot = mbp_plots.plot_measured_efforts_by_name(robot_output,
                                                        plot_config.act_names,
                                                        t_x_slice, act_map)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
 
     ''' Plot OSC '''
     if plot_config.plot_tracking_costs:
         plot = mbp_plots.plot_tracking_costs(osc_debug, t_osc_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
+
         plt.ylim([0, 1e3])
     if plot_config.plot_qp_costs:
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
+
 
     if plot_config.plot_qp_solutions:
         plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
         plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
@@ -161,16 +165,11 @@ def main():
                     plot = mbp_plots.plot_osc_tracking_data(osc_debug,
                                                             traj_name, dim,
                                                             deriv, t_osc_slice)
-                    mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'],
-                                              osc_debug['fsm'],
-                                              plot_config.fsm_state_names)
                     tracking_data = osc_debug['osc_debug_tracking_datas'][
                         traj_name]
 
     if plot_config.plot_qp_solve_time:
         plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'],
-                                  plot_config.fsm_state_names)
 
     if plot_config.plot_active_tracking_datas:
         plot = mbp_plots.plot_active_tracking_datas(osc_debug, t_osc_slice,

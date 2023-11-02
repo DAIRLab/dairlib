@@ -31,13 +31,19 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     # self.directory = None
-    self.dpi = 200
+    self.dpi = 150
     self.directory = '/home/yangwill/Pictures/plot_styler/'
     plt.rc('legend', fontsize=14)
     plt.rc('axes', labelsize=14, titlesize=14)
     plt.rc('xtick', labelsize=14)
     plt.rc('ytick', labelsize=14)
     matplotlib.rcParams['figure.figsize'] = 12, 7
+    print(matplotlib.rcParams.keys())
+    matplotlib.rcParams['figure.autolayout'] = True
+    matplotlib.rcParams['axes.xmargin'] = 0
+    matplotlib.rcParams['axes.ymargin'] = 0
+    # matplotlib.rcParams['toolbar'] = 'None'
+    matplotlib.rcParams['figure.constrained_layout.use'] = True
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
     if figure is None:
@@ -48,14 +54,12 @@ class PlotStyler():
       self.axes = figure.get_axes()
     if not isinstance(self.axes, np.ndarray):
       self.axes = [self.axes]
-
     # self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
     return
 
   def attach(self):
     plt.figure(self.fig_id)
-
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None,
            linestyle=None,
@@ -75,8 +79,8 @@ class PlotStyler():
       self.axes[subplot_index].set_title(title)
     if legend:
       self.axes[subplot_index].legend(legend)
-
     self.axes[subplot_index].grid(grid, which='major')
+    self.axes[subplot_index].autoscale()
 
   def plot_bands(self, x_low, x_high, y_low, y_high, color='C0',
                  subplot_index=0):

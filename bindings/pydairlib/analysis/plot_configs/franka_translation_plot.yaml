@@ -6,16 +6,17 @@ use_default_styling: false
 
 start_time: 0
 #duration: 0.47
-duration: -1
+duration: 2
 
 # Plant properties
 
 # Desired RobotOutput plots
 plot_joint_positions: true
 plot_joint_velocities: true
-plot_measured_efforts: false
+plot_measured_efforts: true
 plot_commanded_efforts: true
 plot_contact_forces: false
+plot_end_effector: false
 
 special_positions_to_plot: []
 special_velocities_to_plot: []
@@ -25,10 +26,11 @@ special_efforts_to_plot: []
 fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 'Right Flight (RF)' ]
 
 # Desired osc plots
-plot_qp_costs: true
+plot_qp_costs: false
 plot_qp_solve_time: true
 plot_qp_solutions: false
-plot_tracking_costs: true
+plot_tracking_costs: false
 plot_active_tracking_datas: false
 tracking_datas_to_plot:
-  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+#  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+#  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}

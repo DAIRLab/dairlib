@@ -729,6 +729,7 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
         legend = ax.legend(handles=legend_elements, loc=4)
         # ax.add_artist(legend)
         ax.relim()
+    ax.relim()
 
 
 def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,

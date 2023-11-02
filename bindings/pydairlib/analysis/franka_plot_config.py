@@ -22,6 +22,7 @@ class FrankaPlotConfig():
         self.plot_measured_efforts = data['plot_measured_efforts']
         self.plot_commanded_efforts = data['plot_commanded_efforts']
         self.plot_contact_forces = data['plot_contact_forces']
+        self.plot_end_effector = data['plot_end_effector']
         self.pos_names = \
             data['special_positions_to_plot'] if \
             data['special_positions_to_plot'] else []

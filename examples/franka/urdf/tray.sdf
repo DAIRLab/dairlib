@@ -18,9 +18,10 @@
       </inertial>
       <visual name="tray">
         <geometry>
-          <box>
-            <size>0.4 0.4 0.02</size>
-          </box>
+          <cylinder>
+            <radius>0.2286</radius>
+            <length>0.01778</length>
+          </cylinder>
         </geometry>
         <material>
           <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -28,15 +29,16 @@
       </visual>
       <collision name="box">
         <geometry>
-          <box>
-            <size>0.4 0.4 0.02</size>
-          </box>
+          <cylinder>
+            <radius>0.2286</radius>
+            <length>0.01778</length>
+          </cylinder>
         </geometry>
         <drake:proximity_properties>
 <!--          <drake:rigid_hydroelastic/>-->
           <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-          <drake:mesh_resolution_hint> 1.0 </drake:mesh_resolution_hint>
+          <drake:hydroelastic_modulus> 3.0e8 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 0.05 </drake:mesh_resolution_hint>
           <!-- geometry/box does not take mesh_resolution_hint into account
             because it always uses the coarsest mesh. We place it here in
             case you want to change the box to something else like capsules,

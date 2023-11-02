@@ -4,7 +4,7 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 end_effector_name: plate
 
-tool_attachment_frame: [0, 0, 0.15]
+tool_attachment_frame: [0, 0, 0.107]
 
 neutral_position: [0.55, 0, 0.4]
 x_scale: 0.1
@@ -21,7 +21,7 @@ impact_tau: 0.000
 mu: 0.6
 end_effector_acceleration: 4.5
 track_end_effector_orientation: false
-cancel_gravity_compensation: true
+cancel_gravity_compensation: false
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]

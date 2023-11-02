@@ -18,6 +18,8 @@ franka_default_channels = \
   {'FRANKA_STATE': dairlib.lcmt_robot_output,
    # 'TRAY_STATE': dairlib.lcmt_robot_output,
    'FRANKA_INPUT': dairlib.lcmt_robot_input,
+   'OSC_FRANKA': dairlib.lcmt_robot_input,
+   'FRANKA_INPUT_ECHO': dairlib.lcmt_robot_input,
    'C3_TRAJECTORY_ACTOR': dairlib.lcmt_timestamped_saved_traj,
    'C3_TRAJECTORY_TRAY': dairlib.lcmt_timestamped_saved_traj,
    'OSC_DEBUG_FRANKA': dairlib.lcmt_osc_output,

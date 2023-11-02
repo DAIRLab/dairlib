@@ -10,6 +10,7 @@
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/gravity_compensator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
@@ -18,7 +19,6 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "systems/controllers/gravity_compensator.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
 #include "drake/common/find_resource.h"
@@ -83,18 +83,25 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
   parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
-  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
-      FindResourceOrThrow(controller_params.end_effector_model))[0];
+
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
   Vector3d tool_attachment_frame =
       StdVectorToVectorXd(controller_params.tool_attachment_frame);
 
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), tool_attachment_frame);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("plate", end_effector_index), T_EE_W);
+  if (!controller_params.end_effector_name.empty()) {
+    drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
+        FindResourceOrThrow(controller_params.end_effector_model))[0];
+    RigidTransform<double> T_EE_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), tool_attachment_frame);
+    plant.WeldFrames(plant.GetFrameByName("panda_link7"),
+                     plant.GetFrameByName(controller_params.end_effector_name,
+                                          end_effector_index),
+                     T_EE_W);
+  } else {
+    std::cout << "OSC plant has been constructed with no end effector." << std::endl;
+  }
 
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
@@ -182,7 +189,8 @@ int DoMain(int argc, char* argv[]) {
           "panda_joint2_target", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
           plant);
-  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2", "panda_joint2dot");
+  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
+                                                           "panda_joint2dot");
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
@@ -207,7 +215,8 @@ int DoMain(int argc, char* argv[]) {
 
   if (controller_params.cancel_gravity_compensation) {
     auto gravity_compensator =
-        builder.AddSystem<systems::GravityCompensationRemover>(plant, *plant_context);
+        builder.AddSystem<systems::GravityCompensationRemover>(plant,
+                                                               *plant_context);
     builder.Connect(osc->get_output_port_osc_command(),
                     gravity_compensator->get_input_port());
     builder.Connect(gravity_compensator->get_output_port(),

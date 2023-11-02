@@ -19,7 +19,7 @@ w_lambda: 0.0
 impact_threshold: 0.000
 impact_tau: 0.000
 mu: 0.6
-end_effector_acceleration: 4.0
+end_effector_acceleration: 4.5
 track_end_effector_orientation: false
 cancel_gravity_compensation: true
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe

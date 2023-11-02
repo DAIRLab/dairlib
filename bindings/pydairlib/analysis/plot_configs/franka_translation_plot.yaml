@@ -1,12 +1,12 @@
 # LCM channels to read data from
 channel_x: "FRANKA_STATE"
-channel_u: "FRANKA_INPUT"
+channel_u: "OSC_FRANKA"
 channel_osc: "OSC_DEBUG_FRANKA"
 use_default_styling: false
 
 start_time: 0
 #duration: 0.47
-duration: 2
+duration: -1
 
 # Plant properties
 
@@ -32,5 +32,5 @@ plot_qp_solutions: false
 plot_tracking_costs: false
 plot_active_tracking_datas: false
 tracking_datas_to_plot:
-#  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['accel']}
 #  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}

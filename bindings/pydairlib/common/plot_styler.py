@@ -38,12 +38,10 @@ class PlotStyler():
     plt.rc('xtick', labelsize=14)
     plt.rc('ytick', labelsize=14)
     matplotlib.rcParams['figure.figsize'] = 12, 7
-    print(matplotlib.rcParams.keys())
     matplotlib.rcParams['figure.autolayout'] = True
     matplotlib.rcParams['axes.xmargin'] = 0
     matplotlib.rcParams['axes.ymargin'] = 0
     # matplotlib.rcParams['toolbar'] = 'None'
-    matplotlib.rcParams['figure.constrained_layout.use'] = True
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
     if figure is None:

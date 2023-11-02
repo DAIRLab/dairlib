@@ -316,7 +316,7 @@ RobotInputReceiver::RobotInputReceiver(
                                  drake::Value<dairlib::lcmt_robot_input>{});
   this->DeclareVectorOutputPort("u, t",
                                 TimestampedVector<double>(num_actuators_),
-                                &RobotInputReceiver::CopyInputOut);
+                                &RobotInputReceiver::CopyInputOut, {all_sources_ticket()});
 }
 
 void RobotInputReceiver::CopyInputOut(const Context<double>& context,
@@ -328,10 +328,9 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
   VectorXd input_vector = VectorXd::Zero(num_actuators_);
 //  std::cout << "context time: " << context.get_time() << std::endl;
 //  std::cout << "time: " << input_msg.utime * 1e-6 << std::endl;
-  std::cout << "num_efforts: " << input_msg.num_efforts << std::endl;
+//  std::cout << "num_efforts: " << input_msg.num_efforts << std::endl;
 
   for (int i = 0; i < input_msg.num_efforts; i++) {
-//    std::cout << "effort: " << i << input_msg.efforts[i] << std::endl;
     int j = actuator_index_map_.at(input_msg.effort_names[i]);
     input_vector(j) = input_msg.efforts[i];
   }

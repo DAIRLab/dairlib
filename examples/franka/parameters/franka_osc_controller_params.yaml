@@ -19,7 +19,7 @@ w_lambda: 0.0
 impact_threshold: 0.000
 impact_tau: 0.000
 mu: 0.6
-end_effector_acceleration: 5.0
+end_effector_acceleration: 1.0
 track_end_effector_orientation: false
 cancel_gravity_compensation: true
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
@@ -32,39 +32,32 @@ W_lambda_c_reg: [ 0.001, 0.001, 0.01,
 W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.001, 0.001 ]
 
+
+w_elbow: 1
+elbow_kp: 100
+elbow_kd: 5
+
 EndEffectorW:
   [1, 0, 0,
    0, 1, 0,
    0, 0, 1]
 EndEffectorKp:
-  [ 1000, 0, 0,
-    0, 500, 0,
-    0, 0, 1000 ]
-EndEffectorKd:
-  [ 125, 0, 0,
-    0, 70, 0,
-    0, 0, 125 ]
-MidLinkW:
-  [0, 0, 0,
-   0, 0, 0,
-   0, 0, 10]
-MidLinkKp:
-  [ 0, 0, 0,
-    0, 0, 0,
+  [ 100, 0, 0,
+    0, 100, 0,
     0, 0, 100 ]
-MidLinkKd:
-  [ 0, 0, 0,
-    0, 0, 0,
-    0, 0, 20 ]
+EndEffectorKd:
+  [ 5, 0, 0,
+    0, 5, 0,
+    0, 0, 5 ]
 EndEffectorRotW:
   [ 10, 0, 0,
     0, 10, 0,
     0, 0, 10 ]
 EndEffectorRotKp:
-  [ 4000, 0, 0,
-    0, 4000, 0,
-    0, 0,  500]
+  [ 100, 0, 0,
+    0, 100, 0,
+    0, 0,  100]
 EndEffectorRotKd:
-  [ 200, 0, 0,
-    0, 200, 0,
-    0, 0, 40 ]
+  [ 5, 0, 0,
+    0, 5, 0,
+    0, 0, 5 ]

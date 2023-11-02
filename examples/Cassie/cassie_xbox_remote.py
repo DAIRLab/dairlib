@@ -58,6 +58,7 @@ def main():
     i = 0
     latching_switch_a = 1
     latching_switch_b = 1
+    print("Teleop Status: " + str(latching_switch_a))
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -74,6 +75,7 @@ def main():
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 0:
                     latching_switch_a = not latching_switch_a
+                    print("Teleop Status: " + str(latching_switch_a))
                 if event.button == 1:
                     latching_switch_b = not latching_switch_b
 
@@ -93,7 +95,7 @@ def main():
         # radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
-        publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())
+        publisher.publish("RADIO", radio_msg.encode())
 
         # Limit to 20 frames per second
         clock.tick(100)

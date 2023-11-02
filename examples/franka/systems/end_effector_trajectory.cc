@@ -94,10 +94,10 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (radio_out->channel[14]) {
+    *casted_traj = GeneratePose(context);
+  } else {
     *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
         const PiecewisePolynomial<double>*>(&trajectory_input);
-  } else {
-    *casted_traj = GeneratePose(context);
     //  *casted_traj = GenerateCircle(context);
     //  *casted_traj = GenerateLine(context);
   }

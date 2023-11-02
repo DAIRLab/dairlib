@@ -76,7 +76,7 @@ int DoMain(int argc, char* argv[]) {
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/franka/parameters/franka_sim_params.yaml");
 
-  ros::init(argc, argv, "run_c3_ros_to_lcm");
+  ros::init(argc, argv, "run_ros_to_lcm");
   ros::NodeHandle node_handle;
 
   drake::lcm::DrakeLcm drake_lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -130,22 +130,28 @@ int DoMain(int argc, char* argv[]) {
                   tray_state_pub->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
-  auto robot_input_lcm_subscriber =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.franka_input_channel, &drake_lcm));
-  auto robot_input_receiver = builder.AddSystem<RobotInputReceiver>(plant);
-  auto lcm_to_ros_robot_input = builder.AddSystem<LcmToRosTimestampedVector>(7);
-  auto robot_input_ros_publisher = builder.AddSystem(
-      systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make(
-          ros_channel_params.franka_input_channel, &node_handle,
-          {drake::systems::TriggerType::kForced}));
-
-  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
-                  robot_input_receiver->get_input_port());
-  builder.Connect(robot_input_receiver->get_output_port(),
-                  lcm_to_ros_robot_input->get_input_port());
-  builder.Connect(lcm_to_ros_robot_input->get_output_port(),
-                  robot_input_ros_publisher->get_input_port());
+//  auto robot_input_lcm_subscriber =
+//      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+//          lcm_channel_params.franka_input_channel, &drake_lcm));
+//  auto robot_input_lcm_echo =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+//          lcm_channel_params.franka_input_echo, &drake_lcm,
+//          {drake::systems::TriggerType::kForced}));
+//  auto robot_input_receiver = builder.AddSystem<RobotInputReceiver>(plant);
+//  auto lcm_to_ros_robot_input = builder.AddSystem<LcmToRosTimestampedVector>(7);
+//  auto robot_input_ros_publisher = builder.AddSystem(
+//      systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make(
+//          ros_channel_params.franka_input_channel, &node_handle,
+//          {drake::systems::TriggerType::kForced}));
+//
+//  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
+//                  robot_input_receiver->get_input_port());
+//  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
+//                  robot_input_lcm_echo->get_input_port());
+//  builder.Connect(robot_input_receiver->get_output_port(),
+//                  lcm_to_ros_robot_input->get_input_port());
+//  builder.Connect(lcm_to_ros_robot_input->get_output_port(),
+//                  robot_input_ros_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_ros_lcm_bridge"));
@@ -153,8 +159,6 @@ int DoMain(int argc, char* argv[]) {
   DrawAndSaveDiagramGraph(diagram);
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
-//  auto& robot_input_sub_context = robot_input_lcm_subscriber->
-
 
   // figure out what the arguments to this mean
   ros::AsyncSpinner spinner(1);
@@ -172,12 +176,13 @@ int DoMain(int argc, char* argv[]) {
   diagram_context.SetTime(t0);
   simulator.Initialize();
 
-  drake::log()->info("dispatcher_robot_out started");
+  drake::log()->info("franka ros-lcm bridge started");
 
   while (true) {
     old_message_count =
         franka_joint_state_ros_subscriber->WaitForMessage(old_message_count);
     const double time = franka_joint_state_ros_subscriber->message_time();
+
 
     // Check if we are very far ahead or behind
     // (likely due to a restart of the driving clock)
@@ -192,6 +197,7 @@ int DoMain(int argc, char* argv[]) {
     }
 
     simulator.AdvanceTo(time);
+
     // Force-publish via the diagram
     diagram.CalcForcedUnrestrictedUpdate(diagram_context,
                                          &diagram_context.get_mutable_state());

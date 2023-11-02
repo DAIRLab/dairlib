@@ -15,13 +15,13 @@ from pydrake.all import MultibodyPlant, Parser, RigidTransform
 franka_urdf = "examples/franka/urdf/franka_no_collision.urdf"
 tray_model = "examples/franka/urdf/tray.sdf"
 franka_default_channels = \
-  {'FRANKA_OUTPUT': dairlib.lcmt_robot_output,
-   'TRAY_OUTPUT': dairlib.lcmt_robot_output,
+  {'FRANKA_STATE': dairlib.lcmt_robot_output,
+   # 'TRAY_STATE': dairlib.lcmt_robot_output,
    'FRANKA_INPUT': dairlib.lcmt_robot_input,
    'C3_TRAJECTORY_ACTOR': dairlib.lcmt_timestamped_saved_traj,
    'C3_TRAJECTORY_TRAY': dairlib.lcmt_timestamped_saved_traj,
    'OSC_DEBUG_FRANKA': dairlib.lcmt_osc_output,
-   'CASSIE_VIRTUAL_RADIO': dairlib.lcmt_radio_out,
+   'RADIO': dairlib.lcmt_radio_out,
    'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz}
 
 

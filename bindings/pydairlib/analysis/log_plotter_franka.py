@@ -89,31 +89,31 @@ def main():
                                      franka_context, ['paddle'],
                                      {'paddle': np.zeros(3)},
                                      {'paddle': [0, 1, 2]})
-    q = np.load(
-        '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_q.npy')
-    v = np.load(
-        '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_v.npy')
-    t = np.load(
-        '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_t.npy')
-    pos = mbp_plots.make_point_positions_from_q(q,
-                                          franka_plant, franka_context,
-                                          franka_plant.GetBodyByName(
-                                              'paddle').body_frame(),
-                                          np.zeros(3))
-    vel = mbp_plots.make_point_velocities_from_qv(q,
-                                                  v,
-                                                  franka_plant, franka_context,
-                                                  franka_plant.GetBodyByName(
-                                                      'paddle').body_frame(),
-                                                  np.zeros(3))
-    ps = plot_styler.PlotStyler()
-    ps.plot(t, pos, title='leon_experiment_positions')
-    ps = plot_styler.PlotStyler()
-    ps.plot(t, vel, title='leon_experiment_velocities')
-    ps = plot_styler.PlotStyler()
+    # q = np.load(
+    #     '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_q.npy')
+    # v = np.load(
+    #     '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_v.npy')
+    # t = np.load(
+    #     '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_t.npy')
+    # pos = mbp_plots.make_point_positions_from_q(q,
+    #                                       franka_plant, franka_context,
+    #                                       franka_plant.GetBodyByName(
+    #                                           'paddle').body_frame(),
+    #                                       np.zeros(3))
+    # vel = mbp_plots.make_point_velocities_from_qv(q,
+    #                                               v,
+    #                                               franka_plant, franka_context,
+    #                                               franka_plant.GetBodyByName(
+    #                                                   'paddle').body_frame(),
+    #                                               np.zeros(3))
+    # ps = plot_styler.PlotStyler()
+    # ps.plot(t, pos, title='leon_experiment_positions')
+    # ps = plot_styler.PlotStyler()
+    # ps.plot(t, vel, title='leon_experiment_velocities')
+    # ps = plot_styler.PlotStyler()
 
-    ps.plot(t[1:], 1 / np.diff(t) * np.diff(vel, axis=0)[:, 1],
-            title='leon_experiment_accelerations', ylim=[-10, 10])
+    # ps.plot(t[1:], 1 / np.diff(t) * np.diff(vel, axis=0)[:, 1],
+    #         title='leon_experiment_accelerations', ylim=[-10, 10])
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:

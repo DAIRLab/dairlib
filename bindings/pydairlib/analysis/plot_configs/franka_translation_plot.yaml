@@ -1,5 +1,5 @@
 # LCM channels to read data from
-channel_x: "FRANKA_OUTPUT"
+channel_x: "FRANKA_STATE"
 channel_u: "FRANKA_INPUT"
 channel_osc: "OSC_DEBUG_FRANKA"
 use_default_styling: false

@@ -19,12 +19,13 @@ struct FrankaControllerParams : OSCGains {
   double y_scale;
   double z_scale;
 
+  double w_elbow;
+  double elbow_kp;
+  double elbow_kd;
+
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
   std::vector<double> EndEffectorKd;
-  std::vector<double> MidLinkW;
-  std::vector<double> MidLinkKp;
-  std::vector<double> MidLinkKd;
   std::vector<double> EndEffectorRotW;
   std::vector<double> EndEffectorRotKp;
   std::vector<double> EndEffectorRotKd;
@@ -52,13 +53,12 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorW));
     a->Visit(DRAKE_NVP(EndEffectorKp));
     a->Visit(DRAKE_NVP(EndEffectorKd));
-    a->Visit(DRAKE_NVP(MidLinkW));
-    a->Visit(DRAKE_NVP(MidLinkKp));
-    a->Visit(DRAKE_NVP(MidLinkKd));
     a->Visit(DRAKE_NVP(EndEffectorRotW));
     a->Visit(DRAKE_NVP(EndEffectorRotKp));
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
-
+    a->Visit(DRAKE_NVP(w_elbow));
+    a->Visit(DRAKE_NVP(elbow_kp));
+    a->Visit(DRAKE_NVP(elbow_kd));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
@@ -74,15 +74,9 @@ struct FrankaControllerParams : OSCGains {
     K_d_end_effector = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorKd.data(), 3, 3);
-    W_mid_link = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->MidLinkW.data(), 3, 3);
-    K_p_mid_link = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->MidLinkKp.data(), 3, 3);
-    K_d_mid_link = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->MidLinkKd.data(), 3, 3);
+    W_mid_link = this->w_elbow * MatrixXd::Identity(1, 1);
+    K_p_mid_link = this->elbow_kp * MatrixXd::Identity(1, 1);
+    K_d_mid_link = this->elbow_kd * MatrixXd::Identity(1, 1);
     W_end_effector_rot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorRotW.data(), 3, 3);

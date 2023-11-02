@@ -2,6 +2,7 @@ franka_state_channel: FRANKA_STATE_SIMULATION
 tray_state_channel: TRAY_STATE_SIMULATION
 box_state_channel: BOX_STATE_SIMULATION
 franka_input_channel: FRANKA_INPUT
+franka_input_echo: FRANKA_INPUT_ECHO
 
 osc_channel: OSC_FRANKA
 osc_debug_channel: OSC_DEBUG_FRANKA

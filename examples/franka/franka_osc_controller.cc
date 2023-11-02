@@ -178,20 +178,11 @@ int DoMain(int argc, char* argv[]) {
   end_effector_position_tracking_data_for_rel->AddPointToTrack(
       controller_params.end_effector_name);
   auto mid_link_position_tracking_data_for_rel =
-      std::make_unique<TransTaskSpaceTrackingData>(
-          "mid_link", controller_params.K_p_mid_link,
+      std::make_unique<JointSpaceTrackingData>(
+          "panda_joint3_target", controller_params.K_p_mid_link,
           controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
           plant);
-  mid_link_position_tracking_data_for_rel->AddPointToTrack("panda_link4");
-  auto wrist_relative_tracking_data =
-      std::make_unique<RelativeTranslationTrackingData>(
-          "wrist_down_target", controller_params.K_p_mid_link,
-          controller_params.K_d_mid_link, controller_params.W_mid_link, plant,
-          plant, mid_link_position_tracking_data_for_rel.get(),
-          end_effector_position_tracking_data_for_rel.get());
-  Eigen::Vector3d wrist_down_target = Eigen::Vector3d::Zero();
-  wrist_down_target(1) = 0.0;
-  wrist_down_target(2) = 0.0;
+  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint3", "panda_joint3dot");
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
@@ -205,8 +196,8 @@ int DoMain(int argc, char* argv[]) {
   orientation_target(0) = 1;
 
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
-  osc->AddConstTrackingData(std::move(wrist_relative_tracking_data),
-                            wrist_down_target);
+  osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
+                            1.4 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
 
   osc->SetContactFriction(controller_params.mu);

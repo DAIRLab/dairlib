@@ -129,6 +129,30 @@ cc_binary(
     tags = ["ros"],
 )
 
+cc_binary(
+    name = "franka_lcm_ros_bridge",
+    srcs = ["franka_lcm_ros_bridge.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_sim_params",
+        ":franka_lcm_channels",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems/ros:ros_pubsub_systems",
+        "//systems/ros:franka_ros_channels",
+        "//systems/ros:franka_ros_lcm_conversions",
+        "//systems/framework:lcm_driven_loop",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@ros",
+        "@gflags",
+    ],
+    tags = ["ros"],
+)
+
 cc_library(
     name = "franka_lcm_channels",
     hdrs = ["parameters/franka_lcm_channels.h"],

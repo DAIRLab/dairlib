@@ -8,6 +8,7 @@ struct FrankaLcmChannels {
   std::string tray_state_channel;
   std::string box_state_channel;
   std::string franka_input_channel;
+  std::string franka_input_echo;
   std::string osc_channel;
   std::string osc_debug_channel;
   std::string c3_actor_channel;
@@ -20,6 +21,7 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(tray_state_channel));
     a->Visit(DRAKE_NVP(box_state_channel));
     a->Visit(DRAKE_NVP(franka_input_channel));
+    a->Visit(DRAKE_NVP(franka_input_echo));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));
     a->Visit(DRAKE_NVP(c3_actor_channel));

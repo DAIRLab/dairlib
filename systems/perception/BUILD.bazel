@@ -22,6 +22,15 @@ cc_library(
 )
 
 cc_library(
+    name = "voxel_grid_filter",
+    srcs = ["voxel_grid_filter.cc"],
+    hdrs = ["voxel_grid_filter.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "grid_map_visualizer",
     srcs = ["grid_map_visualizer.cc"],
     hdrs = ["grid_map_visualizer.h"],

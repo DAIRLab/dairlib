@@ -159,6 +159,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/framework:vector",
         "//systems/perception:camera_utils",
+        "//systems/perception:voxel_grid_filter",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

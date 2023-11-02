@@ -16,6 +16,7 @@
 #include "systems/system_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/perception/camera_utils.h"
+#include "systems/perception/voxel_grid_filter.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
 
@@ -57,6 +58,7 @@ using camera::DrakeToRosPointCloud;
 #endif
 
 using systems::SubvectorPassThrough;
+using perception::VoxelGridFilter;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
@@ -120,6 +122,9 @@ DEFINE_string(camera_calib_yaml,
               "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
               "yaml with camera calib");
 DEFINE_string(points_pub_channel, "CASSIE_DEPTH", "depth pointcloud channel");
+DEFINE_double(pc_visualization_period, 1.0 / 15.0,
+              "period for visualization of the point cloud for debugging");
+
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -144,6 +149,7 @@ int do_main(int argc, char* argv[]) {
   plant.set_discrete_contact_solver(drake::multibody::DiscreteContactSolver::kSap);
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
+  plant.set_name("plant");
 
   std::string renderer_name = "pelvis_cam";
   scene_graph.AddRenderer(renderer_name,
@@ -250,10 +256,17 @@ int do_main(int argc, char* argv[]) {
     const auto depth_to_points = builder.AddSystem<DepthImageToPointCloud>(
         depth_camera.core().intrinsics(), PixelType::kDepth32F, 1.0, kXYZs
     );
+    const auto voxel_grid_filter = builder.AddSystem<VoxelGridFilter>(
+        0.02, false
+    );
     const auto pc_to_lcm = builder.AddSystem<PointCloudToLcm>(renderer_name);
     const auto pc_pub = builder.AddSystem(
         LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
             FLAGS_points_pub_channel, lcm, FLAGS_points_pub_period
+    ));
+    const auto pc_pub_viz = builder.AddSystem(
+        LcmPublisherSystem::Make<drake::lcmt_point_cloud>(
+            "DRAKE_POINT_CLOUD", lcm, FLAGS_pc_visualization_period
     ));
 
 
@@ -261,8 +274,10 @@ int do_main(int argc, char* argv[]) {
                     camera->query_object_input_port());
     builder.Connect(camera->depth_image_32F_output_port(),
                     depth_to_points->depth_image_input_port());
-    builder.Connect(*depth_to_points, *pc_to_lcm);
+    builder.Connect(*depth_to_points, *voxel_grid_filter);
+    builder.Connect(*voxel_grid_filter, *pc_to_lcm);
     builder.Connect(*pc_to_lcm, *pc_pub);
+    builder.Connect(*pc_to_lcm, *pc_pub_viz);
 
 #ifdef DAIR_ROS_ON
     const auto points_bridge = builder.AddSystem<DrakeToRosPointCloud>("camera_depth_optical_frame");

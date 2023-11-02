@@ -35,8 +35,8 @@ drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
   const double hx = grid_map.getLength()(0) / 2.0;
   const double hy = grid_map.getLength()(1) / 2.0;
 
-  MatrixXd Y= RowVectorXd::LinSpaced(ny, cy + hy, cy - hy).replicate(nx, 1);
   MatrixXd X = VectorXd::LinSpaced(nx, cx + hx, cx - hx).replicate(1, ny);
+  MatrixXd Y = RowVectorXd::LinSpaced(ny, cy + hy, cy - hy).replicate(nx, 1);
 
   for (const auto& layer : grid_map.getLayers()) {
     if (layers_.empty() or

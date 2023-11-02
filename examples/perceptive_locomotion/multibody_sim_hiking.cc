@@ -157,7 +157,9 @@ int do_main(int argc, char* argv[]) {
   auto context = plant.CreateDefaultContext();
 
   // Create lcm systems.
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0"
+  );
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
           FLAGS_channel_u, lcm));

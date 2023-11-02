@@ -69,6 +69,7 @@ DEFINE_bool(simulation, false,
 DEFINE_bool(test_with_ground_truth_state, false,
             "Get floating base from ground truth state for testing");
 DEFINE_bool(print_ekf_info, false, "Print ekf information to the terminal");
+DEFINE_bool(publish_contact, false, "publish contact info to LCM or no");
 
 // TODO(yminchen): delete the flag state_channel_name after finishing testing
 // cassie_state_estimator
@@ -286,7 +287,7 @@ int do_main(int argc, char* argv[]) {
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
 
-  if (FLAGS_floating_base) {
+  if (FLAGS_floating_base && FLAGS_publish_contact) {
     // Create and connect contact estimation publisher.
     auto contact_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(

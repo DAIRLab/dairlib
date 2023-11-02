@@ -6,18 +6,24 @@ namespace perception {
 
 using drake::systems::Context;
 using drake::lcmt_point_cloud;
+using drake::Value;
+
+using pcl::PointCloud;
+using std::make_shared;
 
 template <typename PointT>
 LcmToPclPointCloud<PointT>::LcmToPclPointCloud() {
-  DeclareAbstractInputPort("lcmt_point_cloud",
-                           drake::Value<drake::lcmt_point_cloud>());
-  DeclareAbstractOutputPort("PointCloudPtr", &LcmToPclPointCloud<PointT>::Calc);
+  DeclareAbstractInputPort("lcmt_point_cloud", Value<lcmt_point_cloud>());
+  typename PointCloud<PointT>::Ptr model = make_shared<PointCloud<PointT>>();
+  DeclareAbstractOutputPort(
+      "PointCloudPtr", model, &LcmToPclPointCloud<PointT>::Calc
+  );
 }
 
 template <typename PointT>
 void LcmToPclPointCloud<PointT>::Calc(
     const Context<double>&context,
-    typename pcl::PointCloud<PointT>::Ptr* ptr) const {
+    typename PointCloud<PointT>::Ptr* ptr) const {
   auto lcm_cloud = EvalAbstractInput(
       context, 0)->template get_value<lcmt_point_cloud>();
   auto& pcl_cloud = *ptr;

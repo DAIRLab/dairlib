@@ -114,7 +114,7 @@ int do_main(int argc, char* argv[]) {
           "CONTROLLER_ERROR", &lcm_local));
   auto controller_error_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_controller_failure>(
-          "CONTROLLER_ERROR", &lcm_local));
+          "CONTROLLER_ERROR", &lcm_local, {TriggerType::kForced}));
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto input_supervisor_status_pub = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_input_supervisor_status>(

@@ -188,7 +188,7 @@ void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
-  auto z_sol = c3_->GetFullSolution();
+//  auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
     c3_intermediates->w_.col(i) = w_[i];

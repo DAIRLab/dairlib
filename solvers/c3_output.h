@@ -9,7 +9,7 @@
 
 #include "dairlib/lcmt_c3_output.hpp"
 
-#include "drake/systems/lcm/serializer.h"
+//#include "drake/systems/lcm/serializer.h"
 
 namespace dairlib {
 
@@ -22,6 +22,7 @@ class C3Output {
 //    C3Solution(Eigen::VectorXd time_vector_, Eigen::MatrixXd x_sol_,
 //               Eigen::MatrixXd lambda_sol_, Eigen::MatrixXd u_sol_);
 
+    // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXd time_vector_;
     Eigen::MatrixXd x_sol_;
     Eigen::MatrixXd lambda_sol_;
@@ -33,6 +34,7 @@ class C3Output {
 //    C3Intermediates(Eigen::VectorXd time_vector_, Eigen::MatrixXd delta_,
 //                    Eigen::MatrixXd w_);
 
+    // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXd time_vector_;
     Eigen::MatrixXd delta_;
     Eigen::MatrixXd w_;
@@ -45,9 +47,8 @@ class C3Output {
 
   virtual ~C3Output() = default;
 
-  lcmt_c3_output GenerateLcmObject() const;
+  lcmt_c3_output GenerateLcmObject(double time) const;
 
- protected:
  private:
   C3Solution c3_solution_;
   C3Intermediates c3_intermediates_;

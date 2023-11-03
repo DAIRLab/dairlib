@@ -87,7 +87,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     end_effector_orientation_traj.datapoints = orientation_samples;
     end_effector_orientation_traj.time_vector = c3_solution->time_vector_;
     lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
-                           std::move(end_effector_orientation_traj));
+                           end_effector_orientation_traj);
   }
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
@@ -123,7 +123,7 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
     object_orientation_traj.datapoints = orientation_samples;
     object_orientation_traj.time_vector = c3_solution->time_vector_;
     lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                           std::move(object_orientation_traj));
+                           object_orientation_traj);
   }
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();

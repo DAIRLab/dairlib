@@ -79,6 +79,7 @@ cc_binary(
         "//systems/controllers:c3_controller",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:c3_output_systems",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

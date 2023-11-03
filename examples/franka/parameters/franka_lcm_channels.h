@@ -13,6 +13,7 @@ struct FrankaLcmChannels {
   std::string osc_debug_channel;
   std::string c3_actor_channel;
   std::string c3_object_channel;
+  std::string c3_debug_output_channel;
   std::string radio_channel;
 
   template <typename Archive>
@@ -26,6 +27,7 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(osc_debug_channel));
     a->Visit(DRAKE_NVP(c3_actor_channel));
     a->Visit(DRAKE_NVP(c3_object_channel));
+    a->Visit(DRAKE_NVP(c3_debug_output_channel));
     a->Visit(DRAKE_NVP(radio_channel));
   }
 };

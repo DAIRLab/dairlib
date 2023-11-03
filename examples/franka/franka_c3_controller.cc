@@ -5,17 +5,18 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
+#include "examples/franka/systems/c3_trajectory_generator.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "examples/franka/systems/franka_kinematics.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3_controller.h"
-#include "examples/franka/systems/c3_trajectory_generator.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/trajectory_optimization/c3_output_systems.h"
 
 #include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -168,13 +169,17 @@ int DoMain(int argc, char* argv[]) {
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}),
-          1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kForced})));
+
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}),
-          1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kForced})));
+
+  auto c3_output_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
+          lcm_channel_params.c3_debug_output_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -182,8 +187,10 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
       contact_pairs, c3_options);
-  auto c3_trajectory_generator = builder.AddSystem<systems::C3TrajectoryGenerator>(
-      plant_plate, &plate_context, c3_options);
+  auto c3_trajectory_generator =
+      builder.AddSystem<systems::C3TrajectoryGenerator>(
+          plant_plate, &plate_context, c3_options);
+  auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -196,11 +203,18 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),
-                   c3_trajectory_generator->get_input_port_c3_solution());
+                  c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
+
+  builder.Connect(controller->get_output_port_c3_solution(),
+                  c3_output_sender->get_input_port_c3_solution());
+  builder.Connect(controller->get_output_port_c3_intermediates(),
+                  c3_output_sender->get_input_port_c3_intermediates());
+  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
+                  c3_output_publisher->get_input_port());
 
   controller->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);

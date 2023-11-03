@@ -178,8 +178,7 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name,
-    int num_poses,
+    const std::string& orientation_trajectory_name, int num_poses,
     const std::string& default_trajectory_path)
     : meshcat_(meshcat),
       translation_trajectory_name_(std::move(translation_trajectory_name)),
@@ -211,12 +210,10 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
             context, trajectory_input_port_);
     lcm_traj_ = LcmTrajectory(lcm_traj->saved_traj);
-  }
-  MatrixXd object_poses = MatrixXd::Zero(7, N_);
-
-  if (!lcm_traj_.HasTrajectory(translation_trajectory_name_)) {
+  } else {
     return drake::systems::EventStatus::Succeeded();
   }
+  MatrixXd object_poses = MatrixXd::Zero(7, N_);
 
   const auto lcm_translation_traj =
       lcm_traj_.GetTrajectory(translation_trajectory_name_);

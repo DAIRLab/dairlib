@@ -6,7 +6,6 @@
 #include <dairlib/lcmt_radio_out.hpp>
 
 #include "common/find_resource.h"
-#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
@@ -75,17 +74,24 @@ C3Controller::C3Controller(
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
+  auto c3_solution = C3Output::C3Solution();
+  c3_solution.x_sol_ = MatrixXd::Zero(n_q_ + n_v_, N_);
+  c3_solution.lambda_sol_ = MatrixXd::Zero(n_lambda_, N_);
+  c3_solution.u_sol_ = MatrixXd::Zero(n_u_, N_);
+  c3_solution.time_vector_ = VectorXd::Zero(N_);
+  auto c3_intermediates = C3Output::C3Intermediates();
+  c3_intermediates.w_ = MatrixXd::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.delta_ = MatrixXd::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.time_vector_ = VectorXd::Zero(N_);
+  c3_solution_port_ =
+      this->DeclareAbstractOutputPort("c3_solution", c3_solution,
+                                      &C3Controller::OutputC3Solution)
+          .get_index();
+  c3_intermediates_port_ =
+      this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
+                                      &C3Controller::OutputC3Intermediates)
+          .get_index();
 
-  actor_trajectory_port_ =
-      this->DeclareAbstractOutputPort("c3_actor_trajectory_output",
-                                      dairlib::lcmt_timestamped_saved_traj(),
-                                      &C3Controller::OutputActorTrajectory)
-          .get_index();
-  object_trajectory_port_ =
-      this->DeclareAbstractOutputPort("c3_object_trajectory_output",
-                                      dairlib::lcmt_timestamped_saved_traj(),
-                                      &C3Controller::OutputObjectTrajectory)
-          .get_index();
   plan_start_time_index_ = DeclareDiscreteState(1);
   DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
 }
@@ -114,10 +120,9 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   current(1) += radio_out->channel[1] * 0.2;
   current(2) += radio_out->channel[2] * 0.2;
   x_des_adjusted.head(n_q_).tail(3) = current;
-  if (radio_out->channel[13] > 0){
+  if (radio_out->channel[13] > 0) {
     x_des_adjusted.head(3) = current;
   }
-  //  std::cout << x_des_adjusted.transpose() << std::endl;
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des_adjusted);
@@ -160,106 +165,35 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
   }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
+  delta_ = delta;
+  w_ = w;
   return drake::systems::EventStatus::Succeeded();
 }
 
-void C3Controller::OutputActorTrajectory(
+void C3Controller::OutputC3Solution(
     const drake::systems::Context<double>& context,
-    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+    C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
   auto z_sol = c3_->GetFullSolution();
-  MatrixXd x_sol = MatrixXd::Zero(n_q_ + n_v_, N_);
-  MatrixXd lambda_sol = MatrixXd::Zero(n_lambda_, N_);
-  MatrixXd u_sol = MatrixXd::Zero(n_u_, N_);
-  VectorXd breaks = VectorXd::Zero(N_);
-
   for (int i = 0; i < N_; i++) {
-    breaks(i) = t + i * c3_options_.dt;
-    x_sol.col(i) = z_sol[i].segment(0, n_x_);
-    lambda_sol.col(i) = z_sol[i].segment(n_x_, n_lambda_);
-    u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
+    c3_solution->time_vector_(i) = t + i * c3_options_.dt;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_);
+    c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_, n_lambda_);
+    c3_solution->u_sol_.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
   }
-
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = x_sol.topRows(3);
-  knots.bottomRows(3) = x_sol.bottomRows(n_v_).topRows(3);
-  LcmTrajectory::Trajectory end_effector_traj;
-  end_effector_traj.traj_name = "end_effector_traj";
-  end_effector_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
-  end_effector_traj.datapoints = knots;
-  end_effector_traj.time_vector = breaks;
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_traj"},
-                         "end_effector_traj", "end_effector_traj", false);
-
-  if (publish_end_effector_orientation_) {
-    LcmTrajectory::Trajectory end_effector_orientation_traj;
-    // first 3 rows are rpy, last 3 rows are angular velocity
-    MatrixXd orientation_samples = MatrixXd::Zero(6, N_);
-    orientation_samples.topRows(3) = x_sol.topRows(6).bottomRows(3);
-    orientation_samples.bottomRows(3) =
-        x_sol.bottomRows(n_v_).topRows(6).bottomRows(3);
-    end_effector_orientation_traj.traj_name = "end_effector_orientation_target";
-    end_effector_orientation_traj.datatypes =
-        std::vector<std::string>(orientation_samples.rows(), "double");
-    end_effector_orientation_traj.datapoints = orientation_samples;
-    end_effector_orientation_traj.time_vector = breaks;
-    lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
-                           std::move(end_effector_orientation_traj));
-  }
-
-  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
-  output_traj->utime = t * 1e6;
 }
 
-void C3Controller::OutputObjectTrajectory(
+void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
-    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
-  // TODO:yangwill, check to make sure the time being used here makes sense
+    C3Output::C3Intermediates* c3_intermediates) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
-
   auto z_sol = c3_->GetFullSolution();
-  MatrixXd x_sol = MatrixXd::Zero(n_q_ + n_v_, N_);
-  MatrixXd lambda_sol = MatrixXd::Zero(n_lambda_, N_);
-  MatrixXd u_sol = MatrixXd::Zero(n_u_, N_);
-  VectorXd breaks = VectorXd::Zero(N_);
-
   for (int i = 0; i < N_; i++) {
-    breaks(i) = t + i * c3_options_.dt;
-    x_sol.col(i) = z_sol[i].segment(0, n_x_);
-    lambda_sol.col(i) = z_sol[i].segment(n_x_, n_lambda_);
-    u_sol.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
+    c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
+    c3_intermediates->w_.col(i) = w_[i];
+    c3_intermediates->delta_.col(i) = delta_[i];
   }
-
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  knots.topRows(3) = x_sol.middleRows(n_q_ - 3, 3);
-  knots.bottomRows(3) = x_sol.middleRows(n_q_ + n_v_ - 3, 3);
-  LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_traj";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
-  object_traj.datapoints = knots;
-  object_traj.time_vector = breaks;
-  LcmTrajectory lcm_traj({object_traj}, {"object_traj"}, "object_traj",
-                         "object_traj", false);
-
-  if (publish_end_effector_orientation_) {
-    LcmTrajectory::Trajectory object_orientation_traj;
-    // first 3 rows are rpy, last 3 rows are angular velocity
-    MatrixXd orientation_samples = MatrixXd::Zero(7, N_);
-    orientation_samples.topRows(4) = x_sol.middleRows(3 + 3, 4);
-    orientation_samples.bottomRows(3) = x_sol.middleRows(n_q_ + 3 + 3, 3);
-    object_orientation_traj.traj_name = "object_orientation_target";
-    object_orientation_traj.datatypes =
-        std::vector<std::string>(orientation_samples.rows(), "double");
-    object_orientation_traj.datapoints = orientation_samples;
-    object_orientation_traj.time_vector = breaks;
-    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                           std::move(object_orientation_traj));
-  }
-
-  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
-  output_traj->utime = t * 1e6;
 }
 
 }  // namespace systems

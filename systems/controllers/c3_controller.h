@@ -12,6 +12,7 @@
 #include "solvers/c3.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_options.h"
+#include "solvers/c3_output.h"
 #include "solvers/lcs.h"
 #include "solvers/solver_options_io.h"
 #include "systems/framework/timestamped_vector.h"
@@ -41,13 +42,13 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     return this->get_input_port(lcs_state_input_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_actor_trajectory()
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution()
       const {
-    return this->get_output_port(actor_trajectory_port_);
+    return this->get_output_port(c3_solution_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_object_trajectory()
+  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates()
       const {
-    return this->get_output_port(object_trajectory_port_);
+    return this->get_output_port(c3_intermediates_port_);
   }
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
@@ -63,23 +64,21 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  void OutputActorTrajectory(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_timestamped_saved_traj* output_traj) const;
-
-  void OutputObjectTrajectory(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_timestamped_saved_traj* output_traj) const;
-
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  void OutputC3Solution(const drake::systems::Context<double>& context,
+                        C3Output::C3Solution* c3_solution) const;
+
+  void OutputC3Intermediates(const drake::systems::Context<double>& context,
+                             C3Output::C3Intermediates* c3_intermediates) const;
+
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex radio_port_;
-  drake::systems::OutputPortIndex actor_trajectory_port_;
-  drake::systems::OutputPortIndex object_trajectory_port_;
+  drake::systems::OutputPortIndex c3_solution_port_;
+  drake::systems::OutputPortIndex c3_intermediates_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
@@ -93,7 +92,6 @@ class C3Controller : public drake::systems::LeafSystem<double> {
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  //
   bool publish_end_effector_orientation_ = false;
 
   // convenience for variable sizes
@@ -104,6 +102,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   int n_u_;
 
   mutable std::unique_ptr<solvers::C3MIQP> c3_;
+  mutable std::vector<VectorXd> delta_;
+  mutable std::vector<VectorXd> w_;
   //  std::unique_ptr<solvers::LCS> lcs_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   std::vector<Eigen::MatrixXd> Q_;

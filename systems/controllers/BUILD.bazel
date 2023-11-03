@@ -53,21 +53,40 @@ cc_library(
 
 cc_library(
     name = "c3_controller",
+    srcs = ["c3_controller.cc"],
+    hdrs = ["c3_controller.h"],
+    deps = [
+        "//common:find_resource",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_trajectory_generator",
     srcs = [
-        "c3_controller.cc",
+        "c3_trajectory_generator.cc",
     ],
     hdrs = [
-        "c3_controller.h",
+        "c3_trajectory_generator.h",
     ],
     deps = [
-        "//systems/framework:vector",
-        "//examples/franka/systems:franka_systems",
-        "//lcmtypes:lcmt_robot",
-        "//solvers:c3",
         "//common:find_resource",
-        "//multibody:utils",
-        "//solvers:solver_options_io",
+        "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )
@@ -135,8 +154,8 @@ cc_library(
     deps = [
         ":affine_controller",
         ":constrained_lqr_controller",
-        ":linear_controller",
         ":gravity_compensator",
+        ":linear_controller",
     ],
 )
 

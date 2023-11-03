@@ -45,6 +45,20 @@ cc_library(
 )
 
 cc_library(
+    name = "c3_output",
+    srcs = [
+        "c3_output.cc",
+    ],
+    hdrs = [
+        "c3_output.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "lcs",
     srcs = [
         "lcs.cc",

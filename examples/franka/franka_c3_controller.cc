@@ -11,6 +11,7 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3_controller.h"
+#include "systems/controllers/c3_trajectory_generator.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -181,6 +182,8 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
       contact_pairs, c3_options);
+  auto c3_trajectory_generator = builder.AddSystem<systems::C3TrajectoryGenerator>(
+      plant_plate, &plate_context, c3_options);
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -192,9 +195,11 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
-  builder.Connect(controller->get_output_port_actor_trajectory(),
+  builder.Connect(controller->get_output_port_c3_solution(),
+                   c3_trajectory_generator->get_input_port_c3_solution());
+  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
                   actor_trajectory_sender->get_input_port());
-  builder.Connect(controller->get_output_port_object_trajectory(),
+  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
 
   controller->SetPublishEndEffectorOrientation(

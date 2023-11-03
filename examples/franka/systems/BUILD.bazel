@@ -4,10 +4,10 @@ cc_library(
     name = "franka_systems",
     srcs = [],
     deps = [
-        ":end_effector_trajectory",
         ":end_effector_orientation",
-            ":franka_kinematics"
-            ],
+        ":end_effector_trajectory",
+        ":franka_kinematics",
+    ],
 )
 
 cc_library(
@@ -37,28 +37,40 @@ cc_library(
 )
 
 cc_library(
+    name = "plate_balancing_target",
+    srcs = ["plate_balancing_target.cc"],
+    hdrs = ["plate_balancing_target.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "franka_kinematics",
     srcs = ["franka_kinematics.cc"],
     hdrs = ["franka_kinematics.h"],
     deps = [
-        "//lcmtypes:lcmt_robot",
         ":franka_kinematics_vector",
         "//common",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )
 
-
 cc_library(
     name = "franka_sim_controls",
     srcs = ["franka_sim_controls.cc"],
     hdrs = ["franka_sim_controls.h"],
     deps = [
-        "//lcmtypes:lcmt_robot",
         ":franka_kinematics_vector",
         "//common",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",

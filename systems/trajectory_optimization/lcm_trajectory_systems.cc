@@ -174,15 +174,17 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   return drake::systems::EventStatus::Succeeded();
 }
 
-LcmObjectTrajectoryDrawer::LcmObjectTrajectoryDrawer(
+LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
     const std::string& orientation_trajectory_name,
+    int num_poses,
     const std::string& default_trajectory_path)
     : meshcat_(meshcat),
       translation_trajectory_name_(std::move(translation_trajectory_name)),
       orientation_trajectory_name_(std::move(orientation_trajectory_name)),
+      N_(num_poses),
       default_trajectory_path_(default_trajectory_path) {
   this->set_name(model_file);
 
@@ -196,10 +198,10 @@ LcmObjectTrajectoryDrawer::LcmObjectTrajectoryDrawer(
 
   lcm_traj_ =
       LcmTrajectory(dairlib::FindResourceOrThrow(default_trajectory_path_));
-  DeclarePerStepDiscreteUpdateEvent(&LcmObjectTrajectoryDrawer::DrawTrajectory);
+  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
 }
 
-drake::systems::EventStatus LcmObjectTrajectoryDrawer::DrawTrajectory(
+drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(

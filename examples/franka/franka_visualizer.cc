@@ -157,7 +157,7 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_drawer_object =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_traj");
   auto object_trajectory_drawer_object =
-      builder.AddSystem<systems::LcmObjectTrajectoryDrawer>(
+      builder.AddSystem<systems::LcmPoseDrawer>(
           meshcat, FindResourceOrThrow(sim_params.tray_model), "object_traj",
           "object_orientation_target");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));

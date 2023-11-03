@@ -159,6 +159,10 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+    data = [
+        "parameters/lcm_channels_hardware.yaml",
+        "parameters/lcm_channels_simulation.yaml",
+    ]
 )
 
 cc_library(
@@ -167,6 +171,9 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+    data = [
+        "parameters/franka_sim_params.yaml",
+    ]
 )
 
 cc_library(
@@ -175,6 +182,9 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+    data = [
+        "parameters/franka_osc_controller_params.yaml",
+    ]
 )
 
 cc_library(
@@ -184,4 +194,10 @@ cc_library(
         "//solvers:c3",
         "@drake//:drake_shared_library",
     ],
+    data = [
+        "parameters/franka_c3_controller_params.yaml",
+        "parameters/franka_c3_options_floating.yaml",
+        "parameters/franka_c3_options_translation.yaml",
+        "parameters/franka_qp_options.yaml",
+    ]
 )

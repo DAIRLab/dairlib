@@ -24,6 +24,8 @@ struct C3Options {
 
   std::vector<double> q_vector;
   std::vector<double> r_vector;
+  std::vector<double> g_vector;
+  std::vector<double> u_vector;
 
   std::vector<double> q_des_vector;
   std::vector<double> v_des_vector;
@@ -64,6 +66,8 @@ struct C3Options {
     a->Visit(DRAKE_NVP(g_size));
     a->Visit(DRAKE_NVP(u_size));
     a->Visit(DRAKE_NVP(q_vector));
+    a->Visit(DRAKE_NVP(g_vector));
+    a->Visit(DRAKE_NVP(u_vector));
     a->Visit(DRAKE_NVP(r_vector));
     a->Visit(DRAKE_NVP(q_des_vector));
     a->Visit(DRAKE_NVP(v_des_vector));
@@ -72,6 +76,10 @@ struct C3Options {
         this->q_vector.data(), this->q_vector.size());
     Eigen::VectorXd r = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->r_vector.data(), this->r_vector.size());
+    Eigen::VectorXd g = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->g_vector.data(), this->g_vector.size());
+    Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->u_vector.data(), this->u_vector.size());
     q_des = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_des_vector.data(), this->q_des_vector.size());
     v_des = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
@@ -79,10 +87,7 @@ struct C3Options {
 
     Q = w_Q * q.asDiagonal();
     R = w_R * r.asDiagonal();
-    G = w_G * MatrixXd::Identity(g_size, g_size);
-    U = w_U * MatrixXd::Identity(u_size, u_size);
-
-    U.block(0, 0, 19, 19) = 100 * MatrixXd::Identity(19, 19);
-
+    G = w_G * g.asDiagonal();
+    U = w_U * u.asDiagonal();
   }
 };

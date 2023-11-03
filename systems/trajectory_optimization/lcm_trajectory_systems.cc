@@ -186,10 +186,10 @@ LcmPoseDrawer::LcmPoseDrawer(
       orientation_trajectory_name_(std::move(orientation_trajectory_name)),
       N_(num_poses),
       default_trajectory_path_(default_trajectory_path) {
-  this->set_name(model_file);
+  this->set_name("/poses/" + model_file);
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.5), "", meshcat);
+      model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.4), "", meshcat);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",

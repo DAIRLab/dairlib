@@ -156,10 +156,14 @@ int do_main(int argc, char* argv[]) {
                                                       "end_effector_traj");
   auto trajectory_drawer_object =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_traj");
-  auto object_trajectory_drawer_object =
+  auto object_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
           meshcat, FindResourceOrThrow(sim_params.tray_model), "object_traj",
           "object_orientation_target");
+  auto end_effector_pose_drawer =
+      builder.AddSystem<systems::LcmPoseDrawer>(
+          meshcat, FindResourceOrThrow(sim_params.end_effector_model), "end_effector_traj",
+          "end_effector_orientation_target");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
@@ -174,7 +178,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(trajectory_sub_object->get_output_port(),
                   trajectory_drawer_object->get_input_port_trajectory());
   builder.Connect(trajectory_sub_object->get_output_port(),
-                  object_trajectory_drawer_object->get_input_port_trajectory());
+                  object_pose_drawer->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_actor->get_output_port(),
+                  end_effector_pose_drawer->get_input_port_trajectory());
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),

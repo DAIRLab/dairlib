@@ -31,9 +31,9 @@ cc_library(
     name = "osc_tracking_datas",
     deps = [
         ":com_tracking_data",
+        ":external_force_tracking_data",
         ":joint_space_tracking_data",
         ":osc_tracking_data",
-        ":external_force_tracking_data",
         ":relative_transform_tracking_data",
         ":rot_space_tracking_data",
         ":trans_space_tracking_data",

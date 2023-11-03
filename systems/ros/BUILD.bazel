@@ -14,19 +14,18 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "franka_ros_lcm_conversions",
     srcs = ["franka_ros_lcm_conversions.cc"],
     hdrs = ["franka_ros_lcm_conversions.h"],
     tags = ["ros"],
     deps = [
-        "//lcmtypes:lcmt_robot",
         "//common",
-        "@ros",
+        "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
+        "@ros",
     ],
 )
 

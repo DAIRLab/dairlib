@@ -11,7 +11,6 @@ load(
     "pybind_py_library",
 )
 
-
 pybind_py_library(
     name = "cassie_utils_py",
     cc_deps = [
@@ -46,9 +45,9 @@ pybind_py_library(
 pybind_py_library(
     name = "controllers_py",
     cc_deps = [
-        "@drake//:drake_shared_library",
         "//examples/Cassie/diagrams:osc_running_controller_diagram",
         "//examples/Cassie/diagrams:osc_walking_controller_diagram",
+        "@drake//:drake_shared_library",
     ],
     cc_so_name = "controllers",
     cc_srcs = ["controllers_py.cc"],
@@ -62,13 +61,14 @@ pybind_py_library(
 pybind_py_library(
     name = "simulators_py",
     cc_deps = [
+        "//examples/Cassie/diagrams:cassie_sim_diagram",
         "@drake//:drake_shared_library",
         "@drake//bindings/pydrake/common:value_pybind",
-        "//examples/Cassie/diagrams:cassie_sim_diagram",
     ],
     cc_so_name = "simulators",
-    cc_srcs = ["simulators_py.cc",
-               ],
+    cc_srcs = [
+        "simulators_py.cc",
+    ],
     py_deps = [
         "@drake//bindings/pydrake",
         "//bindings/pydairlib/lcm:lcm",
@@ -81,8 +81,8 @@ py_binary(
     name = "learn_osc_gains",
     srcs = ["learn_osc_gains.py"],
     deps = [
+        "//bindings/pydairlib/cassie",
         "//bindings/pydairlib/cassie/gym_envs:cassie_gym_all",
-        "//bindings/pydairlib/cassie:cassie",
         "@drake//bindings/pydrake",
     ],
 )

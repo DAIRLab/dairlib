@@ -8,7 +8,7 @@ py_binary(
     deps = [
         "//lcmtypes:lcmtypes_robot_py",
         "@drake//tools:drake_visualizer_py",
-#        "//bindings/pydairlib/multibody:multibody_py",
+        #        "//bindings/pydairlib/multibody:multibody_py",
         "@pydrake_pegged",
     ],
 )

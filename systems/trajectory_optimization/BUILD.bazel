@@ -54,10 +54,10 @@ cc_library(
         "lcm_trajectory_systems.h",
     ],
     deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
         "//lcm:lcm_trajectory_saver",
         "//multibody:multipose_visualizer",
-        "//common:find_resource",
-        "//common:eigen_utils",
         "@drake//:drake_shared_library",
     ],
 )

@@ -18,18 +18,17 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
-        "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/common",
-        "//bindings/pydairlib/lcm:process_lcm_log",
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
         "//bindings/pydairlib/analysis:osc_debug_py",
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/common",
         "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/lcm:process_lcm_log",
         "//bindings/pydairlib/multibody:kinematic_py",
         "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
-
 
 py_binary(
     name = "jumping_parameter_study",
@@ -38,13 +37,13 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
+        "//bindings/pydairlib/analysis:cassie_plotting_utils",
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:osc_debug_py",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
-        "//bindings/pydairlib/lcm:process_lcm_log",
-        "//bindings/pydairlib/analysis:mbp_plotting_utils",
-        "//bindings/pydairlib/analysis:cassie_plotting_utils",
-        "//bindings/pydairlib/analysis:osc_debug_py",
         "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/lcm:process_lcm_log",
         "//bindings/pydairlib/multibody:kinematic_py",
         "//bindings/pydairlib/multibody:multibody_py",
         "//lcmtypes:lcmtypes_robot_py",

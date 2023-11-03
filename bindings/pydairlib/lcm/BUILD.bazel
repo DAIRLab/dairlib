@@ -1,4 +1,4 @@
-    # -*- python -*-
+# -*- python -*-
 load("@drake//tools/install:install.bzl", "install")
 
 package(default_visibility = ["//visibility:public"])
@@ -11,13 +11,12 @@ load(
     "pybind_py_library",
 )
 
-
 pybind_py_library(
     name = "lcm_py",
     cc_deps = [
         "//lcmtypes:lcmt_robot",
-        "@drake//bindings/pydrake/systems:lcm_pybind",
         "@drake//bindings/pydrake/common:value_pybind",
+        "@drake//bindings/pydrake/systems:lcm_pybind",
     ],
     cc_srcs = [
         "lcm_py.cc",

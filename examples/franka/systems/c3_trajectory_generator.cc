@@ -1,4 +1,4 @@
-#include "c3_trajectory_generator.h"
+#include "examples/franka/systems/c3_trajectory_generator.h"
 
 #include <iostream>
 #include <utility>

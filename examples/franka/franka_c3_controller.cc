@@ -11,7 +11,7 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3_controller.h"
-#include "systems/controllers/c3_trajectory_generator.h"
+#include "examples/franka/systems/c3_trajectory_generator.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"

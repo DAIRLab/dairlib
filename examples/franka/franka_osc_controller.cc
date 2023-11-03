@@ -116,7 +116,7 @@ int DoMain(int argc, char* argv[]) {
   orientation_traj.traj_name = "end_effector_orientation_target";
   orientation_traj.datatypes = std::vector<std::string>(2, "orientation");
   lcm_traj.AddTrajectory(orientation_traj.traj_name, orientation_traj);
-  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
+//  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(

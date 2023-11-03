@@ -205,11 +205,13 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         measurement_variances,
         X_PS, X_WP
     );
+
     // add points to the map
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
 
-  map.fuseAll();
+  // TODO (@Brian-Acosta) decide how to go about fusing if needed
+  //  map.fuseAll();
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -217,7 +219,7 @@ void ElevationMappingSystem::CopyGridMap(
     const Context<double>& context, GridMap* grid_map) const {
   *grid_map = context.get_abstract_state<ElevationMap>(
       elevation_map_state_index_
-  ).getFusedGridMap();
+  ).getRawGridMap();
 }
 
 }

@@ -86,7 +86,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_bool(publish_efforts, true, "Flag to publish the efforts.");
 DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(publish_ros_pose, false, "if true, publishes the pelvis tf");
-DEFINE_bool(publish_points, false, "publish ros pointcloud messages");
+DEFINE_bool(publish_points, true, "publish ros pointcloud messages");
 DEFINE_bool(time_stepping, true,
             "If 'true', the plant is modeled as a "
             "discrete system with periodic updates. "
@@ -116,7 +116,7 @@ DEFINE_string(radio_channel, "CASSIE_VIRTUAL_RADIO",
 DEFINE_string(channel_u, "CASSIE_INPUT",
               "LCM channel to receive controller inputs on");
 DEFINE_string(stepping_stone_filename,
-              "examples/perceptive_locomotion/terrains/stones.yaml",
+              "examples/perceptive_locomotion/terrains/flat.yaml",
               "YAML file defining stepping stones");
 DEFINE_string(camera_calib_yaml,
               "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
@@ -257,7 +257,7 @@ int do_main(int argc, char* argv[]) {
         depth_camera.core().intrinsics(), PixelType::kDepth32F, 1.0, kXYZs
     );
     const auto voxel_grid_filter = builder.AddSystem<VoxelGridFilter>(
-        0.02, false
+        0.025, false
     );
     const auto pc_to_lcm = builder.AddSystem<PointCloudToLcm>(renderer_name);
     const auto pc_pub = builder.AddSystem(

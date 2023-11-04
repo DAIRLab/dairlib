@@ -7,11 +7,10 @@ namespace dairlib::geometry {
 constexpr int kMaxFootholdFaces = 10;
 
 /// Class representing a convex foothold consisting of a single
-/// equality constraint ax = b defining the contact plane, and up to
+/// equality constraint a'x = b defining the contact plane, and up to
 /// kMaxFootholdFaces inequality constraints defining the extents of the
 /// foothold. No effort is made to check feasibility or reasonableness of any
-/// combination of constraints. No frame information is supplied, so
-/// use responsibly
+/// combination of constraints. No frame information is supplied.
 class ConvexFoothold {
  public:
   ConvexFoothold()= default;
@@ -26,12 +25,13 @@ class ConvexFoothold {
    * Set the contact plane ax = b
    */
   void SetContactPlane(const Eigen::Vector3d& a, double b) {
-    A_eq_ = a.transpose();
-    b_eq_ = Eigen::VectorXd::Constant(1, b);
+    double norm_a = a.norm();
+    A_eq_ = a.transpose() / norm_a;
+    b_eq_ = Eigen::VectorXd::Constant(1, b / norm_a);
   }
 
   /*
-   * Add a constraint ax <= b to the convex foothold
+   * Add a constraint a'x <= b to the convex foothold
    */
   void AddHalfspace(Eigen::Vector3d a, Eigen::VectorXd b);
 
@@ -54,7 +54,14 @@ class ConvexFoothold {
    */
   double Get2dViolation(const Eigen::Vector3d& pt) const;
 
+  /*
+   * Get the inequality constraints, Ax <= b, as a pair {A, b}
+   */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetConstraintMatrices() const;
+
+  /*
+   * Get the equality constraints Aeq*x == b as a pair {Aeq, b}
+   */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetEqualityConstraintMatrices() const;
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   Eigen::Matrix3Xd GetVertices();

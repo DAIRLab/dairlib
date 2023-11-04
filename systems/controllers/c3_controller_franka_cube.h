@@ -180,6 +180,10 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable Eigen::VectorXd fixed_goal_ = VectorXd::Zero(3);
   mutable Eigen::VectorXd start_point_ = VectorXd::Zero(3);
   mutable Eigen::VectorXd end_point_ = VectorXd::Zero(3);
+
+  // Control loop counter
+  mutable int control_loop_counter_ = 0;
+
   // kalman filter
   // mutable VectorXd xhat_prev;
   // mutable MatrixXd P_prev;

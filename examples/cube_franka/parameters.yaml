@@ -54,7 +54,7 @@ move_time: 0.75 #0.75
 stabilize_time2: 0.75 #0.75
 sim_dt: 0.0001 # 0.00005
 sim_publish_dt: 0.001   # 1kHz for state publishing matches Franka hardware.
-realtime_rate: 0.2
+realtime_rate: 0.25
 
 # trajectory parameters
 trajectory_type: 3    # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
@@ -102,14 +102,14 @@ sample_height: 0.04           # height of sampling circle; used for circle perim
 min_angle_from_vertical: 0  #0.785    # radians minimum angle from vertical (i.e. closest to top of sphere) used for spherical surface sampling (2).
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
 num_additional_samples_repos: 2   # number of additional samples to consider when doing repositioning.
-num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
+num_additional_samples_c3: 2      # number of additional samples to consider when doing C3.
 spline_width: 0.13   #0.09
 travel_cost_per_meter: 100
 travel_speed: 0.75     # desired meters/second of repositioning
 
 
 #Threading parameters
-num_threads: 0     # Total number of threads to use. 0 means use all threads on machine.
+num_threads: 1     # Total number of threads to use. 0 means use all threads on machine.
 
 #Switching parameters
 switching_hysteresis: 400 #150

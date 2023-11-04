@@ -7,6 +7,11 @@
 #include <cmath>
 #include <random>
 
+// Includes for dumping data into output file
+#include <iostream>
+#include <iterator>
+#include <array>
+
 #include <omp.h>
 
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
@@ -194,6 +199,12 @@ C3Controller_franka::C3Controller_franka(
 // Gets called with every loop to calculate the next control input.
 void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
+  
+  // Start control loop timer.
+  // auto control_loop_begin = std::chrono::high_resolution_clock::now();
+
+  // Increment control loop counter
+  control_loop_counter_++;
 
   // Set up some variables and initialize warm start.
   N_ = param_.horizon_length;
@@ -239,34 +250,34 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   double table_offset = param_.table_offset;
 
   // Move to initial position if not there yet (this returns before running rest of function).
-  if (timestamp <= settling_time){
-    Eigen::Vector3d start = param_.initial_start;
-    Eigen::Vector3d finish = param_.initial_finish;
-    std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
-                                                                   param_.stabilize_time1 + first_message_time_,
-                                                                   param_.move_time, param_.stabilize_time2);
+  // if (timestamp <= settling_time){
+  //   Eigen::Vector3d start = param_.initial_start;
+  //   Eigen::Vector3d finish = param_.initial_finish;
+  //   std::vector<Eigen::Vector3d> target = move_to_initial_position(start, finish, timestamp,
+  //                                                                  param_.stabilize_time1 + first_message_time_,
+  //                                                                  param_.move_time, param_.stabilize_time2);
 
-    Eigen::Quaterniond default_quat(0, 1, 0, 0);
-    RotationMatrix<double> Rd(default_quat);
+  //   Eigen::Quaterniond default_quat(0, 1, 0, 0);
+  //   RotationMatrix<double> Rd(default_quat);
 
-    double duration = settling_time - first_message_time_;
-    double t = timestamp - first_message_time_;
+  //   double duration = settling_time - first_message_time_;
+  //   double t = timestamp - first_message_time_;
 
-    RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
-    Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
+  //   RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation((t / duration) * param_.orientation_degrees * 3.14 / 180);
+  //   Eigen::Quaterniond orientation_d = (Rd * rot_y).ToQuaternion();
      
-    // Fill the desired state vector with the target end effector location and orientation.
-    VectorXd st_desired = VectorXd::Zero(STATE_VECTOR_SIZE);
-    st_desired.head(3) << target[0];
-    st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
-    st_desired.segment(14, 3) << target[1];
+  //   // Fill the desired state vector with the target end effector location and orientation.
+  //   VectorXd st_desired = VectorXd::Zero(STATE_VECTOR_SIZE);
+  //   st_desired.head(3) << target[0];
+  //   st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
+  //   st_desired.segment(14, 3) << target[1];
 
-    state_contact_desired->SetDataVector(st_desired);
-    state_contact_desired->set_timestamp(timestamp);
-    prev_timestamp_ = (timestamp);
+  //   state_contact_desired->SetDataVector(st_desired);
+  //   state_contact_desired->set_timestamp(timestamp);
+  //   prev_timestamp_ = (timestamp);
 
-    return;
-  }
+  //   return;
+  // }
 
   // Compute dt of the control loop based on moving average filter.
   double control_loop_dt = 0;
@@ -282,49 +293,79 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // FK:  Get the location of the end effector sphere based on franka's joint states.
   // Update context once for FK.
-  plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
-  plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
-  Vector3d EE_offset_ = param_.EE_offset;
-  const drake::math::RigidTransform<double> H_mat =
-      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
-  const RotationMatrix<double> R_current = H_mat.rotation();
-  Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
+  // plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
+  // plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
+  // Vector3d EE_offset_ = param_.EE_offset;
+  // const drake::math::RigidTransform<double> H_mat =
+  //     plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
+  // const RotationMatrix<double> R_current = H_mat.rotation();
+  // Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
 
-  // Get the jacobian and end_effector_dot.
-  auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
-  auto world_frame_ = &plant_franka_.world_frame();
-  MatrixXd J_fb (6, plant_franka_.num_velocities());
-  plant_franka_.CalcJacobianSpatialVelocity(
-      context_franka_, JacobianWrtVariable::kV,
-      *EE_frame_, EE_offset_,
-      *world_frame_, *world_frame_, &J_fb);
-  MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
-  VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
+  // // Get the jacobian and end_effector_dot.
+  // auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
+  // auto world_frame_ = &plant_franka_.world_frame();
+  // MatrixXd J_fb (6, plant_franka_.num_velocities());
+  // plant_franka_.CalcJacobianSpatialVelocity(
+  //     context_franka_, JacobianWrtVariable::kV,
+  //     *EE_frame_, EE_offset_,
+  //     *world_frame_, *world_frame_, &J_fb);
+  // MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
+  // VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
 
-  // Ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
-  // TODO: Need to add noise; currently using noiseless simulation.
-  VectorXd q_plant = robot_output->GetPositions();
-  VectorXd v_plant = robot_output->GetVelocities();
+  // // Ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
+  // // TODO: Need to add noise; currently using noiseless simulation.
+  // VectorXd q_plant = robot_output->GetPositions();
+  // VectorXd v_plant = robot_output->GetVelocities();
   // If doing in hardware, use state estimation here.
   // StateEstimation(q_plant, v_plant, end_effector, timestamp);
 
   // Update franka position again to include noise.
-  plant_franka_.SetPositions(&context_franka_, q_plant);
-  plant_franka_.SetVelocities(&context_franka_, v_plant);
+  // plant_franka_.SetPositions(&context_franka_, q_plant);
+  // plant_franka_.SetVelocities(&context_franka_, v_plant);
 
   // Parse franka state info.
-  VectorXd ball = q_plant.tail(7);
-  Vector3d ball_xyz = ball.tail(3);
-  VectorXd ball_dot = v_plant.tail(6);
-  Vector3d v_ball = ball_dot.tail(3);
+  // VectorXd ball = q_plant.tail(7);
+  // Vector3d ball_xyz = ball.tail(3);
+  // VectorXd ball_dot = v_plant.tail(6);
+  // Vector3d v_ball = ball_dot.tail(3);
 
   // Build state vector from current configuration and velocity.
   VectorXd q(10);
-  q << end_effector, ball;
   VectorXd v(9);
-  v << end_effector_dot, ball_dot;
   VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << end_effector, ball, end_effector_dot, ball_dot;
+
+  Vector3d end_effector(3);
+
+  // Hard coding values for state of the system
+  end_effector << 0.35, 0.35, 0.0700002;
+  q << 0.35, 0.35, 0.0700002, 0.858069, 0.429787, 0.198362, -0.316129,
+                                 0.415101, 0.190375, 0.0365501;
+  v << 4.04499e-07, -8.09694e-07, -4.31981e-07, 8.87074e-12, 1.27578e-11, -1.04473e-14, 7.62646e-13,-5.32871e-13, 9.15762e-15;
+
+  // end_effector_dot = {4.04499e-07, -8.09694e-07, -4.31981e-07,};
+  // ball_dot = {8.87074e-12, 1.27578e-11,-1.04473e-14, 7.62646e-13,-5.32871e-13, 9.15762e-15};
+  
+  Vector3d ball_xyz {0.415101, 0.190375, 0.0365501};
+  // Giving fixed initial condition for speed testing
+  state << 0.35,
+        0.35,
+   0.0700002,
+    0.858069,
+    0.429787,
+    0.198362,
+   -0.316129,
+    0.415101,
+    0.190375,
+   0.0365501,
+ 4.04499e-07,
+-8.09694e-07,
+-4.31981e-07,
+ 8.87074e-12,
+ 1.27578e-11,
+-1.04473e-14,
+ 7.62646e-13,
+-5.32871e-13,
+ 9.15762e-15;
 
   // Build arbitrary control input vector.
   // TODO: why is this set to all 1000s?
@@ -504,6 +545,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   std::vector<solvers::LCS> candidate_lcs_objects;
   for (int i = 0; i < num_samples; i++) {
     Eigen::VectorXd candidate_state;
+    
 
     if(i == CURRENT_LOCATION_INDEX){
       candidate_state = state;  // Start with current state and add others.
@@ -531,6 +573,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     VectorXd xu_test(plant_f_.num_positions() + plant_f_.num_velocities() +
         plant_f_.num_actuators());
     
+    // std::cout<<"\tCandidate state "<<i<<" "<<candidate_state<<std::endl;
+
     // u here is set to a vector of 1000s -- TODO why?
     // Update context with respect to positions and velocities associated with the candidate state.
     VectorXd test_q = candidate_state.head(plant_.num_positions());
@@ -592,9 +636,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // Parallelize over computing C3 costs for each sample.
   // std::cout << "\nLOOP" << std::endl;
+  std::array<double, 3> loop_times {0,0,0};
+
   #pragma omp parallel for num_threads(n_threads_to_use)
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
+      // Start measuring time
+      auto begin = std::chrono::high_resolution_clock::now();
       // Get the candidate state and its LCS representation.
       VectorXd test_state = candidate_states.at(i);
       solvers::LCS test_system = candidate_lcs_objects.at(i);
@@ -666,8 +714,54 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       else {
         cost_vector[i] = cost_vector[i] + param_.reposition_fixed_cost;
       }
+      // Stop measuring time and calculate the elapsed time
+      auto end = std::chrono::high_resolution_clock::now();
+      auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+      // std::cout<<"Elapsed time for sample "<<i<<": "<<elapsed.count()/1000000<<" ms"<<std::endl;
+      loop_times[i] = elapsed.count()/1000000;
     }
   //End of parallelization
+  
+  // Dump time data into text file
+    // std::ofstream output_file("./timing_data.csv", std::ios_base::app);
+    // // std::ofstream output_file("./timing_data.csv", std::ios_base::app);
+
+    // std::ostream_iterator<double> output_iterator(output_file, "\n");
+    // std::copy(loop_times.begin(), loop_times.end(), output_iterator);
+    // output_file<<"\n";
+    
+    // if (control_loop_counter_ == 100){
+    //   std::cout<<"FINISHED 100 ITERATIONS"<<std::endl;
+    //   output_file<<"\t FINISHED 100 ITERATIONS \n";
+    // }
+
+    //  std::ofstream output_file("timing_data.csv", std::ios_base::app);
+     std::ofstream output_file2("timing_data2.csv", std::ios_base::app);
+
+    if (output_file2.is_open()) {
+        for (int i = 0; i < loop_times.size(); i++) {
+            // output_file << loop_times[i];
+            output_file2 << loop_times[i];
+            if (i < loop_times.size() - 1) {
+                // output_file << ",";  // Add a comma to separate columns
+                output_file2 << "\n"; // Each value in a new line
+            } else {
+                // output_file << "\n";  // Start a new line after the last element
+                output_file2 << "\n"; // Each value in a new line
+            }
+        }
+
+        if (control_loop_counter_ == 100) {
+            std::cout << "FINISHED 100 ITERATIONS" << std::endl;
+            // output_file << "FINISHED 100 ITERATIONS\n";
+            output_file2 << "FINISHED 100 ITERATIONS\n";
+        }
+
+        output_file2.close();
+    } else {
+        std::cerr << "Error opening the file for writing." << std::endl;
+    }
+  
 
   // Determine whether to switch between C3 and repositioning modes if there are other samples to consider.
   SampleIndex index = CURRENT_LOCATION_INDEX;
@@ -705,6 +799,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       C3_flag_ = false;
       finished_reposition_flag_ = false;
     }
+    // std::cout<<"Doing c3"<<std::endl;
   }
   else {                    // Currently repositioning.
     // Switch to C3 if the current sample is better, with hysteresis.
@@ -712,6 +807,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       C3_flag_ = true;
       finished_reposition_flag_ = false;
     }
+    // std::cout<<"Repositioning"<<std::endl;
   }
 
   /* =============================================================================================
@@ -723,45 +819,45 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   // FK:  Get the location of the end effector sphere based on franka's joint states.
   // Update context once for FK.
-  plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
-  plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
-  const drake::math::RigidTransform<double> new_H_mat =
-      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
-  const RotationMatrix<double> new_R_current = new_H_mat.rotation();
-  end_effector = new_H_mat.translation() + new_R_current*EE_offset_;
+  // plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
+  // plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
+  // const drake::math::RigidTransform<double> new_H_mat =
+  //     plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
+  // const RotationMatrix<double> new_R_current = new_H_mat.rotation();
+  // end_effector = new_H_mat.translation() + new_R_current*EE_offset_;
 
-  // Get the jacobian and end_effector_dot.
-  EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
-  world_frame_ = &plant_franka_.world_frame();
-  J_fb (6, plant_franka_.num_velocities());
-  plant_franka_.CalcJacobianSpatialVelocity(
-      context_franka_, JacobianWrtVariable::kV,
-      *EE_frame_, EE_offset_,
-      *world_frame_, *world_frame_, &J_fb);
-  J_franka = J_fb.block(0, 0, 6, 7);
-  end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
+  // // Get the jacobian and end_effector_dot.
+  // EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
+  // world_frame_ = &plant_franka_.world_frame();
+  // J_fb (6, plant_franka_.num_velocities());
+  // plant_franka_.CalcJacobianSpatialVelocity(
+  //     context_franka_, JacobianWrtVariable::kV,
+  //     *EE_frame_, EE_offset_,
+  //     *world_frame_, *world_frame_, &J_fb);
+  // J_franka = J_fb.block(0, 0, 6, 7);
+  // end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);
 
   // Ensure that ALL state variables derive from q_plant and v_plant to ensure that noise is added EVERYWHERE!
   // TODO: Need to add noise; currently using noiseless simulation.
-  q_plant = robot_output->GetPositions();
-  v_plant = robot_output->GetVelocities();
+  // q_plant = robot_output->GetPositions();
+  // v_plant = robot_output->GetVelocities();
   // If doing in hardware, use state estimation here.
   // StateEstimation(q_plant, v_plant, end_effector, timestamp);
 
   // Update franka position again to include noise.
-  plant_franka_.SetPositions(&context_franka_, q_plant);
-  plant_franka_.SetVelocities(&context_franka_, v_plant);
+  // plant_franka_.SetPositions(&context_franka_, q_plant);
+  // plant_franka_.SetVelocities(&context_franka_, v_plant);
 
   // Parse franka state info.
-  ball = q_plant.tail(7);
-  ball_xyz = ball.tail(3);
-  ball_dot = v_plant.tail(6);
-  v_ball = ball_dot.tail(3);
+  // ball = q_plant.tail(7);
+  // ball_xyz = ball.tail(3);
+  // ball_dot = v_plant.tail(6);
+  // v_ball = ball_dot.tail(3);
 
   // Build state vector from current configuration and velocity.
-  q << end_effector, ball;
-  v << end_effector_dot, ball_dot;
-  state << end_effector, ball, end_effector_dot, ball_dot;
+  // q << end_effector, ball;
+  // v << end_effector_dot, ball_dot;
+  // state << end_effector, ball, end_effector_dot, ball_dot;
 
   // Build arbitrary control input vector.
   // TODO: why is this set to all 1000s?
@@ -881,7 +977,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Set the indicator in visualization to C3 location, at a negative y value.
     Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
     
-
     // Update desired next state.
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
@@ -957,10 +1052,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic;
   }
   
+  // End control loop timer.
+    // auto control_loop_end = std::chrono::high_resolution_clock::now();
+    // auto control_loop_elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(control_loop_end - control_loop_begin);
+    // std::cout<<"Control loop elapsed time: "<<control_loop_elapsed.count()/1000000<<" ms"<<std::endl;
 
   // Send desired output vector to output port.
-  state_contact_desired->SetDataVector(st_desired);
-  state_contact_desired->set_timestamp(timestamp);
+  // state_contact_desired->SetDataVector(st_desired);
+  // state_contact_desired->set_timestamp(timestamp);
 
   // Update moving average filter and prev variables.
   if (moving_average_.size() < dt_filter_length_){
@@ -971,7 +1070,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
-}
+ }
 
 
 }  // namespace controllers

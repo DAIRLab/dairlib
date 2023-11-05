@@ -25,7 +25,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
   // Create an environment
   env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
-  env_.set("Threads", "2");   // This is the number of threads gurobi will use. 
+  env_.set("Threads", "1");   // This is the number of threads gurobi will use. 
                               // This needs to be at least as big as the maximum number of samples we have.
                               // TODO: Understand exactly how this works. Make this adaptive to the number of samples we have.
   env_.start();
@@ -68,7 +68,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   // model.set("MIPFocus", "1");              // Set the focus of the MIP solver; see docs for details (0 / 0 / 3).
   // model.set("NumericFocus", "1");          // Set the numerical focus; see docs for details (0 / 0 / 3).
   // model.set("Cuts", "1");                  // Global cut generation control; see docs for details (-1 / -1 / 3).
-  model.set("TimeLimit", "0.25");          // Time limit in seconds for MIQP; lower = faster (infinity / 0 / infinity).
+  // model.set("TimeLimit", "0.25");          // Time limit in seconds for MIQP; lower = faster (infinity / 0 / infinity).
   // model.set("ScaleFlag", "2");             // Model scaling; 2 uses geometric mean scaling (-1 / -1 / 3).
   // model.set("NormAdjust", "3");            // Pricing norm variant; no information in docs on what these mean (-1 / -1 / 3).
   model.set("BranchDir", "-1");            // What child node to explore first; -1 explores down branch first (0 / -1 / 1).

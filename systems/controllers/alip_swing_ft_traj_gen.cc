@@ -1,14 +1,13 @@
 #include "systems/controllers/alip_swing_ft_traj_gen.h"
 
-#include <algorithm>
 #include <cmath>
+#include <algorithm>
 #include <fstream>
 #include <string>
 
-#include "multibody/multibody_utils.h"
-#include "systems/controllers/control_utils.h"
-
 #include "drake/math/roll_pitch_yaw.h"
+#include "systems/controllers/control_utils.h"
+#include "multibody/multibody_utils.h"
 
 using std::string;
 
@@ -18,7 +17,6 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
 
-using drake::math::RollPitchYaw;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
@@ -26,6 +24,7 @@ using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
+using drake::math::RollPitchYaw;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
@@ -38,7 +37,7 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
-        left_right_foot,
+    left_right_foot,
     std::string floating_base_body_name, double double_support_duration,
     double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
@@ -65,10 +64,10 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-                    .get_index();
+          "x, u, t", OutputVector<double>(plant.num_positions(),
+                                          plant.num_velocities(),
+                                          plant.num_actuators()))
+      .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   liftoff_time_port_ =
@@ -76,14 +75,14 @@ AlipSwingFootTrajGenerator::AlipSwingFootTrajGenerator(
           .get_index();
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
-  alip_state_port_ =
-      this->DeclareAbstractInputPort(
-              "alip x, y, Lx, Ly",
-              drake::Value<drake::trajectories::Trajectory<double>>(pp))
+  alip_state_port_ = this->DeclareAbstractInputPort(
+          "alip x, y, Lx, Ly",
+          drake::Value<drake::trajectories::Trajectory<double>>(pp))
+      .get_index();
+  vdes_port_ =
+      this->DeclareVectorInputPort("desired horizontal walking speed",
+                                   BasicVector<double>(2))
           .get_index();
-  vdes_port_ = this->DeclareVectorInputPort("desired horizontal walking speed",
-                                            BasicVector<double>(2))
-                   .get_index();
   // Provide an instance to allocate the memory first (for the output)
   drake::trajectories::Trajectory<double>& traj_instance = pp;
   this->DeclareAbstractOutputPort("swing_foot_xyz", traj_instance,
@@ -124,13 +123,13 @@ EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
+      .get_mutable_value();
 
   // Find fsm_state in left_right_support_fsm_states
-  bool is_single_support_phase =
-      (find(left_right_support_fsm_states_.begin(),
-            left_right_support_fsm_states_.end(),
-            fsm_state) != left_right_support_fsm_states_.end());
+  bool is_single_support_phase = (find(left_right_support_fsm_states_.begin(),
+                                      left_right_support_fsm_states_.end(),
+                                      fsm_state)
+                              != left_right_support_fsm_states_.end());
 
   // when entering a new state which is in left_right_support_fsm_states
   if (fsm_state != prev_fsm_state(0) && is_single_support_phase) {
@@ -138,9 +137,8 @@ EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
 
     VectorXd q = robot_output->GetPositions();
     multibody::SetPositionsIfNew<double>(plant_, q, context_);
-    auto swing_foot_pos_at_liftoff =
-        discrete_state->get_mutable_vector(liftoff_swing_foot_pos_idx_)
-            .get_mutable_value();
+    auto swing_foot_pos_at_liftoff = discrete_state->get_mutable_vector(
+        liftoff_swing_foot_pos_idx_).get_mutable_value();
 
     auto swing_foot = swing_foot_map_.at(fsm_state);
     plant_.CalcPointsPositions(*context_, swing_foot.second, swing_foot.first,
@@ -149,7 +147,7 @@ EventStatus AlipSwingFootTrajGenerator::DiscreteVariableUpdate(
     swing_foot_pos_at_liftoff = multibody::ReExpressWorldVector3InBodyYawFrame(
         plant_, *context_, "pelvis",
         swing_foot_pos_at_liftoff -
-            plant_.CalcCenterOfMassPositionInWorld(*context_));
+        plant_.CalcCenterOfMassPositionInWorld(*context_));
   }
 
   return EventStatus::Succeeded();
@@ -159,7 +157,9 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     const Context<double>& context, const OutputVector<double>* robot_output,
     const double end_time_of_this_interval, Vector2d* x_fs,
     double* stance_foot_height) const {
-  int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+
+  int fsm_state =
+      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   VectorXd q = robot_output->GetPositions();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);
@@ -171,14 +171,17 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
                              world_, &stance_foot_pos);
 
   Vector3d pelvis_x =
-      plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().col(0);
+      plant_.EvalBodyPoseInWorld(*context_, pelvis_)
+      .rotation().col(0);
   double approx_pelvis_yaw = atan2(pelvis_x(1), pelvis_x(0));
 
   Vector3d CoM_curr = plant_.CalcCenterOfMassPositionInWorld(*context_);
 
   Vector2d vdes_xy = this->EvalVectorInput(context, vdes_port_)->get_value();
-  double L_y_des = vdes_xy(0) * (CoM_curr(2) - stance_foot_pos(2)) * m_;
-  double L_x_offset = -vdes_xy(1) * (CoM_curr(2) - stance_foot_pos(2)) * m_;
+  double L_y_des = vdes_xy(0) *
+                  (CoM_curr(2) - stance_foot_pos(2)) * m_;
+  double L_x_offset = -vdes_xy(1) *
+                      (CoM_curr(2) - stance_foot_pos(2)) * m_;
 
   // com and angular momentum prediction
   const drake::AbstractValue* alip_traj_p =
@@ -194,23 +197,25 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   double omega = sqrt(9.81 / H);
   double T = duration_map_.at(fsm_state) + double_support_duration_;
   double L_x_n = m_ * H * footstep_offset_ *
-                 (omega * sinh(omega * T) / (1 + cosh(omega * T)));
+      (omega * sinh(omega * T) / (1 + cosh(omega * T)));
+
 
   Vector2d L_i = multibody::ReExpressWorldVector2InBodyYawFrame<double>(
-      plant_, *context_, "pelvis", alip_pred.tail<2>());
-  Vector2d L_f = is_right_support ? Vector2d(L_x_offset + L_x_n, L_y_des)
-                                  : Vector2d(L_x_offset - L_x_n, L_y_des);
-  double p_x_ft_to_com =
-      (L_f(1) - cosh(omega * T) * L_i(1)) / (m_ * H * omega * sinh(omega * T));
-  double p_y_ft_to_com =
-      -(L_f(0) - cosh(omega * T) * L_i(0)) / (m_ * H * omega * sinh(omega * T));
+      plant_, *context_,"pelvis", alip_pred.tail<2>());
+  Vector2d L_f = is_right_support ?
+      Vector2d(L_x_offset + L_x_n, L_y_des) :
+      Vector2d(L_x_offset - L_x_n, L_y_des);
+  double p_x_ft_to_com = ( L_f(1) - cosh(omega*T) * L_i(1) ) /
+                         (m_ * H * omega * sinh(omega*T));
+  double p_y_ft_to_com = -( L_f(0) - cosh(omega*T) * L_i(0) ) /
+                         (m_ * H * omega * sinh(omega*T));
   *x_fs = Vector2d(-p_x_ft_to_com, -p_y_ft_to_com);
 
   /// Imposing guards
   // Impose half-plane guard
   Vector2d stance_foot_wrt_com_in_local_frame =
       multibody::ReExpressWorldVector2InBodyYawFrame<double>(
-          plant_, *context_, "pelvis", (stance_foot_pos - CoM_curr).head<2>());
+          plant_, *context_,"pelvis",  (stance_foot_pos - CoM_curr).head<2>());
   if (is_right_support) {
     double line_pos =
         std::max(center_line_offset_, stance_foot_wrt_com_in_local_frame(1));
@@ -230,8 +235,7 @@ void AlipSwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
   *stance_foot_height = stance_foot_pos(2) - CoM_curr(2);
 }
 
-PiecewisePolynomial<double>
-AlipSwingFootTrajGenerator::CreateSplineForSwingFoot(
+PiecewisePolynomial<double> AlipSwingFootTrajGenerator::CreateSplineForSwingFoot(
     const double start_time_of_this_interval,
     const double end_time_of_this_interval, const double stance_duration,
     const Vector3d& init_swing_foot_pos, const Vector2d& x_fs,
@@ -277,8 +281,8 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
     drake::trajectories::Trajectory<double>* traj) const {
   // Cast traj for polymorphism
   auto* pp_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
+  (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      traj);
 
   // Get discrete states
   const auto swing_foot_pos_at_liftoff =
@@ -288,7 +292,8 @@ void AlipSwingFootTrajGenerator::CalcTrajs(
       this->EvalVectorInput(context, liftoff_time_port_)->get_value();
 
   // Read in finite state machine
-  int fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value()(0);
+  int fsm_state =
+      this->EvalVectorInput(context, fsm_port_)->get_value()(0);
 
   // Find fsm_state in left_right_support_fsm_states
   auto it = find(left_right_support_fsm_states_.begin(),

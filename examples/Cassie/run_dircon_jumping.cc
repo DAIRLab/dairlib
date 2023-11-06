@@ -23,7 +23,8 @@
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/multibody/parsing/parser.h"
-#include "drake/systems/trajectory_optimization/multiple_shooting.h"
+#include "drake/solvers/solve.h"
+#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 
 using std::cout;
 using std::endl;
@@ -58,7 +59,7 @@ using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::SolutionResult;
 using drake::solvers::VectorXDecisionVariable;
-using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::planning::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(jumping_parameters, "", "Jumping parameters");

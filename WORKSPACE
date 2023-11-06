@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "baeadb5a4c1e8f45070e030285e6748f64e61e4d"
+DRAKE_COMMIT = "v1.22.0"
 
-DRAKE_CHECKSUM = "dee5ec34e1b23d6af64ce30fd0dc42be0867efe4f7af88f5eb710c2354b2df41"
+DRAKE_CHECKSUM = "78cf62c177c41f8415ade172c1e6eb270db619f07c4b043d5148e1f35be8da09"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -42,7 +42,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = _http_drake_repo_name,
     sha256 = DRAKE_CHECKSUM,
-    strip_prefix = "drake-{}".format(DRAKE_COMMIT),
+    strip_prefix = "drake-{}".format(DRAKE_COMMIT.strip("v")),
     urls = [x.format(DRAKE_COMMIT) for x in [
         "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
     ]],
@@ -59,9 +59,13 @@ local_repository(
 # Reference external software libraries and tools per Drake's defaults.  Some
 # software will come from the host system (Ubuntu or macOS); other software
 # will be downloaded in source or binary form from github or other sites.
-load("@drake//tools/workspace:default.bzl", "add_default_repositories")
+load("@drake//tools/workspace:default.bzl", "add_default_workspace")
 
-add_default_repositories()
+add_default_workspace()
+
+load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
+
+osqp_repository(name = "osqp")
 
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
 

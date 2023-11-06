@@ -154,7 +154,6 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
       if (body.has_quaternion_dofs()) {
         state_msg.position.at(body.floating_positions_start()) = 1;
       }
-      std::cout << "Here: " << std::endl;
     }
   }
 
@@ -326,9 +325,6 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
   const auto& input_msg = input->get_value<dairlib::lcmt_robot_input>();
 
   VectorXd input_vector = VectorXd::Zero(num_actuators_);
-//  std::cout << "context time: " << context.get_time() << std::endl;
-//  std::cout << "time: " << input_msg.utime * 1e-6 << std::endl;
-//  std::cout << "num_efforts: " << input_msg.num_efforts << std::endl;
 
   for (int i = 0; i < input_msg.num_efforts; i++) {
     int j = actuator_index_map_.at(input_msg.effort_names[i]);

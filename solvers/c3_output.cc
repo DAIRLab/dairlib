@@ -42,18 +42,6 @@ lcmt_c3_output C3Output::GenerateLcmObject(double time) const {
       c3_intermediates.num_total_variables, vector<float>(knot_points));
   c3_intermediates.time_vec = c3_solution.time_vec;
 
-  std::cout << "c3_solution.num_points" << c3_solution.num_points << std::endl;
-  std::cout << "c3_solution.num_state_variables" << c3_solution.num_state_variables << std::endl;
-  std::cout << "c3_solution.num_contact_variables" << c3_solution.num_contact_variables << std::endl;
-  std::cout << "c3_solution.num_input_variables" << c3_solution.num_input_variables << std::endl;
-  std::cout << "c3_solution.time_vec" << c3_solution.time_vec.size() << std::endl;
-  std::cout << "c3_solution.x_sol" << c3_solution.x_sol.size() << std::endl;
-  std::cout << "c3_solution.lambda_sol" << c3_solution.lambda_sol.size() << std::endl;
-  std::cout << "c3_solution.u_sol" << c3_solution.u_sol.size() << std::endl;
-  std::cout << "c3_intermediates.time_vec" << c3_intermediates.time_vec.size() << std::endl;
-  std::cout << "c3_intermediates.delta_sol" << c3_intermediates.delta_sol.size() << std::endl;
-  std::cout << "c3_intermediates.w_sol" << c3_intermediates.w_sol.size() << std::endl;
-
   for (int i = 0; i < c3_solution.num_state_variables; ++i) {
     // Temporary copy due to underlying data of Eigen::Matrix
     // being column major

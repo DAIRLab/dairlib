@@ -38,7 +38,7 @@
 <!--          <drake:rigid_hydroelastic/>-->
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
-          <drake:mesh_resolution_hint> 0.5 </drake:mesh_resolution_hint>
+          <drake:mesh_resolution_hint> 0.1 </drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
           <drake:mu_dynamic>0.4</drake:mu_dynamic>
           <drake:mu_static>0.4</drake:mu_static>

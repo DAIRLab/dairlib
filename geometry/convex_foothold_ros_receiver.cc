@@ -3,7 +3,7 @@
 #include <chrono>
 
 // dair includes
-#include "poly_utils.h"
+#include "polygon_utils.h"
 #include "convex_foothold_ros_receiver.h"
 
 using Eigen::MatrixXd;

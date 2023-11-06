@@ -3,7 +3,7 @@
 #include <memory>
 #include <chrono>
 #include <cmath>
-#include "poly_utils.h"
+#include "polygon_utils.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
 

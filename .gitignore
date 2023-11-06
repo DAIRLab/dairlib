@@ -13,6 +13,7 @@ attic/multibody/solver_log/
 /examples/Cassie/saved_trajectories/
 *.npy
 /.learning_data
+callgrind.out.*
 
 # perception learning temp files
 /bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/

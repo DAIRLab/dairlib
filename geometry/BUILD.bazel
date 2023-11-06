@@ -39,8 +39,8 @@ cc_library(
 
 cc_library(
     name = "poly_utils",
-    srcs = ["poly_utils.cc"],
-    hdrs = ["poly_utils.h"],
+    srcs = ["polygon_utils.cc"],
+    hdrs = ["polygon_utils.h"],
     tags = ["ros"],
     deps = [
         ":convex_foothold",
@@ -65,7 +65,7 @@ cc_library(
 
 cc_binary(
     name = "polytest",
-    srcs = ["test/polytest.cc"],
+    srcs = ["test/polygon_utils_test.cc"],
     tags = ["ros"],
     deps = [
         ":poly_utils",

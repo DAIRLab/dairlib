@@ -1,6 +1,8 @@
 #include "systems/ros/franka_ros_lcm_conversions.h"
 //#include "franka_msgs/FrankaState.h"
 #include <sstream>
+
+#include "multibody/multibody_utils.h"
 namespace dairlib {
 namespace systems {
 
@@ -270,19 +272,34 @@ void RosToLcmFrankaState::ConvertToLCM(
 }
 
 /***************************************************************************************/
-RosToLcmObjectState::RosToLcmObjectState(const std::string& object_name,
-                                         int num_positions,
-                                         int num_velocities) {
-  this->DeclareAbstractInputPort("ROS Float64MultiArray",
-                                 drake::Value<std_msgs::Float64MultiArray>());
+RosToLcmObjectState::RosToLcmObjectState(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::multibody::ModelInstanceIndex model_instance,
+    const std::string& object_name) {
+  auto positions_start_idx =
+      plant.get_joint(plant.GetJointIndices(model_instance).front())
+          .position_start();
+  auto velocities_start_idx =
+      plant.get_joint(plant.GetJointIndices(model_instance).front())
+          .velocity_start();
+
   dairlib::lcmt_object_state object_state = dairlib::lcmt_object_state();
-  object_state.num_positions = num_positions;
-  object_state.num_velocities = num_velocities;
+  object_state.num_positions = plant.num_positions(model_instance);
+  object_state.num_velocities = plant.num_velocities(model_instance);
   object_state.object_name = object_name;
-  object_state.position = std::vector<double>(num_positions);
-  object_state.velocity = std::vector<double>(num_velocities);
+  object_state.position = std::vector<double>(object_state.num_positions);
+  object_state.position_names = multibody::ExtractOrderedNamesFromMap(
+      multibody::MakeNameToPositionsMap(plant, model_instance),
+      positions_start_idx);
+  object_state.velocity = std::vector<double>(object_state.num_velocities);
+  object_state.velocity_names = multibody::ExtractOrderedNamesFromMap(
+      multibody::MakeNameToVelocitiesMap(plant, model_instance),
+      velocities_start_idx);
+  object_state.position[0] = 1;
   this->DeclareAbstractOutputPort(object_name + "_state", object_state,
                                   &RosToLcmObjectState::ConvertToLCM);
+  this->DeclareAbstractInputPort("ROS Float64MultiArray",
+                                 drake::Value<std_msgs::Float64MultiArray>());
 }
 
 void RosToLcmObjectState::ConvertToLCM(
@@ -292,9 +309,9 @@ void RosToLcmObjectState::ConvertToLCM(
   const auto& msg = input->get_value<std_msgs::Float64MultiArray>();
 
   if (msg.data.empty()) {
-    for (size_t i = 0; i < object_state->num_positions; i++) {
-      object_state->position[i] = nan("");
-    }
+//    for (size_t i = 0; i < object_state->num_positions; i++) {
+//      object_state->position[i] = nan("");
+//    }
   } else {
     for (size_t i = 0; i < object_state->num_positions; i++) {
       object_state->position[i] = msg.data[i];

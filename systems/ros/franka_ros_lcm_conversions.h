@@ -97,13 +97,17 @@ class RosToLcmFrankaState : public drake::systems::LeafSystem<double> {
 class RosToLcmObjectState : public drake::systems::LeafSystem<double> {
  public:
   static std::unique_ptr<RosToLcmObjectState> Make(
-      const std::string& object_name, int num_positions, int num_velocities) {
-    return std::make_unique<RosToLcmObjectState>(object_name, num_positions,
-                                                 num_velocities);
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance,
+      const std::string& object_name) {
+    return std::make_unique<RosToLcmObjectState>(plant, model_instance,
+                                                 object_name);
   }
 
-  explicit RosToLcmObjectState(const std::string& object_name,
-                               int num_positions, int num_velocities);
+  explicit RosToLcmObjectState(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance,
+      const std::string& object_name);
 
  private:
   void ConvertToLCM(const drake::systems::Context<double>& context,

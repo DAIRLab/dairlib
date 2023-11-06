@@ -117,8 +117,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
           ros_channel_params.tray_state_channel, &node_handle));
   auto ros_to_lcm_object_state = builder.AddSystem(
-      RosToLcmObjectState::Make("tray", plant.num_positions(tray_index),
-                                plant.num_velocities(tray_index)));
+      RosToLcmObjectState::Make(plant, tray_index, "tray"));
 
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto tray_state_pub =

@@ -58,6 +58,7 @@ DEFINE_string(lcm_channels,
               "Filepath containing lcm channels");
 
 int DoMain(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   // load parameters
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/franka/parameters/franka_sim_params.yaml");

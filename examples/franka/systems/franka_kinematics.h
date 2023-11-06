@@ -8,6 +8,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/timestamped_vector.h"
 #include "systems/framework/output_vector.h"
+#include "systems/framework/state_vector.h"
 
 namespace dairlib {
 namespace systems {

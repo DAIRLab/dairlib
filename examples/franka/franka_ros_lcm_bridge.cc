@@ -1,7 +1,3 @@
-#define ROS
-
-#ifdef ROS
-
 #include <signal.h>
 
 #include <memory>
@@ -20,6 +16,7 @@
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <gflags/gflags.h>
 
+#include "common/find_resource.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
 #include "franka_msgs/FrankaState.h"
@@ -85,7 +82,10 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-  parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  auto franka_index =
+      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  auto tray_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
   Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
@@ -98,7 +98,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(RosSubscriberSystem<sensor_msgs::JointState>::Make(
           ros_channel_params.franka_state_channel, &node_handle));
   auto ros_to_lcm_robot_state = builder.AddSystem(RosToLcmRobotState::Make(
-      plant.num_positions(), plant.num_velocities(), plant.num_actuators()));
+      plant.num_positions(franka_index), plant.num_velocities(franka_index),
+      plant.num_actuators(franka_index)));
 
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto robot_output_lcm_publisher =
@@ -112,11 +113,12 @@ int DoMain(int argc, char* argv[]) {
                   robot_output_lcm_publisher->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
-  /// convert ball position estimate to lcm
   auto tray_object_state_ros_subscriber =
       builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
           ros_channel_params.tray_state_channel, &node_handle));
-  auto ros_to_lcm_object_state = builder.AddSystem(RosToLcmObjectState::Make());
+  auto ros_to_lcm_object_state = builder.AddSystem(
+      RosToLcmObjectState::Make("tray", plant.num_positions(tray_index),
+                                plant.num_velocities(tray_index)));
 
   // change this to output correctly (i.e. when ros subscriber gets new message)
   auto tray_state_pub =
@@ -130,28 +132,6 @@ int DoMain(int argc, char* argv[]) {
                   tray_state_pub->get_input_port());
 
   /* -------------------------------------------------------------------------------------------*/
-//  auto robot_input_lcm_subscriber =
-//      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-//          lcm_channel_params.franka_input_channel, &drake_lcm));
-//  auto robot_input_lcm_echo =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-//          lcm_channel_params.franka_input_echo, &drake_lcm,
-//          {drake::systems::TriggerType::kForced}));
-//  auto robot_input_receiver = builder.AddSystem<RobotInputReceiver>(plant);
-//  auto lcm_to_ros_robot_input = builder.AddSystem<LcmToRosTimestampedVector>(7);
-//  auto robot_input_ros_publisher = builder.AddSystem(
-//      systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make(
-//          ros_channel_params.franka_input_channel, &node_handle,
-//          {drake::systems::TriggerType::kForced}));
-//
-//  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
-//                  robot_input_receiver->get_input_port());
-//  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
-//                  robot_input_lcm_echo->get_input_port());
-//  builder.Connect(robot_input_receiver->get_output_port(),
-//                  lcm_to_ros_robot_input->get_input_port());
-//  builder.Connect(lcm_to_ros_robot_input->get_output_port(),
-//                  robot_input_ros_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_ros_lcm_bridge"));
@@ -183,7 +163,6 @@ int DoMain(int argc, char* argv[]) {
         franka_joint_state_ros_subscriber->WaitForMessage(old_message_count);
     const double time = franka_joint_state_ros_subscriber->message_time();
 
-
     // Check if we are very far ahead or behind
     // (likely due to a restart of the driving clock)
     if (time > simulator.get_context().get_time() + 1.0 ||
@@ -201,18 +180,13 @@ int DoMain(int argc, char* argv[]) {
     // Force-publish via the diagram
     diagram.CalcForcedUnrestrictedUpdate(diagram_context,
                                          &diagram_context.get_mutable_state());
-    diagram.CalcForcedDiscreteVariableUpdate(diagram_context,
-                                         &diagram_context.get_mutable_discrete_state());
+    diagram.CalcForcedDiscreteVariableUpdate(
+        diagram_context, &diagram_context.get_mutable_discrete_state());
     diagram.ForcedPublish(diagram_context);
   }
-
-  //  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
-
   return 0;
 }
 
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) { dairlib::DoMain(argc, argv); }
-
-#endif

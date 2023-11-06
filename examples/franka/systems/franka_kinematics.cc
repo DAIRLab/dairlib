@@ -12,6 +12,7 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using Eigen::VectorXd;
 using systems::OutputVector;
+using systems::StateVector;
 using systems::TimestampedVector;
 
 namespace systems {
@@ -41,9 +42,8 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
 
   object_state_port_ =
       this->DeclareVectorInputPort(
-              "x_object", OutputVector<double>(object_plant.num_positions(),
-                                               object_plant.num_velocities(),
-                                               object_plant.num_actuators()))
+              "x_object", StateVector<double>(object_plant.num_positions(),
+                                               object_plant.num_velocities()))
           .get_index();
   num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
   num_object_positions_ = 7;
@@ -64,8 +64,8 @@ void FrankaKinematics::ComputeLCSState(
     FrankaKinematicsVector<double>* lcs_state) const {
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
-  const OutputVector<double>* object_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, object_state_port_);
+  const StateVector<double>* object_output =
+      (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
 
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();

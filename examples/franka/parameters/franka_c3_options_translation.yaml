@@ -10,7 +10,7 @@ dt: 0.1
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
-N: 7
+N: 5
 
 # matrix scaling
 w_Q: 5

@@ -129,15 +129,15 @@ int DoMain(int argc, char* argv[]) {
       lcm_channel_params.franka_state_channel, sim_params.publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto tray_state_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, tray_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, tray_index);
   auto tray_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.publish_rate));
   auto box_state_sender =
-      builder.AddSystem<systems::RobotOutputSender>(plant, box_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, box_index);
   auto box_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.box_state_channel, lcm,
           1.0 / sim_params.publish_rate));
 

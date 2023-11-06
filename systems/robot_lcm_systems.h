@@ -4,9 +4,12 @@
 #include <string>
 #include <vector>
 
+#include <dairlib/lcmt_object_state.hpp>
+
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "systems/framework/output_vector.h"
+#include "systems/framework/state_vector.h"
 #include "systems/framework/timestamped_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
 
@@ -18,10 +21,9 @@ namespace dairlib {
 namespace systems {
 
 /// @file This file contains classes dealing with sending/receiving
-/// LCM messages related to a robot. The classes in this file are based on
-/// acrobot_lcm.h
+/// LCM messages related to a robot.
 
-/// Receives the output of an LcmSubsriberSystem that subsribes to the
+/// Receives the output of an LcmSubscriberSystem that subscribes to the
 /// Robot output channel with LCM type lcmt_robot_output, and outputs the
 /// robot states as a OutputVector.
 class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
@@ -105,7 +107,74 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   bool publish_imu_;
 };
 
-/// Receives the output of an LcmSubsriberSystem that subsribes to the
+/// @file This file contains classes dealing with sending/receiving
+/// LCM messages related to a object.
+
+/// Receives the output of an LcmSubscriberSystem that subscribes to the
+/// object state channel with LCM type lcmt_object_state, and outputs the
+/// object state as a StateVector.
+class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
+ public:
+  explicit ObjectStateReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant);
+
+  explicit ObjectStateReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance);
+
+  /// Convenience function to initialize an lcmt_object_state subscriber with
+  /// positions and velocities which are all zero except for the quaternion
+  /// positions, which are all 1, 0, 0, 0
+  /// @param context The context of a
+  ///                drake::LcmSubscriberSystem<lcmt_object_state>
+  void InitializeSubscriberPositions(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>& context) const;
+
+ private:
+  void CopyOutput(const drake::systems::Context<double>& context,
+                  StateVector<double>* output) const;
+  drake::multibody::ModelInstanceIndex model_instance_;
+  int positions_start_idx_;
+  int velocities_start_idx_;
+  int num_positions_;
+  int num_velocities_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+};
+
+/// Converts a StateVector object to LCM type lcmt_robot_output
+class ObjectStateSender : public drake::systems::LeafSystem<double> {
+ public:
+  explicit ObjectStateSender(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance_index =
+      drake::multibody::default_model_instance());
+
+  explicit ObjectStateSender(
+      const drake::multibody::MultibodyPlant<double>& plant);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(state_input_port_);
+  }
+
+ private:
+  void Output(const drake::systems::Context<double>& context,
+              dairlib::lcmt_object_state* output) const;
+
+  drake::multibody::ModelInstanceIndex model_instance_;
+  int positions_start_idx_;
+  int velocities_start_idx_;
+  int num_positions_;
+  int num_velocities_;
+  std::vector<std::string> ordered_position_names_;
+  std::vector<std::string> ordered_velocity_names_;
+  std::map<std::string, int> position_index_map_;
+  std::map<std::string, int> velocity_index_map_;
+  int state_input_port_ = -1;
+};
+
+/// Receives the output of an LcmSubscriberSystem that subscribes to the
 /// robot input channel with LCM type lcmt_robot_input and outputs the
 /// robot inputs as a TimestampedVector.
 class RobotInputReceiver : public drake::systems::LeafSystem<double> {

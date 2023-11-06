@@ -1,7 +1,3 @@
-#define ROS
-
-#ifdef ROS
-
 #include <signal.h>
 
 #include <memory>
@@ -51,7 +47,6 @@ using dairlib::systems::RosToLcmObjectState;
 using dairlib::systems::RosToLcmRobotState;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::TimestampedVector;
-// using dairlib::systems::ROSToRobotOutputLCM;
 
 // Shutdown ROS gracefully and then exit
 void SigintHandler(int sig) {
@@ -142,5 +137,3 @@ int DoMain(int argc, char* argv[]) {
 }  // namespace dairlib
 
 int main(int argc, char* argv[]) { dairlib::DoMain(argc, argv); }
-
-#endif

@@ -154,12 +154,12 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   auto tray_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &lcm));
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
   auto tray_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_tray);
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),

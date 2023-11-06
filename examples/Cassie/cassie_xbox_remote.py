@@ -63,15 +63,12 @@ def main():
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
         # above this, or they will be erased with this command.
-        textPrint.reset()
+        # textPrint.reset()
 
         # Get the name from the OS for the controller/joystick
         name = joystick.get_name()
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: # If user clicked close
-                done=True # Flag that we are done so we exit this loop
-
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 0:
                     latching_switch_a = not latching_switch_a
@@ -98,7 +95,7 @@ def main():
         publisher.publish("RADIO", radio_msg.encode())
 
         # Limit to 20 frames per second
-        clock.tick(100)
+        clock.tick(60)
         i += 1
 
     pygame.quit()

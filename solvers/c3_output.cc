@@ -14,8 +14,6 @@ lcmt_c3_output C3Output::GenerateLcmObject(double time) const {
   lcmt_c3_intermediates c3_intermediates;
   c3_output.utime = static_cast<int64_t>(1e6 * time);
 
-  std::cout << c3_solution_.time_vector_.size() << std::endl;
-  std::cout << c3_solution_.x_sol_.rows() << std::endl;
   c3_solution.num_points = c3_solution_.time_vector_.size();
   int knot_points = c3_solution.num_points;
   c3_solution.num_state_variables = c3_solution_.x_sol_.rows();
@@ -74,11 +72,8 @@ lcmt_c3_output C3Output::GenerateLcmObject(double time) const {
            sizeof(float) * knot_points);
   }
 
-
-  //
   c3_output.c3_solution = c3_solution;
   c3_output.c3_intermediates = lcmt_c3_intermediates();
-  std::cout << "constructed c3 output" << std::endl;
 
   return c3_output;
 }

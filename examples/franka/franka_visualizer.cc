@@ -36,6 +36,7 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 using dairlib::systems::RobotOutputReceiver;
+using dairlib::systems::ObjectStateReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
@@ -107,17 +108,17 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, lcm));
   auto tray_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm));
   auto box_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.box_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant, tray_index);
+      builder.AddSystem<ObjectStateReceiver>(plant, tray_index);
   auto box_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant, box_index);
+      builder.AddSystem<ObjectStateReceiver>(plant, box_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,

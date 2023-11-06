@@ -9,12 +9,27 @@ from matplotlib.patches import PathPatch
 
 class PlotStyler():
   @staticmethod
-  def set_default_styling():
+  def set_paper_styling():
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
     matplotlib.rcParams['figure.figsize'] = 8, 6
+    plt.rcParams['figure.dpi'] = 200
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 20}
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 2
+    plt.set_cmap('tab20')
+  @staticmethod
+  def set_compact_styling():
+    matplotlib.rcParams['figure.figsize'] = 20, 12
+    font_size = 6
+    plt.rc('legend', fontsize=font_size)
+    plt.rc('axes', labelsize=font_size, titlesize=font_size)
+    plt.rc('xtick', labelsize=font_size)
+    plt.rc('ytick', labelsize=font_size)
+    plt.rcParams['figure.dpi'] = 75
+    matplotlib.rcParams['figure.autolayout'] = False
+    font = {'size': font_size}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
@@ -31,7 +46,7 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     # self.directory = None
-    self.dpi = 150
+    self.dpi = plt.rcParams['figure.dpi']
     self.directory = '/home/yangwill/Pictures/plot_styler/'
     plt.rc('legend', fontsize=14)
     plt.rc('axes', labelsize=14, titlesize=14)

@@ -20,8 +20,10 @@ def main():
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
 
-    if plot_config.use_default_styling:
+    if plot_config.plot_style == "paper":
         plot_styler.PlotStyler.set_default_styling()
+    elif plot_config.plot_style == "compact":
+        plot_styler.PlotStyler.set_compact_styling()
 
     ''' Get the plant '''
     franka_plant, franka_context, tray_plant, tray_context = franka_plots.make_plant_and_context()

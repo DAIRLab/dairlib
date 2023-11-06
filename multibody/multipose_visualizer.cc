@@ -1,11 +1,15 @@
 #include "multibody/multipose_visualizer.h"
 
+#include <iostream>
+
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
 using drake::geometry::DrakeVisualizer;
+using drake::geometry::Meshcat;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -29,7 +33,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
 
 MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          const Eigen::VectorXd& alpha_scale,
-                                         string weld_frame_to_world)
+                                         string weld_frame_to_world,
+                                         std::shared_ptr<Meshcat> meshcat)
     : num_poses_(num_poses) {
   DRAKE_DEMAND(num_poses == alpha_scale.size());
   DiagramBuilder<double> builder;
@@ -40,11 +45,10 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   Parser parser(plant_, scene_graph);
-
+  parser.SetAutoRenaming(true);
   // Add num_poses copies of the plant, giving each a unique name
   for (int i = 0; i < num_poses_; i++) {
-    auto index =
-        parser.AddModelFromFile(model_file, "model[" + std::to_string(i) + "]");
+    auto index = parser.AddModels(model_file)[0];
     model_indices_.push_back(index);
     if (!weld_frame_to_world.empty()) {
       plant_->WeldFrames(
@@ -88,10 +92,19 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
     }
   }
 
+  if (meshcat == nullptr) {
+    meshcat_ = std::make_shared<drake::geometry::Meshcat>();
+  } else {
+    meshcat_ = meshcat;
+  }
+  meshcat_visualizer_ =
+      &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+          &builder, *scene_graph, meshcat_);
+
   DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph, lcm);
+  DrakeVisualizer<double>::DispatchLoadMessage(*scene_graph, lcm);
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();
-  DrakeVisualizer<double>::DispatchLoadMessage(*scene_graph, lcm);
 }
 
 void MultiposeVisualizer::DrawPoses(MatrixXd poses) {

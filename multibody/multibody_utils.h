@@ -68,21 +68,35 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),
+                    double stiffness = 0, double dissipation_rate = 0,
                     bool show_ground = true);
 
 /// Get the ordered names from a NameTo___Map
 std::vector<std::string> ExtractOrderedNamesFromMap(
-    const std::map<std::string, int>& map);
+    const std::map<std::string, int>& map, int index_start = 0);
 
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
 std::map<std::string, int> MakeNameToPositionsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
+/// Given a MultibodyPlant, builds a map from position name to position index
+template <typename T>
+std::map<std::string, int> MakeNameToPositionsMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
+
 /// Given a MultiBodyTree, builds a map from velocity name to velocity index
 template <typename T>
 std::map<std::string, int> MakeNameToVelocitiesMap(
     const drake::multibody::MultibodyPlant<T>& plant);
+
+
+/// Given a MultiBodyTree, builds a map from velocity name to velocity index
+template <typename T>
+std::map<std::string, int> MakeNameToVelocitiesMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
 
 /// Given a MultiBodyTree, builds a map from actuator name to actuator index
 template <typename T>

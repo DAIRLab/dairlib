@@ -29,6 +29,10 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   explicit RobotOutputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant);
 
+  explicit RobotOutputReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance);
+
   /// Convenience function to initialize an lcmt_robot_output subscriber with
   /// positions and velocities which are all zero except for the quaternion
   /// positions, which are all 1, 0, 0, 0
@@ -41,6 +45,9 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
                   OutputVector<double>* output) const;
+  drake::multibody::ModelInstanceIndex model_instance_;
+  int positions_start_idx_;
+  int velocities_start_idx_;
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
@@ -52,6 +59,12 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
 /// Converts a OutputVector object to LCM type lcmt_robot_output
 class RobotOutputSender : public drake::systems::LeafSystem<double> {
  public:
+  explicit RobotOutputSender(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::ModelInstanceIndex model_instance_index =
+          drake::multibody::default_model_instance(),
+      const bool publish_efforts = false, const bool publish_imu = false);
+
   explicit RobotOutputSender(
       const drake::multibody::MultibodyPlant<double>& plant,
       const bool publish_efforts = false, const bool publish_imu = false);
@@ -73,6 +86,9 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   void Output(const drake::systems::Context<double>& context,
               dairlib::lcmt_robot_output* output) const;
 
+  drake::multibody::ModelInstanceIndex model_instance_;
+  int positions_start_idx_;
+  int velocities_start_idx_;
   int num_positions_;
   int num_velocities_;
   int num_efforts_;
@@ -122,7 +138,6 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 };
 
-
 ///
 /// Convenience method to add and connect leaf systems for controlling
 /// a MultibodyPlant via LCM. Makes two primary connections:
@@ -148,11 +163,17 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::lcm::LcmInterfaceSystem* lcm,
-    std::string actuator_channel,
-    std::string state_channel,
-    double publish_rate,
-    bool publish_efforts = true,
+    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
+    std::string state_channel, double publish_rate,
+    drake::multibody::ModelInstanceIndex model_instance_index,
+    bool publish_efforts = true, double actuator_delay = 0);
+
+SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
+    std::string state_channel, double publish_rate, bool publish_efforts = true,
     double actuator_delay = 0);
+
 }  // namespace systems
 }  // namespace dairlib

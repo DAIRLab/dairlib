@@ -44,11 +44,12 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
       drake::multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-  Parser parser(plant_, scene_graph);
+  Parser parser(plant_, scene_graph, "pose_trace");
   parser.SetAutoRenaming(true);
   // Add num_poses copies of the plant, giving each a unique name
   for (int i = 0; i < num_poses_; i++) {
     auto index = parser.AddModels(model_file)[0];
+//    plant_->RenameModelInstance(index, plant_->get_name() + "_" + std::to_string(i));
     model_indices_.push_back(index);
     if (!weld_frame_to_world.empty()) {
       plant_->WeldFrames(

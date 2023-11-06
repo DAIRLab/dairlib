@@ -169,12 +169,12 @@ int DoMain(int argc, char* argv[]) {
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          TriggerTypeSet({TriggerType::kPeriodic}), 1 / controller_params.target_frequency));
 
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          TriggerTypeSet({TriggerType::kPeriodic}), 1 / controller_params.target_frequency));
 
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
@@ -190,6 +190,7 @@ int DoMain(int argc, char* argv[]) {
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(
           plant_plate, &plate_context, c3_options);
+  c3_trajectory_generator->SetPublishEndEffectorOrientation(controller_params.include_end_effector_orientation);
   auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),

@@ -1,6 +1,6 @@
 
 c3_options_file: examples/franka/parameters/franka_c3_options_translation.yaml
-#c3_options_file: examples/franka/franka_c3_options_floating.yaml
+#c3_options_file: examples/franka/parameters/franka_c3_options_floating.yaml
 osqp_settings_file: examples/Cassie/osc_run/osc_running_qp_settings.yaml
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
@@ -15,6 +15,6 @@ tray_model: examples/franka/urdf/tray.sdf
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
-target_frequency: 10
+target_frequency: 5
 
 

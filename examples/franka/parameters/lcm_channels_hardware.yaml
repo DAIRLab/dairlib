@@ -1,5 +1,5 @@
 franka_state_channel: FRANKA_STATE
-tray_state_channel: TRAY_STATE_SIMULATION
+tray_state_channel: TRAY_STATE
 box_state_channel: BOX_STATE
 franka_input_channel: FRANKA_INPUT
 franka_input_echo: FRANKA_INPUT_ECHO
@@ -9,5 +9,6 @@ osc_debug_channel: OSC_DEBUG_FRANKA
 
 c3_actor_channel: C3_TRAJECTORY_ACTOR
 c3_object_channel: C3_TRAJECTORY_TRAY
+c3_debug_output_channel: C3_DEBUG
 
 radio_channel: RADIO

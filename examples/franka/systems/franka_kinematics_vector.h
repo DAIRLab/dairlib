@@ -8,10 +8,6 @@
 namespace dairlib {
 namespace systems {
 
-using drake::VectorX;
-using std::string;
-using std::vector;
-
 /// FrankaKinematicsVector stores the robot output as a TimestampedVector
 ///    * positions
 ///    * velocities
@@ -47,10 +43,10 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
   }
 
   /// Constructs a OutputVector with the specified positions and velocities.
-  explicit FrankaKinematicsVector(const VectorX<T>& end_effector_positions,
-                                  const VectorX<T>& object_positions,
-                                  const VectorX<T>& end_effector_velocities,
-                                  const VectorX<T>& object_velocities)
+  explicit FrankaKinematicsVector(const drake::VectorX<T>& end_effector_positions,
+                                  const drake::VectorX<T>& object_positions,
+                                  const drake::VectorX<T>& end_effector_velocities,
+                                  const drake::VectorX<T>& object_velocities)
       : FrankaKinematicsVector(
             end_effector_positions.size(), object_positions.size(),
             end_effector_velocities.size(), object_velocities.size()) {
@@ -60,101 +56,101 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
     this->SetObjectVelocities(object_velocities);
   }
 
-  void SetEndEffectorPositions(VectorX<T> positions) {
+  void SetEndEffectorPositions(drake::VectorX<T> positions) {
     DRAKE_DEMAND(positions.size() == num_end_effector_positions_);
     this->get_mutable_data().segment(end_effector_positions_start_,
                                      num_end_effector_positions_) = positions;
   }
 
-  void SetObjectPositions(VectorX<T> positions) {
+  void SetObjectPositions(drake::VectorX<T> positions) {
     DRAKE_DEMAND(positions.size() == num_object_positions_);
     this->get_mutable_data().segment(object_positions_start_,
                                      num_object_positions_) = positions;
   }
 
-  void SetEndEffectorVelocities(VectorX<T> velocities) {
+  void SetEndEffectorVelocities(drake::VectorX<T> velocities) {
     DRAKE_DEMAND(velocities.size() == num_end_effector_velocities_);
     this->get_mutable_data().segment(end_effector_velocities_start_,
                                      num_end_effector_velocities_) = velocities;
   }
 
-  void SetObjectVelocities(VectorX<T> velocities) {
+  void SetObjectVelocities(drake::VectorX<T> velocities) {
     DRAKE_DEMAND(velocities.size() == num_object_velocities_);
     this->get_mutable_data().segment(object_velocities_start_,
                                      num_object_velocities_) = velocities;
   }
 
-  void SetState(VectorX<T> state) {
+  void SetState(drake::VectorX<T> state) {
     DRAKE_DEMAND(state.size() == this->data_size());
     this->get_mutable_data().segment(end_effector_positions_start_,
                                      this->data_size()) = state;
   }
 
   /// Returns a const state vector
-  const VectorX<T> GetState() const {
+  const drake::VectorX<T> GetState() const {
     return this->get_data().segment(end_effector_positions_start_,
                                     this->data_size());
   }
 
   /// Returns a const positions vector for the end effector
-  const VectorX<T> GetEndEffectorPositions() const {
+  const drake::VectorX<T> GetEndEffectorPositions() const {
     return this->get_data().segment(end_effector_positions_start_,
                                     num_end_effector_positions_);
   }
 
   /// Returns a const positions vector for the object
-  const VectorX<T> GetObjectPositions() const {
+  const drake::VectorX<T> GetObjectPositions() const {
     return this->get_data().segment(object_positions_start_,
                                     num_object_positions_);
   }
 
   /// Returns a const positions vector for the end effector
-  const VectorX<T> GetEndEffectorVelocities() const {
+  const drake::VectorX<T> GetEndEffectorVelocities() const {
     return this->get_data().segment(end_effector_velocities_start_,
                                     num_end_effector_velocities_);
   }
 
   /// Returns a const positions vector for the object
-  const VectorX<T> GetObjectVelocities() const {
+  const drake::VectorX<T> GetObjectVelocities() const {
     return this->get_data().segment(object_velocities_start_,
                                     num_object_velocities_);
   }
 
   /// Returns a const velocities vector
-  const VectorX<T> GetVelocities() const {
+  const drake::VectorX<T> GetVelocities() const {
     return this->get_data().segment(
         end_effector_velocities_start_,
         num_end_effector_velocities_ + num_object_velocities_);
   }
 
   /// Returns a const positions vector
-  const VectorX<T> GetPositions() const {
+  const drake::VectorX<T> GetPositions() const {
     return this->get_data().segment(
         end_effector_positions_start_,
         num_end_effector_positions_ + num_object_positions_);
   }
 
   /// Returns a mutable positions vector
-  Eigen::Map<VectorX<T>> GetMutablePositions() {
+  Eigen::Map<drake::VectorX<T>> GetMutablePositions() {
     auto data = this->get_mutable_data().segment(
         end_effector_positions_start_,
         num_end_effector_positions_ + num_object_positions_);
-    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
   }
 
   /// Returns a mutable velocities vector
-  Eigen::Map<VectorX<T>> GetMutableVelocities() {
+  Eigen::Map<drake::VectorX<T>> GetMutableVelocities() {
     auto data = this->get_mutable_data().segment(
         end_effector_velocities_start_,
         num_end_effector_velocities_ + num_object_velocities_);
-    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
   }
 
   /// Returns a mutable state vector
-  Eigen::Map<VectorX<T>> GetMutableState() {
+  Eigen::Map<drake::VectorX<T>> GetMutableState() {
     auto data = this->get_mutable_data().segment(end_effector_positions_start_,
                                                  this->data_size());
-    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
   }
 
  protected:

@@ -102,8 +102,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   int n_u_;
 
   mutable std::unique_ptr<solvers::C3MIQP> c3_;
-  mutable std::vector<VectorXd> delta_;
-  mutable std::vector<VectorXd> w_;
+  mutable std::vector<Eigen::VectorXd> delta_;
+  mutable std::vector<Eigen::VectorXd> w_;
   //  std::unique_ptr<solvers::LCS> lcs_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   std::vector<Eigen::MatrixXd> Q_;

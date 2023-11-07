@@ -18,7 +18,11 @@ using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
+using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::MatrixXf;
+using Eigen::VectorXf;
+using std::vector;
 using solvers::C3MIQP;
 using solvers::LCS;
 using solvers::LCSFactory;
@@ -75,14 +79,14 @@ C3Controller::C3Controller(
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
   auto c3_solution = C3Output::C3Solution();
-  c3_solution.x_sol_ = MatrixXd::Zero(n_q_ + n_v_, N_);
-  c3_solution.lambda_sol_ = MatrixXd::Zero(n_lambda_, N_);
-  c3_solution.u_sol_ = MatrixXd::Zero(n_u_, N_);
-  c3_solution.time_vector_ = VectorXd::Zero(N_);
+  c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution.time_vector_ = VectorXf::Zero(N_);
   auto c3_intermediates = C3Output::C3Intermediates();
-  c3_intermediates.w_ = MatrixXd::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.delta_ = MatrixXd::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.time_vector_ = VectorXd::Zero(N_);
+  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
                                       &C3Controller::OutputC3Solution)
@@ -178,9 +182,9 @@ void C3Controller::OutputC3Solution(
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = t + i * c3_options_.dt;
-    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_);
-    c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_, n_lambda_);
-    c3_solution->u_sol_.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_);
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 }
 
@@ -191,8 +195,8 @@ void C3Controller::OutputC3Intermediates(
 //  auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
-    c3_intermediates->w_.col(i) = w_[i];
-    c3_intermediates->delta_.col(i) = delta_[i];
+    c3_intermediates->w_.col(i) = w_[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_[i].cast<float>();
   }
 }
 

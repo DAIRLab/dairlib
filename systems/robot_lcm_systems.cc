@@ -19,6 +19,7 @@ using drake::multibody::JointIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using drake::systems::BasicVector;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::VectorXd;

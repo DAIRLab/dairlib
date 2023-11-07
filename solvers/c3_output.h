@@ -9,8 +9,6 @@
 
 #include "dairlib/lcmt_c3_output.hpp"
 
-//#include "drake/systems/lcm/serializer.h"
-
 namespace dairlib {
 
 /// Used for outputting c3 solutions and intermediate variables for debugging purposes
@@ -19,14 +17,12 @@ class C3Output {
  public:
   struct C3Solution {
     C3Solution() = default;
-//    C3Solution(Eigen::VectorXd time_vector_, Eigen::MatrixXd x_sol_,
-//               Eigen::MatrixXd lambda_sol_, Eigen::MatrixXd u_sol_);
 
     // Shape is (variable_vector_size, knot_points)
-    Eigen::VectorXd time_vector_;
-    Eigen::MatrixXd x_sol_;
-    Eigen::MatrixXd lambda_sol_;
-    Eigen::MatrixXd u_sol_;
+    Eigen::VectorXf time_vector_;
+    Eigen::MatrixXf x_sol_;
+    Eigen::MatrixXf lambda_sol_;
+    Eigen::MatrixXf u_sol_;
   };
 
   struct C3Intermediates {
@@ -35,9 +31,9 @@ class C3Output {
 //                    Eigen::MatrixXd w_);
 
     // Shape is (variable_vector_size, knot_points)
-    Eigen::VectorXd time_vector_;
-    Eigen::MatrixXd delta_;
-    Eigen::MatrixXd w_;
+    Eigen::VectorXf time_vector_;
+    Eigen::MatrixXf delta_;
+    Eigen::MatrixXf w_;
   };
 
   C3Output() = default;

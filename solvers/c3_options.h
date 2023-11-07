@@ -2,9 +2,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-
 struct C3Options {
   // Hyperparameters
   int admm_iter = 2;    // total number of ADMM iterations   //2
@@ -36,12 +33,12 @@ struct C3Options {
   double solve_dt;
   int num_friction_directions;
   int num_contacts;
-  MatrixXd Q;
-  MatrixXd R;
-  MatrixXd G;
-  MatrixXd U;
-  VectorXd q_des;
-  VectorXd v_des;
+  Eigen::MatrixXd Q;
+  Eigen::MatrixXd R;
+  Eigen::MatrixXd G;
+  Eigen::MatrixXd U;
+  Eigen::VectorXd q_des;
+  Eigen::VectorXd v_des;
 
   template <typename Archive>
   void Serialize(Archive* a) {

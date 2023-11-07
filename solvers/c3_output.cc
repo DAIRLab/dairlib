@@ -1,6 +1,7 @@
 #include "c3_output.h"
 
 using Eigen::VectorXd;
+using Eigen::VectorXf;
 using std::vector;
 
 namespace dairlib {
@@ -43,29 +44,29 @@ lcmt_c3_output C3Output::GenerateLcmObject(double time) const {
   for (int i = 0; i < c3_solution.num_state_variables; ++i) {
     // Temporary copy due to underlying data of Eigen::Matrix
     // being column major
-    VectorXd temp_row = c3_solution_.x_sol_.row(i);
+    VectorXf temp_row = c3_solution_.x_sol_.row(i);
     memcpy(c3_solution.x_sol[i].data(), temp_row.data(),
            sizeof(float) * knot_points);
   }
   for (int i = 0; i < c3_solution.num_contact_variables; ++i) {
     // Temporary copy due to underlying data of Eigen::Matrix
     // being column major
-    VectorXd temp_row = c3_solution_.lambda_sol_.row(i);
+    VectorXf temp_row = c3_solution_.lambda_sol_.row(i);
     memcpy(c3_solution.lambda_sol[i].data(), temp_row.data(),
            sizeof(float) * knot_points);
   }
   for (int i = 0; i < c3_solution.num_input_variables; ++i) {
     // Temporary copy due to underlying data of Eigen::Matrix
     // being column major
-    VectorXd temp_row = c3_solution_.u_sol_.row(i);
+    VectorXf temp_row = c3_solution_.u_sol_.row(i);
     memcpy(c3_solution.u_sol[i].data(), temp_row.data(),
            sizeof(float) * knot_points);
   }
   for (int i = 0; i < c3_intermediates.num_total_variables; ++i) {
     // Temporary copy due to underlying data of Eigen::Matrix
     // being column major
-    VectorXd temp_delta_row = c3_intermediates_.delta_.row(i);
-    VectorXd temp_w_row = c3_intermediates_.w_.row(i);
+    VectorXf temp_delta_row = c3_intermediates_.delta_.row(i);
+    VectorXf temp_w_row = c3_intermediates_.w_.row(i);
     memcpy(c3_intermediates.delta_sol[i].data(), temp_delta_row.data(),
            sizeof(float) * knot_points);
     memcpy(c3_intermediates.w_sol[i].data(), temp_w_row.data(),

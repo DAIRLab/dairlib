@@ -16,6 +16,7 @@ franka_urdf = "examples/franka/urdf/franka_no_collision.urdf"
 tray_model = "examples/franka/urdf/tray.sdf"
 franka_default_channels = \
   {'FRANKA_STATE': dairlib.lcmt_robot_output,
+   'FRANKA_STATE_SIMULATION': dairlib.lcmt_robot_output,
    # 'TRAY_STATE': dairlib.lcmt_robot_output,
    'FRANKA_INPUT': dairlib.lcmt_robot_input,
    'OSC_FRANKA': dairlib.lcmt_robot_input,

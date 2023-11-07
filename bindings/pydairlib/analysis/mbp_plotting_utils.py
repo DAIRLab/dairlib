@@ -279,22 +279,27 @@ def process_contact_channel(data):
 def process_c3_channel(data):
     t = []
     states = []  # Allocate space for all 4 point contacts
+    breaks = []  # Allocate space for all 4 point contacts
     contact_forces = []
     inputs = []
     for msg in data:
-        t.append(msg.timestamp / 1e6)
+        t.append(msg.utime / 1e6)
         states.append(msg.c3_solution.x_sol)
+        breaks.append(msg.c3_solution.time_vec)
         contact_forces.append(msg.c3_solution.lambda_sol)
-        inputs.append(msg.u_sol.lambda_sol)
+        inputs.append(msg.c3_solution.u_sol)
 
-    t_contact_info = np.array(states)
+    t = np.array(t)
+    states = np.array(states)
+    breaks = np.array(breaks)
     contact_forces = np.array(contact_forces)
-    contact_info_locs = np.array(inputs)
+    inputs = np.array(inputs)
 
-    return {'t_c3': t,
-            'x_c3': states,
-            'lambda_c3': contact_forces,
-            'u_c3': inputs,}
+    return {'t': t,
+            'time_vector': breaks,
+            'x': states,
+            'lambda': contact_forces,
+            'u': inputs,}
 
 
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
@@ -835,3 +840,17 @@ def generate_joint_limits(plant):
     franka_joint_velocity_limit_range = [np.min(joint_velocity_limits_lower), np.max(joint_velocity_limits_upper)]
     franka_joint_actuator_limit_range = [np.min(joint_actuator_limits_lower), np.max(joint_actuator_limits_upper)]
     return franka_joint_position_limit_range, franka_joint_velocity_limit_range, franka_joint_actuator_limit_range
+
+def plot_c3_inputs(c3_output, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        c3_output,
+        't',
+        time_slice,
+        ['u'],
+        {'u': 0},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'C3 Actor Inputs ',
+         'title': 'C3 Actor Solution'}, ps)
+    return ps

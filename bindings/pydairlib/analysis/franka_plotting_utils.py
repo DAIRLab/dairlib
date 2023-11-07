@@ -22,6 +22,7 @@ franka_default_channels = \
    'FRANKA_INPUT_ECHO': dairlib.lcmt_robot_input,
    'C3_TRAJECTORY_ACTOR': dairlib.lcmt_timestamped_saved_traj,
    'C3_TRAJECTORY_TRAY': dairlib.lcmt_timestamped_saved_traj,
+   'C3_DEBUG': dairlib.lcmt_c3_output,
    'OSC_DEBUG_FRANKA': dairlib.lcmt_osc_output,
    'RADIO': dairlib.lcmt_radio_out,
    'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz}

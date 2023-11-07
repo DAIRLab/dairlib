@@ -13,6 +13,7 @@ class FrankaPlotConfig():
         self.channel_x = data['channel_x']
         self.channel_u = data['channel_u']
         self.channel_osc = data['channel_osc']
+        self.channel_c3 = data['channel_c3']
         self.plot_style = data['plot_style']
 
         self.start_time = data['start_time']

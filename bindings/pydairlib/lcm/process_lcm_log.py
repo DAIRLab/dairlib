@@ -44,10 +44,8 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
         event = lcm_log.read_next_event()
     return data_processing_callback(data_to_process, *args, *kwargs)
 
-
 def get_log_summary(lcm_log):
     channel_names_and_msg_counts = {}
-    import pdb; pdb.set_trace()
     for event in lcm_log:
         if event.channel not in channel_names_and_msg_counts:
             channel_names_and_msg_counts[event.channel] = 1

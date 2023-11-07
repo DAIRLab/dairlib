@@ -12,13 +12,16 @@ from pydairlib.common import plot_styler
 
 from pydrake.all import JointIndex, JointActuatorIndex
 
+
 def main():
-    config_file = 'bindings/pydairlib/analysis/plot_configs/franka_translation_plot.yaml'
+    config_file = ('bindings/pydairlib/analysis/plot_configs'
+                   '/franka_translation_plot.yaml')
     plot_config = FrankaPlotConfig(config_file)
 
     channel_x = plot_config.channel_x
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
+    channel_c3 = plot_config.channel_c3
 
     if plot_config.plot_style == "paper":
         plot_styler.PlotStyler.set_default_styling()
@@ -26,7 +29,8 @@ def main():
         plot_styler.PlotStyler.set_compact_styling()
 
     ''' Get the plant '''
-    franka_plant, franka_context, tray_plant, tray_context = franka_plots.make_plant_and_context()
+    franka_plant, franka_context, tray_plant, tray_context = (
+        franka_plots.make_plant_and_context())
 
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(franka_plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(
@@ -45,6 +49,11 @@ def main():
                      franka_plant, channel_x, channel_u,
                      channel_osc)  # processing callback arguments
 
+    # processing callback arguments
+    c3_output = get_log_data(log, default_channels, plot_config.start_time,
+                             plot_config.duration, mbp_plots.load_c3_debug,
+                             channel_c3)
+
     print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
@@ -52,29 +61,15 @@ def main():
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
 
-    franka_joint_limits_lower = np.zeros(franka_plant.num_positions())
-    franka_joint_limits_upper = np.zeros(franka_plant.num_positions())
-    franka_joint_velocity_limits_lower = np.zeros(franka_plant.num_positions())
-    franka_joint_velocity_limits_upper = np.zeros(franka_plant.num_positions())
-    franka_joint_actuator_limits_lower = np.zeros(franka_plant.num_positions())
-    franka_joint_actuator_limits_upper = np.zeros(franka_plant.num_positions())
-    for i in range(franka_plant.num_positions()):
-        franka_joint_limits_upper[i] = franka_plant.get_joint(JointIndex(i)).position_upper_limits()[0]
-        franka_joint_limits_lower[i] = franka_plant.get_joint(JointIndex(i)).position_lower_limits()[0]
-        franka_joint_velocity_limits_lower[i] = franka_plant.get_joint(JointIndex(i)).velocity_upper_limits()[0]
-        franka_joint_velocity_limits_upper[i] = franka_plant.get_joint(JointIndex(i)).velocity_lower_limits()[0]
-        franka_joint_actuator_limits_lower[i] = -franka_plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
-        franka_joint_actuator_limits_upper[i] = franka_plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
-    franka_joint_limit_range = [np.min(franka_joint_limits_lower), np.max(franka_joint_limits_upper)]
-    franka_joint_velocity_limit_range = [np.min(franka_joint_velocity_limits_lower), np.max(franka_joint_velocity_limits_upper)]
-    franka_joint_actuator_limit_range = [np.min(franka_joint_actuator_limits_lower), np.max(franka_joint_actuator_limits_upper)]
+    (franka_joint_position_limit_range, franka_joint_velocity_limit_range,
+     franka_joint_actuator_limit_range) = mbp_plots.generate_joint_limits(
+        franka_plant)
 
     # Plot joint positions
     if plot_config.plot_joint_positions:
-        plot = mbp_plots.plot_joint_positions(robot_output, pos_names,
-                                              0, t_x_slice)
-        plt.ylim(franka_joint_limit_range)
-
+        plot = mbp_plots.plot_joint_positions(robot_output, pos_names, 0,
+                                              t_x_slice)
+        plt.ylim(franka_joint_position_limit_range)
     # Plot specific positions
     if plot_config.pos_names:
         plot = mbp_plots.plot_positions_by_name(robot_output,
@@ -83,13 +78,11 @@ def main():
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:
-        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names,
-                                               0,
+        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names, 0,
                                                t_x_slice)
         plt.ylim(franka_joint_velocity_limit_range)
 
-
-# Plot specific velocities
+    # Plot specific velocities
     if plot_config.vel_names:
         plot = mbp_plots.plot_velocities_by_name(robot_output,
                                                  plot_config.vel_names,
@@ -106,11 +99,14 @@ def main():
                                      {'paddle': np.zeros(3)},
                                      {'paddle': [0, 1, 2]})
     # q = np.load(
-    #     '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_q.npy')
+    #     '/home/yangwill/Documents/research/projects/franka/leon_data
+    #     /test_2023-05-19-14-10-43_q.npy')
     # v = np.load(
-    #     '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_v.npy')
+    #     '/home/yangwill/Documents/research/projects/franka/leon_data
+    #     /test_2023-05-19-14-10-43_v.npy')
     # t = np.load(
-    #     '/home/yangwill/Documents/research/projects/franka/leon_data/test_2023-05-19-14-10-43_t.npy')
+    #     '/home/yangwill/Documents/research/projects/franka/leon_data
+    #     /test_2023-05-19-14-10-43_t.npy')
     # pos = mbp_plots.make_point_positions_from_q(q,
     #                                       franka_plant, franka_context,
     #                                       franka_plant.GetBodyByName(
@@ -118,7 +114,8 @@ def main():
     #                                       np.zeros(3))
     # vel = mbp_plots.make_point_velocities_from_qv(q,
     #                                               v,
-    #                                               franka_plant, franka_context,
+    #                                               franka_plant,
+    #                                               franka_context,
     #                                               franka_plant.GetBodyByName(
     #                                                   'paddle').body_frame(),
     #                                               np.zeros(3))
@@ -154,7 +151,6 @@ def main():
         plt.ylim([0, 1e3])
     if plot_config.plot_qp_costs:
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
-
 
     if plot_config.plot_qp_solutions:
         plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))

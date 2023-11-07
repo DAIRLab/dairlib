@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-from pydrake.all import JacobianWrtVariable
+from pydrake.all import JacobianWrtVariable, JointActuatorIndex, JointIndex
 
 from bindings.pydairlib.common import plot_styler, plotting_utils
 from bindings.pydairlib.analysis.osc_debug import lcmt_osc_tracking_data_t, \
@@ -276,6 +276,26 @@ def process_contact_channel(data):
             'lambda_c': contact_forces,
             'p_lambda_c': contact_info_locs}
 
+def process_c3_channel(data):
+    t = []
+    states = []  # Allocate space for all 4 point contacts
+    contact_forces = []
+    inputs = []
+    for msg in data:
+        t.append(msg.timestamp / 1e6)
+        states.append(msg.c3_solution.x_sol)
+        contact_forces.append(msg.c3_solution.lambda_sol)
+        inputs.append(msg.u_sol.lambda_sol)
+
+    t_contact_info = np.array(states)
+    contact_forces = np.array(contact_forces)
+    contact_info_locs = np.array(inputs)
+
+    return {'t_c3': t,
+            'x_c3': states,
+            'lambda_c3': contact_forces,
+            'u_c3': inputs,}
+
 
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     _, vperm, uperm = make_joint_order_permutations(robot_output_msg, plant)
@@ -299,6 +319,9 @@ def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
 
+def load_c3_debug(data, c3_debug_channel):
+    c3_debug = process_c3_channel(data[c3_debug_channel])
+    return c3_debug
 
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,
@@ -570,6 +593,7 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
         data['projected_error_ydot'] = tracking_data.error_ydot[:, dim]
     elif deriv == 'accel':
         data['yddot_des'] = tracking_data.yddot_des[:, dim]
+        data['yddot_actual'] = 1000 * np.diff(tracking_data.ydot[:, dim], prepend=[0])
         data['yddot_command'] = tracking_data.yddot_command[:, dim]
         data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
 
@@ -792,3 +816,22 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,
     ax.set_ylabel('Tracking Objective')
 
     return ps
+
+def generate_joint_limits(plant):
+    joint_position_limits_lower = np.zeros(plant.num_positions())
+    joint_position_limits_upper = np.zeros(plant.num_positions())
+    joint_velocity_limits_lower = np.zeros(plant.num_positions())
+    joint_velocity_limits_upper = np.zeros(plant.num_positions())
+    joint_actuator_limits_lower = np.zeros(plant.num_positions())
+    joint_actuator_limits_upper = np.zeros(plant.num_positions())
+    for i in range(plant.num_positions()):
+        joint_position_limits_lower[i] = plant.get_joint(JointIndex(i)).position_upper_limits()[0]
+        joint_position_limits_upper[i] = plant.get_joint(JointIndex(i)).position_lower_limits()[0]
+        joint_velocity_limits_lower[i] = plant.get_joint(JointIndex(i)).velocity_upper_limits()[0]
+        joint_velocity_limits_upper[i] = plant.get_joint(JointIndex(i)).velocity_lower_limits()[0]
+        joint_actuator_limits_lower[i] = -plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
+        joint_actuator_limits_upper[i] = plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
+    franka_joint_position_limit_range = [np.min(joint_position_limits_lower), np.max(joint_position_limits_upper)]
+    franka_joint_velocity_limit_range = [np.min(joint_velocity_limits_lower), np.max(joint_velocity_limits_upper)]
+    franka_joint_actuator_limit_range = [np.min(joint_actuator_limits_lower), np.max(joint_actuator_limits_upper)]
+    return franka_joint_position_limit_range, franka_joint_velocity_limit_range, franka_joint_actuator_limit_range

@@ -471,7 +471,7 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
     }
   }
 
-#pragma omp parallel for
+// #pragma omp parallel for
   for (i = 0; i < N_; i++) {
     bool constrain_first_x = false;
     if (i == 0) {

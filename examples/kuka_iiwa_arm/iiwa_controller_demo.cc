@@ -26,6 +26,9 @@
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include "systems/controllers/endeffector_position_controller.h"
 
+using Eigen::VectorXd;
+using drake::multibody::MultibodyPlant;
+
 namespace dairlib {
 
 // This function creates a controller for a Kuka LBR Iiwa arm by connecting an

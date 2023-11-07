@@ -5,12 +5,9 @@
 namespace dairlib {
 namespace systems {
 
-using drake::VectorX;
-using drake::systems::BasicVector;
-
-/// TimestampedVector wraps a BasicVector along with a timestamp field
+/// TimestampedVector wraps a drake::systems::BasicVector along with a timestamp field
 /// The primary purpose of this is to pass-through a message (e.g. LCM)
-/// timestamp Uses a length N+1 BasicVector to store a vector of length N and a
+/// timestamp Uses a length N+1 drake::systems::BasicVector to store a vector of length N and a
 /// timestamp The timestamp is stored as the final element (Nth)
 template <typename T>
 class TimestampedVector : public drake::systems::BasicVector<T> {
@@ -23,14 +20,14 @@ class TimestampedVector : public drake::systems::BasicVector<T> {
   /// Initializes with the given @p size using the drake::dummy_value<T>, which
   /// is NaN when T = double.
   explicit TimestampedVector(int data_size)
-      : BasicVector<T>(data_size + 1),
+      : drake::systems::BasicVector<T>(data_size + 1),
         timestep_index_(data_size),
         data_size_(data_size) {}
 
   /// Constructs a TimestampedVector with the specified @p data.
-  explicit TimestampedVector(const VectorX<T>& data)
+  explicit TimestampedVector(const drake::VectorX<T>& data)
       : TimestampedVector(data.size()) {
-    VectorX<T> data_timestamped = VectorX<T>(data.size() + 1);
+    drake::VectorX<T> data_timestamped = drake::VectorX<T>(data.size() + 1);
     data_timestamped.head(data.size()) = data;
     data_timestamped(data.size()) = 0;
     this->SetFromVector(data_timestamped);
@@ -63,23 +60,23 @@ class TimestampedVector : public drake::systems::BasicVector<T> {
   }
 
   /// Returns the vector without the timestamp
-  VectorX<T> CopyVectorNoTimestamp() const {
+  drake::VectorX<T> CopyVectorNoTimestamp() const {
     return this->CopyToVector().head(timestep_index_);
   }
 
   /// Returns a mutable vector of the data values (without timestamp)
-  Eigen::Map<VectorX<T>> get_mutable_data() {
+  Eigen::Map<drake::VectorX<T>> get_mutable_data() {
     auto data = this->get_mutable_value().head(timestep_index_);
-    return Eigen::Map<VectorX<T>>(&data(0), data.size());
+    return Eigen::Map<drake::VectorX<T>>(&data(0), data.size());
   }
 
   /// Returns the entire vector as a const Eigen::VectorBlock.
-  const VectorX<T> get_data() const {
+  const drake::VectorX<T> get_data() const {
     return this->get_value().head(timestep_index_);
   }
 
   // sets the data part of the vector (without timestamp)
-  void SetDataVector(const Eigen::Ref<const VectorX<T>>& value) {
+  void SetDataVector(const Eigen::Ref<const drake::VectorX<T>>& value) {
     this->get_mutable_data() = value;
   }
 

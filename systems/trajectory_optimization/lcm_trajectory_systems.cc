@@ -217,8 +217,10 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 
   const auto lcm_translation_traj =
       lcm_traj_.GetTrajectory(translation_trajectory_name_);
-  auto translation_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-      lcm_translation_traj.time_vector, lcm_translation_traj.datapoints);
+  auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
+      lcm_translation_traj.time_vector,
+      lcm_translation_traj.datapoints.topRows(3),
+      lcm_translation_traj.datapoints.bottomRows(3));
   auto orientation_trajectory = PiecewiseQuaternionSlerp<double>(
       {0, 1}, {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});
 
@@ -241,7 +243,6 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   VectorXd translation_breaks =
       VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
                           lcm_translation_traj.time_vector.tail(1)[0]);
-
   for (int i = 0; i < object_poses.cols(); ++i) {
     object_poses.col(i) << orientation_trajectory.value(translation_breaks(i)),
         translation_trajectory.value(translation_breaks(i));

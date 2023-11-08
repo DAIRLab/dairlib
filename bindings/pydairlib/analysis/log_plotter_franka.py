@@ -50,15 +50,15 @@ def main():
                      channel_osc)  # processing callback arguments
 
     # processing callback arguments
-    c3_output = get_log_data(log, default_channels, plot_config.start_time,
-                             plot_config.duration, mbp_plots.load_c3_debug,
-                             channel_c3)
+    if plot_config.plot_c3_debug:
+        c3_output = get_log_data(log, default_channels, plot_config.start_time,
+                                 plot_config.duration, mbp_plots.load_c3_debug,
+                                 channel_c3)
 
     print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t_x'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
-    t_c3_slice = slice(c3_output['t'].size)
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
 
@@ -79,6 +79,7 @@ def main():
 
     # import pdb; pdb.set_trace()
     if plot_config.plot_c3_debug:
+        t_c3_slice = slice(c3_output['t'].size)
         mbp_plots.plot_c3_inputs(c3_output, t_c3_slice)
     # plt.plot(c3_output['t'], c3_output['x'][:, 0, :])
 
@@ -87,6 +88,8 @@ def main():
         plot = mbp_plots.plot_joint_velocities(robot_output, vel_names, 0,
                                                t_x_slice)
         plt.ylim(franka_joint_velocity_limit_range)
+        plt.axhline(franka_joint_velocity_limit_range[0], linestyle='--')
+        plt.axhline(franka_joint_velocity_limit_range[1], linestyle='--')
 
     # Plot specific velocities
     if plot_config.vel_names:
@@ -97,15 +100,15 @@ def main():
     if plot_config.plot_end_effector:
         end_effector_plotter = plot_styler.PlotStyler(nrows=2)
         mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
-                                        franka_context, ['paddle'],
-                                        {'paddle': np.zeros(3)},
-                                        {'paddle': [0, 1, 2]}, ps=end_effector_plotter,
+                                        franka_context, ['plate'],
+                                        {'plate': np.zeros(3)},
+                                        {'plate': [0, 1, 2]}, ps=end_effector_plotter,
                                         subplot_index=0)
 
         mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
-                                         franka_context, ['paddle'],
-                                         {'paddle': np.zeros(3)},
-                                         {'paddle': [0, 1, 2]}, ps=end_effector_plotter,
+                                         franka_context, ['plate'],
+                                         {'plate': np.zeros(3)},
+                                         {'plate': [0, 1, 2]}, ps=end_effector_plotter,
                                          subplot_index=1)
 
     ''' Plot Efforts '''
@@ -134,8 +137,9 @@ def main():
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
 
     if plot_config.plot_qp_solutions:
-        plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))
-        plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
+        plot = mbp_plots.plot_ddq_sol(osc_debug, t_osc_slice, pos_names, slice(0, 7))
+        # plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))
+        # plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():

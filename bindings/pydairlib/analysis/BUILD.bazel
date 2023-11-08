@@ -95,8 +95,8 @@ py_library(
     name = "franka_plotting_utils",
     srcs = ["franka_plotting_utils.py"],
     data = [
-        "//examples/Cassie:cassie_urdf",
         "@lcm//:lcm-python",
+        "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
         "//bindings/pydairlib/lcm",
@@ -135,6 +135,7 @@ py_binary(
     deps = [
         ":franka_plot_config",
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/analysis:franka_plotting_utils",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",

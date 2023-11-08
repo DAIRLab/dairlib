@@ -1,5 +1,5 @@
 # LCM channels to read data from
-channel_x: "FRANKA_STATE_SIMULATION"
+channel_x: "FRANKA_STATE"
 channel_u: "OSC_FRANKA"
 channel_osc: "OSC_DEBUG_FRANKA"
 channel_c3: "C3_DEBUG"
@@ -29,11 +29,11 @@ fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 
 # Desired osc plots
 plot_qp_costs: false
 plot_qp_solve_time: true
-plot_qp_solutions: false
+plot_qp_solutions: true
 plot_tracking_costs: false
 plot_active_tracking_datas: false
 tracking_datas_to_plot:
   end_effector_target: {'dims': [0, 1, 2], 'derivs': ['accel']}
 #  end_effector_orientation_target: {'dims': [0, 1, 2], 'derivs': ['pos']}
 #  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-plot_c3_debug: true
+plot_c3_debug: false

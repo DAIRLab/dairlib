@@ -672,6 +672,20 @@ def plot_qp_solve_time(osc_debug, time_slice):
     return ps
 
 
+def plot_ddq_sol(osc_debug, time_slice, joint_names, ddq_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['dv_sol'],
+        {'dv_sol': ddq_slice},
+        {'dv_sol': joint_names[ddq_slice]},
+        {'xlabel': 'time',
+         'ylabel': 'joint accelerations (rad/s^2)',
+         'title': 'OSC joint acceleration'}, ps)
+    return ps
+
 def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
@@ -810,10 +824,11 @@ def generate_joint_limits(plant):
     joint_actuator_limits_lower = np.zeros(plant.num_positions())
     joint_actuator_limits_upper = np.zeros(plant.num_positions())
     for i in range(plant.num_positions()):
-        joint_position_limits_lower[i] = plant.get_joint(JointIndex(i)).position_upper_limits()[0]
-        joint_position_limits_upper[i] = plant.get_joint(JointIndex(i)).position_lower_limits()[0]
-        joint_velocity_limits_lower[i] = plant.get_joint(JointIndex(i)).velocity_upper_limits()[0]
-        joint_velocity_limits_upper[i] = plant.get_joint(JointIndex(i)).velocity_lower_limits()[0]
+
+        joint_position_limits_lower[i] = plant.get_joint(JointIndex(i)).position_lower_limits()[0]
+        joint_position_limits_upper[i] = plant.get_joint(JointIndex(i)).position_upper_limits()[0]
+        joint_velocity_limits_lower[i] = plant.get_joint(JointIndex(i)).velocity_lower_limits()[0]
+        joint_velocity_limits_upper[i] = plant.get_joint(JointIndex(i)).velocity_upper_limits()[0]
         joint_actuator_limits_lower[i] = -plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
         joint_actuator_limits_upper[i] = plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
     franka_joint_position_limit_range = [np.min(joint_position_limits_lower), np.max(joint_position_limits_upper)]

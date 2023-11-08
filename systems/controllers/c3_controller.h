@@ -51,9 +51,9 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(c3_intermediates_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_radio() const {
-    return this->get_input_port(radio_port_);
-  }
+//  const drake::systems::InputPort<double>& get_input_port_radio() const {
+//    return this->get_input_port(radio_port_);
+//  }
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
@@ -76,7 +76,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
-  drake::systems::InputPortIndex radio_port_;
+//  drake::systems::InputPortIndex radio_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
 

@@ -145,7 +145,6 @@ int do_main(int argc, char* argv[]) {
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
-  //  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / 60.0;
   params.enable_alpha_slider = true;

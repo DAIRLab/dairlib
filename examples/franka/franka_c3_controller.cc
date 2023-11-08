@@ -1,5 +1,15 @@
 
 #include <dairlib/lcmt_radio_out.hpp>
+#include <drake/common/find_resource.h>
+#include <drake/common/yaml/yaml_io.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/systems/analysis/simulator.h>
+#include <drake/systems/framework/diagram_builder.h>
+#include <drake/systems/lcm/lcm_interface_system.h>
+#include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/lcm/lcm_subscriber_system.h>
+#include <drake/systems/primitives/constant_vector_source.h>
+#include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
@@ -8,6 +18,7 @@
 #include "examples/franka/systems/c3_trajectory_generator.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "examples/franka/systems/franka_kinematics.h"
+#include "examples/franka/systems/plate_balancing_target.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
@@ -17,15 +28,6 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
-
-#include "drake/common/find_resource.h"
-#include "drake/common/yaml/yaml_io.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
 
@@ -76,8 +78,6 @@ int DoMain(int argc, char* argv[]) {
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   DiagramBuilder<double> plant_builder;
-
-  ///
 
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
@@ -169,12 +169,14 @@ int DoMain(int argc, char* argv[]) {
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kPeriodic}),
+          1 / controller_params.target_frequency));
 
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kPeriodic}),
+          1 / controller_params.target_frequency));
 
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
@@ -184,17 +186,44 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
 
+  auto plate_balancing_target =
+      builder.AddSystem<systems::PlateBalancingTargetGenerator>();
+  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+      c3_options.neutral_position.data(), c3_options.neutral_position.size());
+  plate_balancing_target->SetRemoteControlParameters(
+      neutral_position, c3_options.x_scale, c3_options.y_scale,
+      c3_options.z_scale);
+  std::vector<int> input_sizes = {3, 7, 3, 6};
+  auto target_state_mux =
+      builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
+  auto end_effector_zero_velocity_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          VectorXd::Zero(3));
+  auto tray_zero_velocity_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          VectorXd::Zero(6));
+  builder.Connect(plate_balancing_target->get_output_port_end_effector_target(),
+                  target_state_mux->get_input_port(0));
+  builder.Connect(plate_balancing_target->get_output_port_tray_target(),
+                  target_state_mux->get_input_port(1));
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
+                  target_state_mux->get_input_port(2));
+  builder.Connect(tray_zero_velocity_source->get_output_port(),
+                  target_state_mux->get_input_port(3));
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
       contact_pairs, c3_options);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(
           plant_plate, &plate_context, c3_options);
-  c3_trajectory_generator->SetPublishEndEffectorOrientation(controller_params.include_end_effector_orientation);
+  c3_trajectory_generator->SetPublishEndEffectorOrientation(
+      controller_params.include_end_effector_orientation);
   auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
   controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
+  builder.Connect(target_state_mux->get_output_port(),
+                  controller->get_input_port_target());
   builder.Connect(tray_state_sub->get_output_port(),
                   tray_state_receiver->get_input_port());
   builder.Connect(tray_state_receiver->get_output_port(),
@@ -202,7 +231,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(),
-                  controller->get_input_port_radio());
+                  plate_balancing_target->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
@@ -230,9 +259,9 @@ int DoMain(int argc, char* argv[]) {
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
-  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
-      *controller, &loop.get_diagram_mutable_context());
-  controller->get_input_port_target().FixValue(&controller_context, x_des);
+  //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
+  //      *controller, &loop.get_diagram_mutable_context());
+  //  controller->get_input_port_target().FixValue(&controller_context, x_des);
   LcmHandleSubscriptionsUntil(
       &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();

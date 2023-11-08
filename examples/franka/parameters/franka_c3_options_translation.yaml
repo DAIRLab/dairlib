@@ -36,3 +36,8 @@ r_vector: [1, 1, 1]
 
 q_des_vector: [0.55, 0.00, 0.4, 1, 0, 0, 0, 0.55, 0.00, 0.42]
 v_des_vector: [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+neutral_position: [0.55, 0, 0.40]
+x_scale: 0.1
+y_scale: 0.1
+z_scale: 0.1

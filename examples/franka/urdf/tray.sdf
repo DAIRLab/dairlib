@@ -35,7 +35,6 @@
           </cylinder>
         </geometry>
         <drake:proximity_properties>
-<!--          <drake:rigid_hydroelastic/>-->
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>

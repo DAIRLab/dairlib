@@ -74,10 +74,10 @@ C3Controller::C3Controller(
                    plant_.num_velocities(ModelInstanceIndex(3));
   target_input_port_ =
       this->DeclareVectorInputPort("desired_position", x_des_size).get_index();
-  radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_radio_out",
-                                     drake::Value<dairlib::lcmt_radio_out>{})
-          .get_index();
+//  radio_port_ =
+//      this->DeclareAbstractInputPort("lcmt_radio_out",
+//                                     drake::Value<dairlib::lcmt_radio_out>{})
+//          .get_index();
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
@@ -103,8 +103,8 @@ C3Controller::C3Controller(
 drake::systems::EventStatus C3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+//  const auto& radio_out =
+//      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const FrankaKinematicsVector<double>* lcs_x =
@@ -118,18 +118,18 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   q_v_u << lcs_x->GetState(), VectorXd::Zero(n_u_);
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
-  VectorXd x_des_adjusted = x_des.value();
-  VectorXd current = x_des_adjusted.head(n_q_).tail(3);
-  current(0) += radio_out->channel[0] * 0.2;
-  current(1) += radio_out->channel[1] * 0.2;
-  current(2) += radio_out->channel[2] * 0.2;
-  x_des_adjusted.head(n_q_).tail(3) = current;
-  if (radio_out->channel[13] > 0) {
-    x_des_adjusted.head(3) = current;
-  }
+//  VectorXd x_des_adjusted = x_des.value();
+//  VectorXd current = x_des_adjusted.head(n_q_).tail(3);
+//  current(0) += radio_out->channel[0] * 0.2;
+//  current(1) += radio_out->channel[1] * 0.2;
+//  current(2) += radio_out->channel[2] * 0.2;
+//  x_des_adjusted.head(n_q_).tail(3) = current;
+//  if (radio_out->channel[13] > 0) {
+//    x_des_adjusted.head(3) = current;
+//  }
 
   std::vector<VectorXd> x_desired =
-      std::vector<VectorXd>(N_ + 1, x_des_adjusted);
+      std::vector<VectorXd>(N_ + 1, x_des.value());
 
   int n_x = plant_.num_positions() + plant_.num_velocities();
   int n_u = plant_.num_actuators();
@@ -167,6 +167,16 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
+  }
+  for (int i : vector<int>({0, 1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -5, 5, 2);
+  }
+  for (int i : vector<int>({2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 10, 20, 2);
   }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   delta_ = delta;

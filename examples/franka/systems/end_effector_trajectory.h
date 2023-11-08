@@ -33,11 +33,7 @@ class EndEffectorTrajectoryGenerator
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
-  drake::trajectories::PiecewisePolynomial<double> GenerateCircle(
-      const drake::systems::Context<double>& context) const;
   drake::trajectories::PiecewisePolynomial<double> GeneratePose(
-      const drake::systems::Context<double>& context) const;
-  drake::trajectories::PiecewisePolynomial<double> GenerateLine(
       const drake::systems::Context<double>& context) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,

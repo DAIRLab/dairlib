@@ -7,6 +7,7 @@ cc_library(
         ":end_effector_orientation",
         ":end_effector_trajectory",
         ":franka_kinematics",
+        ":plate_balancing_target",
     ],
 )
 

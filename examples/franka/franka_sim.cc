@@ -112,14 +112,6 @@ int DoMain(int argc, char* argv[]) {
 
   plant.Finalize();
 
-  for (auto joint_actuator_index :
-       plant.GetJointActuatorIndices(franka_index)) {
-    std::cout << "Joint: " << joint_actuator_index << " reflected inertia: "
-              << plant.get_joint_actuator(joint_actuator_index)
-                     .default_reflected_inertia()
-              << std::endl;
-  }
-
   /* -------------------------------------------------------------------------------------------*/
 
   drake::lcm::DrakeLcm drake_lcm;

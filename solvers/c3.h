@@ -64,10 +64,10 @@ class C3 {
       std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
 
   /// allow users to add constraints (adds for all timesteps)
-  /// @param A, Lowerbound, Upperbound Lowerbound <= A^T x <= Upperbound
+  /// @param A, lower_bound, upper_bound lower_bound <= A^T x <= upper_bound
   /// @param constraint inputconstraint, stateconstraint, forceconstraint
-  void AddLinearConstraint(Eigen::RowVectorXd& A, double Lowerbound,
-                           double Upperbound, int constraint);
+  void AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
+                           double upper_bound, int constraint);
 
   /// allow user to remove all constraints
   void RemoveConstraints();

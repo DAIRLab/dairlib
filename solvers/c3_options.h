@@ -40,6 +40,11 @@ struct C3Options {
   Eigen::VectorXd q_des;
   Eigen::VectorXd v_des;
 
+  std::vector<double> neutral_position;
+  double x_scale;
+  double y_scale;
+  double z_scale;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(admm_iter));
@@ -68,6 +73,11 @@ struct C3Options {
     a->Visit(DRAKE_NVP(r_vector));
     a->Visit(DRAKE_NVP(q_des_vector));
     a->Visit(DRAKE_NVP(v_des_vector));
+
+    a->Visit(DRAKE_NVP(neutral_position));
+    a->Visit(DRAKE_NVP(x_scale));
+    a->Visit(DRAKE_NVP(y_scale));
+    a->Visit(DRAKE_NVP(z_scale));
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());

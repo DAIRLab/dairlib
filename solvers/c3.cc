@@ -259,26 +259,26 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   return *z_sol_;
 }
 
-void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double Lowerbound,
-                             double Upperbound, int constraint) {
+void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
+                             double upper_bound, int constraint) {
   if (constraint == 1) {
     for (int i = 1; i < N_; i++) {
       user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, Lowerbound, Upperbound, x_.at(i)));
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
     }
   }
 
   if (constraint == 2) {
     for (int i = 0; i < N_; i++) {
       user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, Lowerbound, Upperbound, u_.at(i)));
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
     }
   }
 
   if (constraint == 3) {
     for (int i = 0; i < N_; i++) {
       user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, Lowerbound, Upperbound, lambda_.at(i)));
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, lambda_.at(i)));
     }
   }
 }

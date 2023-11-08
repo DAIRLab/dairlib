@@ -330,8 +330,9 @@ def load_c3_debug(data, c3_debug_channel):
 
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,
-    ylabel=None, title=None):
-    ps = plot_styler.PlotStyler()
+    ylabel=None, title=None, ps=None, subplot_index=0):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
     if title is None:
@@ -346,14 +347,15 @@ def plot_q_or_v_or_u(
         {key: x_names},  # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
-         'title': title}, ps)
+         'title': title}, ps, subplot_index=subplot_index)
     return ps
 
 
 def plot_u_cmd(
     robot_input, key, x_names, x_slice, time_slice,
-    ylabel=None, title=None):
-    ps = plot_styler.PlotStyler()
+    ylabel=None, title=None, ps=None, subplot_index=0):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
     if title is None:
@@ -368,30 +370,8 @@ def plot_u_cmd(
         {key: x_names},  # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
-         'title': title}, ps)
+         'title': title}, ps, subplot_index=subplot_index)
     return ps
-
-
-def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None,
-               title=None):
-    ps = plot_styler.PlotStyler()
-    if ylabel is None:
-        ylabel = key
-    if title is None:
-        title = key
-
-    plotting_utils.make_plot(
-        robot_input,  # data dict
-        't_u',  # time channel
-        time_slice,
-        [key],  # key to plot
-        {key: x_slice},  # slice of key to plot
-        {key: x_names},  # legend entries
-        {'xlabel': 'Time',
-         'ylabel': ylabel,
-         'title': title}, ps)
-    return ps
-
 
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
@@ -399,11 +379,11 @@ def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
                             title='Floating Base Positions')
 
 
-def plot_joint_positions(robot_output, q_names, fb_dim, time_slice):
+def plot_joint_positions(robot_output, q_names, fb_dim, time_slice, subplot_index=0):
     q_slice = slice(fb_dim, len(q_names))
     return plot_q_or_v_or_u(robot_output, 'q', q_names[q_slice], q_slice,
                             time_slice, ylabel='Joint Angle (rad)',
-                            title='Joint Positions')
+                            title='Joint Positions', subplot_index=subplot_index)
 
 
 def plot_positions_by_name(robot_output, q_names, time_slice, pos_map):
@@ -418,11 +398,11 @@ def plot_floating_base_velocities(robot_output, v_names, fb_dim, time_slice):
                             title='Floating Base Velocities')
 
 
-def plot_joint_velocities(robot_output, v_names, fb_dim, time_slice):
+def plot_joint_velocities(robot_output, v_names, fb_dim, time_slice, subplot_index=0):
     q_slice = slice(fb_dim, len(v_names))
     return plot_q_or_v_or_u(robot_output, 'v', v_names[q_slice], q_slice,
                             time_slice, ylabel='Joint Vel (rad/s)',
-                            title='Joint Velocities')
+                            title='Joint Velocities', subplot_index=subplot_index)
 
 
 def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
@@ -431,26 +411,26 @@ def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
                             ylabel='Velocity', title='Select Velocities')
 
 
-def plot_measured_efforts(robot_output, u_names, time_slice):
+def plot_measured_efforts(robot_output, u_names, time_slice, ps=None, subplot_index=0):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
                             time_slice, ylabel='Efforts (Nm)',
-                            title='Measured Joint Efforts')
+                            title='Measured Joint Efforts', ps=ps, subplot_index=subplot_index)
 
 
-def plot_commanded_efforts(robot_input, u_names, time_slice):
+def plot_commanded_efforts(robot_input, u_names, time_slice, ps=None, subplot_index=0):
     return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
                       time_slice, ylabel='Efforts (Nm)',
-                      title='Commanded Joint Efforts')
+                      title='Commanded Joint Efforts', ps=ps, subplot_index=subplot_index)
 
 
-def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
+def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map, ps=None, subplot_index=0):
     u_slice = [u_map[name] for name in u_names]
     return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
-                            ylabel='Efforts (Nm)', title='Select Joint Efforts')
+                            ylabel='Efforts (Nm)', title='Select Joint Efforts', ps=ps, subplot_index=subplot_index)
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
-                          pts, dims, ps=None):
+                          pts, dims, ps=None, subplot_index=0):
     if ps is None:
         ps = plot_styler.PlotStyler()
 
@@ -473,13 +453,13 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         legend_entries,
         {'title': 'Point Positions',
          'xlabel': 'time (s)',
-         'ylabel': 'pos (m)'}, ps)
+         'ylabel': 'pos (m)'}, ps, subplot_index=subplot_index)
 
     return ps
 
 
 def plot_points_velocities(robot_output, time_slice, plant, context, frame_names,
-                          pts, dims, ps=None):
+                          pts, dims, ps=None, subplot_index=0):
     if ps is None:
         ps = plot_styler.PlotStyler()
 
@@ -504,7 +484,7 @@ def plot_points_velocities(robot_output, time_slice, plant, context, frame_names
         legend_entries,
         {'title': 'Point Velocities',
          'xlabel': 'time (s)',
-         'ylabel': 'pos (m)'}, ps)
+         'ylabel': 'pos (m)'}, ps, subplot_index=subplot_index)
 
     return ps
 
@@ -848,7 +828,7 @@ def plot_c3_inputs(c3_output, time_slice):
         't',
         time_slice,
         ['u'],
-        {'u': 0},
+        {'u': 2},
         {},
         {'xlabel': 'Timestamp',
          'ylabel': 'C3 Actor Inputs ',

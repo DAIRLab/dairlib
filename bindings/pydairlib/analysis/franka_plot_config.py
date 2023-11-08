@@ -43,3 +43,4 @@ class FrankaPlotConfig():
         self.plot_active_tracking_datas = data['plot_active_tracking_datas']
         self.tracking_datas_to_plot = \
             data['tracking_datas_to_plot'] if data['tracking_datas_to_plot'] else []
+        self.plot_c3_debug = data['plot_c3_debug']

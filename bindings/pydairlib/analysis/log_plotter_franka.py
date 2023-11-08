@@ -78,7 +78,8 @@ def main():
                                                 t_x_slice, pos_map)
 
     # import pdb; pdb.set_trace()
-    mbp_plots.plot_c3_inputs(c3_output, t_c3_slice)
+    if plot_config.plot_c3_debug:
+        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice)
     # plt.plot(c3_output['t'], c3_output['x'][:, 0, :])
 
     # Plot all joint velocities
@@ -94,26 +95,30 @@ def main():
                                                  t_x_slice, vel_map)
 
     if plot_config.plot_end_effector:
+        end_effector_plotter = plot_styler.PlotStyler(nrows=2)
         mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
                                         franka_context, ['paddle'],
                                         {'paddle': np.zeros(3)},
-                                        {'paddle': [0, 1, 2]})
+                                        {'paddle': [0, 1, 2]}, ps=end_effector_plotter,
+                                        subplot_index=0)
 
         mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
                                          franka_context, ['paddle'],
                                          {'paddle': np.zeros(3)},
-                                         {'paddle': [0, 1, 2]})
+                                         {'paddle': [0, 1, 2]}, ps=end_effector_plotter,
+                                         subplot_index=1)
 
     ''' Plot Efforts '''
+    effort_plotter = plot_styler.PlotStyler(nrows=2)
     if plot_config.plot_measured_efforts:
         plot = mbp_plots.plot_measured_efforts(robot_output, act_names,
-                                               t_x_slice)
-        plt.ylim(franka_joint_actuator_limit_range)
+                                               t_x_slice, effort_plotter, subplot_index=0)
+        plot.fig.axes[0].set_ylim(franka_joint_actuator_limit_range)
 
     if plot_config.plot_commanded_efforts:
         plot = mbp_plots.plot_commanded_efforts(robot_input, act_names,
-                                                t_osc_slice)
-        plt.ylim(franka_joint_actuator_limit_range)
+                                                t_osc_slice, effort_plotter, subplot_index=1)
+        plot.fig.axes[1].set_ylim(franka_joint_actuator_limit_range)
 
     if plot_config.act_names:
         plot = mbp_plots.plot_measured_efforts_by_name(robot_output,

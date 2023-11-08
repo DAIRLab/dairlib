@@ -125,6 +125,15 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
+  VectorXd ddq_min(n_q_);
+  VectorXd ddq_max(n_q_);
+  for (JointIndex i(0); i < n_q_; ++i) {
+    ddq_min[i] = plant_wo_spr_.get_joint(i).acceleration_lower_limits()[0];
+    ddq_max[i] = plant_wo_spr_.get_joint(i).acceleration_upper_limits()[0];
+  }
+  ddq_min_ = ddq_min;
+  ddq_max_ = ddq_max;
+
   n_revolute_joints_ = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
@@ -414,6 +423,11 @@ void OperationalSpaceControl::Build() {
   if (with_input_constraints_) {
     prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
                                u_);
+  }
+
+  if (with_acceleration_constraints_) {
+    prog_->AddLinearConstraint(MatrixXd::Identity(n_q_, n_q_), ddq_min_, ddq_max_,
+                               dv_);
   }
   // No joint position constraint in this implementation
 

@@ -166,6 +166,7 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
+  osc->SetAccelerationConstraints(controller_params.enforce_acceleration_constraints);
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(

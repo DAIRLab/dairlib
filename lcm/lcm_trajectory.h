@@ -1,9 +1,9 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
 
 #include <Eigen/Dense>
 
@@ -27,7 +27,8 @@ class LcmTrajectory {
   /// lcmt_trajectory_block is the lcmtype analog
   struct Trajectory {
     Trajectory() = default;
-    Trajectory(const std::string& traj_name, const lcmt_trajectory_block& traj_block);
+    Trajectory(const std::string& traj_name,
+               const lcmt_trajectory_block& traj_block);
 
     std::string traj_name;
     Eigen::VectorXd time_vector;
@@ -40,9 +41,8 @@ class LcmTrajectory {
   LcmTrajectory() = default;
   LcmTrajectory(const std::vector<Trajectory>& trajectories,
                 const std::vector<std::string>& trajectory_names,
-                const std::string& name,
-                const std::string& description,
-                bool get_metadata=true);
+                const std::string& name, const std::string& description,
+                bool get_metadata = false);
 
   explicit LcmTrajectory(const lcmt_saved_traj& traj);
 
@@ -88,6 +88,7 @@ class LcmTrajectory {
     return trajectory_names_;
   }
   lcmt_saved_traj GenerateLcmObject() const;
+
  protected:
   /// Constructs a lcmt_metadata object with a specified name and description
   /// Other relevant metadata details such as datatime and git status are
@@ -95,7 +96,6 @@ class LcmTrajectory {
   void ConstructMetadataObject(std::string name, std::string description);
 
  private:
-
   lcmt_metadata metadata_;
   std::unordered_map<std::string, Trajectory> trajectories_;
   std::vector<std::string> trajectory_names_;

@@ -9,6 +9,7 @@ osc_debug_channel: OSC_DEBUG_FRANKA
 
 c3_actor_channel: C3_TRAJECTORY_ACTOR
 c3_object_channel: C3_TRAJECTORY_TRAY
+c3_force_channel: C3_TRAJECTORY_FORCE
 c3_debug_output_channel: C3_DEBUG
 
 radio_channel: RADIO

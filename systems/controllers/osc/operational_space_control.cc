@@ -323,8 +323,10 @@ void OperationalSpaceControl::Build() {
 
   n_ee_ = 0;
   for (auto& force_tracking_data : *force_tracking_data_vec_) {
-    n_ee_ += force_tracking_data->GetYDim();
+    n_ee_ += force_tracking_data->GetLambdaDim();
   }
+
+  std::cout << "num contact forces" << n_ee_ << std::endl;
 
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
@@ -371,8 +373,8 @@ void OperationalSpaceControl::Build() {
   dynamics_constraint_ =
       prog_
           ->AddLinearEqualityConstraint(
-              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
-              VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
+              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_ + n_ee_),
+              VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_, lambda_ee_})
           .evaluator()
           .get();
   // 2. Holonomic constraint
@@ -426,8 +428,8 @@ void OperationalSpaceControl::Build() {
   }
 
   if (with_acceleration_constraints_) {
-    prog_->AddLinearConstraint(MatrixXd::Identity(n_q_, n_q_), ddq_min_, ddq_max_,
-                               dv_);
+    prog_->AddLinearConstraint(MatrixXd::Identity(n_q_, n_q_), ddq_min_,
+                               ddq_max_, dv_);
   }
   // No joint position constraint in this implementation
 
@@ -470,15 +472,14 @@ void OperationalSpaceControl::Build() {
             .evaluator()
             .get();
   }
-  // 3. external force cost
-  //  for (auto& force_tracking_data: *force_tracking_data_vec_){
-  //    DRAKE_DEMAND(W_lambda_h_reg_.rows() == n_h_);
-  //    lambda_ee_cost_ =
-  //        prog_
-  //            ->AddQuadraticCost(, VectorXd::Zero(n_h_), lambda_h_)
-  //            .evaluator()
-  //            .get();
-  //  }
+  //   3. external force cost
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    lambda_ee_cost_ = prog_
+                          ->AddQuadraticCost(MatrixXd::Zero(n_ee_, n_ee_),
+                                             VectorXd::Zero(n_ee_), lambda_ee_)
+                          .evaluator()
+                          .get();
+  }
   // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     soft_constraint_cost_ =
@@ -665,11 +666,13 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u
   /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_h - B*u == - bias
   /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_h, u]^T = - bias
-  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_);
+  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_ + n_ee_);
   A_dyn.block(0, 0, n_v_, n_v_) = M;
   A_dyn.block(0, n_v_, n_v_, n_c_) = -J_c.transpose();
   A_dyn.block(0, n_v_ + n_c_, n_v_, n_h_) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
+  MatrixXd J_ee = force_tracking_data_vec_->at(0)->GetJ();
+  A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_ee_) = -J_ee.transpose();
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
@@ -766,6 +769,16 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  for (auto& force_tracking_data : *force_tracking_data_vec_){
+    force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                                *context_wo_spr_, t);
+    const MatrixXd W = force_tracking_data->GetWeight();
+    const VectorXd lambda_des  = force_tracking_data->GetLambdaDes();
+    lambda_ee_cost_->UpdateCoefficients(2 * W,
+                                        -2 * W * lambda_des,
+                                        lambda_des.transpose() * W * lambda_des);
+  }
+
   // Add joint limit constraints
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
@@ -853,6 +866,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
+    *lambda_ee_sol_ = result.GetSolution(lambda_ee_);
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
   }
@@ -1046,12 +1060,14 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
   qp_output.u_dim = n_u_;
-  qp_output.lambda_c_dim = n_c_;
+//  qp_output.lambda_c_dim = n_c_;
+  qp_output.lambda_c_dim = n_ee_;
   qp_output.lambda_h_dim = n_h_;
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+//  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ee_sol_);
   qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);

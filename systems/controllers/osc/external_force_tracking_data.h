@@ -16,13 +16,15 @@ class ExternalForceTrackingData {
   ExternalForceTrackingData(
       const std::string& name, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr);
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      const std::string& body_name, const Eigen::Vector3d& pt_on_body);
 
   const Eigen::MatrixXd& GetWeight() const { return W_; }
 
   const Eigen::MatrixXd& GetJ() const { return J_; }
+  const Eigen::VectorXd& GetLambdaDes() const { return lambda_des_; }
   const std::string& GetName() const { return name_; };
-  int GetYDim() const { return n_y_; };
+  int GetLambdaDim() const { return n_lambda_; };
 
   const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
     return plant_w_spr_;
@@ -30,18 +32,16 @@ class ExternalForceTrackingData {
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr() const {
     return plant_wo_spr_;
   };
-
- protected:
- private:
-  std::string name_;
-
-  // This method is called from the parent class (OscTrackingData) due to C++
-  // polymorphism.
-  void UpdateActual(const Eigen::VectorXd& x_w_spr,
+  void Update(const Eigen::VectorXd& x_w_spr,
                     const drake::systems::Context<double>& context_w_spr,
                     const Eigen::VectorXd& x_wo_spr,
                     const drake::systems::Context<double>& context_wo_spr,
                     double t);
+ protected:
+ private:
+  std::string name_;
+
+
 
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
@@ -51,10 +51,11 @@ class ExternalForceTrackingData {
 
   const drake::multibody::BodyFrame<double>* body_frame_w_spr_;
   const drake::multibody::BodyFrame<double>* body_frame_wo_spr_;
-  Eigen::Vector3d pt_on_body_;
+  const Eigen::Vector3d pt_on_body_;
 
-  int n_y_ = 3;
+  int n_lambda_ = 3;
 
+  Eigen::VectorXd lambda_des_;
   Eigen::MatrixXd J_;
   Eigen::MatrixXd W_;
 };

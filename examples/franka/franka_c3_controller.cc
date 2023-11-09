@@ -147,10 +147,6 @@ int DoMain(int argc, char* argv[]) {
     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
 
-//  VectorXd x_des = VectorXd::Zero(plant_plate.num_positions() +
-//                                  plant_plate.num_velocities());
-//  x_des << c3_options.q_des, c3_options.v_des;
-
   DiagramBuilder<double> builder;
 
   auto tray_state_sub =

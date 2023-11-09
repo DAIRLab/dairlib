@@ -16,6 +16,7 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -49,6 +50,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::ExternalForceTrackingData;
 
 DEFINE_string(osqp_settings,
               "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
@@ -171,16 +173,10 @@ int DoMain(int argc, char* argv[]) {
           plant, plant);
   end_effector_position_tracking_data->AddPointToTrack(
       controller_params.end_effector_name);
-  const VectorXd& bound =
+  const VectorXd& end_effector_acceleration_limits =
       controller_params.end_effector_acceleration * Vector3d::Ones();
-  end_effector_position_tracking_data->SetCmdAccelerationBounds(-bound, bound);
-  auto end_effector_position_tracking_data_for_rel =
-      std::make_unique<TransTaskSpaceTrackingData>(
-          "end_effector_target", controller_params.K_p_end_effector,
-          controller_params.K_d_end_effector, controller_params.W_end_effector,
-          plant, plant);
-  end_effector_position_tracking_data_for_rel->AddPointToTrack(
-      controller_params.end_effector_name);
+  end_effector_position_tracking_data->SetCmdAccelerationBounds(
+      -end_effector_acceleration_limits, end_effector_acceleration_limits);
   auto mid_link_position_tracking_data_for_rel =
       std::make_unique<JointSpaceTrackingData>(
           "panda_joint2_target", controller_params.K_p_mid_link,
@@ -188,6 +184,12 @@ int DoMain(int argc, char* argv[]) {
           plant);
   mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
                                                            "panda_joint2dot");
+
+  auto end_effector_force_tracking_data =
+      std::make_unique<ExternalForceTrackingData>(
+          "end_effector_force", controller_params.W_ee_lambda, plant, plant,
+          controller_params.end_effector_name, Vector3d::Zero()
+      );
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
@@ -203,6 +205,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.6 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
+  osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);

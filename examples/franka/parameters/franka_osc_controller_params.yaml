@@ -62,3 +62,7 @@ EndEffectorRotKd:
   [ 10, 0, 0,
     0, 10, 0,
     0, 0, 10 ]
+LambdaEndEffectorW:
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 1 ]

@@ -209,23 +209,23 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
 
 
-def data_process(i, q):
+def data_process(i, q, visualize):
     num_data = 1000
     print("data_process", str(i))
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = random_stairs(0.2, 0.5, 0.2)
-    sim_params.visualize = False
+    sim_params.visualize = visualize
     data = run_experiment(sim_params, num_data, i)
     q.put(data)
 
 
-def main(save_file):
-    num_jobs = multiprocessing.cpu_count() - 1  # leave one thread free
+def main(save_file: str, visualize: bool):
+    num_jobs = 1 if visualize else os.cpu_count() - 1  # leave one thread free
     job_queue = multiprocessing.Queue()
     job_list = []
 
     for i in range(num_jobs):
-        process = multiprocessing.Process(target=data_process, args=(i, job_queue))
+        process = multiprocessing.Process(target=data_process, args=(i, job_queue, visualize))
         job_list.append(process)
         process.start()
     results = [job_queue.get() for job in job_list]
@@ -248,5 +248,12 @@ if __name__ == '__main__':
         default='data.npz',
         help='Filepath where data should be saved'
     )
+    parser.add_argument(
+        '--visualize',
+        type=bool,
+        default=False,
+        help='Whether to visualize the data collection procedure '
+             '(WARNING - ONLY USES ONE THREAD)'
+    )
     args = parser.parse_args()
-    main(args.save_file)
+    main(args.save_file, args.visualize)

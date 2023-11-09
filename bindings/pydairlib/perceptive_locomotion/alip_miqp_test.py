@@ -1,6 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+from pydrake.systems.all import Diagram
+
 from pydairlib.geometry.convex_foothold import ConvexFoothold
 from pydairlib.perceptive_locomotion.controllers import (
     AlipMultiQP,

@@ -3,6 +3,7 @@ rho: 0.1
 rho_scale: 2
 num_threads: 6
 delta_option: 1
+projection_type: "MIQP"
 
 mu: 0.4
 mu_plate: 0.4

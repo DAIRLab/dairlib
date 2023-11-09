@@ -3,8 +3,8 @@
 #include <chrono>
 #include <iostream>
 
-#include <omp.h>
 #include <Eigen/Core>
+#include <omp.h>
 
 #include "solvers/lcs.h"
 
@@ -143,7 +143,7 @@ vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
 
-//  auto z0 = zfin[0];
+  //  auto z0 = zfin[0];
 
   //  return z.segment(n_ + m_, k_);
   //  return z0;
@@ -235,7 +235,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (result.is_success()) {
-
     for (int i = 0; i < N_; i++) {
       x_sol_->at(i) = result.GetSolution(x_[i]);
       lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
@@ -277,8 +276,8 @@ void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
 
   if (constraint == 3) {
     for (int i = 0; i < N_; i++) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, lambda_.at(i)));
+      user_constraints_.push_back(prog_.AddLinearConstraint(
+          A, lower_bound, upper_bound, lambda_.at(i)));
     }
   }
 }

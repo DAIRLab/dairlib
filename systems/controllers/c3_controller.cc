@@ -2,12 +2,14 @@
 
 #include <utility>
 
+#include <drake/solvers/moby_lcp_solver.h>
+
 #include "common/find_resource.h"
 #include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
+#include "solvers/c3_miqp.h"
+#include "solvers/c3_qp.h"
 #include "solvers/lcs_factory.h"
-
-#include "drake/solvers/moby_lcp_solver.h"
 
 namespace dairlib {
 
@@ -16,13 +18,14 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::MatrixXf;
+using Eigen::VectorXd;
 using Eigen::VectorXf;
-using std::vector;
 using solvers::C3MIQP;
+using solvers::C3QP;
 using solvers::LCS;
 using solvers::LCSFactory;
+using std::vector;
 using systems::TimestampedVector;
 
 namespace systems {
@@ -55,7 +58,7 @@ C3Controller::C3Controller(
       2 * c3_options_.num_contacts +
       2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
   n_u_ = plant_.num_actuators();
-//  Q_.back() = 100 * c3_options_.Q;
+  //  Q_.back() = 100 * c3_options_.Q;
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort(
@@ -131,7 +134,17 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   DRAKE_DEMAND(R_.front().cols() == lcs.k_);
   DRAKE_DEMAND(G_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
   DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
-  c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
+
+  if (c3_options_.projection_type == "MIQP") {
+    c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
+
+  } else if (c3_options_.projection_type == "QP") {
+    c3_ = std::make_unique<C3QP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
+
+  } else {
+    std::cerr << ("Unknown projection type") << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
   c3_->SetOsqpSolverOptions(solver_options_);
 
   VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
@@ -175,8 +188,10 @@ void C3Controller::OutputC3Solution(
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = t + i * c3_options_.dt;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) = z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    c3_solution->u_sol_.col(i) = z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 }
 

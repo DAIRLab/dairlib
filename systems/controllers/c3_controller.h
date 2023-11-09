@@ -10,7 +10,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3.h"
-#include "solvers/c3_miqp.h"
+
 #include "solvers/c3_options.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"
@@ -101,7 +101,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   int n_lambda_;
   int n_u_;
 
-  mutable std::unique_ptr<solvers::C3MIQP> c3_;
+  mutable std::unique_ptr<solvers::C3> c3_;
   mutable std::vector<Eigen::VectorXd> delta_;
   mutable std::vector<Eigen::VectorXd> w_;
   //  std::unique_ptr<solvers::LCS> lcs_;

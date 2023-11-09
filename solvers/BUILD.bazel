@@ -24,11 +24,13 @@ cc_library(
     srcs = [
         "c3.cc",
         "c3_miqp.cc",
+        "c3_qp.cc",
     ],
     hdrs = [
         "c3.h",
         "c3_miqp.h",
         "c3_options.h",
+        "c3_qp.h",
     ],
     copts = [
         "-fopenmp",

@@ -100,7 +100,8 @@ int DoMain(int argc, char* argv[]) {
                                           end_effector_index),
                      T_EE_W);
   } else {
-    std::cout << "OSC plant has been constructed with no end effector." << std::endl;
+    std::cout << "OSC plant has been constructed with no end effector."
+              << std::endl;
   }
 
   plant.Finalize();
@@ -116,7 +117,7 @@ int DoMain(int argc, char* argv[]) {
   orientation_traj.traj_name = "end_effector_orientation_target";
   orientation_traj.datatypes = std::vector<std::string>(2, "orientation");
   lcm_traj.AddTrajectory(orientation_traj.traj_name, orientation_traj);
-//  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
+  //  lcm_traj.WriteToFile("examples/franka/saved_trajectories/franka_defaults");
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
@@ -163,11 +164,6 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.osc_debug_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  osc->SetAccelerationCostWeights(gains.W_acceleration);
-  osc->SetInputCostWeights(gains.W_input_regularization);
-  osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
-  osc->SetAccelerationConstraints(controller_params.enforce_acceleration_constraints);
-
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "end_effector_target", controller_params.K_p_end_effector,
@@ -203,11 +199,15 @@ int DoMain(int argc, char* argv[]) {
       controller_params.end_effector_name);
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
-
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             1.6 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
+  osc->SetAccelerationCostWeights(gains.W_acceleration);
+  osc->SetInputCostWeights(gains.W_input_regularization);
+  osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
+  osc->SetAccelerationConstraints(
+      controller_params.enforce_acceleration_constraints);
 
   osc->SetContactFriction(controller_params.mu);
   osc->SetOsqpSolverOptions(solver_options);

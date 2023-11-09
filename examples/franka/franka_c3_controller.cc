@@ -147,9 +147,9 @@ int DoMain(int argc, char* argv[]) {
     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
   }
 
-  VectorXd x_des = VectorXd::Zero(plant_plate.num_positions() +
-                                  plant_plate.num_velocities());
-  x_des << c3_options.q_des, c3_options.v_des;
+//  VectorXd x_des = VectorXd::Zero(plant_plate.num_positions() +
+//                                  plant_plate.num_velocities());
+//  x_des << c3_options.q_des, c3_options.v_des;
 
   DiagramBuilder<double> builder;
 
@@ -165,29 +165,26 @@ int DoMain(int argc, char* argv[]) {
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
           controller_params.end_effector_name, "tray",
           controller_params.include_end_effector_orientation);
-
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
-
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
-
   auto force_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_force_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
-
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+          TriggerTypeSet({TriggerType::kPeriodic}),
+          1 / controller_params.target_frequency));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));

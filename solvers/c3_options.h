@@ -9,6 +9,7 @@ struct C3Options {
   float rho_scale = 3;  // scaling of rho parameter (/rho = rho_scale * /rho) //3
   int num_threads = 0;   // 0 is dynamic, greater than 0 for a fixed count
   int delta_option = 1;  // different options for delta update
+  std::string projection_type;
 
   int N;
   double w_Q;
@@ -52,6 +53,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));
+    a->Visit(DRAKE_NVP(projection_type));
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(mu_plate));

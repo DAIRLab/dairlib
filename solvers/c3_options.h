@@ -10,6 +10,7 @@ struct C3Options {
   int num_threads = 0;   // 0 is dynamic, greater than 0 for a fixed count
   int delta_option = 1;  // different options for delta update
   std::string projection_type;
+  std::string contact_model;
 
   int N;
   double w_Q;
@@ -53,7 +54,11 @@ struct C3Options {
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(delta_option));
+    a->Visit(DRAKE_NVP(contact_model));
     a->Visit(DRAKE_NVP(projection_type));
+    if (projection_type == "QP"){
+      DRAKE_DEMAND(contact_model == "anitescu");
+    }
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(mu_plate));

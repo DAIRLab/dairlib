@@ -3,16 +3,13 @@
 #include <string>
 #include <vector>
 
-#include <drake/common/yaml/yaml_io.h>
+#include <drake/multibody/plant/multibody_plant.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3_options.h"
-#include "solvers/lcs.h"
-#include "solvers/solver_options_io.h"
-#include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -24,7 +21,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit C3TrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context, C3Options c3_options);
+      C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
     return this->get_input_port(c3_solution_port_);

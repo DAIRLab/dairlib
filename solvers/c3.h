@@ -30,6 +30,8 @@ class C3 {
      const std::vector<Eigen::VectorXd>& warm_start_u_ = {},
      bool warm_start = false);
 
+  virtual ~C3() = default;
+
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
   /// @param delta A pointer to the copy variable solution

@@ -1,13 +1,11 @@
 #include "examples/franka/systems/c3_trajectory_generator.h"
 
-#include <iostream>
 #include <utility>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
-
 #include "solvers/c3_output.h"
 
 namespace dairlib {
@@ -16,20 +14,16 @@ using drake::multibody::ModelInstanceIndex;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
-using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
+using Eigen::VectorXd;
 using systems::TimestampedVector;
 
 namespace systems {
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context, C3Options c3_options)
-    : plant_(plant),
-      context_(context),
-      c3_options_(std::move(c3_options)),
-      N_(c3_options_.N) {
+    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
+    : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
   this->set_name("c3_trajectory_generator");
 
   n_q_ = plant_.num_positions();
@@ -41,7 +35,8 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
   n_u_ = plant_.num_actuators();
 
   c3_solution_port_ =
-      this->DeclareAbstractInputPort("c3_solution", drake::Value<C3Output::C3Solution>())
+      this->DeclareAbstractInputPort("c3_solution",
+                                     drake::Value<C3Output::C3Solution>())
           .get_index();
 
   actor_trajectory_port_ =
@@ -73,7 +68,8 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = c3_solution->x_sol_.topRows(3).cast<double>();
-  knots.bottomRows(3) = c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
+  knots.bottomRows(3) =
+      c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_traj";
   end_effector_traj.datatypes =
@@ -87,14 +83,18 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     LcmTrajectory::Trajectory end_effector_orientation_traj;
     // first 3 rows are rpy, last 3 rows are angular velocity
     MatrixXd orientation_samples = MatrixXd::Zero(6, N_);
-    orientation_samples.topRows(3) = c3_solution->x_sol_.topRows(6).bottomRows(3).cast<double>();
-    orientation_samples.bottomRows(3) =
-        c3_solution->x_sol_.bottomRows(n_v_).topRows(6).bottomRows(3).cast<double>();
+    orientation_samples.topRows(3) =
+        c3_solution->x_sol_.topRows(6).bottomRows(3).cast<double>();
+    orientation_samples.bottomRows(3) = c3_solution->x_sol_.bottomRows(n_v_)
+                                            .topRows(6)
+                                            .bottomRows(3)
+                                            .cast<double>();
     end_effector_orientation_traj.traj_name = "end_effector_orientation_target";
     end_effector_orientation_traj.datatypes =
         std::vector<std::string>(orientation_samples.rows(), "double");
     end_effector_orientation_traj.datapoints = orientation_samples;
-    end_effector_orientation_traj.time_vector = c3_solution->time_vector_.cast<double>();
+    end_effector_orientation_traj.time_vector =
+        c3_solution->time_vector_.cast<double>();
     lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
                            end_effector_orientation_traj);
   }
@@ -111,7 +111,8 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
   DRAKE_DEMAND(c3_solution->x_sol_.rows() == n_q_ + n_v_);
   MatrixXd knots = MatrixXd::Zero(6, N_);
   knots.topRows(3) = c3_solution->x_sol_.middleRows(n_q_ - 3, 3).cast<double>();
-  knots.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
+  knots.bottomRows(3) =
+      c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_traj";
   object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
@@ -124,13 +125,16 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
     LcmTrajectory::Trajectory object_orientation_traj;
     // first 3 rows are rpy, last 3 rows are angular velocity
     MatrixXd orientation_samples = MatrixXd::Zero(7, N_);
-    orientation_samples.topRows(4) = c3_solution->x_sol_.middleRows(3 + 3, 4).cast<double>();
-    orientation_samples.bottomRows(3) = c3_solution->x_sol_.middleRows(n_q_ + 3 + 3, 3).cast<double>();
+    orientation_samples.topRows(4) =
+        c3_solution->x_sol_.middleRows(3 + 3, 4).cast<double>();
+    orientation_samples.bottomRows(3) =
+        c3_solution->x_sol_.middleRows(n_q_ + 3 + 3, 3).cast<double>();
     object_orientation_traj.traj_name = "object_orientation_target";
     object_orientation_traj.datatypes =
         std::vector<std::string>(orientation_samples.rows(), "double");
     object_orientation_traj.datapoints = orientation_samples;
-    object_orientation_traj.time_vector = c3_solution->time_vector_.cast<double>();
+    object_orientation_traj.time_vector =
+        c3_solution->time_vector_.cast<double>();
     lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
                            object_orientation_traj);
   }

@@ -33,15 +33,21 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
-    int num_friction_directions, double mu, double dt, int N) {
-  int n_q = plant_ad.num_positions();
-  int n_v = plant_ad.num_velocities();
+    int num_friction_directions, double mu, double dt, int N,
+    ContactModel contact_model) {
+  //  int n_q = plant_ad.num_positions();
+  //  int n_v = plant_ad.num_velocities();
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
 
   int n_contacts = contact_geoms.size();
 
-  AutoDiffVecXd C(plant.num_velocities());
+  DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
+  DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
+  int n_v = plant.num_velocities();
+  int n_q = plant.num_positions();
+
+  AutoDiffVecXd C(n_v);
   plant_ad.CalcBiasTerm(context_ad, &C);
   VectorXd u_dyn = plant.get_actuation_input_port().Eval(context);
 
@@ -54,7 +60,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   drake::multibody::MultibodyForces<AutoDiffXd> f_app(plant_ad);
   plant_ad.CalcForceElementsContribution(context_ad, &f_app);
 
-  MatrixX<AutoDiffXd> M(plant.num_velocities(), plant.num_velocities());
+  MatrixX<AutoDiffXd> M(n_v, n_v);
   plant_ad.CalcMassMatrix(context_ad, &M);
 
   // If this ldlt is slow, there are alternate formulations which avoid it
@@ -64,14 +70,14 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   VectorXd d_vv = ExtractValue(vdot_no_contact);
   // Derivatives w.r.t. x and u, AB
   MatrixXd AB_v = ExtractGradient(vdot_no_contact);
-  VectorXd x_dvv(plant.num_positions() + plant.num_velocities() + n_u);
+  VectorXd x_dvv(n_q + n_v + n_u);
   x_dvv << plant.GetPositions(context), plant.GetVelocities(context), u_dyn;
   VectorXd x_dvvcomp = AB_v * x_dvv;
   VectorXd d_v = d_vv - x_dvvcomp;
 
   ///////////
   AutoDiffVecXd x_ad = plant_ad.GetPositionsAndVelocities(context_ad);
-  AutoDiffVecXd qdot_no_contact(plant.num_positions());
+  AutoDiffVecXd qdot_no_contact(n_q);
   AutoDiffVecXd vel_ad = x_ad.tail(n_v);
 
   plant_ad.MapVelocityToQDot(context_ad, vel_ad, &qdot_no_contact);
@@ -81,9 +87,9 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   Nqt = plant.MakeVelocityToQDotMap(context);
   MatrixXd Nq = MatrixXd(Nqt);
 
-  //plant_ad.MapQDotToVelocity(context_ad, qdot_no_contact, &vel);
+  // plant_ad.MapQDotToVelocity(context_ad, qdot_no_contact, &vel);
 
-  //std::optional<Eigen::SparseMatrix<double>> NqI = std::nullopt;
+  // std::optional<Eigen::SparseMatrix<double>> NqI = std::nullopt;
   Eigen::SparseMatrix<double> NqI;
   NqI = plant.MakeQDotToVelocityMap(context);
   MatrixXd NqInverse = MatrixXd(NqI);
@@ -91,13 +97,13 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   /// Contact-related terms
   ///
   VectorXd phi(n_contacts);
-  MatrixXd J_n(n_contacts, plant.num_velocities());
-  MatrixXd J_t(2 * n_contacts * num_friction_directions,
-               plant.num_velocities());
+  MatrixXd J_n(n_contacts, n_v);
+  MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
 
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
-        plant, contact_geoms[i]);  // deleted num_fricton_directions (check with
+        plant,
+        contact_geoms[i]);  // deleted num_friction_directions (check with
     // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
 
@@ -105,34 +111,22 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
 
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-              plant.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_directions, plant.num_velocities());
+              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
   }
 
   auto M_ldlt = ExtractValue(M).ldlt();
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
   MatrixXd MinvJ_t_T = M_ldlt.solve(J_t.transpose());
 
-  // float dt = 0.1;
-  auto n_contact_vars =
-      2 * n_contacts + 2 * n_contacts * num_friction_directions;
-
   MatrixXd A(n_x, n_x);
   MatrixXd B(n_x, n_u);
-  MatrixXd D(n_x, n_contact_vars);
   VectorXd d(n_x);
-  MatrixXd E(n_contact_vars, n_x);
-  MatrixXd F(n_contact_vars, n_contact_vars);
-  MatrixXd H(n_contact_vars, n_u);
-  VectorXd c(n_contact_vars);
 
   MatrixXd AB_v_q = AB_v.block(0, 0, n_v, n_q);
   MatrixXd AB_v_v = AB_v.block(0, n_q, n_v, n_v);
   MatrixXd AB_v_u = AB_v.block(0, n_x, n_v, n_u);
   MatrixXd M_double = MatrixXd::Zero(n_v, n_v);
   plant.CalcMassMatrix(context, &M_double);
-
-//  std::cout << "AB_v_u: " << AB_v_u << std::endl;
 
   A.block(0, 0, n_q, n_q) =
       MatrixXd::Identity(n_q, n_q) + dt * dt * Nq * AB_v_q;
@@ -143,26 +137,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   B.block(0, 0, n_q, n_u) = dt * dt * Nq * AB_v_u;
   B.block(n_q, 0, n_v, n_u) = dt * AB_v_u;
 
-  D = MatrixXd::Zero(n_x, n_contact_vars);
-  D.block(0, 2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions) =
-      dt * dt * Nq * MinvJ_t_T;
-  D.block(n_q, 2 * n_contacts, n_v, 2 * n_contacts * num_friction_directions) =
-      dt * MinvJ_t_T;
-
-  D.block(0, n_contacts, n_q, n_contacts) = dt * dt * Nq * MinvJ_n_T;
-
-  D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
-
   d.head(n_q) = dt * dt * Nq * d_v;
   d.tail(n_v) = dt * d_v;
-
-  E = MatrixXd::Zero(n_contact_vars, n_x);
-  E.block(n_contacts, 0, n_contacts, n_q) = dt * dt * J_n * AB_v_q + J_n * NqInverse;;
-  E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
-      dt * J_t * AB_v_q;
-  E.block(n_contacts, n_q, n_contacts, n_v) = dt * J_n + dt * dt * J_n * AB_v_v;
-  E.block(2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions, n_v) =
-      J_t + dt * J_t * AB_v_v;
 
   MatrixXd E_t =
       MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions);
@@ -172,38 +148,92 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
         MatrixXd::Ones(1, 2 * num_friction_directions);
   }
 
-  F = MatrixXd::Zero(n_contact_vars, n_contact_vars);
-  F.block(0, n_contacts, n_contacts, n_contacts) =
-      mu * MatrixXd::Identity(n_contacts, n_contacts);
-  F.block(0, 2 * n_contacts, n_contacts,
-          2 * n_contacts * num_friction_directions) = -E_t;
+  //  MatrixXd D(n_x, n_contact_vars);
+  //  MatrixXd E(n_contact_vars, n_x);
+  //  MatrixXd F(n_contact_vars, n_contact_vars);
+  //  MatrixXd H(n_contact_vars, n_u);
+  //  VectorXd c(n_contact_vars);
+  int n_contact_vars = 0;
+  if (contact_model == ContactModel::kStewartAndTrinkle) {
+    n_contact_vars = 2 * n_contacts + 2 * n_contacts * num_friction_directions;
+  } else {
+    n_contact_vars = 2 * n_contacts * num_friction_directions;
+  }
 
-  F.block(n_contacts, n_contacts, n_contacts, n_contacts) =
-      dt * dt * J_n * MinvJ_n_T;
-  F.block(n_contacts, 2 * n_contacts, n_contacts,
-          2 * n_contacts * num_friction_directions) = dt * dt * J_n * MinvJ_t_T;
+  MatrixXd D = MatrixXd::Zero(n_x, n_contact_vars);
+  MatrixXd E = MatrixXd::Zero(n_contact_vars, n_x);
+  MatrixXd F = MatrixXd::Zero(n_contact_vars, n_contact_vars);
+  MatrixXd H = MatrixXd::Zero(n_contact_vars, n_u);
+  VectorXd c = VectorXd::Zero(n_contact_vars);
 
-  F.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions,
-          n_contacts) = E_t.transpose();
+  if (contact_model == ContactModel::kStewartAndTrinkle) {
+    D.block(0, 2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions) =
+        dt * dt * Nq * MinvJ_t_T;
+    D.block(n_q, 2 * n_contacts, n_v,
+            2 * n_contacts * num_friction_directions) = dt * MinvJ_t_T;
 
-  F.block(2 * n_contacts, n_contacts, 2 * n_contacts * num_friction_directions,
-          n_contacts) = dt * J_t * MinvJ_n_T;
-  F.block(2 * n_contacts, 2 * n_contacts,
-          2 * n_contacts * num_friction_directions,
-          2 * n_contacts * num_friction_directions) = dt * J_t * MinvJ_t_T;
+    D.block(0, n_contacts, n_q, n_contacts) = dt * dt * Nq * MinvJ_n_T;
 
-  H = MatrixXd::Zero(n_contact_vars, n_u);
-  H.block(n_contacts, 0, n_contacts, n_u) = dt * dt * J_n * AB_v_u;
-  H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
-      dt * J_t * AB_v_u;
+    D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
 
-  c = VectorXd::Zero(n_contact_vars);
-  // TODO(yangwill): check gap function to make sure it makes sense. Potential source of uncertainty
-//  std::cout << "phi: " << phi << std::endl;
-  c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
+    E.block(n_contacts, 0, n_contacts, n_q) =
+        dt * dt * J_n * AB_v_q + J_n * NqInverse;
+    ;
+    E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
+        dt * J_t * AB_v_q;
+    E.block(n_contacts, n_q, n_contacts, n_v) =
+        dt * J_n + dt * dt * J_n * AB_v_v;
+    E.block(2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions,
+            n_v) = J_t + dt * J_t * AB_v_v;
 
-  c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
-      J_t * dt * d_v - J_n * NqInverse * plant.GetPositions(context);
+    F.block(0, n_contacts, n_contacts, n_contacts) =
+        mu * MatrixXd::Identity(n_contacts, n_contacts);
+    F.block(0, 2 * n_contacts, n_contacts,
+            2 * n_contacts * num_friction_directions) = -E_t;
+
+    F.block(n_contacts, n_contacts, n_contacts, n_contacts) =
+        dt * dt * J_n * MinvJ_n_T;
+    F.block(n_contacts, 2 * n_contacts, n_contacts,
+            2 * n_contacts * num_friction_directions) =
+        dt * dt * J_n * MinvJ_t_T;
+
+    F.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions,
+            n_contacts) = E_t.transpose();
+
+    F.block(2 * n_contacts, n_contacts,
+            2 * n_contacts * num_friction_directions, n_contacts) =
+        dt * J_t * MinvJ_n_T;
+    F.block(2 * n_contacts, 2 * n_contacts,
+            2 * n_contacts * num_friction_directions,
+            2 * n_contacts * num_friction_directions) = dt * J_t * MinvJ_t_T;
+
+    H.block(n_contacts, 0, n_contacts, n_u) = dt * dt * J_n * AB_v_u;
+    H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
+        dt * J_t * AB_v_u;
+
+    // TODO(yangwill): check gap function to make sure it makes sense. Potential
+    // source of uncertainty
+    //  std::cout << "phi: " << phi << std::endl;
+    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
+    c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
+        J_t * dt * d_v - J_n * NqInverse * plant.GetPositions(context);
+  } else if (contact_model == ContactModel::kAnitescu) {
+    MatrixXd Nqinv = Nq.completeOrthogonalDecomposition().pseudoInverse();
+    //    auto M_ldlt = ExtractValue(M).ldlt();
+    MatrixXd J_c = E_t.transpose() * J_n + mu * J_t;
+
+    MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
+
+    E.block(0, 0, n_contacts, n_q) =
+        dt * J_c * AB_v_q + E_t.transpose() * J_n * Nqinv / dt;
+    E.block(0, n_q, n_contacts, n_v) = J_c + dt * J_c * AB_v_v;
+
+    F = J_c * MinvJ_c_T;
+
+    H = dt * J_c * AB_v_u;
+    c = E_t.transpose() * phi / dt + dt * J_c * d_v -
+        E_t.transpose() * J_n * Nqinv * plant.GetPositions(context) / dt;
+  }
 
   auto Dn = D.squaredNorm();
   auto An = A.squaredNorm();

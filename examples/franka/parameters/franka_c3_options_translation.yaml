@@ -3,7 +3,10 @@ rho: 0.1
 rho_scale: 2
 num_threads: 6
 delta_option: 1
-projection_type: "MIQP"
+# options are 'MIQP' or 'QP'
+projection_type: 'MIQP'
+# options are 'stewart_and_trinkle' or 'anitescu
+contact_model: 'stewart_and_trinkle'
 
 mu: 0.4
 mu_plate: 0.4
@@ -21,8 +24,13 @@ w_G: 0.5
 # Penalty on all decision variables, assuming scalar
 w_U: 1
 
+# n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
+# size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
+# size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3 * 2) + n_u (3) = 34 for anitescu
 g_size: 40
 u_size: 40
+#g_size: 34
+#u_size: 34
 # State Tracking Error, assuming diagonal
 q_vector: [10, 10, 5000, 0, 0, 0, 0, 10000, 10000, 10000,
            0, 0, 0, 0, 0, 0, 1, 1, 1]

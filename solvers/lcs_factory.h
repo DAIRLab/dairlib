@@ -7,6 +7,11 @@
 namespace dairlib {
 namespace solvers {
 
+enum class ContactModel {
+  kStewartAndTrinkle,  /// Stewart and Trinkle timestepping contact
+  kAnitescu      /// Anitescu convex contact
+};
+
 class LCSFactory {
  public:
   /// Build a time-invariant LCS, linearizing a MultibodyPlant
@@ -35,7 +40,7 @@ class LCSFactory {
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
   contact_geoms,
-  int num_friction_directions, double mu, double dt, int N);
+  int num_friction_directions, double mu, double dt, int N, ContactModel=ContactModel::kStewartAndTrinkle);
 
   /// Create an LCS by fixing some modes from another LCS
   /// Ignores generated inequalities that correspond to these modes, but

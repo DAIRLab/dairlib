@@ -214,7 +214,7 @@ int DoMain(int argc, char* argv[]) {
       contact_pairs, c3_options);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(
-          plant_plate, &plate_context, c3_options);
+          plant_plate, c3_options);
   c3_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
   auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();

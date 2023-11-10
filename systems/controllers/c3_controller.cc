@@ -124,10 +124,18 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u), context_);
   multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u),
                                                context_ad_);
+  solvers::ContactModel contact_model;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model = solvers::ContactModel::kStewartAndTrinkle;
+  } else if (c3_options_.contact_model == "anitescu") {
+    contact_model = solvers::ContactModel::kAnitescu;
+  } else {
+    throw std::runtime_error("unknown or unsupported contact model");
+  }
   auto [lcs, scale] = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
-      c3_options_.N);
+      c3_options_.N, contact_model);
   DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
   DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
   DRAKE_DEMAND(R_.front().rows() == lcs.k_);

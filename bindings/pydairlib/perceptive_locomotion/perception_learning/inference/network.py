@@ -7,7 +7,7 @@ from torch.optim import SGD
 import torchinfo
 from tqdm import tqdm
 
-import torch_utils as tu
+import torch_utils
 
 NUM_CHANNELS_STATE_VECTOR = 4              # Since each x_k is 4 long.
 NUM_CHANNELS_INPUT_VECTOR = 2              # Since each footstep_command is 2 long.
@@ -112,10 +112,7 @@ def main():
     model = model.to(device)
     learning_rate = 0.01
 
-    raw_data = tu.data_reader()
-    data_list = raw_data['arr_0']
-    cassie_dataset = tu.CassieDataset(data_list)
-    # print('length of cassie_dataset = ',len(cassie_dataset))
+    cassie_dataset = torch_utils.CassieDataset()
 
     # dataloader parameters
     batch_size = 32  # Set your desired batch size

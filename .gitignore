@@ -14,6 +14,7 @@ attic/multibody/solver_log/
 *.npy
 /.learning_data
 callgrind.out.*
+wandb/
 
 # perception learning temp files
 /bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/

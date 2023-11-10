@@ -31,42 +31,16 @@ def get_device():
     return torch.device('cpu')
 
 
-def data_reader():
-    """
-        :return: Returns the data from tmp folder
-    """
-    # --- Data values ---
-    # 'stance': 0 or 1,
-    # 'phase': a scalar float,
-    # 'initial_swing_foot_pos': numpy.ndarray (3,)
-    # 'q':                      numpy.ndarray (23,)
-    # 'v':                      numpy.ndarray (24,)
-    # 'desired_velocity':       numpy.ndarray (2,)
-    # 'hmap':                   numpy.ndarray (M, N),  M and N can vary
-    # 'U':                      numpy.ndarray (2, M, N)
-    # 'footstep_command':       numpy.ndarray (3,)
-    # 'x_k':                    numpy.ndarray (4,)
-    # 'V_kp1': float,
-    # 'x_kp1':                  numpy.ndarray (4,)
-    # 'V_k': float,
-    # 'residual': float
-    
-    data = np.load(
-        os.path.join(
-            perception_learning_base_folder,
-            'tmp/data.npz'
-        ), allow_pickle=True
-    )
-    return data
-
-
-# try writing it as a torch.utils.Dataset function
 class CassieDataset(Dataset):
     """
         Pytorch internal Dataset utility, used for efficient batch Dataloader
     """
-    def __init__(self, data_list):
-        self.data_list = data_list
+    def __init__(self, data_path=None):
+        data_path = os.path.join(
+            perception_learning_base_folder, 'tmp/data.npz'
+        ) if data_path is None else data_path
+        loaded_data = np.load(data_path, allow_pickle=True)
+        self.data_list = loaded_data['arr_0']
 
     def __len__(self):
         return len(self.data_list)
@@ -98,22 +72,21 @@ def tile_and_concatenate_inputs(heightmap, state, input_space):
     hmap = heightmap.reshape(1, heightmap.shape[0], heightmap.shape[1])
 
     # Tile the initial state to the hmap dimemsions
-    initial_state_tiled = np.broadcast_to(
+    state_tiled = np.broadcast_to(
         state[:, np.newaxis, np.newaxis],
         (state.shape[0], hmap.shape[1], hmap.shape[2])
     )
 
     # Converting the data to tensors
     hmap_tensor = torch.tensor(hmap, dtype=torch.float32)
-    initial_state_tensor = torch.tensor(initial_state_tiled, dtype=torch.float32)
+    state_tensor = torch.tensor(state_tiled, dtype=torch.float32)
     input_space_tensor = torch.tensor(input_space, dtype=torch.float32)
 
     # concatenate the tiled data for a single data point
     combined_input = torch.cat(
-        [hmap_tensor, initial_state_tensor, input_space_tensor],
+        [hmap_tensor, state_tensor, input_space_tensor],
         dim=0
     )
-
     return combined_input
 
 
@@ -132,13 +105,7 @@ def main() -> None:
     print(x)
 
     # pytorch Dataloader test
-    # load raw data
-    data = data_reader()
-    data_list = data['arr_0']
-
-    # create custom dataset using raw cassie data
-    # This stores the samples and their corresponding labels (combined_input, target)
-    cassie_dataset = CassieDataset(data_list)
+    cassie_dataset = CassieDataset()
 
     # dataloader parameters
     batch_size = 32  # Set your desired batch size

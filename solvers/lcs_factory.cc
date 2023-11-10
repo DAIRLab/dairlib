@@ -223,7 +223,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     MatrixXd J_c = E_t.transpose() * J_n + mu * J_t;
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
-
+    D.block(0, 0, n_q, n_contacts) = dt * Nq * MinvJ_c_T;
+    D.block(n_q, 0, n_v, n_contacts) = MinvJ_c_T;
     E.block(0, 0, n_contacts, n_q) =
         dt * J_c * AB_v_q + E_t.transpose() * J_n * Nqinv / dt;
     E.block(0, n_q, n_contacts, n_v) = J_c + dt * J_c * AB_v_v;

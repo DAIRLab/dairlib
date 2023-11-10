@@ -54,9 +54,15 @@ C3Controller::C3Controller(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
-  n_lambda_ =
-      2 * c3_options_.num_contacts +
-      2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    n_lambda_ =
+        2 * c3_options_.num_contacts +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  } else if (c3_options_.contact_model == "anitescu") {
+    n_lambda_ =
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  }
+
   n_u_ = plant_.num_actuators();
   //  Q_.back() = 100 * c3_options_.Q;
 

@@ -54,7 +54,8 @@ class Decoder(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, enc_chs=(3, 64, 128, 256, 512), dec_chs=(512, 256, 128, 64), num_class=1,
+    # Note: a bigger UNet won't work for 20x20 input!
+    def __init__(self, enc_chs=(7, 64, 128), dec_chs=(128, 64), num_class=1,
                  retain_dim=False, out_sz=(572, 572)):
         super().__init__()
         self.encoder = Encoder(enc_chs)
@@ -74,15 +75,16 @@ class UNet(nn.Module):
 
 def main():
     model = UNet()
-    input_data = torch.randn(1, 3, 256, 256, device = get_device())
+    input_data = torch.randn(32, 7, 20, 20, device = get_device())
 
     # Use device=torch.device('cuda') for GPU details
     device = get_device()
     model = model.to(device)
     x = model.forward(input_data)
 
-    summary_str = torchinfo.summary(model, input_size=(1, 3, 256, 256))
+    summary_str = torchinfo.summary(model, input_size=(32, 7, 20, 20))
     print(summary_str)
+
 
 if __name__ == '__main__':
     main()

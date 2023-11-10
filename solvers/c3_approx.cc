@@ -102,7 +102,7 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
   //prog.AddLinearEqualityConstraint(LinIneq, -c/scaling, {xn, ln, un});
   projprog_.AddLinearConstraint(MatrixXd::Identity(m_, m_), VectorXd::Zero(m_), 10000*VectorXd::Ones(m_), ln_);
 
-  double alpha = 0.3;
+  double alpha = 0.2;
   MatrixXd New_U = U;
   New_U.block(n_,n_,m_,m_) = alpha * F;
 
@@ -135,8 +135,9 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_rel", 1e-9);
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-8);
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-8);
-  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);
+//  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);
   OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
+  OSQPoptions_.SetOption(OsqpSolver::id(), "polishing", true);
   projprog_.SetSolverOptions(OSQPoptions_);
 
 
@@ -148,7 +149,7 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
   VectorXd lamSol = result.GetSolution(ln_);
   VectorXd uSol = result. GetSolution(un_);
 
-  VectorXd delta_kcc = VectorXd::Zero(n_+m_+n_);
+  VectorXd delta_kcc = VectorXd::Zero(n_+m_+k_);
   delta_kcc.segment(0,n_) = xSol;
   delta_kcc.segment(n_,m_) = lamSol;
   delta_kcc.segment(n_+m_, k_) = uSol;

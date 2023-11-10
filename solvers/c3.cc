@@ -122,6 +122,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-6);
   // OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-6);
   OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  30);  //30
+  OSQPoptions_.SetOption(OsqpSolver::id(), "polishing", true);
   prog_.SetSolverOptions(OSQPoptions_);
 }
 

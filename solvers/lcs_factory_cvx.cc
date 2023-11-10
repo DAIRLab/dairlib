@@ -26,6 +26,7 @@ using drake::systems::Context;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using Eigen::VectorXcd;
 
 std::pair<LCS,double> LCSFactoryConvex::LinearizePlantToLCS(
     const MultibodyPlant<double>& plant, const Context<double>& context,
@@ -207,11 +208,16 @@ std::pair<LCS,double> LCSFactoryConvex::LinearizePlantToLCS(
   E.block(0, n_pos, n_contact, n_vel) = J_c + dt * J_c * AB_v_v;
 
   F = J_c * MinvJ_c_T;
-
   H = dt * J_c * AB_v_u;
-
   c = E_t.transpose() * phi / dt + dt * J_c * d_v - E_t.transpose() * J_n * Nqinv * plant.GetPositions(context) / dt;
 
+
+//  VectorXcd eivals = F.eigenvalues();
+//  std::cout << "The eigenvalues of F: " << std::endl << eivals << std::endl;
+//  VectorXcd eivals_E = (E*E.transpose()).eigenvalues();
+//  std::cout << "The eigenvalues of EE^T: " << std::endl << eivals_E << std::endl;
+//  VectorXcd eivals_H = (H*H.transpose()).eigenvalues();
+//  std::cout << "The eigenvalues of HH^T: " << std::endl << eivals_H << std::endl;
 
   // Scaling fact
   auto Dn = D.squaredNorm();

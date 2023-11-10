@@ -168,8 +168,8 @@ int DoMain(int argc, char* argv[]){
   Qinit(14,14) = param.Q_ball_x2;  /// for sphere(2): x
   Qinit(15,15) = param.Q_ball_y2;  /// for sphere(2): y
 
-  Qinit(21,21) = param.Q_ball_x2;  /// for sphere(3): x (for now same for ball 2 and 3)
-  Qinit(22,22) = param.Q_ball_y2;  /// for sphere(3): y
+  Qinit(21,21) = param.Q_ball_x3;  /// for sphere(3): x (for now same for ball 2 and 3)
+  Qinit(22,22) = param.Q_ball_y3;  /// for sphere(3): y
 
   Qinit.block(3+7*num_balls,3+7*num_balls,nv,nv) << param.Q_ball_vel * MatrixXd::Identity(nv,nv); ///all balls penalized same in terms of velocity
   Qinit.block(3+7*num_balls,3+7*num_balls,3,3) << param.Q_finger_vel * MatrixXd::Identity(3,3);

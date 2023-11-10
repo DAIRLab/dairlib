@@ -345,7 +345,7 @@ void C3Controller_franka_Convex::CalcControl(const Context<double>& context,
 
   if (state[8] > state[15] && state[8] > state[22]) {
 
-    //std::cout << "here" << std::endl;
+    //std::cout << "here" << std::endl;T
     /// rolling phase
     if (ts < roll_phase) {
       traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7]; //- 0.2* back_dist*error_hat(0);  //14

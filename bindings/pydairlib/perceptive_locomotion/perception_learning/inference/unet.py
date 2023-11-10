@@ -12,9 +12,16 @@ class Block(nn.Module):
         self.conv1 = nn.Conv2d(in_ch, out_ch, 3)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(out_ch, out_ch, 3)
+        self.batch_norm = nn.BatchNorm2d(out_ch)
 
     def forward(self, x):
-        return self.conv2(self.relu(self.conv1(x)))
+        return self.batch_norm(
+            self.conv2(
+                self.relu(
+                    self.conv1(x)
+                )
+            )
+        )
 
 
 class Encoder(nn.Module):
@@ -75,7 +82,7 @@ class UNet(nn.Module):
 
 def main():
     model = UNet()
-    input_data = torch.randn(32, 7, 20, 20, device = get_device())
+    input_data = torch.randn(32, 7, 20, 20, device=get_device())
 
     # Use device=torch.device('cuda') for GPU details
     device = get_device()

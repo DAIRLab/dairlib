@@ -3,19 +3,20 @@ import torch_utils
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 
-from unet import UNet
 from tqdm import tqdm
 import wandb
 from dataclasses import dataclass
 
+from network import ResidualLQRPredictionNet
+from unet import UNet
 
 @dataclass
 class Hyperparams:
     batch_size: int = 32
     epochs: int = 100
     shuffle: bool = True
-    num_workers: int = 4
-    learning_rate: float = 0.001
+    num_workers: int = 1
+    learning_rate: float = 1e-6
     project: str = 'alip-lqr-residual'
 
     def log_to_wandb(self):
@@ -28,7 +29,7 @@ class Hyperparams:
 def train(params: Hyperparams, use_wandb: bool = False) -> None:
 
     if use_wandb:
-        wandb.init(project="alip-lqr-residual")
+        wandb.init(project="alip-lqr-residual", entity="alip-lqr-residuals")
         params.log_to_wandb()
 
     cassie_dataset = torch_utils.CassieDataset()
@@ -44,7 +45,7 @@ def train(params: Hyperparams, use_wandb: bool = False) -> None:
     model.to(device)
 
     optim = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
-    for i in tqdm(range(params.epochs)):
+    for epoch in tqdm(range(params.epochs)):
         train_loss = 0
         for input_data, output_data in data_loader:
             input_data = input_data.to(device)
@@ -66,7 +67,10 @@ def train(params: Hyperparams, use_wandb: bool = False) -> None:
             optim.step()
 
         if use_wandb:
-            wandb.log({"epoch": i, "train_loss": train_loss / len(data_loader)})
+            wandb.log({
+                "epoch": epoch,
+                "train_loss": train_loss / len(data_loader) / params.batch_size
+            })
 
     if use_wandb:
         wandb.finish()

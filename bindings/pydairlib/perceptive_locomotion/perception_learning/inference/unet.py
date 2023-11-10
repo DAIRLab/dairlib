@@ -7,21 +7,17 @@ from torch_utils import get_device
 
 
 class Block(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch: int, out_ch: int, normalize: bool=False):
         super().__init__()
         self.conv1 = nn.Conv2d(in_ch, out_ch, 3)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(out_ch, out_ch, 3)
-        self.batch_norm = nn.BatchNorm2d(out_ch)
+        self.batch_norm = None if not normalize else nn.BatchNorm2d(out_ch)
+        self.normalize = normalize
 
     def forward(self, x):
-        return self.batch_norm(
-            self.conv2(
-                self.relu(
-                    self.conv1(x)
-                )
-            )
-        )
+        x = self.conv2(self.relu(self.conv1(x)))
+        return self.batch_norm(x) if self.normalize else x
 
 
 class Encoder(nn.Module):

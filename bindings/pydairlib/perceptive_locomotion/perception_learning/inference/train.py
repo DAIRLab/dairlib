@@ -18,12 +18,14 @@ class Hyperparams:
     num_workers: int = 1
     learning_rate: float = 1e-6
     project: str = 'alip-lqr-residual'
+    optimizer: str = 'Adam'
 
     def log_to_wandb(self):
         wandb.config['batch_size'] = self.batch_size
         wandb.config['shuffle'] = self.shuffle
         wandb.config['num_workers'] = self.num_workers
         wandb.config['lr'] = self.learning_rate
+        wandb.config['omptimizer'] = self.optimizer
 
 
 def train(params: Hyperparams, use_wandb: bool = False) -> None:
@@ -44,7 +46,10 @@ def train(params: Hyperparams, use_wandb: bool = False) -> None:
 
     model.to(device)
 
-    optim = torch.optim.Adam(model.parameters(), lr=params.learning_rate)
+    optim = torch.optim.Adam( model.parameters(), lr=params.learning_rate)\
+        if params.optimizer == 'Adam' else \
+        torch.optim.SGD(model.parameters(), lr=params.learning_rate)
+
     for epoch in tqdm(range(params.epochs)):
         train_loss = 0
         for input_data, output_data in data_loader:

@@ -96,6 +96,7 @@ class ResidualLQRPredictionNet(nn.Module):
         # Return the output of conv5
         return conv5_output
 
+
 def loss_function(prediction, target):
     '''
     :param prediction: output of the model
@@ -133,13 +134,16 @@ def main():
     for batch in tqdm(data_loader):
         # get input and target data and move them to the same device as model
         input_data = batch[0].to(device)
-        target_data = batch[1].to(device)
+        i = batch[1]['i']
+        j = batch[1]['j']
+        residual = batch[1]['residual'].to(device)
 
         # pass input data into model
         predictions = model.forward(input_data)
+        predictions = predictions[torch.arange(predictions.shape[0]), 0, i, j]
 
         # compute loss
-        loss = loss_function(predictions, target_data)
+        loss = loss_function(predictions, residual)
 
         # backpropagate loss and update weights
         optimizer.zero_grad()

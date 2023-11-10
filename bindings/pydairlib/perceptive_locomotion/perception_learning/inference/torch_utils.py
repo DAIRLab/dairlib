@@ -73,11 +73,20 @@ class CassieDataset(Dataset):
 
     def __getitem__(self, idx):
         data_point = self.data_list[idx]
-        input_data, target_data = cassie_data_process(data_point)
+        input_data = tile_and_concatenate_inputs(
+            data_point['hmap'], data_point['x_k'], data_point['U']
+        )
+        target_data = {
+            'residual': torch.tensor(
+                data_point['residual'], dtype=torch.float32
+            ),
+            'i': data_point['i'],
+            'j': data_point['j'],
+        }
         return input_data, target_data
 
 
-def cassie_data_process(data_point):
+def tile_and_concatenate_inputs(heightmap, state, input_space):
     """
         function of tiling state and input to hmap grid, written for a single
         data point
@@ -86,39 +95,27 @@ def cassie_data_process(data_point):
         for a single data point
     """
     # Getting the heightmap of size (20,20) for the data point.
-    hmap = data_point['hmap']
-    # Get hmap shape and reshape to (1,hmap.shape[0],hmap.shape[1])
-    hmap = hmap.reshape(1, hmap.shape[0], hmap.shape[1])
-    # print("shape of hmap is: ", hmap.shape)
+    hmap = heightmap.reshape(1, heightmap.shape[0], heightmap.shape[1])
 
-    # Getting the initial state of the data point.
-    initial_state = data_point['x_k']
-    # print("shape of initial_state is: ", initial_state.shape)
-    
-    # Repeat the initial state for all points in hmap to get an array of shape (4,20,20)
-    initial_state = np.broadcast_to(initial_state[:, np.newaxis, np.newaxis], (initial_state.shape[0], hmap.shape[1], hmap.shape[2]))
-    # print("shape of initial_state after tiling is: ", initial_state.shape)
-
-    # Getting all possible control inputs for the data point.
-    U = data_point['U']
-    # print("shape of U is: ", U.shape)
+    # Tile the initial state to the hmap dimemsions
+    initial_state_tiled = np.broadcast_to(
+        state[:, np.newaxis, np.newaxis],
+        (state.shape[0], hmap.shape[1], hmap.shape[2])
+    )
 
     # Converting the data to tensors
     hmap_tensor = torch.tensor(hmap, dtype=torch.float32)
-    initial_state_tensor = torch.tensor(initial_state, dtype=torch.float32)
-    U_tensor = torch.tensor(U, dtype=torch.float32)
+    initial_state_tensor = torch.tensor(initial_state_tiled, dtype=torch.float32)
+    input_space_tensor = torch.tensor(input_space, dtype=torch.float32)
 
     # concatenate the tiled data for a single data point
-    # Confirm axis. Final shape should be 7,20,20
-    combined_input = torch.cat([hmap_tensor, initial_state_tensor, U_tensor], dim=0)
+    combined_input = torch.cat(
+        [hmap_tensor, initial_state_tensor, input_space_tensor],
+        dim=0
+    )
 
-    # ground truth residual data
-    residual = data_point['residual']
-    target = np.zeros((1, hmap.shape[1], hmap.shape[2]), dtype=float)
-    target[:, :, :] = residual
-    target_tensor = torch.tensor(target, dtype=torch.float32)
+    return combined_input
 
-    return combined_input, target_tensor
 
 def main() -> None:
     """
@@ -148,31 +145,18 @@ def main() -> None:
     shuffle = True  # Set to True if you want to shuffle the data
     num_workers = 4  # Number of parallel data loading processes
 
-    # create dataloader
-    # This wraps an iterable around the Dataset to enable easy access to the samples.
-    data_loader = DataLoader(cassie_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    data_loader = DataLoader(
+        cassie_dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers
+    )
 
-    # # iterate over data_loader
-    # for input_data, target_data in tqdm(data_loader):
-    #     # input data is hmap, tiled state and input, should be (batchsize, 7, 20, 20)
-    #     print(input_data.shape)
-    #     # target_data is the ground truth residual, should be (batchsize, 1, 20, 20)
-    #     print(target_data.shape)
-    #     # This line invokes the Python Debugger which allows you to inspect variables and control the program's flow. 
-    #     # type 'n' to skip through each step
-    #     pdb.set_trace()
-
-     # iterate over data_loader
     for batch in tqdm(data_loader):
-        # input data is hmap, tiled state and input, should be (batchsize, 7, 20, 20)
-        print("Batch size: " , len(batch))
-
         input_data, target_data = batch
+        print("Batch size: ", len(batch))
         print("Data shape:", input_data.shape)
-        # target_data is the ground truth residual, should be (batchsize, 1, 20, 20)
-        print("Labels shape:", target_data.shape)
-        # This line invokes the Python Debugger which allows you to inspect variables and control the program's flow. 
-        # type 'n' to skip through each step
+        print("Labels shape:", target_data['residual'].shape)
         pdb.set_trace()
 
 if __name__ == '__main__':

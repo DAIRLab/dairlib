@@ -176,11 +176,15 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_force_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
+  //  auto c3_output_publisher =
+  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
+  //          lcm_channel_params.c3_debug_output_channel, &lcm,
+  //          TriggerTypeSet({TriggerType::kPeriodic}),
+  //          1 / controller_params.target_frequency));
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}),
-          1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -264,7 +268,8 @@ int DoMain(int argc, char* argv[]) {
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
+      &lcm, [&]() {
+    return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

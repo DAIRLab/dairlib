@@ -55,11 +55,12 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
 }
 
 void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
-    const Eigen::Vector3d& neutral_pose, double x_scale, double y_scale, double z_scale){
-    neutral_pose_ = neutral_pose;
-    x_scale_ = x_scale;
-    y_scale_ = y_scale;
-    z_scale_ = z_scale;
+    const Eigen::Vector3d& neutral_pose, double x_scale, double y_scale,
+    double z_scale) {
+  neutral_pose_ = neutral_pose;
+  x_scale_ = x_scale;
+  y_scale_ = y_scale;
+  z_scale_ = z_scale;
 }
 
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
@@ -96,10 +97,12 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   if (radio_out->channel[14]) {
     *casted_traj = GeneratePose(context);
   } else {
-    *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-        const PiecewisePolynomial<double>*>(&trajectory_input);
-    //  *casted_traj = GenerateCircle(context);
-    //  *casted_traj = GenerateLine(context);
+    if (trajectory_input.value(0).isZero()) {
+      *casted_traj = GeneratePose(context);
+    } else {
+      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
+          const PiecewisePolynomial<double>*>(&trajectory_input);
+    }
   }
 }
 

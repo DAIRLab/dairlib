@@ -13,10 +13,10 @@ from unet import UNet
 @dataclass
 class Hyperparams:
     batch_size: int = 32
-    epochs: int = 100
+    epochs: int = 200
     shuffle: bool = True
     num_workers: int = 1
-    learning_rate: float = 1e-6
+    learning_rate: float = 5e-4
     project: str = 'alip-lqr-residual'
     optimizer: str = 'Adam'
 

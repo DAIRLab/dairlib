@@ -71,6 +71,8 @@ def train(params: Hyperparams, use_wandb: bool = False) -> None:
             loss.backward()
             optim.step()
 
+        # TODO (@Brian-Acosta) Save best performing checkpoints on validation
+        #  data
         if use_wandb:
             wandb.log({
                 "epoch": epoch,

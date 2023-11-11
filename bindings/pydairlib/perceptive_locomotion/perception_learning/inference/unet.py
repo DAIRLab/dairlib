@@ -39,7 +39,7 @@ class Decoder(nn.Module):
     def __init__(self, chs=(1024, 512, 256, 128, 64)):
         super().__init__()
         self.chs = chs
-        self.upconvs = nn.ModuleList([nn.ConvTranspose2d(chs[i], chs[i + 1], 2, 2) for i in range(len(chs) - 1)])
+        self.upconvs = nn.ModuleList([nn.ConvTranspose2d(chs[i], chs[i + 1], 6, 6) for i in range(len(chs) - 1)])
         self.dec_blocks = nn.ModuleList([Block(chs[i], chs[i + 1]) for i in range(len(chs) - 1)])
 
     def forward(self, x, encoder_features):
@@ -84,6 +84,7 @@ def main():
     device = get_device()
     model = model.to(device)
     x = model.forward(input_data)
+    print(x.shape)
 
     summary_str = torchinfo.summary(model, input_size=(32, 7, 20, 20))
     print(summary_str)

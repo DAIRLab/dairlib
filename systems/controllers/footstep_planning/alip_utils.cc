@@ -208,7 +208,7 @@ Matrix4d SolveDareTwoStep(
     const Matrix4d &Q, double com_z, double m, double tss, double tds,
     int knots_per_mode, ResetDiscretization discretization) {
   Matrix4d A = CalcAd(com_z, m, tss + tds);
-  Matrix<double, 4, 2> B = CalcResetMap(com_z, tds, tds).rightCols<2>();
+  Matrix<double, 4, 2> B = CalcResetMap(com_z, m, tds).rightCols<2>();
   Matrix2d R = 0.01 * Matrix2d::Identity();
   Matrix4d S = drake::math::DiscreteAlgebraicRiccatiEquation(A, B, Q, R);
   return S;

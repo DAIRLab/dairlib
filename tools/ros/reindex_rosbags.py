@@ -1,7 +1,7 @@
-import glob
 import os
-import subprocess
 import sys
+import glob
+import subprocess
 
 
 def main(target_dir):

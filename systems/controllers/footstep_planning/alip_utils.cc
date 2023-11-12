@@ -214,39 +214,4 @@ Matrix4d SolveDareTwoStep(
   return S;
 }
 
-AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
-    NonlinearConstraint<drake::AutoDiffXd>(
-        4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
-    m_(m), H_(H), n_(n-1) {
-  A_ = alip_utils::CalcA(H_, m_);
-  A_inv_ = A_.inverse();
-  B_ = Vector4d::UnitW();
-
-}
-
-void AlipDynamicsConstraint::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>> &x,
-    drake::VectorX<drake::AutoDiffXd>* y) const {
-  VectorXd xd = drake::math::ExtractValue(x);
-  Vector4d x0 = xd.head(4);
-  VectorXd u0 = xd.segment(4, 1);
-  Vector4d x1 = xd.segment(5, 4);
-  double t = xd(xd.size() -1) / n_;
-
-  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
-  Vector4d Bd = A_inv_ * (Ad - Matrix4d::Identity()) * B_;
-
-  VectorXd y0 = Ad * x0 + Bd * u0 - x1;
-  MatrixXd dy = MatrixXd::Zero(4, 10);
-  dy.block(0, 0, 4, 4) = Ad;
-  dy.col(4) = Bd;
-  dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
-  dy.rightCols(1) = (1 / n_) *  (A_ * Ad * x0 + Ad * B_ * u0);
-  *y = drake::math::InitializeAutoDiff(y0, dy);
-}
-
-Matrix4d AlipDynamicsConstraint::Ad(double t) const {
-  return alip_utils::CalcAd(H_, m_, t / n_);
-}
-
 }

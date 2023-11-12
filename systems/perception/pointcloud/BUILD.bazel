@@ -1,0 +1,32 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "lcm_to_pcl_pointcloud",
+    srcs = ["lcm_to_pcl_pointcloud.cc"],
+    hdrs = ["lcm_to_pcl_pointcloud.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
+        "@pcl//:common",
+    ],
+)
+
+cc_library(
+    name = "drake_to_ros_pointcloud",
+    srcs = ["drake_to_ros_pointcloud.cc"],
+    hdrs = ["drake_to_ros_pointcloud.h"],
+    tags = ["ros"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@ros",
+    ],
+)
+
+cc_library(
+    name = "voxel_grid_filter",
+    srcs = ["voxel_grid_filter.cc"],
+    hdrs = ["voxel_grid_filter.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

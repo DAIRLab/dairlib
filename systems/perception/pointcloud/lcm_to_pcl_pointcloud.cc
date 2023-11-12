@@ -1,4 +1,4 @@
-#include "lcm_to_pcl_pointcloud.h"
+#include "systems/perception/pointcloud/lcm_to_pcl_pointcloud.h"
 #include "elevation_mapping/PointXYZRGBConfidenceRatio.hpp"
 
 namespace dairlib {

@@ -5,9 +5,6 @@
 #include "dairlib/lcmt_alip_mpc_output.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
-#include "dairlib/lcmt_fsm_info.hpp"
-#include "dairlib/lcmt_footstep_target.hpp"
 
 // Cassie and multibody
 #include "examples/Cassie/cassie_utils.h"

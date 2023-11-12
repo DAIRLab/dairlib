@@ -16,7 +16,7 @@
 #include "systems/system_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/perception/camera_utils.h"
-#include "systems/perception/voxel_grid_filter.h"
+#include "systems/perception/pointcloud/voxel_grid_filter.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
 

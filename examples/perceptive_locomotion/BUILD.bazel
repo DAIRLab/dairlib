@@ -15,8 +15,8 @@ cc_binary(
         "//systems/perception:camera_utils",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:grid_map_visualizer",
-        "//systems/perception:lcm_to_pcl_pointcloud",
         "//systems/perception:perceptive_locomotion_preprocessor",
+        "//systems/perception/pointcloud:lcm_to_pcl_pointcloud",
         "@gflags",
     ],
 )
@@ -159,7 +159,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/framework:vector",
         "//systems/perception:camera_utils",
-        "//systems/perception:voxel_grid_filter",
+        "//systems/perception/pointcloud:voxel_grid_filter",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",

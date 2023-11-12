@@ -16,8 +16,8 @@ cc_library(
 
 cc_library(
     name = "meshcat_mpc_debug_visualizer",
-    srcs = ["alip_mpfc_meshcat_visualization_driver.cc"],
-    hdrs = ["alip_mpfc_meshcat_visualization_driver.h"],
+    srcs = ["alip_mpfc_meshcat_visualizer.cc"],
+    hdrs = ["alip_mpfc_meshcat_visualizer.h"],
     deps = [
         "//geometry:convex_foothold_set",
         "//lcmtypes:lcmt_robot",

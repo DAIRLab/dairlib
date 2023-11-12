@@ -2,7 +2,7 @@
 // Created by brian on 11/2/23.
 //
 
-#include "voxel_grid_filter.h"
+#include "systems/perception/pointcloud/voxel_grid_filter.h"
 
 namespace dairlib {
 namespace perception {

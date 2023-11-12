@@ -2,8 +2,7 @@
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_mpc_debug.hpp"
-#include "examples/Cassie/cassie_utils.h"
-#include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualization_driver.h"
+#include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/plant_visualizer.h"
 
@@ -22,7 +21,7 @@ DEFINE_string(channel_terrain, "", "lcm channel with processed footholds from "
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::PlantVisualizer;
-using dairlib::perceptive_locomotion::AlipMPFCMeshcatVisualizationDriver;
+using dairlib::perceptive_locomotion::AlipMPFCMeshcatVisualizer;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -53,7 +52,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*state_sub, *state_receiver);
   builder.Connect(*state_receiver, *plant_visualizer);
 
-  auto foothold_vis = builder.AddSystem<AlipMPFCMeshcatVisualizationDriver>(
+  auto foothold_vis = builder.AddSystem<AlipMPFCMeshcatVisualizer>(
       plant_visualizer->get_meshcat(), plant_visualizer->get_plant()
   );
   builder.Connect(mpc_sub->get_output_port(),

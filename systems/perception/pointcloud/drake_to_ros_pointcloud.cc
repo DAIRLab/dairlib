@@ -1,7 +1,7 @@
 //
 // Created by brian on 12/3/22.
 //
-#include "drake_to_ros_pointcloud.h"
+#include "systems/perception/pointcloud/drake_to_ros_pointcloud.h"
 #include "drake/perception/point_cloud.h"
 #include "ros/ros.h"
 #include "sensor_msgs/point_cloud2_iterator.h"

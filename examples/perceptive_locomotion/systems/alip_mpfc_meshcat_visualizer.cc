@@ -1,7 +1,12 @@
+// STL
 #include <utility>
-#include "drake/geometry/shape_specification.h"
-#include "alip_mpfc_meshcat_visualization_driver.h"
+
+// dairlib
+#include "alip_mpfc_meshcat_visualizer.h"
 #include "systems/framework/output_vector.h"
+
+//drake
+#include "drake/geometry/shape_specification.h"
 #include "drake/geometry/rgba.h"
 
 
@@ -12,7 +17,7 @@ using Eigen::Matrix3d;
 using Eigen::Matrix3Xd;
 using systems::OutputVector;
 
-AlipMPFCMeshcatVisualizationDriver::AlipMPFCMeshcatVisualizationDriver(
+AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
     std::shared_ptr<drake::geometry::Meshcat> meshcat,
     const drake::multibody::MultibodyPlant<double>& plant) :
     meshcat_(std::move(meshcat)) {
@@ -34,10 +39,10 @@ AlipMPFCMeshcatVisualizationDriver::AlipMPFCMeshcatVisualizationDriver(
   n_footholds_idx_ = DeclareDiscreteState(1);
 
   DeclarePerStepUnrestrictedUpdateEvent(
-      &AlipMPFCMeshcatVisualizationDriver::UnrestrictedUpdate);
+      &AlipMPFCMeshcatVisualizer::UnrestrictedUpdate);
 }
 
-void AlipMPFCMeshcatVisualizationDriver::DrawComTrajSolution(
+void AlipMPFCMeshcatVisualizer::DrawComTrajSolution(
     const std::string &path,
     const dairlib::lcmt_mpc_solution &com_traj_solution,
     const Matrix3d& R_yaw, const double z_com) const {
@@ -64,7 +69,7 @@ void AlipMPFCMeshcatVisualizationDriver::DrawComTrajSolution(
 }
 
 
-void AlipMPFCMeshcatVisualizationDriver::DrawFootsteps(
+void AlipMPFCMeshcatVisualizer::DrawFootsteps(
     const dairlib::lcmt_mpc_solution &solution,
     const Eigen::Matrix3d &R_yaw) const {
 
@@ -84,9 +89,9 @@ void AlipMPFCMeshcatVisualizationDriver::DrawFootsteps(
   }
 }
 
-void AlipMPFCMeshcatVisualizationDriver::DrawFootholds(ConvexFootholdSet& foothold_set,
-                                                       int n_prev,
-                                                       const std::string& prefix) const {
+void AlipMPFCMeshcatVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
+                                              int n_prev,
+                                              const std::string& prefix) const {
   std::vector<drake::geometry::Rgba> rgb = {
       drake::geometry::Rgba(1, 0, 0, 0.5),
       drake::geometry::Rgba(0, 1, 0, 0.5),
@@ -110,7 +115,7 @@ void AlipMPFCMeshcatVisualizationDriver::DrawFootholds(ConvexFootholdSet& footho
   }
 }
 
-Eigen::Matrix3d AlipMPFCMeshcatVisualizationDriver::R_WB(
+Eigen::Matrix3d AlipMPFCMeshcatVisualizer::R_WB(
     const Eigen::Vector4d& wxyz) {
   if (wxyz.norm() < 0.98 or wxyz.norm() > 1.02) {
     return Matrix3d::Identity();
@@ -124,7 +129,7 @@ Eigen::Matrix3d AlipMPFCMeshcatVisualizationDriver::R_WB(
   ).matrix();
 }
 
-drake::systems::EventStatus AlipMPFCMeshcatVisualizationDriver::UnrestrictedUpdate(
+drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
     const drake::systems::Context<double> &context,
     drake::systems::State<double> *state) const {
 

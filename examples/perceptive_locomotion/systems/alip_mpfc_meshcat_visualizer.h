@@ -1,20 +1,38 @@
 #pragma once
+
+// lcmtypes
 #include "dairlib/lcmt_mpc_debug.hpp"
+
+// dairlib
 #include "geometry/convex_foothold_set.h"
+
+// drake
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/geometry/meshcat.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
+
 namespace dairlib {
 namespace perceptive_locomotion {
 
-class AlipMPFCMeshcatVisualizationDriver :
-    public drake::systems::LeafSystem<double> {
-
+/*!
+ * LeafSystem for visualizing foothold constraints, footstep solutions, and CoM
+ * traj solutions for the alip_mpfc controller
+ */
+class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
  public:
-  AlipMPFCMeshcatVisualizationDriver(
+
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(AlipMPFCMeshcatVisualizer);
+
+  /*!
+   * Constructor.
+   * @param meshcat Shared pointer to a meshcat instance. Cannot be NULL
+   * @param plant
+   */
+  AlipMPFCMeshcatVisualizer(
       std::shared_ptr<drake::geometry::Meshcat> meshcat,
       const drake::multibody::MultibodyPlant<double>& plant);
+
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }
@@ -24,7 +42,12 @@ class AlipMPFCMeshcatVisualizationDriver :
   const drake::systems::InputPort<double>& get_input_port_terrain() const {
     return this->get_input_port(foothold_input_port_);
   }
+
  private:
+  /*!
+   * @brief Returns a meshcat path for the foothold visualizations
+   * @param i index of the foothold
+   */
   static std::string make_foothold_path(int i) {
     return "/foothold_meshes/" + std::to_string(i);
   }

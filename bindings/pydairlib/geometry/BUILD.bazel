@@ -12,14 +12,14 @@ load(
 )
 
 pybind_py_library(
-    name = "poly_utils_py",
+    name = "polygon_utils_py",
     cc_deps = [
-        "//geometry:poly_utils",
+        "//geometry:polygon_utils",
         "@acd2d",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "poly_utils",
-    cc_srcs = ["poly_utils_py.cc"],
+    cc_so_name = "polygon_utils",
+    cc_srcs = ["polygon_utils_py.cc"],
     py_deps = [
         ":module_py",
     ],
@@ -60,7 +60,7 @@ py_library(
 PY_LIBRARIES = [
     ":convex_foothold_py",
 ] + select({
-    "//tools/workspace/ros:dair_ros_on": ["poly_utils_py"],
+    "//tools/workspace/ros:dair_ros_on": ["polygon_utils_py"],
     "//tools/workspace/ros:dair_ros_off": [],
 })
 

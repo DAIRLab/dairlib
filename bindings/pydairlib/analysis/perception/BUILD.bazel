@@ -30,11 +30,11 @@ py_binary(
 py_binary(
     name = "poly_pipeline_test",
     srcs = ["poly_pipeline_test.py"],
+    tags = ["ros"],
     deps = [
         "//bindings/pydairlib/common:plot_styler",
         "//bindings/pydairlib/geometry:convex_foothold_py",
-        "//bindings/pydairlib/geometry:poly_utils_py",
+        "//bindings/pydairlib/geometry:polygon_utils_py",
         "@drake//bindings/pydrake",
     ],
-    tags = ["ros"]
 )

@@ -9,7 +9,7 @@ cc_binary(
     deps = [
         ":optimization_utils",
         "@drake//:drake_shared_library",
-    ]
+    ],
 )
 
 cc_library(

@@ -10,7 +10,7 @@
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
-#include "systems/controllers/footstep_planning/alip_state_calculator.h"
+#include "systems/controllers/footstep_planning/alip_state_calculator_system.h"
 
 // misc
 #include "systems/robot_lcm_systems.h"

@@ -168,7 +168,7 @@ VectorXd GetConstraintRows(const MathematicalProgram& prog,
 int CountConstraintRows(const MathematicalProgram& prog) {
   int n = 0;
   auto constraints = prog.GetAllConstraints();
-  for (auto const& binding : constraints) {
+  for (const auto& binding : constraints) {
     n += binding.evaluator()->num_constraints();
   }
   return n;

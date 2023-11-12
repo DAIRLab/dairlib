@@ -1,4 +1,4 @@
-#include "alip_state_calculator.h"
+#include "alip_state_calculator_system.h"
 #include "multibody/multibody_utils.h"
 
 namespace dairlib::systems::controllers::alip_utils {

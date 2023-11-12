@@ -14,7 +14,7 @@
 #include "multibody/stepping_stone_utils.h"
 #include "solvers/solver_options_io.h"
 #include "systems/filters/floating_base_velocity_filter.h"
-#include "systems/controllers/footstep_planning/alip_mpfc.h"
+#include "systems/controllers/footstep_planning/alip_mpfc_system.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"

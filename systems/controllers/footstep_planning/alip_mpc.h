@@ -30,7 +30,6 @@ using drake::solvers::LinearEqualityConstraint;
 
 using std::vector;
 
-
 struct profile_data {
   std::chrono::time_point<std::chrono::steady_clock> start_;
   std::chrono::time_point<std::chrono::steady_clock> finish_;
@@ -42,40 +41,6 @@ inline std::ostream& operator<<(std::ostream& os, const profile_data& data) {
   os << "total: " << (data.finish_ - data.start_).count() << ", solver: " << data.solve_time_;
   return os;
 }
-
-/*
- * Nonlinear constraint representing the linear ALIP dynamics with ankle torque,
- * discretized with stance duration t as a decision variable,
- * with n evenly-spaced knot points
- */
-class AlipDynamicsConstraint : public NonlinearConstraint<drake::AutoDiffXd> {
- public:
-  AlipDynamicsConstraint(double m, double H, double n);
-  void EvaluateConstraint(
-      const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>> &x,
-      drake::VectorX<drake::AutoDiffXd> *y) const override;
-  Eigen::Matrix4d Ad(double t);
-
-  void set_m(double m) {
-    m_ = m;
-    A_ = alip_utils::CalcA(H_, m_);
-    A_inv_ = A_.inverse();
-  }
-  void set_H(double H) {
-    H_ = H;
-    A_ = alip_utils::CalcA(H_, m_);
-    A_inv_ = A_.inverse();
-  }
-
- private:
-  double m_;
-  double H_;
-  double n_;
-  Eigen::Matrix4d A_;
-  Eigen::Matrix4d A_inv_;
-  Eigen::MatrixXd B_;
-};
-
 
 
 /// Base class to handle boilerplate for Alip MPC controllers

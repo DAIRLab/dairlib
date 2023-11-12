@@ -13,7 +13,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/stepping_stone_utils.h"
 
-#include "systems/controllers/footstep_planning/alip_deadbeat_footstep_controller.h"
+#include "systems/controllers/footstep_planning/alip_one_step_footstep_controller.h"
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
@@ -41,7 +41,7 @@ using Eigen::VectorXd;
 using geometry::ConvexFoothold;
 using geometry::ConvexFootholdSet;
 
-using systems::controllers::AlipDeadbeatFootstepController;
+using systems::controllers::AlipOneStepFootstepController;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::AlipMINLPGains;
 using systems::controllers::FootstepSender;
@@ -177,7 +177,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
   auto foot_placement_controller =
-      builder.AddSystem<AlipDeadbeatFootstepController>(
+      builder.AddSystem<AlipOneStepFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
           left_right_toe, gains_mpc.gains);

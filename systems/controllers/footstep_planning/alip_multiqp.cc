@@ -1,15 +1,12 @@
 #include <algorithm>
-#include <iostream>
-
 #include "alip_multiqp.h"
-#include "solvers/optimization_utils.h"
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 #include "drake/solvers/solve.h"
 #include "drake/solvers/osqp_solver.h"
 
-namespace dairlib::systems::controllers{
+namespace dairlib::systems::controllers {
 
 using std::pair;
 using std::vector;
@@ -52,51 +49,51 @@ void AlipMultiQP::SolveOCProblemAsIs() {
   mode_sequnces_ = GetPossibleModeSequences();
   vector<pair<MathematicalProgramResult, vector<VectorXd>>> solutions;
 
-
-//  prof.pre_solve_ = std::chrono::steady_clock::now() - prof.start_;
   if (mode_sequnces_.empty()) {
     const auto sol = solver_.Solve(*prog_);
-    auto dual_solutions = sol.is_success() ?
-        ExtractDynamicsConstraintDual(sol) :
-        vector<VectorXd>(nmodes_,VectorXd::Zero((nknots_ - 1) * nx_));
+    auto dual_solutions =
+        sol.is_success() ? ExtractDynamicsConstraintDual(sol) :
+        vector<VectorXd>(nmodes_, VectorXd::Zero((nknots_ - 1) * nx_));
     solutions.push_back({sol, dual_solutions}); // NOLINT
     solve_time_.solve_time_ = sol.get_solver_details<OsqpSolver>().solve_time;
   } else {
-    for (auto& seq: mode_sequnces_) {
+    for (auto &seq : mode_sequnces_) {
       UpdateFootholdConstraints(seq);
       const auto sol = solver_.Solve(*prog_);
       auto dual_solutions = sol.is_success() ?
           ExtractDynamicsConstraintDual(sol) :
-          vector<VectorXd>(nmodes_,VectorXd::Zero((nknots_ - 1) * nx_));
+          vector<VectorXd>(nmodes_, VectorXd::Zero((nknots_ - 1) * nx_));
       solutions.push_back({sol, dual_solutions}); // NOLINT
-      solve_time_.solve_time_ += sol.get_solver_details<OsqpSolver>().solve_time;
+      solve_time_.solve_time_ +=
+          sol.get_solver_details<OsqpSolver>().solve_time;
     }
   }
-
-//  prof.post_solves_ =  std::chrono::steady_clock::now() - prof.start_;
   std::sort(
       solutions.begin(), solutions.end(),
       [](
-          const pair<MathematicalProgramResult, vector<VectorXd>>& lhs,
-          const pair<MathematicalProgramResult, vector<VectorXd>>& rhs){
-        return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost() && lhs.first.is_success();
+          const pair<MathematicalProgramResult, vector<VectorXd>> &lhs,
+          const pair<MathematicalProgramResult, vector<VectorXd>> &rhs) {
+        return lhs.first.get_optimal_cost() < rhs.first.get_optimal_cost() &&
+            lhs.first.is_success();
       });
 
   if (solutions.front().first.is_success()) {
     solution_ = solutions.front();
   } else {
-    std::cout << "solve failed with code " <<
-              solutions.front().first.get_solution_result() << std::endl;
+    drake::log()->error("solve failed with code {}",
+                        solutions.front().first.get_solution_result()
+    );
   }
   if (std::isnan(solution_.first.get_optimal_cost())) {
-    std::cout << "NaNs slipped through unnoticed. Dumping all constraints\n";
-    const auto& constraints = prog_->GetAllConstraints();
-    solvers::print_constraint(constraints);
+    drake::log()->error(
+        "NaNs slipped through unnoticed. Dumping the program:\n{}",
+        prog_->to_string()
+    );
   }
-  solve_time_.finish_ =  std::chrono::steady_clock::now();
+  solve_time_.finish_ = std::chrono::steady_clock::now();
 }
 
-void AlipMultiQP::Build(const drake::solvers::SolverOptions& options) {
+void AlipMultiQP::Build(const drake::solvers::SolverOptions &options) {
   prog_->SetSolverOptions(options);
   Build();
 }
@@ -129,17 +126,17 @@ void AlipMultiQP::AddMode() {
 
 void AlipMultiQP::MakeFootholdConstraints() {
   for (int n = 0; n < nmodes_; n++) {
-    footstep_c_.push_back(
-        {
-          prog_->AddLinearConstraint(
-            Matrix<double, kMaxFootholdFaces, 3>::Zero(),
-            VectorXd::Zero(kMaxFootholdFaces),
-            VectorXd::Zero(kMaxFootholdFaces),
-            pp_.at(n)),
-         prog_->AddLinearEqualityConstraint(
-             Eigen::RowVector3d::Zero(),
-             Eigen::VectorXd::Zero(1),
-             pp_.at(n))
+    footstep_c_.push_back( // If you get a "use emplace_back" suggestion here,
+        {                  // clang-tidy is wrong.
+            prog_->AddLinearConstraint(
+                Matrix<double, kMaxFootholdFaces, 3>::Zero(),
+                VectorXd::Zero(kMaxFootholdFaces),
+                VectorXd::Zero(kMaxFootholdFaces),
+                pp_.at(n)),
+            prog_->AddLinearEqualityConstraint(
+                Eigen::RowVector3d::Zero(),
+                Eigen::VectorXd::Zero(1),
+                pp_.at(n))
         }
     );
   }
@@ -147,8 +144,9 @@ void AlipMultiQP::MakeFootholdConstraints() {
 
 void AlipMultiQP::UpdateIndividualFootholdConstraint(
     int idx_mode, int idx_foothold) {
-  const auto& [A, b] = footholds_.at(idx_foothold).GetConstraintMatrices();
-  const auto& [A_eq, b_eq] = footholds_.at(idx_foothold).GetEqualityConstraintMatrices();
+  const auto &[A, b] = footholds_.at(idx_foothold).GetConstraintMatrices();
+  const auto &[A_eq, b_eq] =
+      footholds_.at(idx_foothold).GetEqualityConstraintMatrices();
 
   Matrix<double, kMaxFootholdFaces, 3> bigA =
       Matrix<double, kMaxFootholdFaces, 3>::Zero();
@@ -158,7 +156,7 @@ void AlipMultiQP::UpdateIndividualFootholdConstraint(
 
   footstep_c_.at(idx_mode).first.evaluator()->UpdateCoefficients(
       bigA,
-      -numeric_limits<double>::infinity()*VectorXd::Ones(bigb.rows()),
+      -numeric_limits<double>::infinity() * VectorXd::Ones(bigb.rows()),
       bigb
   );
   footstep_c_.at(idx_mode).second.evaluator()->UpdateCoefficients(A_eq, b_eq);
@@ -167,7 +165,7 @@ void AlipMultiQP::UpdateIndividualFootholdConstraint(
 void AlipMultiQP::UpdateFootholdConstraints(vector<int> foothold_idxs) {
   DRAKE_ASSERT(foothold_idxs.size() == nmodes_);
   for (int i = 0; i < foothold_idxs.size(); i++) {
-    UpdateIndividualFootholdConstraint(i+1, foothold_idxs.at(i));
+    UpdateIndividualFootholdConstraint(i + 1, foothold_idxs.at(i));
   }
 }
 
@@ -177,16 +175,16 @@ void AlipMultiQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   vector<VectorXd> xg = xd_;
 
   // Set the initial guess for the current mode based on limited time
-  VectorXd xx = VectorXd (nx_ * nknots_);
+  VectorXd xx = VectorXd(nx_ * nknots_);
   xx.head<4>() = x0;
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_ - 1));
   for (int i = 1; i < nknots_; i++) {
-    GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i-1);
+    GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i - 1);
   }
   xg.front() = xx;
 
   for (int n = 0; n < nmodes_; n++) {
-    for (int k = 0; k < nknots_ ; k++) {
+    for (int k = 0; k < nknots_; k++) {
       prog_->SetInitialGuess(
           GetStateAtKnot(xx_.at(n), k),
           GetStateAtKnot(xg.at(n), k));
@@ -194,8 +192,9 @@ void AlipMultiQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   }
   Vector3d ptemp = p0;
   prog_->SetInitialGuess(pp_.front(), p0);
-  for(int n = 1; n < nmodes_; n++) {
-    Vector2d p1 = (xd_.at(n-1).tail<4>() - xd_.at(n).head<4>()).head<2>() + ptemp.head<2>();
+  for (int n = 1; n < nmodes_; n++) {
+    Vector2d p1 = (xd_.at(n - 1).tail<4>() - xd_.at(n).head<4>()).head<2>()
+        + ptemp.head<2>();
     prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
     ptemp.head<2>() = p1;
   }
@@ -204,8 +203,8 @@ void AlipMultiQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
 void AlipMultiQP::UpdateInitialGuess() {
   DRAKE_DEMAND(
       solution_.first.is_success() ||
-      solution_.first.get_solution_result() ==
-          drake::solvers::kIterationLimit);
+          solution_.first.get_solution_result() ==
+              drake::solvers::kIterationLimit);
   prog_->SetInitialGuessForAllVariables(solution_.first.GetSolution());
 }
 }

@@ -1,4 +1,4 @@
-#include "alip_mpfc.h"
+#include "alip_mpfc_system.h"
 #include "common/eigen_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"

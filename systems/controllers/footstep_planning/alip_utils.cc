@@ -22,10 +22,11 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::Matrix;
 
-void CalcAlipState(const MultibodyPlant<double>& plant, Context<double>* context,
+void CalcAlipState(const MultibodyPlant<double> &plant,
+                   Context<double> *context,
                    const VectorXd &x,
-                   const vector<PointOnFramed>& stance_feet,
-                   const vector<double>& cop_weights,
+                   const vector<PointOnFramed> &stance_feet,
+                   const vector<double> &cop_weights,
                    const EigenPtr<Vector3d> &CoM_p,
                    const EigenPtr<Vector3d> &L_p,
                    const EigenPtr<Vector3d> &stance_pos_p) {
@@ -37,9 +38,9 @@ void CalcAlipState(const MultibodyPlant<double>& plant, Context<double>* context
   Vector3d stance_foot_pos = Vector3d::Zero();
   for (int i = 0; i < stance_feet.size(); i++) {
     Vector3d position;
-    const auto& stance_foot = stance_feet.at(i);
+    const auto &stance_foot = stance_feet.at(i);
     plant.CalcPointsPositions(*context, stance_foot.second, stance_foot.first,
-                               plant.world_frame(), &position);
+                              plant.world_frame(), &position);
     stance_foot_pos += cop_weights.at(i) * position;
   }
   Vector3d L = plant.CalcSpatialMomentumInWorldAboutPoint(
@@ -59,20 +60,20 @@ Matrix<double, 4, 8> CalcResetMap(
   Matrix4d Ainv = A.inverse();
   Matrix4d I = Matrix4d::Identity();
   Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
-  B(2,1) = m * 9.81;
-  B(3,0) = -m * 9.81;
+  B(2, 1) = m * 9.81;
+  B(3, 0) = -m * 9.81;
 
   Matrix<double, 4, 2> Bd = Matrix<double, 4, 2>::Zero();
   switch (discretization) {
-    case ResetDiscretization::kZOH:
-      Bd = Ainv * (Ad - I) * B;
+    case ResetDiscretization::kZOH:Bd = Ainv * (Ad - I) * B;
       break;
     case ResetDiscretization::kFOH:
       Bd = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
       break;
     case ResetDiscretization::kSPLIT:
       Matrix<double, 4, 2> Bd_ZOH = Ainv * (Ad - I) * B;
-      Matrix<double, 4, 2> Bd_FOH = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
+      Matrix<double, 4, 2> Bd_FOH =
+          Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
       Bd.row(0) = Bd_FOH.row(0);
       Bd.row(1) = Bd_ZOH.row(1);
       Bd.row(2) = Bd_ZOH.row(2);
@@ -98,12 +99,12 @@ pair<MatrixXd, MatrixXd> AlipStepToStepDynamics(
 }
 
 Vector4d CalcReset(double com_z, double m, double Tds,
-                   const Vector4d& x, const Vector3d& p0, const Vector3d& p1,
+                   const Vector4d &x, const Vector3d &p0, const Vector3d &p1,
                    ResetDiscretization reset_discretization) {
   Matrix<double, 4, 8> A = CalcResetMap(com_z, m, Tds, reset_discretization);
   Vector4d xp =
       A.leftCols<4>() * x +
-      A.block<4,2>(0,4) * p0.head<2>() + A.rightCols<2>() * p1.head<2>();
+          A.block<4, 2>(0, 4) * p0.head<2>() + A.rightCols<2>() * p1.head<2>();
   return xp;
 }
 
@@ -130,30 +131,32 @@ Matrix4d CalcAd(double com_z, double m, double t) {
   double d = 1.0 / (m * g);
   double a = sinh(t * omega);
   Matrix4d Ad = cosh(omega * t) * Matrix4d::Identity();
-  Ad(0,3) = a * omega * d;
-  Ad(1,2) = -a * omega * d;
-  Ad(2,1) = -a / (omega * d);
-  Ad(3,0) = a / (omega * d);
+  Ad(0, 3) = a * omega * d;
+  Ad(1, 2) = -a * omega * d;
+  Ad(2, 1) = -a / (omega * d);
+  Ad(3, 0) = a / (omega * d);
   return Ad;
 }
 
 Vector4d CalcBd(double com_z, double m, double t) {
   return CalcA(com_z, m).inverse() *
-            (CalcAd(com_z, m, t) - Matrix4d::Identity()) * Vector4d::UnitW();
+      (CalcAd(com_z, m, t) - Matrix4d::Identity()) * Vector4d::UnitW();
 }
 
 std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
-    const AlipGaitParams& gait_params) {
+    const AlipGaitParams &gait_params) {
 
   double s = gait_params.initial_stance_foot == Stance::kLeft ? -1 : 1;
 
   const Vector2d u0 = Vector2d(
       gait_params.desired_velocity(0) * (gait_params.single_stance_duration +
-                                         gait_params.double_stance_duration),
+          gait_params.double_stance_duration),
       gait_params.stance_width * s + gait_params.desired_velocity(1) *
-      (gait_params.single_stance_duration + gait_params.double_stance_duration)
+          (gait_params.single_stance_duration
+              + gait_params.double_stance_duration)
   );
-  const Vector2d u1 = u0 - 2 * (s * gait_params.stance_width * Vector2d::UnitY());
+  const Vector2d
+      u1 = u0 - 2 * (s * gait_params.stance_width * Vector2d::UnitY());
 
   const Matrix4d Ad = CalcAd(
       gait_params.height,
@@ -169,21 +172,22 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
 
   const Matrix4d A = Ar.leftCols<4>() * Ad;
   const Matrix<double, 4, 2> B = Ar.rightCols<2>();
-  const Vector4d x0 = (Matrix4d::Identity() - A * A).inverse() * (A * B * u0 + B* u1);
+  const Vector4d
+      x0 = (Matrix4d::Identity() - A * A).inverse() * (A * B * u0 + B * u1);
   const Vector4d x1 = A * x0 + B * u0;
   return {x0, x1};
 }
 
 std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
-    const AlipGaitParams& gait_params, int nmodes, int knots_per_mode) {
+    const AlipGaitParams &gait_params, int nmodes, int knots_per_mode) {
   DRAKE_DEMAND(gait_params.double_stance_duration > 0);
   vector<VectorXd> gait = vector<VectorXd>(
       nmodes, VectorXd::Zero(4 * knots_per_mode));
   auto [x0, x1] = MakePeriodicAlipGait(gait_params);
 
   Matrix4d Rx = Matrix4d::Identity();
-  Rx(1,1) = -1;
-  Rx(2,2) = -1;
+  Rx(1, 1) = -1;
+  Rx(2, 2) = -1;
   const Matrix4d Ad = CalcAd(
       gait_params.height,
       gait_params.mass,
@@ -193,23 +197,15 @@ std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
   for (int i = 0; i < nmodes; i++) {
     gait.at(i).head<4>() = (i % 2) == 0 ? x0 : x1;
     for (int k = 1; k < knots_per_mode; k++) {
-      gait.at(i).segment(4 * k, 4) = Ad * gait.at(i).segment(4 * (k-1), 4);
+      gait.at(i).segment(4 * k, 4) = Ad * gait.at(i).segment(4 * (k - 1), 4);
     }
   }
-
-//  for (const auto& x : gait) {
-//    if (x.hasNaN()) {
-//      std::cout << "Invalid gait generated for " << gait_params;
-//      throw std::logic_error("NaN gait");
-//    }
-//  }
 
   return gait;
 }
 
-
 Matrix4d SolveDareTwoStep(
-    const Matrix4d& Q, double com_z, double m, double tss, double tds,
+    const Matrix4d &Q, double com_z, double m, double tss, double tds,
     int knots_per_mode, ResetDiscretization discretization) {
   Matrix4d A = CalcAd(com_z, m, tss + tds);
   Matrix<double, 4, 2> B = CalcResetMap(com_z, tds, tds).rightCols<2>();
@@ -218,14 +214,39 @@ Matrix4d SolveDareTwoStep(
   return S;
 }
 
-double XImpactTime(double t_start, double H, double x, double Ly,
-                   double x_impact) {
-  return 0;
+AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
+    NonlinearConstraint<drake::AutoDiffXd>(
+        4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
+    m_(m), H_(H), n_(n-1) {
+  A_ = alip_utils::CalcA(H_, m_);
+  A_inv_ = A_.inverse();
+  B_ = Vector4d::UnitW();
+
 }
 
-double YImpactTime(double t_start, double H, double y, double Lx,
-                   double y_impact) {
-  return 0;
+void AlipDynamicsConstraint::EvaluateConstraint(
+    const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>> &x,
+    drake::VectorX<drake::AutoDiffXd>* y) const {
+  VectorXd xd = drake::math::ExtractValue(x);
+  Vector4d x0 = xd.head(4);
+  VectorXd u0 = xd.segment(4, 1);
+  Vector4d x1 = xd.segment(5, 4);
+  double t = xd(xd.size() -1) / n_;
+
+  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
+  Vector4d Bd = A_inv_ * (Ad - Matrix4d::Identity()) * B_;
+
+  VectorXd y0 = Ad * x0 + Bd * u0 - x1;
+  MatrixXd dy = MatrixXd::Zero(4, 10);
+  dy.block(0, 0, 4, 4) = Ad;
+  dy.col(4) = Bd;
+  dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
+  dy.rightCols(1) = (1 / n_) *  (A_ * Ad * x0 + Ad * B_ * u0);
+  *y = drake::math::InitializeAutoDiff(y0, dy);
+}
+
+Matrix4d AlipDynamicsConstraint::Ad(double t) const {
+  return alip_utils::CalcAd(H_, m_, t / n_);
 }
 
 }

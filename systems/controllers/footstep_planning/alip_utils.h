@@ -1,5 +1,6 @@
 #pragma once
 
+#include "solvers/nonlinear_constraint.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 
@@ -39,29 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const AlipGaitParams& data) {
          "kZOH" : "kFOH") << "\n";
 
   return os;
-}
-
-
-inline std::vector<std::vector<int>> cartesian_product(unsigned long range,
-                                                       int sets) {
-  auto products = std::vector<std::vector<int>>();
-  for (int i = 0; i < pow(range, sets); i++) {
-    products.emplace_back(std::vector<int>(sets, 0));
-  }
-  auto counter = std::vector<int>(sets, 0); // array of zeroes
-  for (auto &product : products) {
-    product = counter;
-
-    // counter increment and wrapping/carry over
-    counter.back()++;
-    for (size_t i = counter.size() - 1; i != 0; i--) {
-      if (counter[i] == range) {
-        counter[i] = 0;
-        counter[i - 1]++;
-      } else break;
-    }
-  }
-  return products;
 }
 
 typedef std::pair<const Eigen::Vector3d,
@@ -130,5 +108,38 @@ std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
 
 std::vector<Eigen::VectorXd> MakePeriodicAlipGaitTrajectory(
     const AlipGaitParams& gait_params, int nmodes, int knots_per_mode);
+
+/*
+ * Nonlinear constraint representing the linear ALIP dynamics with ankle torque,
+ * discretized with stance duration t as a decision variable,
+ * with n evenly-spaced knot points
+ */
+class AlipDynamicsConstraint : public solvers::NonlinearConstraint<drake::AutoDiffXd> {
+ public:
+  AlipDynamicsConstraint(double m, double H, double n);
+  void EvaluateConstraint(
+      const Eigen::Ref<const drake::VectorX<drake::AutoDiffXd>> &x,
+      drake::VectorX<drake::AutoDiffXd> *y) const override;
+  Eigen::Matrix4d Ad(double t) const;
+
+  void set_m(double m) {
+    m_ = m;
+    A_ = CalcA(H_, m_);
+    A_inv_ = A_.inverse();
+  }
+  void set_H(double H) {
+    H_ = H;
+    A_ = CalcA(H_, m_);
+    A_inv_ = A_.inverse();
+  }
+
+ private:
+  double m_;
+  double H_;
+  double n_;
+  Eigen::Matrix4d A_;
+  Eigen::Matrix4d A_inv_;
+  Eigen::MatrixXd B_;
+};
 
 }

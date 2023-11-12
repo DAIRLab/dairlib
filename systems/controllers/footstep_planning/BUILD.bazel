@@ -3,9 +3,9 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "alip_minlp_footstep_controller",
-    srcs = ["alip_mpfc.cc"],
-    hdrs = ["alip_mpfc.h"],
+    name = "alip_mpfc_system",
+    srcs = ["alip_mpfc_system.cc"],
+    hdrs = ["alip_mpfc_system.h"],
     deps = [
         ":alip_miqp",
         ":alip_multiqp",
@@ -21,11 +21,11 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_deadbeat_footstep_controller",
-    srcs = ["alip_deadbeat_footstep_controller.cc"],
-    hdrs = ["alip_deadbeat_footstep_controller.h"],
+    name = "alip_one_step_footstep_controller",
+    srcs = ["alip_one_step_footstep_controller.cc"],
+    hdrs = ["alip_one_step_footstep_controller.h"],
     deps = [
-        ":alip_minlp_footstep_controller",
+        ":alip_mpfc_system",
         ":alip_multiqp",
         ":alip_utils",
         "//common:eigen_utils",
@@ -86,14 +86,15 @@ cc_library(
     hdrs = ["alip_utils.h"],
     deps = [
         "//multibody:utils",
+        "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "alip_state_calculator",
-    srcs = ["alip_state_calculator.cc"],
-    hdrs = ["alip_state_calculator.h"],
+    name = "alip_state_calculator_system",
+    srcs = ["alip_state_calculator_system.cc"],
+    hdrs = ["alip_state_calculator_system.h"],
     deps = [
         ":alip_utils",
         "//systems/framework:vector",

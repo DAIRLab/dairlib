@@ -84,8 +84,8 @@ pybind_py_library(
     cc_deps = [
         "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
         "//systems/controllers:minimum_snap_trajectory_generation",
-        "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
         "//systems/controllers/footstep_planning:alip_miqp",
+        "//systems/controllers/footstep_planning:alip_mpfc_system",
         "//systems/controllers/footstep_planning:alip_multiqp",
         "@drake//:drake_shared_library",
     ],

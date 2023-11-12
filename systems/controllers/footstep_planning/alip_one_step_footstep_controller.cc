@@ -1,4 +1,4 @@
-#include "alip_deadbeat_footstep_controller.h"
+#include "alip_one_step_footstep_controller.h"
 #include "common/eigen_utils.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
@@ -28,7 +28,7 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
 
-AlipDeadbeatFootstepController::AlipDeadbeatFootstepController(
+AlipOneStepFootstepController::AlipOneStepFootstepController(
     const MultibodyPlant<double>& plant, Context<double>* plant_context,
     std::vector<int> left_right_stance_fsm_states,
     std::vector<int> post_left_right_fsm_states,
@@ -69,7 +69,7 @@ AlipDeadbeatFootstepController::AlipDeadbeatFootstepController(
 
   // State Update
   this->DeclarePerStepUnrestrictedUpdateEvent(
-      &AlipDeadbeatFootstepController::UnrestrictedUpdate);
+      &AlipOneStepFootstepController::UnrestrictedUpdate);
 
   // Input ports
   state_input_port_ = DeclareVectorInputPort(
@@ -85,17 +85,17 @@ AlipDeadbeatFootstepController::AlipDeadbeatFootstepController(
       "t_next", next_impact_time_state_idx_)
       .get_index();
   prev_impact_time_output_port_ = DeclareVectorOutputPort(
-      "t_prev", 1, &AlipDeadbeatFootstepController::CopyPrevImpactTimeOutput)
+      "t_prev", 1, &AlipOneStepFootstepController::CopyPrevImpactTimeOutput)
       .get_index();
   fsm_output_port_ = DeclareVectorOutputPort(
-      "fsm", 1, &AlipDeadbeatFootstepController::CopyFsmOutput)
+      "fsm", 1, &AlipOneStepFootstepController::CopyFsmOutput)
       .get_index();
   footstep_target_output_port_ = DeclareVectorOutputPort(
-      "p_SW", 3, &AlipDeadbeatFootstepController::CopyNextFootstepOutput)
+      "p_SW", 3, &AlipOneStepFootstepController::CopyNextFootstepOutput)
       .get_index();
 }
 
-drake::systems::EventStatus AlipDeadbeatFootstepController::UnrestrictedUpdate(
+drake::systems::EventStatus AlipOneStepFootstepController::UnrestrictedUpdate(
     const Context<double> &context, State<double> *state) const {
 
   // evaluate input ports
@@ -188,7 +188,7 @@ drake::systems::EventStatus AlipDeadbeatFootstepController::UnrestrictedUpdate(
 }
 
 
-void AlipDeadbeatFootstepController::CalcFootStepAndStanceFootHeight(
+void AlipOneStepFootstepController::CalcFootStepAndStanceFootHeight(
     const Vector3d& stance_foot_pos_yaw_frame,
     const Vector3d& com_pos_yaw_frame,
     const Vector3d& L_yaw_frame,
@@ -248,13 +248,13 @@ void AlipDeadbeatFootstepController::CalcFootStepAndStanceFootHeight(
 }
 
 
-void AlipDeadbeatFootstepController::CopyNextFootstepOutput(
+void AlipOneStepFootstepController::CopyNextFootstepOutput(
     const Context<double> &context, BasicVector<double> *p_B_FC) const {
   p_B_FC->set_value(
       context.get_discrete_state(footstep_target_state_idx_).get_value());
 }
 
-void AlipDeadbeatFootstepController::CopyFsmOutput(
+void AlipOneStepFootstepController::CopyFsmOutput(
     const Context<double> &context, BasicVector<double> *fsm) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
@@ -270,7 +270,7 @@ void AlipDeadbeatFootstepController::CopyFsmOutput(
   }
 }
 
-void AlipDeadbeatFootstepController::CopyPrevImpactTimeOutput(
+void AlipOneStepFootstepController::CopyPrevImpactTimeOutput(
     const Context<double> &context, BasicVector<double> *t) const {
   double t_prev =
       context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);

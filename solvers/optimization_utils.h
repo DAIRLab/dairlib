@@ -89,11 +89,17 @@ class LinearBigMConstraint {
       constraint_(AddBigMInequalityConstraint(prog, A, b, M, x, z)), M_(M),
       z_(z), x_(x){};
 
-  void update(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
+  /// Update the Constraint Matrices
+  /// \param A the new constraint matrix
+  /// \param b the ne constraint upper bound
+  void UpdateCoefficients(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
     auto [Ac, lb, ub] = GetBigMFormulation(A, b, M_);
     constraint_.evaluator()->UpdateCoefficients(Ac, lb, ub);
     active_ = true;
   }
+
+  /// Make the constraint inactive (trivially satisfied for any x).
+  /// Used for MIQPs with a variable number of BigM constraints.
   void deactivate() {
     if (active_) {
       constraint_.evaluator()->UpdateCoefficients(
@@ -103,11 +109,20 @@ class LinearBigMConstraint {
     }
     active_ = false;
   }
+
+  /// Make the constraint inactive and set the initial guess for x to zero.
+  /// Used for MIQPs with a variable number of BigM constraints.
   void deactivate(drake::solvers::MathematicalProgram& prog) {
     deactivate();
     prog.SetInitialGuess(x_, Eigen::VectorXd::Zero(x_.rows()));
     prog.SetInitialGuess(z_, 0);
   }
+
+  /// Check whether the constraint would be satisfied if the binary variable
+  /// were true, for a given value of x.
+  /// \param x value of x to check.
+  /// \param tol with which to check constraint satisfaction
+  /// \return True if Ax <= b, otherwise False
   [[nodiscard]] bool CheckSatisfiedIfActive(const Eigen::VectorXd& x,
                                             double tol=1e-4) const {
     DRAKE_ASSERT(x.size() == x_.size());
@@ -124,6 +139,16 @@ class LinearBigMConstraint {
   const drake::solvers::VectorXDecisionVariable& x_;
 };
 
+
+/// A utility for mixed integer programming,
+/// Adds the big M formulation of the constraint (z == 1) implies Ax == b,
+/// transforming it to Ax <= b + M * (1 - z), -Ax <= -b + M * (1 - z)
+/// @param prog The MathematicalProgram
+/// @param A the constraint matrix
+/// @param b the constraint upper bound
+/// @param M the big-M parameter
+/// @param x continuous variable
+/// @param z integer variable
 class LinearBigMEqualityConstraint {
  public:
   LinearBigMEqualityConstraint(
@@ -134,14 +159,23 @@ class LinearBigMEqualityConstraint {
       upper_(prog, A, b, M, x, z),
       lower_(prog, -A, -b, M, x, z){};
 
-  void update(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
-    upper_.update(A, b);
-    lower_.update(-A, -b);
+  /// Update the Constraint Matrices
+  /// \param A the new constraint matrix
+  /// \param b the ne constraint upper bound
+  void UpdateCoefficients(const Eigen::MatrixXd& A, const Eigen::VectorXd& b) {
+    upper_.UpdateCoefficients(A, b);
+    lower_.UpdateCoefficients(-A, -b);
   }
+
+  /// Make the constraint inactive (trivially satisfied for any x).
+  /// Used for MIQPs with a variable number of BigM constraints.
   void deactivate() {
     upper_.deactivate();
     lower_.deactivate();
   }
+
+  /// Make the constraint inactive and set the initial guess for x to zero.
+  /// Used for MIQPs with a variable number of BigM constraints.
   void deactivate(drake::solvers::MathematicalProgram& prog) {
     upper_.deactivate(prog);
     lower_.deactivate(prog);
@@ -150,17 +184,6 @@ class LinearBigMEqualityConstraint {
   LinearBigMConstraint upper_;
   LinearBigMConstraint lower_;
 };
-
-/// Convenience functions to print out constraint matrices
-void print_constraint(
-    const std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>& constraint);
-void print_constraint(
-    const std::vector<drake::solvers::Binding<drake::solvers::LinearEqualityConstraint>>& constraint);
-
-/// Note that this is just a useful wrapper for linear constraints -
-/// not for general nonlinear constraints
-void print_constraint(
-    const std::vector<drake::solvers::Binding<drake::solvers::Constraint>>& constraint);
 
 }  // namespace solvers
 }  // namespace dairlib

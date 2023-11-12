@@ -6,7 +6,7 @@ cc_library(
     name = "alip_minlp_gains",
     hdrs = ["alip_minlp_gains.h"],
     deps = [
-        "//systems/controllers/footstep_planning:alip_minlp_footstep_controller",
+        "//systems/controllers/footstep_planning:alip_mpfc_system",
         "//systems/filters:s2s_kalman_filter",
         "@drake//:drake_shared_library",
     ],

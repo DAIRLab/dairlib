@@ -4,7 +4,7 @@
 #include <dairlib/lcmt_mpc_solution.hpp>
 
 #include "alip_utils.h"
-#include "alip_mpfc.h"
+#include "alip_mpfc_system.h"
 #include "geometry/convex_foothold_set.h"
 #include "systems/filters/s2s_kalman_filter.h"
 
@@ -16,11 +16,11 @@ namespace dairlib::systems::controllers {
 
 using alip_utils::PointOnFramed;
 
-class AlipDeadbeatFootstepController : public drake::systems::LeafSystem<double> {
+class AlipOneStepFootstepController : public drake::systems::LeafSystem<double> {
  public:
 
   // TODO (@Brian-Acosta) : Move stance durations to gains struct
-  AlipDeadbeatFootstepController(
+  AlipOneStepFootstepController(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
       std::vector<int> left_right_stance_fsm_states,

@@ -1,8 +1,6 @@
 #include "alip_miqp.h"
 #include "solvers/optimization_utils.h"
-#include "drake/solvers/solve.h"
 #include "drake/solvers/branch_and_bound.h"
-#include <iostream>
 
 namespace dairlib::systems::controllers {
 
@@ -27,7 +25,7 @@ void AlipMIQP::AddMode() {
   nmodes_ += 1;
 }
 
-void AlipMIQP::Build(const drake::solvers::SolverOptions& options) {
+void AlipMIQP::Build(const drake::solvers::SolverOptions &options) {
   prog_->SetSolverOptions(options);
   Build();
 }
@@ -53,18 +51,18 @@ void AlipMIQP::Build() {
 void AlipMIQP::MakeFootholdConstraints() {
   constexpr double bigM = 5.0;
   for (int j = 1; j < nmodes_; j++) {
-    const std::string& js = std::to_string(j -1);
+    const std::string &js = std::to_string(j - 1);
     zz_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "zz" + js));
     vector<LinearBigMConstraint> tmp;
     vector<LinearBigMEqualityConstraint> tmp_eq;
     integer_sum_constraints_.push_back(
         prog_->AddLinearEqualityConstraint(
             RowVectorXd::Zero(kMaxFootholds),
-            VectorXd::Zero(1), zz_.at(j-1)
+            VectorXd::Zero(1), zz_.at(j - 1)
         )
     );
     for (int i = 0; i < kMaxFootholds; i++) {
-      const auto& z = zz_.at(j-1);
+      const auto &z = zz_.at(j - 1);
       tmp.push_back(LinearBigMConstraint(
           *prog_,
           RowVector3d::Zero(),
@@ -88,11 +86,11 @@ void AlipMIQP::MakeFootholdConstraints() {
 void AlipMIQP::UpdateFootholdConstraints() {
   const int n = std::min(static_cast<int>(footholds_.size()), kMaxFootholds);
   for (int i = 0; i < n; i++) {
-    const auto& [Aeq, beq] = footholds_.at(i).GetEqualityConstraintMatrices();
-    const auto& [A, b] = footholds_.at(i).GetConstraintMatrices();
+    const auto &[Aeq, beq] = footholds_.at(i).GetEqualityConstraintMatrices();
+    const auto &[A, b] = footholds_.at(i).GetConstraintMatrices();
     for (int j = 0; j < nmodes_ - 1; j++) {
-      foothold_constraints_.at(j).at(i).update(A, b);
-      foothold_equality_constraints_.at(j).at(i).update(Aeq, beq);
+      foothold_constraints_.at(j).at(i).UpdateCoefficients(A, b);
+      foothold_equality_constraints_.at(j).at(i).UpdateCoefficients(Aeq, beq);
     }
   }
   for (int i = n; i < kMaxFootholds; i++) {
@@ -112,34 +110,36 @@ void AlipMIQP::UpdateFootholdConstraints() {
 void AlipMIQP::SolveOCProblemAsIs() {
   solve_time_.start_ = std::chrono::steady_clock::now();
   UpdateFootholdConstraints();
-  auto result =  solver_.Solve(*prog_);
+  auto result = solver_.Solve(*prog_);
   success_ = result.is_success();
   if (success_) {
     solution_.first = result;
     solution_.second = ExtractDynamicsConstraintDual(result);
   } else {
-    std::cout << "solve failed with code " << result.get_solution_result() << std::endl;
+    drake::log()->info("solve failed with code {}",
+                       result.get_solution_result());
   }
   solve_time_.finish_ = std::chrono::steady_clock::now();
-  solve_time_.solve_time_ = result.get_solver_details<GurobiSolver>().optimizer_time;
+  solve_time_.solve_time_ =
+      result.get_solver_details<GurobiSolver>().optimizer_time;
 }
 
-void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
-                                  const Eigen::Vector4d &x0) {
+void AlipMIQP::UpdateInitialGuess(
+    const Eigen::Vector3d &p0, const Eigen::Vector4d &x0) {
   // Update state initial guess
   vector<VectorXd> xg = xd_;
 
   // Set the initial guess for the current mode based on limited time
-  VectorXd xx = VectorXd (nx_ * nknots_);
+  VectorXd xx = VectorXd(nx_ * nknots_);
   xx.head<4>() = x0;
   Matrix4d Ad = alip_utils::CalcAd(H_, m_, tt_(0) / (nknots_ - 1));
   for (int i = 1; i < nknots_; i++) {
-    GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i-1);
+    GetStateAtKnot(xx, i) = Ad * GetStateAtKnot(xx, i - 1);
   }
   xg.front() = xx;
 
   for (int n = 0; n < nmodes_; n++) {
-    for (int k = 0; k < nknots_ ; k++) {
+    for (int k = 0; k < nknots_; k++) {
       prog_->SetInitialGuess(
           GetStateAtKnot(xx_.at(n), k),
           GetStateAtKnot(xg.at(n), k));
@@ -147,20 +147,20 @@ void AlipMIQP::UpdateInitialGuess(const Eigen::Vector3d &p0,
   }
   Vector3d ptemp = p0;
   prog_->SetInitialGuess(pp_.front(), p0);
-  for(int n = 1; n < nmodes_; n++) {
-    Vector2d p1 = (xd_.at(n-1).tail<4>() - xd_.at(n).head<4>()).head<2>() + ptemp.head<2>();
+  for (int n = 1; n < nmodes_; n++) {
+    Vector2d p1 = (xd_.at(n - 1).tail<4>() - xd_.at(n).head<4>()).head<2>()
+        + ptemp.head<2>();
     prog_->SetInitialGuess(pp_.at(n).head<2>(), p1);
     ptemp.head<2>() = p1;
   }
 }
 
-
-Vector3d AlipMIQP::SnapFootstepToTopFoothold(const Vector3d& p) const {
+Vector3d AlipMIQP::SnapFootstepToTopFoothold(const Vector3d &p) const {
   double zmax = p(2);
-  const auto& stones = foothold_constraints_.front();
+  const auto &stones = foothold_constraints_.front();
   for (int i = 0; i < footholds_.size(); i++) {
     if (stones.at(i).CheckSatisfiedIfActive(p)) {
-      const auto& [a, b] = footholds_.at(i).GetEqualityConstraintMatrices();
+      const auto &[a, b] = footholds_.at(i).GetEqualityConstraintMatrices();
       double z = (b - a.leftCols<2>() * p.head<2>())(0);
       zmax = std::max(zmax, z);
     }
@@ -170,12 +170,10 @@ Vector3d AlipMIQP::SnapFootstepToTopFoothold(const Vector3d& p) const {
   return pnew;
 }
 
-
 vector<ConvexFoothold> AlipMIQP::GetFootholdSequence() const {
   auto integer_sol = GetFootholdSelection();
-
   std::vector<ConvexFoothold> footholds_sol;
-  for (const auto& z : integer_sol) {
+  for (const auto &z : integer_sol) {
     for (int i = 0; i < z.rows(); i++) {
       if (z(i) > 0.9) {
         DRAKE_ASSERT(footholds_.size() > i);

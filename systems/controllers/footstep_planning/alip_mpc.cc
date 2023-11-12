@@ -45,41 +45,6 @@ using drake::solvers::kIterationLimit;
 
 using geometry::kMaxFootholdFaces;
 
-AlipDynamicsConstraint::AlipDynamicsConstraint(double m, double H, double n) :
-    NonlinearConstraint<AutoDiffXd>(
-        4, 10, Vector4d::Zero(), Vector4d::Zero(), "dynamics"),
-    m_(m), H_(H), n_(n-1) {
-  A_ = alip_utils::CalcA(H_, m_);
-  A_inv_ = A_.inverse();
-  B_ = Vector4d::UnitW();
-
-}
-
-void AlipDynamicsConstraint::EvaluateConstraint(
-    const Eigen::Ref<const drake::VectorX<AutoDiffXd>> &x,
-    drake::VectorX<AutoDiffXd>* y) const {
-  VectorXd xd = drake::math::ExtractValue(x);
-  Vector4d x0 = xd.head(4);
-  VectorXd u0 = xd.segment(4, 1);
-  Vector4d x1 = xd.segment(5, 4);
-  double t = xd(xd.size() -1) / n_;
-
-  Matrix4d Ad = alip_utils::CalcAd(H_, m_, t);
-  Vector4d Bd = A_inv_ * (Ad - Matrix4d::Identity()) * B_;
-
-  VectorXd y0 = Ad * x0 + Bd * u0 - x1;
-  MatrixXd dy = MatrixXd::Zero(4, 10);
-  dy.block(0, 0, 4, 4) = Ad;
-  dy.col(4) = Bd;
-  dy.block(0, 5, 4, 4) = -Matrix4d::Identity();
-  dy.rightCols(1) = (1 / n_) *  (A_ * Ad * x0 + Ad * B_ * u0);
-  *y = InitializeAutoDiff(y0, dy);
-}
-
-Matrix4d AlipDynamicsConstraint::Ad(double t) {
-  return alip_utils::CalcAd(H_, m_, t / n_);
-}
-
 void AlipMPC::CalcOptimalFootstepPlan(const Eigen::Vector4d &x,
                                       const Eigen::Vector3d &p,
                                       bool warmstart) {
@@ -545,7 +510,26 @@ void AlipMPC::UpdateDynamicsConstraints() {
 }
 
 vector<vector<int>> AlipMPC::GetPossibleModeSequences() {
-  return alip_utils::cartesian_product(footholds_.size(), nmodes_ - 1);
+  unsigned int range = footholds_.size();
+  int sets = nmodes_ - 1;
+  auto products = std::vector<std::vector<int>>();
+  for (int i = 0; i < pow(range, sets); i++) {
+    products.emplace_back(std::vector<int>(sets, 0));
+  }
+  auto counter = std::vector<int>(sets, 0); // array of zeroes
+  for (auto &product : products) {
+    product = counter;
+
+    // counter increment and wrapping/carry over
+    counter.back()++;
+    for (size_t i = counter.size() - 1; i != 0; i--) {
+      if (counter[i] == range) {
+        counter[i] = 0;
+        counter[i - 1]++;
+      } else break;
+    }
+  }
+  return products;
 }
 
 vector<Vector3d> AlipMPC::GetFootstepSolution() const {

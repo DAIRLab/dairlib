@@ -55,6 +55,10 @@ group "5.lcm-tools" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
+    cmd "0.xbox-radio-spoofer" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
 }
 
 
@@ -68,10 +72,9 @@ script "initialize_standing" {
 }
 
 script "switch_to_walking" {
-    start cmd "controller-switch-to-walking";
-    wait ms 2000;
-    stop cmd "3.0 standing-controller(dispatched)";
-    stop cmd "3.1 standing-controller(dispatched, radio)";
+    start cmd "0.alip-mpfc-switch" wait "stopped";
+    wait ms 100;
+    stop cmd "3.standing-controller";
 }
 
 script "switch_to_walking_start_logging" {
@@ -79,5 +82,5 @@ script "switch_to_walking_start_logging" {
     wait ms 100;
     start cmd "0.alip-mpfc-switch" wait "stopped";
     wait ms 100;
-    stop cmd "3.0 standing-controller(dispatched)";
+    stop cmd "3.standing-controller";
 }

@@ -14,10 +14,6 @@ group "1.cassie-robot" {
         exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --control_channel_name_initial=OSC_STANDING --port 25000 --sim";
         host = "localhost";
     }
-    cmd "2.pd-controller(dispatched)" {
-        exec = "bazel-bin/examples/Cassie/run_pd_controller --channel_x=CASSIE_STATE_DISPATCHER --channel_u=PD_CONTROL";
-        host = "localhost";
-    }
     cmd "3.standing-controller" {
         exec = "bazel-bin/examples/Cassie/run_osc_standing_controller --height=0.95 --channel_x=CASSIE_STATE_SIMULATION --channel_u=OSC_STANDING";
         host = "localhost";

@@ -226,10 +226,10 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
         lcm_traj.GetTrajectory(orientation_trajectory_name_);
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
     for (int i = 0; i < lcm_orientation_traj.datapoints.cols(); ++i) {
+      VectorXd orientation_sample = lcm_orientation_traj.datapoints.col(i);
       quaternion_datapoints.push_back(
-          drake::math::RollPitchYaw<double>(
-              lcm_orientation_traj.datapoints.col(i))
-              .ToQuaternion());
+          Quaterniond(orientation_sample[0], orientation_sample[1],
+                      orientation_sample[2], orientation_sample[3]));
     }
     orientation_trajectory = PiecewiseQuaternionSlerp(
         CopyVectorXdToStdVector(lcm_orientation_traj.time_vector),

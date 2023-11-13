@@ -8,7 +8,7 @@ box_model: examples/franka/urdf/default_box.urdf
 publish_rate: 1000
 publish_efforts: true
 actuator_delay: 0.000
-visualize: false
+visualize: true
 
 tool_attachment_frame: [0, 0, 0.107]
 

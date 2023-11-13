@@ -56,7 +56,7 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   VectorXd target_tray_state = VectorXd::Zero(7);
   VectorXd tray_position = neutral_pose_;
-  tray_position[2] += 0.02;
+  tray_position[2] += 0.012065; // thickness of end effector and tray
   tray_position(0) += radio_out->channel[0] * x_scale_;
   tray_position(1) += radio_out->channel[1] * y_scale_;
   tray_position(2) += radio_out->channel[2] * z_scale_;

@@ -155,10 +155,10 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
                                                       "end_effector_position_target");
   auto trajectory_drawer_object =
-      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_traj");
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_position_target");
   auto object_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
-          meshcat, FindResourceOrThrow(sim_params.tray_model), "object_traj",
+          meshcat, FindResourceOrThrow(sim_params.tray_model), "object_position_target",
           "object_orientation_target");
   auto end_effector_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(

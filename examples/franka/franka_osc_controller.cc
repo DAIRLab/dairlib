@@ -6,17 +6,18 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_osc_controller_params.h"
+#include "examples/franka/systems/end_effector_force_trajectory.h"
 #include "examples/franka/systems/end_effector_orientation.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
+#include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
-#include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -46,11 +47,11 @@ using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
+using systems::controllers::ExternalForceTrackingData;
 using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
-using systems::controllers::ExternalForceTrackingData;
 
 DEFINE_string(osqp_settings,
               "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
@@ -116,9 +117,11 @@ int DoMain(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm));
   auto end_effector_position_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>("end_effector_position_target");
+      builder.AddSystem<systems::LcmTrajectoryReceiver>(
+          "end_effector_position_target");
   auto end_effector_force_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>("end_effector_force_target");
+      builder.AddSystem<systems::LcmTrajectoryReceiver>(
+          "end_effector_force_target");
   auto end_effector_orientation_receiver =
       builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
           "end_effector_orientation_target");
@@ -148,6 +151,9 @@ int DoMain(int argc, char* argv[]) {
                                                          plant_context.get());
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
+  auto end_effector_force_trajectory =
+      builder.AddSystem<EndEffectorForceTrajectoryGenerator>(
+          plant, plant_context.get());
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -180,8 +186,7 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_force_tracking_data =
       std::make_unique<ExternalForceTrackingData>(
           "end_effector_force", controller_params.W_ee_lambda, plant, plant,
-          controller_params.end_effector_name, Vector3d::Zero()
-      );
+          controller_params.end_effector_name, Vector3d::Zero());
 
   auto end_effector_orientation_tracking_data =
       std::make_unique<RotTaskSpaceTrackingData>(
@@ -230,6 +235,10 @@ int DoMain(int argc, char* argv[]) {
                   end_effector_orientation_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_orientation_trajectory->get_input_port_radio());
+  builder.Connect(state_receiver->get_output_port(0),
+                  end_effector_force_trajectory->get_input_port_state());
+  builder.Connect(radio_sub->get_output_port(0),
+                  end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());
   builder.Connect(osc_command_sender->get_output_port(),
@@ -257,9 +266,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(
       end_effector_orientation_trajectory->get_output_port(0),
       osc->get_input_port_tracking_data("end_effector_orientation_target"));
-  builder.Connect(
-      end_effector_force_receiver->get_output_port(0),
-      osc->get_input_port_tracking_data("end_effector_force"));
+  builder.Connect(end_effector_force_receiver->get_output_port(0),
+                  end_effector_force_trajectory->get_input_port_trajectory());
+  builder.Connect(end_effector_force_trajectory->get_output_port(0),
+                  osc->get_input_port_tracking_data("end_effector_force"));
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_osc_controller"));

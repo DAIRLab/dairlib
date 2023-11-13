@@ -118,30 +118,26 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
   knots.bottomRows(3) =
       c3_solution->x_sol_.middleRows(n_q_ + n_v_ - 3, 3).cast<double>();
   LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_traj";
+  object_traj.traj_name = "object_position_target";
   object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
   object_traj.datapoints = knots;
   object_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_traj"}, "object_traj",
-                         "object_traj", false);
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"}, "object_target",
+                         "object_target", false);
 
-  if (publish_end_effector_orientation_) {
-    LcmTrajectory::Trajectory object_orientation_traj;
-    // first 3 rows are rpy, last 3 rows are angular velocity
-    MatrixXd orientation_samples = MatrixXd::Zero(7, N_);
-    orientation_samples.topRows(4) =
-        c3_solution->x_sol_.middleRows(3 + 3, 4).cast<double>();
-    orientation_samples.bottomRows(3) =
-        c3_solution->x_sol_.middleRows(n_q_ + 3 + 3, 3).cast<double>();
-    object_orientation_traj.traj_name = "object_orientation_target";
-    object_orientation_traj.datatypes =
-        std::vector<std::string>(orientation_samples.rows(), "double");
-    object_orientation_traj.datapoints = orientation_samples;
-    object_orientation_traj.time_vector =
-        c3_solution->time_vector_.cast<double>();
-    lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
-                           object_orientation_traj);
-  }
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // first 3 rows are rpy, last 3 rows are angular velocity
+  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
+  orientation_samples =
+      c3_solution->x_sol_.middleRows(n_q_ - 7, 4).cast<double>();
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector =
+      c3_solution->time_vector_.cast<double>();
+  lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
+                         object_orientation_traj);
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = context.get_time() * 1e6;

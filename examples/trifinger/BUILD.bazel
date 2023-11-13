@@ -17,13 +17,33 @@ cc_library(
     ]),
 )
 
-cc_library(
-    name = "trifinger_plant",
-    srcs = ["trifinger_plant.cc"],
-    hdrs = ["trifinger_plant.h"],
+cc_binary(
+    name = "trifinger_simulation",
+    srcs = ["trifinger_simulation.cc"],
     deps = [
+        "@gflags",
         "@drake//:drake_shared_library",
+        "//common:find_resource",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//multibody:utils",
     ],
+)
+
+cc_binary(
+    name = "trifinger_visualizer",
+    srcs = ["trifinger_visualizer.cc"],
+    deps = [
+        "@gflags",
+        "@drake//:drake_shared_library",
+        "//common:find_resource",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//multibody:utils",
+        "//multibody:visualization_utils"
+    ]
 )
 
 

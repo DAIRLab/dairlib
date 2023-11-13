@@ -77,12 +77,6 @@ cc_binary(
 cc_binary(
     name = "run_alip__one_step_controller",
     srcs = ["run_alip_one_step_controller.cc"],
-    local_defines = select(
-        {
-            "//tools/workspace/ros:dair_ros_off": [],
-            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
-        },
-    ),
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",

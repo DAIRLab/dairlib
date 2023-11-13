@@ -48,7 +48,7 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
-  PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
+  PiecewisePolynomial<double> empty_pp_traj(neutral_pose_);
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("end_effector_trajectory", traj_inst,
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
@@ -98,7 +98,7 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     *casted_traj = GeneratePose(context);
   } else {
     if (trajectory_input.value(0).isZero()) {
-      *casted_traj = GeneratePose(context);
+//      *casted_traj = GeneratePose(context);
     } else {
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);

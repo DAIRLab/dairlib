@@ -35,10 +35,6 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const {
     return this->get_output_port(object_trajectory_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_force_trajectory()
-      const {
-    return this->get_output_port(force_trajectory_port_);
-  }
 
   void SetPublishEndEffectorOrientation(bool publish_end_effector_orientation) {
     publish_end_effector_orientation_ = publish_end_effector_orientation;
@@ -53,14 +49,9 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
-  void OutputForceTrajectory(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_timestamped_saved_traj* output_traj) const;
-
   drake::systems::InputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex actor_trajectory_port_;
   drake::systems::OutputPortIndex object_trajectory_port_;
-  drake::systems::OutputPortIndex force_trajectory_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;

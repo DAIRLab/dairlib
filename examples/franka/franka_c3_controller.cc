@@ -171,16 +171,11 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kPeriodic}),
           1 / controller_params.target_frequency));
-  auto force_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_force_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}),
-          1 / controller_params.target_frequency));
-  //  auto c3_output_publisher =
-  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-  //          lcm_channel_params.c3_debug_output_channel, &lcm,
-  //          TriggerTypeSet({TriggerType::kPeriodic}),
-  //          1 / controller_params.target_frequency));
+//  auto force_trajectory_sender = builder.AddSystem(
+//      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+//          lcm_channel_params.c3_force_channel, &lcm,
+//          TriggerTypeSet({TriggerType::kPeriodic}),
+//          1 / controller_params.target_frequency));
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_channel, &lcm,
@@ -241,8 +236,6 @@ int DoMain(int argc, char* argv[]) {
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
-  builder.Connect(c3_trajectory_generator->get_output_port_force_trajectory(),
-                  force_trajectory_sender->get_input_port());
 
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_output_sender->get_input_port_c3_solution());

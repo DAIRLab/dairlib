@@ -182,11 +182,11 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, -5, 5, 2);
   }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 10, 20, 2);
-  }
+//  for (int i : vector<int>({2})) {
+//    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+//    A(i) = 1.0;
+//    c3_->AddLinearConstraint(A, 10, 20, 2);
+//  }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   delta_ = delta;
   w_ = w;

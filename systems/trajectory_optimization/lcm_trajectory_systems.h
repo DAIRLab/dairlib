@@ -37,10 +37,6 @@ class LcmTrajectoryReceiver : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex trajectory_input_port_;
   drake::systems::OutputPortIndex trajectory_output_port_;
   const std::string trajectory_name_;
-
-  mutable LcmTrajectory lcm_traj_;
-  std::string default_trajectory_path_ =
-      "examples/franka/saved_trajectories/franka_defaults";
 };
 
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
@@ -64,21 +60,14 @@ class LcmOrientationTrajectoryReceiver
   drake::systems::InputPortIndex trajectory_input_port_;
   drake::systems::OutputPortIndex trajectory_output_port_;
   const std::string trajectory_name_;
-
-  mutable LcmTrajectory lcm_traj_;
-  std::string default_trajectory_path_ =
-      "examples/franka/saved_trajectories/franka_defaults";
 };
 
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
 /// and draws it through meshcat.
 class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
  public:
-  explicit LcmTrajectoryDrawer(
-      const std::shared_ptr<drake::geometry::Meshcat>&,
-      std::string trajectory_name,
-      const std::string& default_trajectory_path =
-          "examples/franka/saved_trajectories/franka_defaults");
+  explicit LcmTrajectoryDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                               std::string trajectory_name);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -102,8 +91,6 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex trajectory_input_port_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::string trajectory_name_;
-  mutable LcmTrajectory lcm_traj_;
-  std::string default_trajectory_path_;
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
   int N_ = 5;
 };
@@ -112,13 +99,11 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
 /// and draws the object pose through meshcat.
 class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
  public:
-  explicit LcmPoseDrawer(
-      const std::shared_ptr<drake::geometry::Meshcat>&,
-      const std::string& model_file,
-      const std::string& translation_trajectory_name,
-      const std::string& orientation_trajectory_name, int num_poses = 5,
-      const std::string& default_trajectory_path =
-          "examples/franka/saved_trajectories/franka_defaults");
+  explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                         const std::string& model_file,
+                         const std::string& translation_trajectory_name,
+                         const std::string& orientation_trajectory_name,
+                         int num_poses = 5);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -136,9 +121,7 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::string translation_trajectory_name_;
   const std::string orientation_trajectory_name_;
-  mutable LcmTrajectory lcm_traj_;
   std::unique_ptr<multibody::MultiposeVisualizer> multipose_visualizer_;
-  std::string default_trajectory_path_;
   const int N_;
 };
 

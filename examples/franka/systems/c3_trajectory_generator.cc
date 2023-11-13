@@ -51,12 +51,6 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
               dairlib::lcmt_timestamped_saved_traj(),
               &C3TrajectoryGenerator::OutputObjectTrajectory)
           .get_index();
-  force_trajectory_port_ =
-      this->DeclareAbstractOutputPort(
-              "c3_force_trajectory_output",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &C3TrajectoryGenerator::OutputForceTrajectory)
-          .get_index();
 }
 
 void C3TrajectoryGenerator::OutputActorTrajectory(
@@ -71,13 +65,23 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   knots.bottomRows(3) =
       c3_solution->x_sol_.bottomRows(n_v_).topRows(3).cast<double>();
   LcmTrajectory::Trajectory end_effector_traj;
-  end_effector_traj.traj_name = "end_effector_traj";
+  end_effector_traj.traj_name = "end_effector_position_target";
   end_effector_traj.datatypes =
       std::vector<std::string>(knots.rows(), "double");
   end_effector_traj.datapoints = knots;
   end_effector_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_traj"},
-                         "end_effector_traj", "end_effector_traj", false);
+  LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
+                         "end_effector_position_target",
+                         "end_effector_position_target", false);
+
+  MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes =
+      std::vector<std::string>(force_samples.rows(), "double");
+  force_traj.datapoints = force_samples;
+  force_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
   if (publish_end_effector_orientation_) {
     LcmTrajectory::Trajectory end_effector_orientation_traj;
@@ -138,25 +142,6 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
     lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
                            object_orientation_traj);
   }
-
-  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
-  output_traj->utime = context.get_time() * 1e6;
-}
-
-void C3TrajectoryGenerator::OutputForceTrajectory(
-    const drake::systems::Context<double>& context,
-    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
-  const auto& c3_solution =
-      this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
-  DRAKE_DEMAND(c3_solution->u_sol_.rows() == n_u_);
-  MatrixXd knots = c3_solution->u_sol_.cast<double>();
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "force_traj";
-  force_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
-  force_traj.datapoints = knots;
-  force_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({force_traj}, {"force_traj"}, "force_traj",
-                         "force_traj", false);
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = context.get_time() * 1e6;

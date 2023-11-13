@@ -47,7 +47,7 @@ class EndEffectorTrajectoryGenerator
   drake::systems::InputPortIndex trajectory_port_;
   drake::systems::InputPortIndex radio_port_;
 
-  Eigen::Vector3d neutral_pose_;
+  Eigen::Vector3d neutral_pose_ = {0.55, 0, 0.40};
   double x_scale_;
   double y_scale_;
   double z_scale_;

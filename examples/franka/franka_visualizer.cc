@@ -153,7 +153,7 @@ int do_main(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(params));
   auto trajectory_drawer_actor =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
-                                                      "end_effector_traj");
+                                                      "end_effector_position_target");
   auto trajectory_drawer_object =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_traj");
   auto object_pose_drawer =
@@ -162,7 +162,7 @@ int do_main(int argc, char* argv[]) {
           "object_orientation_target");
   auto end_effector_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
-          meshcat, FindResourceOrThrow(sim_params.end_effector_model), "end_effector_traj",
+          meshcat, FindResourceOrThrow(sim_params.end_effector_model), "end_effector_position_target",
           "end_effector_orientation_target");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));

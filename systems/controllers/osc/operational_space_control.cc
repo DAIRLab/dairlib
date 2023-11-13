@@ -769,14 +769,20 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
-  for (auto& force_tracking_data : *force_tracking_data_vec_){
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    int port_index =
+        traj_name_to_port_index_map_.at(force_tracking_data->GetName());
+    const drake::AbstractValue* input_traj =
+        this->EvalAbstractInput(context, port_index);
+    DRAKE_DEMAND(input_traj != nullptr);
+    const auto& traj =
+        input_traj->get_value<drake::trajectories::Trajectory<double>>();
     force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
-                                *context_wo_spr_, t);
+                                *context_wo_spr_, traj, t);
     const MatrixXd W = force_tracking_data->GetWeight();
-    const VectorXd lambda_des  = force_tracking_data->GetLambdaDes();
-    lambda_ee_cost_->UpdateCoefficients(2 * W,
-                                        -2 * W * lambda_des,
-                                        lambda_des.transpose() * W * lambda_des);
+    const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
+    lambda_ee_cost_->UpdateCoefficients(
+        2 * W, -2 * W * lambda_des, lambda_des.transpose() * W * lambda_des);
   }
 
   // Add joint limit constraints
@@ -1060,13 +1066,13 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
   qp_output.u_dim = n_u_;
-//  qp_output.lambda_c_dim = n_c_;
+  //  qp_output.lambda_c_dim = n_c_;
   qp_output.lambda_c_dim = n_ee_;
   qp_output.lambda_h_dim = n_h_;
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-//  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  //  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
   qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ee_sol_);
   qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);

@@ -6,9 +6,9 @@
   <link name="plate_y"/>
   <link name="plate">
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.024167 0 0.004"/>
+      <origin rpy="0 0 0" xyz="0 0 0.004"/>
       <mass value="0.37"/>
-      <inertia ixx="0.0012967" ixy="0" ixz="5.0144e-21" iyy="0.0017289" iyz="0" izz="0.0030254"/>
+      <inertia ixx="0.00097234" ixy="0" ixz="0" iyy="0.00097255" iyz="0" izz="0.0019447"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
@@ -26,13 +26,13 @@
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.0725 0.0725 0.004"/>
+      <origin rpy="0 0 0" xyz="-0.03625 0.06278 0.004"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.0725 -0.0725 0.004"/>
+      <origin rpy="0 0 0" xyz="-0.03625 -0.06278 0.004"/>
     </collision>
   </link>
   <joint name="plate_x" type="prismatic">

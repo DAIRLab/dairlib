@@ -7,7 +7,6 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-
 /// ExternalForceTrackingData
 /// Force tracking objective. Used to track desired external forces. Requires
 /// contact points on the MultibodyPlant where contact forces enter the dynamics
@@ -33,15 +32,15 @@ class ExternalForceTrackingData {
     return plant_wo_spr_;
   };
   void Update(const Eigen::VectorXd& x_w_spr,
-                    const drake::systems::Context<double>& context_w_spr,
-                    const Eigen::VectorXd& x_wo_spr,
-                    const drake::systems::Context<double>& context_wo_spr,
-                    double t);
+              const drake::systems::Context<double>& context_w_spr,
+              const Eigen::VectorXd& x_wo_spr,
+              const drake::systems::Context<double>& context_wo_spr,
+              const drake::trajectories::Trajectory<double>& traj,
+              double t);
+
  protected:
  private:
   std::string name_;
-
-
 
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;

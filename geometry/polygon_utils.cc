@@ -53,8 +53,8 @@ ConvexPolygon MakeFootholdFromConvexPolytope(
   convex_hull.rightCols(1) = convex_hull.col(0);
 
   auto foothold = ConvexPolygon();
-  foothold.SetContactPlane(plane_pose.linear().col(2),
-                           plane_pose.translation());
+  foothold.SetPlane(plane_pose.linear().col(2),
+                    plane_pose.translation());
 
   for (int i = 0; i < convex_hull.cols() - 1; i++) {
     Vector3d p1 = plane_pose.translation() +

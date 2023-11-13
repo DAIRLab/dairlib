@@ -32,7 +32,7 @@ std::vector<ConvexPolygon> GetRandomFootholds(int n, double r) {
     origin(2) *= std::min(1.0,  0.5 / abs(origin(2)));
     normal.normalize();
     auto foothold = ConvexPolygon();
-    foothold.SetContactPlane(normal, origin);
+    foothold.SetPlane(normal, origin);
     for (auto& j : {-1.0, 1.0}){
       for (auto& k: {-1.0, 1.0}) {
         foothold.AddFace(Vector3d(j, k, 0),

@@ -57,7 +57,7 @@ void FlatTerrainFootholdSource::CalcFoothold(
   h_prev_ = alpha_ * h + (1.0 - alpha_) * h_prev_;
   left_pos(2) = h_prev_;
   ConvexPolygon f;
-  f.SetContactPlane(Vector3d::UnitZ(), left_pos);
+  f.SetPlane(Vector3d::UnitZ(), left_pos);
   f.AddFace(-Vector3d::UnitZ(), left_pos -Vector3d::UnitZ());
   *footholds = geometry::ConvexPolygonSet({f});
 }

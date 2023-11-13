@@ -21,12 +21,11 @@ using py_rvp = py::return_value_policy;
 
 py::class_<ConvexPolygon>(m, "ConvexPolygon")
     .def(py::init<>())
-    .def("SetContactPlane",
+    .def("SetPlane",
          py::overload_cast<const Eigen::Vector3d&, const Eigen::Vector3d&>(
-         &ConvexPolygon::SetContactPlane))
-    .def("SetContactPlane",
-         py::overload_cast<const Eigen::Vector3d&, double>(
-         &ConvexPolygon::SetContactPlane))
+         &ConvexPolygon::SetPlane))
+    .def("SetPlane", py::overload_cast<const Eigen::Vector3d&, double>(
+         &ConvexPolygon::SetPlane))
     .def("AddHalfspace", &ConvexPolygon::AddHalfspace)
     .def("AddFace", &ConvexPolygon::AddFace)
     .def("GetConstraintMatrices", &ConvexPolygon::GetConstraintMatrices)

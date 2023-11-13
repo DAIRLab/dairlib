@@ -16,22 +16,22 @@ class ConvexPolygon {
   ConvexPolygon()= default;
 
   /*
-   * Set the contact plane by supplying a normal and a point on the
-   * contact plane
+   * Set the polygon plane by supplying a normal and a point on the plane
    */
-  void SetContactPlane(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
+  void SetPlane(const Eigen::Vector3d& normal, const Eigen::Vector3d& pt);
 
   /*
-   * Set the contact plane ax = b
+   * Set the polygon's plane to a'x = b
    */
-  void SetContactPlane(const Eigen::Vector3d& a, double b) {
+  void SetPlane(const Eigen::Vector3d& a, double b) {
     double norm_a = a.norm();
     A_eq_ = a.transpose() / norm_a;
     b_eq_ = Eigen::VectorXd::Constant(1, b / norm_a);
   }
 
   /*
-   * Add a constraint a'x <= b to the convex foothold
+   * Make the convex polygon the intersection of itself with the halfspace
+   * a'x <= b
    */
   void AddHalfspace(Eigen::Vector3d a, Eigen::VectorXd b);
 
@@ -68,7 +68,7 @@ class ConvexPolygon {
 
   static ConvexPolygon MakeFlatGround(double half_len=100.0) {
     ConvexPolygon foothold;
-    foothold.SetContactPlane(Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
+    foothold.SetPlane(Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
     foothold.AddFace(Eigen::Vector3d::UnitX(),
                      half_len * Eigen::Vector3d::UnitX());
     foothold.AddFace(-Eigen::Vector3d::UnitX(),

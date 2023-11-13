@@ -129,7 +129,7 @@ ConvexPolygonSet ConvexPolygonSet::CopyFromLcm(const lcmt_foothold_set& set_lcm)
   for (const auto& foothold_lcm : set_lcm.footholds) {
     ConvexPolygon foothold;
     const Vector3d Aeq = Vector3d::Map(foothold_lcm.Aeq);
-    foothold.SetContactPlane(Aeq, foothold_lcm.beq);
+    foothold.SetPlane(Aeq, foothold_lcm.beq);
     for (int i = 0; i < foothold_lcm.nfaces; i++) {
       foothold.AddHalfspace(
           Vector3d::Map(foothold_lcm.A.at(i).data()),

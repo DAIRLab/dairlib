@@ -10,10 +10,10 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 
-void ConvexPolygon::SetContactPlane(const Vector3d& normal,
-                                     const Vector3d& pt) {
-  A_eq_ = normal.transpose();
-  b_eq_ = normal.dot(pt) * VectorXd::Ones(1);
+void ConvexPolygon::SetPlane(const Vector3d& normal, const Vector3d& pt) {
+  Vector3d normalized = normal.normalized();
+  A_eq_ = normalized.transpose();
+  b_eq_ = normalized.dot(pt) * VectorXd::Ones(1);
 }
 
 // Rotate the coordinate frame so that the constraint A x_W <= b

@@ -75,7 +75,7 @@ struct SquareSteppingStoneList {
       cubes.push_back({RigidTransformd(R_WB, box_center), dims});
 
       ConvexPolygon foothold;
-      foothold.SetContactPlane(normal, center);
+      foothold.SetPlane(normal, center);
 
       double e = margin;
       // stepping stone boundaries

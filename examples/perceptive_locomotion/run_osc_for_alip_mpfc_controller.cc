@@ -20,7 +20,7 @@
 #include "multibody/multibody_utils.h"
 
 // MPC related
-#include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
+#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
@@ -102,9 +102,9 @@ DEFINE_string(gains_filename,
               "examples/perceptive_locomotion/gains/osc_gains.yaml",
               "Filepath containing gains");
 
-DEFINE_string(minlp_gains_filename,
-              "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
-              "Filepath to alip minlp gains");
+DEFINE_string(mpfc_gains_filename,
+              "examples/perceptive_locomotion/gains/alip_mpfc_gains.yaml",
+              "Filepath to alip mpfc gains");
 
 DEFINE_string(channel_mpc, "ALIP_MPC", "alip mpc output lcm channel");
 
@@ -133,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
   // Read-in the parameters
   auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
   auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
+      drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(FLAGS_mpfc_gains_filename);
 
   const std::string urdf_w_spr = "examples/Cassie/urdf/cassie_v2.urdf";
   const std::string urdf_wo_spr = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
@@ -149,9 +149,11 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::ModelInstanceIndex instance_wo_spr;
   if (FLAGS_use_spring_model) {
-    instance_wo_spr = AddCassieMultibody(&plant_wo_spr, nullptr, true, urdf_w_spr, true, false);
+    instance_wo_spr = AddCassieMultibody(
+        &plant_wo_spr, nullptr, true, urdf_w_spr, true, false);
   } else {
-    instance_wo_spr = AddCassieMultibody(&plant_wo_spr, nullptr, true, urdf_wo_spr, false, false);
+    instance_wo_spr = AddCassieMultibody(
+        &plant_wo_spr, nullptr, true, urdf_wo_spr, false, false);
   }
   if (FLAGS_add_camera_inertia) {
     auto camera_inertia_about_com =
@@ -645,8 +647,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name("osc controller for alip_minlp");
-  DrawAndSaveDiagramGraph(*owned_diagram, "../osc_for_alip_minlp");
+  owned_diagram->set_name("osc controller for alip_mpfc");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../osc_for_alip_mpfc");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

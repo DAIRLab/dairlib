@@ -6,7 +6,7 @@ using Eigen::MatrixXd;
 using Eigen::Matrix4d;
 using dairlib::systems::controllers::alip_utils::ResetDiscretization;
 
-struct AlipMINLPGainsImport {
+struct AlipMpfcGainsImport {
   double retraction_dist;
   double t_commit;
   double t_min;

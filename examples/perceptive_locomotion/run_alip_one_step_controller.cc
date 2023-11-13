@@ -9,7 +9,7 @@
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
-#include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
+#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/footstep_planning/alip_one_step_footstep_controller.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
@@ -65,7 +65,7 @@ DEFINE_string(channel_cassie_out, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
 
-DEFINE_string(minlp_gains_filename,
+DEFINE_string(mpfc_gains_filename,
               "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
               "Filepath to alip minlp gains");
 
@@ -85,7 +85,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
+      drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(FLAGS_mpfc_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -123,8 +123,6 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
-  auto right_toe = RightToeFront(plant_w_spr);
-  auto right_heel = RightToeRear(plant_w_spr);
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -232,8 +230,9 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name("AlipMINLP foot placement controller");
-  DrawAndSaveDiagramGraph(*owned_diagram, "../planner");
+  owned_diagram->set_name("alip_one_step_footstep_controller");
+  DrawAndSaveDiagramGraph(
+      *owned_diagram, "../alip_one_step_footstep_controller");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

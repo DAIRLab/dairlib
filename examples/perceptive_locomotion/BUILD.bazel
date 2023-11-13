@@ -22,7 +22,7 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_alip_minlp_controller",
+    name = "run_alip_mpfc_controller",
     srcs = ["run_alip_mpfc_controller.cc"],
     local_defines = select(
         {
@@ -34,7 +34,7 @@ cc_binary(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
-        "//examples/perceptive_locomotion/gains:alip_minlp_gains",
+        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
         "//geometry:convex_polygon",
         "//geometry:convex_polygon_lcm_systems",
         "//lcmtypes:lcmt_robot",
@@ -75,13 +75,13 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_alip__one_step_controller",
+    name = "run_alip_one_step_controller",
     srcs = ["run_alip_one_step_controller.cc"],
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
-        "//examples/perceptive_locomotion/gains:alip_minlp_gains",
+        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
         "//lcmtypes:lcmt_robot",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -95,15 +95,15 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_osc_for_alip_minlp_controller",
-    srcs = ["run_osc_for_alip_minlp_controller.cc"],
+    name = "run_osc_for_alip_mpfc_controller",
+    srcs = ["run_osc_for_alip_mpfc_controller.cc"],
     deps = [
         "//examples/Cassie:cassie_urdf",
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/Cassie/systems:simulator_drift",
-        "//examples/perceptive_locomotion/gains:alip_minlp_gains",
+        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
         "//examples/perceptive_locomotion/systems:alip_input_receiver",
         "//multibody:utils",
         "//multibody:view_frame",

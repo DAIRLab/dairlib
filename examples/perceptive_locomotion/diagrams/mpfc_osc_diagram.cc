@@ -4,7 +4,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 
 // MPC related
-#include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
+#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 #include "systems/primitives/fsm_lcm_systems.h"
@@ -114,7 +114,7 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   // Read-in the parameters
   auto gains = LoadYamlFile<OSCWalkingGainsALIP>(osc_gains_filename);
-  auto gains_mpc = LoadYamlFile<AlipMINLPGainsImport>(mpc_gains_filename);
+  auto gains_mpc = LoadYamlFile<AlipMpfcGainsImport>(mpc_gains_filename);
 
   // Build the controller diagram
   DiagramBuilder<double> builder;

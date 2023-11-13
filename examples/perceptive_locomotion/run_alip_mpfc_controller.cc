@@ -21,7 +21,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
+#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 
 #include "geometry/convex_polygon_set.h"
 #include "geometry/convex_polygon_lcm_systems.h"
@@ -86,9 +86,9 @@ DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
 
-DEFINE_string(minlp_gains_filename,
-              "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
-              "Filepath to alip minlp gains");
+DEFINE_string(mpfc_gains_filename,
+              "examples/perceptive_locomotion/gains/alip_mpfc_gains.yaml",
+              "Filepath to alip mpfc gains");
 
 DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
 
@@ -118,7 +118,7 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
 #ifdef DAIR_ROS_ON
-  ros::init(argc, argv, "alip_minlp_controller");
+  ros::init(argc, argv, "alip_mpfc_controller");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
 #else
@@ -129,7 +129,7 @@ int DoMain(int argc, char* argv[]) {
 #endif
 
   auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
+      drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(FLAGS_mpfc_gains_filename);
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
@@ -176,8 +176,6 @@ int DoMain(int argc, char* argv[]) {
 
   auto left_toe = LeftToeFront(plant_w_spr);
   auto left_heel = LeftToeRear(plant_w_spr);
-  auto right_toe = RightToeFront(plant_w_spr);
-  auto right_heel = RightToeRear(plant_w_spr);
 
   // Create finite state machine
   int left_stance_state = 0;
@@ -240,7 +238,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto mpc_debug_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_mpc_debug>(
-          "ALIP_MINLP_DEBUG", &lcm_local,
+          "ALIP_MPFC_DEBUG", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
 #ifdef DAIR_ROS_ON
@@ -326,8 +324,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name("AlipMINLP foot placement controller");
-  DrawAndSaveDiagramGraph(*owned_diagram, "../planner");
+  owned_diagram->set_name("alip_mpcf_diagram");
+  DrawAndSaveDiagramGraph(*owned_diagram, "../alip_mpfc");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

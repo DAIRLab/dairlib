@@ -59,11 +59,9 @@ DEFINE_double(max_qp_hz, 800.0, "Maximum control frequency");
 DEFINE_string(
     cassie_out_channel, "CASSIE_OUTPUT_ECHO",
     "The name of the channel to receive the cassie out structure from.");
-DEFINE_double(cost_weight_multiplier, 1.0,
-              "A cosntant times with cost weight of OSC traj tracking");
-DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_string(gains_filename, "examples/Cassie/osc/osc_standing_gains.yaml",
               "Filepath containing gains");
+DEFINE_double(height, .8, "The initial COM height (m)");
 DEFINE_bool(use_radio, false, "use the radio to set height or not");
 DEFINE_bool(publish_osc, false,
             "only publish debug if needed to avoid excess LCM traffic "
@@ -197,24 +195,18 @@ int DoMain(int argc, char* argv[]) {
   int n_v = plant_wo_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  // Center of mass tracking
-  // Weighting x-y higher than z, as they are more important to balancing
-  //  ComTrackingData center_of_mass_traj("com_traj", K_p_com, K_d_com,
-  //                                      W_com * FLAGS_cost_weight_multiplier,
-  //                                      plant_w_springs, plant_wo_springs);
-  auto center_of_mass_traj = std::make_unique<TransTaskSpaceTrackingData>(
+
+  auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "com_traj", osc_gains.K_p_pelvis, osc_gains.K_d_pelvis,
-      osc_gains.W_pelvis * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
-  center_of_mass_traj->AddPointToTrack("pelvis");
+      osc_gains.W_pelvis, plant_w_springs, plant_wo_springs);
+  pelvis_tracking_data->AddPointToTrack("pelvis");
   double cutoff_freq = 5;  // in Hz
   double tau = 1 / (2 * M_PI * cutoff_freq);
-  center_of_mass_traj->SetLowPassFilter(tau, {1});
-  osc->AddTrackingData(std::move(center_of_mass_traj));
+  pelvis_tracking_data->SetLowPassFilter(tau, {1});
+  osc->AddTrackingData(std::move(pelvis_tracking_data));
   auto pelvis_rot_tracking_data = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_rot_traj", osc_gains.K_p_pelvis_rot, osc_gains.K_d_pelvis_rot,
-      osc_gains.W_pelvis_rot * FLAGS_cost_weight_multiplier, plant_w_springs,
-      plant_wo_springs);
+      osc_gains.W_pelvis_rot, plant_w_springs, plant_wo_springs);
   pelvis_rot_tracking_data->AddFrameToTrack("pelvis");
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
 

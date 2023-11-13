@@ -15,7 +15,7 @@ PYBIND11_MODULE(polygon_utils, m) {
   m.doc() = "Binding geometry polygon simplification utils";
 
   m.def("ProcessTerrain2d", &geometry::ProcessTerrain2d, py::arg("terrain"))
-   .def("TestAcd", &geometry::TestAcd, py::arg("verts"))
+   .def("Acd", &geometry::Acd, py::arg("verts"), py::arg("concavity_threshold"))
    .def("GetAcdComponents", &geometry::GetAcdComponents, py::arg("planar_region"));
 
 

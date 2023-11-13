@@ -3,7 +3,7 @@
 #include <chrono>
 
 #include "alip_utils.h"
-#include "geometry/convex_foothold.h"
+#include "geometry/convex_polygon.h"
 #include "solvers/nonlinear_constraint.h"
 
 #include "drake/solvers/decision_variable.h"
@@ -92,10 +92,10 @@ class AlipMPC {
   void AddTrackingCost(
       const vector<Eigen::VectorXd> &xd,
       const Eigen::Matrix4d &Q, const Eigen::MatrixXd &Qf);
-  void AddFootholds(const vector<geometry::ConvexFoothold> &footholds) {
+  void AddFootholds(const vector<geometry::ConvexPolygon> &footholds) {
     footholds_.insert(footholds_.end(), footholds.begin(), footholds.end());
   }
-  std::vector<geometry::ConvexFoothold> footholds() const {return footholds_;}
+  std::vector<geometry::ConvexPolygon> footholds() const {return footholds_;}
   void AddFootholdRegularization(const Eigen::MatrixXd& W_footstep_reg);
   void UpdateFootholdRegularization(double scale, const Eigen::Vector3d& pST_SW);
 
@@ -110,9 +110,9 @@ class AlipMPC {
   void UpdateMaximumCurrentStanceTime(double tmax);
   void ActivateInitialTimeEqualityConstraint(double t);
   void UpdateNextFootstepReachabilityConstraint(
-      const geometry::ConvexFoothold &workspace);
+      const geometry::ConvexPolygon &workspace);
   void UpdateTrackingCost(const vector<Eigen::VectorXd>& xd);
-  void UpdateFootholds(const vector<geometry::ConvexFoothold> &footholds) {
+  void UpdateFootholds(const vector<geometry::ConvexPolygon> &footholds) {
     ClearFootholds();
     AddFootholds(footholds);
   }
@@ -208,7 +208,7 @@ class AlipMPC {
   vector<double> td_;
   vector<Eigen::VectorXd> xd_;
   vector<vector<int>> mode_sequnces_{};
-  vector<geometry::ConvexFoothold> footholds_;
+  vector<geometry::ConvexPolygon> footholds_;
   profile_data solve_time_;
 
   // problem setup methods

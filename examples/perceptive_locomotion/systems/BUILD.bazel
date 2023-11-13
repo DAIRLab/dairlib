@@ -19,7 +19,7 @@ cc_library(
     srcs = ["alip_mpfc_meshcat_visualizer.cc"],
     hdrs = ["alip_mpfc_meshcat_visualizer.h"],
     deps = [
-        "//geometry:convex_foothold_set",
+        "//geometry:convex_polygon_set",
         "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

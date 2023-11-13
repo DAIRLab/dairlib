@@ -3,11 +3,11 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_foothold_set.hpp"
-#include "geometry/convex_foothold_lcm_systems.h"
-#include "geometry/convex_foothold_set.h"
+#include "geometry/convex_polygon_lcm_systems.h"
+#include "geometry/convex_polygon_set.h"
 
-#include "geometry/convex_foothold_lcm_systems.h"
-#include "geometry/convex_foothold_ros_receiver.h"
+#include "geometry/convex_polygon_lcm_systems.h"
+#include "geometry/convex_polygon_ros_receiver.h"
 #include "systems/ros/ros_subscriber_system.h"
 #include "systems/ros/ros_publisher_system.h"
 
@@ -26,8 +26,8 @@ void SigintHandler(int sig) {
 namespace dairlib {
 
 
-using geometry::ConvexFoothold;
-using geometry::ConvexFootholdSet;
+using geometry::ConvexPolygon;
+using geometry::ConvexPolygonSet;
 using drake::systems::Simulator;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -46,7 +46,7 @@ DEFINE_double(conv_thresh, 0.15, "Convexity threshold for ACD");
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  ros::init(argc, argv, "planar_terrain_to_convex_foothold_lcm_bridge");
+  ros::init(argc, argv, "planar_terrain_to_convex_polygon_lcm_bridge");
   ros::NodeHandle node_handle;
   signal(SIGINT, SigintHandler);
   ros::AsyncSpinner spinner(1);
@@ -60,8 +60,8 @@ int DoMain(int argc, char* argv[]) {
                   FLAGS_foothold_topic, &node_handle));
 
   auto plane_receiver =
-      builder.AddSystem<geometry::ConvexFootholdRosReceiver>(FLAGS_conv_thresh);
-  auto foothold_sender = builder.AddSystem<geometry::ConvexFootholdSender>();
+      builder.AddSystem<geometry::ConvexPolygonRosReceiver>(FLAGS_conv_thresh);
+  auto foothold_sender = builder.AddSystem<geometry::ConvexPolygonSender>();
   auto foothold_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_foothold_set>(
           FLAGS_foothold_channel, &lcm_local,

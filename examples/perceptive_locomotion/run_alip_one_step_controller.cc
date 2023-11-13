@@ -1,5 +1,5 @@
 #include <iostream>
-#include <signal.h>
+
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
@@ -12,33 +12,14 @@
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/stepping_stone_utils.h"
-#include "solvers/solver_options_io.h"
-#include "systems/filters/floating_base_velocity_filter.h"
-#include "systems/controllers/footstep_planning/alip_mpfc_system.h"
-#include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
+
+#include "systems/controllers/footstep_planning/alip_one_step_footstep_controller.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "examples/perceptive_locomotion/gains/alip_minlp_gains.h"
-
-#include "geometry/convex_foothold_set.h"
-#include "geometry/convex_foothold_lcm_systems.h"
-
-#ifdef DAIR_ROS_ON
-#include "examples/perceptive_locomotion/systems/stance_foot_ros_sender.h"
-#include "geometry/convex_foothold_lcm_systems.h"
-#include "systems/ros/ros_subscriber_system.h"
-#include "systems/ros/ros_publisher_system.h"
-#include "ros/callback_queue.h"
-
-void SigintHandler(int sig) {
-  ros::shutdown();
-  exit(0);
-}
-
-#endif
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -54,14 +35,10 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using geometry::ConvexFoothold;
-using geometry::ConvexFootholdSet;
-
-using systems::controllers::AlipMPFC;
+using systems::controllers::AlipOneStepFootstepController;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::AlipMINLPGains;
 using systems::controllers::FootstepSender;
-using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;
 
 using drake::multibody::SpatialInertia;
@@ -80,9 +57,13 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
               "use CASSIE_STATE_DISPATCHER to get state from state estimator");
 
-DEFINE_string(channel_mpc_output, "ALIP_MPC", "LCM channel for mpc output");
+DEFINE_string(channel_foot, "FOOTSTEP_TARGET",
+              "LCM channel for footstep target");
 
-DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
+
+DEFINE_string(channel_fsm, "FSM", "lcm channel for fsm");
+
+DEFINE_string(channel_cassie_out, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
 
@@ -90,43 +71,20 @@ DEFINE_string(minlp_gains_filename,
               "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
               "Filepath to alip minlp gains");
 
-DEFINE_string(foothold_yaml, "", "yaml file with footholds from simulation");
-
-DEFINE_string(channel_terrain, "", "ros topic containing the footholds");
-
-DEFINE_string(stance_foot_topic, "/alip_mpc/stance_foot",
-              "ros topic with frame id of stance foot");
-
 DEFINE_bool(spring_model, true, "");
 
-DEFINE_bool(use_perception, false, "get footholds from perception system");
+DEFINE_bool(add_camera_inertia, true,
+            "whether to add the camera inertia to the plant model");
 
 DEFINE_bool(plan_offboard, false,
             "Sets the planner lcm TTL to be 1. "
             "Set to true to run planner on cassie-laptop");
-
-DEFINE_bool(publish_filtered_state, false,
-            "whether to publish the low pass filtered state");
-
-DEFINE_bool(add_camera_inertia, true,
-            "adds inertia from the realsense mount to the plant model");
 
 DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
 
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-#ifdef DAIR_ROS_ON
-  ros::init(argc, argv, "alip_minlp_controller");
-  ros::NodeHandle node_handle;
-  signal(SIGINT, SigintHandler);
-#else
-  if (FLAGS_use_perception) {
-    drake::log()->warn("Warning, using perception without building against ROS."
-                       " Did you mean to build with ros?");
-  }
-#endif
 
   auto gains_mpc =
       drake::yaml::LoadYamlFile<AlipMINLPGainsImport>(FLAGS_minlp_gains_filename);
@@ -158,15 +116,6 @@ int DoMain(int argc, char* argv[]) {
 
   gains_mpc.SetFilterData(
       plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
-
-  std::vector<ConvexFoothold> footholds;
-  if ( !FLAGS_foothold_yaml.empty() ) {
-    footholds =
-        multibody::LoadSteppingStonesFromYaml(FLAGS_foothold_yaml).footholds;
-  }
-  auto foothold_source =
-      std::make_unique<ConstantValueSource<double>>(
-      drake::Value<ConvexFootholdSet>(footholds));
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -202,110 +151,63 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
   std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
 
-  const auto& planner_solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-      FindResourceOrThrow(
-          "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml"
-      )).GetAsSolverOptions(drake::solvers::GurobiSolver::id());
-
-  auto pelvis_filt =
-      builder.AddSystem<systems::FloatingBaseVelocityButterworthFilter>(
-          plant_w_spr, gains_mpc.pelvis_vel_butter_order,
-          200, gains_mpc.pelvis_vel_butter_wc);
-
   auto foot_placement_controller =
-      builder.AddSystem<AlipMPFC>(
+      builder.AddSystem<AlipOneStepFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains_mpc.gains, planner_solver_options);
+          left_right_toe, gains_mpc.gains);
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
 
   auto cassie_out_receiver =
       builder.AddSystem(LcmSubscriberSystem::Make<lcmt_cassie_out>(
-          FLAGS_cassie_out_channel, &lcm_local));
+          FLAGS_channel_cassie_out, &lcm_local));
 
   auto cassie_out_to_radio =
       builder.AddSystem<systems::CassieOutToRadio>();
 
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.25);
+      plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.5);
 
-  auto mpc_output_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_alip_mpc_output>(
-          FLAGS_channel_mpc_output,
-          FLAGS_plan_offboard? &lcm_network : &lcm_local,
-          TriggerTypeSet({TriggerType::kForced})));
+  auto footstep_sender = builder.AddSystem<FootstepSender>();
 
-  auto mpc_debug_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_mpc_debug>(
-          "ALIP_MINLP_DEBUG", &lcm_local,
-          TriggerTypeSet({TriggerType::kForced})));
-
-#ifdef DAIR_ROS_ON
-  auto stance_publisher = builder.AddSystem(
-          systems::RosPublisherSystem<std_msgs::String>::Make(
-              FLAGS_stance_foot_topic, &node_handle));
-
-  std::unordered_map<int, std::string> stance_frames;
-  stance_frames[left_stance_state] = "toe_left";
-  stance_frames[right_stance_state] = "toe_right";
-  stance_frames[post_left_double_support_state] = "toe_left";
-  stance_frames[post_right_double_support_state] = "toe_right";
-
-  auto stance_sender =
-      builder.AddSystem<perceptive_locomotion::StanceFootRosSender>(stance_frames);
-
-  builder.Connect(foot_placement_controller->get_output_port_fsm(),
-                  stance_sender->get_input_port());
-  builder.Connect(*stance_sender, *stance_publisher);
-
-#endif
-
-  // --- Add and connect the source of the foothold information --- //
-  if ( !FLAGS_foothold_yaml.empty() ) {
-    DRAKE_ASSERT(FLAGS_channel_x == "CASSIE_STATE_SIMULATION");
-    auto foothold_oracle = builder.AddSystem(std::move(foothold_source));
-    builder.Connect(foothold_oracle->get_output_port(),
-                    foot_placement_controller->get_input_port_footholds());
+  std::unique_ptr<LcmPublisherSystem> footstep_pub_ptr;
+  std::unique_ptr<LcmPublisherSystem> fsm_pub_ptr;
+  if (FLAGS_plan_offboard) {
+    footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_network);
+    fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_channel_fsm, &lcm_network);
   } else {
-
-    if (FLAGS_use_perception) {
-
-      auto plane_subscriber = builder.AddSystem(
-          LcmSubscriberSystem::Make<lcmt_foothold_set>(
-              FLAGS_channel_terrain, &lcm_local));
-      auto plane_receiver =
-          builder.AddSystem<geometry::ConvexFootholdReceiver>();
-      builder.Connect(*plane_subscriber, *plane_receiver);
-      builder.Connect(plane_receiver->get_output_port(),
-                      foot_placement_controller->get_input_port_footholds());
-    } else {
-      auto foothold_oracle =
-          builder.AddSystem<FlatTerrainFootholdSource>(
-              plant_w_spr, context_w_spr.get(), left_right_toe);
-      builder.Connect(*state_receiver, *foothold_oracle);
-      builder.Connect(foothold_oracle->get_output_port(),
-                      foot_placement_controller->get_input_port_footholds());
+    footstep_pub_ptr = LcmPublisherSystem::Make<lcmt_footstep_target>(FLAGS_channel_foot, &lcm_local);
+    fsm_pub_ptr = LcmPublisherSystem::Make<lcmt_fsm_info>(FLAGS_channel_fsm, &lcm_local);
   }
-}
 
+  auto footstep_pub = builder.AddSystem(std::move(footstep_pub_ptr));
+  auto fsm_sender = builder.AddSystem<FsmSender>(plant_w_spr);
+  auto fsm_pub = builder.AddSystem(std::move(fsm_pub_ptr));
+  
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
-  builder.Connect(*state_receiver, *pelvis_filt);
-  builder.Connect(pelvis_filt->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_input_port_state());
-  builder.Connect(pelvis_filt->get_output_port(0),
+  builder.Connect(state_receiver->get_output_port(0),
                   foot_placement_controller->get_input_port_state());
+  builder.Connect(state_receiver->get_output_port(0),
+                  fsm_sender->get_input_port_state());
 
   // planner ports
   builder.Connect(high_level_command->get_output_port_xy(),
                   foot_placement_controller->get_input_port_vdes());
 
   // planner out ports
-  builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
-                  mpc_debug_pub->get_input_port());
+  builder.Connect(foot_placement_controller->get_output_port_fsm(),
+                  fsm_sender->get_input_port_fsm());
+  builder.Connect(foot_placement_controller->get_output_port_prev_impact_time(),
+                  fsm_sender->get_input_port_prev_switch_time());
+  builder.Connect(foot_placement_controller->get_output_port_next_impact_time(),
+                  fsm_sender->get_input_port_next_switch_time());
+  builder.Connect(foot_placement_controller->get_output_port_footstep_target(),
+                  footstep_sender->get_input_port());
 
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);
@@ -314,14 +216,20 @@ int DoMain(int argc, char* argv[]) {
 
 
   if (FLAGS_sim_delay > 0) {
-    auto zoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
-        FLAGS_sim_delay, drake::Value<dairlib::lcmt_alip_mpc_output>());
-    builder.Connect(foot_placement_controller->get_output_port_mpc_output(),
-                    zoh->get_input_port());
-    builder.Connect(*zoh, *mpc_output_pub);
+    auto fzoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+        FLAGS_sim_delay, drake::Value<dairlib::lcmt_footstep_target>());
+    builder.Connect(*footstep_sender, *fzoh);
+    builder.Connect(*fzoh, *footstep_pub);
+    auto fsmzoh = builder.AddSystem<drake::systems::ZeroOrderHold<double>>(
+        FLAGS_sim_delay, drake::Value<dairlib::lcmt_fsm_info>());
+    builder.Connect(fsm_sender->get_output_port_fsm_info(),
+                    fsmzoh->get_input_port());
+    builder.Connect(*fsmzoh, *fsm_pub);
+
   } else {
-    builder.Connect(foot_placement_controller->get_output_port_mpc_output(),
-                    mpc_output_pub->get_input_port());
+    builder.Connect(*footstep_sender, *footstep_pub);
+    builder.Connect(fsm_sender->get_output_port_fsm_info(),
+                    fsm_pub->get_input_port());
   }
 
   // Create the diagram
@@ -332,9 +240,9 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,
-      true);
-
+      false);
   loop.Simulate();
+
   return 0;
 }
 

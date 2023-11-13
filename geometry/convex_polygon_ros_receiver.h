@@ -2,16 +2,16 @@
 
 #include "dairlib/lcmt_foothold_set.hpp"
 #include "dairlib/lcmt_convex_decomposition_debug.hpp"
-#include "geometry/convex_foothold_set.h"
+#include "geometry/convex_polygon_set.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "convex_plane_decomposition_msgs/PlanarTerrain.h"
 
 namespace dairlib::geometry {
 
-class ConvexFootholdRosReceiver : public drake::systems::LeafSystem<double> {
+class ConvexPolygonRosReceiver : public drake::systems::LeafSystem<double> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ConvexFootholdRosReceiver);
-  ConvexFootholdRosReceiver(double convexity_threshold);
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ConvexPolygonRosReceiver);
+  ConvexPolygonRosReceiver(double convexity_threshold);
   const drake::systems::OutputPort<double>& get_output_port_footholds() const {
     return this->get_output_port(foothold_output_port_);
   }
@@ -25,7 +25,7 @@ class ConvexFootholdRosReceiver : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
   void CopyTerrain(const drake::systems::Context<double> &context,
-                   ConvexFootholdSet *footholds) const;
+                   ConvexPolygonSet *footholds) const;
   void CopyDebug(const drake::systems::Context<double>& context,
                  lcmt_convex_decomposition_debug* debug) const;
 

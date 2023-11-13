@@ -11,8 +11,6 @@ namespace dairlib::systems::controllers {
 using multibody::ReExpressWorldVector3InBodyYawFrame;
 using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
-using geometry::ConvexFootholdSet;
-using geometry::ConvexFoothold;
 using alip_utils::Stance;
 
 using Eigen::Vector2d;
@@ -76,9 +74,6 @@ AlipOneStepFootstepController::AlipOneStepFootstepController(
       "x, u, t", OutputVector<double>(nq_, nv_, nu_))
       .get_index();
   vdes_input_port_ = DeclareVectorInputPort("vdes_x_y", 2).get_index();
-  foothold_input_port_ = DeclareAbstractInputPort(
-      "footholds", drake::Value<ConvexFootholdSet>())
-      .get_index();
 
   // output ports
   next_impact_time_output_port_ = DeclareStateOutputPort(
@@ -107,17 +102,11 @@ drake::systems::EventStatus AlipOneStepFootstepController::UnrestrictedUpdate(
       state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  auto foothold_set = this->EvalAbstractInput(context, foothold_input_port_)->
-      get_value<ConvexFootholdSet>();
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
   double t = robot_output->get_timestamp();
   SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
-
-  // re-express footholds in robot yaw frame from world frame
-  foothold_set.ReExpressInNewFrame(
-      GetBodyYawRotation_R_WB<double>(plant_, *context_, "pelvis"));
 
   // initialize local variables
   int fsm_idx = static_cast<int>(
@@ -175,8 +164,6 @@ drake::systems::EventStatus AlipOneStepFootstepController::UnrestrictedUpdate(
   auto target = state->get_mutable_discrete_state(
       footstep_target_state_idx_).get_mutable_value();
   target.head<2>() = footstep_target;
-  target(2) =
-      foothold_set.footholds().front().GetEqualityConstraintMatrices().second(0);
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(

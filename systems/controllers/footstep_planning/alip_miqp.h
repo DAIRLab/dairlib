@@ -30,7 +30,7 @@ class AlipMIQP final : public AlipMPC {
     }
   }
 
-  std::vector<geometry::ConvexFoothold> GetFootholdSequence() const;
+  std::vector<geometry::ConvexPolygon> GetFootholdSequence() const;
   void AddMode() final;
   void Build(const drake::solvers::SolverOptions &solver_options) final;
   void Build() final;

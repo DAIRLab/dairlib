@@ -11,8 +11,8 @@
 
 
 namespace dairlib::perceptive_locomotion {
-using geometry::ConvexFoothold;
-using geometry::ConvexFootholdSet;
+using geometry::ConvexPolygon;
+using geometry::ConvexPolygonSet;
 using Eigen::Matrix3d;
 using Eigen::Matrix3Xd;
 using systems::OutputVector;
@@ -89,7 +89,7 @@ void AlipMPFCMeshcatVisualizer::DrawFootsteps(
   }
 }
 
-void AlipMPFCMeshcatVisualizer::DrawFootholds(ConvexFootholdSet& foothold_set,
+void AlipMPFCMeshcatVisualizer::DrawFootholds(ConvexPolygonSet& foothold_set,
                                               int n_prev,
                                               const std::string& prefix) const {
   std::vector<drake::geometry::Rgba> rgb = {
@@ -141,13 +141,13 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
   const auto& mpc_debug = EvalAbstractInput(
       context, mpc_debug_input_port_)->get_value<lcmt_mpc_debug>();
 
-  ConvexFootholdSet foothold_set;
+  ConvexPolygonSet foothold_set;
   if (get_input_port_terrain().HasValue(context)) {
     auto foothold_set_msg = EvalAbstractInput(
         context, foothold_input_port_)->get_value<lcmt_foothold_set>();
-    foothold_set = ConvexFootholdSet::CopyFromLcm(foothold_set_msg);
+    foothold_set = ConvexPolygonSet::CopyFromLcm(foothold_set_msg);
   } else {
-    foothold_set = ConvexFootholdSet::CopyFromLcm(mpc_debug.footholds);
+    foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.footholds);
     foothold_set.ReExpressInNewFrame(R_yaw.transpose());
   }
 

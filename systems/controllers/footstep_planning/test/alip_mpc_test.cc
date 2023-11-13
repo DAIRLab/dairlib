@@ -6,7 +6,7 @@
 
 namespace dairlib::systems::controllers {
 
-using geometry::ConvexFoothold;
+using geometry::ConvexPolygon;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -21,8 +21,8 @@ struct mpc_profiling_data {
   double miqp_solve_time;
 };
 
-std::vector<ConvexFoothold> GetRandomFootholds(int n, double r) {
-  std::vector<ConvexFoothold> footholds;
+std::vector<ConvexPolygon> GetRandomFootholds(int n, double r) {
+  std::vector<ConvexPolygon> footholds;
   for (int i = 0; i < n; i++) {
     Vector3d origin = Vector3d::Random();
     Vector3d normal = Vector3d::Random();
@@ -31,7 +31,7 @@ std::vector<ConvexFoothold> GetRandomFootholds(int n, double r) {
     normal(1) *= std::min(1.0,  0.2 / abs(normal(1)));
     origin(2) *= std::min(1.0,  0.5 / abs(origin(2)));
     normal.normalize();
-    auto foothold = ConvexFoothold();
+    auto foothold = ConvexPolygon();
     foothold.SetContactPlane(normal, origin);
     for (auto& j : {-1.0, 1.0}){
       for (auto& k: {-1.0, 1.0}) {

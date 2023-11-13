@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 
-#include "geometry/convex_foothold_set.h"
+#include "geometry/convex_polygon_set.h"
 #include "drake/common/test_utilities/eigen_matrix_compare.h"
 
 namespace dairlib::geometry{
 namespace {
 using drake::CompareMatrices;
 
-class ConvexFootholdTest : public ::testing::Test {
+class ConvexPolygonTest : public ::testing::Test {
  protected:
   void SetUp() override {
     verts_ << -1, 0, 1, 0,
@@ -19,12 +19,12 @@ class ConvexFootholdTest : public ::testing::Test {
     }
   }
   Eigen::Matrix<double, 3, 4> verts_;
-  ConvexFoothold diamond_;
-  std::vector<ConvexFoothold> footholds_;
+  ConvexPolygon diamond_;
+  std::vector<ConvexPolygon> footholds_;
  };
 }
 
-TEST_F(ConvexFootholdTest, SortFacesTest) {
+TEST_F(ConvexPolygonTest, SortFacesTest) {
   // check faces already in yaw ordering get sorted correctly
   const auto& [A1, b1] = diamond_.GetConstraintMatrices();
   diamond_.SortFacesByYawAngle();
@@ -33,7 +33,7 @@ TEST_F(ConvexFootholdTest, SortFacesTest) {
   EXPECT_TRUE(CompareMatrices(b1, b2, 1e-12));
 
   // check faces not in yaw ordering get sorted correctly
-  ConvexFoothold f;
+  ConvexPolygon f;
   f.SetContactPlane(Eigen::Vector3d::UnitZ(), 0);
   for (const auto i : {3, 1, 2, 0}) {
     f.AddHalfspace(A1.row(i).transpose(), Eigen::VectorXd::Constant(1, b1(i)));
@@ -44,7 +44,7 @@ TEST_F(ConvexFootholdTest, SortFacesTest) {
   EXPECT_TRUE(CompareMatrices(b1, b3, 1e-12));
 }
 
-TEST_F(ConvexFootholdTest, GetVertexTest) {
+TEST_F(ConvexPolygonTest, GetVertexTest) {
   const auto& verts_processed = diamond_.GetVertices();
   EXPECT_TRUE(CompareMatrices(verts_, verts_processed, 0.01));
 }

@@ -1,7 +1,7 @@
 #include <limits>
 #include <chrono>
 #include <iostream>
-#include "convex_foothold_set.h"
+#include "convex_polygon_set.h"
 #include "common/eigen_utils.h"
 
 #include "drake/solvers/mathematical_program.h"
@@ -20,7 +20,7 @@ using std::numeric_limits;
 namespace dairlib{
 namespace geometry{
 
-ConvexFootholdSet ConvexFootholdSet::GetSubsetCloseToPoint(
+ConvexPolygonSet ConvexPolygonSet::GetSubsetCloseToPoint(
     const Vector3d &query_pt, double threshold) const {
 
   drake::solvers::MathematicalProgram prog;
@@ -41,7 +41,7 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetCloseToPoint(
   const auto result = solver.Solve(prog);
   DRAKE_ASSERT(result.is_success());
 
-  ConvexFootholdSet close;
+  ConvexPolygonSet close;
   for (int i = 0; i < set_.size(); i++) {
     auto p = result.GetSolution(pp.at(i));
     if ((query_pt - p).norm() < threshold) {
@@ -52,7 +52,7 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetCloseToPoint(
 }
 
 
-ConvexFootholdSet ConvexFootholdSet::GetSubsetInForwardLookingCone(
+ConvexPolygonSet ConvexPolygonSet::GetSubsetInForwardLookingCone(
     const Vector3d &query_pt, double cone_angle) const {
   Matrix2d Aq;
   Aq << cos(cone_angle), sin(cone_angle), cos(cone_angle), -sin(cone_angle);
@@ -84,7 +84,7 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetInForwardLookingCone(
   const auto result = solver.Solve(prog);
   DRAKE_ASSERT(result.is_success());
 
-  ConvexFootholdSet ret;
+  ConvexPolygonSet ret;
   for (int i = 0; i < set_.size(); i++) {
     auto p = result.GetSolution(pp.at(i));
     auto q = result.GetSolution(qq.at(i));
@@ -95,19 +95,19 @@ ConvexFootholdSet ConvexFootholdSet::GetSubsetInForwardLookingCone(
   return ret;
 }
 
-void ConvexFootholdSet::ReExpressInNewFrame(const Matrix3d &R_WF) {
+void ConvexPolygonSet::ReExpressInNewFrame(const Matrix3d &R_WF) {
   for (auto& f: set_) {
     f.ReExpressInNewFrame(R_WF);
   }
 }
 
-void ConvexFootholdSet::CopyToLcm(lcmt_foothold_set *set) const {
+void ConvexPolygonSet::CopyToLcm(lcmt_foothold_set *set) const {
   set->footholds.clear();
   set->n = this->size();
-  for (const auto& foothold : set_) {
+  for (const auto& polygon : set_) {
     lcmt_convex_foothold foothold_lcm;
-    const auto& [Aeq, beq] = foothold.GetEqualityConstraintMatrices();
-    const auto& [A, b] = foothold.GetConstraintMatrices();
+    const auto& [Aeq, beq] = polygon.GetEqualityConstraintMatrices();
+    const auto& [A, b] = polygon.GetConstraintMatrices();
     for (int i = 0; i < 3; i++) {
       foothold_lcm.Aeq[i] = Aeq(i);
     }
@@ -124,10 +124,10 @@ void ConvexFootholdSet::CopyToLcm(lcmt_foothold_set *set) const {
   }
 }
 
-ConvexFootholdSet ConvexFootholdSet::CopyFromLcm(const lcmt_foothold_set& set_lcm) {
-  ConvexFootholdSet set{};
+ConvexPolygonSet ConvexPolygonSet::CopyFromLcm(const lcmt_foothold_set& set_lcm) {
+  ConvexPolygonSet set{};
   for (const auto& foothold_lcm : set_lcm.footholds) {
-    ConvexFoothold foothold;
+    ConvexPolygon foothold;
     const Vector3d Aeq = Vector3d::Map(foothold_lcm.Aeq);
     foothold.SetContactPlane(Aeq, foothold_lcm.beq);
     for (int i = 0; i < foothold_lcm.nfaces; i++) {
@@ -141,10 +141,10 @@ ConvexFootholdSet ConvexFootholdSet::CopyFromLcm(const lcmt_foothold_set& set_lc
   return set;
 }
 
-bool ConvexFootholdSet::Feasible2d(const Vector3d& pt, double tol) const {
+bool ConvexPolygonSet::Feasible2d(const Vector3d& pt, double tol) const {
   return std::any_of(
       set_.begin(), set_.end(),
-      [&tol, &pt](const ConvexFoothold& f) {
+      [&tol, &pt](const ConvexPolygon& f) {
         return f.Get2dViolation(pt) < tol;
       });
 }

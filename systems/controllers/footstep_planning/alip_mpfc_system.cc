@@ -11,8 +11,8 @@ namespace dairlib::systems::controllers {
 using multibody::ReExpressWorldVector3InBodyYawFrame;
 using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
-using geometry::ConvexFootholdSet;
-using geometry::ConvexFoothold;
+using geometry::ConvexPolygonSet;
+using geometry::ConvexPolygon;
 using alip_utils::Stance;
 
 using Eigen::Vector2d;
@@ -89,7 +89,7 @@ AlipMPFC::AlipMPFC(
   trajopt_.SetInputLimit(gains_.u_max);
   trajopt_.set_xlim(gains.xlim);
   trajopt_.Build(trajopt_solver_options);
-  trajopt_.UpdateFootholds({ConvexFoothold::MakeFlatGround()});
+  trajopt_.UpdateFootholds({ConvexPolygon::MakeFlatGround()});
   trajopt_.CalcOptimalFootstepPlan(
       -0.5 * gains_.stance_width * Vector4d::UnitY(),
       0.5 * gains_.stance_width * Vector3d::UnitY());
@@ -112,7 +112,7 @@ AlipMPFC::AlipMPFC(
       .get_index();
   vdes_input_port_ = DeclareVectorInputPort("vdes_x_y", 2).get_index();
   foothold_input_port_ = DeclareAbstractInputPort(
-      "footholds", drake::Value<ConvexFootholdSet>())
+      "footholds", drake::Value<ConvexPolygonSet>())
       .get_index();
 
   // output ports
@@ -139,7 +139,7 @@ drake::systems::EventStatus AlipMPFC::UnrestrictedUpdate(
   double t_prev_impact =
       state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
   auto foothold_set = this->EvalAbstractInput(context, foothold_input_port_)->
-      get_value<ConvexFootholdSet>();
+      get_value<ConvexPolygonSet>();
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
@@ -275,7 +275,7 @@ drake::systems::EventStatus AlipMPFC::UnrestrictedUpdate(
   auto pp = trajopt_.GetFootstepSolution();
   trajopt_.UpdateFootholdRegularization(foothold_reg_scaling, pp.at(1) - pp.at(0));
 
-  ConvexFoothold workspace;
+  ConvexPolygon workspace;
   Vector3d com_xy(CoM_b(0), CoM_b(1), p_b(2));
   if (committed){
     double c = gains_.next_footstep_constraint_radius;
@@ -346,7 +346,7 @@ void AlipMPFC::CopyMpcDebugToLcm(
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
 
-  auto foothold_set = ConvexFootholdSet(trajopt_.footholds());
+  auto foothold_set = ConvexPolygonSet(trajopt_.footholds());
   foothold_set.CopyToLcm(&mpc_debug->footholds);
 
   int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);

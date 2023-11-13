@@ -2,7 +2,7 @@
 #include <iostream>
 
 // dair includes
-#include "convex_foothold_lcm_systems.h"
+#include "convex_polygon_lcm_systems.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -13,30 +13,30 @@ using drake::systems::Context;
 namespace dairlib::geometry {
 
 
-ConvexFootholdReceiver::ConvexFootholdReceiver() {
+ConvexPolygonReceiver::ConvexPolygonReceiver() {
   DeclareAbstractInputPort("lcmt_convex_foothold_set",
                            drake::Value<lcmt_foothold_set>());
   DeclareAbstractOutputPort("convex_foothold_set",
-                            &ConvexFootholdReceiver::CopyTerrain);
+                            &ConvexPolygonReceiver::CopyTerrain);
 }
 
-void ConvexFootholdReceiver::CopyTerrain(
-    const Context<double> &context, ConvexFootholdSet *footholds) const {
+void ConvexPolygonReceiver::CopyTerrain(
+    const Context<double> &context, ConvexPolygonSet *footholds) const {
   auto foothold_set = EvalAbstractInput(context, 0)->get_value<lcmt_foothold_set>();
-  *footholds = ConvexFootholdSet::CopyFromLcm(foothold_set);
+  *footholds = ConvexPolygonSet::CopyFromLcm(foothold_set);
 }
 
-ConvexFootholdSender::ConvexFootholdSender() {
-  ConvexFootholdSet set;
+ConvexPolygonSender::ConvexPolygonSender() {
+  ConvexPolygonSet set;
   DeclareAbstractInputPort("convex_foothold_set",
-                           drake::Value<ConvexFootholdSet>(set));
+                           drake::Value<ConvexPolygonSet>(set));
   DeclareAbstractOutputPort("lcmt_convex_foothold_set",
-                            &ConvexFootholdSender::CopyTerrain);
+                            &ConvexPolygonSender::CopyTerrain);
 }
 
-void ConvexFootholdSender::CopyTerrain(
+void ConvexPolygonSender::CopyTerrain(
     const Context<double> &context, lcmt_foothold_set *footholds) const {
-  auto foothold_set = EvalAbstractInput(context, 0)->get_value<ConvexFootholdSet>();
+  auto foothold_set = EvalAbstractInput(context, 0)->get_value<ConvexPolygonSet>();
   foothold_set.CopyToLcm(footholds);
 }
 

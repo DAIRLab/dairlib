@@ -3,12 +3,12 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "convex_foothold_ros_receiver",
-    srcs = ["convex_foothold_ros_receiver.cc"],
-    hdrs = ["convex_foothold_ros_receiver.h"],
+    name = "convex_polygon_ros_receiver",
+    srcs = ["convex_polygon_ros_receiver.cc"],
+    hdrs = ["convex_polygon_ros_receiver.h"],
     tags = ["ros"],
     deps = [
-        ":convex_foothold_set",
+        ":convex_polygon_set",
         ":polygon_utils",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
@@ -17,20 +17,20 @@ cc_library(
 )
 
 cc_library(
-    name = "convex_foothold_lcm_systems",
-    srcs = ["convex_foothold_lcm_systems.cc"],
-    hdrs = ["convex_foothold_lcm_systems.h"],
+    name = "convex_polygon_lcm_systems",
+    srcs = ["convex_polygon_lcm_systems.cc"],
+    hdrs = ["convex_polygon_lcm_systems.h"],
     deps = [
-        ":convex_foothold_set",
+        ":convex_polygon_set",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
-    name = "convex_foothold",
-    srcs = ["convex_foothold.cc"],
-    hdrs = ["convex_foothold.h"],
+    name = "convex_polygon",
+    srcs = ["convex_polygon.cc"],
+    hdrs = ["convex_polygon.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "@eigen",
@@ -43,8 +43,8 @@ cc_library(
     hdrs = ["polygon_utils.h"],
     tags = ["ros"],
     deps = [
-        ":convex_foothold",
-        ":convex_foothold_set",
+        ":convex_polygon",
+        ":convex_polygon_set",
         "//solvers:fast_osqp_solver",
         "@acd2d",
         "@ros-local",
@@ -52,11 +52,11 @@ cc_library(
 )
 
 cc_library(
-    name = "convex_foothold_set",
-    srcs = ["convex_foothold_set.cc"],
-    hdrs = ["convex_foothold_set.h"],
+    name = "convex_polygon_set",
+    srcs = ["convex_polygon_set.cc"],
+    hdrs = ["convex_polygon_set.h"],
     deps = [
-        ":convex_foothold",
+        ":convex_polygon",
         "//common:eigen_utils",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
@@ -75,12 +75,12 @@ cc_binary(
 )
 
 cc_test(
-    name = "convex_foothold_test",
+    name = "convex_polygon_test",
     size = "small",
-    srcs = ["test/convex_foothold_test.cc"],
+    srcs = ["test/convex_polygon_test.cc"],
     deps = [
-        ":convex_foothold",
-        ":convex_foothold_set",
+        ":convex_polygon",
+        ":convex_polygon_set",
         "//common",
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",

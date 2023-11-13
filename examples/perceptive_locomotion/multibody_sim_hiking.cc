@@ -25,7 +25,7 @@
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
 #include "systems/ros/multibody_plant_tf_broadcaster_system.h"
-#include "systems/perception/drake_to_ros_pointcloud.h"
+#include "systems/perception/pointcloud/drake_to_ros_pointcloud.h"
 
 void SigintHandler(int sig) {
   ros::shutdown();

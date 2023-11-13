@@ -439,7 +439,7 @@ void AlipMPC::UpdateInitialGuess() {
   prog_->SetInitialGuessForAllVariables(solution_.first.GetSolution());
 }
 
-void AlipMPC::UpdateNextFootstepReachabilityConstraint(const geometry::ConvexFoothold &workspace) {
+void AlipMPC::UpdateNextFootstepReachabilityConstraint(const geometry::ConvexPolygon &workspace) {
 
   const auto& [Af, bf] = workspace.GetConstraintMatrices();
   double neg_inf  = -numeric_limits<double>::infinity();

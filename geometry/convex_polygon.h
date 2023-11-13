@@ -11,9 +11,9 @@ constexpr int kMaxFootholdFaces = 10;
 /// kMaxFootholdFaces inequality constraints defining the extents of the
 /// foothold. No effort is made to check feasibility or reasonableness of any
 /// combination of constraints. No frame information is supplied.
-class ConvexFoothold {
+class ConvexPolygon {
  public:
-  ConvexFoothold()= default;
+  ConvexPolygon()= default;
 
   /*
    * Set the contact plane by supplying a normal and a point on the
@@ -66,8 +66,8 @@ class ConvexFoothold {
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   Eigen::Matrix3Xd GetVertices();
 
-  static ConvexFoothold MakeFlatGround(double half_len=100.0) {
-    ConvexFoothold foothold;
+  static ConvexPolygon MakeFlatGround(double half_len=100.0) {
+    ConvexPolygon foothold;
     foothold.SetContactPlane(Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
     foothold.AddFace(Eigen::Vector3d::UnitX(),
                      half_len * Eigen::Vector3d::UnitX());

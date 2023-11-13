@@ -4,7 +4,7 @@
 #include "dairlib/lcmt_mpc_debug.hpp"
 
 // dairlib
-#include "geometry/convex_foothold_set.h"
+#include "geometry/convex_polygon_set.h"
 
 // drake
 #include "drake/systems/framework/leaf_system.h"
@@ -52,7 +52,7 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
     return "/foothold_meshes/" + std::to_string(i);
   }
 
-  void DrawFootholds(geometry::ConvexFootholdSet& footholds,
+  void DrawFootholds(geometry::ConvexPolygonSet& footholds,
                      int n_prev_footholds,
                      const std::string& prefix="") const;
 

@@ -1,7 +1,7 @@
 #pragma once
 
 // dairlib includes
-#include "geometry/convex_foothold_set.h"
+#include "geometry/convex_polygon_set.h"
 
 // ros includes
 #include "tf2_eigen/tf2_eigen.h"
@@ -19,11 +19,11 @@ namespace dairlib {
 namespace geometry {
 
 /*!
- * Makes a convex foothold by simply taking the convex hull of a non-convex
+ * Makes a convex polygon by simply taking the convex hull of a non-convex
  * planar region. Useful for debugging and visualizations but not recommended
  * for footstep planning
  */
-ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
+ConvexPolygon GetConvexHullOfPlanarRegion(
     const convex_plane_decomposition_msgs::PlanarRegion &foothold);
 
 /*!
@@ -34,7 +34,7 @@ ConvexFoothold MakeFootholdFromConvexHullOfPlanarRegion(
  * pydairlib.geometry.polygon_utils to enable testing the entire pipeline from
  * python.
  */
-std::vector<ConvexFoothold> ProcessTerrain2d(
+std::vector<ConvexPolygon> ProcessTerrain2d(
     std::vector<
         std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>> terrain);
 
@@ -48,29 +48,35 @@ std::vector<Eigen::MatrixXd> GetAcdComponents(
 /*!
  * Main method to decompose a set of planar regions into convex footholds
  * @param terrain the terrain to be processed
- * @param convexity_threshold the convexity threshold to use for ACD
+ * @param concavity_threshold the maximum concavity threshold to use for ACD
  * @return Convex decomposition of the terrrain
  */
-std::vector<ConvexFoothold> DecomposeTerrain(
+std::vector<ConvexPolygon> DecomposeTerrain(
     const convex_plane_decomposition_msgs::PlanarTerrain &terrain,
-    double convexity_threshold);
+    double concavity_threshold);
 
-
-std::vector<ConvexFoothold> DecomposeTerrain(
+/*!
+ * Method to decompose a single planar region into a set of ocnvex polygons
+ * @param planar_region the planar region to decompose
+ * @param concavity_threshold the concavity threshold to use for ACD
+ * @return Convex decomposition of the terrain as a vector of Convex Footholds
+ */
+std::vector<ConvexPolygon> DecomposeRegion(
     const convex_plane_decomposition_msgs::PlanarRegion &planar_region,
-    double convexity_threshold);
+    double concavity_threshold);
 
-std::vector<Eigen::MatrixXd> TestAcd(const Eigen::MatrixXd &verts);
+std::vector<Eigen::MatrixXd> Acd(const Eigen::MatrixXd &verts,
+                                 double concavity_threshold);
 
 void MaybeAddFootholdToSetFromRos(
-    ConvexFootholdSet &footholds,
+    ConvexPolygonSet &footholds,
     const convex_plane_decomposition_msgs::PlanarRegion &foothold,
     double minimum_area = 0.2 * 0.2);
 
-ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
+ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
     const convex_plane_decomposition_msgs::PlanarRegion &foothold);
 
-ConvexFoothold MakeFootholdFromInscribedConvexPolygon(
+ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
     const Eigen::MatrixXd &verts,
     const drake::geometry::optimization::VPolytope &convex_hull,
     const Eigen::Isometry3d &X_WP);
@@ -82,11 +88,11 @@ drake::geometry::optimization::HPolyhedron
 HPolyhedronFrom2dSortedConvexVPolytope(
     const drake::geometry::optimization::VPolytope &poly_in);
 
-ConvexFoothold MakeFootholdFromConvexPolytope(
+ConvexPolygon MakeFootholdFromConvexPolytope(
     const drake::geometry::optimization::VPolytope &convex_poly2d,
     const Eigen::Isometry3d &plane_pose);
 
-ConvexFoothold MakeFootholdFromConvexPolytope(
+ConvexPolygon MakeFootholdFromConvexPolytope(
     const Eigen::MatrixXd &convex_poly2d,
     const Eigen::Isometry3d &plane_pose);
 
@@ -145,7 +151,12 @@ acd2d::cd_polygon MakeAcdPolygon(
 
 Eigen::MatrixXd Acd2d2Eigen(const acd2d::cd_poly &poly);
 
-double Area(const Eigen::MatrixXd &verts);
-double Area(const convex_plane_decomposition_msgs::Polygon2d &poly);
+/*!
+ * Calculates the area of a 2D polygon using the shoelace formula
+ * @param verts Matrix where each column is the next vertex of the polygon
+ * @return the area of the polygon
+ */
+double PolygonArea(const Eigen::MatrixXd &verts);
+double PolygonArea(const convex_plane_decomposition_msgs::Polygon2d &poly);
 } // namespace geometry
 } // namespace dairlib

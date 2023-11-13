@@ -13,7 +13,7 @@ using Eigen::RowVector3d;
 using Eigen::RowVectorXd;
 
 using drake::solvers::GurobiSolver;
-using geometry::ConvexFoothold;
+using geometry::ConvexPolygon;
 using solvers::LinearBigMConstraint;
 using solvers::LinearBigMEqualityConstraint;
 
@@ -170,9 +170,9 @@ Vector3d AlipMIQP::SnapFootstepToTopFoothold(const Vector3d &p) const {
   return pnew;
 }
 
-vector<ConvexFoothold> AlipMIQP::GetFootholdSequence() const {
+vector<ConvexPolygon> AlipMIQP::GetFootholdSequence() const {
   auto integer_sol = GetFootholdSelection();
-  std::vector<ConvexFoothold> footholds_sol;
+  std::vector<ConvexPolygon> footholds_sol;
   for (const auto &z : integer_sol) {
     for (int i = 0; i < z.rows(); i++) {
       if (z(i) > 0.9) {

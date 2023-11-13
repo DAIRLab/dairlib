@@ -1,4 +1,4 @@
-#include "geometry/convex_foothold.h"
+#include "geometry/convex_polygon.h"
 
 namespace dairlib::geometry{
 
@@ -10,7 +10,7 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 
-void ConvexFoothold::SetContactPlane(const Vector3d& normal,
+void ConvexPolygon::SetContactPlane(const Vector3d& normal,
                                      const Vector3d& pt) {
   A_eq_ = normal.transpose();
   b_eq_ = normal.dot(pt) * VectorXd::Ones(1);
@@ -18,12 +18,12 @@ void ConvexFoothold::SetContactPlane(const Vector3d& normal,
 
 // Rotate the coordinate frame so that the constraint A x_W <= b
 // becomes A R_WF x_F <= b
-void ConvexFoothold::ReExpressInNewFrame(const Eigen::Matrix3d &R_WF) {
+void ConvexPolygon::ReExpressInNewFrame(const Eigen::Matrix3d &R_WF) {
   A_ = A_ * R_WF;
   A_eq_ = A_eq_ * R_WF;
 }
 
-void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {
+void ConvexPolygon::AddHalfspace(Vector3d a, VectorXd b) {
   if (A_.rows() == 0) {
     A_ = a.transpose();
     b_ = b;
@@ -36,31 +36,31 @@ void ConvexFoothold::AddHalfspace(Vector3d a, VectorXd b) {
 }
 
 // Add a face with the (outward facing) normal and a point on the face
-void ConvexFoothold::AddFace(const Vector3d& normal, const Vector3d& pt) {
+void ConvexPolygon::AddFace(const Vector3d& normal, const Vector3d& pt) {
   AddHalfspace(normal, normal.dot(pt) * VectorXd::Ones(1));
 }
 
-void ConvexFoothold::AddVertices(const Vector3d &v1, const Vector3d &v2) {
+void ConvexPolygon::AddVertices(const Vector3d &v1, const Vector3d &v2) {
   Vector3d face = v2 - v1;
   Vector3d normal = face.cross(A_eq_.transpose());
   AddFace(normal, v1);
 }
 
-std::pair<MatrixXd, VectorXd> ConvexFoothold::GetConstraintMatrices() const {
+std::pair<MatrixXd, VectorXd> ConvexPolygon::GetConstraintMatrices() const {
   return {A_, b_};
 }
 
-std::pair<MatrixXd, VectorXd> ConvexFoothold::GetEqualityConstraintMatrices() const {
+std::pair<MatrixXd, VectorXd> ConvexPolygon::GetEqualityConstraintMatrices() const {
   return {A_eq_, b_eq_};
 }
 
-double ConvexFoothold::Get2dViolation(const Eigen::Vector3d &pt) const {
+double ConvexPolygon::Get2dViolation(const Eigen::Vector3d &pt) const {
   const auto& [A, b] = GetConstraintMatrices();
   const auto viol = A * pt - b;
   return viol.maxCoeff();
 }
 
-Matrix3d ConvexFoothold::R_WF() const {
+Matrix3d ConvexPolygon::R_WF() const {
   Vector3d b_z = A_eq_.transpose().normalized();
   Vector3d b_x (b_z(2), 0, -b_z(0));
   b_x.normalize();
@@ -81,7 +81,7 @@ bool yaw_greater(const RowVector3d& a, const RowVector3d& b, const Matrix3d& R){
 }
 }
 
-void ConvexFoothold::SortFacesByYawAngle() {
+void ConvexPolygon::SortFacesByYawAngle() {
   const Matrix3d R_FW = R_WF().transpose();
   // Cheeky little insertion sort since these are small matrices
   for (int i = 1; i < A_.rows(); i++) {
@@ -94,7 +94,7 @@ void ConvexFoothold::SortFacesByYawAngle() {
   }
 }
 
-Vector3d ConvexFoothold::SolveForVertexSharedByFaces(int i, int j) {
+Vector3d ConvexPolygon::SolveForVertexSharedByFaces(int i, int j) {
   Matrix3d A = Matrix3d::Zero();
   Vector3d b = Vector3d::Zero();
   A.row(0) = A_eq_;
@@ -106,7 +106,7 @@ Vector3d ConvexFoothold::SolveForVertexSharedByFaces(int i, int j) {
   return A.inverse() * b;
 }
 
-Matrix3Xd ConvexFoothold::GetVertices() {
+Matrix3Xd ConvexPolygon::GetVertices() {
   SortFacesByYawAngle();
   Matrix3Xd verts = Matrix3Xd::Zero(3, A_.rows());
   for (int i = 1; i < A_.rows(); i++) {
@@ -116,7 +116,7 @@ Matrix3Xd ConvexFoothold::GetVertices() {
   return verts;
 }
 
-std::pair<Matrix3Xd, Matrix3Xi> ConvexFoothold::GetSurfaceMesh() {
+std::pair<Matrix3Xd, Matrix3Xi> ConvexPolygon::GetSurfaceMesh() {
   int N = A_.rows();
   Matrix3Xd verts = Matrix3Xd::Zero(3, N + 1);
   verts.leftCols(N) = GetVertices();

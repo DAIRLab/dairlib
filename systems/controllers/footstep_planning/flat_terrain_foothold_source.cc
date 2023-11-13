@@ -5,7 +5,7 @@
 namespace dairlib::systems {
 
 using multibody::SetPositionsAndVelocitiesIfNew;
-using geometry::ConvexFoothold;
+using geometry::ConvexPolygon;
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -26,14 +26,14 @@ FlatTerrainFootholdSource::FlatTerrainFootholdSource(
                                       plant_.num_actuators()));
 
   DeclareAbstractOutputPort("footholds",
-                            geometry::ConvexFootholdSet(),
+                            geometry::ConvexPolygonSet(),
                             &FlatTerrainFootholdSource::CalcFoothold);
 
 }
 
 void FlatTerrainFootholdSource::CalcFoothold(
     const Context<double> &context,
-    geometry::ConvexFootholdSet *footholds) const {
+    geometry::ConvexPolygonSet *footholds) const {
 
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, 0));
@@ -56,10 +56,10 @@ void FlatTerrainFootholdSource::CalcFoothold(
   double h = std::min(left_pos(2), right_pos(2));
   h_prev_ = alpha_ * h + (1.0 - alpha_) * h_prev_;
   left_pos(2) = h_prev_;
-  ConvexFoothold f;
+  ConvexPolygon f;
   f.SetContactPlane(Vector3d::UnitZ(), left_pos);
   f.AddFace(-Vector3d::UnitZ(), left_pos -Vector3d::UnitZ());
-  *footholds = geometry::ConvexFootholdSet({f});
+  *footholds = geometry::ConvexPolygonSet({f});
 }
 
 

@@ -7,7 +7,7 @@
 #include "alip_utils.h"
 #include "alip_multiqp.h"
 #include "alip_miqp.h"
-#include "geometry/convex_foothold_set.h"
+#include "geometry/convex_polygon_set.h"
 #include "systems/filters/s2s_kalman_filter.h"
 
 #include "drake/multibody/plant/multibody_plant.h"

@@ -34,7 +34,7 @@ cc_library(
         "stepping_stone_utils.h",
     ],
     deps = [
-        "//geometry:convex_foothold",
+        "//geometry:convex_polygon",
         "@drake//:drake_shared_library",
     ],
 )

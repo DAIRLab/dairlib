@@ -14,7 +14,7 @@ namespace pydairlib {
 
 using multibody::MultiposeVisualizer;
 using multibody::SquareSteppingStoneList;
-using geometry::ConvexFoothold;
+using geometry::ConvexPolygon;
 
 PYBIND11_MODULE(multibody, m) {
   m.import("pydrake.all");
@@ -32,7 +32,7 @@ PYBIND11_MODULE(multibody, m) {
   py::class_<SquareSteppingStoneList>(m, "SquareSteppingStoneList")
       .def(py::init<std::vector<std::vector<std::vector<double>>>,
                     std::vector<std::pair<RigidTransformd, Eigen::Vector3d>>,
-                    std::vector<ConvexFoothold>>())
+                    std::vector<ConvexPolygon>>())
       .def("GetFootholdsWithMargin", &SquareSteppingStoneList::GetFootholdsWithMargin)
       .def_readwrite("stones", &SquareSteppingStoneList::stones)
       .def_readwrite("cubes", &SquareSteppingStoneList::cubes)

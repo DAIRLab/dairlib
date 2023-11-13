@@ -19,9 +19,13 @@ struct FrankaC3ControllerParams {
   double target_frequency;
   std::vector<double> tool_attachment_frame;
 
+  std::vector<double> neutral_position;
+  double x_scale;
+  double y_scale;
+  double z_scale;
+
   template <typename Archive>
   void Serialize(Archive* a) {
-
     a->Visit(DRAKE_NVP(c3_options_file));
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(franka_model));
@@ -32,5 +36,10 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(target_frequency));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
+
+    a->Visit(DRAKE_NVP(neutral_position));
+    a->Visit(DRAKE_NVP(x_scale));
+    a->Visit(DRAKE_NVP(y_scale));
+    a->Visit(DRAKE_NVP(z_scale));
   }
 };

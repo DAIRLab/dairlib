@@ -177,11 +177,11 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
   }
-//  for (int i : vector<int>({0, 1})) {
-//    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-//    A(i) = 1.0;
-//    c3_->AddLinearConstraint(A, -5, 5, 2);
-//  }
+  for (int i : vector<int>({0, 1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -5, 5, 2);
+  }
 //  for (int i : vector<int>({2})) {
 //    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
 //    A(i) = 1.0;

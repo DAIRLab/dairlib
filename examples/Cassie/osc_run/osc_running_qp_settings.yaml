@@ -1,7 +1,7 @@
 print_to_console: 0
 log_file_name: ""
 int_options:
-  max_iter: 250
+  max_iter: 500
   linsys_solver: 0
   verbose: 0
   warm_start: 1

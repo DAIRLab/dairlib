@@ -164,18 +164,13 @@ int DoMain(int argc, char* argv[]) {
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}),
-          1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kForced})));
+
   auto object_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}),
-          1 / controller_params.target_frequency));
-//  auto force_trajectory_sender = builder.AddSystem(
-//      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-//          lcm_channel_params.c3_force_channel, &lcm,
-//          TriggerTypeSet({TriggerType::kPeriodic}),
-//          1 / controller_params.target_frequency));
+          TriggerTypeSet({TriggerType::kForced})));
+
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_channel, &lcm,
@@ -187,10 +182,11 @@ int DoMain(int argc, char* argv[]) {
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>();
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-      c3_options.neutral_position.data(), c3_options.neutral_position.size());
+      controller_params.neutral_position.data(),
+      controller_params.neutral_position.size());
   plate_balancing_target->SetRemoteControlParameters(
-      neutral_position, c3_options.x_scale, c3_options.y_scale,
-      c3_options.z_scale);
+      neutral_position, controller_params.x_scale, controller_params.y_scale,
+      controller_params.z_scale);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -212,8 +208,8 @@ int DoMain(int argc, char* argv[]) {
       plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
       contact_pairs, c3_options);
   auto c3_trajectory_generator =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(
-          plant_plate, c3_options);
+      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_plate,
+                                                        c3_options);
   c3_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
   auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
@@ -261,8 +257,7 @@ int DoMain(int argc, char* argv[]) {
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() {
-    return tray_state_sub->GetInternalMessageCount() > 1; });
+      &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

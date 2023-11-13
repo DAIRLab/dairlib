@@ -223,6 +223,10 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(gravity_compensator->get_output_port(),
                     franka_command_sender->get_input_port());
   } else {
+    if (FLAGS_lcm_channels == "examples/franka/parameters/lcm_channels_hardware.yaml"){
+      std::cerr << "Using hardware lcm channels but not cancelling gravity compensation. Please check the OSC settings" << std::endl;
+      return -1;
+    }
     builder.Connect(osc->get_output_port_osc_command(),
                     franka_command_sender->get_input_port(0));
   }

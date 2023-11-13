@@ -39,7 +39,7 @@ void ExternalForceTrackingData::Update(
     const drake::trajectories::Trajectory<double>& traj,
     double t) {
   DRAKE_DEMAND(traj.rows() == 3);
-  lambda_des_ = -traj.value(t);
+  lambda_des_ = traj.value(t);
   J_ = MatrixXd::Zero(3, plant_wo_spr_.num_velocities());
   plant_wo_spr_.CalcJacobianTranslationalVelocity(
       context_wo_spr, JacobianWrtVariable::kV, *body_frame_wo_spr_, pt_on_body_,

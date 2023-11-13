@@ -672,7 +672,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   A_dyn.block(0, n_v_ + n_c_, n_v_, n_h_) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
   MatrixXd J_ee = force_tracking_data_vec_->at(0)->GetJ();
-  A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_ee_) = -J_ee.transpose();
+  A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_ee_) = J_ee.transpose();
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
@@ -1007,6 +1007,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   VectorXd y_input_smoothing_cost = VectorXd::Zero(1);
   VectorXd y_lambda_c_cost = VectorXd::Zero(1);
   VectorXd y_lambda_h_cost = VectorXd::Zero(1);
+  VectorXd y_lambda_ee_cost = VectorXd::Zero(1);
   VectorXd y_soft_constraint_cost = VectorXd::Zero(1);
   VectorXd y_joint_limit_cost = VectorXd::Zero(1);
   if (accel_cost_) {
@@ -1020,6 +1021,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   }
   if (lambda_c_cost_) {
     lambda_c_cost_->Eval(*lambda_c_sol_, &y_lambda_c_cost);
+  }
+  if (lambda_ee_cost_) {
+    lambda_ee_cost_->Eval(*lambda_ee_sol_, &y_lambda_ee_cost);
   }
   if (lambda_h_cost_) {
     lambda_h_cost_->Eval(*lambda_h_sol_, &y_lambda_h_cost);
@@ -1038,6 +1042,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       (soft_constraint_cost_ != nullptr) ? y_soft_constraint_cost[0] : 0;
   double lambda_c_cost = (lambda_c_cost_ != nullptr) ? y_lambda_c_cost[0] : 0;
   double lambda_h_cost = (lambda_h_cost_ != nullptr) ? y_lambda_h_cost[0] : 0;
+  double lambda_ee_cost = (lambda_ee_cost_ != nullptr) ? y_lambda_ee_cost[0] : 0;
   //  double joint_limit_cost =
   //      (joint_limit_cost_ != nullptr) ? y_joint_limit_cost[0] : 0;
 
@@ -1058,6 +1063,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_cost_names.emplace_back("lambda_c_cost");
   output->regularization_costs.push_back(lambda_h_cost);
   output->regularization_cost_names.emplace_back("lambda_h_cost");
+  output->regularization_costs.push_back(lambda_ee_cost);
+  output->regularization_cost_names.emplace_back("lambda_ee_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();

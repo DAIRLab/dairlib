@@ -1,9 +1,6 @@
 #include "multibody/multipose_visualizer.h"
 
-#include <iostream>
-
 #include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"

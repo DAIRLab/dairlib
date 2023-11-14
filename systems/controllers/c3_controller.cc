@@ -106,6 +106,8 @@ C3Controller::C3Controller(
 drake::systems::EventStatus C3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+  auto start = std::chrono::high_resolution_clock::now();
+
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const FrankaKinematicsVector<double>* lcs_x =
@@ -170,7 +172,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   for (int i : vector<int>({0, 2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.3, 0.7, 1);
+    c3_->AddLinearConstraint(A, 0.2, 0.7, 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
@@ -182,14 +184,19 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, -5, 5, 2);
   }
-//  for (int i : vector<int>({2})) {
-//    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-//    A(i) = 1.0;
-//    c3_->AddLinearConstraint(A, 10, 20, 2);
-//  }
+  for (int i : vector<int>({2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 5, 20, 2);
+  }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
+  auto finish = std::chrono::high_resolution_clock::now();
   delta_ = delta;
   w_ = w;
+  auto elapsed = finish - start;
+  solve_time_ =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
+      1e6;
   return drake::systems::EventStatus::Succeeded();
 }
 

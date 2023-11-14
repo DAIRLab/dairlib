@@ -142,11 +142,6 @@ vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   }
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
-
-  //  auto z0 = zfin[0];
-
-  //  return z.segment(n_ + m_, k_);
-  //  return z0;
   return zfin;
 }
 
@@ -222,14 +217,14 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   }
 
   //  /// initialize decision variables to warm start
-  //  if (warm_start_){
-  //    for (int i = 0; i < N_; i++){
-  //      prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
-  //      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
-  //      prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
-  //    }
-  //    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
-  //  }
+//  if (warm_start_) {
+//    for (int i = 0; i < N_; i++) {
+//      prog_.SetInitialGuess(x_[i], warm_start_x_[i]);
+//      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[i]);
+//      prog_.SetInitialGuess(u_[i], warm_start_u_[i]);
+//    }
+//    prog_.SetInitialGuess(x_[N_], warm_start_x_[N_]);
+//  }
 
   prog_.SetSolverOptions(solver_options_);
   MathematicalProgramResult result = osqp_.Solve(prog_);

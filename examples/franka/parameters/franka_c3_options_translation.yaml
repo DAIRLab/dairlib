@@ -1,6 +1,6 @@
-admm_iter: 3
+admm_iter: 4
 rho: 0.1
-rho_scale: 2
+rho_scale: 1
 num_threads: 6
 delta_option: 1
 # options are 'MIQP' or 'QP'
@@ -10,19 +10,19 @@ contact_model: 'stewart_and_trinkle'
 
 mu: 0.4
 mu_plate: 0.4
-dt: 0.1
+dt: 0.03
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
 N: 5
 
 # matrix scaling
-w_Q: 50
-w_R: 0.0001
+w_Q: 20
+w_R: 0
 # Penalty on all decision variables, assuming scalar
 w_G: 1
 # Penalty on all decision variables, assuming scalar
-w_U: 1
+w_U: 0.5
 
 # n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
 # size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
@@ -32,8 +32,8 @@ u_size: 40
 #g_size: 34
 #u_size: 34
 # State Tracking Error, assuming diagonal
-q_vector: [100, 100, 5000, 100, 100, 100, 100, 10000, 10000, 10000,
-           1, 1, 1, 1, 1, 1, 1, 1, 1]
+q_vector: [100, 100, 500, 100, 100, 100, 100, 10000, 10000, 10000,
+           5, 5, 5, 1, 1, 1, 1, 1, 1]
 # Penalty on all decision variables
 g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

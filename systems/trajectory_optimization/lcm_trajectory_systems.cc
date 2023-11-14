@@ -55,7 +55,9 @@ void LcmTrajectoryReceiver::OutputTrajectory(
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
 
     if (trajectory_block.datapoints.rows() == 3) {
-      *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
+//      *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
+//          trajectory_block.time_vector, trajectory_block.datapoints);
+      *casted_traj = PiecewisePolynomial<double>::ZeroOrderHold(
           trajectory_block.time_vector, trajectory_block.datapoints);
     } else {
       *casted_traj = PiecewisePolynomial<double>::CubicHermite(
@@ -133,8 +135,6 @@ LcmTrajectoryDrawer::LcmTrajectoryDrawer(
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
-  //  lcm_traj_ =
-  //      LcmTrajectory(dairlib::FindResourceOrThrow(default_trajectory_path_));
   DeclarePerStepDiscreteUpdateEvent(&LcmTrajectoryDrawer::DrawTrajectory);
 }
 

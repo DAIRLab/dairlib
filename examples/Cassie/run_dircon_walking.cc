@@ -119,13 +119,13 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
   map<string, double> pos_value_map;
   Eigen::Vector4d quat(2000.06, -0.339462, -0.609533, -0.760854);
   quat.normalize();
-  pos_value_map["base_qw"] = quat(0);
-  pos_value_map["base_qx"] = quat(1);
-  pos_value_map["base_qy"] = quat(2);
-  pos_value_map["base_qz"] = quat(3);
-  pos_value_map["base_x"] = 0.000889849;
-  pos_value_map["base_y"] = 0.000626865;
-  pos_value_map["base_z"] = 1.0009;
+  pos_value_map["pelvis_qw"] = quat(0);
+  pos_value_map["pelvis_qx"] = quat(1);
+  pos_value_map["pelvis_qy"] = quat(2);
+  pos_value_map["pelvis_qz"] = quat(3);
+  pos_value_map["pelvis_x"] = 0.000889849;
+  pos_value_map["pelvis_y"] = 0.000626865;
+  pos_value_map["pelvis_z"] = 1.0009;
   pos_value_map["hip_roll_left"] = -0.0112109;
   pos_value_map["hip_roll_right"] = 0.00927845;
   pos_value_map["hip_yaw_left"] = -0.000600725;
@@ -411,13 +411,13 @@ void DoMain(double duration, double stride_length, double ground_incline,
     options_list[i].setConstraintRelative(3, true);
   }
 
-  int base_qw_idx = pos_map.at("base_qw");
-  int base_qx_idx = pos_map.at("base_qx");
-  int base_qy_idx = pos_map.at("base_qy");
-  int base_qz_idx = pos_map.at("base_qz");
-  int base_x_idx = pos_map.at("base_x");
-  int base_y_idx = pos_map.at("base_y");
-  int base_z_idx = pos_map.at("base_z");
+  int pelvis_qw_idx = pos_map.at("pelvis_qw");
+  int pelvis_qx_idx = pos_map.at("pelvis_qx");
+  int pelvis_qy_idx = pos_map.at("pelvis_qy");
+  int pelvis_qz_idx = pos_map.at("pelvis_qz");
+  int pelvis_x_idx = pos_map.at("pelvis_x");
+  int pelvis_y_idx = pos_map.at("pelvis_y");
+  int pelvis_z_idx = pos_map.at("pelvis_z");
   int hip_roll_left_idx = pos_map.at("hip_roll_left");
   int hip_roll_right_idx = pos_map.at("hip_roll_right");
   int hip_yaw_left_idx = pos_map.at("hip_yaw_left");
@@ -431,12 +431,12 @@ void DoMain(double duration, double stride_length, double ground_incline,
   int toe_left_idx = pos_map.at("toe_left");
   int toe_right_idx = pos_map.at("toe_right");
 
-  int base_wx_idx = vel_map.at("base_wx");
-  int base_wy_idx = vel_map.at("base_wy");
-  int base_wz_idx = vel_map.at("base_wz");
-  int base_vx_idx = vel_map.at("base_vx");
-  int base_vy_idx = vel_map.at("base_vy");
-  int base_vz_idx = vel_map.at("base_vz");
+  int pelvis_wx_idx = vel_map.at("pelvis_wx");
+  int pelvis_wy_idx = vel_map.at("pelvis_wy");
+  int pelvis_wz_idx = vel_map.at("pelvis_wz");
+  int pelvis_vx_idx = vel_map.at("pelvis_vx");
+  int pelvis_vy_idx = vel_map.at("pelvis_vy");
+  int pelvis_vz_idx = vel_map.at("pelvis_vz");
   int hip_roll_leftdot_idx = vel_map.at("hip_roll_leftdot");
   int hip_roll_rightdot_idx = vel_map.at("hip_roll_rightdot");
   int hip_yaw_leftdot_idx = vel_map.at("hip_yaw_leftdot");
@@ -467,9 +467,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
       double s = 1;  // scale everything together
       // Dynamic constraints
       options_list[i].setDynConstraintScaling(
-          {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx}, s * 1.0 / 30.0);
+          {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx}, s * 1.0 / 30.0);
       options_list[i].setDynConstraintScaling(
-          {base_x_idx, base_y_idx, base_z_idx, hip_roll_left_idx,
+          {pelvis_x_idx, pelvis_y_idx, pelvis_z_idx, hip_roll_left_idx,
            hip_roll_right_idx, hip_yaw_left_idx, hip_yaw_right_idx,
            hip_pitch_left_idx, hip_pitch_right_idx, knee_left_idx,
            knee_right_idx, ankle_joint_left_idx, ankle_joint_right_idx},
@@ -477,8 +477,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
       options_list[i].setDynConstraintScaling({toe_left_idx, toe_right_idx},
                                               s * 1.0 / 300.0);
       options_list[i].setDynConstraintScaling(
-          {n_q + base_wx_idx, n_q + base_wy_idx, n_q + base_wz_idx,
-           n_q + base_vx_idx, n_q + base_vy_idx, n_q + base_vz_idx,
+          {n_q + pelvis_wx_idx, n_q + pelvis_wy_idx, n_q + pelvis_wz_idx,
+           n_q + pelvis_vx_idx, n_q + pelvis_vy_idx, n_q + pelvis_vz_idx,
            n_q + hip_roll_leftdot_idx, n_q + hip_roll_rightdot_idx,
            n_q + hip_yaw_leftdot_idx, n_q + hip_yaw_rightdot_idx},
           s * 1.0 / 600.0);
@@ -503,9 +503,9 @@ void DoMain(double duration, double stride_length, double ground_incline,
                                               s * 20);
       // Impact constraints
       options_list[i].setImpConstraintScaling(
-          {base_wx_idx, base_wy_idx, base_wz_idx}, s / 50.0);
+          {pelvis_wx_idx, pelvis_wy_idx, pelvis_wz_idx}, s / 50.0);
       options_list[i].setImpConstraintScaling(
-          {base_vx_idx, base_vy_idx, base_vz_idx}, s / 300.0);
+          {pelvis_vx_idx, pelvis_vy_idx, pelvis_vz_idx}, s / 300.0);
       options_list[i].setImpConstraintScaling(
           {hip_roll_leftdot_idx, hip_roll_rightdot_idx}, s / 24.0);
       options_list[i].setImpConstraintScaling(
@@ -577,23 +577,23 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
 
   // x position constraint
-  prog.AddBoundingBoxConstraint(0, 0, x0(pos_map.at("base_x")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(pos_map.at("pelvis_x")));
   prog.AddBoundingBoxConstraint(stride_length, stride_length,
-                                    xf(pos_map.at("base_x")));
+                                    xf(pos_map.at("pelvis_x")));
 
   // height constraint
-  //  prog.AddLinearConstraint(x0(pos_map.at("base_z")) == 1);
-  //  prog.AddLinearConstraint(xf(pos_map.at("base_z")) == 1.1);
+  //  prog.AddLinearConstraint(x0(pos_map.at("pelvis_z")) == 1);
+  //  prog.AddLinearConstraint(xf(pos_map.at("pelvis_z")) == 1.1);
 
   // initial pelvis position
-  // prog.AddLinearConstraint(x0(pos_map.at("base_y")) == 0);
+  // prog.AddLinearConstraint(x0(pos_map.at("pelvis_y")) == 0);
 
   // pelvis pose constraints
-  //  prog.AddConstraintToAllKnotPoints(x(pos_map.at("base_qw")) ==
-  //  1); prog.AddConstraintToAllKnotPoints(x(pos_map.at("base_qx"))
+  //  prog.AddConstraintToAllKnotPoints(x(pos_map.at("pelvis_qw")) ==
+  //  1); prog.AddConstraintToAllKnotPoints(x(pos_map.at("pelvis_qx"))
   //  == 0);
-  //  prog.AddConstraintToAllKnotPoints(x(pos_map.at("base_qy")) ==
-  //  0); prog.AddConstraintToAllKnotPoints(x(pos_map.at("base_qz"))
+  //  prog.AddConstraintToAllKnotPoints(x(pos_map.at("pelvis_qy")) ==
+  //  0); prog.AddConstraintToAllKnotPoints(x(pos_map.at("pelvis_qz"))
   //  == 0);
 
   // start/end velocity constraints
@@ -601,32 +601,32 @@ void DoMain(double duration, double stride_length, double ground_incline,
   //  prog.AddLinearConstraint(xf.tail(n_v) == VectorXd::Zero(n_v));
 
   // Floating base periodicity
-  prog.AddLinearConstraint(x0(pos_map.at("base_qw")) ==
-                               xf(pos_map.at("base_qw")));
-  prog.AddLinearConstraint(x0(pos_map.at("base_qx")) ==
-                               -xf(pos_map.at("base_qx")));
-  prog.AddLinearConstraint(x0(pos_map.at("base_qy")) ==
-                               xf(pos_map.at("base_qy")));
-  prog.AddLinearConstraint(x0(pos_map.at("base_qz")) ==
-                               -xf(pos_map.at("base_qz")));
-  prog.AddLinearConstraint(x0(pos_map.at("base_y")) ==
-                               -xf(pos_map.at("base_y")));
+  prog.AddLinearConstraint(x0(pos_map.at("pelvis_qw")) ==
+                               xf(pos_map.at("pelvis_qw")));
+  prog.AddLinearConstraint(x0(pos_map.at("pelvis_qx")) ==
+                               -xf(pos_map.at("pelvis_qx")));
+  prog.AddLinearConstraint(x0(pos_map.at("pelvis_qy")) ==
+                               xf(pos_map.at("pelvis_qy")));
+  prog.AddLinearConstraint(x0(pos_map.at("pelvis_qz")) ==
+                               -xf(pos_map.at("pelvis_qz")));
+  prog.AddLinearConstraint(x0(pos_map.at("pelvis_y")) ==
+                               -xf(pos_map.at("pelvis_y")));
   if (ground_incline == 0) {
-    prog.AddLinearConstraint(x0(pos_map.at("base_z")) ==
-                                 xf(pos_map.at("base_z")));
+    prog.AddLinearConstraint(x0(pos_map.at("pelvis_z")) ==
+                                 xf(pos_map.at("pelvis_z")));
   }
-  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                               xf(n_q + vel_map.at("base_wx")));
-  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                               -xf(n_q + vel_map.at("base_wy")));
-  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                               xf(n_q + vel_map.at("base_wz")));
-  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                               xf(n_q + vel_map.at("base_vx")));
-  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                               -xf(n_q + vel_map.at("base_vy")));
-  prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                               xf(n_q + vel_map.at("base_vz")));
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_wx")) ==
+                               xf(n_q + vel_map.at("pelvis_wx")));
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_wy")) ==
+                               -xf(n_q + vel_map.at("pelvis_wy")));
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_wz")) ==
+                               xf(n_q + vel_map.at("pelvis_wz")));
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_vx")) ==
+                               xf(n_q + vel_map.at("pelvis_vx")));
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_vy")) ==
+                               -xf(n_q + vel_map.at("pelvis_vy")));
+  prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_vz")) ==
+                               xf(n_q + vel_map.at("pelvis_vz")));
 
   // The legs joint positions/velocities/torque should be mirrored between legs
   // (notice that hip yaw and roll should be asymmetric instead of symmetric.)
@@ -719,7 +719,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   prog.AddConstraint(right_foot_constraint_z, x_mid.head(n_q));
 
   // Optional -- constraint on initial floating base
-  prog.AddConstraint(x0(pos_map.at("base_qw")) == 1);
+  prog.AddConstraint(x0(pos_map.at("pelvis_qw")) == 1);
   // Optional -- constraint on the forces magnitude
   /*for (unsigned int mode = 0; mode < num_time_samples.size(); mode++) {
     for (int index = 0; index < num_time_samples[mode]; index++) {
@@ -774,7 +774,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
     trajopt->ScaleTimeVariables(0.008);
     // state
     trajopt->ScaleStateVariables(
-        {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx}, 0.5);
+        {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx}, 0.5);
     if (s_q_toe > 1) {
       trajopt->ScaleStateVariables({toe_left_idx, toe_right_idx}, s_q_toe);
     }
@@ -882,7 +882,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   }
   if (w_q_quat_xyz) {
     for (int i = 0; i < N; i++) {
-      auto q = trajopt->state(i).segment(base_qx_idx, 3);
+      auto q = trajopt->state(i).segment(pelvis_qx_idx, 3);
       prog.AddCost(w_q_quat_xyz * q.transpose() * q);
     }
   }
@@ -953,23 +953,23 @@ void DoMain(double duration, double stride_length, double ground_incline,
       // initial condition for post impact velocity
       auto vp_var = trajopt->v_post_impact_vars_by_mode(0);
       prog.SetInitialGuess(
-          vp_var(vel_map.at("base_wx")),
-          prog.GetInitialGuess(x0(n_q + vel_map.at("base_wx"))));
+          vp_var(vel_map.at("pelvis_wx")),
+          prog.GetInitialGuess(x0(n_q + vel_map.at("pelvis_wx"))));
       prog.SetInitialGuess(
-          vp_var(vel_map.at("base_wy")),
-          -prog.GetInitialGuess(x0(n_q + vel_map.at("base_wy"))));
+          vp_var(vel_map.at("pelvis_wy")),
+          -prog.GetInitialGuess(x0(n_q + vel_map.at("pelvis_wy"))));
       prog.SetInitialGuess(
-          vp_var(vel_map.at("base_wz")),
-          prog.GetInitialGuess(x0(n_q + vel_map.at("base_wz"))));
+          vp_var(vel_map.at("pelvis_wz")),
+          prog.GetInitialGuess(x0(n_q + vel_map.at("pelvis_wz"))));
       prog.SetInitialGuess(
-          vp_var(vel_map.at("base_vx")),
-          prog.GetInitialGuess(x0(n_q + vel_map.at("base_vx"))));
+          vp_var(vel_map.at("pelvis_vx")),
+          prog.GetInitialGuess(x0(n_q + vel_map.at("pelvis_vx"))));
       prog.SetInitialGuess(
-          vp_var(vel_map.at("base_vy")),
-          -prog.GetInitialGuess(x0(n_q + vel_map.at("base_vy"))));
+          vp_var(vel_map.at("pelvis_vy")),
+          -prog.GetInitialGuess(x0(n_q + vel_map.at("pelvis_vy"))));
       prog.SetInitialGuess(
-          vp_var(vel_map.at("base_vz")),
-          prog.GetInitialGuess(x0(n_q + vel_map.at("base_vz"))));
+          vp_var(vel_map.at("pelvis_vz")),
+          prog.GetInitialGuess(x0(n_q + vel_map.at("pelvis_vz"))));
       for (auto l_r_pair : l_r_pairs) {
         for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
           // velocities
@@ -994,13 +994,13 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // produces NAN value in some calculation.
   for (int i = 0; i < N; i++) {
     auto xi = trajopt->state(i);
-    if ((prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() ==
+    if ((prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm() ==
         0) || std::isnan(prog.GetInitialGuess(
-            xi.segment<4>(base_qw_idx)).norm())) {
-      prog.SetInitialGuess(xi(pos_map.at("base_qw")), 1);
-      prog.SetInitialGuess(xi(pos_map.at("base_qx")), 0);
-      prog.SetInitialGuess(xi(pos_map.at("base_qy")), 0);
-      prog.SetInitialGuess(xi(pos_map.at("base_qz")), 0);
+            xi.segment<4>(pelvis_qw_idx)).norm())) {
+      prog.SetInitialGuess(xi(pos_map.at("pelvis_qw")), 1);
+      prog.SetInitialGuess(xi(pos_map.at("pelvis_qx")), 0);
+      prog.SetInitialGuess(xi(pos_map.at("pelvis_qy")), 0);
+      prog.SetInitialGuess(xi(pos_map.at("pelvis_qz")), 0);
     }
   }
 
@@ -1200,7 +1200,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // add cost on quaternion
   double cost_q_quat_xyz = 0;
   for (int i = 0; i < N; i++) {
-    auto q = result.GetSolution(trajopt->state(i).segment(base_qx_idx, 3));
+    auto q = result.GetSolution(trajopt->state(i).segment(pelvis_qx_idx, 3));
     cost_q_quat_xyz += w_q_quat_xyz * q.transpose() * q;
   }
   total_cost += cost_q_quat_xyz;

@@ -72,9 +72,9 @@ int DoMain() {
     auto mirrored_traj =
         saved_traj.ReconstructMirrorStateTrajectory(optimal_traj.end_time());
     VectorXd x_offset = VectorXd::Zero(nx);
-    x_offset(pos_map["base_x"]) =
-        optimal_traj.value(optimal_traj.end_time())(pos_map["base_x"]) -
-        optimal_traj.value(optimal_traj.start_time())(pos_map["base_x"]);
+    x_offset(pos_map["pelvis_x"]) =
+        optimal_traj.value(optimal_traj.end_time())(pos_map["pelvis_x"]) -
+        optimal_traj.value(optimal_traj.start_time())(pos_map["pelvis_x"]);
     std::vector<MatrixXd> x_offset_rep(mirrored_traj.get_segment_times().size(),
                                        x_offset);
     PiecewisePolynomial<double> x_offset_traj =
@@ -82,9 +82,9 @@ int DoMain() {
             mirrored_traj.get_segment_times(), x_offset_rep);
     optimal_traj.ConcatenateInTime(mirrored_traj + x_offset_traj);
 
-    x_offset(pos_map["base_x"]) =
-        optimal_traj.value(optimal_traj.end_time())(pos_map["base_x"]) -
-        optimal_traj.value(optimal_traj.start_time())(pos_map["base_x"]);
+    x_offset(pos_map["pelvis_x"]) =
+        optimal_traj.value(optimal_traj.end_time())(pos_map["pelvis_x"]) -
+        optimal_traj.value(optimal_traj.start_time())(pos_map["pelvis_x"]);
     x_offset_rep = std::vector<MatrixXd>(
         optimal_traj.get_segment_times().size(), x_offset);
 

@@ -53,16 +53,6 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
         py::arg("actuator_channel"), py::arg("state_channel"),
         py::arg("publish_rate"), py::arg("model_instance"),
         py::arg("publish_efforts"), py::arg("actuator_delay"));
-  m.def("AddActuationRecieverAndStateSenderLcm",
-        py::overload_cast<drake::systems::DiagramBuilder<double>*,
-                          const MultibodyPlant<double>&,
-                          drake::systems::lcm::LcmInterfaceSystem*, std::string,
-                          std::string, double, bool, double>(
-            &dairlib::systems::AddActuationRecieverAndStateSenderLcm),
-        py::arg("builder"), py::arg("plant"), py::arg("lcm"),
-        py::arg("actuator_channel"), py::arg("state_channel"),
-        py::arg("publish_rate"), py::arg("publish_efforts"),
-        py::arg("actuator_delay"));
 }
 
 }  // namespace pydairlib

@@ -13,13 +13,15 @@
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3.h"
-#include "solvers/c3_miqp.h"
-#include "solvers/lcs_factory.h"
+// #include "solvers/c3_miqp.h"
+#include "solvers/c3_approx.h"
+// #include "solvers/lcs_factory_franka.h"
 
 #include "drake/solvers/moby_lcp_solver.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory.h"
+// #include "solvers/lcs_factory_franka.h"
+#include "solvers/lcs_factory_cvx.h"
 #include "drake/math/autodiff_gradient.h"
 
 using std::vector;
@@ -198,7 +200,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Set up some variables and initialize warm start.
   N_ = param_.horizon_length;
   n_ = 19;
-  m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
+  m_ = 4*4;     // 4 forces per contact pair for anitescu model, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
   k_ = 3;
 
   // Do separate warm starting for samples than for current end effector location.
@@ -550,7 +552,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
     
     // Compute the LCS based on the hypothetical state at the ee sample location.
-    auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+    auto test_system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
     solvers::LCS test_lcs = test_system_scaling_pair.first;
@@ -587,8 +589,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else {
     n_threads_to_use = param_.num_threads;
   }
-  omp_set_num_threads(n_threads_to_use);        // Set number of threads to use when not explicitly defined in pragma directive. 
-                                                // This is currently used by the pragma directive in c3.cc
+  omp_set_num_threads(n_threads_to_use);
 
   // Parallelize over computing C3 costs for each sample.
   // std::cout << "\nLOOP" << std::endl;
@@ -615,8 +616,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         do_warm_start = true;
       }
 
-      // Set up C3 MIQP.
-      solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
+      // Set up C3 QP.
+      solvers::C3APPROX opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
                                warm_start_delta, warm_start_binary, warm_start_x,
                                warm_start_lambda, warm_start_u, do_warm_start);
 
@@ -827,7 +828,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
     // Calculate state and force using LCS from current location.
     // std::cout<<"Linearization in C3"<<std::endl;
-    auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+    auto system_scaling_pair2 = solvers::LCSFactoryConvex::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, param_.c3_planned_next_state_timestep, param_.horizon_length);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;

@@ -34,9 +34,7 @@ class C3MIQP : public C3 {
                                         const Eigen::MatrixXd& F,
                                         const Eigen::MatrixXd& H,
                                         const Eigen::VectorXd& c,
-                                        const int& warm_start_index,
-                                        const bool& constrain_first_x,
-                                        const Eigen::VectorXd& x0);
+                                        const int& warm_start_index);
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
   

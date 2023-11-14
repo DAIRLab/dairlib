@@ -175,7 +175,6 @@ RobotOutputSender::RobotOutputSender(
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
 
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 
@@ -209,8 +208,7 @@ RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance,
     const bool publish_efforts, const bool publish_imu)
-    : model_instance_(model_instance),
-      publish_efforts_(publish_efforts),
+    : publish_efforts_(publish_efforts),
       publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);

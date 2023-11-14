@@ -61,8 +61,7 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
  public:
   explicit RobotOutputSender(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::multibody::ModelInstanceIndex model_instance_index =
-          drake::multibody::default_model_instance(),
+      drake::multibody::ModelInstanceIndex model_instance_index,
       const bool publish_efforts = false, const bool publish_imu = false);
 
   explicit RobotOutputSender(
@@ -86,7 +85,6 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   void Output(const drake::systems::Context<double>& context,
               dairlib::lcmt_robot_output* output) const;
 
-  drake::multibody::ModelInstanceIndex model_instance_;
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;

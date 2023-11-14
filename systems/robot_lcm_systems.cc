@@ -1,7 +1,5 @@
 #include "robot_lcm_systems.h"
 
-#include <iostream>
-
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/multibody_utils.h"
@@ -18,8 +16,6 @@ using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using drake::systems::LeafSystem;
-using drake::systems::BasicVector;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::VectorXd;
@@ -212,7 +208,9 @@ RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance,
     const bool publish_efforts, const bool publish_imu)
-    : model_instance_(model_instance), publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
+    : model_instance_(model_instance),
+      publish_efforts_(publish_efforts),
+      publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
   num_efforts_ = plant.num_actuators();
@@ -230,10 +228,10 @@ RobotOutputSender::RobotOutputSender(
       plant.get_joint(plant.GetJointIndices(model_instance).front())
           .velocity_start();
 
-  ordered_position_names_ =
-      multibody::ExtractOrderedNamesFromMap(position_index_map_, positions_start_idx_);
-  ordered_velocity_names_ =
-      multibody::ExtractOrderedNamesFromMap(velocity_index_map_, velocities_start_idx_);
+  ordered_position_names_ = multibody::ExtractOrderedNamesFromMap(
+      position_index_map_, positions_start_idx_);
+  ordered_velocity_names_ = multibody::ExtractOrderedNamesFromMap(
+      velocity_index_map_, velocities_start_idx_);
   ordered_effort_names_ =
       multibody::ExtractOrderedNamesFromMap(effort_index_map_);
 
@@ -518,9 +516,9 @@ RobotInputReceiver::RobotInputReceiver(
   actuator_index_map_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_input",
                                  drake::Value<dairlib::lcmt_robot_input>{});
-  this->DeclareVectorOutputPort("u, t",
-                                TimestampedVector<double>(num_actuators_),
-                                &RobotInputReceiver::CopyInputOut, {all_sources_ticket()});
+  this->DeclareVectorOutputPort(
+      "u, t", TimestampedVector<double>(num_actuators_),
+      &RobotInputReceiver::CopyInputOut, {all_sources_ticket()});
 }
 
 void RobotInputReceiver::CopyInputOut(const Context<double>& context,

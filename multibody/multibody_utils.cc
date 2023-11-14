@@ -1,6 +1,5 @@
 #include "multibody/multibody_utils.h"
 
-#include <iostream>
 #include <set>
 #include <vector>
 
@@ -152,8 +151,8 @@ void AddFlatTerrain(MultibodyPlant<T>* plant, SceneGraph<T>* scene_graph,
 
   // Add visual for the ground.
   if (show_ground) {
-    //    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
-    //                                  "visual");
+    plant->RegisterVisualGeometry(plant->world_body(), X_WG, HalfSpace(),
+                                  "visual");
   }
 }
 
@@ -203,15 +202,11 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     }
   }
 
-  // TODO: once RBT fully deprecated, this block can likely be removed, using
-  // default coordinate names from Drake.
   auto floating_bodies = plant.GetFloatingBaseBodies();
-//  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
-    // should be body.name() once RBT is deprecated
     std::string name = body.name();
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
@@ -271,13 +266,10 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant,
     }
   }
 
-  // TODO: once RBT fully deprecated, this block can likely be removed, using
-  // default coordinate names from Drake.
   if (plant.HasUniqueFreeBaseBody(model_instance)) {
     const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
-    // should be body.name() once RBT is deprecated
     std::string name = body.name();
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
@@ -309,8 +301,6 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
 
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
     const drake::multibody::Joint<T>& joint = plant.get_joint(i);
-    // TODO(posa): this "dot" should be removed, it's an anachronism from
-    // RBT
     auto name = joint.name() + "dot";
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
@@ -337,8 +327,6 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
   }
 
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  // Remove throw once RBT deprecated
-//  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     int start = body.floating_velocities_start() - plant.num_positions();
@@ -380,8 +368,6 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant,
 
   for (auto i : plant.GetJointIndices(model_instance)) {
     const drake::multibody::Joint<T>& joint = plant.get_joint(i);
-    // TODO(posa): this "dot" should be removed, it's an anachronism from
-    // RBT
     auto name = joint.name() + "dot";
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
@@ -407,11 +393,10 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant,
     }
   }
 
-  // Remove throw once RBT deprecated
   if (plant.HasUniqueFreeBaseBody(model_instance)) {
     const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance);
     int start = body.floating_velocities_start() - plant.num_positions();
-    std::string name = body.name();  // should be body.name() once RBT is deprecated
+    std::string name = body.name();
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;
     name_to_index_map[name + "_wz"] = start + 2;
@@ -624,9 +609,9 @@ Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
   // clang-format off
   Eigen::MatrixXd ret(4,3);
   ret <<  -q(1), -q(2), -q(3),
-           q(0),  q(3), -q(2),
-          -q(3),  q(0),  q(1),
-           q(2), -q(1),  q(0);
+      q(0),  q(3), -q(2),
+      -q(3),  q(0),  q(1),
+      q(2), -q(1),  q(0);
   ret *= 0.5;
   // clang-format on
   return ret;
@@ -647,27 +632,27 @@ Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
 template int QuaternionStartIndex(const MultibodyPlant<double>& plant);  // NOLINT
 template int QuaternionStartIndex(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template std::vector<int> QuaternionStartIndices(const MultibodyPlant<double>& plant);  // NOLINT
-template std::vector<int> QuaternionStartIndices(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
-template bool HasQuaternion(const MultibodyPlant<double>& plant);      // NOLINT
+template std::vector<int> QuaternionStartIndices(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template bool HasQuaternion(const MultibodyPlant<double>& plant);  // NOLINT
 template bool HasQuaternion(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec);  // NOLINT
-template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector2d& vec);  // NOLINT
+template Vector3d ReExpressWorldVector3InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector3d& vec); //NOLINT
+template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name, const Vector2d& vec); //NOLINT
 template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
-template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd> &plant);  // NOLINT
 template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
 template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
-template map<string, int> MakeNameToActuatorsMap<double>( const MultibodyPlant<double>& plant);  // NOLINT
-template map<string, int> MakeNameToActuatorsMap<AutoDiffXd>( const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template vector<string> CreateStateNameVectorFromMap( const MultibodyPlant<double>& plant);  // NOLINT
-template vector<string> CreateStateNameVectorFromMap( const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template vector<string> CreateActuatorNameVectorFromMap( const MultibodyPlant<double>& plant);  // NOLINT
-template vector<string> CreateActuatorNameVectorFromMap( const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
-template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);  // NOLINT
-template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);  // NOLINT
+template map<string, int> MakeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
+template map<string, int> MakeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template vector<string> CreateActuatorNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT
+template vector<string> CreateActuatorNameVectorFromMap(const MultibodyPlant<AutoDiffXd>& plant);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapPos(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
+template Eigen::MatrixXd CreateWithSpringsToWithoutSpringsMapVel(const drake::multibody::MultibodyPlant<double>& plant_w_spr, const drake::multibody::MultibodyPlant<double>& plant_wo_spr);   // NOLINT
 template void AddFlatTerrain<double>(MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph, double mu_static, double mu_kinetic, Eigen::Vector3d normal_W, double stiffness, double dissipation_rate, bool show_ground);  // NOLINT
 template VectorX<double> GetInput(const MultibodyPlant<double>& plant, const Context<double>& context);  // NOLINT
 template VectorX<AutoDiffXd> GetInput(const MultibodyPlant<AutoDiffXd>& plant, const Context<AutoDiffXd>& context);  // NOLINT

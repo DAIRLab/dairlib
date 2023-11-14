@@ -237,12 +237,5 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts = true, double actuator_delay = 0);
 
-SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
-    drake::systems::DiagramBuilder<double>* builder,
-    const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
-    std::string state_channel, double publish_rate,
-    bool publish_efforts = true, double actuator_delay = 0);
-
 }  // namespace systems
 }  // namespace dairlib

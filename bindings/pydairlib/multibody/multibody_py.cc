@@ -31,8 +31,8 @@ PYBIND11_MODULE(multibody, m) {
         py::arg("builder"), py::arg("scene_graph"), py::arg("trajectory"));
 
   m.def("MakeNameToPositionsMap",
-           py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToPositionsMap<double>),
-           py::arg("plant"))
+        py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToPositionsMap<double>),
+        py::arg("plant"))
       .def("MakeNameToVelocitiesMap",
            py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToVelocitiesMap<double>),
            py::arg("plant"))

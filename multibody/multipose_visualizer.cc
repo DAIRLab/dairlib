@@ -1,9 +1,5 @@
 #include "multibody/multipose_visualizer.h"
 
-#include <iostream>
-
-#include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -49,7 +45,6 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   // Add num_poses copies of the plant, giving each a unique name
   for (int i = 0; i < num_poses_; i++) {
     auto index = parser.AddModels(model_file)[0];
-//    plant_->RenameModelInstance(index, plant_->get_name() + "_" + std::to_string(i));
     model_indices_.push_back(index);
     if (!weld_frame_to_world.empty()) {
       plant_->WeldFrames(
@@ -102,8 +97,6 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
       &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
           &builder, *scene_graph, meshcat_);
 
-  //  DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph, lcm);
-  //  DrakeVisualizer<double>::DispatchLoadMessage(*scene_graph, lcm);
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();
 }

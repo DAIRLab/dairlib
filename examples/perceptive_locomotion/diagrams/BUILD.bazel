@@ -55,6 +55,20 @@ cc_library(
 )
 
 cc_library(
+    name = "pereption_module_diagram",
+    srcs = ["perception_module_diagram.cc"],
+    hdrs = ["perception_module_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_state_estimator",
+        "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//systems/perception:elevation_mapping_system",
+        "//systems/perception/pointcloud:drake_to_pcl_pointcloud",
+        "//systems/perception/pointcloud:voxel_grid_filter",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "mpfc_output_from_footstep",
     srcs = ["mpfc_output_from_footstep.cc"],
     hdrs = ["mpfc_output_from_footstep.h"],

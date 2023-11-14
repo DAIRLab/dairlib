@@ -9,12 +9,12 @@ using drake::lcmt_point_cloud;
 using drake::Value;
 
 using pcl::PointCloud;
-using std::make_shared;
 
 template <typename PointT>
 LcmToPclPointCloud<PointT>::LcmToPclPointCloud() {
   DeclareAbstractInputPort("lcmt_point_cloud", Value<lcmt_point_cloud>());
-  typename PointCloud<PointT>::Ptr model = make_shared<PointCloud<PointT>>();
+  typename PointCloud<PointT>::Ptr model =
+      std::make_shared<PointCloud<PointT>>();
   DeclareAbstractOutputPort(
       "PointCloudPtr", model, &LcmToPclPointCloud<PointT>::Calc
   );
@@ -47,7 +47,7 @@ void LcmToPclPointCloud<PointT>::AssignFields(
  );
 
  // TODO (@Brian-Acosta) copy more than XYZ
- for (std::size_t i = 0; i < npoints; i++) {
+ for (Eigen::Index i = 0; i < npoints; ++i) {
    ptr->points[i].getVector3fMap() = points_buf.col(i).head<3>();
  }
 

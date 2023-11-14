@@ -488,7 +488,7 @@ MpfcOscDiagram::MpfcOscDiagram(
       fsm->get_output_port_time_until_switch(), "time_until_switch"
   );
   input_port_state_ = builder.ExportInput(
-      state_receiver->get_input_port(), "x, u, t"
+      state_receiver->get_input_port(), "lcm_robot_output"
   );
   input_port_footstep_command_ = builder.ExportInput(
       footstep_passthrough->get_input_port_footstep(), "footstep"

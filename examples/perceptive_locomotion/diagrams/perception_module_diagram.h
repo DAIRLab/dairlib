@@ -1,6 +1,9 @@
 #pragma once
 
 // dairlib - perception
+#include "systems/perception/elevation_mapping_system.h"
+
+// drake
 #include "drake/systems/framework/diagram.h"
 
 namespace dairlib {
@@ -9,6 +12,8 @@ namespace perceptive_locomotion {
 class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PerceptionModuleDiagram);
+
+  PerceptionModuleDiagram();
 
   const drake::systems::InputPort<double>& get_input_port_cassie_out() const {
    return get_input_port(input_port_cassie_out_);
@@ -29,6 +34,8 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   }
 
  private:
+  perception::elevation_mapping_params elevation_mapping_params_;
+
   drake::systems::InputPortIndex input_port_cassie_out_;
   drake::systems::InputPortIndex input_port_depth_image_;
 

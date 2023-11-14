@@ -1,0 +1,12 @@
+sensor_poses: [
+    {
+        sensor_name: "pelvis_depth",
+        sensor_parent_body: "pelvis",
+        sensor_pose_in_parent_body_yaml: "examples/perceptive_locomotion/camera_calib/depth_simulation.yaml"
+    }
+]
+
+map_update_trigger_type: "periodic"
+base_frame_name: "pelvis"
+track_point: [0.5, 0, 0]
+map_update_rate_hz: 30.0

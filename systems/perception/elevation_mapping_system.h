@@ -1,7 +1,8 @@
 #pragma once
 
-
-// Elevation mapping
+// dairlib
+#include "camera_utils.h"
+#include "common/find_resource.h"
 #include "elevation_mapping/ElevationMap.hpp"
 #include "elevation_mapping/RobotMotionMapUpdater.hpp"
 #include "elevation_mapping/sensor_processors/SensorProcessorBase.hpp"
@@ -9,6 +10,8 @@
 // Drake
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/common/yaml/yaml_read_archive.h"
+#include "drake/common/yaml/yaml_io.h"
 
 namespace dairlib {
 namespace perception {
@@ -30,6 +33,57 @@ struct elevation_mapping_params {
   std::string base_frame_name;
   Eigen::Vector3d track_point;
 };
+
+struct elevation_mapping_params_io {
+  std::vector<std::map<std::string, std::string>> sensor_poses;
+  std::string map_update_trigger_type;
+  std::string base_frame_name;
+  std::vector<double> track_point;
+  double map_update_rate_hz;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(sensor_poses));
+    a->Visit(DRAKE_NVP(map_update_trigger_type));
+    a->Visit(DRAKE_NVP(base_frame_name));
+    a->Visit(DRAKE_NVP(track_point));
+    a->Visit(DRAKE_NVP(map_update_rate_hz));
+  }
+
+  static elevation_mapping_params ReadElevationMappingParamsFromYaml(
+      const std::string& filename) {
+    elevation_mapping_params params_out;
+    auto params_io = drake::yaml::LoadYamlFile<elevation_mapping_params_io>(
+        FindResourceOrThrow(filename)
+    );
+    params_out.sensor_poses.clear();
+    for (const auto& pose_info : params_io.sensor_poses) {
+      params_out.sensor_poses.push_back({
+        pose_info.at("sensor_name"),
+        pose_info.at("sensor_parent_body"),
+        camera::ReadCameraPoseFromYaml(FindResourceOrThrow(
+            pose_info.at("sensor_pose_in_parent_body_yaml")
+        ))
+      });
+    }
+    DRAKE_DEMAND(params_io.map_update_trigger_type == "periodic" or
+                 params_io.map_update_trigger_type == "forced");
+    if (params_io.map_update_trigger_type == "forced") {
+      params_out.update_params.map_update_type_ =
+          drake::systems::TriggerType::kForced;
+    } else {
+      params_out.update_params.map_update_type_ =
+          drake::systems::TriggerType::kPeriodic;
+      params_out.update_params.map_update_rate_hz_ =
+          params_io.map_update_rate_hz;
+    }
+    DRAKE_DEMAND(params_io.track_point.size() == 3);
+    params_out.track_point = Eigen::Vector3d::Map(params_io.track_point.data());
+    params_out.base_frame_name = params_io.base_frame_name;
+    return params_out;
+  };
+};
+
 
 class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
  public:

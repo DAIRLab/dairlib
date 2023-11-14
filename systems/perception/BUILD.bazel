@@ -27,6 +27,7 @@ cc_library(
     deps = [
         ":camera_utils",
         ":perceptive_locomotion_preprocessor",
+        "//common:find_resource",
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

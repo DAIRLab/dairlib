@@ -24,6 +24,7 @@ namespace dairlib {
 using systems::RobotOutputReceiver;
 using perception::ElevationMappingSystem;
 using perception::elevation_mapping_params;
+using perception::elevation_mapping_params_io;
 using perception::PerceptiveLocomotionPreprocessor;
 using perception::LcmToPclPointCloud;
 using perception::perceptive_locomotion_preprocessor_params;
@@ -40,6 +41,10 @@ DEFINE_string(channel_point_cloud, "CASSIE_DEPTH", "pointcloud lcm channel");
 DEFINE_string(camera_calib_yaml,
               "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml",
               "camera calibration yaml");
+DEFINE_string(elevation_mapping_params_yaml,
+              "examples/perceptive_locomotion/camera_calib/"
+              "elevation_mapping_params_simulation.yaml",
+              "elevation mapping parameters file");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -54,17 +59,10 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  elevation_mapping_params mapping_params {
-      {  // sensor pose params
-        {"pelvis_cam", "pelvis", ReadCameraPoseFromYaml(FLAGS_camera_calib_yaml)},
-      },
-      { // map update params
-        drake::systems::TriggerType::kPeriodic,
-        30.0
-      },
-      "pelvis",                       // robot base frame
-      0.5 * Eigen::Vector3d::UnitX() // track point (in base frame)
-  };
+  elevation_mapping_params mapping_params =
+      elevation_mapping_params_io::ReadElevationMappingParamsFromYaml(
+          FLAGS_elevation_mapping_params_yaml
+      );
 
   perceptive_locomotion_preprocessor_params processor_params {
     "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
@@ -78,7 +76,7 @@ int DoMain(int argc, char* argv[]) {
       plant, plant_context.get(), processor_params,
       elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
   );
-  elevation_mapping->AddSensorPreProcessor("pelvis_cam", std::move(processor));
+  elevation_mapping->AddSensorPreProcessor("pelvis_depth", std::move(processor));
 
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
 
@@ -99,7 +97,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*pcl_subscriber, *pcl_receiver);
   builder.Connect(
       pcl_receiver->get_output_port(),
-      elevation_mapping->get_input_port_pointcloud("pelvis_cam")
+      elevation_mapping->get_input_port_pointcloud("pelvis_depth")
   );
   builder.Connect(
       state_receiver->get_output_port(),

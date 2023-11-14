@@ -104,7 +104,7 @@ ElevationMappingSystem::ElevationMappingSystem(
 
 void ElevationMappingSystem::AddSensorPreProcessor(
     const std::string& sensor_name,
-    std::unique_ptr<SensorProcessorBase> processor) {
+    std::shared_ptr<SensorProcessorBase> processor) {
 
   DRAKE_DEMAND(sensor_poses_.count(sensor_name) == 1);
   auto processor_derived = dynamic_cast<PerceptiveLocomotionPreprocessor*>(
@@ -115,7 +115,7 @@ void ElevationMappingSystem::AddSensorPreProcessor(
     // propagated correctly
     DRAKE_DEMAND(processor_derived->context() == context_);
   }
-  sensor_preprocessors_.insert({sensor_name, std::move(processor)});
+  sensor_preprocessors_.insert({sensor_name, processor});
 }
 
 drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
@@ -197,7 +197,6 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     const auto& X_PS =  sensor_poses_.at(name).sensor_pose_in_parent_body_;
 
     // apply preprocessor
-    DRAKE_DEMAND(sensor_preprocessors_.count(name) > 0);
     sensor_preprocessors_.at(name)->process(
         cloud,
         pose_covariance,

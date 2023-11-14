@@ -1,5 +1,6 @@
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 
@@ -29,6 +30,9 @@ int DoMain() {
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
   std::string terrain_yaml =
       "examples/perceptive_locomotion/terrains/stones.yaml";
+  std::string elevation_mapping_params_yaml =
+      "examples/perceptive_locomotion/camera_calib/"
+      "elevation_mapping_params_simulation.yaml";
 
   auto builder = drake::systems::DiagramBuilder<double>();
 
@@ -38,6 +42,15 @@ int DoMain() {
   auto sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml
   );
+  std::map<std::string, drake::systems::sensors::CameraInfo> sensor_info;
+  for (const auto& sensor_name : {"pelvis_depth"}) {
+    sensor_info.insert(
+        {sensor_name, sim_diagram->get_depth_camera_info(sensor_name)}
+    );
+  }
+  auto perception_module = builder.AddSystem(
+      PerceptionModuleDiagram::Make(elevation_mapping_params_yaml, sensor_info)
+  );
   auto foothold_source = builder.AddSystem<ConstantVectorSource<double>>(
       -0.3 * Eigen::Vector3d::UnitY()
   );
@@ -46,8 +59,16 @@ int DoMain() {
   );
 
   builder.Connect(
-      sim_diagram->get_output_port_state_lcm(),
+      sim_diagram->get_output_port_cassie_out(),
+      perception_module->get_input_port_cassie_out()
+  );
+  builder.Connect(
+      perception_module->get_output_port_robot_output(),
       osc_diagram->get_input_port_state()
+  );
+  builder.Connect(
+      sim_diagram->get_output_port_depth_image(),
+      perception_module->get_input_port_depth_image("pelvis_depth")
   );
   builder.Connect(
       sim_diagram->get_output_port_lcm_radio(),

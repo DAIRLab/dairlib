@@ -113,7 +113,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
 
   void AddSensorPreProcessor(
       const std::string& sensor_name,
-      std::unique_ptr<elevation_mapping::SensorProcessorBase> processor);
+      std::shared_ptr<elevation_mapping::SensorProcessorBase> processor);
 
  private:
 
@@ -146,7 +146,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
            drake::systems::DiscreteStateIndex> sensor_prev_update_time_indices_;
 
   std::map<std::string,
-           std::unique_ptr<elevation_mapping::SensorProcessorBase>> sensor_preprocessors_;
+           std::shared_ptr<elevation_mapping::SensorProcessorBase>> sensor_preprocessors_;
 };
 
 }

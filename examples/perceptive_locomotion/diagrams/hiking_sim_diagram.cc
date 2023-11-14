@@ -16,7 +16,6 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-#include "drake/systems/sensors/rgbd_sensor.h"
 #include "drake/perception/depth_image_to_point_cloud.h"
 #include "drake/geometry/render_vtk/render_engine_vtk_params.h"
 #include "drake/geometry/render_vtk/factory.h"
@@ -108,6 +107,7 @@ HikingSimDiagram::HikingSimDiagram(
   const auto camera = builder.AddSystem<drake::systems::sensors::RgbdSensor>(
           parent_body_id.value(), cam_transform, color_camera, depth_camera
   );
+  camera->set_name("pelvis_depth");
 
   // Add radio just in case
   const auto radio_parser = builder.AddSystem<systems::RadioParser>();
@@ -168,6 +168,9 @@ HikingSimDiagram::HikingSimDiagram(
   );
   output_port_scene_graph_query_  = builder.ExportOutput(
       scene_graph_->get_query_output_port(), "Scene_graph_query_port"
+  );
+  output_port_depth_image_ = builder.ExportOutput(
+      camera->depth_image_32F_output_port(), "depth_image_32F"
   );
 
   builder.BuildInto(this);

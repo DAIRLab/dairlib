@@ -72,7 +72,7 @@ int DoMain(int argc, char* argv[]) {
   auto elevation_mapping = builder.AddSystem<ElevationMappingSystem>(
       plant, plant_context.get(), mapping_params
   );
-  auto processor = std::make_unique<PerceptiveLocomotionPreprocessor>(
+  auto processor = std::make_shared<PerceptiveLocomotionPreprocessor>(
       plant, plant_context.get(), processor_params,
       elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
   );

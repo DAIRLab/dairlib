@@ -61,9 +61,12 @@ cc_library(
     deps = [
         "//examples/Cassie:cassie_state_estimator",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception/pointcloud:drake_to_pcl_pointcloud",
         "//systems/perception/pointcloud:voxel_grid_filter",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )
@@ -86,6 +89,7 @@ cc_binary(
     deps = [
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
+        ":pereption_module_diagram",
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
     ],

@@ -2,9 +2,7 @@
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
 
-using drake::geometry::DrakeVisualizer;
 using drake::geometry::Meshcat;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
@@ -39,7 +37,6 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   std::tie(plant_, scene_graph) =
       drake::multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
 
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   Parser parser(plant_, scene_graph, "pose_trace");
   parser.SetAutoRenaming(true);
   // Add num_poses copies of the plant, giving each a unique name

@@ -233,6 +233,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     with_input_constraints_ = constraint_status;
   }
   void SetAccelerationConstraints(bool constraint_status) {
+    if (ddq_max_.isZero() and constraint_status) {
+      throw std::runtime_error(
+          "Attempting to set acceleration limits when acceleration limits have "
+          "not been defined for the plant.");
+    }
     with_acceleration_constraints_ = constraint_status;
   }
   void SetContactFriction(double mu) { mu_ = mu; }
@@ -371,7 +376,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Size of holonomic constraint and total/active contact constraints
   int n_h_;
   int n_c_;
-  int n_ee_;
+  int n_lambda_ext_;
   int n_c_active_;
 
   // Manually specified holonomic constraints (only valid for plants_wo_springs)
@@ -417,7 +422,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::VectorXDecisionVariable u_;
   drake::solvers::VectorXDecisionVariable lambda_c_;
   drake::solvers::VectorXDecisionVariable lambda_h_;
-  drake::solvers::VectorXDecisionVariable lambda_ee_;
+  drake::solvers::VectorXDecisionVariable lambda_ext_;
   drake::solvers::VectorXDecisionVariable epsilon_;
   // Cost and constraints
   drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
@@ -432,7 +437,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::QuadraticCost* input_smoothing_cost_ = nullptr;
   drake::solvers::QuadraticCost* lambda_c_cost_ = nullptr;
   drake::solvers::QuadraticCost* lambda_h_cost_ = nullptr;
-  drake::solvers::QuadraticCost* lambda_ee_cost_ = nullptr;
+  drake::solvers::QuadraticCost* lambda_ext_cost_ = nullptr;
   drake::solvers::QuadraticCost* soft_constraint_cost_ = nullptr;
 
   // OSC solution
@@ -440,7 +445,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> u_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_ee_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_ext_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_;

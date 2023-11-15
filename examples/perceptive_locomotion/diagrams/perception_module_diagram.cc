@@ -1,7 +1,6 @@
 #include "perception_module_diagram.h"
 
 // dairlib
-#include "systems/system_utils.h"
 #include "systems/perception/pointcloud/drake_to_pcl_pointcloud.h"
 #include "systems/perception/pointcloud/voxel_grid_filter.h"
 #include "systems/perception/elevation_mapping_system.h"
@@ -10,6 +9,8 @@
 #include "systems/robot_lcm_systems.h"
 #include "examples/Cassie/networking/cassie_output_receiver.h"
 #include "examples/Cassie/cassie_state_estimator.h"
+#include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
+#include "multibody/multibody_utils.h"
 
 // drake
 #include "drake/systems/framework/diagram_builder.h"
@@ -29,11 +30,16 @@ using elevation_mapping::SensorProcessorBase;
 using multibody::DistanceEvaluator;
 using multibody::WorldPointEvaluator;
 using multibody::KinematicEvaluatorSet;
+using multibody::MakeNameToPositionsMap;
+using multibody::MakeNameToVelocitiesMap;
 
 using perception::elevation_mapping_params_io;
 using perception::perceptive_locomotion_preprocessor_params;
 using perception::PerceptiveLocomotionPreprocessor;
 using perception::DrakeToPclPointCloud;
+
+using drake::systems::BasicVector;
+using drake::systems::AbstractStateIndex;
 
 PerceptionModuleDiagram::PerceptionModuleDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
@@ -84,7 +90,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
       *plant_, &fourbar_, &left_contact_, &right_contact_, joint_offsets_,
       false, false, 2
   );
-
+  state_estimator_->MakeDrivenBySimulator(0.0005);
   // robot output sender
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(*plant_, true, true);
@@ -216,15 +222,66 @@ std::unique_ptr<PerceptionModuleDiagram> PerceptionModuleDiagram::Make(
 
 void PerceptionModuleDiagram::InitializeEkf(
     drake::systems::Context<double> *root_context,
-    const Eigen::VectorXd& q, const Eigen::VectorXd& v) const {
+    const Eigen::VectorXd& q, const Eigen::VectorXd& v,
+    const Eigen::Vector3d& accel, const Eigen::Vector3d& gyro) const {
+
+  auto x = BasicVector<double>(
+      plant_->num_positions() + plant_->num_velocities()
+  );
+  x.get_mutable_value().head(plant_->num_positions()) = q;
+  x.get_mutable_value().tail(plant_->num_velocities()) = v;
+
+  // fill out the cassie_out message with the relevant parameters
+  lcmt_cassie_out cassie_out_message;
+  systems::SimCassieSensorAggregator::CopyJointStates(
+      MakeNameToPositionsMap(*plant_),
+      MakeNameToVelocitiesMap(*plant_),
+      &cassie_out_message,
+      &x
+  );
+
+  for (int i = 0; i < 3; ++i) {
+    cassie_out_message.pelvis.vectorNav.angularVelocity[i] = gyro(i);
+    cassie_out_message.pelvis.vectorNav.linearAcceleration[i] = accel(i);
+  }
+
   auto& delay_system =
       dynamic_cast<const drake::systems::DiscreteTimeDelay<double>&>(
           GetSubsystemByName("communication_delay")
       );
   auto& delay_context = delay_system.GetMyMutableContextFromRoot(root_context);
-  for (int i = 0; i < communication_delay_periods_; i++) {
-    delay_system.SaveInputToBuffer(&delay_context);
+
+  for (AbstractStateIndex i{0}; i < communication_delay_periods_; ++i) {
+    delay_context.SetAbstractState<lcmt_cassie_out>(i, cassie_out_message);
   }
+
+  auto& state_estimator_context = state_estimator_->GetMyMutableContextFromRoot(
+      root_context
+  );
+  state_estimator_->setPreviousTime(
+      &state_estimator_context, root_context->get_time()
+  );
+  state_estimator_->setInitialPelvisPose(
+      &state_estimator_context, q.head<4>(), q.segment<3>(4), v.segment<3>(3)
+  );
+  Eigen::VectorXd init_imu = Eigen::VectorXd::Zero(6);
+  init_imu.head<3>() = gyro;
+  init_imu.tail<3>() = accel;
+  state_estimator_->setPreviousImuMeasurement(
+      &state_estimator_context, init_imu
+  );
+}
+
+void PerceptionModuleDiagram::InitializeEkf(
+    drake::systems::Context<double> *root_context,
+    const Eigen::VectorXd &q, const Eigen::VectorXd &v) const {
+  plant_->SetPositions(plant_context_.get(), q);
+  auto pose = plant_->GetBodyByName("pelvis").EvalPoseInWorld(*plant_context_);
+  Vector3d accel(0, 0, 9.81);
+  Vector3d omega = v.head<3>();
+  accel = pose.rotation().inverse() * accel;
+  omega = pose.rotation().inverse() * omega;
+  InitializeEkf(root_context, q, v, accel, omega);
 }
 
 }

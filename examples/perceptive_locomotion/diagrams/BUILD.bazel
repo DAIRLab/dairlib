@@ -61,6 +61,8 @@ cc_library(
     deps = [
         "//examples/Cassie:cassie_state_estimator",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
+        "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/perception:elevation_mapping_system",

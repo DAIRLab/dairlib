@@ -14,8 +14,8 @@
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
 
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/leaf_system.h"
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -43,6 +43,11 @@ class SimCassieSensorAggregator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_input_port_);
   }
+
+  static void CopyJointStates(
+      const std::map<std::string, int>& position_index_map,
+      const std::map<std::string, int>& velocity_index_map,
+      lcmt_cassie_out* cassie_out_msg, const BasicVector<double>* state);
 
  private:
   void Aggregate(const drake::systems::Context<double>& context,

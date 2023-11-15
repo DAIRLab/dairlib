@@ -42,6 +42,11 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   }
 
   void InitializeEkf(drake::systems::Context<double>* root_context,
+                     const Eigen::VectorXd& q, const Eigen::VectorXd& v,
+                     const Eigen::Vector3d& accel,
+                     const Eigen::Vector3d& gyro) const;
+
+  void InitializeEkf(drake::systems::Context<double>* root_context,
                      const Eigen::VectorXd& q, const Eigen::VectorXd& v) const;
 
   static std::unique_ptr<PerceptionModuleDiagram> Make(
@@ -75,7 +80,7 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   drake::systems::OutputPortIndex output_port_robot_output_;
   drake::systems::OutputPortIndex output_port_elevation_map_;
 
-  const int communication_delay_periods_ = 6;
+  const int communication_delay_periods_ = 1;
 };
 
 } // namespace perceptive_locomotion

@@ -137,6 +137,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // because we want the discrete update to happen before Publish
   void set_next_message_time(double t) { next_message_time_ = t; };
 
+  void MakeDrivenBySimulator(double update_rate) {
+    DeclarePeriodicUnrestrictedUpdateEvent(
+        update_rate, 0.0, &CassieStateEstimator::Update
+    );
+  };
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;

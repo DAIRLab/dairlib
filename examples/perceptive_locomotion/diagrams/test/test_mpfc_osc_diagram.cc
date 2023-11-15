@@ -115,6 +115,8 @@ int DoMain() {
       0.95
   );
 
+  perception_module->InitializeEkf(context.get(), q, v);
+
   drake::systems::Simulator<double> simulator(*diagram, std::move(context));
 
   simulator.set_publish_every_time_step(false);

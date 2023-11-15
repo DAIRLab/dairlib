@@ -89,6 +89,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
+  // std::cout<<"\tn, m, k = "<<n_<<", "<<m_<<", "<<k_<<std::endl;
 
   for (int i = 0; i < N_ + 1; i++) {
     x_.push_back(prog_.NewContinuousVariables(n_, "x" + std::to_string(i)));
@@ -203,6 +204,7 @@ vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, ve
   VectorXd z;
   
   // vector<VectorXd> u(N_, VectorXd::Zero(n_ + m_ + k_)); //is this an initializer? from line 332
+  // std::cout<< "before ADMM step" << std::endl;
 
   for (int i = 0; i < options_.admm_iter-1; i++) {
 
@@ -214,6 +216,8 @@ vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, ve
 //    std::cout << w.at(0) << std::endl;
 
   }
+
+  // std::cout<< "after ADMM step" << std::endl;
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
@@ -299,8 +303,12 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
   }
 
 //  auto start = std::chrono::high_resolution_clock::now();
+  // std::cout<< "before QP step" << std::endl;
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+
+  // std::cout<< "after QP step" << std::endl;
+
 
   // std::cout<<"z0: "<<z[0]<<std::endl;
   // std::cout<<"Gap function with z0"<<E_[0]*z[0].segment(0, n_) + F_[0] *z[0].segment(n_, m_) + H_[0]*z[0].segment(n_+m_, k_) + c_[0]<<std::endl;
@@ -472,10 +480,10 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
 
 #pragma omp parallel for
   for (i = 0; i < N_; i++) {
-    // bool constrain_first_x = false;
-    // if (i == 0) {
-    //   constrain_first_x = true;
-    // }
+    bool constrain_first_x = false;
+    if (i == 0) {
+      constrain_first_x = true;
+    }
 
     if (warm_start_){
       deltaProj[i] =
@@ -485,6 +493,7 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
       deltaProj[i] =
           SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1);
     }
+    // std::cout<< "after single projection step" << std::endl;
   }
 
   return deltaProj;

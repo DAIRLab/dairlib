@@ -134,13 +134,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     model.addConstr(cexpr2 + c(i) <= M * binary[i]);
   }
 
-  // Constrain x0 if necessary.
-  // if (constrain_first_x == true) {
-  //   for (int i = 0; i < n_; i++) {
-  //     model.addConstr(delta_k[i] == x0[i]);
-  //   }
-  //   // std::cout<<"Constraining delta0 to be: "<<x0<<std::endl;
-  // }
 
   // TODO:  Play around with fixing some of these constraints.  Eventually make these adaptive to model size instead of hard-coded for the jack.
   // Any reported rates were achieved using 1 thread and 0 sample locations on Wanxin's computer.

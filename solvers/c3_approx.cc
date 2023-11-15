@@ -96,18 +96,17 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
   LinIneq.block(0, n_, m_, m_) = F/scaling;
   LinIneq.block(0, n_ + m_, m_, k_) = H/scaling;
 
-  
+  // std::cout<< "before Linear Constraint 1" << std::endl;
   projprog_.AddLinearConstraint(LinIneq, -c/scaling, 100000*VectorXd::Ones(m_)-(c/scaling), {xn_, ln_, un_} );
   //prog.AddLinearConstraint(LinIneq, -c, -c, {xn, ln, un} );
-  
-  // Debugging print statement
-  std::cout << "I am new c3 approx" << std::endl;
 
+  // std::cout<< "before Linear Constraint 2" << std::endl;
   //prog.AddLinearEqualityConstraint(LinIneq, -c/scaling, {xn, ln, un});
   projprog_.AddLinearConstraint(MatrixXd::Identity(m_, m_), VectorXd::Zero(m_), 10000*VectorXd::Ones(m_), ln_);
 
   double alpha = 0.2;
   MatrixXd New_U = U;
+  // std::cout<<"U shape"<<U.rows()<<","<<U.cols()<<std::endl;
   New_U.block(n_,n_,m_,m_) = alpha * F;
 
   //std::cout << "alphaF" << std::endl;
@@ -115,9 +114,12 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
 
 
   VectorXd cost_linear = -delta_c.transpose() * New_U;
+  // std::cout<<"cost_linear shape = "<<cost_linear.rows()<<","<<cost_linear.cols()<<std::endl;
 
+
+  // std::cout<< "before quadratic cost 1" << std::endl;
   projprog_.AddQuadraticCost(New_U, cost_linear, {xn_, ln_, un_}, 1);
-
+  // std::cout<< "before quadratic cost 2" << std::endl;
   projprog_.AddQuadraticCost((1-alpha) * F , VectorXd::Zero(m_), ln_, 1);
 
 
@@ -140,12 +142,13 @@ VectorXd C3APPROX::SolveSingleProjection(const MatrixXd& U,
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_prim_inf", 1e-8);
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "eps_dual_inf", 1e-8);
 //  OSQPoptions_.SetOption(OsqpSolver::id(), "max_iter",  100);
+  // std::cout<< "before osqp setting" << std::endl;
   OSQPoptions_.SetOption(OsqpSolver::id(), "verbose", 0);
   OSQPoptions_.SetOption(OsqpSolver::id(), "polishing", true);
   projprog_.SetSolverOptions(OSQPoptions_);
 
 
-
+  // std::cout<< "before solve approximate QP" << std::endl;
   MathematicalProgramResult result = osqp_.Solve(projprog_);
 
 

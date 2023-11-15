@@ -132,6 +132,9 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
             torch.save(model.state_dict(), checkpoint_path)
 
     # Testing phase
+    # load the best model
+    model.load_state_dict(torch.load(checkpoint_path))
+    # test the data
     test_loss = run_epoch(model, test_loader, device, is_training=False)
 
     # Logging for test loss if using WandB

@@ -5,10 +5,6 @@
 #include "drake/solvers/moby_lcp_solver.h"
 
 #include "drake/math/autodiff_gradient.h"
-<<<<<<< HEAD
-
-=======
->>>>>>> jacktoy_anitescu_temp
 #include <iostream>
 
 
@@ -116,11 +112,6 @@ std::pair<LCS,double> LCSFactoryConvex::LinearizePlantToLCS(
   MatrixXd J_n(contact_geoms.size(), n_vel);
   MatrixXd J_t(2 * contact_geoms.size() * num_friction_directions, n_vel);
 
-<<<<<<< HEAD
-  // std::cout<<"Contact geoms size when passed into new LCS factory = "<<contact_geoms.size()<<std::endl;
-
-=======
->>>>>>> jacktoy_anitescu_temp
   // from GeomGeomCollider (collision dectection) get contact information
   for (int i = 0; i < contact_geoms.size(); i++) {
     std::vector<double> distances;
@@ -253,9 +244,6 @@ std::pair<LCS,double> LCSFactoryConvex::LinearizePlantToLCS(
   E /= AnDn;
   c /= AnDn;
   H /= AnDn;
-<<<<<<< HEAD
-
-=======
   
 
   // std::cout<<"A dimension = "<<A.size()<<std::endl;
@@ -267,7 +255,6 @@ std::pair<LCS,double> LCSFactoryConvex::LinearizePlantToLCS(
   // std::cout<<"H dimension = "<<H.size()<<std::endl;
   // std::cout<<"c dimension = "<<c.size()<<std::endl;
   // std::cout<<N<<std::endl;
->>>>>>> jacktoy_anitescu_temp
 
   LCS system(A, B, D, d, E, F, H, c, N);
   std::pair <LCS, double> ret (system, AnDn);

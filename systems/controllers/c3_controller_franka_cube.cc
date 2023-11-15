@@ -128,13 +128,13 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (82) includes:
+  State output port (80) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
     xball_dot (6) -- angular and linear velocities of object
-    lambda (6) -- end effector/object forces (slack variable, normal force, 4 tangential forces)
-    visualization (36) -- miscellaneous visualization-related debugging values:
+    lambda (4) -- end effector/object forces (4 friction directions)
+    visualization (53) -- miscellaneous visualization-related debugging values:
       (9) 3 sample xyz locations
       (3) next xyz position of the end effector
       (3) optimal xyz sample location
@@ -842,8 +842,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd force; //This contains the contact forces.
-    // Tangential forces and normal forces for contacts
-    // --> gamma slack variable, ball+ee and ball+ground (multiple if needed) from stewart trinkle formulation.
+    // 4 contact forces per contact point.
+    // from anitescu formulation.
     
     // std::cout<<" HERE START "<<std::endl;
     auto flag = LCPSolver.SolveLcpLemkeRegularized(
@@ -883,14 +883,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
 
     // TODO:  double check that this makes sense to keep at zeros or if it should go back to the end effector forces.
-    VectorXd force_des = VectorXd::Zero(6);
+    VectorXd force_des = VectorXd::Zero(4);
   
     // Set the indicator in visualization to C3 location, at a negative y value.
     Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
     
 
     // Update desired next state.
-    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
+    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(4),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
@@ -955,7 +955,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
 
     // Set desired next state.
-    st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
+    st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(4),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,

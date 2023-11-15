@@ -41,6 +41,9 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
    return get_output_port(output_port_elevation_map_);
   }
 
+  void InitializeEkf(drake::systems::Context<double>* root_context,
+                     const Eigen::VectorXd& q, const Eigen::VectorXd& v) const;
+
   static std::unique_ptr<PerceptionModuleDiagram> Make(
       std::string elevation_mapping_params_yaml_path,
       std::map<std::string, drake::systems::sensors::CameraInfo> depth_sensor_info,
@@ -60,8 +63,8 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   multibody::WorldPointEvaluator<double> left_heel_evaluator_;
   multibody::WorldPointEvaluator<double> right_toe_evaluator_;
   multibody::WorldPointEvaluator<double> right_heel_evaluator_;
-
   std::map<std::string, double> joint_offsets_;
+  systems::CassieStateEstimator* state_estimator_;
 
   perception::elevation_mapping_params elevation_mapping_params_;
 
@@ -71,6 +74,8 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   drake::systems::OutputPortIndex output_port_state_;
   drake::systems::OutputPortIndex output_port_robot_output_;
   drake::systems::OutputPortIndex output_port_elevation_map_;
+
+  const int communication_delay_periods_ = 6;
 };
 
 } // namespace perceptive_locomotion

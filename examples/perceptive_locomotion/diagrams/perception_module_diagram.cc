@@ -74,14 +74,15 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
 
   // 2000 Hz update rate with a 3 ms delay
   auto delay = builder.AddSystem<drake::systems::DiscreteTimeDelay<double>>(
-        0.0005, 6, drake::Value<lcmt_cassie_out>()
+        0.0005, communication_delay_periods_, drake::Value<lcmt_cassie_out>()
   );
+  delay->set_name("communication_delay");
 
   // state estimator
   // TODO: Add option to set joint offsets in state estimator
-  auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
+  state_estimator_ = builder.AddSystem<systems::CassieStateEstimator>(
       *plant_, &fourbar_, &left_contact_, &right_contact_, joint_offsets_,
-      false, false, -1
+      false, false, 2
   );
 
   // robot output sender
@@ -90,17 +91,17 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
 
   // passthroughs
   auto state_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-      state_estimator->get_robot_output_port().size(), 0,
+      state_estimator_->get_robot_output_port().size(), 0,
       robot_output_sender->get_input_port_state().size());
 
   // Passthrough to pass efforts
   auto effort_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-      state_estimator->get_robot_output_port().size(),
+      state_estimator_->get_robot_output_port().size(),
       robot_output_sender->get_input_port_state().size(),
       robot_output_sender->get_input_port_effort().size());
 
   auto imu_passthrough = builder.AddSystem<systems::SubvectorPassThrough>(
-      state_estimator->get_robot_output_port().size(),
+      state_estimator_->get_robot_output_port().size(),
       robot_output_sender->get_input_port_state().size() +
           robot_output_sender->get_input_port_effort().size(),
       robot_output_sender->get_input_port_imu().size());
@@ -164,12 +165,12 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   }
 
   builder.Connect(*delay, *output_receiver);
-  builder.Connect(*output_receiver, *state_estimator);
-  builder.Connect(state_estimator->get_robot_output_port(),
+  builder.Connect(*output_receiver, *state_estimator_);
+  builder.Connect(state_estimator_->get_robot_output_port(),
                   state_passthrough->get_input_port());
-  builder.Connect(state_estimator->get_robot_output_port(),
+  builder.Connect(state_estimator_->get_robot_output_port(),
                   effort_passthrough->get_input_port());
-  builder.Connect(state_estimator->get_robot_output_port(),
+  builder.Connect(state_estimator_->get_robot_output_port(),
                   imu_passthrough->get_input_port());
   builder.Connect(state_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_state());
@@ -177,9 +178,9 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
                   robot_output_sender->get_input_port_effort());
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
-  builder.Connect(state_estimator->get_robot_output_port(),
+  builder.Connect(state_estimator_->get_robot_output_port(),
                   elevation_mapping_system->get_input_port_state());
-  builder.Connect(state_estimator->get_covariance_output_port(),
+  builder.Connect(state_estimator_->get_covariance_output_port(),
                   elevation_mapping_system->get_input_port_covariance());
 
   input_port_cassie_out_ = builder.ExportInput(
@@ -192,7 +193,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
       robot_output_sender->get_output_port(), "lcmt_robot_output"
   );
   output_port_state_ = builder.ExportOutput(
-      state_estimator->get_robot_output_port(), "x, u, t"
+      state_estimator_->get_robot_output_port(), "x, u, t"
   );
 
   set_name("perception_stack");
@@ -211,6 +212,19 @@ std::unique_ptr<PerceptionModuleDiagram> PerceptionModuleDiagram::Make(
     std::move(plant), elevation_mapping_params_yaml_path,
     depth_sensor_info, joint_offsets_yaml
   );
+}
+
+void PerceptionModuleDiagram::InitializeEkf(
+    drake::systems::Context<double> *root_context,
+    const Eigen::VectorXd& q, const Eigen::VectorXd& v) const {
+  auto& delay_system =
+      dynamic_cast<const drake::systems::DiscreteTimeDelay<double>&>(
+          GetSubsystemByName("communication_delay")
+      );
+  auto& delay_context = delay_system.GetMyMutableContextFromRoot(root_context);
+  for (int i = 0; i < communication_delay_periods_; i++) {
+    delay_system.SaveInputToBuffer(&delay_context);
+  }
 }
 
 }

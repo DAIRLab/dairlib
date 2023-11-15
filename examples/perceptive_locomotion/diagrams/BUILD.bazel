@@ -92,5 +92,7 @@ cc_binary(
         ":pereption_module_diagram",
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
+        "//systems:plant_visualizer",
+        "//systems/perception:grid_map_visualizer",
     ],
 )

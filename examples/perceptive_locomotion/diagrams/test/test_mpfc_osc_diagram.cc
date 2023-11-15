@@ -3,6 +3,8 @@
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
+#include "systems/plant_visualizer.h"
+#include "systems/perception/grid_map_visualizer.h"
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/primitives/constant_vector_source.h"
@@ -57,6 +59,11 @@ int DoMain() {
   auto radio_source = builder.AddSystem<ConstantVectorSource<double>>(
       Eigen::VectorXd::Zero(18)
   );
+  auto visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
+  std::vector<std::string> layers_to_visualize = {"elevation"};
+  auto grid_map_visualizer = builder.AddSystem<perception::GridMapVisualizer>(
+      visualizer->get_meshcat(), 30.0, layers_to_visualize
+  );
 
   builder.Connect(
       sim_diagram->get_output_port_cassie_out(),
@@ -86,6 +93,13 @@ int DoMain() {
       radio_source->get_output_port(),
       sim_diagram->get_input_port_radio()
   );
+  builder.Connect(
+      perception_module->get_output_port_state(), visualizer->get_input_port()
+  );
+  builder.Connect(
+      perception_module->get_output_port_elevation_map(),
+      grid_map_visualizer->get_input_port()
+  );
 
   auto diagram = builder.Build();
   diagram->set_name("mpfc_osc_with_sim");
@@ -93,7 +107,7 @@ int DoMain() {
 
   auto context = diagram->CreateDefaultContext();
 
-  sim_diagram->SetPlantInitialConditionFromIK(
+  auto [q, v] = sim_diagram->SetPlantInitialConditionFromIK(
       diagram.get(),
       context.get() ,
       Vector3d::Zero(),
@@ -105,7 +119,7 @@ int DoMain() {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+  simulator.set_target_realtime_rate(0.05);
   simulator.Initialize();
   simulator.AdvanceTo(0.5);
   return 0;

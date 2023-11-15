@@ -320,9 +320,9 @@ void RosToLcmObjectState::ConvertToLCM(
     object_state->position[1] = msg.pose.pose.orientation.x;
     object_state->position[2] = msg.pose.pose.orientation.y;
     object_state->position[3] = msg.pose.pose.orientation.z;
-    object_state->position[4] = msg.pose.pose.orientation.x;
-    object_state->position[5] = msg.pose.pose.orientation.y;
-    object_state->position[6] = msg.pose.pose.orientation.z;
+    object_state->position[4] = msg.pose.pose.position.x;
+    object_state->position[5] = msg.pose.pose.position.y;
+    object_state->position[6] = msg.pose.pose.position.z;
   }
   object_state->utime = context.get_time() * 1e6;
 }

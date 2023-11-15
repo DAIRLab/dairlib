@@ -89,6 +89,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
+  // std::cout<<"\tn, m, k = "<<n_<<", "<<m_<<", "<<k_<<std::endl;
 
   for (int i = 0; i < N_ + 1; i++) {
     x_.push_back(prog_.NewContinuousVariables(n_, "x" + std::to_string(i)));
@@ -203,6 +204,7 @@ vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, ve
   VectorXd z;
   
   // vector<VectorXd> u(N_, VectorXd::Zero(n_ + m_ + k_)); //is this an initializer? from line 332
+  // std::cout<< "before ADMM step" << std::endl;
 
   for (int i = 0; i < options_.admm_iter-1; i++) {
 
@@ -214,6 +216,8 @@ vector<VectorXd> C3::SolveFullSolution(VectorXd& x0, vector<VectorXd>& delta, ve
 //    std::cout << w.at(0) << std::endl;
 
   }
+
+  // std::cout<< "after ADMM step" << std::endl;
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
@@ -299,8 +303,12 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
   }
 
 //  auto start = std::chrono::high_resolution_clock::now();
+  // std::cout<< "before QP step" << std::endl;
 
   vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+
+  // std::cout<< "after QP step" << std::endl;
+
 
   // std::cout<<"z0: "<<z[0]<<std::endl;
   // std::cout<<"Gap function with z0"<<E_[0]*z[0].segment(0, n_) + F_[0] *z[0].segment(n_, m_) + H_[0]*z[0].segment(n_+m_, k_) + c_[0]<<std::endl;
@@ -327,9 +335,9 @@ VectorXd C3::ADMMStep(VectorXd& x0, vector<VectorXd>* delta,
     //std::cout << "W:" << w->at(0) << std::endl;
 
 
-    *delta = SolveProjection(Uv, ZW, x0);
+    *delta = SolveProjection(Uv, ZW);
   } else {
-    *delta = SolveProjection(*Gv, ZW, x0);
+    *delta = SolveProjection(*Gv, ZW);
   }
 
 
@@ -457,8 +465,7 @@ void C3::RemoveConstraints() {
 }
 
 vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
-                                     vector<VectorXd>& WZ,
-                                     Eigen::VectorXd& x0) {
+                                     vector<VectorXd>& WZ) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
   int i;
 
@@ -473,19 +480,17 @@ vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
 
 #pragma omp parallel for
   for (i = 0; i < N_; i++) {
-    bool constrain_first_x = false;
-    if (i == 0) {
-      constrain_first_x = true;
-    }
-
+    
+    // std::cout<< "before single projection step" << std::endl;
     if (warm_start_){
       deltaProj[i] =
-          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i, constrain_first_x, x0);
+          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i);
     }
     else{
       deltaProj[i] =
-          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1, constrain_first_x, x0);
+          SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], -1);
     }
+    // std::cout<< "after single projection step" << std::endl;
   }
 
   return deltaProj;

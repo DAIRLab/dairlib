@@ -1,8 +1,13 @@
 #include "systems/ros/franka_ros_lcm_conversions.h"
-//#include "franka_msgs/FrankaState.h"
+
 #include <sstream>
 
+#include "franka_msgs/FrankaState.h"
 #include "multibody/multibody_utils.h"
+#include "nav_msgs/Path.h"
+#include "nav_msgs/Odometry.h"
+#include "sensor_msgs/JointState.h"
+
 namespace dairlib {
 namespace systems {
 
@@ -298,24 +303,26 @@ RosToLcmObjectState::RosToLcmObjectState(
   object_state.position[0] = 1;
   this->DeclareAbstractOutputPort(object_name + "_state", object_state,
                                   &RosToLcmObjectState::ConvertToLCM);
-  this->DeclareAbstractInputPort("ROS Float64MultiArray",
-                                 drake::Value<std_msgs::Float64MultiArray>());
+  this->DeclareAbstractInputPort("ROS PoseWithCovariance",
+                                 drake::Value<nav_msgs::Odometry>());
 }
 
 void RosToLcmObjectState::ConvertToLCM(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_object_state* object_state) const {
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
-  const auto& msg = input->get_value<std_msgs::Float64MultiArray>();
+  const auto& msg = input->get_value<nav_msgs::Odometry>();
 
-  if (msg.data.empty()) {
-//    for (size_t i = 0; i < object_state->num_positions; i++) {
-//      object_state->position[i] = nan("");
-//    }
+  if (msg.pose.pose.position.x == 0) {
+    // do nothing when there is no message, just keep the most recent message1
   } else {
-    for (size_t i = 0; i < object_state->num_positions; i++) {
-      object_state->position[i] = msg.data[i];
-    }
+    object_state->position[0] = msg.pose.pose.orientation.w;
+    object_state->position[1] = msg.pose.pose.orientation.x;
+    object_state->position[2] = msg.pose.pose.orientation.y;
+    object_state->position[3] = msg.pose.pose.orientation.z;
+    object_state->position[4] = msg.pose.pose.orientation.x;
+    object_state->position[5] = msg.pose.pose.orientation.y;
+    object_state->position[6] = msg.pose.pose.orientation.z;
   }
   object_state->utime = context.get_time() * 1e6;
 }

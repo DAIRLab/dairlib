@@ -21,7 +21,7 @@ impact_tau: 0.000
 mu: 0.6
 end_effector_acceleration: 4.5
 track_end_effector_orientation: false
-cancel_gravity_compensation: false
+cancel_gravity_compensation: true
 enforce_acceleration_constraints: false
 # roll, yaw, pitch, knee, knee_spring, ankle_joint, ankle_spring, toe
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]

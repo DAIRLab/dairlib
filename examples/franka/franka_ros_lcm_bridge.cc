@@ -22,7 +22,7 @@
 #include "franka_msgs/FrankaState.h"
 #include "ros/ros.h"
 #include "sensor_msgs/JointState.h"
-#include "std_msgs/Float64MultiArray.h"
+#include "nav_msgs/Odometry.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/ros/franka_ros_lcm_conversions.h"
 #include "systems/ros/parameters/franka_ros_channels.h"
@@ -114,7 +114,7 @@ int DoMain(int argc, char* argv[]) {
 
   /* -------------------------------------------------------------------------------------------*/
   auto tray_object_state_ros_subscriber =
-      builder.AddSystem(RosSubscriberSystem<std_msgs::Float64MultiArray>::Make(
+      builder.AddSystem(RosSubscriberSystem<nav_msgs::Odometry>::Make(
           ros_channel_params.tray_state_channel, &node_handle));
   auto ros_to_lcm_object_state = builder.AddSystem(
       RosToLcmObjectState::Make(plant, tray_index, "tray"));

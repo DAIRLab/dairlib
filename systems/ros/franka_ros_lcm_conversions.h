@@ -7,8 +7,6 @@
 #include "dairlib/lcmt_estimated_object_state.hpp"
 #include "dairlib/lcmt_franka_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "franka_msgs/FrankaState.h"
-#include "sensor_msgs/JointState.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"

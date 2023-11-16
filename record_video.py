@@ -20,7 +20,7 @@ def main():
     # determine log number
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
-    logdir = f"{os.getenv('HOME')}/Videos/cassie_experiments/{year}/{curr_date}/"
+    logdir = f"{os.getenv('HOME')}/Videos/franka_experiments/{year}/{curr_date}/"
     os.makedirs(logdir, exist_ok=True)
     current_logs = sorted(glob.glob(logdir + '*log_*'))
     if current_logs:
@@ -33,7 +33,7 @@ def main():
     for i, name in enumerate(dev_names):
         experiment_name = logdir + 'log_' + log_num + '_cam' + str(i) + '.mp4'
         # print(experiment_name)
-        cmd = ('ffmpeg -y -f alsa -i default -i ' + name + ' -vcodec libx264 -acodec aac -qp 0').split(' ')
+        cmd = ('ffmpeg -y -f v4l2 -r 30 -i ' + name).split(' ')
         cmd.append(experiment_name)
         print(' '.join(cmd))
         cmds.append(cmd)

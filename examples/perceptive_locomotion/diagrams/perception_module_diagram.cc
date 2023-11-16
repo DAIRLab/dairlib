@@ -80,7 +80,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
 
   // 2000 Hz update rate with a 3 ms delay
   auto delay = builder.AddSystem<drake::systems::DiscreteTimeDelay<double>>(
-        0.0005, communication_delay_periods_, drake::Value<lcmt_cassie_out>()
+        ekf_update_period_, communication_delay_periods_, drake::Value<lcmt_cassie_out>()
   );
   delay->set_name("communication_delay");
 
@@ -90,7 +90,8 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
       *plant_, &fourbar_, &left_contact_, &right_contact_, joint_offsets_,
       false, false, 2
   );
-  state_estimator_->MakeDrivenBySimulator(0.0005);
+  state_estimator_->MakeDrivenBySimulator(ekf_update_period_);
+
   // robot output sender
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(*plant_, true, true);

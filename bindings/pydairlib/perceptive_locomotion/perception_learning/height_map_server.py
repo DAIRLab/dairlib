@@ -6,7 +6,7 @@ from pydrake.multibody.plant import (
     MultibodyPlant
 )
 
-from pydairlib.geometry.convex_foothold import ConvexFoothold
+from pydairlib.geometry.convex_polygon import ConvexPolygon
 
 from pydairlib.cassie.cassie_utils import (
     AddCassieMultibody,
@@ -23,7 +23,7 @@ from pydairlib.multibody import (
     ReExpressBodyYawVector3InWorldFrame,
 )
 
-from pydairlib.perceptive_locomotion.controllers import Stance
+from pydairlib.systems.footstep_planning import Stance
 
 
 @dataclass

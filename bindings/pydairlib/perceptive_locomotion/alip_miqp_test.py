@@ -3,8 +3,8 @@ from matplotlib import pyplot as plt
 
 from pydrake.systems.all import Diagram
 
-from pydairlib.geometry.convex_foothold import ConvexFoothold
-from pydairlib.perceptive_locomotion.controllers import (
+from pydairlib.geometry.convex_polygon import ConvexPolygon
+from pydairlib.systems.footstep_planning import (
     AlipMultiQP,
     AlipMIQP,
     Stance,
@@ -85,8 +85,8 @@ def main():
             p0,
         ]:
             # Make a rhombic foothold
-            foothold = ConvexFoothold()
-            foothold.SetContactPlane(np.array([0, 0, 1]), np.array([0, 0, 0]))
+            foothold = ConvexPolygon()
+            foothold.SetPlane(np.array([0, 0, 1]), np.array([0, 0, 0]))
             for i in [-1, 1]:
                 for j in [-1, 1]:
                     foothold.AddFace(

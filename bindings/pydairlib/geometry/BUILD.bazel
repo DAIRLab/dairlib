@@ -28,13 +28,13 @@ pybind_py_library(
 )
 
 pybind_py_library(
-    name = "convex_foothold_py",
+    name = "convex_polygon_py",
     cc_deps = [
         "//geometry:convex_polygon",
         "//geometry:convex_polygon_set",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "convex_foothold",
+    cc_so_name = "convex_polygon",
     cc_srcs = ["convex_polygon_py.cc"],
     py_deps = [
         ":module_py",
@@ -58,7 +58,7 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":convex_foothold_py",
+    ":convex_polygon_py",
 ] + select({
     "//tools/workspace/ros:dair_ros_on": ["polygon_utils_py"],
     "//tools/workspace/ros:dair_ros_off": [],

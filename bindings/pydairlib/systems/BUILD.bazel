@@ -12,13 +12,30 @@ load(
 )
 
 pybind_py_library(
-    name = "cameras_py",
+    name = "perception_py",
     cc_deps = [
         "//systems/perception:camera_utils",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "cameras",
-    cc_srcs = ["cameras_py.cc"],
+    cc_so_name = "perception",
+    cc_srcs = ["perception_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "footstep_planning_py",
+    cc_deps = [
+        "//systems/controllers/footstep_planning:alip_miqp",
+        "//systems/controllers/footstep_planning:alip_mpfc_system",
+        "//systems/controllers/footstep_planning:alip_multiqp",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "footstep_planning",
+    cc_srcs = ["footstep_planning_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
@@ -108,7 +125,8 @@ PY_LIBRARIES = [
     ":robot_lcm_systems_py",
     ":primitives_py",
     ":framework_py",
-    ":cameras_py",
+    ":perception_py",
+    ":footstep_planning_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

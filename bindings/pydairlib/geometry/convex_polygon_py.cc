@@ -14,7 +14,7 @@ namespace pydairlib {
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
 
-PYBIND11_MODULE(convex_foothold, m) {
+PYBIND11_MODULE(convex_polygon, m) {
 m.doc() = "Binding geometry utils";
 
 using py_rvp = py::return_value_policy;

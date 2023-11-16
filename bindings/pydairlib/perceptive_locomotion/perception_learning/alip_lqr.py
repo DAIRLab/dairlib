@@ -21,7 +21,7 @@ from pydrake.systems.all import (
 
 from pydrake.multibody.plant import MultibodyPlant
 
-from pydairlib.perceptive_locomotion.controllers import (
+from pydairlib.systems.footstep_planning import (
     AlipStepToStepDynamics,
     ResetDiscretization,
     AlipGaitParams,

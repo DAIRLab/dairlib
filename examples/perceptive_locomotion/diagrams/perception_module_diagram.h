@@ -81,6 +81,7 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   drake::systems::OutputPortIndex output_port_elevation_map_;
 
   const int communication_delay_periods_ = 1;
+  const double ekf_update_period_ = 0.0005;
 };
 
 } // namespace perceptive_locomotion

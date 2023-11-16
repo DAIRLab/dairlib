@@ -15,7 +15,7 @@ py_library(
     name = "alip_lqr",
     srcs = ["alip_lqr.py"],
     deps = [
-        "//bindings/pydairlib/perceptive_locomotion:controllers_py",
+        "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
     ],
 )
@@ -39,7 +39,7 @@ py_library(
     srcs = ["height_map_server.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",
     ],
@@ -50,7 +50,7 @@ py_library(
     srcs = ["terrain_utils.py"],
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",
     ],

@@ -9,7 +9,7 @@ namespace py = pybind11;
 using py_rvp = py::return_value_policy;
 
 namespace dairlib::pydairlib {
-PYBIND11_MODULE(cameras, m) {
+  PYBIND11_MODULE(perception, m) {
   m.doc() = "Binding camera utilities";
   m.def("ReadCameraPoseFromYaml", &dairlib::camera::ReadCameraPoseFromYaml, py::arg("fname"));
 }

@@ -767,7 +767,9 @@ EventStatus CassieStateEstimator::Update(
   // when running the PD controller with external support
   if (left_contact && right_contact && hardware_test_mode_ == 2) {
     hardware_test_mode_ = -1;
-    cout << "Switch to test_mode -1 \n";
+    if (print_info_to_terminal_) {
+      cout << "Switch to test_mode -1 \n";
+    }
   }
 
   // Test mode needed for hardware experiment
@@ -1037,10 +1039,12 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
   state.setRotation(imu_rot_mat);
   state.setVelocity(imu_velocity);
   filter.setState(state);
-  cout << "Set initial IMU position to \n"
-       << filter.getState().getPosition().transpose() << endl;
-  cout << "Set initial IMU rotation to \n"
-       << filter.getState().getRotation() << endl;
+  if (print_info_to_terminal_) {
+    cout << "Set initial IMU position to \n"
+         << filter.getState().getPosition().transpose() << endl;
+    cout << "Set initial IMU rotation to \n"
+         << filter.getState().getRotation() << endl;
+  }
 }
 void CassieStateEstimator::setPreviousImuMeasurement(
     Context<double>* context, const VectorXd& imu_value) const {

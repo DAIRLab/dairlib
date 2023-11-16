@@ -25,9 +25,9 @@ py_binary(
     name = "alip_miqp_test",
     srcs = ["alip_miqp_test.py"],
     deps = [
-        ":perceptive_locomotion",
         "//bindings/pydairlib/common:plot_styler",
-        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/geometry",
+        "//bindings/pydairlib/systems",
     ],
 )
 

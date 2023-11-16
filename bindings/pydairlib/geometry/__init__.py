@@ -1,2 +1,2 @@
 # Importing everything in this directory to this package
-from .convex_foothold import *
+from .convex_polygon import *

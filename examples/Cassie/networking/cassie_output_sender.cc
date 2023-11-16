@@ -1,4 +1,3 @@
-#include <algorithm>
 #include "examples/Cassie/networking/cassie_output_sender.h"
 
 

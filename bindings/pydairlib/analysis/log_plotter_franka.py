@@ -22,6 +22,7 @@ def main():
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
     channel_c3 = plot_config.channel_c3
+    channel_tray = plot_config.channel_tray
 
     if plot_config.plot_style == "paper":
         plot_styler.PlotStyler.set_default_styling()
@@ -35,6 +36,10 @@ def main():
     pos_map, vel_map, act_map = mbp_plots.make_name_to_mbp_maps(franka_plant)
     pos_names, vel_names, act_names = mbp_plots.make_mbp_name_vectors(
         franka_plant)
+    tray_pos_map, tray_vel_map, _ = mbp_plots.make_name_to_mbp_maps(tray_plant)
+
+    tray_pos_names, tray_vel_names, _ = mbp_plots.make_mbp_name_vectors(
+        tray_plant)
 
     ''' Read the log '''
     filename = sys.argv[1]
@@ -55,9 +60,18 @@ def main():
                                  plot_config.duration, mbp_plots.load_c3_debug,
                                  channel_c3)
 
+    # processing callback arguments
+    if plot_config.plot_object_state:
+        object_state = get_log_data(log, default_channels,
+                                    plot_config.start_time,
+                                    plot_config.duration,
+                                    mbp_plots.load_object_state,
+                                    channel_tray)
+        t_object_slice = slice(object_state['t'].size)
+
     print('Finished processing log - making plots')
     # Define x time slice
-    t_x_slice = slice(robot_output['t_x'].size)
+    t_x_slice = slice(robot_output['t'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
@@ -102,25 +116,29 @@ def main():
         mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
                                         franka_context, ['plate'],
                                         {'plate': np.zeros(3)},
-                                        {'plate': [0, 1, 2]}, ps=end_effector_plotter,
+                                        {'plate': [0, 1, 2]},
+                                        ps=end_effector_plotter,
                                         subplot_index=0)
 
         mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
                                          franka_context, ['plate'],
                                          {'plate': np.zeros(3)},
-                                         {'plate': [0, 1, 2]}, ps=end_effector_plotter,
+                                         {'plate': [0, 1, 2]},
+                                         ps=end_effector_plotter,
                                          subplot_index=1)
 
     ''' Plot Efforts '''
     effort_plotter = plot_styler.PlotStyler(nrows=2)
     if plot_config.plot_measured_efforts:
         plot = mbp_plots.plot_measured_efforts(robot_output, act_names,
-                                               t_x_slice, effort_plotter, subplot_index=0)
+                                               t_x_slice, effort_plotter,
+                                               subplot_index=0)
         plot.fig.axes[0].set_ylim(franka_joint_actuator_limit_range)
 
     if plot_config.plot_commanded_efforts:
         plot = mbp_plots.plot_commanded_efforts(robot_input, act_names,
-                                                t_osc_slice, effort_plotter, subplot_index=1)
+                                                t_osc_slice, effort_plotter,
+                                                subplot_index=1)
         plot.fig.axes[1].set_ylim(franka_joint_actuator_limit_range)
 
     if plot_config.act_names:
@@ -137,9 +155,14 @@ def main():
         plot = mbp_plots.plot_qp_costs(osc_debug, t_osc_slice)
 
     if plot_config.plot_qp_solutions:
-        plot = mbp_plots.plot_ddq_sol(osc_debug, t_osc_slice, pos_names, slice(0, 7))
-        # plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 12))
-        # plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0, 6))
+        plot = mbp_plots.plot_ddq_sol(osc_debug, t_osc_slice, pos_names,
+                                      slice(0, 7))
+        plot = mbp_plots.plot_joint_velocities(robot_output, vel_names, 0,
+                                               t_x_slice)
+        # plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0,
+        # 12))
+        # plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0,
+        # 6))
 
     if plot_config.tracking_datas_to_plot:
         for traj_name, config in plot_config.tracking_datas_to_plot.items():
@@ -160,6 +183,16 @@ def main():
                                                     osc_debug['fsm'],
                                                     plot_config.fsm_state_names)
         # plot.save_fig('active_tracking_datas.png')
+
+    if plot_config.plot_object_state:
+        plot = mbp_plots.plot_positions_by_name(object_state,
+                                                tray_pos_names[4:],
+                                                t_object_slice, tray_pos_map)
+        # plot.save_fig(('/').join(filename.split('/')[-2:]) + '/object_position')
+    if plot_config.plot_object_state:
+        plot = mbp_plots.plot_positions_by_name(object_state,
+                                                tray_pos_names[:4],
+                                                t_object_slice, tray_pos_map)
 
     plt.show()
 

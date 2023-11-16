@@ -58,7 +58,7 @@ def make_joint_order_permutations(robot_output_message, plant):
 
 
 def process_state_channel(state_data, plant):
-    t_x = []
+    t = []
     q = []
     u = []
     v = []
@@ -80,9 +80,9 @@ def process_state_channel(state_data, plant):
         q.append(q_temp)
         v.append(v_temp)
         u.append(u_temp)
-        t_x.append(msg.utime / 1e6)
+        t.append(msg.utime / 1e6)
 
-    return {'t_x': np.array(t_x),
+    return {'t': np.array(t),
             'q': np.array(q),
             'v': np.array(v),
             'u': np.array(u)}
@@ -100,7 +100,7 @@ def process_effort_channel(data, plant):
         t.append(msg.utime / 1e6)
         u.append(u_temp)
 
-    return {'t_u': np.array(t), 'u': np.array(u)}
+    return {'t': np.array(t), 'u': np.array(u)}
 
 
 def make_point_positions_from_q(
@@ -278,8 +278,8 @@ def process_contact_channel(data):
 
 def process_c3_channel(data):
     t = []
-    states = []  # Allocate space for all 4 point contacts
-    breaks = []  # Allocate space for all 4 point contacts
+    states = []
+    breaks = []
     contact_forces = []
     inputs = []
     for msg in data:
@@ -300,6 +300,22 @@ def process_c3_channel(data):
             'x': states,
             'lambda': contact_forces,
             'u': inputs,}
+def process_object_state_channel(data):
+    t = []
+    positions = []
+    velocities = []
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        positions.append(msg.position)
+        velocities.append(msg.velocity)
+
+    t = np.array(t)
+    positions = np.array(positions)
+    velocities = np.array(velocities)
+
+    return {'t': t,
+            'q': positions,
+            'v': velocities,}
 
 
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
@@ -328,6 +344,10 @@ def load_c3_debug(data, c3_debug_channel):
     c3_debug = process_c3_channel(data[c3_debug_channel])
     return c3_debug
 
+def load_object_state(data, object_state_channel):
+    object_state = process_object_state_channel(data[object_state_channel])
+    return object_state
+
 def plot_q_or_v_or_u(
     robot_output, key, x_names, x_slice, time_slice,
     ylabel=None, title=None, ps=None, subplot_index=0):
@@ -340,7 +360,7 @@ def plot_q_or_v_or_u(
 
     plotting_utils.make_plot(
         robot_output,  # data dict
-        't_x',  # time channel
+        't',  # time channel
         time_slice,
         [key],  # key to plot
         {key: x_slice},  # slice of key to plot
@@ -363,7 +383,7 @@ def plot_u_cmd(
 
     plotting_utils.make_plot(
         robot_input,  # data dict
-        't_u',  # time channel
+        't',  # time channel
         time_slice,
         [key],  # key to plot
         {key: x_slice},  # slice of key to plot
@@ -435,7 +455,7 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         ps = plot_styler.PlotStyler()
 
     dim_map = ['_x', '_y', '_z']
-    data_dict = {'t': robot_output['t_x']}
+    data_dict = {'t': robot_output['t']}
     legend_entries = {}
     for name in frame_names:
         frame = plant.GetBodyByName(name).body_frame()
@@ -464,7 +484,7 @@ def plot_points_velocities(robot_output, time_slice, plant, context, frame_names
         ps = plot_styler.PlotStyler()
 
     dim_map = ['_x', '_y', '_z']
-    data_dict = {'t': robot_output['t_x']}
+    data_dict = {'t': robot_output['t']}
     legend_entries = {}
     for name in frame_names:
         frame = plant.GetBodyByName(name).body_frame()
@@ -491,7 +511,7 @@ def plot_points_velocities(robot_output, time_slice, plant, context, frame_names
 
 def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
                                              context, fb_frame_name):
-    data_dict = {'t': robot_output['t_x']}
+    data_dict = {'t': robot_output['t']}
     data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
         robot_output, plant, context,
         plant.GetBodyByName(fb_frame_name).body_frame())[:, 0]

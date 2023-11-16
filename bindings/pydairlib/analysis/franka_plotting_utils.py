@@ -22,7 +22,7 @@ tool_attachment_frame = np.array([0, 0, 0.107])
 franka_default_channels = \
     {'FRANKA_STATE': dairlib.lcmt_robot_output,
      'FRANKA_STATE_SIMULATION': dairlib.lcmt_robot_output,
-     # 'TRAY_STATE': dairlib.lcmt_robot_output,
+     'TRAY_STATE': dairlib.lcmt_object_state,
      'FRANKA_INPUT': dairlib.lcmt_robot_input,
      'OSC_FRANKA': dairlib.lcmt_robot_input,
      'FRANKA_INPUT_ECHO': dairlib.lcmt_robot_input,

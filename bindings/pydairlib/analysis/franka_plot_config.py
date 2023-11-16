@@ -14,6 +14,7 @@ class FrankaPlotConfig():
         self.channel_u = data['channel_u']
         self.channel_osc = data['channel_osc']
         self.channel_c3 = data['channel_c3']
+        self.channel_tray = data['channel_tray']
         self.plot_style = data['plot_style']
 
         self.start_time = data['start_time']
@@ -44,3 +45,4 @@ class FrankaPlotConfig():
         self.tracking_datas_to_plot = \
             data['tracking_datas_to_plot'] if data['tracking_datas_to_plot'] else []
         self.plot_c3_debug = data['plot_c3_debug']
+        self.plot_object_state = data['plot_object_state']

@@ -8,10 +8,13 @@ from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
 from pydairlib.perceptive_locomotion.diagrams import (
     HikingSimDiagram,
-    MpfcOscDiagram
+    MpfcOscDiagram,
+    PerceptionModuleDiagram
 )
 
 from pydairlib.systems.footstep_planning import Stance
+from pydairlib.systems.plant_visualizer import PlantVisualizer
+from pydairlib.systems.perception import GridMapVisualizer
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
     import HeightMapServer
 from pydairlib.multibody import SquareSteppingStoneList
@@ -76,6 +79,10 @@ class CassieFootstepControllerEnvironmentOptions:
         perception_learning_base_folder,
         'params/osqp_options_osc.yaml'
     )
+    elevation_mapping_params_yaml: str = path.join(
+        perception_learning_base_folder,
+        'params/elevation_mapping_params.yaml'
+    )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
     visualize: bool = True
 
@@ -116,12 +123,29 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.rgdb_extrinsics_yaml
         )
         self.radio_source = ConstantVectorSource(np.zeros(18, ))
+        sensor_info = {
+            "pelvis_depth":
+                self.cassie_sim.get_depth_camera_info("pelvis_depth"),
+        }
+        self.perception_module = PerceptionModuleDiagram.Make(
+            params.elevation_mapping_params_yaml, sensor_info, ""
+        )
         builder.AddSystem(self.controller)
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
+        builder.AddSystem(self.perception_module)
+
         builder.Connect(
-            self.cassie_sim.get_output_port_state_lcm(),
-            self.controller.get_input_port_state(),
+            self.cassie_sim.get_output_port_cassie_out(),
+            self.perception_module.get_input_port_cassie_out()
+        )
+        builder.Connect(
+            self.perception_module.get_output_port_robot_output(),
+            self.controller.get_input_port_state()
+        )
+        builder.Connect(
+            self.cassie_sim.get_output_port_depth_image(),
+            self.perception_module.get_input_port_depth_image("pelvis_depth")
         )
         builder.Connect(
             self.cassie_sim.get_output_port_lcm_radio(),
@@ -136,9 +160,23 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.cassie_sim.get_input_port_radio()
         )
 
-        self.visualizer = None
+        self.plant_visualizer = None
         if params.visualize:
-            self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
+            self.plant_visualizer = PlantVisualizer(params.urdf)
+            self.grid_map_visualizer = GridMapVisualizer(
+                self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
+            )
+            builder.AddSystem(self.plant_visualizer)
+            builder.AddSystem(self.grid_map_visualizer)
+            builder.Connect(
+                self.perception_module.get_output_port_state(),
+                self.plant_visualizer.get_input_port()
+            )
+            builder.Connect(
+                self.perception_module.get_output_port_elevation_map(),
+                self.grid_map_visualizer.get_input_port()
+            )
+
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)

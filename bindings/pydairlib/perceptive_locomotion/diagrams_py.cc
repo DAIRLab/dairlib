@@ -5,6 +5,7 @@
 
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
 
 
 namespace py = pybind11;
@@ -14,6 +15,7 @@ namespace pydairlib{
 
 using perceptive_locomotion::MpfcOscDiagram;
 using perceptive_locomotion::HikingSimDiagram;
+using perceptive_locomotion::PerceptionModuleDiagram;
 using multibody::SquareSteppingStoneList;
 
 PYBIND11_MODULE(diagrams, m) {
@@ -76,8 +78,14 @@ PYBIND11_MODULE(diagrams, m) {
       .def("get_output_port_lcm_radio",
            &HikingSimDiagram::get_output_port_lcm_radio,
            py_rvp::reference_internal)
+      .def("get_output_port_depth_image",
+           &HikingSimDiagram::get_output_port_depth_image,
+           py_rvp::reference_internal)
       .def("get_plant",
            &HikingSimDiagram::get_plant,
+           py_rvp::reference_internal)
+      .def("get_depth_camera_info",
+           &HikingSimDiagram::get_depth_camera_info,
            py_rvp::reference_internal)
       .def("AddDrakeVisualizer",
            &HikingSimDiagram::AddDrakeVisualizer,
@@ -86,6 +94,35 @@ PYBIND11_MODULE(diagrams, m) {
            &HikingSimDiagram::SetPlantInitialConditionFromIK)
       .def("SetPlantInitialCondition",
            &HikingSimDiagram::SetPlantInitialCondition);
+
+  py::class_<PerceptionModuleDiagram, drake::systems::Diagram<double>>(
+      m, "PerceptionModuleDiagram")
+      .def(py::init<std::unique_ptr<drake::multibody::MultibodyPlant<double>>,
+           std::string,
+           std::map<std::string, drake::systems::sensors::CameraInfo>,
+           std::string>(),
+           py::arg("plant"), py::arg("elevation_mapping_params_yaml_path"),
+           py::arg("depth_sensor_info"), py::arg("joint_offsets_yaml"))
+      .def("get_input_port_cassie_out",
+           &PerceptionModuleDiagram::get_input_port_cassie_out,
+           py_rvp::reference_internal)
+      .def("get_input_port_depth_image",
+           &PerceptionModuleDiagram::get_input_port_depth_image,
+           py_rvp::reference_internal)
+      .def("get_output_port_state",
+           &PerceptionModuleDiagram::get_output_port_state,
+           py_rvp::reference_internal)
+      .def("get_output_port_robot_output",
+           &PerceptionModuleDiagram::get_output_port_robot_output,
+           py_rvp::reference_internal)
+      .def("get_output_port_elevation_map",
+           &PerceptionModuleDiagram::get_output_port_elevation_map,
+           py_rvp::reference_internal)
+      .def("InitializeEkf",
+           py::overload_cast<drake::systems::Context<double>*,
+              const Eigen::VectorXd&, const Eigen::VectorXd&>(
+                  &PerceptionModuleDiagram::InitializeEkf, py::const_))
+      .def("Make", &PerceptionModuleDiagram::Make);
 
 }
 

@@ -73,17 +73,18 @@ def main():
     )
 
     diagram = builder.Build()
-    # DrawAndSaveDiagramGraph(diagram, '../alip_lqr')
+    DrawAndSaveDiagramGraph(diagram, '../alip_lqr')
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
-    sim_env.cassie_sim.SetPlantInitialConditionFromIK(
+    q, v = sim_env.cassie_sim.SetPlantInitialConditionFromIK(
         diagram,
         context,
         np.zeros((3,)),
         0.15,
         1.01
     )
+    sim_env.perception_module.InitializeEkf(context, q, v)
     simulator.reset_context(context)
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)

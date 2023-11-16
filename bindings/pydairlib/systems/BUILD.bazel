@@ -15,6 +15,7 @@ pybind_py_library(
     name = "perception_py",
     cc_deps = [
         "//systems/perception:camera_utils",
+        "//systems/perception:grid_map_visualizer",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "perception",
@@ -51,6 +52,21 @@ pybind_py_library(
     ],
     cc_so_name = "robot_lcm_systems",
     cc_srcs = ["robot_lcm_systems_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "plant_visualizer_py",
+    cc_deps = [
+        "//systems:plant_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "plant_visualizer",
+    cc_srcs = ["plant_visualizer_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
@@ -121,12 +137,13 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":system_utils_py",
-    ":robot_lcm_systems_py",
-    ":primitives_py",
+    ":footstep_planning_py",
     ":framework_py",
     ":perception_py",
-    ":footstep_planning_py",
+    ":plant_visualizer_py",
+    ":primitives_py",
+    ":robot_lcm_systems_py",
+    ":system_utils_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

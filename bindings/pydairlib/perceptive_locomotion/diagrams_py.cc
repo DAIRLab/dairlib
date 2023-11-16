@@ -3,29 +3,22 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "systems/controllers/footstep_planning/alip_miqp.h"
-#include "systems/controllers/footstep_planning/alip_multiqp.h"
-#include "systems/controllers/footstep_planning/alip_utils.h"
-#include "systems/controllers/minimum_snap_trajectory_generation.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
+
 
 namespace py = pybind11;
 
 namespace dairlib{
 namespace pydairlib{
 
-using systems::controllers::AlipMultiQP;
-using systems::controllers::AlipMIQP;
-using systems::controllers::alip_utils::CalcAd;
-using systems::controllers::alip_utils::Stance;
-using systems::controllers::alip_utils::AlipGaitParams;
-using systems::controllers::alip_utils::ResetDiscretization;
-using systems::controllers::alip_utils::MakePeriodicAlipGait;
-using systems::controllers::alip_utils::AlipStepToStepDynamics;
 using perceptive_locomotion::MpfcOscDiagram;
+using perceptive_locomotion::HikingSimDiagram;
+using multibody::SquareSteppingStoneList;
 
-PYBIND11_MODULE(controllers, m) {
-  m.doc() = "Binding generic controllers";
+PYBIND11_MODULE(diagrams, m) {
+  m.doc() = "Binding perceptive locomotion diagrams for "
+            "use in python simulations";
 
   using py_rvp = py::return_value_policy;
 
@@ -59,6 +52,41 @@ PYBIND11_MODULE(controllers, m) {
       .def("get_plant", &MpfcOscDiagram::get_plant, py_rvp::reference_internal)
       .def("SetSwingFootPositionAtLiftoff",
            &MpfcOscDiagram::SetSwingFootPositionAtLiftoff);
+
+  py::class_<HikingSimDiagram, drake::systems::Diagram<double>>(
+      m, "HikingSimDiagram")
+      .def(py::init<const std::variant<std::string, SquareSteppingStoneList>&,
+                    const std::string&>(),
+           py::arg("tarrain_yaml"), py::arg("camera_pose_yaml"))
+      .def("get_input_port_actuation",
+           &HikingSimDiagram::get_input_port_actuation,
+           py_rvp::reference_internal)
+      .def("get_input_port_radio",
+           &HikingSimDiagram::get_input_port_radio,
+           py_rvp::reference_internal)
+      .def("get_output_port_state_lcm",
+           &HikingSimDiagram::get_output_port_state_lcm,
+           py_rvp::reference_internal)
+      .def("get_output_port_state",
+           &HikingSimDiagram::get_output_port_state,
+           py_rvp::reference_internal)
+      .def("get_output_port_cassie_out",
+           &HikingSimDiagram::get_output_port_cassie_out,
+           py_rvp::reference_internal)
+      .def("get_output_port_lcm_radio",
+           &HikingSimDiagram::get_output_port_lcm_radio,
+           py_rvp::reference_internal)
+      .def("get_plant",
+           &HikingSimDiagram::get_plant,
+           py_rvp::reference_internal)
+      .def("AddDrakeVisualizer",
+           &HikingSimDiagram::AddDrakeVisualizer,
+           py_rvp::reference_internal)
+      .def("SetPlantInitialConditionFromIK",
+           &HikingSimDiagram::SetPlantInitialConditionFromIK)
+      .def("SetPlantInitialCondition",
+           &HikingSimDiagram::SetPlantInitialCondition);
+
 }
 
 

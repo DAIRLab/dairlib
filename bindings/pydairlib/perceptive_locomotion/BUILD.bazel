@@ -65,32 +65,13 @@ py_library(
 )
 
 pybind_py_library(
-    name = "simulators_py",
+    name = "diagrams_py",
     cc_deps = [
-        "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
+        "//examples/perceptive_locomotion/diagrams",
         "@drake//:drake_shared_library",
     ],
-    cc_so_name = "simulators",
-    cc_srcs = ["simulators_py.cc"],
-    py_deps = [
-        "@drake//bindings/pydrake",
-        ":module_py",
-    ],
-    py_imports = ["."],
-)
-
-pybind_py_library(
-    name = "controllers_py",
-    cc_deps = [
-        "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
-        "//systems/controllers:minimum_snap_trajectory_generation",
-        "//systems/controllers/footstep_planning:alip_miqp",
-        "//systems/controllers/footstep_planning:alip_mpfc_system",
-        "//systems/controllers/footstep_planning:alip_multiqp",
-        "@drake//:drake_shared_library",
-    ],
-    cc_so_name = "controllers",
-    cc_srcs = ["controllers_py.cc"],
+    cc_so_name = "diagrams",
+    cc_srcs = ["diagrams_py.cc"],
     py_deps = [
         "@drake//bindings/pydrake",
         ":module_py",
@@ -99,8 +80,7 @@ pybind_py_library(
 )
 
 PY_LIBRARIES = [
-    ":controllers_py",
-    ":simulators_py",
+    ":diagrams_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

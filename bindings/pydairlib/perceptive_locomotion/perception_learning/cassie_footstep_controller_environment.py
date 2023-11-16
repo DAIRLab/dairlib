@@ -5,9 +5,13 @@ from typing import Dict, Union
 import numpy as np
 
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
-from pydairlib.perceptive_locomotion.controllers import MpfcOscDiagram
+
+from pydairlib.perceptive_locomotion.diagrams import (
+    HikingSimDiagram,
+    MpfcOscDiagram
+)
+
 from pydairlib.systems.footstep_planning import Stance
-from pydairlib.perceptive_locomotion.simulators import HikingSimDiagram
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
     import HeightMapServer
 from pydairlib.multibody import SquareSteppingStoneList

@@ -55,7 +55,7 @@ cc_library(
 )
 
 cc_library(
-    name = "pereption_module_diagram",
+    name = "perception_module_diagram",
     srcs = ["perception_module_diagram.cc"],
     hdrs = ["perception_module_diagram.h"],
     deps = [
@@ -85,13 +85,22 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "diagrams",
+    deps = [
+        ":hiking_sim_diagram",
+        ":mpfc_osc_diagram",
+        ":perception_module_diagram",
+    ],
+)
+
 cc_binary(
     name = "test_mpfc_osc_diagram",
     srcs = ["test/test_mpfc_osc_diagram.cc"],
     deps = [
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
-        ":pereption_module_diagram",
+        ":perception_module_diagram",
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
         "//systems:plant_visualizer",

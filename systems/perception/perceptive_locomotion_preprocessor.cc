@@ -6,6 +6,8 @@ namespace perception {
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
+using drake::math::RigidTransformd;
+using drake::math::RotationMatrixd;
 
 using elevation_mapping::PointCloudType;
 using elevation_mapping::SensorProcessorBase;
@@ -53,18 +55,23 @@ bool PerceptiveLocomotionPreprocessor::filterPointCloudSensorType(
   );
   passThroughFilter.filter(*pointCloud);
 
+  RigidTransformd sensor_pose(
+      RotationMatrixd(transformationSensorToMap_.linear()),
+      transformationSensorToMap_.translation());
+
   for (auto& [name, pose_and_crop_box]: crop_boxes_) {
     const auto parent_pose = plant_.EvalBodyPoseInWorld(
         *context_, plant_.GetBodyByName(name)
     );
     // X_WB = X_WP * X_PB
-    const auto box_pose = parent_pose * pose_and_crop_box.first;
+    auto box_pose = parent_pose * pose_and_crop_box.first;
+    // X_SB = X_SW * X_WB
+    box_pose = sensor_pose.inverse() * box_pose;
     auto& crop_box = pose_and_crop_box.second;
     crop_box.setTransform(box_pose.inverse().GetAsIsometry3().cast<float>());
     crop_box.setInputCloud(pointCloud);
     crop_box.filter(*pointCloud);
   }
-
   return true;
 }
 

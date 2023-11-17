@@ -48,6 +48,8 @@ template <typename T>
 std::pair<const Eigen::Vector3d, const drake::multibody::Frame<T>&>
 RightRodOnHeel(const drake::multibody::MultibodyPlant<T>& plant);
 
+drake::math::RigidTransformd CassieTransformFootToToeFrame();
+
 template <typename T>
 multibody::DistanceEvaluator<T> LeftLoopClosureEvaluator(
     const drake::multibody::MultibodyPlant<T>& plant);

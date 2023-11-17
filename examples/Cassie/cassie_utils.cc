@@ -104,6 +104,18 @@ multibody::DistanceEvaluator<T> RightLoopClosureEvaluator(
       rod_on_thigh.second, kCassieAchillesLength);
 }
 
+drake::math::RigidTransformd CassieTransformFootToToeFrame() {
+  Vector3d toe(-0.0457, 0.112, 0);
+  Vector3d heel(0.088, 0, 0);
+  Vector3d x = (toe - heel).normalized();
+  Vector3d y = -Vector3d::UnitZ();
+  Vector3d z = x.cross(y).normalized();
+  Vector3d center = 0.5 * (toe + heel);
+  return {
+    drake::math::RotationMatrixd::MakeFromOrthonormalColumns(x, y, z), center
+  };
+}
+
 /// Add a fixed base cassie to the given multibody plant and scene graph
 /// These methods are to be used rather that direct construction of the plant
 /// from the URDF to centralize any modeling changes or additions

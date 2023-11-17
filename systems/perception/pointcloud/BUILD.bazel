@@ -19,6 +19,17 @@ cc_library(
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
         "@pcl//:common",
+        "@pcl//:filters",
+    ],
+)
+
+cc_library(
+    name = "point_cloud_visualizer",
+    srcs = ["point_cloud_visualizer.cc"],
+    hdrs = ["point_cloud_visualizer.h"],
+    deps = [
+        "//systems/perception:elevation_mapping_system",
+        "@drake//:drake_shared_library",
     ],
 )
 

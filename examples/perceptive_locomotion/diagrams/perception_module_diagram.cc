@@ -7,6 +7,7 @@
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
 #include "systems/primitives/pass_through.h"
 #include "systems/robot_lcm_systems.h"
+#include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/networking/cassie_output_receiver.h"
 #include "examples/Cassie/cassie_state_estimator.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
@@ -16,6 +17,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
 #include "drake/systems/primitives/zero_order_hold.h"
+#include "drake/systems/primitives/constant_vector_source.h"
 #include "drake/perception/depth_image_to_point_cloud.h"
 
 namespace dairlib {
@@ -40,6 +42,7 @@ using perception::DrakeToPclPointCloud;
 
 using drake::systems::BasicVector;
 using drake::systems::AbstractStateIndex;
+using drake::systems::ConstantVectorSource;
 
 PerceptionModuleDiagram::PerceptionModuleDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
@@ -128,11 +131,24 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
 
   perceptive_locomotion_preprocessor_params preprocessor_params {
       "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
-      {} // crop boxes
+      {
+          {"toe_left", Vector3d(0.3, 0.1, 0.1),
+            CassieTransformFootToToeFrame()},
+          {"toe_right", Vector3d(0.3, 0.1, 0.1),
+            CassieTransformFootToToeFrame()}
+      } // crop boxes
   };
   auto preprocessor = std::make_shared<PerceptiveLocomotionPreprocessor>(
       *plant_, plant_context_.get(), preprocessor_params,
       elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
+  );
+
+  Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
+  base_cov_dummy.resize(36,1);
+
+  // TODO (@Brian-Acosta) Why is the "real" covariance problematic?
+  auto cov_source = builder.AddSystem<ConstantVectorSource<double>>(
+      base_cov_dummy
   );
 
   for (const auto& sensor_pose : mapping_params.sensor_poses) {
@@ -187,7 +203,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
                   robot_output_sender->get_input_port_imu());
   builder.Connect(state_estimator_->get_robot_output_port(),
                   elevation_mapping_system->get_input_port_state());
-  builder.Connect(state_estimator_->get_covariance_output_port(),
+  builder.Connect(cov_source->get_output_port(),
                   elevation_mapping_system->get_input_port_covariance());
 
   input_port_cassie_out_ = builder.ExportInput(

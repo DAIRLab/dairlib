@@ -1,5 +1,7 @@
 #include "drake_to_pcl_pointcloud.h"
 #include "elevation_mapping/PointXYZRGBConfidenceRatio.hpp"
+#include "pcl/filters/filter.h"
+#include "pcl/filters/passthrough.h"
 
 namespace dairlib {
 namespace perception {
@@ -39,12 +41,19 @@ void DrakeToPclPointCloud<PointT>::AssignFields(
 
   // get points as a raw buffer
   const auto& xyzs = drake_cloud.xyzs();
+  int nfinite = 0;
 
   // TODO (@Brian-Acosta) copy more than XYZ
   for (Eigen::Index i = 0; i < npoints; ++i) {
+    if (not xyzs.col(i).array().isFinite().all()) continue;
     ptr->points[i].getVector3fMap() = xyzs.col(i).cast<float>();
+    ++nfinite;
   }
 
+  ptr->points.resize(nfinite);
+
+  pcl::Indices indices;
+  pcl::removeNaNFromPointCloud(*ptr, *ptr, indices);
 }
 
 template class DrakeToPclPointCloud<pcl::PointXYZ>;

@@ -10,7 +10,7 @@ contact_model: 'stewart_and_trinkle'
 
 mu: 0.4
 mu_plate: 0.4
-dt: 0.03
+dt: 0.05
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
@@ -32,8 +32,8 @@ u_size: 40
 #g_size: 34
 #u_size: 34
 # State Tracking Error, assuming diagonal
-q_vector: [100, 100, 500, 100, 100, 100, 100, 10000, 10000, 10000,
-           5, 5, 5, 1, 1, 1, 1, 1, 1]
+q_vector: [100, 100, 100, 0, 0, 0, 0, 10000, 10000, 10000,
+           5, 5, 10, 1, 1, 1, 5, 5, 5]
 # Penalty on all decision variables
 g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

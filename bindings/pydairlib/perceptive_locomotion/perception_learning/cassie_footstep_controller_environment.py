@@ -256,6 +256,22 @@ class CassieFootstepControllerEnvironment(Diagram):
             stance=stance
         )
 
+    def initialize_state(self, context: Context, diagram: Diagram,
+                   q: np.ndarray = None, v: np.ndarray = None) -> None:
+
+        if q is None:
+            q, v = self.cassie_sim.SetPlantInitialConditionFromIK(
+                diagram,
+                context,
+                np.zeros((3,)),
+                0.15,
+                1.01
+            )
+        else:
+            self.cassie_sim.SetPlantInitialConditions(diagram, context, q, v)
+
+        self.perception_module.InitializeEkf(context, q, v)
+
 
 def main():
     opts = CassieFootstepControllerEnvironmentOptions()

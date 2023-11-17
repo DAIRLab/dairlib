@@ -55,6 +55,7 @@ bool PerceptiveLocomotionPreprocessor::filterPointCloudSensorType(
   );
   passThroughFilter.filter(*pointCloud);
 
+  // X_WS
   RigidTransformd sensor_pose(
       RotationMatrixd(transformationSensorToMap_.linear()),
       transformationSensorToMap_.translation());
@@ -65,10 +66,12 @@ bool PerceptiveLocomotionPreprocessor::filterPointCloudSensorType(
     );
     // X_WB = X_WP * X_PB
     auto box_pose = parent_pose * pose_and_crop_box.first;
-    // X_SB = X_SW * X_WB
-    box_pose = sensor_pose.inverse() * box_pose;
+
+    // X_BS = X_BW * X_WS
+    auto transform_to_box = box_pose.inverse() * sensor_pose;
+    
     auto& crop_box = pose_and_crop_box.second;
-    crop_box.setTransform(box_pose.inverse().GetAsIsometry3().cast<float>());
+    crop_box.setTransform(transform_to_box.GetAsIsometry3().cast<float>());
     crop_box.setInputCloud(pointCloud);
     crop_box.filter(*pointCloud);
   }

@@ -225,7 +225,9 @@ def main(save_file: str, visualize: bool):
     job_list = []
 
     for i in range(num_jobs):
-        process = multiprocessing.Process(target=data_process, args=(i, job_queue, visualize))
+        process = multiprocessing.Process(
+            target=data_process, args=(i, job_queue, visualize)
+        )
         job_list.append(process)
         process.start()
     results = [job_queue.get() for job in job_list]

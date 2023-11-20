@@ -160,9 +160,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
    * Input port for a desired feedforward torque
    */
   const drake::systems::InputPort<double>& get_feedforward_input_port() const {
-    if (W_input_.isZero()) {
-      std::cout << "Warning: wired feedforward input port "
-                   "without specifying an input cost\n";
+    if (W_input_.isZero() and fsm_to_w_input_map_.empty()) {
+      drake::log()->warn(
+          "wired feedforward input port without specifying an input cost"
+      );
     }
     return this->get_input_port(ff_input_port_);
   }

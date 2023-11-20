@@ -779,7 +779,7 @@ EventStatus CassieStateEstimator::Update(
     left_contact = 1;
     right_contact = 1;
 
-    if ((*counter_for_testing_) % 5000 == 0) {
+    if ((*counter_for_testing_) % 5000 == 0 and print_info_to_terminal_) {
       cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
     }
     *counter_for_testing_ = *counter_for_testing_ + 1;

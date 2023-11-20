@@ -501,7 +501,8 @@ void ObjectStateSender::Output(const Context<double>& context,
     }
   }
   for (int i = 0; i < num_velocities_; i++) {
-    state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
+//    state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
+    state_msg->velocity[i] = 0;
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
   }
 }

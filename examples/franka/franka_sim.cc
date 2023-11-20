@@ -78,8 +78,8 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
-  drake::multibody::ModelInstanceIndex box_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
+//  drake::multibody::ModelInstanceIndex box_index =
+//      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -119,29 +119,29 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
-      lcm_channel_params.franka_state_channel, sim_params.publish_rate,
+      lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto tray_state_sender =
       builder.AddSystem<systems::ObjectStateSender>(plant, tray_index);
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
-          1.0 / sim_params.publish_rate));
-  auto box_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, box_index);
-  auto box_state_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.box_state_channel, lcm,
-          1.0 / sim_params.publish_rate));
+          1.0 / sim_params.tray_publish_rate));
+//  auto box_state_sender =
+//      builder.AddSystem<systems::ObjectStateSender>(plant, box_index);
+//  auto box_state_pub =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+//          lcm_channel_params.box_state_channel, lcm,
+//          1.0 / sim_params.publish_rate));
 
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
-  builder.Connect(plant.get_state_output_port(box_index),
-                  box_state_sender->get_input_port_state());
+//  builder.Connect(plant.get_state_output_port(box_index),
+//                  box_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
-  builder.Connect(box_state_sender->get_output_port(),
-                  box_state_pub->get_input_port());
+//  builder.Connect(box_state_sender->get_output_port(),
+//                  box_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -182,13 +182,13 @@ int DoMain(int argc, char* argv[]) {
   q[q_map.at("tray_y")] = sim_params.q_init_plate[5];
   q[q_map.at("tray_z")] = sim_params.q_init_plate[6];
 
-  q[q_map["box_qw"]] = sim_params.q_init_box[0];
-  q[q_map["box_qx"]] = sim_params.q_init_box[1];
-  q[q_map["box_qy"]] = sim_params.q_init_box[2];
-  q[q_map["box_qz"]] = sim_params.q_init_box[3];
-  q[q_map["box_x"]] = sim_params.q_init_box[4];
-  q[q_map["box_y"]] = sim_params.q_init_box[5];
-  q[q_map["box_z"]] = sim_params.q_init_box[6];
+//  q[q_map["box_qw"]] = sim_params.q_init_box[0];
+//  q[q_map["box_qx"]] = sim_params.q_init_box[1];
+//  q[q_map["box_qy"]] = sim_params.q_init_box[2];
+//  q[q_map["box_qz"]] = sim_params.q_init_box[3];
+//  q[q_map["box_x"]] = sim_params.q_init_box[4];
+//  q[q_map["box_y"]] = sim_params.q_init_box[5];
+//  q[q_map["box_z"]] = sim_params.q_init_box[6];
 
   plant.SetPositions(&plant_context, q);
 

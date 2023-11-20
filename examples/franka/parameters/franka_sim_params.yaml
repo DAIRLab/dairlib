@@ -5,10 +5,11 @@ table_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_su
 table_w_supports_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 tray_model: examples/franka/urdf/tray.sdf
 box_model: examples/franka/urdf/default_box.urdf
-publish_rate: 1000
+franka_publish_rate: 1000
+tray_publish_rate: 10
 publish_efforts: true
 actuator_delay: 0.000
-visualize: false
+visualize: true
 
 tool_attachment_frame: [0, 0, 0.107]
 

@@ -17,7 +17,7 @@
         </inertia>
       </inertial>
       <visual name="tray">
-        <pose>0 0 0.009 0 0 0</pose>
+        <pose>0 0 0.0 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.2286</radius>
@@ -29,7 +29,7 @@
         </material>
       </visual>
       <collision name="tray">
-        <pose>0 0 0.009 0 0 0</pose>
+        <pose>0 0 0.0 0 0 0</pose>
         <geometry>
           <cylinder>
             <radius>0.2286</radius>

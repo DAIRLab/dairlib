@@ -64,7 +64,6 @@ C3Controller::C3Controller(
   }
 
   n_u_ = plant_.num_actuators();
-  //  Q_.back() = 100 * c3_options_.Q;
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort(

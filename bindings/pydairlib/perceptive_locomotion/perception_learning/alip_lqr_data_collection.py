@@ -244,10 +244,6 @@ def data_process(i, q, visualize):
 
 def main(save_file: str, visualize: bool):
     num_jobs = 1 if visualize else os.cpu_count() - 1  # leave one thread free
-
-    # for debug
-    num_jobs = 1
-
     job_queue = multiprocessing.Queue()
     job_list = []
 

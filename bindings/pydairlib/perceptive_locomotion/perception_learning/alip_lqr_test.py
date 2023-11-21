@@ -1,5 +1,6 @@
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
+import torch
 from pydrake.systems.all import (
     Diagram,
     Context,

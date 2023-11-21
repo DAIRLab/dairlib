@@ -15,9 +15,13 @@
     3. different timing during the swing foot stage (phase)
     4. desired velocity that is input to controller by user
     5. different hmap (constant input for swing foot stage)
-    
+
+    2023.11.20 new setting (Wei-Cheng)
+    4. desired velocity limited to reasonable region (a sector in the front)
+    5. constant input replaced by LQR reference + Guassian noise, record the index by project it to the nearest grid
 """
 
+import pdb
 import os
 import numpy as np
 from tqdm import tqdm
@@ -99,7 +103,14 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_d
             'tmp/initial_conditions_2.npz'
         )
     )
-    v_des_distr = np.linspace(-0.05, 0.05, 50)
+
+    # New: parametrize the desired velocity to be a sector (theta and |v|) forward
+    v_des_theta = np.pi / 6
+    v_des_norm = 0.5
+    v_des_theta_distr = np.linspace(-v_des_theta, v_des_theta, 50)
+    v_des_norm_distr = np.linspace(0, v_des_norm, 50)
+
+    # initialize data list
     data = []
 
     # loop for num_data times to get the residual and x_desired in LQR stage
@@ -107,11 +118,12 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_d
     with tqdm(total=num_data, desc=f'Data collection Job {job_id}') as progress_bar:
         for i in range(num_data):
             datapoint = ic_generator.random()
-            datapoint['desired_velocity'] = np.random.choice(v_des_distr, size=2)
+            v_theta = np.random.choice(v_des_theta_distr , size=1)
+            v_norm = np.random.choice(v_des_norm_distr, size=1)
+            datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
             get_residual(sim_env, controller, diagram, simulator, datapoint)
             data.append(datapoint)
             progress_bar.update(1)
-
     return data
 
 
@@ -159,11 +171,22 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     heightmap_center = np.zeros((3,))
     heightmap_center[:2] = ud
     hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
-    datapoint['hmap'] = hmap[-1, :, :]
-    datapoint['U'] = hmap[:-1, :, :]
 
-    i = np.random.choice([i for i in range(hmap.shape[1])])
-    j = np.random.choice([j for j in range(hmap.shape[2])])
+
+    datapoint['hmap'] = hmap[-1, :, :]
+
+    # New: the input should be LQR reference (ud) + noise
+    noise_x = np.random.normal(loc = 0, scale = np.sqrt(0.01))
+    noise_y = np.random.normal(loc = 0, scale = np.sqrt(0.01))
+    noisy_footstep_command = ud + np.array([noise_x, noise_y]).flatten()
+    # project the noisy input to the closet grid of the hmap
+    # x->columns->j, y->rows->i
+    x_diff = np.abs(hmap[0, 0, :] - noisy_footstep_command[0])
+    y_diff = np.abs(hmap[1, :, 0] - noisy_footstep_command[1])
+    i = np.argmin(y_diff)
+    j = np.argmin(x_diff)
+
+    datapoint['U'] = hmap[:-1, :, :]
 
     datapoint['i'] = i
     datapoint['j'] = j
@@ -221,6 +244,10 @@ def data_process(i, q, visualize):
 
 def main(save_file: str, visualize: bool):
     num_jobs = 1 if visualize else os.cpu_count() - 1  # leave one thread free
+
+    # for debug
+    num_jobs = 1
+
     job_queue = multiprocessing.Queue()
     job_list = []
 

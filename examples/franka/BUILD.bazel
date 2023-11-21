@@ -70,7 +70,6 @@ cc_binary(
         ":franka_c3_controller_params",
         ":franka_lcm_channels",
         "//common",
-        "//examples/franka/systems:c3_trajectory_generator",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",

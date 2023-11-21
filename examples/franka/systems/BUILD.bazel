@@ -9,6 +9,8 @@ cc_library(
         ":end_effector_trajectory",
         ":franka_kinematics",
         ":plate_balancing_target",
+        ":c3_state_sender",
+        ":c3_trajectory_generator",
     ],
 )
 
@@ -73,14 +75,29 @@ cc_library(
         "c3_trajectory_generator.h",
     ],
     deps = [
+        ":franka_kinematics",
         "//common:find_resource",
-        "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//solvers:c3",
         "//solvers:c3_output",
         "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_state_sender",
+    srcs = [
+        "c3_state_sender.cc",
+    ],
+    hdrs = [
+        "c3_state_sender.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

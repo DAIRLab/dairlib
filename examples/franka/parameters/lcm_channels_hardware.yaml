@@ -11,5 +11,7 @@ c3_actor_channel: C3_TRAJECTORY_ACTOR
 c3_object_channel: C3_TRAJECTORY_TRAY
 c3_force_channel: C3_TRAJECTORY_FORCE
 c3_debug_output_channel: C3_DEBUG
+c3_target_state_channel: C3_TARGET
+c3_actual_state_channel: C3_ACTUAL
 
 radio_channel: RADIO

@@ -18,8 +18,6 @@ class FrankaKinematicsVector : public TimestampedVector<T> {
 
   FrankaKinematicsVector() = default;
 
-  /// Initializes with the given @p size using the drake::dummy_value<T>, which
-  /// is NaN when T = double.
   explicit FrankaKinematicsVector(int num_end_effector_positions,
                                   int num_object_positions,
                                   int num_end_effector_velocities,

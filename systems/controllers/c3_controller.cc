@@ -65,18 +65,15 @@ C3Controller::C3Controller(
 
   n_u_ = plant_.num_actuators();
 
-  lcs_state_input_port_ =
-      this->DeclareVectorInputPort(
-              "x_lcs", FrankaKinematicsVector<double>(
-                           plant_.num_positions(ModelInstanceIndex(2)),
-                           plant_.num_positions(ModelInstanceIndex(3)),
-                           plant_.num_velocities(ModelInstanceIndex(2)),
-                           plant_.num_velocities(ModelInstanceIndex(3))))
-          .get_index();
   int x_des_size = plant_.num_positions(ModelInstanceIndex(2)) +
                    plant_.num_positions(ModelInstanceIndex(3)) +
                    plant_.num_velocities(ModelInstanceIndex(2)) +
                    plant_.num_velocities(ModelInstanceIndex(3));
+  lcs_state_input_port_ =
+      this->DeclareVectorInputPort(
+              "x_lcs", TimestampedVector<double>(
+                           x_des_size))
+          .get_index();
   target_input_port_ =
       this->DeclareVectorInputPort("desired_position", x_des_size).get_index();
 
@@ -109,15 +106,15 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
-  const FrankaKinematicsVector<double>* lcs_x =
-      (FrankaKinematicsVector<double>*)this->EvalVectorInput(
+  const TimestampedVector<double>* lcs_x =
+      (TimestampedVector<double>*)this->EvalVectorInput(
           context, lcs_state_input_port_);
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
   VectorXd q_v_u =
       VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
                      plant_.num_actuators());
-  q_v_u << lcs_x->GetState(), VectorXd::Zero(n_u_);
+  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
   std::vector<VectorXd> x_desired =

@@ -15,6 +15,7 @@
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
+#include "examples/franka/systems/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
 #include "examples/franka/systems/end_effector_trajectory.h"
 #include "examples/franka/systems/franka_kinematics.h"
@@ -175,6 +176,14 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto c3_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_actual_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_actual_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -210,6 +219,15 @@ int DoMain(int argc, char* argv[]) {
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_plate,
                                                         c3_options);
+  std::vector<std::string> state_names = {
+      "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
+      "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
+      "tray_y",          "tray_z",         "end_effector_vx", "end_effector_vy",
+      "end_effector_vz", "tray_wx",        "tray_wy",         "tray_wz",
+      "tray_vz",         "tray_vz",        "tray_vz",
+  };
+  auto c3_state_sender =
+      builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
   c3_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
   auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
@@ -232,16 +250,20 @@ int DoMain(int argc, char* argv[]) {
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
-
+  builder.Connect(target_state_mux->get_output_port(),
+                  c3_state_sender->get_input_port_target_state());
+  builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
+                  c3_state_sender->get_input_port_actual_state());
+  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+                  c3_target_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
+                  c3_actual_state_publisher->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_output_sender->get_input_port_c3_solution());
   builder.Connect(controller->get_output_port_c3_intermediates(),
                   c3_output_sender->get_input_port_c3_intermediates());
   builder.Connect(c3_output_sender->get_output_port_c3_debug(),
                   c3_output_publisher->get_input_port());
-
-  controller->SetPublishEndEffectorOrientation(
-      controller_params.include_end_effector_orientation);
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

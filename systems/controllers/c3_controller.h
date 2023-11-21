@@ -51,16 +51,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(c3_intermediates_port_);
   }
 
-//  const drake::systems::InputPort<double>& get_input_port_radio() const {
-//    return this->get_input_port(radio_port_);
-//  }
-
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
-  }
-
-  void SetPublishEndEffectorOrientation(bool publish_end_effector_orientation) {
-    publish_end_effector_orientation_ = publish_end_effector_orientation;
   }
 
  private:
@@ -76,7 +68,6 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
-//  drake::systems::InputPortIndex radio_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
 
@@ -91,8 +82,6 @@ class C3Controller : public drake::systems::LeafSystem<double> {
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-
-  bool publish_end_effector_orientation_ = false;
 
   // convenience for variable sizes
   int n_q_;

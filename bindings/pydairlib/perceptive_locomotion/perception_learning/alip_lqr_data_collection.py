@@ -168,12 +168,11 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     heightmap_center[:2] = ud
     hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
 
-
     datapoint['hmap'] = hmap[-1, :, :]
 
     # New: the input should be LQR reference (ud) + noise
-    noise_x = np.random.normal(loc = 0, scale = np.sqrt(0.01))
-    noise_y = np.random.normal(loc = 0, scale = np.sqrt(0.01))
+    noise_x = np.random.normal(loc=0, scale=np.sqrt(0.01))
+    noise_y = np.random.normal(loc=0, scale=np.sqrt(0.01))
     noisy_footstep_command = ud + np.array([noise_x, noise_y]).flatten()
     # project the noisy input to the closet grid of the hmap
     # x->columns->j, y->rows->i

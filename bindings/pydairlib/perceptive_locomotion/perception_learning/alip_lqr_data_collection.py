@@ -234,7 +234,9 @@ def data_process(i, q, visualize):
     num_data = 1000
     print("data_process", str(i))
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain = random_stairs(0.2, 0.5, 0.2)
+    sim_params.terrain = os.path.join(
+        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+    )
     sim_params.visualize = visualize
     data = run_experiment(sim_params, num_data, i)
     q.put(data)

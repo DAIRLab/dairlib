@@ -84,6 +84,7 @@ class CassieFootstepControllerEnvironmentOptions:
         'params/elevation_mapping_params.yaml'
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
+    use_perception: bool = False
     visualize: bool = True
 
 
@@ -123,30 +124,38 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.rgdb_extrinsics_yaml
         )
         self.radio_source = ConstantVectorSource(np.zeros(18, ))
-        sensor_info = {
-            "pelvis_depth":
-                self.cassie_sim.get_depth_camera_info("pelvis_depth"),
-        }
-        self.perception_module = PerceptionModuleDiagram.Make(
-            params.elevation_mapping_params_yaml, sensor_info, ""
-        )
+
         builder.AddSystem(self.controller)
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
-        builder.AddSystem(self.perception_module)
 
-        builder.Connect(
-            self.cassie_sim.get_output_port_cassie_out(),
-            self.perception_module.get_input_port_cassie_out()
-        )
-        builder.Connect(
-            self.perception_module.get_output_port_robot_output(),
-            self.controller.get_input_port_state()
-        )
-        builder.Connect(
-            self.cassie_sim.get_output_port_depth_image(),
-            self.perception_module.get_input_port_depth_image("pelvis_depth")
-        )
+        self.perception_module = None
+        if params.use_perception:
+            self.sensor_info = {
+                "pelvis_depth":
+                    self.cassie_sim.get_depth_camera_info("pelvis_depth"),
+            }
+            self.perception_module = PerceptionModuleDiagram.Make(
+                params.elevation_mapping_params_yaml, self.sensor_info, ""
+            )
+            builder.AddSystem(self.perception_module)
+            builder.Connect(
+                self.cassie_sim.get_output_port_cassie_out(),
+                self.perception_module.get_input_port_cassie_out()
+            )
+            builder.Connect(
+                self.perception_module.get_output_port_robot_output(),
+                self.controller.get_input_port_state()
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_depth_image(),
+                self.perception_module.get_input_port_depth_image("pelvis_depth")
+            )
+        else:
+            builder.Connect(
+                self.cassie_sim.get_output_port_state_lcm(),
+                self.controller.get_input_port_state(),
+            )
         builder.Connect(
             self.cassie_sim.get_output_port_lcm_radio(),
             self.controller.get_input_port_radio()
@@ -161,7 +170,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         )
 
         self.plant_visualizer = None
-        if params.visualize:
+        if params.visualize and params.use_perception:
             self.plant_visualizer = PlantVisualizer(params.urdf)
             self.grid_map_visualizer = GridMapVisualizer(
                 self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
@@ -176,10 +185,12 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.perception_module.get_output_port_elevation_map(),
                 self.grid_map_visualizer.get_input_port()
             )
-
+        elif params.visualize:
+            self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)
+        self.params = params
 
         builder.BuildInto(self)
 
@@ -229,17 +240,22 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def get_heightmap(self, context: Context,
                       center: np.ndarray = None) -> np.ndarray:
-        robot_output = self.get_output_port_by_name('state').Eval(context)
-        fsm = int(
-            self.get_output_port_by_name('fsm').Eval(context)[0]
-        )
-        stance = Stance.kLeft if (fsm == 0 or fsm == 3) else Stance.kRight
+        if self.params.use_perception:
+            raise NotImplementedError(
+                "Need to implement heightmap getter for simulated perception."
+            )
+        else:
+            robot_output = self.get_output_port_by_name('state').Eval(context)
+            fsm = int(
+                self.get_output_port_by_name('fsm').Eval(context)[0]
+            )
+            stance = Stance.kLeft if (fsm == 0 or fsm == 3) else Stance.kRight
 
-        return self.height_map_server.get_heightmap_3d(
-            robot_output[:self.nq + self.nv],
-            stance,
-            center
-        )
+            return self.height_map_server.get_heightmap_3d(
+                robot_output[:self.nq + self.nv],
+                stance,
+                center
+            )
 
     def query_heightmap(self, context: Context,
                         query_point: np.ndarray) -> float:
@@ -258,7 +274,6 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def initialize_state(self, context: Context, diagram: Diagram,
                    q: np.ndarray = None, v: np.ndarray = None) -> None:
-
         if q is None:
             q, v = self.cassie_sim.SetPlantInitialConditionFromIK(
                 diagram,
@@ -269,8 +284,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             )
         else:
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
-
-        self.perception_module.InitializeEkf(context, q, v)
+        if self.params.use_perception:
+            self.perception_module.InitializeEkf(context, q, v)
 
 
 def main():

@@ -120,7 +120,8 @@ void LcsTest() {
   int num_friction_directions = 2;
   double mu = .8;
   LCSFactory::LinearizePlantToLCS(plant, context, *plant_ad, *context_ad,
-                                  contact_geoms, num_friction_directions, mu);
+                                  contact_geoms, num_friction_directions, mu,
+                                  1, 5);
 }
 
 }  // namespace

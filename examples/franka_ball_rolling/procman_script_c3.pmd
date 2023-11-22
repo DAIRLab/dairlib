@@ -1,0 +1,52 @@
+ group "1.director" {
+    cmd "drake-director" {
+        exec = "bazel-bin/director/drake-director --script director/scripts/VisualizationGUI.py";
+        host = "localhost";
+    }
+}
+
+group "2.[SIM] C3_Ball_Rolling" {
+    cmd "a.[SIM] C3" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_control_demo --TTL 0";
+        host = "localhost";
+    }
+    cmd "b.[SIM] franka" {
+        exec = "bazel-bin/examples/franka_ball_rolling/simulate_franka_lcm";
+        host = "localhost";
+    }
+    cmd "c.[SIM] impedance controller" {
+        exec = "bazel-bin/examples/franka_ball_rolling/run_c3_impedance_experiment";
+        host = "localhost";
+    }
+    cmd "d.[SIM]run_state_estimator" {
+        exec = "bazel-bin/examples/franka_ball_rolling/run_state_estimator --TTL 0";
+        host = "localhost";
+    }
+    cmd "e.[SIM] sim visualizer" {
+        exec = "bazel-bin/examples/franka_ball_rolling/visualizer --channel=FRANKA_OUTPUT";
+        host = "localhost";
+    }
+}
+
+group "3.Logging, Utils" {
+    cmd "a.start_logging" {
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
+        host = "localhost";
+    }
+    cmd "b.start_filming" {
+        exec = "python examples/franka_trajectory_following/scripts/start_filming.py";
+        host = "localhost";
+    }
+    cmd "c.process_logs" {
+        exec = "bazel-bin/bindings/pydairlib/analysis/log_plotter_franka";
+        host = "localhost";
+    }
+    cmd "d.process_frames" {
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/process_frames";
+        host = "localhost";
+    }
+    cmd "e.update_urdf" {
+        exec = "bazel-bin/examples/franka_trajectory_following/scripts/update_urdfs";
+        host = "localhost";
+    }
+}

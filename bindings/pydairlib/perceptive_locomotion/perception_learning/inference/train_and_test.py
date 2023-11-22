@@ -15,6 +15,7 @@ perception_learning_base_folder = \
 checkpoint_path = os.path.join(
     perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
 
+
 @dataclass
 class Hyperparams:
     batch_size: int = 32
@@ -31,6 +32,7 @@ class Hyperparams:
         wandb.config['num_workers'] = self.num_workers
         wandb.config['lr'] = self.learning_rate
         wandb.config['optimizer'] = self.optimizer
+
 
 def run_epoch(model, data_loader, device, optimizer=None, is_training=True):
     epoch_loss = 0
@@ -60,6 +62,7 @@ def run_epoch(model, data_loader, device, optimizer=None, is_training=True):
 
     return epoch_loss / len(data_loader.dataset)
 
+
 def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15), seed=3407):
     total_size = len(dataset)
     train_size = int(split_ratio[0] * total_size)
@@ -67,10 +70,12 @@ def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15), seed=3407)
     test_size = total_size - train_size - val_size
 
     train_dataset, val_dataset, test_dataset = random_split(
-        dataset, [train_size, val_size, test_size], generator=torch.Generator().manual_seed(seed)
+        dataset, [train_size, val_size, test_size],
+        generator=torch.Generator().manual_seed(seed)
     )
 
     return train_dataset, val_dataset, test_dataset
+
 
 def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
     if use_wandb:
@@ -145,6 +150,7 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
 
     if use_wandb:
         wandb.finish()
+
 
 if __name__ == '__main__':
     train_and_test(Hyperparams(), use_wandb=True)

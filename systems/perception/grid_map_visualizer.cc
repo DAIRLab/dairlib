@@ -53,7 +53,7 @@ drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
         std::find(layers_.begin(), layers_.end(), layer) != layers_.end()) {
 
       MatrixXd Z = map.get(layer).cast<double>();
-      meshcat_->PlotSurface("grid_map_" + layer, X, Y, Z);
+      meshcat_->PlotSurface("grid_map_" + layer, X.transpose(), Y.transpose(), Z.transpose());
     }
   }
   meshcat_->Flush();

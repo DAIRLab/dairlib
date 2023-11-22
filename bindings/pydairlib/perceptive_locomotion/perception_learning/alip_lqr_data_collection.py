@@ -89,7 +89,8 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram
 
 
-def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions, num_data=10, job_id=None):
+def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
+                   num_data=10, job_id=None):
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
 
@@ -139,12 +140,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     context.SetTime(t_init)
 
     # set the context state with the initial conditions from the datapoint
-    sim_env.cassie_sim.SetPlantInitialCondition(
-        diagram,
-        context,
-        datapoint['q'],
-        datapoint['v']
-    )
+    sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
     sim_env.controller.SetSwingFootPositionAtLiftoff(
         context,
         datapoint['initial_swing_foot_pos']
@@ -204,7 +200,9 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         simulator.AdvanceTo(t + 1e-2)
         t = context.get_time()
 
-    datapoint['x_kp1'] = controller.get_output_port_by_name('x').Eval(controller_context)
+    datapoint['x_kp1'] = controller.get_output_port_by_name('x').Eval(
+        controller_context
+    )
     datapoint['V_k'] = controller.get_value_estimate(controller_context)
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
 
@@ -220,12 +218,15 @@ def data_process(i, q, visualize):
 
 
 def main(save_file: str, visualize: bool):
-    num_jobs = 1 if visualize else os.cpu_count() - 1  # leave one thread free
+    num_jobs = 1 if visualize else int(os.cpu_count() / 2) # leave one thread free
     job_queue = multiprocessing.Queue()
     job_list = []
 
     for i in range(num_jobs):
-        process = multiprocessing.Process(target=data_process, args=(i, job_queue, visualize))
+        process = multiprocessing.Process(
+            target=data_process,
+            args=(i, job_queue, visualize)
+        )
         job_list.append(process)
         process.start()
     results = [job_queue.get() for job in job_list]

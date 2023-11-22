@@ -268,7 +268,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                 1.01
             )
         else:
-            self.cassie_sim.SetPlantInitialConditions(diagram, context, q, v)
+            self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
 
         self.perception_module.InitializeEkf(context, q, v)
 

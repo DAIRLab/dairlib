@@ -62,6 +62,9 @@ py_binary(
         ":alip_lqr",
         ":cassie_footstep_controller_environment",
     ],
+    imports = [
+        "venv/lib/"
+    ]
 )
 
 py_binary(

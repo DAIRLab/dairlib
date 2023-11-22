@@ -69,7 +69,6 @@ bool PerceptiveLocomotionPreprocessor::filterPointCloudSensorType(
 
     // X_BS = X_BW * X_WS
     auto transform_to_box = box_pose.inverse() * sensor_pose;
-    
     auto& crop_box = pose_and_crop_box.second;
     crop_box.setTransform(transform_to_box.GetAsIsometry3().cast<float>());
     crop_box.setInputCloud(pointCloud);

@@ -1,4 +1,7 @@
+#include <math.h>
 #include "grid_map_visualizer.h"
+
+#include "drake/perception/point_cloud.h"
 
 namespace dairlib {
 namespace perception {
@@ -30,30 +33,32 @@ drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
 
   const int nx = map.getSize()(0);
   const int ny = map.getSize()(1);
-  const double cx = map.getPosition()(0);
-  const double cy = map.getPosition()(1);
-  const double hx = map.getLength()(0) / 2.0;
-  const double hy = map.getLength()(1) / 2.0;
+  double resolution = map.getResolution();
 
-  // TODO (@Brian-Acosta) figure out how to efficiently do this
-  MatrixXd X = MatrixXd::Zero(nx, ny);
-  MatrixXd Y = MatrixXd::Zero(nx, ny);
-  for (int i = 0; i < nx; i++) {
-    for (int j = 0; j < ny; j++) {
-      Eigen::Array2i idx(i, j);
-      grid_map::Position xy;
-      map.getPosition(idx, xy);
-      X(i,j) = xy(0);
-      Y(i,j) = xy(1);
-    }
-  }
-
+  // For now visualize this as a point cloud since PlotSurface is being flaky
   for (const auto& layer : map.getLayers()) {
     if (layers_.empty() or
         std::find(layers_.begin(), layers_.end(), layer) != layers_.end()) {
 
+      drake::perception::PointCloud map_as_cloud(nx * ny);
+      auto points = map_as_cloud.mutable_xyzs();
       MatrixXd Z = map.get(layer).cast<double>();
-      meshcat_->PlotSurface("grid_map_" + layer, X.transpose(), Y.transpose(), Z.transpose());
+      int n = 0;
+      for (int i = 0; i < nx; i++) {
+        for (int j = 0; j < ny; j++) {
+          Eigen::Array2i idx(i, j);
+          grid_map::Position xy;
+          map.getPosition(idx, xy);
+          double z = Z(i, j);
+          if (not isnan(z)) {
+            points.col(n) = Eigen::Vector3f(xy(0), xy(1), z);
+            ++n;
+          }
+        }
+      }
+      map_as_cloud.resize(n);
+      meshcat_->SetObject("grid_map_" + layer, map_as_cloud, resolution,
+                          {0.1, 0.1, 0.9, 1.0});
     }
   }
   meshcat_->Flush();

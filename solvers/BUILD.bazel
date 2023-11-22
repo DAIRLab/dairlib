@@ -25,11 +25,13 @@ cc_library(
     srcs = [
         "c3.cc",
         "c3_miqp.cc",
+        "c3_approx.cc"
     ],
     hdrs = [
         "c3.h",
         "c3_miqp.h",
         "c3_options.h",
+        "c3_approx.h",
     ],
     deps = [
         ":lcs",
@@ -50,12 +52,14 @@ cc_library(
     srcs = [
         "lcs.cc",
         "lcs_factory.cc",
-        "lcs_factory_franka.cc"
+        "lcs_factory_franka.cc",
+        "lcs_factory_cvx.cc"
     ],
     hdrs = [
         "lcs.h",
         "lcs_factory.h",
-        "lcs_factory_franka.h"
+        "lcs_factory_franka.h",
+        "lcs_factory_cvx.h"
     ],
     deps = [
         "//multibody/kinematic",

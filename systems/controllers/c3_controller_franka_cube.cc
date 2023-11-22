@@ -18,13 +18,15 @@
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3.h"
-#include "solvers/c3_miqp.h"
-#include "solvers/lcs_factory.h"
+// #include "solvers/c3_miqp.h"
+#include "solvers/c3_approx.h"
+// #include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_cvx.h"
 
 #include "drake/solvers/moby_lcp_solver.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory.h"
+// #include "solvers/lcs_factory.h"
 #include "drake/math/autodiff_gradient.h"
 
 using std::vector;
@@ -131,13 +133,13 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (82) includes:
+  State output port (80) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
     xball_dot (6) -- angular and linear velocities of object
-    lambda (6) -- end effector/object forces (slack variable, normal force, 4 tangential forces)
-    visualization (36) -- miscellaneous visualization-related debugging values:
+    lambda (4) -- end effector/object forces (4 friction directions)
+    visualization (53) -- miscellaneous visualization-related debugging values:
       (9) 3 sample xyz locations
       (3) next xyz position of the end effector
       (3) optimal xyz sample location
@@ -209,7 +211,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Set up some variables and initialize warm start.
   N_ = param_.horizon_length;
   n_ = 19;
-  m_ = 6*4;     // 6 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
+  m_ = 4*4;     // 4 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
   k_ = 3;
 
   // Do separate warm starting for samples than for current end effector location.
@@ -522,11 +524,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     plant_f_.SetVelocities(&context_f_, test_v);
     multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
     
+    // std::cout<<"Linearizing lcs in parallel "<< i <<std::endl;
     // Compute the LCS based on the hypothetical state at the ee sample location.
-    auto test_system_scaling_pair = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+    auto test_system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
     solvers::LCS test_lcs = test_system_scaling_pair.first;
+    // std::cout<<"finished "<< i <<std::endl;
     // double test_scaling = test_system_scaling_pair.second;   // Might be necessary to use this in computing LCS if getting LCS
                                                                 // solve errors frequently in the future.
 
@@ -560,8 +564,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   else {
     n_threads_to_use = param_.num_threads;
   }
-  omp_set_num_threads(n_threads_to_use);        // Set number of threads to use when not explicitly defined in pragma directive. 
-                                                // This is currently used by the pragma directive in c3.cc
+  omp_set_num_threads(n_threads_to_use);
 
   // Parallelize over computing C3 costs for each sample.
   // std::cout << "\nLOOP" << std::endl;
@@ -593,11 +596,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
         warm_start_u = warm_start_u_;
         do_warm_start = true;
       }
-
+      
+      // std::cout<<" \tBefore c3 opt establish "<<std::endl;
       // Set up C3 MIQP.
-      solvers::C3MIQP opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
+      solvers::C3APPROX opt_test(test_system, Qha, R_, G_, U_, traj_desired, options,
                                warm_start_delta, warm_start_binary, warm_start_x,
                                warm_start_lambda, warm_start_u, do_warm_start);
+      // std::cout<<" \tAfter c3 opt establish "<<std::endl;
 
       // TODO:  this code is nearly identical to some code higher; could be replaced with a function call in both places.
       // Reset delta and w.
@@ -805,7 +810,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
     // Calculate state and force using LCS from current location.
     // std::cout<<"Linearization in C3"<<std::endl;
-    auto system_scaling_pair2 = solvers::LCSFactoryFranka::LinearizePlantToLCS(
+    auto system_scaling_pair2 = solvers::LCSFactoryConvex::LinearizePlantToLCS(
         plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
         num_friction_directions_, mu_, param_.c3_planned_next_state_timestep, param_.horizon_length);   //control_loop_dt);  // TODO: Used to be control_loop_dt but slowed it down so doesn't freak out.
     solvers::LCS system2_ = system_scaling_pair2.first;
@@ -815,13 +820,15 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd force; //This contains the contact forces.
-    // Tangential forces and normal forces for contacts
-    // --> gamma slack variable, ball+ee and ball+ground (multiple if needed) from stewart trinkle formulation.
-
+    // 4 contact forces per contact point.
+    // from anitescu formulation.
+    
+    // std::cout<<" HERE START "<<std::endl;
     auto flag = LCPSolver.SolveLcpLemkeRegularized(
           system2_.F_[0],
           system2_.E_[0] * scaling2 * state + system2_.c_[0] * scaling2 + system2_.H_[0] * scaling2 * input,
           &force);
+    // std::cout<<" HERE END "<<std::endl;
     //The final force solution comes with 24 components (stewart trinkle formulation).  In order, these components are : 
     // - (4) gamma_ee, gamma_bg(x3) (slack ee and slack ball-ground)
     // - (1) normal force between ee and ball lambda_eeb^n
@@ -854,13 +861,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
 
     // TODO:  double check that this makes sense to keep at zeros or if it should go back to the end effector forces.
-    VectorXd force_des = VectorXd::Zero(6);
+    VectorXd force_des = VectorXd::Zero(4);
   
     // Set the indicator in visualization to C3 location, at a negative y value.
     Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
     
     // Update desired next state.
-    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6),
+    st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(4),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
@@ -925,7 +932,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
 
     // Set desired next state.
-    st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(6),
+    st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(4),
                   candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,

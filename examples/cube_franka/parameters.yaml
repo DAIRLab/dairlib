@@ -17,14 +17,14 @@ moving_offset: 0 #0.0005
 pushing_offset: 0 #-0.001
 
 # c3 parameters
-mu: 1                  # changes need to be consistent with urdf
+mu: 0.3                  # changes need to be consistent with urdf
 use_full_cost: true        # debugging parameter, if false uses ball location error only to compare current with sample c3 costs.
 Q_default: 0
 Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
 Q_ball_z: 1000
-Q_finger_vel: 20000  #10        # translational velocity cost  # TODO may need to tune these
+Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 500 #0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
@@ -112,8 +112,8 @@ travel_speed: 0.75     # desired meters/second of repositioning
 num_threads: 2     # Total number of threads to use. 0 means use all threads on machine.
 
 #Switching parameters
-switching_hysteresis: 400 #150
-reposition_fixed_cost: 500    # This needs to be higher than the switching hysteresis to ensure switching
+switching_hysteresis: 250 #150
+reposition_fixed_cost: 100    # This needs to be higher than the switching hysteresis to ensure switching
                               # back to C3 once it repositions and reaches a repositioning goal.
 finished_reposition_cost: 1000000   # Added cost to repositioning target if travel reached the end of the spline last step.
 

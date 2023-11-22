@@ -1,351 +1,228 @@
 #include "c3_controller.h"
 
 #include <utility>
-#include <chrono>
 
+#include <drake/solvers/moby_lcp_solver.h>
 
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
+#include "common/find_resource.h"
+//#include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3.h"
 #include "solvers/c3_miqp.h"
+#include "solvers/c3_qp.h"
 #include "solvers/lcs_factory.h"
-#include "drake/solvers/moby_lcp_solver.h"
-
-
-//#include
-//"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
-
-using std::vector;
-
-using drake::AutoDiffVecXd;
-using drake::AutoDiffXd;
-using drake::MatrixX;
-using drake::SortedPair;
-using drake::geometry::GeometryId;
-using drake::math::ExtractGradient;
-using drake::math::ExtractValue;
-using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
-using Eigen::MatrixXd;
-using Eigen::RowVectorXd;
-using Eigen::VectorXd;
-using std::vector;
 
 namespace dairlib {
+
+using drake::multibody::ModelInstanceIndex;
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using drake::systems::DiscreteValues;
+using Eigen::MatrixXd;
+using Eigen::MatrixXf;
+using Eigen::VectorXd;
+using Eigen::VectorXf;
+using solvers::C3MIQP;
+//using solvers::C3QP;
+using solvers::LCS;
+using solvers::LCSFactory;
+using std::vector;
+using systems::TimestampedVector;
+
 namespace systems {
-namespace controllers {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::multibody::MultibodyPlant<double>& plant_f,
-    drake::systems::Context<double>& context,
-    drake::systems::Context<double>& context_f,
+    drake::systems::Context<double>* context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
-    drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    drake::systems::Context<drake::AutoDiffXd>& context_ad_f,
-    const drake::geometry::SceneGraph<double>& scene_graph,
-    const drake::systems::Diagram<double>& diagram,
-    std::vector<drake::geometry::GeometryId> contact_geoms,
-    int num_friction_directions, double mu, const vector<MatrixXd>& Q,
-    const vector<MatrixXd>& R, const vector<MatrixXd>& G,
-    const vector<MatrixXd>& U, const vector<VectorXd>& xdesired, const drake::trajectories::PiecewisePolynomial<double>& pp)
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+        contact_geoms,
+    C3Options c3_options)
     : plant_(plant),
-      plant_f_(plant_f),
       context_(context),
-      context_f_(context_f),
       plant_ad_(plant_ad),
-      plant_ad_f_(plant_ad_f),
       context_ad_(context_ad),
-      context_ad_f_(context_ad_f),
-      scene_graph_(scene_graph),
-      diagram_(diagram),
-      contact_geoms_(contact_geoms),
-      num_friction_directions_(num_friction_directions),
-      mu_(mu),
-      Q_(Q),
-      R_(R),
-      G_(G),
-      U_(U),
-      xdesired_(xdesired),
-      pp_(pp){
-  int num_positions = plant_.num_positions();
-  int num_velocities = plant_.num_velocities();
-  int num_inputs = plant_.num_actuators();
+      contact_pairs_(contact_geoms),
+      c3_options_(std::move(c3_options)),
+      Q_(std::vector<MatrixXd>(c3_options_.N + 1, c3_options_.Q)),
+      R_(std::vector<MatrixXd>(c3_options_.N, c3_options_.R)),
+      G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
+      U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
+      N_(c3_options_.N) {
+  this->set_name("c3_controller");
 
-  state_input_port_ =
+  n_q_ = plant_.num_positions();
+  n_v_ = plant_.num_velocities();
+  n_x_ = n_q_ + n_v_;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    n_lambda_ =
+        2 * c3_options_.num_contacts +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  } else if (c3_options_.contact_model == "anitescu") {
+    n_lambda_ =
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  }
+
+  n_u_ = plant_.num_actuators();
+
+  int x_des_size = plant_.num_positions(ModelInstanceIndex(2)) +
+                   plant_.num_positions(ModelInstanceIndex(3)) +
+                   plant_.num_velocities(ModelInstanceIndex(2)) +
+                   plant_.num_velocities(ModelInstanceIndex(3));
+  lcs_state_input_port_ =
       this->DeclareVectorInputPort(
-              "x, u, t",
-              OutputVector<double>(num_positions, num_velocities, num_inputs))
+              "x_lcs", TimestampedVector<double>(
+                           x_des_size))
+          .get_index();
+  target_input_port_ =
+      this->DeclareVectorInputPort("desired_position", x_des_size).get_index();
+
+  auto c3_solution = C3Output::C3Solution();
+  c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
+  c3_solution.time_vector_ = VectorXf::Zero(N_);
+  auto c3_intermediates = C3Output::C3Intermediates();
+  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
+  c3_solution_port_ =
+      this->DeclareAbstractOutputPort("c3_solution", c3_solution,
+                                      &C3Controller::OutputC3Solution)
+          .get_index();
+  c3_intermediates_port_ =
+      this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
+                                      &C3Controller::OutputC3Intermediates)
           .get_index();
 
-  control_output_port_ = this->DeclareVectorOutputPort(
-                                 "u, t", TimestampedVector<double>(num_inputs),
-                                 &C3Controller::CalcControl)
-                             .get_index();
-  // DRAKE_DEMAND(contact_geoms_.size() >= 4);
-  // std::cout << "constructed c3controller" <<std::endl;
-
-  // std::cout << contact_geoms_[0] << std::endl;
+  plan_start_time_index_ = DeclareDiscreteState(1);
+  DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
 }
 
-void C3Controller::CalcControl(const Context<double>& context,
-                               TimestampedVector<double>* control) const {
+drake::systems::EventStatus C3Controller::ComputePlan(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  auto start = std::chrono::high_resolution_clock::now();
 
+  const BasicVector<double>& x_des =
+      *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
+  const TimestampedVector<double>* lcs_x =
+      (TimestampedVector<double>*)this->EvalVectorInput(
+          context, lcs_state_input_port_);
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
+      lcs_x->get_timestamp();
+  VectorXd q_v_u =
+      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
+                     plant_.num_actuators());
+  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+  drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
 
-//  auto start = std::chrono::high_resolution_clock::now();
+  std::vector<VectorXd> x_desired =
+      std::vector<VectorXd>(N_ + 1, x_des.value());
 
+  int n_x = plant_.num_positions() + plant_.num_velocities();
+  int n_u = plant_.num_actuators();
 
-  /// get values
-  auto robot_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
-  double timestamp = robot_output->get_timestamp();
-  VectorXd state(plant_.num_positions() + plant_.num_velocities());
-  state << robot_output->GetPositions(), robot_output->GetVelocities();
-  VectorXd q = robot_output->GetPositions();
-  VectorXd v = robot_output->GetVelocities();
-  //VectorXd u = robot_output->GetEfforts();
-  VectorXd u = VectorXd::Zero(3);
-
-  VectorXd traj_desired_vector = pp_.value(timestamp);
-
-
-//  std::cout << "state" << std::endl;
-//  std::cout << state << std::endl;
-
-  traj_desired_vector[0] = state[7]; //- 0.05;
-  traj_desired_vector[1] = state[8]; //+ 0.01;
-
-//  traj_desired_vector[0] = 0; //- 0.05;
-//  traj_desired_vector[1] = 0; //+ 0.01;
-
-  //  xtop[0] = xtop[16];
-//  xtop[1] = xtop[17];
-
-  //std::cout << Q_.size() << std::endl;
-  //std::cout << "test" << test[8] << std::endl;
-  std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
-
-
-//  std::cout << "state" << std::endl;
-//  std::cout << state << std::endl;
-
-  /// update autodiff
-  VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
-              plant_f_.num_actuators());
-  //VectorXd q = VectorXd::Zero(plant_f_.num_positions());
-  //VectorXd v = VectorXd::Zero(plant_f_.num_velocities());
-  //VectorXd u = VectorXd::Zero(plant_f_.num_actuators());
-  xu << q, v, u;
-  auto xu_ad = drake::math::InitializeAutoDiff(xu);
-
-  plant_ad_f_.SetPositionsAndVelocities(
-      &context_ad_f_,
-      xu_ad.head(plant_f_.num_positions() + plant_f_.num_velocities()));
-
-  multibody::SetInputsIfNew<AutoDiffXd>(
-      plant_ad_f_, xu_ad.tail(plant_f_.num_actuators()), &context_ad_f_);
-
-
-  /// upddate context
-
-  //std::cout << q << std::endl;
-
-  plant_f_.SetPositions(&context_f_, q);
-  plant_f_.SetVelocities(&context_f_, v);
-  multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
-
-  // VectorXd state = this->EvalVectorInput(context,
-  // state_input_port_)->value();
-
-  // std::cout << "assinging contact geoms" << std::endl;
-  /// figure out a nice way to do this as SortedPairs with pybind is not working
-  /// (potentially pass a matrix 2xnum_pairs?)
-
-std::vector<SortedPair<GeometryId>> contact_pairs;
-//
-//  // std::cout << contact_geoms_[0] << std::endl;
-//
-  contact_pairs.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1]));  //was 0, 3
-  contact_pairs.push_back(SortedPair(contact_geoms_[1], contact_geoms_[2]));
-//  contact_pairs.push_back(SortedPair(contact_geoms_[2], contact_geoms_[3]));
-  //contact_pairs.push_back(SortedPair(contact_geoms_[3], contact_geoms_[4]));
-//
-  // std::cout << context_ << std::endl;
-
-  // std::cout << "before lcs " << std::endl;s
-  // multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, &state,
-  // &context_);
-
-
-  solvers::LCS system_ = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs,
-      num_friction_directions_, mu_);
-
-
-  //std::cout << system_.d_[0] << std::endl;
-
-  C3Options options;
-  int N = (system_.A_).size();
-  int n = ((system_.A_)[0].cols());
-  int m = ((system_.D_)[0].cols());
-  int k = ((system_.B_)[0].cols());
-
-
-  /// initialize ADMM variables (delta, w)
-  std::vector<VectorXd> delta(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w(N, VectorXd::Zero(n + m + k));
-
-  /// initialize ADMM reset variables (delta, w are reseted to these values)
-  std::vector<VectorXd> delta_reset(N, VectorXd::Zero(n + m + k));
-  std::vector<VectorXd> w_reset(N, VectorXd::Zero(n + m + k));
-
-  if (options.delta_option == 1) {
-    /// reset delta and w (option 1)
-    delta = delta_reset;
-    w = w_reset;
-    for (int j = 0; j < N; j++) {
-      //delta[j].head(n) = xdesired_[0]; //state
-      delta[j].head(n) << state; //state
-    }
+  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x));
+  plant_ad_.SetPositionsAndVelocities(context_ad_, q_v_u_ad.head(n_x));
+  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u), context_);
+  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u),
+                                               context_ad_);
+  solvers::ContactModel contact_model;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model = solvers::ContactModel::kStewartAndTrinkle;
+  } else if (c3_options_.contact_model == "anitescu") {
+    contact_model = solvers::ContactModel::kAnitescu;
   } else {
-    /// reset delta and w (default option)
-    delta = delta_reset;
-    w = w_reset;
+    throw std::runtime_error("unknown or unsupported contact model");
   }
+  auto [lcs, scale] = LCSFactory::LinearizePlantToLCS(
+      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.N, contact_model);
+  DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
+  DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
+  DRAKE_DEMAND(R_.front().rows() == lcs.k_);
+  DRAKE_DEMAND(R_.front().cols() == lcs.k_);
+  DRAKE_DEMAND(G_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
+  DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
 
+  if (c3_options_.projection_type == "MIQP") {
+    c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
 
-//  auto xtop = xdesired_[0];
-//  xtop[0] = xtop[16];
-//  xtop[1] = xtop[17];
-//
-//  const std::vector<VectorXd> xdes(N + 1, xtop);
+  } else if (c3_options_.projection_type == "QP") {
+    c3_ = std::make_unique<C3QP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
 
-//  for (int j = 0; j < N; j++) {
-//    xdes[j] << xtop;
-//  }
-
-
-//  auto asd2 = asd[0];
-  //std::cout << asd << std::endl;
-
-  //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdes, options);
-
-  int ts = round(timestamp);
-
-  //std::cout << ts % 3 << std::endl;
-
-  //if (round(timestamp)  == )
-
-  MatrixXd Qnew;
-  Qnew = Q_[0];
-
-  if (ts % 3 == 0){
-    Qnew(7,7) = 1;     ///1
-    Qnew(8,8) = 1;    ///1
+  } else {
+    std::cerr << ("Unknown projection type") << std::endl;
+    DRAKE_THROW_UNLESS(false);
   }
+  c3_->SetOsqpSolverOptions(solver_options_);
 
-  std::vector<MatrixXd> Qha(Q_.size(), Qnew);
+  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
+  delta_init.head(n_x_) = lcs_x->get_data();
+  std::vector<VectorXd> delta(N_, delta_init);
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
 
-  solvers::C3MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options);
-  //solvers::C3MIQP opt(system_, Q_, R_, G_, U_, xdesired_, options);
-
-//  ///trifinger constraints
-//  ///input
-//  opt.RemoveConstraints();
-//  RowVectorXd LinIneq = RowVectorXd::Zero(k);
-//  RowVectorXd LinIneq_r = RowVectorXd::Zero(k);
-//  double lowerbound = -10;
-//  double upperbound = 10;
-//  int inputconstraint = 2;
-//
-//  for (int i = 0; i < k; i++) {
-//    LinIneq_r = LinIneq;
-//    LinIneq_r(i) = 1;
-//    opt.AddLinearConstraint(LinIneq_r, lowerbound, upperbound, inputconstraint);
-//  }
-//
-//
-//
-//  ///force
-//  RowVectorXd LinIneqf = RowVectorXd::Zero(m);
-//  RowVectorXd LinIneqf_r = RowVectorXd::Zero(m);
-//  double lowerboundf = 0;
-//  double upperboundf = 100;
-//  int forceconstraint = 3;
-//
-//  for (int i = 0; i < m; i++) {
-//    LinIneqf_r = LinIneqf;
-//    LinIneqf_r(i) = 1;
-//    opt.AddLinearConstraint(LinIneqf_r, lowerboundf, upperboundf, forceconstraint);
-//  }
-
-
-  ///state (velocity)
-  int stateconstraint = 1;
-  RowVectorXd LinIneqs = RowVectorXd::Zero(n);
-  RowVectorXd LinIneqs_r = RowVectorXd::Zero(n);
-  double lowerbounds = -20;
-  double upperbounds = 20;
-
-//  for (int i = 16; i < 25; i++) {
-//    LinIneqs_r = LinIneqs;
-//    LinIneqs_r(i) = 1;
-//    opt.AddLinearConstraint(LinIneqs_r, lowerbounds, upperbounds, stateconstraint);
-//  }
-
-  ///state (q)
-  double lowerboundsq = 0;
-  double upperboundsq = 0.03;
-//  for (int i = 0; i < 9; i++) {
-//    LinIneqs_r = LinIneqs;
-//    LinIneqs_r(i) = 1;
-//    opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
-//  }
-
-//int i = 2;
-//LinIneqs_r = LinIneqs;
-//LinIneqs_r(i) = 1;
-//opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
-//i = 5;
-//LinIneqs_r = LinIneqs;
-//LinIneqs_r(i) = 1;
-//opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
-//i = 8;
-//LinIneqs_r = LinIneqs;
-//LinIneqs_r(i) = 1;
-//opt.AddLinearConstraint(LinIneqs_r, lowerboundsq, upperboundsq, stateconstraint);
-
-
-  /// calculate the input given x[i]
-  VectorXd input = opt.Solve(state, delta, w);
-
-//
-//  // calculate force
-//  drake::solvers::MobyLCPSolver<double> LCPSolver;
-//  VectorXd force;
-//
-//  auto flag = LCPSolver.SolveLcpLemke(system_.F_[0], system_.E_[0] * state + system_.c_[0]  + system_.H_[0] * input,
-//                                      &force);
-//
-//  std::cout << "force" << std::endl;
-//  std::cout  << force << std::endl;
-
-//
-//  auto finish = std::chrono::high_resolution_clock::now();
-//  std::chrono::duration<double> elapsed = finish - start;
-//   std::cout << "Solve time:" << elapsed.count() << std::endl;
-
-  //std::cout << "here" << std::endl;
-
-//VectorXd input2 = VectorXd::Zero(k);
-//  input2(0) = 0.1;
-  //VectorXd input2 = 12*VectorXd::Ones(9);
-
-  control->SetDataVector(input);
-  control->set_timestamp(timestamp);
+  // Set actor bounds
+  for (int i : vector<int>({0, 2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 0.2, 0.7, 1);
+  }
+  for (int i : vector<int>({1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
+  }
+  for (int i : vector<int>({0, 1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -10, 10, 2);
+  }
+  for (int i : vector<int>({2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 0, 20, 2);
+  }
+  auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
+  auto finish = std::chrono::high_resolution_clock::now();
+  delta_ = delta;
+  w_ = w;
+  auto elapsed = finish - start;
+  solve_time_ =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
+      1e6;
+  return drake::systems::EventStatus::Succeeded();
 }
-}  // namespace controllers
+
+void C3Controller::OutputC3Solution(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  auto z_sol = c3_->GetFullSolution();
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = t + i * c3_options_.dt;
+    c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+  }
+}
+
+void C3Controller::OutputC3Intermediates(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Intermediates* c3_intermediates) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  for (int i = 0; i < N_; i++) {
+    c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
+    c3_intermediates->w_.col(i) = w_[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_[i].cast<float>();
+  }
+}
+
 }  // namespace systems
 }  // namespace dairlib

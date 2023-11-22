@@ -449,7 +449,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
   std::vector<MatrixXd> Gha(G_.size(), Gnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options, scaling,
+  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options,
    warm_start_delta_, warm_start_binary_, warm_start_x_,
    warm_start_lambda_, warm_start_u_, true);
 

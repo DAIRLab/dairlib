@@ -1,105 +1,108 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
-
-#include "systems/framework/output_vector.h"
-
-#include "drake/systems/framework/leaf_system.h"
-//#include
-//"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
-//#include
-//"external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
-#include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
+#include <drake/common/yaml/yaml_io.h>
 
 #include "common/find_resource.h"
-#include "multibody/geom_geom_collider.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory.h"
+#include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "lcm/lcm_trajectory.h"
+#include "solvers/c3.h"
 
-#include "drake/common/autodiff.h"
-#include "drake/geometry/scene_graph.h"
-#include "drake/math/autodiff_gradient.h"
-#include "drake/multibody/optimization/manipulator_equation_constraint.h"
-#include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/context.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "solvers/c3_options.h"
+#include "solvers/c3_output.h"
+#include "solvers/lcs.h"
+#include "solvers/solver_options_io.h"
+#include "systems/framework/timestamped_vector.h"
 
-#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/systems/framework/leaf_system.h"
 
-using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
-using drake::systems::LeafSystem;
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
 
 namespace dairlib {
 namespace systems {
-namespace controllers {
 
-class C3Controller : public LeafSystem<double> {
+/// Outputs a lcmt_timestamped_saved_traj
+class C3Controller : public drake::systems::LeafSystem<double> {
  public:
-  C3Controller(
+  explicit C3Controller(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::multibody::MultibodyPlant<double>& plant_f,
-      drake::systems::Context<double>& context,
-      drake::systems::Context<double>& context_f,
+      drake::systems::Context<double>* context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_f,
-      drake::systems::Context<drake::AutoDiffXd>& context_ad,
-      drake::systems::Context<drake::AutoDiffXd>& context_ad_f,
-      const drake::geometry::SceneGraph<double>& scene_graph,
-      const drake::systems::Diagram<double>& diagram,
-      std::vector<drake::geometry::GeometryId> contact_geoms,
-      int num_friction_directions, double mu,
-      const std::vector<Eigen::MatrixXd>& Q,
-      const std::vector<Eigen::MatrixXd>& R,
-      const std::vector<Eigen::MatrixXd>& G,
-      const std::vector<Eigen::MatrixXd>& U,
-      const std::vector<Eigen::VectorXd>& xdesired,
-      const drake::trajectories::PiecewisePolynomial<double>& pp);
+      drake::systems::Context<drake::AutoDiffXd>* context_ad,
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+          contact_geoms,
+      C3Options c3_options);
 
-  const drake::systems::InputPort<double>& get_input_port_config() const {
-    return this->get_input_port(state_input_port_);
+  const drake::systems::InputPort<double>& get_input_port_target() const {
+    return this->get_input_port(target_input_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_input_port_output() const {
-    return this->get_output_port(control_output_port_);
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+    return this->get_input_port(lcs_state_input_port_);
   }
 
-  // void AddConstraint() const;
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution()
+      const {
+    return this->get_output_port(c3_solution_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates()
+      const {
+    return this->get_output_port(c3_intermediates_port_);
+  }
+
+  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+    solver_options_ = options;
+  }
+
  private:
-  void CalcControl(const drake::systems::Context<double>& context,
-                   TimestampedVector<double>* output) const;
+  drake::systems::EventStatus ComputePlan(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  int state_input_port_;
-  int control_output_port_;
-  const MultibodyPlant<double>& plant_;
-  MultibodyPlant<double>& plant_f_;
-  drake::systems::Context<double>& context_;
-  drake::systems::Context<double>& context_f_;
-  const MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  MultibodyPlant<drake::AutoDiffXd>& plant_ad_f_;
-  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
-  drake::systems::Context<drake::AutoDiffXd>& context_ad_f_;
-  const drake::geometry::SceneGraph<double>& scene_graph_;
-  const drake::systems::Diagram<double>& diagram_;
-  std::vector<drake::geometry::GeometryId> contact_geoms_;
-  int num_friction_directions_;
-  double mu_;
-  const std::vector<Eigen::MatrixXd> Q_;
-  const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> G_;
-  const std::vector<Eigen::MatrixXd> U_;
-  const std::vector<Eigen::VectorXd> xdesired_;
-  const drake::trajectories::PiecewisePolynomial<double> pp_;
+  void OutputC3Solution(const drake::systems::Context<double>& context,
+                        C3Output::C3Solution* c3_solution) const;
+
+  void OutputC3Intermediates(const drake::systems::Context<double>& context,
+                             C3Output::C3Intermediates* c3_intermediates) const;
+
+  drake::systems::InputPortIndex target_input_port_;
+  drake::systems::InputPortIndex lcs_state_input_port_;
+  drake::systems::OutputPortIndex c3_solution_port_;
+  drake::systems::OutputPortIndex c3_intermediates_port_;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
+  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
+  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+      contact_pairs_;
+  C3Options c3_options_;
+  drake::solvers::SolverOptions solver_options_ =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
+  // convenience for variable sizes
+  int n_q_;
+  int n_v_;
+  int n_x_;
+  int n_lambda_;
+  int n_u_;
+
+  mutable std::unique_ptr<solvers::C3> c3_;
+  mutable std::vector<Eigen::VectorXd> delta_;
+  mutable std::vector<Eigen::VectorXd> w_;
+  mutable double solve_time_;
+  //  std::unique_ptr<solvers::LCS> lcs_;
+  drake::systems::DiscreteStateIndex plan_start_time_index_;
+  std::vector<Eigen::MatrixXd> Q_;
+  std::vector<Eigen::MatrixXd> R_;
+  std::vector<Eigen::MatrixXd> G_;
+  std::vector<Eigen::MatrixXd> U_;
+  int N_;
 };
 
-}  // namespace controllers
 }  // namespace systems
 }  // namespace dairlib

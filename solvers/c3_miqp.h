@@ -11,7 +11,7 @@
 namespace dairlib {
 namespace solvers {
 
-class C3MIQP : public C3 {
+class C3MIQP final : public C3 {
  public:
   /// Default constructor for time-varying LCS
   C3MIQP(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q,
@@ -20,7 +20,6 @@ class C3MIQP : public C3 {
          const std::vector<Eigen::MatrixXd>& U,
          const std::vector<Eigen::VectorXd>& xdesired,
          const C3Options& options,
-         double scaling,
          const std::vector<Eigen::VectorXd>& warm_start_delta = {},
          const std::vector<Eigen::VectorXd>& warm_start_binary = {},
          const std::vector<Eigen::VectorXd>& warm_start_x = {},
@@ -28,6 +27,8 @@ class C3MIQP : public C3 {
          const std::vector<Eigen::VectorXd>& warm_start_u = {},
          bool warm_start = false);
 
+    ~C3MIQP(){
+  }
   /// Virtual projection method
   Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
                                         const Eigen::VectorXd& delta_c,

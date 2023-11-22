@@ -1,35 +1,35 @@
-#include <vector>
 #include <math.h>
 
-#include "drake/geometry/meshcat_visualizer.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
+#include <vector>
 
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
-#include <drake/lcm/drake_lcm.h>
-#include <drake/multibody/tree/multibody_element.h>
-#include <drake/multibody/parsing/parser.h>
-#include <drake/common/trajectories/piecewise_polynomial.h>
+#include <drake/common/find_resource.h>
+#include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
+#include <drake/geometry/meshcat_visualizer.h>
+#include <drake/geometry/meshcat_visualizer_params.h>
+#include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
-#include "drake/math/autodiff.h"
-#include "drake/common/yaml/yaml_io.h"
-#include <drake/systems/primitives/vector_log_sink.h>
+#include <drake/multibody/parsing/parser.h>
+#include <drake/systems/analysis/simulator.h>
+#include <drake/systems/framework/diagram_builder.h>
+#include <drake/systems/lcm/lcm_interface_system.h>
+#include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <drake/systems/primitives/multiplexer.h>
+#include <drake/systems/primitives/vector_log_sink.h>
+#include <drake/visualization/visualization_config_functions.h>
+#include <gflags/gflags.h>
 
-#include "systems/robot_lcm_systems.h"
+#include "common/eigen_utils.h"
+#include "common/find_resource.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_c3.hpp"
-#include "multibody/multibody_utils.h"
-#include "systems/system_utils.h"
-
 #include "examples/franka_ball_rolling/c3_parameters.h"
-#include "systems/robot_lcm_systems.h"
+#include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -59,7 +59,7 @@ int DoMain(int argc, char* argv[]){
   // load urdf and sphere
   DiagramBuilder<double> builder;
   double sim_dt = param.sim_dt;
-  double output_dt = param.sim_dt;
+  double output_dt = param.sim_dt; // should have an output dt in param
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);

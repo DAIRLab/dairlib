@@ -29,11 +29,13 @@ cc_binary(
     srcs = ["simulate_franka_lcm.cc"],
     deps = [
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
         "//examples/franka_ball_rolling:c3_parameters",
-        "//systems:system_utils",
+        "//common",
         "@drake//:drake_shared_library",
+        "@gflags",
     ],
     data = [":trifinger_urdf",
             "@drake//manipulation/models/franka_description:models"]

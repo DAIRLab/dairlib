@@ -36,6 +36,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
                                        const MatrixXd& E, const MatrixXd& F,
                                        const MatrixXd& H, const VectorXd& c,
                                        const int& warm_start_index) {
+  std::cout<<"Wrong solve function called"<<std::endl;
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 

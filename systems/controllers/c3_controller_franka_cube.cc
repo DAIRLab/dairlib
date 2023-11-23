@@ -570,7 +570,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // std::cout << "\nLOOP" << std::endl;
   // std::array<double, 3> loop_times {0,0,0};
 
-  // #pragma omp parallel for num_threads(n_threads_to_use)
+  #pragma omp parallel for num_threads(n_threads_to_use)
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
 

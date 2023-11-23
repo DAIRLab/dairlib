@@ -107,7 +107,7 @@ std::pair<LCS,double> LCSFactoryFranka::LinearizePlantToLCS(
 
 
 // Check all sizes here
-  std::cout<<"Contact geoms size when passed into LCS factory = "<<contact_geoms.size()<<std::endl;
+//   std::cout<<"Contact geoms size when passed into LCS factory = "<<contact_geoms.size()<<std::endl;
   VectorXd phi(contact_geoms.size());
   MatrixXd J_n(contact_geoms.size(), plant.num_velocities());
   MatrixXd J_t(2 * contact_geoms.size() * num_friction_directions,

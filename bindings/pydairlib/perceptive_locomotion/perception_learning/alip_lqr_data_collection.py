@@ -160,6 +160,22 @@ def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
     return context, sim_context, controller_context
 
 
+def get_noisy_footstep_command_indices(footstep_command: np.ndarray,
+                                       hmap: np.ndarray,
+                                       variance: float) -> Tuple[int, int]:
+    # New: the input should be LQR reference (ud) + noise
+    wx = np.random.normal(loc=0, scale=np.sqrt(variance))
+    wy = np.random.normal(loc=0, scale=np.sqrt(variance))
+    noisy_footstep_command = footstep_command + np.array([wx, wy])
+    distance = np.linalg.norm(
+        hmap[:2] - np.expand_dims(
+            np.expand_dims(noisy_footstep_command, 1), 1),
+        axis=0
+    )
+    i, j = np.unravel_index(distance.argmin(), distance.shape)
+    return i, j
+
+
 def get_data_sequence(sim_env: CassieFootstepControllerEnvironment,
                       controller: AlipFootstepLQR,
                       diagram: Diagram,
@@ -174,61 +190,39 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
                  simulator: Simulator,
                  datapoint: Dict) -> None:
 
-    # timing aliases
-    t_ss = controller.params.single_stance_duration
-    t_ds = controller.params.double_stance_duration
-    t_s2s = t_ss + t_ds
-    t_eps = 0.01  # small number that prevent impact
-
+    # get the root context, cassie sim env context, and controller context
+    # for convenience
     context, sim_context, controller_context = initialize_sim(
         sim_env, controller, diagram, datapoint
     )
-    t_init = context.get_time()
-
-    # grab the sim and controller contexts for convenience
-    ud = controller.get_output_port_by_name('lqr_reference').Eval(
-        controller_context
-    )[-2:]
-    heightmap_center = np.zeros((3,))
-    heightmap_center[:2] = ud
-    hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
-
-    datapoint['hmap'] = hmap[-1, :, :]
-
-    # New: the input should be LQR reference (ud) + noise
-    noise_x = np.random.normal(loc=0, scale=np.sqrt(0.01))
-    noise_y = np.random.normal(loc=0, scale=np.sqrt(0.01))
-    noisy_footstep_command = ud + np.array([noise_x, noise_y]).flatten()
-    # project the noisy input to the closet grid of the hmap
-    # x->columns->j, y->rows->i
-    x_diff = np.abs(hmap[0, 0, :] - noisy_footstep_command[0])
-    y_diff = np.abs(hmap[1, :, 0] - noisy_footstep_command[1])
-    i = np.argmin(y_diff)
-    j = np.argmin(x_diff)
-
-    datapoint['U'] = hmap[:-1, :, :]
-
-    datapoint['i'] = i
-    datapoint['j'] = j
-    datapoint['footstep_command'] = hmap[:, i, j]
-
-    sim_env.get_input_port_by_name("footstep_command").FixValue(
-        context=sim_context,
-        value=datapoint['footstep_command']
-    )
-
     simulator.reset_context(context)
     simulator.Initialize()
 
-    controller_context = controller.GetMyMutableContextFromRoot(context)
-    sim_context = sim_env.GetMyMutableContextFromRoot(context)
+    t_init = context.get_time()
+
+    ud = controller.get_output_port_by_name('lqr_reference').Eval(
+        controller_context
+    )[-2:]
+
+    hmap_center = np.array([ud[0], ud[1], 0])
+    hmap = sim_env.get_heightmap(sim_context, center=hmap_center)
+    i, j = get_noisy_footstep_command_indices(ud, hmap, 0.01)
+
+    sim_env.get_input_port_by_name("footstep_command").FixValue(
+        context=sim_context,
+        value=hmap[:, i, j]
+    )
     datapoint['x_k'] = sim_env.get_output_port_by_name("alip_state").Eval(
         sim_context
     ).ravel()
-
     datapoint['V_kp1'] = controller.get_next_value_estimate_for_footstep(
-        datapoint['footstep_command'], controller_context
+        hmap[:, i, j], controller_context
     )
+
+    # Timing aliases
+    t_ss = controller.params.single_stance_duration
+    t_s2s = t_ss + controller.params.double_stance_duration
+    t_eps = 2e-3
 
     # ----------- Constant footstep command stage ------------------------#
     simulator.AdvanceTo(t_init - datapoint['phase'] + t_ss)
@@ -252,6 +246,11 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     )
     datapoint['V_k'] = controller.get_value_estimate(controller_context)
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
+    datapoint['hmap'] = hmap[-1, :, :]
+    datapoint['U'] = hmap[:-1, :, :]
+    datapoint['i'] = i
+    datapoint['j'] = j
+    datapoint['footstep_command'] = hmap[:, i, j]
 
 
 def data_process(i, q, visualize):
@@ -270,6 +269,10 @@ def main(save_file: str, visualize: bool):
     num_jobs = 1 if visualize else os.cpu_count() - 1 # leave one thread free
     job_queue = multiprocessing.Queue()
     job_list = []
+
+    testing = True
+    if testing:
+        data_process(0, job_queue, True)
 
     for i in range(num_jobs):
         process = multiprocessing.Process(

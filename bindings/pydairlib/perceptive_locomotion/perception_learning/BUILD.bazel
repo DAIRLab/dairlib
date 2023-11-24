@@ -21,6 +21,17 @@ py_library(
 )
 
 py_library(
+    name = "alip_nn_lqr",
+    srcs = ["alip_nn_lqr.py"],
+    deps = [
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:torch_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:unet",
+    ],
+)
+
+py_library(
     name = "cassie_footstep_controller_environment",
     srcs = ["cassie_footstep_controller_environment.py"],
     deps = [
@@ -62,9 +73,16 @@ py_binary(
         ":alip_lqr",
         ":cassie_footstep_controller_environment",
     ],
-    imports = [
-        "venv/lib/"
-    ]
+)
+
+py_binary(
+    name = "alip_nn_lqr_test",
+    srcs = ["alip_nn_lqr_test.py"],
+    deps = [
+        ":alip_nn_lqr",
+        ":cassie_footstep_controller_environment",
+        ":terrain_utils",
+    ],
 )
 
 py_binary(

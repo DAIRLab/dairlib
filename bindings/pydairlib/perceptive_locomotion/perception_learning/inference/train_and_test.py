@@ -153,4 +153,4 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
 
 
 if __name__ == '__main__':
-    train_and_test(Hyperparams(), use_wandb=True)
+    train_and_test(Hyperparams(), use_wandb=False)

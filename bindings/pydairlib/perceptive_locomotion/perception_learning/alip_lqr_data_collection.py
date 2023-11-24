@@ -25,7 +25,7 @@ import pdb
 import os
 import numpy as np
 from tqdm import tqdm
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 import argparse
 import multiprocessing
 
@@ -108,8 +108,6 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
     # New: parametrize the desired velocity to be a sector (theta and |v|) forward
     v_des_theta = np.pi / 6
     v_des_norm = 0.5
-    v_des_theta_distr = np.linspace(-v_des_theta, v_des_theta, 50)
-    v_des_norm_distr = np.linspace(0, v_des_norm, 50)
 
     # initialize data list
     data = []
@@ -119,8 +117,8 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
     with tqdm(total=num_data, desc=f'Data collection Job {job_id}') as progress_bar:
         for i in range(num_data):
             datapoint = ic_generator.random()
-            v_theta = np.random.choice(v_des_theta_distr , size=1)
-            v_norm = np.random.choice(v_des_norm_distr, size=1)
+            v_theta = np.random.uniform(-v_des_theta, v_des_theta)
+            v_norm = np.random.uniform(0.0, v_des_norm)
             datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
             get_residual(sim_env, controller, diagram, simulator, datapoint)
             data.append(datapoint)
@@ -128,12 +126,11 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
     return data
 
 
-def get_residual(sim_env: CassieFootstepControllerEnvironment,
-                 controller: AlipFootstepLQR,
-                 diagram: Diagram,
-                 simulator: Simulator,
-                 datapoint: Dict) -> None:
-    # Make a new context per datapoint
+def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
+                   controller: AlipFootstepLQR,
+                   diagram: Diagram,
+                   datapoint: Dict) -> Tuple[Context, Context, Context]:
+
     context = diagram.CreateDefaultContext()
 
     # timing aliases
@@ -142,7 +139,6 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     t_s2s = t_ss + t_ds
     t_eps = 0.01  # small number that prevent impact
 
-    # grab the sim and controller contexts for convenience
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
     controller_context = controller.GetMyMutableContextFromRoot(context)
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
@@ -161,6 +157,35 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         context=controller_context,
         value=datapoint['desired_velocity']
     )
+    return context, sim_context, controller_context
+
+
+def get_data_sequence(sim_env: CassieFootstepControllerEnvironment,
+                      controller: AlipFootstepLQR,
+                      diagram: Diagram,
+                      simulator: Simulator,
+                      datapoint: Dict) -> List[Dict]:
+    pass
+
+
+def get_residual(sim_env: CassieFootstepControllerEnvironment,
+                 controller: AlipFootstepLQR,
+                 diagram: Diagram,
+                 simulator: Simulator,
+                 datapoint: Dict) -> None:
+
+    # timing aliases
+    t_ss = controller.params.single_stance_duration
+    t_ds = controller.params.double_stance_duration
+    t_s2s = t_ss + t_ds
+    t_eps = 0.01  # small number that prevent impact
+
+    context, sim_context, controller_context = initialize_sim(
+        sim_env, controller, diagram, datapoint
+    )
+    t_init = context.get_time()
+
+    # grab the sim and controller contexts for convenience
     ud = controller.get_output_port_by_name('lqr_reference').Eval(
         controller_context
     )[-2:]

@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import torch
-from typing import Tuple
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR,
@@ -70,8 +69,8 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         _, H, W = hmap.shape
 
         # test ports
-        print("hmap in controller")
-        print(hmap)
+        # print("hmap in controller")
+        # print(hmap)
 
         # use utils to tile the state, input and heightmap
         # combined_input = torch.cat([hmap_input, state, input_space_grid]

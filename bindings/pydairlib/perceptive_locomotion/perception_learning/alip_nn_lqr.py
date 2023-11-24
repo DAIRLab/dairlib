@@ -1,35 +1,17 @@
+import os
 import numpy as np
 import torch
-from typing import Tuple, overload
-from dataclasses import dataclass, field
+from typing import Tuple
 
-import os
-import io
-from yaml import load, dump
-
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-
-from pydrake.systems.all import (
-    DiscreteTimeLinearQuadraticRegulator,
-    BasicVector,
-    LeafSystem,
-    Context,
-    InputPort,
-    OutputPort
+from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
+    AlipFootstepLQR,
+    AlipFootstepLQROptions
 )
 
-from pydrake.multibody.plant import MultibodyPlant
 from pydrake.common.value import Value
-
-from pydairlib.systems.footstep_planning import (
-    AlipStepToStepDynamics,
-    ResetDiscretization,
-    AlipGaitParams,
-    CalcAd,
-    Stance,
+from pydrake.systems.all import (
+    Context,
+    BasicVector
 )
 
 # import network related packages and set path
@@ -38,78 +20,17 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.unet \
 from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
     import get_device, tile_and_concatenate_inputs
 
-
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
     perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
 
-# parameters needed to define the discrete time ALIP model
-@dataclass
-class AlipFootstepLQROptions:
-    height: float
-    mass: float
-    stance_width: float
-    single_stance_duration: float
-    double_stance_duration: float
-    reset_discretization: ResetDiscretization = ResetDiscretization.kFOH
-    Q: np.ndarray = field(default_factory=lambda: np.eye(4))
-    R: np.ndarray = field(default_factory=lambda: np.eye(2))
 
-    @staticmethod
-    def calculate_default_options(
-        mpfc_gains_yaml: str, plant:
-        MultibodyPlant, plant_context: Context) -> "AlipFootstepLQROptions":
-        with io.open(mpfc_gains_yaml, 'r') as file:
-            data = load(file, Loader=Loader)
-
-        disc = {
-            'FOH': ResetDiscretization.kFOH,
-            'ZOH': ResetDiscretization.kZOH,
-        }
-
-        return AlipFootstepLQROptions(
-            height=data['h_des'],
-            mass=plant.CalcTotalMass(plant_context),
-            stance_width=data['stance_width'],
-            single_stance_duration=data['ss_time'],
-            double_stance_duration=data['ds_time'],
-            reset_discretization=disc[data['reset_discretization_method']],
-            Q=np.array(data['q']).reshape((4, 4)),
-            R=np.array(data['w_footstep_reg']).reshape(3, 3)[:2, :2],
-        )
-
-"""
-    Modified from the original LQR footstep controller
-    taking current state (x), potential footplacement (u), and height map (M)
-    instead of calculating the exact LQR solution using x and u
-    now use trained network, taking in (x,u,M), predict residual grid
-    add residual grid with LQR Q function grid, and select the footplacement by
-    grid serach the minimum value
-"""
-
-class AlipFootstepNNLQR(LeafSystem):
+class AlipFootstepNNLQR(AlipFootstepLQR):
 
     def __init__(self, alip_params: AlipFootstepLQROptions):
-        super().__init__()
+        super().__init__(alip_params)
 
-        # DLQR params
-        self.K = np.zeros((2, 4))
-        self.S = np.zeros((4, 4))
-        self.params = alip_params
-        self.A, self.B = AlipStepToStepDynamics(
-            self.params.height,
-            self.params.mass,
-            self.params.single_stance_duration,
-            self.params.double_stance_duration,
-            self.params.reset_discretization
-        )
-        self.K, self.S = DiscreteTimeLinearQuadraticRegulator(
-            self.A,
-            self.B,
-            self.params.Q,
-            self.params.R
-        )
         # controller now has internal network module
         # maybe it is not worth putting things on GPU
         self.device = get_device()
@@ -119,88 +40,10 @@ class AlipFootstepNNLQR(LeafSystem):
 
         # input port should add height map
         # output port remain unchanged
-        self.input_port_indices = {
-            'desired_velocity': self.DeclareVectorInputPort(
-                "vdes", 2
-            ).get_index(),
-            'fsm': self.DeclareVectorInputPort(
-                "fsm", 1
-            ).get_index(),
-            'time_until_switch': self.DeclareVectorInputPort(
-                "time_until_switch", 1
-            ).get_index(),
-            'state': self.DeclareVectorInputPort(
-                "alip_state", 4
-            ).get_index(),
-            # hard code height map dimension for now, should link it
-            # to parameter file in the future
-            'height_map': self.DeclareAbstractInputPort(
-                "height_map",
-                model_value=Value(np.ndarray(shape=(3,20,20)))
-            ).get_index()
-        }
-        self.output_port_indices = {
-            'footstep_command': self.DeclareVectorOutputPort(
-                "footstep_command", 3, self.calculate_optimal_footstep
-            ).get_index(),
-            'lqr_reference': self.DeclareVectorOutputPort(
-                "xd_ud[x,y]", 6, self.calc_lqr_reference
-            ).get_index(),
-            'x': self.DeclareVectorOutputPort(
-                'x', 4, self.calc_discrete_alip_state
-            ).get_index()
-        }
-
-    def get_input_port_by_name(self, name: str) -> InputPort:
-        assert (name in self.input_port_indices)
-        return self.get_input_port(self.input_port_indices[name])
-
-    def get_output_port_by_name(self, name: str) -> OutputPort:
-        assert (name in self.output_port_indices)
-        return self.get_output_port(self.output_port_indices[name])
-
-    def calc_lqr_reference(self, context: Context, xd_ud: BasicVector) -> None:
-        """
-            Calculates the LQR reference trajectory for an output port
-        """
-        vdes = self.EvalVectorInput(
-            context,
-            self.input_port_indices['desired_velocity']
-        ).value().ravel()
-        fsm = self.EvalVectorInput(
-            context,
-            self.input_port_indices['fsm']
-        ).value().ravel()[0]
-        fsm = int(fsm)
-
-        # get the reference trajectory for the current stance mode
-        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
-
-        xd, ud = self.make_lqr_reference(stance, vdes)
-
-        output = np.zeros((6,))
-        output[:4] = xd
-        output[4:] = ud
-        xd_ud.set_value(output)
-
-    def calc_discrete_alip_state(self, context: Context,
-                                 x_disc: BasicVector) -> None:
-        current_alip_state = self.EvalVectorInput(
-            context,
-            self.input_port_indices['state']
-        ).value().ravel()
-        time_until_switch = self.EvalVectorInput(
-            context,
-            self.input_port_indices['time_until_switch']
-        ).value().ravel()[0]
-
-        x = CalcAd(
-            self.params.height,
-            self.params.mass,
-            time_until_switch
-        ) @ current_alip_state
-
-        x_disc.set_value(x)
+        self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
+            "height_map",
+            model_value=Value(np.ndarray(shape=(3,20,20)))
+        ).get_index()
 
     def calculate_optimal_footstep(
             self, context: Context, footstep: BasicVector) -> None:
@@ -227,8 +70,8 @@ class AlipFootstepNNLQR(LeafSystem):
         _, H, W = hmap.shape
 
         # test ports
-        # print("hmap in controller")
-        # print(hmap)
+        print("hmap in controller")
+        print(hmap)
 
         # use utils to tile the state, input and heightmap
         # combined_input = torch.cat([hmap_input, state, input_space_grid]
@@ -258,59 +101,9 @@ class AlipFootstepNNLQR(LeafSystem):
                 next_value_grid[i,j] = self.get_next_value_estimate(x,hmap[:2,i,j], xd, ud)
 
         # sum up the grid values, add select the minimum value index
-        Final_grid = cost_grid + next_value_grid + residual_grid
-        footstep_i, footstep_j = np.unravel_index(np.argmin(Final_grid), Final_grid.shape)
+        final_grid = cost_grid + next_value_grid + residual_grid
+        footstep_i, footstep_j = np.unravel_index(np.argmin(final_grid), final_grid.shape)
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]
         footstep.set_value(footstep_command)
-
-    def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
-            Tuple[np.ndarray, np.ndarray]:
-        """
-            Calculate a reference ALIP trajectory following the philosophy
-            outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D
-        """
-        # First get the input sequence corresponding to the desired velocity
-        s = -1.0 if stance == Stance.kLeft else 1.0
-        u0 = np.zeros((2,))
-        u0[0] = vdes[0] * (
-            self.params.single_stance_duration +
-            self.params.double_stance_duration
-        )
-        u0[1] = s * self.params.stance_width + vdes[1] * (
-            self.params.single_stance_duration +
-            self.params.double_stance_duration
-        )
-        u1 = np.copy(u0)
-        u1[1] -= 2 * s * self.params.stance_width
-
-        # Solve for period-2 orbit, x0 = A(Ax0 + Bu0) + Bu1
-        # \therefore (I - A^2)x0 = ABu0 + Bu1
-        x0 = np.linalg.solve(
-            np.eye(4) - self.A @ self.A,
-            self.A @ self.B @ u0 + self.B @ u1
-        )
-        return x0, u0
-
-    def get_next_value_estimate(self, x, u, xd, ud) -> float:
-        return self._get_value_estimate(
-            self.A @ (xd - x) + self.B @ (ud - u)
-        )
-
-    def get_next_value_estimate_for_footstep(
-            self, u: np.ndarray, context: Context) -> float:
-        x = self.get_output_port_by_name('x').Eval(context)
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        ud = xd_ud[4:]
-        return self.get_next_value_estimate(x, u[:2], xd, ud)
-
-    def _get_value_estimate(self, xe: np.ndarray) -> float:
-        return xe.T @ self.S @ xe
-
-    def get_value_estimate(self, context: Context) -> float:
-        x = self.get_output_port_by_name('x').Eval(context)
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        return self._get_value_estimate(x - xd)

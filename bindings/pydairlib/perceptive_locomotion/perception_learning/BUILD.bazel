@@ -24,10 +24,11 @@ py_library(
     name = "alip_nn_lqr",
     srcs = ["alip_nn_lqr.py"],
     deps = [
-        "//bindings/pydairlib/systems",
-        "@drake//bindings/pydrake",
+        ":alip_lqr",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:torch_utils",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:unet",
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
     ],
 )
 
@@ -121,6 +122,7 @@ py_library(
 
 PY_LIBRARIES = [
     ":cassie_footstep_controller_environment",
+    ":alip_lqr",
 ]
 
 # Package roll-up (for Bazel dependencies).

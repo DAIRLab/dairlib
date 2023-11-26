@@ -265,8 +265,8 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     hmap = sim_env.get_heightmap(contexts['sim'], center=hmap_center)
     i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.05 ** 2)
 
-    # stabilizing footstep is too far from nominal, assume we are falling
-    if np.linalg.norm(u_fb - hmap[:2, i, j]) > 1.0:
+    # stabilizing footstep is too far from nominal, assume we are falling or fallen
+    if np.linalg.norm(u_fb - hmap[:2, i, j]) > 1.2:
         return False
 
     sim_env.get_input_port_by_name("footstep_command").FixValue(
@@ -324,7 +324,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize):
-    num_data = 500
+    num_data = 200
     print("data_process", str(i))
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(

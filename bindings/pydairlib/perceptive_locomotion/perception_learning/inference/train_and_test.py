@@ -23,6 +23,7 @@ class Hyperparams:
     shuffle: bool = True
     learning_rate: float = 1e-4
     project: str = 'alip-lqr-residual'
+    loss: str = 'huber'
     optimizer: str = 'Adam'
 
     def log_to_wandb(self):
@@ -30,9 +31,10 @@ class Hyperparams:
         wandb.config['shuffle'] = self.shuffle
         wandb.config['lr'] = self.learning_rate
         wandb.config['optimizer'] = self.optimizer
+        wandb.config['loss'] = self.loss
 
 
-def run_epoch(model, data_loader, device, optimizer=None, is_training=True):
+def run_epoch(model, data_loader, device, loss_function, optimizer=None, is_training=True):
     epoch_loss = 0
 
     model.train() if is_training else model.eval()
@@ -49,7 +51,13 @@ def run_epoch(model, data_loader, device, optimizer=None, is_training=True):
             predictions = predictions[torch.arange(predictions.shape[0]), 0, i, j]
 
             # compute loss
-            loss = F.mse_loss(predictions, residual)
+            if loss_function == 'mse':
+                loss = F.mse_loss(predictions, residual)
+            elif loss_function == 'huber':
+                # TODO (@Brian-Acosta) set delta automatically from data
+                loss = F.huber_loss(predictions, residual, delta=500)
+            else:
+                raise RuntimeError(f"Unsupported loss function {loss_function}")
             epoch_loss += loss.item()
 
             # backpropagate loss and update weights
@@ -112,10 +120,10 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
 
     for epoch in tqdm(range(params.epochs)):
         # Training phase
-        train_loss = run_epoch(model, train_loader, device, optimizer, is_training=True)
+        train_loss = run_epoch(model, train_loader, device, params.loss, optimizer, is_training=True)
 
         # Validation phase
-        val_loss = run_epoch(model, val_loader, device, optimizer=None, is_training=False)
+        val_loss = run_epoch(model, val_loader, device, params.loss, optimizer=None, is_training=False)
 
         # Logging for training and validation losses if using WandB
         if use_wandb:
@@ -134,7 +142,7 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
     # load the best model
     model.load_state_dict(torch.load(checkpoint_path))
     # test the data
-    test_loss = run_epoch(model, test_loader, device, is_training=False)
+    test_loss = run_epoch(model, test_loader, device, params.loss, is_training=False)
 
     # Logging for test loss if using WandB
     if use_wandb:

@@ -173,6 +173,11 @@ def get_noisy_footstep_command_indices(footstep_command: np.ndarray,
     # New: the input should be LQR reference (ud) + noise
     wx = np.random.normal(loc=0, scale=np.sqrt(variance))
     wy = np.random.normal(loc=0, scale=np.sqrt(variance))
+
+    # clip the noise to make outlier rejection easier
+    wx = np.clip(wx, -3 * np.sqrt(variance), 3 * np.sqrt(variance))
+    wy = np.clip(wy, 3 * np.sqrt(variance), 3 * np.sqrt(variance))
+
     noisy_footstep_command = footstep_command + np.array([wx, wy])
     distance = np.linalg.norm(
         hmap[:2] - np.expand_dims(
@@ -232,10 +237,10 @@ def get_data_sequence(sim_env: CassieFootstepControllerEnvironment,
     # ['stance', 'desired_velocity', 'phase', 'initial_swing_foot_pos', 'q', 'v']
 
     for i in range(max_steps):
-        get_residual(sim_env, controller, simulator, contexts, datapoint)
-        data.append(datapoint)
-        if check_termination(contexts['root']):
+        success = get_residual(sim_env, controller, simulator, contexts, datapoint)
+        if not success or check_termination(contexts['root']):
             break
+        data.append(datapoint)
         datapoint = make_new_datapoint(contexts['root'])
 
     return data
@@ -245,7 +250,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
                  controller: AlipFootstepLQR,
                  simulator: Simulator,
                  contexts: Dict,
-                 datapoint: Dict) -> None:
+                 datapoint: Dict) -> bool:
 
     context = contexts['root']
 
@@ -259,6 +264,10 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     hmap_center = np.array([ud[0], ud[1], 0])
     hmap = sim_env.get_heightmap(contexts['sim'], center=hmap_center)
     i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.05 ** 2)
+
+    # stabilizing footstep is too far from nominal, assume we are falling
+    if np.linalg.norm(u_fb - hmap[:2, i, j]) > 1.0:
+        return False
 
     sim_env.get_input_port_by_name("footstep_command").FixValue(
         context=contexts['sim'],
@@ -310,6 +319,8 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     beginning_of_next_phase = round(context.get_time() / t_s2s) * t_s2s + t_ds
     if context.get_time() < beginning_of_next_phase:
         simulator.AdvanceTo(beginning_of_next_phase + t_eps)
+
+    return True
 
 
 def data_process(i, q, visualize):

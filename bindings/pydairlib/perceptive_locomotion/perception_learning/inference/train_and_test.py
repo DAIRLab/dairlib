@@ -21,7 +21,6 @@ class Hyperparams:
     batch_size: int = 32
     epochs: int = 200
     shuffle: bool = True
-    num_workers: int = 1
     learning_rate: float = 1e-4
     project: str = 'alip-lqr-residual'
     optimizer: str = 'Adam'
@@ -29,7 +28,6 @@ class Hyperparams:
     def log_to_wandb(self):
         wandb.config['batch_size'] = self.batch_size
         wandb.config['shuffle'] = self.shuffle
-        wandb.config['num_workers'] = self.num_workers
         wandb.config['lr'] = self.learning_rate
         wandb.config['optimizer'] = self.optimizer
 
@@ -59,7 +57,6 @@ def run_epoch(model, data_loader, device, optimizer=None, is_training=True):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
     return epoch_loss / len(data_loader.dataset)
 
 
@@ -89,21 +86,18 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
         train_dataset,
         batch_size=params.batch_size,
         shuffle=params.shuffle,
-        num_workers=params.num_workers
     )
 
     val_loader = DataLoader(
         val_dataset,
         batch_size=params.batch_size,
         shuffle=False,
-        num_workers=params.num_workers
     )
 
     test_loader = DataLoader(
         test_dataset,
         batch_size=params.batch_size,
         shuffle=False,
-        num_workers=params.num_workers
     )
 
     device = torch_utils.get_device()
@@ -153,4 +147,4 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
 
 
 if __name__ == '__main__':
-    train_and_test(Hyperparams(), use_wandb=False)
+    train_and_test(Hyperparams(), use_wandb=True)

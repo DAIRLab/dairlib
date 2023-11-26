@@ -24,6 +24,7 @@
 import pdb
 import os
 import numpy as np
+from copy import deepcopy
 from tqdm import tqdm
 from typing import Dict, Tuple, List
 import argparse
@@ -57,6 +58,10 @@ from pydairlib.perceptive_locomotion.perception_learning. \
     CassieFootstepControllerEnvironment,
     perception_learning_base_folder,
     InitialConditionsServer
+)
+
+from pydairlib.multibody import (
+    ReExpressWorldVector3InBodyYawFrame
 )
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
@@ -120,8 +125,11 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
             v_theta = np.random.uniform(-v_des_theta, v_des_theta)
             v_norm = np.random.uniform(0.0, v_des_norm)
             datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-            get_residual(sim_env, controller, diagram, simulator, datapoint)
-            data.append(datapoint)
+
+            data_i = get_data_sequence(
+                sim_env, controller, diagram, simulator, datapoint
+            )
+            data += data_i
             progress_bar.update(1)
     return data
 
@@ -129,7 +137,7 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
 def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
                    controller: AlipFootstepLQR,
                    diagram: Diagram,
-                   datapoint: Dict) -> Tuple[Context, Context, Context]:
+                   datapoint: Dict) -> Dict:
 
     context = diagram.CreateDefaultContext()
 
@@ -137,14 +145,13 @@ def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
     t_ss = controller.params.single_stance_duration
     t_ds = controller.params.double_stance_duration
     t_s2s = t_ss + t_ds
-    t_eps = 0.01  # small number that prevent impact
 
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
     controller_context = controller.GetMyMutableContextFromRoot(context)
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
-    t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
+    t_init = datapoint['stance'] * t_s2s + datapoint['phase'] + t_ds
     context.SetTime(t_init)
 
     # set the context state with the initial conditions from the datapoint
@@ -157,7 +164,7 @@ def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
         context=controller_context,
         value=datapoint['desired_velocity']
     )
-    return context, sim_context, controller_context
+    return {'root': context, 'sim': sim_context, 'controller': controller_context}
 
 
 def get_noisy_footstep_command_indices(footstep_command: np.ndarray,
@@ -181,70 +188,116 @@ def get_data_sequence(sim_env: CassieFootstepControllerEnvironment,
                       diagram: Diagram,
                       simulator: Simulator,
                       datapoint: Dict) -> List[Dict]:
-    pass
+
+    model_datapoint = deepcopy(datapoint)
+    model_datapoint['stance'] = 0 if model_datapoint['stance'] == 'left' else 1
+
+    def check_termination(diagram_context) -> bool:
+        plant = sim_env.cassie_sim.get_plant()
+        plant_context = plant.GetMyContextFromRoot(diagram_context)
+        left_toe_pos = plant.CalcPointsPositions(
+            plant_context, plant.GetBodyByName("toe_left").body_frame(),
+            np.array([0.02115, 0.056, 0.]), plant.world_frame()
+        )
+        right_toe_pos = plant.CalcPointsPositions(
+            plant_context, plant.GetBodyByName("toe_right").body_frame(),
+            np.array([0.02115, 0.056, 0.]), plant.world_frame()
+        )
+        com = plant.CalcCenterOfMassPositionInWorld(plant_context)
+
+        z1 = com[2] - left_toe_pos[2]
+        z2 = com[2] - right_toe_pos[2]
+        return z1 < 0.2 or z2 < 0.2
+
+    def make_new_datapoint(diagram_context) -> Dict:
+        plant = sim_env.cassie_sim.get_plant()
+        plant_context = plant.GetMyContextFromRoot(diagram_context)
+        return {
+            'stance': model_datapoint['stance'],
+            'phase': 0.0,
+            'desired_velocity': model_datapoint['desired_velocity'],
+            'q': plant.GetPositions(plant_context),
+            'v': plant.GetVelocities(plant_context)
+        }
+
+    data = []
+    max_steps = 100
+    contexts = initialize_sim(
+        sim_env, controller, diagram, datapoint
+    )
+    simulator.reset_context(contexts['root'])
+    simulator.Initialize()
+
+    # datapoint values set before we get it here:
+    # ['stance', 'desired_velocity', 'phase', 'initial_swing_foot_pos', 'q', 'v']
+
+    for i in range(max_steps):
+        get_residual(sim_env, controller, simulator, contexts, datapoint)
+        data.append(datapoint)
+        if check_termination(contexts['root']):
+            break
+        datapoint = make_new_datapoint(contexts['root'])
+
+    return data
 
 
 def get_residual(sim_env: CassieFootstepControllerEnvironment,
                  controller: AlipFootstepLQR,
-                 diagram: Diagram,
                  simulator: Simulator,
+                 contexts: Dict,
                  datapoint: Dict) -> None:
 
-    # get the root context, cassie sim env context, and controller context
-    # for convenience
-    context, sim_context, controller_context = initialize_sim(
-        sim_env, controller, diagram, datapoint
-    )
-    simulator.reset_context(context)
-    simulator.Initialize()
-
-    t_init = context.get_time()
+    context = contexts['root']
 
     ud = controller.get_output_port_by_name('lqr_reference').Eval(
-        controller_context
+        contexts['controller']
     )[-2:]
+    u_fb = controller.get_output_port_by_name('footstep_command').Eval(
+        contexts['controller']
+    )[:2]
 
     hmap_center = np.array([ud[0], ud[1], 0])
-    hmap = sim_env.get_heightmap(sim_context, center=hmap_center)
-    i, j = get_noisy_footstep_command_indices(ud, hmap, 0.01)
+    hmap = sim_env.get_heightmap(contexts['sim'], center=hmap_center)
+    i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.05 ** 2)
 
     sim_env.get_input_port_by_name("footstep_command").FixValue(
-        context=sim_context,
+        context=contexts['sim'],
         value=hmap[:, i, j]
     )
     datapoint['x_k'] = sim_env.get_output_port_by_name("alip_state").Eval(
-        sim_context
+        contexts['sim']
     ).ravel()
     datapoint['V_kp1'] = controller.get_next_value_estimate_for_footstep(
-        hmap[:, i, j], controller_context
+        hmap[:, i, j], contexts['controller']
     )
 
     # Timing aliases
+    t_init = context.get_time()
     t_ss = controller.params.single_stance_duration
-    t_s2s = t_ss + controller.params.double_stance_duration
-    t_eps = 2e-3
+    t_ds = controller.params.double_stance_duration
+    t_s2s = t_ss + t_ds
+    t_eps = 1e-2
 
-    # ----------- Constant footstep command stage ------------------------#
-    simulator.AdvanceTo(t_init - datapoint['phase'] + t_ss)
+    # Constant footstep command through the end of double stance
+    simulator.AdvanceTo(t_init - datapoint['phase'] + t_s2s - t_eps)
 
     # -----------LQR input stage (DS + the end of next SS) ----------------#
     t = context.get_time()
-    while t < (t_init - datapoint['phase'] + t_ss) + (t_s2s - 3 * t_eps):
+    while t < (t_init - datapoint['phase'] + t_s2s) + (t_ss - 3 * t_eps):
         command = controller.get_output_port_by_name(
             'footstep_command'
-        ).Eval(controller_context).ravel()
-        command[2] = sim_env.query_heightmap(sim_context, command)
+        ).Eval(contexts['controller']).ravel()
+        command[2] = sim_env.query_heightmap(contexts['sim'], command)
         sim_env.get_input_port_by_name("footstep_command").FixValue(
-            context=sim_context,
+            context=contexts['sim'],
             value=command
         )
         simulator.AdvanceTo(t + 1e-2)
         t = context.get_time()
-
     datapoint['x_kp1'] = controller.get_output_port_by_name('x').Eval(
-        controller_context
+        contexts['controller']
     )
-    datapoint['V_k'] = controller.get_value_estimate(controller_context)
+    datapoint['V_k'] = controller.get_value_estimate(contexts['controller'])
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
     datapoint['hmap'] = hmap[-1, :, :]
     datapoint['U'] = hmap[:-1, :, :]
@@ -252,9 +305,15 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     datapoint['j'] = j
     datapoint['footstep_command'] = hmap[:, i, j]
 
+    # Potentially get the simulation ready for the next step if chaining sequences
+    # TODO (@Brian-Acosta) Adjust timing to account for delay when using simulated perception stack
+    beginning_of_next_phase = round(context.get_time() / t_s2s) * t_s2s + t_ds
+    if context.get_time() < beginning_of_next_phase:
+        simulator.AdvanceTo(beginning_of_next_phase + t_eps)
+
 
 def data_process(i, q, visualize):
-    num_data = 1000
+    num_data = 500
     print("data_process", str(i))
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
@@ -270,7 +329,7 @@ def main(save_file: str, visualize: bool):
     job_queue = multiprocessing.Queue()
     job_list = []
 
-    testing = True
+    testing = False
     if testing:
         data_process(0, job_queue, True)
 

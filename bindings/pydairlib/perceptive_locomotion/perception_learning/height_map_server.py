@@ -112,7 +112,7 @@ class HeightMapServer:
             body_name="pelvis",
             vec=np.array([xy[0], xy[1], 0.0])
         )
-        return self.get_height_at_point(query_point)
+        return self.get_height_at_point(query_point) - stance_pos[2]
 
     def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance,
                          center: np.ndarray = None) -> np.ndarray:
@@ -144,6 +144,6 @@ class HeightMapServer:
                     vec=np.array([x, y, 0.0])
                 )
                 query_point = stance_pos + center + offset
-                heightmap[i, j] = self.get_height_at_point(query_point)
+                heightmap[i, j] = self.get_height_at_point(query_point) - stance_pos[2]
 
         return heightmap

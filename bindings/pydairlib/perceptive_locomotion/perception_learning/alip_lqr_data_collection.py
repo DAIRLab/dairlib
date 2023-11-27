@@ -176,7 +176,7 @@ def get_noisy_footstep_command_indices(footstep_command: np.ndarray,
 
     # clip the noise to make outlier rejection easier
     wx = np.clip(wx, -3 * np.sqrt(variance), 3 * np.sqrt(variance))
-    wy = np.clip(wy, 3 * np.sqrt(variance), 3 * np.sqrt(variance))
+    wy = np.clip(wy, -3 * np.sqrt(variance), 3 * np.sqrt(variance))
 
     noisy_footstep_command = footstep_command + np.array([wx, wy])
     distance = np.linalg.norm(
@@ -325,7 +325,6 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 def data_process(i, q, visualize):
     num_data = 200
-    print("data_process", str(i))
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'

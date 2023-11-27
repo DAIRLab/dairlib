@@ -59,6 +59,6 @@ def make_fig(data, plotter):
 
 if __name__ == '__main__':
     training_data = load_training_data()
-    for plotter in [box_residuals, box_v_k, box_v_kp1, box_alip_state_norm, box_next_alip_state_norm, box_v_kp1]:
+    for plotter in [box_residuals,  box_alip_state_norm, box_v_k]:
         make_fig(training_data, plotter)
     plt.show()

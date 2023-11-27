@@ -112,7 +112,7 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
 
     # New: parametrize the desired velocity to be a sector (theta and |v|) forward
     v_des_theta = np.pi / 6
-    v_des_norm = 0.5
+    v_des_norm = 0.75
 
     # initialize data list
     data = []

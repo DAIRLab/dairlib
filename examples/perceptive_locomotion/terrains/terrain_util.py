@@ -39,14 +39,16 @@ def make_stair_curriculum(n: int, length: float):
     x_lengths = np.diff(x_extents)
     x_knots = [0.5 * (x_extents[i] + x_extents[i-1]) for i in range(1, n+1)]
 
-    z_knots = [0.04 * (2.0 * x + 0.01 * x ** 3) for x in x_knots]
+    z_knots = [0.04 * (2.1 * x + 0.011 * x ** 3) for x in x_knots]
     zmax = np.max(np.diff(z_knots))
 
     for x, z, xlen in zip(x_knots, z_knots, x_lengths):
         print(f'- [[{x: .9f}, 0, {z: .4f}], [0, 0, 1], [{xlen: .9f}, {length}, {zmax : .2f}], [0]]')
+        print(f'- [[0, {x: .9f}, {z: .4f}], [0, 0, 1], [{xlen: .9f}, '
+              f'{length}, {zmax : .2f}], [{np.pi / 2 :.4f}]]')
 
-    # plt.stairs(z_knots, x_extents)
-    # plt.show()
+    plt.stairs(z_knots, x_extents)
+    plt.show()
 
 
 if __name__ == '__main__':

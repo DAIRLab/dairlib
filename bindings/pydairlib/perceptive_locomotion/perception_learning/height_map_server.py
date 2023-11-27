@@ -28,8 +28,8 @@ from pydairlib.systems.footstep_planning import Stance
 
 @dataclass
 class HeightMapOptions:
-    nx: int = 40
-    ny: int = 40
+    nx: int = 30
+    ny: int = 30
     resolution: float = 0.02
 
 

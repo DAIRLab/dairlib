@@ -273,9 +273,9 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         context=contexts['sim'],
         value=hmap[:, i, j]
     )
-    datapoint['x_k'] = sim_env.get_output_port_by_name("alip_state").Eval(
-        contexts['sim']
-    ).ravel()
+    datapoint['x_k'] = controller.get_output_port_by_name('x').Eval(
+        contexts['controller']
+    )
     datapoint['V_kp1'] = controller.get_next_value_estimate_for_footstep(
         hmap[:, i, j], contexts['controller']
     )

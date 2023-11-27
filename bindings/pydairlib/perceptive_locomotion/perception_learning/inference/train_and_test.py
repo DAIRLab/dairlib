@@ -19,12 +19,13 @@ default_checkpoint_path = os.path.join(
 
 @dataclass
 class Hyperparams:
-    batch_size: int = 32
+    batch_size: int = 64
     epochs: int = 400
     shuffle: bool = True
-    learning_rate: float = 2e-4
+    learning_rate: float = 5e-5
+    patience: int = 10
     project: str = 'alip-lqr-residual'
-    loss: str = 'huber'
+    loss: str = 'l1'
     optimizer: str = 'Adam'
     data_path: str = None
 
@@ -34,6 +35,7 @@ class Hyperparams:
         wandb.config['lr'] = self.learning_rate
         wandb.config['optimizer'] = self.optimizer
         wandb.config['loss'] = self.loss
+        wandb.config['patience'] = self.patience
 
 
 def run_epoch(model, data_loader, device, loss_function, optimizer=None, is_training=True):
@@ -57,7 +59,9 @@ def run_epoch(model, data_loader, device, loss_function, optimizer=None, is_trai
                 loss = F.mse_loss(predictions, residual)
             elif loss_function == 'huber':
                 # TODO (@Brian-Acosta) set delta automatically from data
-                loss = F.huber_loss(predictions, residual, delta=500)
+                loss = F.huber_loss(predictions, residual, delta=1)
+            elif loss_function == 'l1':
+                loss = F.l1_loss(predictions, residual)
             else:
                 raise RuntimeError(f"Unsupported loss function {loss_function}")
             epoch_loss += loss.item()
@@ -70,7 +74,7 @@ def run_epoch(model, data_loader, device, loss_function, optimizer=None, is_trai
     return epoch_loss / len(data_loader.dataset)
 
 
-def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15), seed=3407):
+def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15)):
     total_size = len(dataset)
     train_size = int(split_ratio[0] * total_size)
     val_size = int(split_ratio[1] * total_size)
@@ -78,7 +82,7 @@ def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15), seed=3407)
 
     train_dataset, val_dataset, test_dataset = random_split(
         dataset, [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(seed)
+        generator=torch.Generator()
     )
 
     return train_dataset, val_dataset, test_dataset
@@ -125,6 +129,7 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
 
     best_val_loss = float('inf')  # Set to positive infinity initially
 
+    epochs_since_best_validation_loss = 0
     for epoch in tqdm(range(params.epochs)):
         # Training phase
         train_loss = run_epoch(model, train_loader, device, params.loss, optimizer, is_training=True)
@@ -144,6 +149,12 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), checkpoint_path)
+            epochs_since_best_validation_loss = 0
+        else:
+            epochs_since_best_validation_loss += 1
+
+        if epochs_since_best_validation_loss > params.patience:
+            break
 
     # Testing phase
     # load the best model

@@ -52,7 +52,7 @@ def make_stair_curriculum(n: int, length: float):
 
 
 if __name__ == '__main__':
-    make_stair_curriculum(75, 50.0)
+    make_stair_curriculum(81, 50.0)
     # def hfun(t):
     #     return 0.2 * np.sin(2 * t)
     # make_arc(2.5, 8, np.pi/2, 3*np.pi/2, np.array([-1.0, 0, 0]), BoxParams(0.75, 2.0), height_fun=hfun)

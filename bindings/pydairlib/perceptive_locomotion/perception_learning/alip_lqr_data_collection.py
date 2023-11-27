@@ -112,7 +112,7 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
 
     # New: parametrize the desired velocity to be a sector (theta and |v|) forward
     v_des_theta = np.pi / 6
-    v_des_norm = 0.75
+    v_des_norm = 1.0
 
     # initialize data list
     data = []
@@ -123,7 +123,7 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
         for i in range(num_data):
             datapoint = ic_generator.random()
             v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-            v_norm = np.random.uniform(0.0, v_des_norm)
+            v_norm = np.random.uniform(0.2, v_des_norm)
             datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
 
             data_i = get_data_sequence(
@@ -265,10 +265,10 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
     hmap_center = np.array([ud[0], ud[1], 0])
     hmap = sim_env.get_heightmap(contexts['sim'], center=hmap_center)
-    i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.05 ** 2)
+    i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.0 ** 2)
 
     # stabilizing footstep is too far from nominal, assume we are falling or fallen
-    if np.linalg.norm(u_fb - hmap[:2, i, j]) > 1.2:
+    if np.linalg.norm(u_fb - hmap[:2, i, j]) > 0.5:
         return False
 
     sim_env.get_input_port_by_name("footstep_command").FixValue(
@@ -331,7 +331,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize):
-    num_data = 500
+    num_data = 200
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'
@@ -342,7 +342,7 @@ def data_process(i, q, visualize):
 
 
 def main(save_file: str, visualize: bool):
-    num_jobs = 1 if visualize else os.cpu_count() - 1 # leave one thread free
+    num_jobs = 1 if visualize else int(os.cpu_count() / 2) - 1
     job_queue = multiprocessing.Queue()
     job_list = []
 

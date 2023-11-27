@@ -254,9 +254,11 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
     context = contexts['root']
 
-    ud = controller.get_output_port_by_name('lqr_reference').Eval(
+    xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(
         contexts['controller']
-    )[-2:]
+    )
+    xd = xd_ud[:4]
+    ud = xd_ud[4:]
     u_fb = controller.get_output_port_by_name('footstep_command').Eval(
         contexts['controller']
     )[:2]
@@ -275,7 +277,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     )
     datapoint['x_k'] = controller.get_output_port_by_name('x').Eval(
         contexts['controller']
-    )
+    ) - xd
     datapoint['V_kp1'] = controller.get_next_value_estimate_for_footstep(
         hmap[:, i, j], contexts['controller']
     )
@@ -303,15 +305,20 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         )
         simulator.AdvanceTo(t + 1e-2)
         t = context.get_time()
+
+    xd = controller.get_output_port_by_name('lqr_reference').Eval(
+        contexts['controller']
+    )[:4]
     datapoint['x_kp1'] = controller.get_output_port_by_name('x').Eval(
         contexts['controller']
-    )
+    ) - xd
     datapoint['V_k'] = controller.get_value_estimate(contexts['controller'])
     datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
     datapoint['hmap'] = hmap[-1, :, :]
-    datapoint['U'] = hmap[:-1, :, :]
+    datapoint['U'] = hmap[:-1, :, :] - np.expand_dims(np.expand_dims(ud, 1), 1)
     datapoint['i'] = i
     datapoint['j'] = j
+    datapoint['u_k'] = hmap[:2, i, j] - ud
     datapoint['footstep_command'] = hmap[:, i, j]
 
     # Potentially get the simulation ready for the next step if chaining sequences
@@ -324,7 +331,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize):
-    num_data = 500
+    num_data = 100
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'

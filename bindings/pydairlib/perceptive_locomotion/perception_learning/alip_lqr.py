@@ -191,7 +191,7 @@ class AlipFootstepLQR(LeafSystem):
 
         # LQR feedback - for now assume the height of the ground is zero
         footstep_command = np.zeros((3,))
-        footstep_command[:2] = ud + self.K @ (xd - x)
+        footstep_command[:2] = ud - self.K @ (x - xd)
         footstep.set_value(footstep_command)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
@@ -224,7 +224,7 @@ class AlipFootstepLQR(LeafSystem):
 
     def get_next_value_estimate(self, x, u, xd, ud) -> float:
         return self._get_value_estimate(
-            self.A @ (xd - x) + self.B @ (ud - u)
+            self.A @ (x - xd) + self.B @ (u - ud)
         )
 
     def get_next_value_estimate_for_footstep(

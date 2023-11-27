@@ -23,9 +23,13 @@ from pydrake.multibody.plant import MultibodyPlant
 
 from pydairlib.systems.footstep_planning import (
     AlipStepToStepDynamics,
+    MassNormalizedAlipStepToStepDynamics,
     ResetDiscretization,
     AlipGaitParams,
     CalcAd,
+    CalcA,
+    CalcMassNormalizedAd,
+    CalcMassNormalizedA,
     Stance,
 )
 
@@ -75,9 +79,8 @@ class AlipFootstepLQR(LeafSystem):
         self.K = np.zeros((2, 4))
         self.S = np.zeros((4, 4))
         self.params = alip_params
-        self.A, self.B = AlipStepToStepDynamics(
+        self.A, self.B = MassNormalizedAlipStepToStepDynamics(
             self.params.height,
-            self.params.mass,
             self.params.single_stance_duration,
             self.params.double_stance_duration,
             self.params.reset_discretization
@@ -149,19 +152,21 @@ class AlipFootstepLQR(LeafSystem):
 
     def calc_discrete_alip_state(self, context: Context,
                                  x_disc: BasicVector) -> None:
-        current_alip_state = self.EvalVectorInput(
+        current_alip_state = np.copy(self.EvalVectorInput(
             context,
             self.input_port_indices['state']
-        ).value().ravel()
+        ).value().ravel())
+
+        # mass normalized alip state
+        current_alip_state[2:] /= self.params.mass
+
         time_until_switch = self.EvalVectorInput(
             context,
             self.input_port_indices['time_until_switch']
         ).value().ravel()[0]
 
-        x = CalcAd(
-            self.params.height,
-            self.params.mass,
-            time_until_switch
+        x = CalcMassNormalizedAd(
+            self.params.height, time_until_switch
         ) @ current_alip_state
 
         x_disc.set_value(x)

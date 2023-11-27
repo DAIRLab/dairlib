@@ -51,21 +51,20 @@ void CalcAlipState(const MultibodyPlant<double> &plant,
   *stance_pos_p = stance_foot_pos;
 }
 
-Matrix<double, 4, 8> CalcResetMap(
-    double com_z, double m, double Tds, ResetDiscretization discretization) {
-  DRAKE_DEMAND(Tds > 0);
-  MatrixXd A = CalcA(com_z, m);
-  Matrix4d Ad = CalcAd(com_z, m, Tds);
-  Matrix4d Adinv = Ad.inverse();
-  Matrix4d Ainv = A.inverse();
-  Matrix4d I = Matrix4d::Identity();
-  Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
-  B(2, 1) = m * 9.81;
-  B(3, 0) = -m * 9.81;
+namespace {
 
+Matrix<double, 4, 2> CalcBdForResetMap(
+    const Matrix4d& Ad, const Matrix4d& Ainv, const Matrix<double, 4, 2>& B,
+    double Tds,
+    ResetDiscretization discretization) {
+
+  Matrix4d Adinv = Ad.inverse();
+  Matrix4d I = Matrix4d::Identity();
   Matrix<double, 4, 2> Bd = Matrix<double, 4, 2>::Zero();
+
   switch (discretization) {
-    case ResetDiscretization::kZOH:Bd = Ainv * (Ad - I) * B;
+    case ResetDiscretization::kZOH:
+      Bd = Ainv * (Ad - I) * B;
       break;
     case ResetDiscretization::kFOH:
       Bd = Ad * (-Ainv * Adinv + (1.0 / Tds) * Ainv * Ainv * (I - Adinv)) * B;
@@ -79,14 +78,49 @@ Matrix<double, 4, 8> CalcResetMap(
       Bd.row(2) = Bd_ZOH.row(2);
       Bd.row(3) = Bd_FOH.row(3);
   }
-  Matrix<double, 4, 2> Bs = Matrix<double, 4, 2>::Zero();
-  Bs.topRows(2) = -Eigen::Matrix2d::Identity();
+  return Bd;
+}
+
+Matrix<double, 4, 8> AssembleResetMap(
+    const Matrix4d& Ad, const Matrix<double, 4, 2>& Bd) {
+
+  Matrix<double, 4, 2> Bfp = Matrix<double, 4, 2>::Zero();
+  Bfp.topRows(2) = -Eigen::Matrix2d::Identity();
 
   Matrix<double, 4, 8> Aeq = Matrix<double, 4, 8>::Zero();
   Aeq.topLeftCorner<4, 4>() = Ad;
-  Aeq.block<4, 2>(0, 4) = -Bd - Bs;
-  Aeq.block<4, 2>(0, 6) = Bd + Bs;
+  Aeq.block<4, 2>(0, 4) = -Bd - Bfp;
+  Aeq.block<4, 2>(0, 6) = Bd + Bfp;
+
   return Aeq;
+}
+}
+
+Matrix<double, 4, 8> CalcResetMap(
+    double com_z, double m, double Tds, ResetDiscretization discretization) {
+  DRAKE_DEMAND(Tds > 0);
+  MatrixXd A = CalcA(com_z, m);
+  Matrix4d Ad = CalcAd(com_z, m, Tds);
+  Matrix4d Ainv = A.inverse();
+  Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
+  B(2, 1) = m * 9.81;
+  B(3, 0) = -m * 9.81;
+  Matrix<double, 4, 2> Bd = CalcBdForResetMap(Ad, Ainv, B, Tds, discretization);
+  return AssembleResetMap(Ad, Bd);
+}
+
+Matrix<double, 4, 8> CalcMassNormalizedResetMap(
+    double com_z, double Tds, ResetDiscretization discretization) {
+  DRAKE_DEMAND(Tds > 0);
+  MatrixXd A = CalcMassNormalizedA(com_z);
+  Matrix4d Ad = CalcMassNormalizedAd(com_z, Tds);
+  Matrix4d Adinv = Ad.inverse();
+  Matrix4d Ainv = A.inverse();
+  Matrix<double, 4, 2> B = Matrix<double, 4, 2>::Zero();
+  B(2, 1) = 9.81;
+  B(3, 0) = -9.81;
+  Matrix<double, 4, 2> Bd = CalcBdForResetMap(Ad, Ainv, B, Tds, discretization);
+  return AssembleResetMap(Ad, Bd);
 }
 
 pair<MatrixXd, MatrixXd> AlipStepToStepDynamics(
@@ -95,6 +129,15 @@ pair<MatrixXd, MatrixXd> AlipStepToStepDynamics(
   auto M = CalcResetMap(com_z, m, Tds, discretization);
   MatrixXd A = CalcAd(com_z, m, Tss + Tds);
   MatrixXd B = CalcAd(com_z, m, Tss) * M.rightCols<2>();
+  return {A, B};
+}
+
+pair<MatrixXd, MatrixXd> MassNormalizedAlipStepToStepDynamics(
+    double com_z, double Tss, double Tds,
+    ResetDiscretization discretization) {
+  auto M = CalcMassNormalizedResetMap(com_z, Tds, discretization);
+  MatrixXd A = CalcMassNormalizedAd(com_z, Tss + Tds);
+  MatrixXd B = CalcMassNormalizedAd(com_z, Tss) * M.rightCols<2>();
   return {A, B};
 }
 
@@ -110,17 +153,32 @@ Vector4d CalcReset(double com_z, double m, double Tds,
 
 Matrix4d CalcA(double com_z, double m) {
   // Dynamics of ALIP: (eqn 6) https://arxiv.org/pdf/2109.14862.pdf
-  const double g = 9.81;
-  double a1x = 1.0 / (m * com_z);
-  double a2x = -m * g;
-  double a1y = -1.0 / (m * com_z);
-  double a2y = m * g;
+  constexpr double g = 9.81;
+  double dx_Ly = 1.0 / (m * com_z);
+  double dy_Lx = -1.0 / (m * com_z);
+  double dLx_y = -m * g;
+  double dLy_x = m * g;
 
   MatrixXd A = Matrix4d::Zero();
-  A(0, 3) = a1x;
-  A(1, 2) = a1y;
-  A(2, 1) = a2x;
-  A(3, 0) = a2y;
+  A(0, 3) = dx_Ly;
+  A(1, 2) = dy_Lx;
+  A(2, 1) = dLx_y;
+  A(3, 0) = dLy_x;
+  return A;
+}
+
+Matrix4d CalcMassNormalizedA(double com_z) {
+  constexpr double g = 9.81;
+  double dx_Ly = 1.0 / com_z;
+  double dy_Lx = -1.0 / com_z;
+  double dLx_y = -g;
+  double dLy_x = g;
+
+  MatrixXd A = Matrix4d::Zero();
+  A(0, 3) = dx_Ly;
+  A(1, 2) = dy_Lx;
+  A(2, 1) = dLx_y;
+  A(3, 0) = dLy_x;
   return A;
 }
 
@@ -129,6 +187,19 @@ Matrix4d CalcAd(double com_z, double m, double t) {
   constexpr double g = 9.81;
   double omega = sqrt(g / com_z);
   double d = 1.0 / (m * g);
+  double a = sinh(t * omega);
+  Matrix4d Ad = cosh(omega * t) * Matrix4d::Identity();
+  Ad(0, 3) = a * omega * d;
+  Ad(1, 2) = -a * omega * d;
+  Ad(2, 1) = -a / (omega * d);
+  Ad(3, 0) = a / (omega * d);
+  return Ad;
+}
+
+Matrix4d CalcMassNormalizedAd(double com_z, double t) {
+  constexpr double g = 9.81;
+  double omega = sqrt(g / com_z);
+  double d = 1.0 / g;
   double a = sinh(t * omega);
   Matrix4d Ad = cosh(omega * t) * Matrix4d::Identity();
   Ad(0, 3) = a * omega * d;

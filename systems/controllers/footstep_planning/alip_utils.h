@@ -82,6 +82,10 @@ Eigen::Matrix<double, 4, 8> CalcResetMap(
     double com_z, double m, double Tds,
     ResetDiscretization discretization = ResetDiscretization::kZOH);
 
+Eigen::Matrix<double, 4, 8> CalcMassNormalizedResetMap(
+    double com_z, double Tds,
+    ResetDiscretization discretization = ResetDiscretization::kZOH);
+
 /// Step to step alip dynamics where the state is the ALIP state at the end of
 /// double stance. returns A_s2s, B_s2s
 std::pair<Eigen::MatrixXd, Eigen::MatrixXd> AlipStepToStepDynamics(
@@ -98,6 +102,14 @@ Eigen::Vector4d CalcReset(double com_z, double m, double Tds,
 Eigen::Matrix4d CalcA(double com_z, double m);
 Eigen::Matrix4d CalcAd(double com_z, double m, double t);
 Eigen::Vector4d CalcBd(double com_z, double m, double t);
+Eigen::Matrix4d CalcMassNormalizedA(double com_z);
+Eigen::Matrix4d CalcMassNormalizedAd(double com_z, double t);
+
+std::pair<Eigen::MatrixXd, Eigen::MatrixXd>
+MassNormalizedAlipStepToStepDynamics(
+    double com_z, double Tss, double Tds,
+    ResetDiscretization discretization
+);
 Eigen::Matrix4d SolveDareTwoStep(
     const Eigen::Matrix4d& Q,
     double com_z, double m, double tss, double tds, int knots_per_mode,

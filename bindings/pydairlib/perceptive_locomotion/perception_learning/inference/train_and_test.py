@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import wandb
 import os
+import argparse
 from dataclasses import dataclass
 from network import ResidualLQRPredictionNet
 from unet import UNet
@@ -19,12 +20,13 @@ checkpoint_path = os.path.join(
 @dataclass
 class Hyperparams:
     batch_size: int = 32
-    epochs: int = 200
+    epochs: int = 400
     shuffle: bool = True
-    learning_rate: float = 1e-4
+    learning_rate: float = 2e-4
     project: str = 'alip-lqr-residual'
     loss: str = 'huber'
     optimizer: str = 'Adam'
+    data_path: str = None
 
     def log_to_wandb(self):
         wandb.config['batch_size'] = self.batch_size
@@ -155,4 +157,21 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
 
 
 if __name__ == '__main__':
-    train_and_test(Hyperparams(), use_wandb=True)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--data_path',
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        '--use_wandb',
+        type=bool,
+        default=True,
+    )
+    args = parser.parse_args()
+
+    train_and_test(
+        Hyperparams(data_path=args.data_path),
+        use_wandb=True
+    )

@@ -14,12 +14,17 @@ namespace pydairlib{
 
 using systems::controllers::AlipMultiQP;
 using systems::controllers::AlipMIQP;
-using systems::controllers::alip_utils::CalcAd;
 using systems::controllers::alip_utils::Stance;
 using systems::controllers::alip_utils::AlipGaitParams;
 using systems::controllers::alip_utils::ResetDiscretization;
+using systems::controllers::alip_utils::CalcA;
+using systems::controllers::alip_utils::CalcAd;
+using systems::controllers::alip_utils::CalcMassNormalizedA;
+using systems::controllers::alip_utils::CalcMassNormalizedAd;
 using systems::controllers::alip_utils::MakePeriodicAlipGait;
 using systems::controllers::alip_utils::AlipStepToStepDynamics;
+using systems::controllers::alip_utils::MassNormalizedAlipStepToStepDynamics;
+
 
 PYBIND11_MODULE(footstep_planning, m) {
   m.doc() = "Binding footstep planners";
@@ -143,7 +148,15 @@ PYBIND11_MODULE(footstep_planning, m) {
   m.def("AlipStepToStepDynamics", &AlipStepToStepDynamics, py::arg("com_z"),
         py::arg("m"), py::arg("Tss"), py::arg("Tds"),
         py::arg("discretization"))
-    .def("CalcAd", &CalcAd, py::arg("com_z"), py::arg("m"), py::arg(""));
+    .def("CalcAd", &CalcAd, py::arg("com_z"), py::arg("m"), py::arg("t"))
+    .def("CalcA", &CalcA, py::arg("com_z"), py::arg("m"))
+    .def("MassNormalizedAlipStepToStepDynamics",
+        &MassNormalizedAlipStepToStepDynamics,
+        py::arg("com_z"), py::arg("Tss"), py::arg("Tds"),
+        py::arg("discretization"))
+    .def("CalcMassNormalizedAd", &CalcMassNormalizedAd,
+         py::arg("com_z"), py::arg("t"))
+    .def("CalcMassNormalizedA", &CalcMassNormalizedA, py::arg("com_z"));
 }
 
 

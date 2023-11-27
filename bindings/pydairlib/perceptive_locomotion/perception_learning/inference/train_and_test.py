@@ -13,7 +13,7 @@ from unet import UNet
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
-checkpoint_path = os.path.join(
+default_checkpoint_path = os.path.join(
     perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
 
 
@@ -85,9 +85,14 @@ def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15), seed=3407)
 
 
 def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
+    checkpoint_path = default_checkpoint_path
     if use_wandb:
         wandb.init(project="alip-lqr-residual", entity="alip-lqr-residuals")
         params.log_to_wandb()
+        checkpoint_path = os.path.join(
+            perception_learning_base_folder,
+            f'tmp/{wandb.run.name}.pth'
+        )
 
     cassie_dataset = torch_utils.CassieDataset()
     train_dataset, val_dataset, test_dataset = train_validate_test_split(cassie_dataset)

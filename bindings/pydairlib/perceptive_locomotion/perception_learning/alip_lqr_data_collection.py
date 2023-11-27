@@ -324,7 +324,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize):
-    num_data = 200
+    num_data = 500
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'

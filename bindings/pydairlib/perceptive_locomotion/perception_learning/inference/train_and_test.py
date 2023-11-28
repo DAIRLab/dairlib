@@ -25,7 +25,7 @@ class Hyperparams:
     learning_rate: float = 5e-5
     patience: int = 10
     project: str = 'alip-lqr-residual'
-    loss: str = 'l1'
+    loss: str = 'huber'
     optimizer: str = 'Adam'
     data_path: str = None
 

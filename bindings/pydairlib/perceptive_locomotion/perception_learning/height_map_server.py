@@ -6,6 +6,15 @@ from pydrake.multibody.plant import (
     MultibodyPlant
 )
 
+from pydrake.geometry.all import Meshcat
+
+from pydrake.systems.all import (
+    LeafSystem,
+    Context,
+    Value,
+    State
+)
+
 from pydairlib.geometry.convex_polygon import ConvexPolygon
 
 from pydairlib.cassie.cassie_utils import (
@@ -33,7 +42,7 @@ class HeightMapOptions:
     resolution: float = 0.02
 
 
-class HeightMapServer:
+class HeightMapServer(LeafSystem):
     """
         Uses the robot state and some controller information
         and calculates a height map in the stance frame
@@ -41,6 +50,8 @@ class HeightMapServer:
 
     def __init__(self, terrain: Union[str, SquareSteppingStoneList], urdf: str,
                  map_opts: HeightMapOptions = HeightMapOptions()):
+
+        super().__init__()
         self.map_opts = map_opts
         self.plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
@@ -84,6 +95,15 @@ class HeightMapServer:
             Stance.kRight: RightToeRear(self.plant)[1]
         }
 
+        self.DeclareAbstractOutputPort(
+            name="height_map_stance_frame",
+            alloc=lambda: Value(np.zeros((3, self.map_opts.nx, self.map_opts.ny))),
+            calc=self.output_heightmap
+        )
+
+    def output_heightmap(self, context: Context, hmap: np.ndarray)-> None:
+        pass
+
     def get_height_at_point(self, query_point: np.ndarray) -> float:
         zvals = []
         for seg in self.convex_terrain_segments:
@@ -96,16 +116,19 @@ class HeightMapServer:
         else:
             return np.nan
 
-    def query_height_in_stance_frame(self, xy: np.ndarray,
-                                     robot_state: np.ndarray,
-                                     stance: Stance) -> float:
-        self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
-        stance_pos = self.plant.CalcPointsPositions(
+    def stance_pos_in_world(self, x: np.ndarray, stance: Stance) -> np.ndarray:
+        self.plant.SetPositionsAndVelocities(self.plant_context, x)
+        return self.plant.CalcPointsPositions(
             self.plant_context,
             self.contact_frame[stance],
             self.contact_point,
             self.plant.world_frame()
         ).ravel()
+
+    def query_height_in_stance_frame(self, xy: np.ndarray,
+                                     robot_state: np.ndarray,
+                                     stance: Stance) -> float:
+        stance_pos = self.stance_pos_in_world(robot_state, stance)
         query_point = stance_pos + ReExpressBodyYawVector3InWorldFrame(
             plant=self.plant,
             context=self.plant_context,
@@ -113,6 +136,20 @@ class HeightMapServer:
             vec=np.array([xy[0], xy[1], 0.0])
         )
         return self.get_height_at_point(query_point) - stance_pos[2]
+
+    def get_heightmap_3d_world_frame(self, robot_state: np.ndarray,
+                                     stance: Stance, center: np.ndarray = None):
+        stance_pos = self.stance_pos_in_world(robot_state, stance)
+        xyz = self.get_heightmap_3d(robot_state, stance, center)
+        for i in range(xyz.shape[1]):
+            for j in range(xyz.shape[2]):
+                xyz[:, i, j] = stance_pos + ReExpressBodyYawVector3InWorldFrame(
+                    plant=self.plant,
+                    context=self.plant_context,
+                    body_name="pelvis",
+                    vec=xyz[:, i, j]
+                )
+        return xyz
 
     def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance,
                          center: np.ndarray = None) -> np.ndarray:
@@ -127,13 +164,7 @@ class HeightMapServer:
 
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance,
                       center: np.ndarray = np.zeros((3,))) -> np.ndarray:
-        self.plant.SetPositionsAndVelocities(self.plant_context, robot_state)
-        stance_pos = self.plant.CalcPointsPositions(
-            self.plant_context,
-            self.contact_frame[stance],
-            self.contact_point,
-            self.plant.world_frame()
-        ).ravel()
+        stance_pos = self.stance_pos_in_world(robot_state, stance)
         heightmap = np.zeros((self.map_opts.nx, self.map_opts.ny))
         for i, x in enumerate(self.xgrid):
             for j, y in enumerate(self.ygrid):
@@ -147,3 +178,27 @@ class HeightMapServer:
                 heightmap[i, j] = self.get_height_at_point(query_point) - stance_pos[2]
 
         return heightmap
+
+
+class HeightMapVisualizer(LeafSystem):
+
+    def __init__(self, meshcat: Meshcat, hmap_shape):
+        super().__init__()
+        self.meshcat = Meshcat
+        self.input_port_indices = dict()
+        self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
+            "height_map",
+            model_value=Value(np.ndarray(shape=(3,20,20)))
+        ).get_index()
+
+        self.DeclarePeriodicUnrestrictedUpdateEvent(
+            period_sec=1.0/30.0,
+            offset=0.0,
+            update=self.UpdateVisualization
+        )
+
+    def UpdateVisualization(self, context: Context, state: State):
+        hmap = self.get_input_port().Eval(context).get_value()
+        self.meshcat.PlotSurface(
+            "hmap", hmap[0], hmap[1], hmap[2]
+        )

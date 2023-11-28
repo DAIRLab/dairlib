@@ -21,6 +21,7 @@ from pydairlib.multibody import SquareSteppingStoneList
 
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.all import (
+    State,
     Diagram,
     Context,
     Simulator,
@@ -170,23 +171,28 @@ class CassieFootstepControllerEnvironment(Diagram):
         )
 
         self.plant_visualizer = None
-        if params.visualize and params.use_perception:
+        if params.visualize:
             self.plant_visualizer = PlantVisualizer(params.urdf)
-            self.grid_map_visualizer = GridMapVisualizer(
-                self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
-            )
             builder.AddSystem(self.plant_visualizer)
-            builder.AddSystem(self.grid_map_visualizer)
-            builder.Connect(
-                self.perception_module.get_output_port_state(),
-                self.plant_visualizer.get_input_port()
-            )
-            builder.Connect(
-                self.perception_module.get_output_port_elevation_map(),
-                self.grid_map_visualizer.get_input_port()
-            )
-        elif params.visualize:
-            self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
+
+            if params.use_perception:
+                self.grid_map_visualizer = GridMapVisualizer(
+                    self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
+                )
+                builder.AddSystem(self.grid_map_visualizer)
+                builder.Connect(
+                    self.perception_module.get_output_port_state(),
+                    self.plant_visualizer.get_input_port()
+                )
+                builder.Connect(
+                    self.perception_module.get_output_port_elevation_map(),
+                    self.grid_map_visualizer.get_input_port()
+                )
+            else:
+                builder.Connect(
+                    self.cassie_sim.get_output_port_state(),
+                    self.plant_visualizer.get_input_port()
+                )
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)

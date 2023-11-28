@@ -10,6 +10,7 @@ from pydrake.geometry.all import Meshcat
 
 from pydrake.systems.all import (
     LeafSystem,
+    InputPort,
     Context,
     Value,
     State
@@ -40,6 +41,7 @@ class HeightMapOptions:
     nx: int = 30
     ny: int = 30
     resolution: float = 0.02
+    meshcat = None
 
 
 class HeightMapServer(LeafSystem):
@@ -95,14 +97,50 @@ class HeightMapServer(LeafSystem):
             Stance.kRight: RightToeRear(self.plant)[1]
         }
 
-        self.DeclareAbstractOutputPort(
+        self.input_port_indices = dict()
+        self.output_port_indices = dict()
+
+        self.input_port_indices['fsm'] = self.DeclareVectorInputPort('fsm', 1).get_index()
+        self.input_port_indices['x'] = self.DeclareVectorInputPort(
+            'x', self.plant.num_positions() +
+                 self.plant.num_velocities() +
+                 self.plant.num_actuators() + 4
+        ).get_index()
+        self.input_port_indices['query_point'] = self.DeclareVectorInputPort(
+            'query_point', 3
+        ).get_index()
+
+        self.output_port_indices['height_map_stance_frame'] = self.DeclareAbstractOutputPort(
             name="height_map_stance_frame",
             alloc=lambda: Value(np.zeros((3, self.map_opts.nx, self.map_opts.ny))),
-            calc=self.output_heightmap
+            calc=self.output_heightmap_stance_frame
         )
 
-    def output_heightmap(self, context: Context, hmap: np.ndarray)-> None:
-        pass
+    def get_input_port_by_name(self, name: str) -> InputPort:
+        assert (name in self.input_port_indices)
+        return self.get_input_port(self.input_port_indices[name])
+
+    def output_heightmap_stance_frame(self, context: Context, hmap: np.ndarray) -> None:
+        fsm = self.EvalVectorInput(
+            context, self.input_port_indices['fsm']
+        ).value().ravel()[0]
+        fsm = int(fsm)
+        x = self.EvalVectorInput(
+            context, self.input_port_indices['x']
+        ).value().ravel()[:self.plant.num_positions() + self.plant.num_velocities()]
+        center = self.EvalVectorInput(
+            context, self.input_port_indices['query_point']
+        ).value().ravel()
+        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
+
+        if self.map_opts.meshcat is not None:
+            hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, center)
+            self.map_opts.meshcat.PlotSurface(
+                "hmap", hmap_xyz[0], hmap_xyz[1], hmap_xyz[2]
+            )
+            self.map_opts.meshcat.Flush()
+
+        hmap.set_value(self.get_heightmap_3d(x, stance, center))
 
     def get_height_at_point(self, query_point: np.ndarray) -> float:
         zvals = []
@@ -172,33 +210,9 @@ class HeightMapServer(LeafSystem):
                     plant=self.plant,
                     context=self.plant_context,
                     body_name="pelvis",
-                    vec=np.array([x, y, 0.0])
+                    vec=np.array([x, y, 0.0]) + center
                 )
-                query_point = stance_pos + center + offset
+                query_point = stance_pos + offset
                 heightmap[i, j] = self.get_height_at_point(query_point) - stance_pos[2]
 
         return heightmap
-
-
-class HeightMapVisualizer(LeafSystem):
-
-    def __init__(self, meshcat: Meshcat, hmap_shape):
-        super().__init__()
-        self.meshcat = Meshcat
-        self.input_port_indices = dict()
-        self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
-            "height_map",
-            model_value=Value(np.ndarray(shape=(3,20,20)))
-        ).get_index()
-
-        self.DeclarePeriodicUnrestrictedUpdateEvent(
-            period_sec=1.0/30.0,
-            offset=0.0,
-            update=self.UpdateVisualization
-        )
-
-    def UpdateVisualization(self, context: Context, state: State):
-        hmap = self.get_input_port().Eval(context).get_value()
-        self.meshcat.PlotSurface(
-            "hmap", hmap[0], hmap[1], hmap[2]
-        )

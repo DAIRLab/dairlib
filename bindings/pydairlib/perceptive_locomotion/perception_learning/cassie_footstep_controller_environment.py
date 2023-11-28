@@ -16,7 +16,7 @@ from pydairlib.systems.footstep_planning import Stance
 from pydairlib.systems.plant_visualizer import PlantVisualizer
 from pydairlib.systems.perception import GridMapVisualizer
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
-    import HeightMapServer
+    import HeightMapServer, HeightMapOptions
 from pydairlib.multibody import SquareSteppingStoneList
 
 from pydrake.multibody.plant import MultibodyPlant
@@ -94,11 +94,6 @@ class CassieFootstepControllerEnvironment(Diagram):
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
         super().__init__()
 
-        self.height_map_server = HeightMapServer(
-            params.terrain,
-            params.urdf
-        )
-
         self.controller_plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
             self.controller_plant,
@@ -130,7 +125,10 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(self.cassie_sim)
         builder.AddSystem(self.radio_source)
 
+        self.height_map_server = None
         self.perception_module = None
+        self.plant_visualizer = PlantVisualizer(params.urdf) if params.visualize else None
+
         if params.use_perception:
             self.sensor_info = {
                 "pelvis_depth":
@@ -153,9 +151,25 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.perception_module.get_input_port_depth_image("pelvis_depth")
             )
         else:
+            hmap_options = HeightMapOptions()
+            hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
+            self.height_map_server = HeightMapServer(
+                params.terrain,
+                params.urdf,
+                hmap_options
+            )
+            builder.AddSystem(self.height_map_server)
             builder.Connect(
                 self.cassie_sim.get_output_port_state_lcm(),
                 self.controller.get_input_port_state(),
+            )
+            builder.Connect(
+                self.controller.get_output_port_fsm(),
+                self.height_map_server.get_input_port_by_name('fsm')
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_state(),
+                self.height_map_server.get_input_port_by_name('x')
             )
         builder.Connect(
             self.cassie_sim.get_output_port_lcm_radio(),
@@ -169,10 +183,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.radio_source.get_output_port(),
             self.cassie_sim.get_input_port_radio()
         )
-
-        self.plant_visualizer = None
         if params.visualize:
-            self.plant_visualizer = PlantVisualizer(params.urdf)
+
             builder.AddSystem(self.plant_visualizer)
 
             if params.use_perception:
@@ -251,17 +263,11 @@ class CassieFootstepControllerEnvironment(Diagram):
                 "Need to implement heightmap getter for simulated perception."
             )
         else:
-            robot_output = self.get_output_port_by_name('state').Eval(context)
-            fsm = int(
-                self.get_output_port_by_name('fsm').Eval(context)[0]
+            hmap_server_context = self.GetSubsystemContext(
+                self.height_map_server, context
             )
-            stance = Stance.kLeft if (fsm == 0 or fsm == 3) else Stance.kRight
-
-            return self.height_map_server.get_heightmap_3d(
-                robot_output[:self.nq + self.nv],
-                stance,
-                center
-            )
+            self.height_map_server.get_input_port_by_name('query_point').FixValue(hmap_server_context, center)
+            return self.height_map_server.get_output_port().Eval(hmap_server_context)
 
     def query_heightmap(self, context: Context,
                         query_point: np.ndarray) -> float:

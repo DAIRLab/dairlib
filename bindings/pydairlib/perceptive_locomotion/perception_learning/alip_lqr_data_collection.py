@@ -224,7 +224,6 @@ def get_data_sequence(sim_env: CassieFootstepControllerEnvironment,
             'q': plant.GetPositions(plant_context),
             'v': plant.GetVelocities(plant_context)
         }
-
     data = []
     max_steps = 100
     contexts = initialize_sim(

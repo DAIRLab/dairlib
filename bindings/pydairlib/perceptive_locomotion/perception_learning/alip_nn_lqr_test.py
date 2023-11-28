@@ -152,7 +152,6 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         value=hmap
     )
 
-
     datapoint['hmap'] = hmap[-1, :, :]
 
     # New: the input should be LQR reference (ud) + noise

@@ -44,6 +44,31 @@ class HeightMapOptions:
     meshcat = None
 
 
+# In order to request an up-to-date heightmap from within the
+# LQR controller, we need to be able to pass the query point
+# from the LQR controller back to the height map.
+#
+# The query object lets us do that without creating an algebraic
+# loop, similar to Drake's SceneGraph implementation
+class HeightMapQueryObject:
+    def __init__(self, height_map_server):
+        self.height_map_server = height_map_server
+        self.context = None
+
+    def set(self, context: Context):
+        self.context = context
+
+    def calc_height_map_stance_frame(self, query_point):
+        if self.context is None:
+            raise RuntimeError(
+                'Heightmap Queries are one-time use objects'
+                'that must be set from inside the HeightMapServer. '
+                'Context has not been set or is out-of-date')
+        hmap = self.height_map_server.get_height_map_in_stance_frame_from_inputs(query_point)
+        self.context = None
+        return hmap
+
+
 class HeightMapServer(LeafSystem):
     """
         Uses the robot state and some controller information
@@ -106,21 +131,25 @@ class HeightMapServer(LeafSystem):
                  self.plant.num_velocities() +
                  self.plant.num_actuators() + 4
         ).get_index()
-        self.input_port_indices['query_point'] = self.DeclareVectorInputPort(
-            'query_point', 3
-        ).get_index()
 
-        self.output_port_indices['height_map_stance_frame'] = self.DeclareAbstractOutputPort(
+        self.output_port_indices['query_object'] = self.DeclareAbstractOutputPort(
             name="height_map_stance_frame",
-            alloc=lambda: Value(np.zeros((3, self.map_opts.nx, self.map_opts.ny))),
-            calc=self.output_heightmap_stance_frame
+            alloc=lambda: Value(HeightMapQueryObject(self)),
+            calc=self.output_query_object
         )
 
     def get_input_port_by_name(self, name: str) -> InputPort:
         assert (name in self.input_port_indices)
         return self.get_input_port(self.input_port_indices[name])
 
-    def output_heightmap_stance_frame(self, context: Context, hmap: np.ndarray) -> None:
+
+    def output_query_object(self, context: Context, out: Value):
+        out.get_mutable_value().set()
+
+    def get_height_map_in_stance_frame_from_inputs(
+            self, context: Context, center: np.ndarray
+        ) -> np.ndarray:
+
         fsm = self.EvalVectorInput(
             context, self.input_port_indices['fsm']
         ).value().ravel()[0]
@@ -128,9 +157,7 @@ class HeightMapServer(LeafSystem):
         x = self.EvalVectorInput(
             context, self.input_port_indices['x']
         ).value().ravel()[:self.plant.num_positions() + self.plant.num_velocities()]
-        center = self.EvalVectorInput(
-            context, self.input_port_indices['query_point']
-        ).value().ravel()
+
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
 
         if self.map_opts.meshcat is not None:
@@ -139,8 +166,7 @@ class HeightMapServer(LeafSystem):
                 "hmap", hmap_xyz[0], hmap_xyz[1], hmap_xyz[2]
             )
             self.map_opts.meshcat.Flush()
-
-        hmap.set_value(self.get_heightmap_3d(x, stance, center))
+        return self.get_heightmap_3d(x, stance, center)
 
     def get_height_at_point(self, query_point: np.ndarray) -> float:
         zvals = []

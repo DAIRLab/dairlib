@@ -266,8 +266,9 @@ class CassieFootstepControllerEnvironment(Diagram):
             hmap_server_context = self.GetSubsystemContext(
                 self.height_map_server, context
             )
-            self.height_map_server.get_input_port_by_name('query_point').FixValue(hmap_server_context, center)
-            return self.height_map_server.get_output_port().Eval(hmap_server_context)
+            return self.height_map_server.get_height_map_in_stance_frame_from_inputs(
+                hmap_server_context, center
+            )
 
     def query_heightmap(self, context: Context,
                         query_point: np.ndarray) -> float:

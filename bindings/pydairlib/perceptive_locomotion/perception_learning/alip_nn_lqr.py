@@ -1,6 +1,6 @@
 import os
-import numpy as np
 import torch
+import numpy as np
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR,
@@ -36,12 +36,11 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         self.residual_unet = UNet()
         self.residual_unet.to(self.device)
         self.residual_unet.load_state_dict(torch.load(checkpoint_path))
+        self.residual_unet.eval()
 
-        # input port should add height map
-        # output port remain unchanged
         self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
             "height_map",
-            model_value=Value(np.ndarray(shape=(3,20,20)))
+            model_value=Value(np.ndarray(shape=(3, 30, 30)))
         ).get_index()
 
     def calculate_optimal_footstep(
@@ -63,8 +62,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # get heightmap
         hmap = self.EvalAbstractInput(
-            context,
-            self.input_port_indices['height_map']
+            context, self.input_port_indices['height_map']
         ).get_value()
         _, H, W = hmap.shape
 
@@ -77,8 +75,9 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # here hmap_input = hmap[-1,:,:], input_space_grid = hmap[:2,:,:]
         # combined_input size: (1, 7, 20, 20) after unsqueeze, additional dimension
         # needed for current implementation
-        combined_input = tile_and_concatenate_inputs(hmap[-1,:,:], x,
-                                                     hmap[:2,:,:]).to(self.device)
+        combined_input = tile_and_concatenate_inputs(
+            hmap[-1, :, :], x, hmap[:2, :, :]
+        ).to(self.device)
         combined_input = combined_input.unsqueeze(0)
 
         # use network to predict residual grid

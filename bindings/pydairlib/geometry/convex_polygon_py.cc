@@ -32,6 +32,11 @@ py::class_<ConvexPolygon>(m, "ConvexPolygon")
     .def("GetEqualityConstraintMatrices", &ConvexPolygon::GetEqualityConstraintMatrices)
     .def("GetVertices", &ConvexPolygon::GetVertices)
     .def("Get2dViolation", &ConvexPolygon::Get2dViolation);
+
+py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
+    .def(py::init<std::vector<ConvexPolygon>>(), py::arg("set"))
+    .def("CalcHeightOfPoint", &ConvexPolygonSet::CalcHeightOfPoint);
+
 }
 
 }

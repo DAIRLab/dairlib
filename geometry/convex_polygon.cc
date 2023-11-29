@@ -14,6 +14,7 @@ void ConvexPolygon::SetPlane(const Vector3d& normal, const Vector3d& pt) {
   Vector3d normalized = normal.normalized();
   A_eq_ = normalized.transpose();
   b_eq_ = normalized.dot(pt) * VectorXd::Ones(1);
+  bounding_box_.valid = false;
 }
 
 // Rotate the coordinate frame so that the constraint A x_W <= b
@@ -21,6 +22,7 @@ void ConvexPolygon::SetPlane(const Vector3d& normal, const Vector3d& pt) {
 void ConvexPolygon::ReExpressInNewFrame(const Eigen::Matrix3d &R_WF) {
   A_ = A_ * R_WF;
   A_eq_ = A_eq_ * R_WF;
+  bounding_box_.valid = false;
 }
 
 void ConvexPolygon::AddHalfspace(Vector3d a, VectorXd b) {
@@ -33,17 +35,20 @@ void ConvexPolygon::AddHalfspace(Vector3d a, VectorXd b) {
     b_.conservativeResize(b_.rows() + 1);
     b_.tail(1) = b;
   }
+  bounding_box_.valid = false;
 }
 
 // Add a face with the (outward facing) normal and a point on the face
 void ConvexPolygon::AddFace(const Vector3d& normal, const Vector3d& pt) {
   AddHalfspace(normal, normal.dot(pt) * VectorXd::Ones(1));
+  bounding_box_.valid = false;
 }
 
 void ConvexPolygon::AddVertices(const Vector3d &v1, const Vector3d &v2) {
   Vector3d face = v2 - v1;
   Vector3d normal = face.cross(A_eq_.transpose());
   AddFace(normal, v1);
+  bounding_box_.valid = false;
 }
 
 std::pair<MatrixXd, VectorXd> ConvexPolygon::GetConstraintMatrices() const {
@@ -58,6 +63,16 @@ double ConvexPolygon::Get2dViolation(const Eigen::Vector3d &pt) const {
   const auto& [A, b] = GetConstraintMatrices();
   const auto viol = A * pt - b;
   return viol.maxCoeff();
+}
+
+bool ConvexPolygon::PointViolatesInequalities(const Eigen::Vector3d &pt) const {
+  if (bounding_box_.valid) {
+    if (pt(0) < bounding_box_.xmin_ or pt(0) > bounding_box_.xmax_ or
+        pt(1) < bounding_box_.ymin_ or pt(1) > bounding_box_.ymax_) {
+      return true;
+    }
+  }
+  return Get2dViolation(pt) > 0;
 }
 
 Matrix3d ConvexPolygon::R_WF() const {
@@ -100,11 +115,29 @@ Vector3d ConvexPolygon::SolveForVertexSharedByFaces(int i, int j) {
   A.row(0) = A_eq_;
   A.row(1) = A_.row(i);
   A.row(2) = A_.row(j);
+  if (A.row(1).cross(A.row(2)).normalized().dot(A_eq_) > 0 ) {
+    throw std::runtime_error(
+        "A convex Polygon must be closed in order to find a valid set of "
+        "vertices"
+    );
+  }
   b(0) = b_eq_(0);
   b(1) = b_(i);
   b(2) = b_(j);
   return A.inverse() * b;
 }
+
+void ConvexPolygon::CalcBoundingBox() {
+  auto verts = GetVertices();
+  bounding_box_.xmin_ = verts.row(0).minCoeff();
+  bounding_box_.ymin_ = verts.row(1).minCoeff();
+  bounding_box_.zmin_ = verts.row(2).minCoeff();
+  bounding_box_.xmax_ = verts.row(0).maxCoeff();
+  bounding_box_.ymax_ = verts.row(1).maxCoeff();
+  bounding_box_.zmax_ = verts.row(2).maxCoeff();
+  bounding_box_.valid = true;
+}
+
 
 Matrix3Xd ConvexPolygon::GetVertices() {
   SortFacesByYawAngle();

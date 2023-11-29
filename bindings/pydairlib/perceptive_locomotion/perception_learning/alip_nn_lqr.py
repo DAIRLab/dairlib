@@ -27,7 +27,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
+    perception_learning_base_folder, 'tmp/still-cosmos-93.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
@@ -71,7 +71,9 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         ).get_value()
 
         # query for cropped height map at nominal footstep location
-        hmap = hmap_query.calc_height_map_stance_frame(ud)
+        hmap = hmap_query.calc_height_map_stance_frame(
+            np.array([ud[0], ud[1],0])
+        )
         _, H, W = hmap.shape
 
         # put the input space in error coordinates
@@ -103,13 +105,15 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         next_value_grid = np.zeros((H, W))
         for i in range(H):
             for j in range(W):
-                cost_grid[i,j] = (xd - x).T @ self.params.Q @ (xd - x) + \
+                cost_grid[i, j] = (xd - x).T @ self.params.Q @ (xd - x) + \
                                  (hmap[:2,i,j] - ud).T @ self.params.R @ (hmap[:2,i,j] - ud)
                 next_value_grid[i,j] = self.get_next_value_estimate(x,hmap[:2,i,j], xd, ud)
 
         # sum up the grid values, add select the minimum value index
         final_grid = cost_grid + next_value_grid + residual_grid
-        footstep_i, footstep_j = np.unravel_index(np.argmin(final_grid), final_grid.shape)
+        footstep_i, footstep_j = np.unravel_index(
+            np.argmin(final_grid), final_grid.shape
+        )
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]

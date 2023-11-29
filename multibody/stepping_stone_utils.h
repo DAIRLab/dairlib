@@ -83,6 +83,7 @@ struct SquareSteppingStoneList {
       foothold.AddFace(-nx, center - 0.5 * (dims(0) - 2 * e) * Bx);
       foothold.AddFace(ny, center + 0.5 * (dims(1) - e) * By);
       foothold.AddFace(-ny, center - 0.5 * (dims(1) - e) * By);
+      foothold.CalcBoundingBox();
       footholds.push_back(foothold);
     }
     return {footholds, cubes};

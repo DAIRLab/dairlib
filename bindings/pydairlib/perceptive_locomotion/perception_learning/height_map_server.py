@@ -16,7 +16,7 @@ from pydrake.systems.all import (
     State
 )
 
-from pydairlib.geometry.convex_polygon import ConvexPolygon
+from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 from pydairlib.cassie.cassie_utils import (
     AddCassieMultibody,
@@ -66,8 +66,9 @@ class HeightMapQueryObject:
                 'that must be set from inside the HeightMapServer. '
                 'Context has not been set or is out-of-date')
         hmap = \
-            self.height_map_server \
-                .get_height_map_in_stance_frame_from_inputs(query_point)
+            self.height_map_server .get_height_map_in_stance_frame_from_inputs(
+                self.context, query_point
+            )
         self.context = None
         return hmap
 
@@ -104,6 +105,7 @@ class HeightMapServer(LeafSystem):
             SquareSteppingStoneList.GetFootholdsWithMargin(
                 stepping_stones.stones, 0.0
             )[0]
+        self.terrain = ConvexPolygonSet(self.convex_terrain_segments)
 
         # preallocate grids in local frame for faster lookup times
         self.xgrid = np.linspace(
@@ -171,16 +173,7 @@ class HeightMapServer(LeafSystem):
         return self.get_heightmap_3d(x, stance, center)
 
     def get_height_at_point(self, query_point: np.ndarray) -> float:
-        zvals = []
-        for seg in self.convex_terrain_segments:
-            if seg.Get2dViolation(query_point) <= 0:
-                A, b = seg.GetEqualityConstraintMatrices()
-                z = b - A[:, :2] @ query_point[:2]
-                zvals.append(z)
-        if zvals:
-            return np.max(zvals)
-        else:
-            return np.nan
+        return self.terrain.CalcHeightOfPoint(query_point)
 
     def stance_pos_in_world(self, x: np.ndarray, stance: Stance) -> np.ndarray:
         self.plant.SetPositionsAndVelocities(self.plant_context, x)

@@ -55,6 +55,11 @@ class ConvexPolygon {
   double Get2dViolation(const Eigen::Vector3d& pt) const;
 
   /*
+   * Returns true if inequality constraints are violated by the point
+   */
+  bool PointViolatesInequalities(const Eigen::Vector3d& pt) const;
+
+  /*
    * Get the inequality constraints, Ax <= b, as a pair {A, b}
    */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetConstraintMatrices() const;
@@ -79,7 +84,9 @@ class ConvexPolygon {
                      -half_len * Eigen::Vector3d::UnitY());
     return foothold;
   }
-  
+
+  void CalcBoundingBox();
+
   Eigen::Matrix3d R_WF() const;
   std::pair<Eigen::Matrix3Xd, Eigen::Matrix3Xi> GetSurfaceMesh();
 
@@ -87,6 +94,18 @@ class ConvexPolygon {
   void SortFacesByYawAngle();
 
  private:
+
+  struct bounding_box {
+    bool valid = false;
+    double xmin_ = -std::numeric_limits<double>::infinity();
+    double ymin_ = -std::numeric_limits<double>::infinity();
+    double zmin_ = -std::numeric_limits<double>::infinity();
+    double xmax_ = std::numeric_limits<double>::infinity();
+    double ymax_ = std::numeric_limits<double>::infinity();
+    double zmax_ = std::numeric_limits<double>::infinity();
+  };
+
+  bounding_box bounding_box_;
   Eigen::Vector3d SolveForVertexSharedByFaces(int i, int j);
 
   Eigen::RowVector3d A_eq_;

@@ -6,79 +6,100 @@ import torchinfo
 from torch_utils import get_device
 
 
-class Block(nn.Module):
-    def __init__(self, in_ch: int, out_ch: int, normalize: bool=False):
+class DoubleConv(nn.Module):
+    """(convolution => [BN] => ReLU) * 2"""
+
+    def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_ch, out_ch, 3)
-        self.relu = nn.ReLU()
-        self.conv2 = nn.Conv2d(out_ch, out_ch, 3)
-        self.batch_norm = None if not normalize else nn.BatchNorm2d(out_ch)
-        self.normalize = normalize
+        if not mid_channels:
+            mid_channels = out_channels
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
 
     def forward(self, x):
-        x = self.conv2(self.relu(self.conv1(x)))
-        return self.batch_norm(x) if self.normalize else x
+        return self.double_conv(x)
 
 
-class Encoder(nn.Module):
-    def __init__(self, chs=(3, 64, 128, 256, 512, 1024)):
+class Down(nn.Module):
+    """Downscaling with maxpool then double conv"""
+
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.enc_blocks = nn.ModuleList([Block(chs[i], chs[i + 1]) for i in range(len(chs) - 1)])
-        self.pool = nn.MaxPool2d(2)
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_channels, out_channels)
+        )
 
     def forward(self, x):
-        ftrs = []
-        for block in self.enc_blocks:
-            x = block(x)
-            ftrs.append(x)
-            x = self.pool(x)
-        return ftrs
+        return self.maxpool_conv(x)
 
 
-class Decoder(nn.Module):
-    def __init__(self, chs=(1024, 512, 256, 128, 64)):
+class Up(nn.Module):
+    """Upscaling then double conv"""
+
+    def __init__(self, in_channels, out_channels, bilinear=True):
         super().__init__()
-        self.chs = chs
-        self.upconvs = nn.ModuleList([nn.ConvTranspose2d(chs[i], chs[i + 1], 6, 6) for i in range(len(chs) - 1)])
-        self.dec_blocks = nn.ModuleList([Block(chs[i], chs[i + 1]) for i in range(len(chs) - 1)])
 
-    def forward(self, x, encoder_features):
-        for i in range(len(self.chs) - 1):
-            x = self.upconvs[i](x)
-            enc_ftrs = self.crop(encoder_features[i], x)
-            x = torch.cat([x, enc_ftrs], dim=1)
-            x = self.dec_blocks[i](x)
-        return x
+        # if bilinear, use the normal convolutions to reduce the number of channels
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
+        else:
+            self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+            self.conv = DoubleConv(in_channels, out_channels)
 
-    def crop(self, enc_ftrs, x):
-        _, _, H, W = x.shape
-        enc_ftrs = torchvision.transforms.CenterCrop([H, W])(enc_ftrs)
-        return enc_ftrs
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+
+class OutConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(OutConv, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        return self.conv(x)
 
 
 class UNet(nn.Module):
-    # Note: a bigger UNet won't work for 20x20 input!
-    def __init__(self, enc_chs=(7, 64, 128), dec_chs=(128, 64), num_class=1,
-                 retain_dim=False, out_sz=(572, 572)):
-        super().__init__()
-        self.encoder = Encoder(enc_chs)
-        self.decoder = Decoder(dec_chs)
-        self.head = nn.Conv2d(dec_chs[-1], num_class, 1)
-        self.retain_dim = retain_dim
-        self.out_sz = out_sz
+    def __init__(self, n_channels=7, n_classes=1, bilinear=False):
+        super(UNet, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+
+        self.inc = (DoubleConv(n_channels, 64))
+        self.down1 = (Down(64, 128))
+        factor = 2 if bilinear else 1
+        self.up1 = (Up(128, 64, bilinear))
+        self.outc = (OutConv(64, n_classes))
 
     def forward(self, x):
-        enc_ftrs = self.encoder(x)
-        out = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
-        out = self.head(out)
-        if self.retain_dim:
-            out = F.interpolate(out, self.out_sz)
-        return out
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x = self.up1(x2, x1)
+        logits = self.outc(x)
+        return logits
 
 
 def main():
-    model = UNet()
-    input_data = torch.randn(32, 7, 20, 20, device=get_device())
+    model = UNet(7, 1)
+    input_data = torch.randn(32, 7, 30, 30, device=get_device())
 
     # Use device=torch.device('cuda') for GPU details
     device = get_device()
@@ -86,7 +107,7 @@ def main():
     x = model.forward(input_data)
     print(x.shape)
 
-    summary_str = torchinfo.summary(model, input_size=(32, 7, 20, 20))
+    summary_str = torchinfo.summary(model, input_size=(32, 7, 30, 30))
     print(summary_str)
 
 

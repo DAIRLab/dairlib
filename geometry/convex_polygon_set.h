@@ -30,6 +30,8 @@ class ConvexPolygonSet {
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
   void append(const ConvexPolygon& f) { set_.push_back(f); }
   void CopyToLcm(lcmt_foothold_set* set) const;
+  double CalcHeightOfPoint(const Eigen::Vector3d& point) const;
+
   static ConvexPolygonSet CopyFromLcm(const lcmt_foothold_set& set);
   size_t size() const { return set_.size(); }
 

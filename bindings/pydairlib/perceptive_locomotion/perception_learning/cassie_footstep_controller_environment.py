@@ -93,7 +93,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
         super().__init__()
-
+        self.params = params
         self.controller_plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
             self.controller_plant,
@@ -208,7 +208,6 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)
-        self.params = params
 
         builder.BuildInto(self)
 
@@ -244,8 +243,17 @@ class CassieFootstepControllerEnvironment(Diagram):
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
-            )
+            ),
         }
+
+        if self.params.use_perception:
+            raise NotImplementedError("Need to add heightmap outputs for "
+                                      "using perception")
+        else:
+            output_port_indices['height_map'] = builder.ExportOutput(
+                self.height_map_server.get_output_port(),
+                'height_map_query'
+            )
         return output_port_indices
 
     def get_input_port_by_name(self, name: str) -> InputPort:

@@ -37,7 +37,7 @@ from pydairlib.perceptive_locomotion.perception_learning. \
 )
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
-# from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
@@ -65,13 +65,21 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         sim_env.get_output_port_by_name("alip_state"),
         controller.get_input_port_by_name("state")
     )
+    builder.Connect(
+        sim_env.get_output_port_by_name('height_map'),
+        controller.get_input_port_by_name('height_map')
+    )
+    builder.Connect(
+        controller.get_output_port_by_name('footstep_command'),
+        sim_env.get_input_port_by_name('footstep_command')
+    )
 
     diagram = builder.Build()
+    DrawAndSaveDiagramGraph(diagram, '../AlipNNLQRTest')
     return sim_env, controller, diagram
 
 
-def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
-                   num_data=10, job_id=None):
+def run(sim_params: CassieFootstepControllerEnvironmentOptions):
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
 
@@ -81,36 +89,9 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
             'tmp/initial_conditions_2.npz'
         )
     )
+    datapoint = ic_generator.random()
+    datapoint['desired_velocity'] = np.array([0.5, 0])
 
-    # New: parametrize the desired velocity to be a sector (theta and |v|) forward
-    v_des_theta = np.pi / 6
-    v_des_norm = 0.5
-    v_des_theta_distr = np.linspace(-v_des_theta, v_des_theta, 50)
-    v_des_norm_distr = np.linspace(0, v_des_norm, 50)
-
-    # initialize data list
-    data = []
-
-    # loop for num_data times to get the residual and x_desired in LQR stage
-    job_id = 1 if job_id is None else job_id
-    with tqdm(total=num_data, desc=f'Data collection Job {job_id}') as progress_bar:
-        for i in range(num_data):
-            datapoint = ic_generator.random()
-            v_theta = np.random.choice(v_des_theta_distr , size=1)
-            v_norm = np.random.choice(v_des_norm_distr, size=1)
-            datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-            get_residual(sim_env, controller, diagram, simulator, datapoint)
-            data.append(datapoint)
-            progress_bar.update(1)
-    return data
-
-
-def get_residual(sim_env: CassieFootstepControllerEnvironment,
-                 controller: AlipFootstepNNLQR,
-                 diagram: Diagram,
-                 simulator: Simulator,
-                 datapoint: Dict) -> None:
-    # Make a new context per datapoint
     context = diagram.CreateDefaultContext()
 
     # timing aliases
@@ -128,7 +109,6 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
     context.SetTime(t_init)
 
-    # set the context state with the initial conditions from the datapoint
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
     sim_env.controller.SetSwingFootPositionAtLiftoff(
         context,
@@ -138,130 +118,53 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
         context=controller_context,
         value=datapoint['desired_velocity']
     )
-    ud = controller.get_output_port_by_name('lqr_reference').Eval(
-        controller_context
-    )[-2:]
-    heightmap_center = np.zeros((3,))
-    heightmap_center[:2] = ud
-    hmap = sim_env.get_heightmap(sim_context, center=heightmap_center)
-    # test ports
-    # print("hmap from sim context")
-    # print(hmap)
-    controller.get_input_port_by_name("height_map").FixValue(
-        context=controller_context,
-        value=hmap
-    )
-
-    datapoint['hmap'] = hmap[-1, :, :]
-
-    # New: the input should be LQR reference (ud) + noise
-    noise_x = np.random.normal(loc = 0, scale = np.sqrt(0.01))
-    noise_y = np.random.normal(loc = 0, scale = np.sqrt(0.01))
-    noisy_footstep_command = ud + np.array([noise_x, noise_y]).flatten()
-    # project the noisy input to the closet grid of the hmap
-    # x->columns->j, y->rows->i
-    x_diff = np.abs(hmap[0, 0, :] - noisy_footstep_command[0])
-    y_diff = np.abs(hmap[1, :, 0] - noisy_footstep_command[1])
-    i = np.argmin(y_diff)
-    j = np.argmin(x_diff)
-
-    datapoint['U'] = hmap[:-1, :, :]
-
-    datapoint['i'] = i
-    datapoint['j'] = j
-    datapoint['footstep_command'] = hmap[:, i, j]
-
-    sim_env.get_input_port_by_name("footstep_command").FixValue(
-        context=sim_context,
-        value=datapoint['footstep_command']
-    )
 
     simulator.reset_context(context)
-    simulator.Initialize()
+    simulator.AdvanceTo(np.inf)
 
-    controller_context = controller.GetMyMutableContextFromRoot(context)
-    sim_context = sim_env.GetMyMutableContextFromRoot(context)
-    datapoint['x_k'] = sim_env.get_output_port_by_name("alip_state").Eval(
-        sim_context
-    ).ravel()
-
-    datapoint['V_kp1'] = controller.get_next_value_estimate_for_footstep(
-        datapoint['footstep_command'], controller_context
-    )
-
-    # ----------- Constant footstep command stage ------------------------#
-    simulator.AdvanceTo(t_init - datapoint['phase'] + t_ss)
-
-    # -----------LQR input stage (DS + the end of next SS) ----------------#
-    t = context.get_time()
-    while t < (t_init - datapoint['phase'] + t_ss) + (t_s2s - 3 * t_eps):
-        command = controller.get_output_port_by_name(
-            'footstep_command'
-        ).Eval(controller_context).ravel()
-        command[2] = sim_env.query_heightmap(sim_context, command)
-        sim_env.get_input_port_by_name("footstep_command").FixValue(
-            context=sim_context,
-            value=command
-        )
-        simulator.AdvanceTo(t + 1e-2)
-        t = context.get_time()
-
-    datapoint['x_kp1'] = controller.get_output_port_by_name('x').Eval(
-        controller_context
-    )
-    datapoint['V_k'] = controller.get_value_estimate(controller_context)
-    datapoint['residual'] = datapoint['V_k'] - datapoint['V_kp1']
+def reexecute_if_unbuffered():
+    """Ensures that output is immediately flushed (e.g. for segfaults).
+    ONLY use this at your entrypoint. Otherwise, you may have code be
+    re-executed that will clutter your console."""
+    import os
+    import shlex
+    import sys
+    if os.environ.get("PYTHONUNBUFFERED") in (None, ""):
+        os.environ["PYTHONUNBUFFERED"] = "1"
+        argv = list(sys.argv)
+        if argv[0] != sys.executable:
+            argv.insert(0, sys.executable)
+        cmd = " ".join([shlex.quote(arg) for arg in argv])
+        sys.stdout.flush()
+        os.execv(argv[0], argv)
 
 
-def data_process(i, q, visualize):
-    num_data = 1000
-    print("data_process", str(i))
+def traced(func, ignoredirs=None):
+    """Decorates func such that its execution is traced, but filters out any
+     Python code outside of the system prefix."""
+    import functools
+    import sys
+    import trace
+    if ignoredirs is None:
+        ignoredirs = ["/usr", sys.prefix]
+    tracer = trace.Trace(trace=1, count=0, ignoredirs=ignoredirs)
+
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        return tracer.runfunc(func, *args, **kwargs)
+
+    return wrapped
+
+# @traced
+def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'
     )
-    sim_params.visualize = visualize
-    data = run_experiment(sim_params, num_data, i)
-    q.put(data)
-
-
-def main(save_file: str, visualize: bool):
-    num_jobs = 1 if visualize else os.cpu_count() - 1 # leave one thread free
-    job_queue = multiprocessing.Queue()
-    job_list = []
-
-    for i in range(num_jobs):
-        process = multiprocessing.Process(
-            target=data_process, args=(i, job_queue, visualize)
-        )
-        job_list.append(process)
-        process.start()
-    results = [job_queue.get() for job in job_list]
-
-    data_rearrange = []
-    for i in range(len(results)):
-        for res in results[i]:
-            data_rearrange.append(res)
-
-    data_path = os.path.join(perception_learning_base_folder, 'tmp', save_file)
-    np.savez(data_path, data_rearrange)
-    print(f'Data saved to {data_path}')
+    sim_params.visualize = True
+    run(sim_params)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--save_file',
-        type=str,
-        default='data.npz',
-        help='Filepath where data should be saved'
-    )
-    parser.add_argument(
-        '--visualize',
-        type=bool,
-        default=False,
-        help='Whether to visualize the data collection procedure '
-             '(WARNING - ONLY USES ONE THREAD)'
-    )
-    args = parser.parse_args()
-    main(args.save_file, args.visualize)
+    reexecute_if_unbuffered()
+    main()

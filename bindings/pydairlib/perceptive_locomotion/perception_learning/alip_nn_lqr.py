@@ -38,10 +38,10 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # controller now has internal network module
         # maybe it is not worth putting things on GPU
         self.device = get_device()
-        self.residual_unet = UNet()
-        self.residual_unet.to(self.device)
-        self.residual_unet.load_state_dict(torch.load(checkpoint_path))
-        self.residual_unet.eval()
+        # self.residual_unet = UNet()
+        # self.residual_unet.to(self.device)
+        # self.residual_unet.load_state_dict(torch.load(checkpoint_path))
+        # self.residual_unet.eval()
 
         self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
             "height_map_query",
@@ -95,8 +95,10 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             # residual_grid size: (1, 20, 20) after squeeze
             # transform to numpy and reduce the additional dimension
             # still, maybe not put things onto GPU
-            residual_grid = self.residual_unet(combined_input).squeeze(0)
-            residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
+            residual_grid = np.zeros((30,30))
+            #
+            # residual_grid = self.residual_unet(combined_input).squeeze(0)
+            # residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
 
         # calculate the LQR Q function grid
         # Q value = current cost + next_value_function
@@ -117,4 +119,5 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]
+        footstep_command[:2] += ud
         footstep.set_value(footstep_command)

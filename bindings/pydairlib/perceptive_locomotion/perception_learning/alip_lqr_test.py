@@ -10,6 +10,7 @@ from pydrake.systems.all import (
     InputPortIndex,
     OutputPortIndex,
     ConstantVectorSource,
+    ZeroOrderHold,
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
@@ -37,9 +38,14 @@ def main():
         sim_env.controller_plant,
         sim_env.controller_plant.CreateDefaultContext(),
     )
-    controller = AlipFootstepLQR(controller_params)
-
     builder = DiagramBuilder()
+
+    controller = AlipFootstepLQR(controller_params)
+    footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    builder.AddSystem(footstep_zoh)
+
+
+
     builder.AddSystem(sim_env)
 
     desired_velocity = ConstantVectorSource(np.array([0.1, 0]))
@@ -48,8 +54,12 @@ def main():
 
     # controller give footstep command to sim_environment (i.e. cassie)
     builder.Connect(
-        controller.get_output_port_by_name("footstep_command"),
-        sim_env.get_input_port_by_name("footstep_command")
+        controller.get_output_port_by_name('footstep_command'),
+        footstep_zoh.get_input_port()
+    )
+    builder.Connect(
+        footstep_zoh.get_output_port(),
+        sim_env.get_input_port_by_name('footstep_command')
     )
 
     # external user assign desire velocity to controller

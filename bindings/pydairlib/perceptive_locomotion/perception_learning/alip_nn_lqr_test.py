@@ -17,7 +17,8 @@ from pydrake.systems.all import (
     DiagramBuilder,
     InputPortIndex,
     OutputPortIndex,
-    ConstantVectorSource
+    ConstantVectorSource,
+    ZeroOrderHold
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_nn_lqr import (
@@ -49,9 +50,11 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         sim_env.controller_plant.CreateDefaultContext(),
     )
     controller = AlipFootstepNNLQR(controller_params)
+    footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
     builder.AddSystem(controller)
+    builder.AddSystem(footstep_zoh)
 
     builder.Connect(
         sim_env.get_output_port_by_name("fsm"),
@@ -71,6 +74,10 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     )
     builder.Connect(
         controller.get_output_port_by_name('footstep_command'),
+        footstep_zoh.get_input_port()
+    )
+    builder.Connect(
+        footstep_zoh.get_output_port(),
         sim_env.get_input_port_by_name('footstep_command')
     )
 

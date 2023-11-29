@@ -41,6 +41,9 @@ class CassieDataset(Dataset):
         ) if data_path is None else data_path
         loaded_data = np.load(data_path, allow_pickle=True)
         self.data_list = loaded_data['arr_0']
+        self.data_list = [
+            data for data in self.data_list if not np.isnan(data['hmap']).any()
+        ]
 
     def __len__(self):
         return len(self.data_list)
@@ -57,6 +60,9 @@ class CassieDataset(Dataset):
             'i': data_point['i'],
             'j': data_point['j'],
         }
+        if torch.any(input_data.isnan()) or torch.any(target_data[
+                                                          'residual'].isnan()):
+            import pdb; pdb.set_trace()
         return input_data, target_data
 
 

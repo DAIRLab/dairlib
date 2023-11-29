@@ -51,11 +51,12 @@ class HeightMapOptions:
 # The query object lets us do that without creating an algebraic
 # loop, similar to Drake's SceneGraph implementation
 class HeightMapQueryObject:
-    def __init__(self, height_map_server):
-        self.height_map_server = height_map_server
+    def __init__(self):
+        self.height_map_server = None
         self.context = None
 
-    def set(self, context: Context):
+    def set(self, context: Context, server):
+        self.height_map_server = server
         self.context = context
 
     def calc_height_map_stance_frame(self, query_point):
@@ -64,7 +65,9 @@ class HeightMapQueryObject:
                 'Heightmap Queries are one-time use objects'
                 'that must be set from inside the HeightMapServer. '
                 'Context has not been set or is out-of-date')
-        hmap = self.height_map_server.get_height_map_in_stance_frame_from_inputs(query_point)
+        hmap = \
+            self.height_map_server \
+                .get_height_map_in_stance_frame_from_inputs(query_point)
         self.context = None
         return hmap
 
@@ -134,7 +137,7 @@ class HeightMapServer(LeafSystem):
 
         self.output_port_indices['query_object'] = self.DeclareAbstractOutputPort(
             name="height_map_stance_frame",
-            alloc=lambda: Value(HeightMapQueryObject(self)),
+            alloc=lambda: Value(HeightMapQueryObject()),
             calc=self.output_query_object
         )
 
@@ -142,9 +145,8 @@ class HeightMapServer(LeafSystem):
         assert (name in self.input_port_indices)
         return self.get_input_port(self.input_port_indices[name])
 
-
     def output_query_object(self, context: Context, out: Value):
-        out.get_mutable_value().set()
+        out.get_mutable_value().set(context, self)
 
     def get_height_map_in_stance_frame_from_inputs(
             self, context: Context, center: np.ndarray

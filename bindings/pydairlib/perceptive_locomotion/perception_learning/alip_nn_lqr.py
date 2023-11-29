@@ -7,6 +7,11 @@ from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQROptions
 )
 
+from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
+import (
+    HeightMapQueryObject
+)
+
 from pydrake.common.value import Value
 from pydrake.systems.all import (
     Context,
@@ -39,8 +44,8 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         self.residual_unet.eval()
 
         self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
-            "height_map",
-            model_value=Value(np.ndarray(shape=(3, 30, 30)))
+            "height_map_query",
+            model_value=Value(HeightMapQueryObject())
         ).get_index()
 
     def calculate_optimal_footstep(
@@ -60,32 +65,36 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         self.calc_discrete_alip_state(context, x)
         x = x.value()
 
-        # get heightmap
-        hmap = self.EvalAbstractInput(
+        # get heightmap query object
+        hmap_query = self.EvalAbstractInput(
             context, self.input_port_indices['height_map']
         ).get_value()
+
+        # query for cropped height map at nominal footstep location
+        hmap = hmap_query.calc_height_map_stance_frame(ud)
         _, H, W = hmap.shape
 
-        # test ports
-        # print("hmap in controller")
-        # print(hmap)
+        # put the input space in error coordinates
+        hmap[:2] -= np.expand_dims(np.expand_dims(ud, 1), 1)
 
         # use utils to tile the state, input and heightmap
         # combined_input = torch.cat([hmap_input, state, input_space_grid]
         # here hmap_input = hmap[-1,:,:], input_space_grid = hmap[:2,:,:]
         # combined_input size: (1, 7, 20, 20) after unsqueeze, additional dimension
         # needed for current implementation
-        combined_input = tile_and_concatenate_inputs(
-            hmap[-1, :, :], x, hmap[:2, :, :]
-        ).to(self.device)
-        combined_input = combined_input.unsqueeze(0)
 
-        # use network to predict residual grid
-        # residual_grid size: (1, 20, 20) after squeeze
-        # transform to numpy and reduce the additional dimension
-        # still, maybe not put things onto GPU
-        residual_grid = self.residual_unet(combined_input).squeeze(0)
-        residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
+        with torch.inference_mode():
+            combined_input = tile_and_concatenate_inputs(
+                hmap[-1, :, :], x, hmap[:2, :, :]
+            ).to(self.device)
+            combined_input = combined_input.unsqueeze(0)
+
+            # use network to predict residual grid
+            # residual_grid size: (1, 20, 20) after squeeze
+            # transform to numpy and reduce the additional dimension
+            # still, maybe not put things onto GPU
+            residual_grid = self.residual_unet(combined_input).squeeze(0)
+            residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
 
         # calculate the LQR Q function grid
         # Q value = current cost + next_value_function

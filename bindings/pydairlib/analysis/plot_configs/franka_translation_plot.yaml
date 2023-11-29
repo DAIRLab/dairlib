@@ -6,9 +6,9 @@ channel_c3: "C3_DEBUG"
 channel_tray: "TRAY_STATE"
 plot_style: 'compact' # compact, paper, default
 
-start_time: 10
+start_time: 4
 #duration: 0.47
-duration: 6
+duration: 5
 
 # Plant properties
 
@@ -37,5 +37,5 @@ tracking_datas_to_plot:
   end_effector_target: {'dims': [0, 1, 2], 'derivs': ['accel']}
 #  end_effector_orientation_target: {'dims': [0, 1, 2], 'derivs': ['pos']}
 #  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
-plot_c3_debug: false
+plot_c3_debug: true
 plot_object_state: true

@@ -59,6 +59,7 @@ def main():
         c3_output = get_log_data(log, default_channels, plot_config.start_time,
                                  plot_config.duration, mbp_plots.load_c3_debug,
                                  channel_c3)
+        print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output['t'])))
 
     # processing callback arguments
     if plot_config.plot_object_state:
@@ -75,6 +76,7 @@ def main():
     t_osc_slice = slice(osc_debug['t_osc'].size)
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
+
 
     (franka_joint_position_limit_range, franka_joint_velocity_limit_range,
      franka_joint_actuator_limit_range) = mbp_plots.generate_joint_limits(
@@ -94,7 +96,10 @@ def main():
     # import pdb; pdb.set_trace()
     if plot_config.plot_c3_debug:
         t_c3_slice = slice(c3_output['t'].size)
-        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice)
+        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 0)
+
+        t_c3_slice = slice(c3_output['t'].size)
+        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 2)
     # plt.plot(c3_output['t'], c3_output['x'][:, 0, :])
 
     # Plot all joint velocities

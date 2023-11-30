@@ -5,11 +5,13 @@ metric:
   goal: minimize
 parameters:
   lr:
-    value: 0.0001
+    values: [5e-5, 0.0001, 0.001]
+  patience:
+    values: [5, 10]
   batch_size:
     values: [32, 64]
   num_epochs:
-    values: [10, 20]
+    values: [200, 400]
   optimizer:
     values: ['adam', 'sgd']
   loss:

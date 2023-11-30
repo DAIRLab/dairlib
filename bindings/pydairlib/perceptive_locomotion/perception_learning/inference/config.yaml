@@ -9,6 +9,7 @@ num_workers: 5
 split_ratio: [0.1, 0.1, 0.8]
 batch_size: 64
 lr: 5e-4
+patience: 10
 num_epochs: 10
 loss: huber
 save_model_freq: 15

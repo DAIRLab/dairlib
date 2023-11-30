@@ -54,6 +54,7 @@ class Learner:
             ## Training ##
             ################
             self.lr = args.lr
+            self.patience = args.patience
             self.num_epochs = args.num_epochs
             self.loss = args.loss
             self.save_model_freq = args.save_model_freq
@@ -70,6 +71,7 @@ class Learner:
             # self.load_trainval = False
             self.split_ratio = (0.7, 0.15, 0.15)
             self.lr = 1e-4
+            self.patience = 10
             self.batch_size = 32
             self.num_epochs = 100
             self.loss = 'mse'
@@ -82,6 +84,7 @@ class Learner:
         wandb.config['shuffle'] = self.shuffle
         wandb.config['num_workers'] = self.num_workers
         wandb.config['lr'] = self.lr
+        wandb.config['patience'] = self.patience
         wandb.config['optimizer'] = self.optimizer
         wandb.config['loss'] = self.loss
 
@@ -213,6 +216,12 @@ class Learner:
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 torch.save(model.state_dict(), checkpoint_path)
+                epochs_since_best_validation_loss = 0
+            else:
+                epochs_since_best_validation_loss += 1
+
+            if epochs_since_best_validation_loss > self.patience:
+                break
 
         # Testing phase
         # load the best model
@@ -253,6 +262,7 @@ def argparsing():
     # parser.add_argument('--checkpoint_path', type=str, default=f'', help='absolute path to model checkpoint')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--patience', type=int, default=10, help='number of epochs to wait for validation loss to improve before stopping training')
     parser.add_argument('--num_epochs', type=int, default=100, help='number of epochs to train for')
     parser.add_argument('--loss', type=str, default='mse', help='loss function to use')
     # parser.add_argument('--lr_warmup_epochs', type=int, default=5, help='number of epochs to warmup learning rate for')

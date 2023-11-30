@@ -42,7 +42,7 @@ class CassieDataset(Dataset):
         loaded_data = np.load(data_path, allow_pickle=True)
         self.data_list = loaded_data['arr_0']
         self.data_list = [
-            data for data in self.data_list if not np.isnan(data['hmap']).any()
+            data for data in self.data_list if not np.isinf(data['hmap']).any()
         ]
 
     def __len__(self):

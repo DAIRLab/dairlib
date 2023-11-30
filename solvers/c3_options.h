@@ -12,6 +12,7 @@ struct C3Options {
   int delta_option = 1;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
+  bool warm_start;
 
   int N;
   double w_Q;
@@ -50,6 +51,7 @@ struct C3Options {
     if (projection_type == "QP") {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
+    a->Visit(DRAKE_NVP(warm_start));
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(mu_plate));

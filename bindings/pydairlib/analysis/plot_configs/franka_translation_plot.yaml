@@ -1,9 +1,9 @@
 # LCM channels to read data from
-channel_x: "FRANKA_STATE"
+channel_x: "FRANKA_STATE_SIMULATION"
 channel_u: "OSC_FRANKA"
 channel_osc: "OSC_DEBUG_FRANKA"
 channel_c3: "C3_DEBUG"
-channel_tray: "TRAY_STATE"
+channel_tray: "TRAY_STATE_SIMULATION"
 plot_style: 'compact' # compact, paper, default
 
 start_time: 4

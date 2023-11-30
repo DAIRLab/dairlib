@@ -164,8 +164,7 @@ def main():
                                       slice(0, 7))
         plot = mbp_plots.plot_joint_velocities(robot_output, vel_names, 0,
                                                t_x_slice)
-        # plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0,
-        # 12))
+        plot = mbp_plots.plot_lambda_c_sol(osc_debug, t_osc_slice, slice(0, 3))
         # plot = mbp_plots.plot_lambda_h_sol(osc_debug, t_osc_slice, slice(0,
         # 6))
 

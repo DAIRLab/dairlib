@@ -1,0 +1,37 @@
+program: bindings/pydairlib/perceptive_locomotion/perception_learning/inference/learner.py #Can point to a generic training file that can pick between training functions of different models
+method: grid
+metric:
+  name: val_loss
+  goal: minimize
+parameters:
+  lr:
+    value: 0.0001
+  batch_size:
+    values: [32, 64]
+  num_epochs:
+    values: [10, 20]
+  optimizer:
+    values: ['adam', 'sgd']
+  loss:
+    values:
+      - huber
+      - mse
+      - l1
+  # dropout:
+  #   values: [0.1, 0.2]
+# add early_terminate condition
+# command: 
+#   - python3
+#   - bindings/pydairlib/perceptive_locomotion/perception_learning/inference/learner.py
+#   - --lr={lr}
+#   - --batch_size={batch_size}
+#   - --num_epochs={epochs}
+#   - --optimizer={optimizer}
+#   - --loss={loss}
+#   - --run_name=sweep_run
+
+command:
+  - python3
+  - ${program}
+  - ${args}
+  - --run_name=sweep_run

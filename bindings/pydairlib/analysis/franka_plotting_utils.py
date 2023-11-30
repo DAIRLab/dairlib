@@ -30,6 +30,8 @@ franka_default_channels = \
      'C3_TRAJECTORY_ACTOR': dairlib.lcmt_timestamped_saved_traj,
      'C3_TRAJECTORY_TRAY': dairlib.lcmt_timestamped_saved_traj,
      'C3_DEBUG': dairlib.lcmt_c3_output,
+     'C3_ACTUAL': dairlib.lcmt_c3_state,
+     'C3_TARGET': dairlib.lcmt_c3_state,
      'OSC_DEBUG_FRANKA': dairlib.lcmt_osc_output,
      'RADIO': dairlib.lcmt_radio_out,
      'CONTACT_RESULTS': drake.lcmt_contact_results_for_viz}

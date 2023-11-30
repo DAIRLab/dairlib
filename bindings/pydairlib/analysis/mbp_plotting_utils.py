@@ -276,7 +276,7 @@ def process_contact_channel(data):
             'lambda_c': contact_forces,
             'p_lambda_c': contact_info_locs}
 
-def process_c3_channel(data):
+def process_c3_debug(data):
     t = []
     states = []
     breaks = []
@@ -300,6 +300,20 @@ def process_c3_channel(data):
             'x': states,
             'lambda': contact_forces,
             'u': inputs,}
+
+def process_c3_tracking(data):
+    t = []
+    states = []
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        states.append(msg.state)
+
+    t = np.array(t)
+    states = np.array(states)
+
+    return {'t': t,
+            'x': states,
+            }
 def process_object_state_channel(data):
     t = []
     positions = []
@@ -340,9 +354,11 @@ def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
 
-def load_c3_debug(data, c3_debug_channel):
-    c3_debug = process_c3_channel(data[c3_debug_channel])
-    return c3_debug
+def load_c3_debug(data, c3_debug_channel, c3_target_channel, c3_actual_channel):
+    c3_debug = process_c3_debug(data[c3_debug_channel])
+    c3_tracking_target = process_c3_tracking(data[c3_target_channel])
+    c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
+    return c3_debug, c3_tracking_target, c3_tracking_actual
 
 def load_object_state(data, object_state_channel):
     object_state = process_object_state_channel(data[object_state_channel])

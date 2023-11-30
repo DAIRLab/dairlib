@@ -22,6 +22,8 @@ def main():
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
     channel_c3 = plot_config.channel_c3
+    channel_c3_target = plot_config.channel_c3_target
+    channel_c3_actual = plot_config.channel_c3_actual
     channel_tray = plot_config.channel_tray
 
     if plot_config.plot_style == "paper":
@@ -56,9 +58,9 @@ def main():
 
     # processing callback arguments
     if plot_config.plot_c3_debug:
-        c3_output = get_log_data(log, default_channels, plot_config.start_time,
+        c3_output, c3_tracking_target, c3_tracking_actual = get_log_data(log, default_channels, plot_config.start_time,
                                  plot_config.duration, mbp_plots.load_c3_debug,
-                                 channel_c3)
+                                 channel_c3, channel_c3_target, channel_c3_actual)
         print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output['t'])))
 
     # processing callback arguments
@@ -100,6 +102,15 @@ def main():
 
         t_c3_slice = slice(c3_output['t'].size)
         mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 2)
+
+    if plot_config.plot_c3_tracking:
+        plot = plot_styler.PlotStyler(nrows=2)
+        plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 0:3], subplot_index = 0)
+        plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 0:3], subplot_index = 0)
+        plot.add_legend(['robot_des_x', 'robot_des_y', 'robot_des_z', 'robot_x', 'robot_y', 'robot_z'], subplot_index = 0)
+        plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 7:10], subplot_index = 1)
+        plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 7:10], subplot_index = 1)
+        plot.add_legend(['tray_des_x', 'tray_des_y', 'tray_des_z', 'tray_x', 'tray_y', 'tray_z'], subplot_index = 1)
     # plt.plot(c3_output['t'], c3_output['x'][:, 0, :])
 
     # Plot all joint velocities

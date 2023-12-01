@@ -57,11 +57,12 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         uxgrid = np.linspace(-self.map_opts.resolution * H / 2,
             self.map_opts.resolution * H / 2, H)
         uygrid = np.linspace(-self.map_opts.resolution * W / 2,
-            self.map_opts.resolution * W / 2,W)
+            self.map_opts.resolution * W / 2, W)
         UX, UY = np.meshgrid(uxgrid, uygrid)
         self.ue_grid = np.stack([UX, UY])
 
-        # use double for loop to calculate grid qudratic form
+        # use double for loop to calculate grid quadratic form and linear coefficient offline
+        # u_cost = ue.T @ R @ ue, u_next_value = ue.T @ B.T @ S @ B @ ue, linear_coeff = 2 * A.T @ S @ B @ ue
         self.u_cost_grid = np.zeros((H, W))
         self.u_next_value_grid = np.zeros((H, W))
         self.linear_coeff_grid = np.zeros((self.A.shape[0], H, W))
@@ -99,7 +100,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         )
         _, H, W = hmap.shape
 
-        # put the input space in error coordinates, equivalent to self.ue_grid
+        # put the input space in error coordinates, equivalent to hmap[:2] = self.ue_grid
         hmap[:2] -= np.expand_dims(np.expand_dims(ud, 1), 1)
 
         # use utils to tile the state, input and heightmap
@@ -123,22 +124,12 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
 
         # calculate the LQR Q function grid
-        # Q value = current cost + next_value_function
-        # instead of calling current function and use for loop, might be better to do in batch?
-        # note that now hmap[:2, i, j] is error corrdinate ue since we subtract ud before
-
-        linear_term_grid_loop = np.zeros((H,W))
-        linear_term_grid_batch = np.zeros((H,W))
-
-        # # double for loop method for calculating linear term grid
-        # for i in range(H):
-        #     for j in range(W):
-        #         linear_term_grid_loop[i, j] = (x-xd).T @ self.linear_coeff_grid[:, i, j]
+        # Q value = current cost + next_value_function, after expanding, and neglect the constant term
+        # Q value = u_cost_grid  + u_next_value_grid (precomputue, quadratic) + linear_term_grid + residual_grid
 
         # tensor algebra (batch operation) for calculating linear term grid
-        linear_term_grid_batch = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
+        linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
-        linear_term_grid = linear_term_grid_batch
         # sum up the grid values, add select the minimum value index
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
         footstep_i, footstep_j = np.unravel_index(
@@ -147,5 +138,6 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]
+        # note that now hmap[:2, i, j] is error corrdinate ue since we subtract ud before
         footstep_command[:2] += ud
         footstep.set_value(footstep_command)

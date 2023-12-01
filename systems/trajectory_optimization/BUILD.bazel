@@ -17,10 +17,10 @@ cc_library(
     ],
     deps = [
         ":dircon_kinematic_data",
-        "//solvers:optimization_utils",
-        "//solvers:nonlinear_constraint",
         "//common",
         "//multibody:multipose_visualizer",
+        "//solvers:nonlinear_constraint",
+        "//solvers:optimization_utils",
         "@drake//:drake_shared_library",
     ],
 )

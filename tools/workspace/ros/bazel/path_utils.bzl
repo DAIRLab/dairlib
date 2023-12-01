@@ -5,7 +5,6 @@ def basename(path):
     """Return the file name portion of a file path."""
     return path.split("/")[-1]
 
-
 def dirname(path):
     """Return the directory portion of a file path."""
     if path == "/":
@@ -17,7 +16,6 @@ def dirname(path):
         return "/".join(parts[:-1])
 
     return "."
-
 
 def join_paths(*args):
     """Join paths without duplicating separators.

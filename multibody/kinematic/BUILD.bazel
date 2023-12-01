@@ -21,8 +21,8 @@ cc_library(
         "world_point_evaluator.h",
     ],
     deps = [
-        "//solvers:constraint_factory",
         "//multibody:view_frame",
+        "//solvers:constraint_factory",
         "@drake//:drake_shared_library",
     ],
 )

@@ -4,47 +4,44 @@ load(
     "drake_lcm_java_library",
     "drake_lcm_py_library",
 )
-
 load(
     "@drake//tools/skylark:drake_java.bzl",
     "drake_java_binary",
 )
-
 load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-  name = "cassie_inout_types",
-  deps = [
-          ":cassie_out_t",
-          ":cassie_user_in_t",
-          ":cassie_names",
-          ],
-)
-
-
-cc_library(
-  name = "cassie_out_t",
-  hdrs = [
-          ":cassie_out_t.h",
-          ":cassie_out_t_types.h",
-          ":rtwtypes.h"
-          ],
-  srcs = ["cassie_out_t.c"],
+    name = "cassie_inout_types",
+    deps = [
+        ":cassie_names",
+        ":cassie_out_t",
+        ":cassie_user_in_t",
+    ],
 )
 
 cc_library(
-	name = "cassie_user_in_t",
-	hdrs = [
-	        ":cassie_user_in_t.h",
-	        ":cassie_user_in_t_types.h",
-	        ":rtwtypes.h"
-	        ],
-	srcs = ["cassie_user_in_t.c"],
+    name = "cassie_out_t",
+    srcs = ["cassie_out_t.c"],
+    hdrs = [
+        ":cassie_out_t.h",
+        ":cassie_out_t_types.h",
+        ":rtwtypes.h",
+    ],
 )
 
 cc_library(
-	name = "cassie_names",
-	hdrs = [":cassie_names.h"]
+    name = "cassie_user_in_t",
+    srcs = ["cassie_user_in_t.c"],
+    hdrs = [
+        ":cassie_user_in_t.h",
+        ":cassie_user_in_t_types.h",
+        ":rtwtypes.h",
+    ],
+)
+
+cc_library(
+    name = "cassie_names",
+    hdrs = [":cassie_names.h"],
 )

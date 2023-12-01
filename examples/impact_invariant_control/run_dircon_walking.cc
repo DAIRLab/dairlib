@@ -165,7 +165,7 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
 
   // Set initial guesses
   for (uint j = 0; j < timesteps.size(); j++) {
-    trajopt->drake::systems::trajectory_optimization::MultipleShooting::
+    trajopt->drake::planning::trajectory_optimization::MultipleShooting::
         SetInitialTrajectory(init_u_traj, init_x_traj);
     trajopt->SetInitialForceTrajectory(j, init_l_traj[j], init_lc_traj[j],
                                        init_vc_traj[j]);

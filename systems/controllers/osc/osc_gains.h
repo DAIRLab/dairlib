@@ -1,12 +1,12 @@
 #pragma once
 
-#include "yaml-cpp/yaml.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
 
 struct OSCGains {
+  double controller_frequency;
+
   // costs
   double w_input;
   double w_accel;
@@ -28,6 +28,7 @@ struct OSCGains {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(controller_frequency));
     a->Visit(DRAKE_NVP(w_input));
     a->Visit(DRAKE_NVP(w_accel));
     a->Visit(DRAKE_NVP(w_lambda));

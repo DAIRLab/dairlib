@@ -18,7 +18,7 @@ FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
     PiecewisePolynomial<double>& toe_traj, int swing_toe_idx,
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
-    feet_contact_points,
+        feet_contact_points,
     const std::string& traj_name)
     : plant_(plant),
       context_(context),
@@ -30,10 +30,10 @@ FlightToeAngleTrajGenerator::FlightToeAngleTrajGenerator(
   use_traj_ = !toe_traj_.empty();
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-      "x, u, t", OutputVector<double>(plant.num_positions(),
-                                      plant.num_velocities(),
-                                      plant.num_actuators()))
-      .get_index();
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+                    .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 

@@ -25,7 +25,7 @@ using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
-using drake::systems::trajectory_optimization::MultipleShooting;
+using drake::planning::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -65,12 +65,12 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // set timestep bounds
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       prog().AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i],
-                               timestep(mode_start_[i] + j));
+                               time_step(mode_start_[i] + j));
     }
     for (int j = 0; j < mode_lengths_[i] - 2; j++) {
       // all timesteps must be equal
-      prog().AddLinearConstraint(timestep(mode_start_[i] + j) ==
-          timestep(mode_start_[i] + j + 1));
+      prog().AddLinearConstraint(time_step(mode_start_[i] + j) ==
+          time_step(mode_start_[i] + j + 1));
     }
 
     // initialize constraint lengths
@@ -432,10 +432,10 @@ void HybridDircon<T>::SetInitialForceTrajectory(
     const PiecewisePolynomial<double>& traj_init_vc) {
   double start_time = 0;
   double h;
-  if (timesteps_are_decision_variables())
+  if (time_steps_are_decision_variables())
     h = prog().GetInitialGuess(h_vars()[0]);
   else
-    h = fixed_timestep();
+    h = fixed_time_step();
 
   VectorXd guess_force(force_vars_[mode].size());
   if (traj_init_l.empty()) {

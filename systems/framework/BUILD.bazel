@@ -7,10 +7,12 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "vector",
     srcs = [
+        "impact_info_vector.cc",
         "output_vector.cc",
         "timestamped_vector.cc",
     ],
     hdrs = [
+        "impact_info_vector.h",
         "output_vector.h",
         "timestamped_vector.h",
     ],

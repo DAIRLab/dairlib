@@ -11,7 +11,7 @@ cc_binary(
         ":generic_lcm_log_parser",
         "//examples/Cassie:cassie_utils",
         "//systems:robot_lcm_systems",
-    ]
+    ],
 )
 
 cc_library(

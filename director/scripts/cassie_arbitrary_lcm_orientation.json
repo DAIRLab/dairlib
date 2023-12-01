@@ -1,0 +1,24 @@
+{
+  "model_file": "examples/Cassie/urdf/cassie_v2.urdf",
+  "channelName": "CASSIE_STATE_SIMULATION",
+  "data": [
+            {"name": "acom_frame",
+              "source_data" : {"category":"lcm",
+                "abstract_channel" : "OSC_DEBUG_STANDING",
+                "abstract_type" : "dairlib.lcmt_osc_output",
+                "abstract_field" : "tracking_data[%d].y",
+                "index_field": "tracking_data_names",
+                "index_element": "acom_traj",
+                "quaternion_index" : 0,
+                "frame": "pelvis",
+                "point": [0, 0, 0]
+              },
+              "type_data": {"color":[1, 0, 0],
+                "alpha": 0.5,
+                "type": "axes",
+                "thickness": 0.01,
+                "length": 0.4
+              }
+            }
+  ]
+}

@@ -53,7 +53,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   /// Designed to be used with hardware
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
-                   double vel_scale_rot, double vel_scale_trans_sagital,
+                   double vel_scale_rot, double vel_scale_trans_sagittal,
                    double vel_scale_trans_lateral, double stick_filter_dt=0.0);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
@@ -61,24 +61,24 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   /// Designed to be used in simulation
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context, double kp_yaw,
-                   double kd_yaw, double vel_max_yaw, double kp_pos_sagital,
-                   double kd_pos_sagital, double vel_max_sagital,
+                   double kd_yaw, double vel_max_yaw, double kp_pos_sagittal,
+                   double kd_pos_sagittal, double vel_max_sagittal,
                    double kp_pos_lateral, double kd_pos_lateral,
                    double vel_max_lateral, double target_pos_offset,
                    const Eigen::Vector2d& global_target_position,
                    const Eigen::Vector2d& params_of_no_turning);
 
   // Input/output ports
-  const drake::systems::InputPort<double>& get_state_input_port() const {
+  const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
-  }
-  const drake::systems::OutputPort<double>& get_yaw_output_port() const {
-    return this->get_output_port(yaw_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
-  const drake::systems::OutputPort<double>& get_xy_output_port() const {
+  const drake::systems::OutputPort<double>& get_output_port_yaw() const {
+    return this->get_output_port(yaw_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_xy() const {
     return this->get_output_port(xy_port_);
   }
 
@@ -121,9 +121,9 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   double vel_max_yaw_;
 
   // Position control (sagital plane) parameters
-  double kp_pos_sagital_;
-  double kd_pos_sagital_;
-  double vel_max_sagital_;
+  double kp_pos_sagittal_;
+  double kd_pos_sagittal_;
+  double vel_max_sagittal_;
   double target_pos_offset_;  // Due to steady state error
 
   // Position control (frontal plane) parameters
@@ -135,7 +135,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   Eigen::Vector2d global_target_position_;
   Eigen::Vector2d params_of_no_turning_;
   double vel_scale_rot_;
-  double vel_scale_trans_sagital_;
+  double vel_scale_trans_sagittal_;
   double vel_scale_trans_lateral_;
   double stick_filter_dt_;
 };

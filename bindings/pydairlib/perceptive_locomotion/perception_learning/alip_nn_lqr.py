@@ -132,6 +132,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # sum up the grid values, add select the minimum value index
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
+        # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape
         )

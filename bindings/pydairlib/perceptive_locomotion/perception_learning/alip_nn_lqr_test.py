@@ -96,7 +96,8 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
             'tmp/initial_conditions_2.npz'
         )
     )
-    datapoint = ic_generator.random()
+    # datapoint = ic_generator.random()
+    datapoint = ic_generator.choose(0)
     datapoint['desired_velocity'] = np.array([0.5, 0])
 
     context = diagram.CreateDefaultContext()

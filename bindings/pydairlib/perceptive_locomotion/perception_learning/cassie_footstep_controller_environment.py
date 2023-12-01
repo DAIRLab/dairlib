@@ -57,6 +57,14 @@ class InitialConditionsServer:
     def random(self):
         return self.rng.choice(self.data)
 
+    def choose(self, idx):
+        if idx >= len(self.data):
+            return None
+        self.idx = idx
+        data = self.data[self.idx]
+        return data
+
+
 
 @dataclass
 class CassieFootstepControllerEnvironmentOptions:

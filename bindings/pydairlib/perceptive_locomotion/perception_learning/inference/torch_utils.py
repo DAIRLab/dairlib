@@ -50,12 +50,9 @@ class CassieDataset(Dataset):
 
     def __getitem__(self, idx):
         data_point = self.data_list[idx]
-        heightmap = data_point['hmap']
-        hmap = heightmap.reshape(1, heightmap.shape[0], heightmap.shape[1])
-        input_data = torch.tensor(hmap, dtype=torch.float32)
-        # input_data = tile_and_concatenate_inputs(
-        #     data_point['hmap'], data_point['x_k'], data_point['U']
-        # )
+        input_data = tile_and_concatenate_inputs(
+            data_point['hmap'], data_point['x_k'], data_point['U']
+        )
         target_data = {
             'residual': torch.tensor(
                 data_point['residual'], dtype=torch.float32

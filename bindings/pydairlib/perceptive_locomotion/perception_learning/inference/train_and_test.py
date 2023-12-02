@@ -23,7 +23,7 @@ class Hyperparams:
     epochs: int = 400
     shuffle: bool = True
     learning_rate: float = 5e-5
-    patience: int = 50
+    patience: int = 10
     project: str = 'alip-lqr-residual'
     loss: str = 'huber'
     optimizer: str = 'Adam'
@@ -120,10 +120,18 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
     )
 
     device = torch_utils.get_device()
-    model = UNet()
+    model = UNet(7, 1)
+    for param in model.parameters():
+        param.data.uniform_(-1e-3, 1e-3)
+
+    # set the last layer to zeros
+    for param in model.outc.parameters():
+        param.data.zero_()
+
     model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=params.learning_rate) \
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=params.learning_rate, weight_decay=1e-5) \
         if params.optimizer == 'Adam' else \
         torch.optim.SGD(model.parameters(), lr=params.learning_rate)
 

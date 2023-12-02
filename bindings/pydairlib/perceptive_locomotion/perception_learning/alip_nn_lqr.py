@@ -3,6 +3,9 @@ import torch
 import numpy as np
 import time
 
+from pydrake.geometry import Rgba
+
+
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR,
     AlipFootstepLQROptions
@@ -30,7 +33,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/frosty-snow-120.pth')
+    perception_learning_base_folder, 'tmp/crimson-capybara-132.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
@@ -41,7 +44,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # controller now has internal network module
         # maybe it is not worth putting things on GPU
         self.device = get_device()
-        self.residual_unet = UNet(1,1)
+        self.residual_unet = UNet(7, 1)
         self.residual_unet.to(self.device)
         self.residual_unet.load_state_dict(torch.load(checkpoint_path))
         self.residual_unet.eval()
@@ -97,7 +100,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # query for cropped height map at nominal footstep location
         hmap = hmap_query.calc_height_map_stance_frame(
-            np.array([ud[0], ud[1],0])
+            np.array([ud[0], ud[1], 0])
         )
         _, H, W = hmap.shape
 
@@ -114,10 +117,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             combined_input = tile_and_concatenate_inputs(
                 hmap[-1, :, :], x - xd, hmap[:2, :, :]
             ).to(self.device)
-            # hmap = heightmap.reshape(1, heightmap.shape[0], heightmap.shape[1])
-            input_data = torch.tensor(hmap[2].reshape(1, hmap.shape[1], hmap.shape[2]), dtype=torch.float32).to(self.device)
-
-            combined_input = input_data.unsqueeze(0)
+            combined_input = combined_input.unsqueeze(0)
 
             # use network to predict residual grid
             # residual_grid size: (1, 20, 20) after squeeze
@@ -127,20 +127,23 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             residual_grid = self.residual_unet(combined_input).squeeze(0)
             residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
 
-        # calculate the LQR Q function grid
-        # Q value = current cost + next_value_function, after expanding, and neglect the constant term
-        # Q value = u_cost_grid  + u_next_value_grid (precomputue, quadratic) + linear_term_grid + residual_grid
-
-        # # # display residual map on meshcat
-        residual_map = hmap_query.calc_world_frame_residual_map(
-            np.array([ud[0], ud[1],0]), residual_grid
+        # display residual map on meshcat
+        residual_grid_world = hmap_query.calc_height_map_world_frame(
+            np.array([ud[0], ud[1], 0])
         )
-        
+        residual_grid_world[2] = residual_grid
+
         # tensor algebra (batch operation) for calculating linear term grid
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
         # sum up the grid values, add select the minimum value index
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
+
+        hmap_query.plot_surface(
+            "residual", residual_grid_world[0], residual_grid_world[1],
+            final_grid, Rgba(1.0, 0.0, 0.0, 1.0)
+        )
+
         # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape

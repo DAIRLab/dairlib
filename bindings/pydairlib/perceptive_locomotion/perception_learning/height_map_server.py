@@ -60,6 +60,10 @@ class HeightMapQueryObject:
         self.height_map_server = server
         self.context = context
 
+    def unset(self):
+        self.context = None
+        self.height_map_server = None
+
     def calc_height_map_stance_frame(self, query_point):
         if self.context is None:
             raise RuntimeError(
@@ -70,10 +74,9 @@ class HeightMapQueryObject:
             self.height_map_server .get_height_map_in_stance_frame_from_inputs(
                 self.context, query_point
             )
-        # self.context = None
         return hmap
     
-    def calc_world_frame_residual_map(self, query_point, residual_grid):
+    def calc_height_map_world_frame(self, query_point):
         # get height map in world frame
         if self.context is None:
             raise RuntimeError(
@@ -85,18 +88,14 @@ class HeightMapQueryObject:
             self.height_map_server .get_height_map_in_world_frame_from_inputs(
                 self.context, query_point
             )
-        
-        # replace the z channel of hmap with residual predictions
-        hmap[2] = residual_grid
+        return hmap
 
+    def plot_surface(self, path, X, Y, Z, rgba):
         if self.height_map_server.map_opts.meshcat is not None:
             self.height_map_server.map_opts.meshcat.PlotSurface(
-                "residual_map", hmap[0], hmap[1], hmap[2],
-                Rgba(r=0.0, g=1.0, b=0.0, a=1.0)
+                path, X, Y, Z, rgba
             )
             self.height_map_server.map_opts.meshcat.Flush()
-        self.context = None
-        return hmap
 
 
 class HeightMapServer(LeafSystem):

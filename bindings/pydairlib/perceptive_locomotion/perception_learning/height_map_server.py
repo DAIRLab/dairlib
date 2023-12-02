@@ -7,6 +7,7 @@ from pydrake.multibody.plant import (
 )
 
 from pydrake.geometry.all import Meshcat
+from pydrake.geometry import Rgba
 
 from pydrake.systems.all import (
     LeafSystem,
@@ -87,6 +88,13 @@ class HeightMapQueryObject:
         
         # replace the z channel of hmap with residual predictions
         hmap[2, :, :] = residual_grid
+
+        if self.height_map_server.map_opts.meshcat is not None:
+            self.height_map_server.map_opts.meshcat.PlotSurface(
+                "residual_map", hmap[0], hmap[1], hmap[2],
+                Rgba(r=0.0, g=1.0, b=0.0, a=1.0)
+            )
+            self.height_map_server.map_opts.meshcat.Flush()
         self.context = None
         return hmap
 

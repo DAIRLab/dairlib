@@ -2,9 +2,11 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "gains",
-    data = ["kinematic_centroidal_mpc_gains.yaml",
-           "osc_centroidal_gains.yaml",
-           "osc_tracking_qp_settings.yaml"],
+    data = [
+        "kinematic_centroidal_mpc_gains.yaml",
+        "osc_centroidal_gains.yaml",
+        "osc_tracking_qp_settings.yaml",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -29,20 +31,22 @@ cc_library(
 cc_binary(
     name = "cassie_kcmpc_trajopt",
     srcs = ["cassie_kcmpc_trajopt.cc"],
-    data = [":kinematic_centroidal_mpc_gains.yaml",
-            "//examples/Cassie/kinematic_centroidal_planner/gaits:gaits",
-            "//examples/Cassie/kinematic_centroidal_planner/motions:motions"],
+    data = [
+        ":kinematic_centroidal_mpc_gains.yaml",
+        "//examples/Cassie/kinematic_centroidal_planner/gaits",
+        "//examples/Cassie/kinematic_centroidal_planner/motions",
+    ],
     deps = [
         ":centroidal_tracking_controller",
-        "//examples/Cassie:cassie_utils",
         "//common",
-        "//multibody:visualization_utils",
-        "//multibody/kinematic",
-        "//multibody:pinocchio_plant",
-        "//solvers:optimization_utils",
-        "//systems/primitives",
+        "//examples/Cassie:cassie_utils",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_kinematic_centroidal_mpc",
         "//examples/Cassie/kinematic_centroidal_planner:cassie_reference_utils",
+        "//multibody:pinocchio_plant",
+        "//multibody:visualization_utils",
+        "//multibody/kinematic",
+        "//solvers:optimization_utils",
+        "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
@@ -53,10 +57,10 @@ cc_library(
     srcs = ["contact_scheduler.cc"],
     hdrs = ["contact_scheduler.h"],
     deps = [
-        "//lcmtypes:lcmt_robot",
         "//common",
-        "//multibody:utils",
         "//examples/Cassie:cassie_utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
@@ -67,10 +71,10 @@ cc_library(
     srcs = ["kinematic_trajectory_generator.cc"],
     hdrs = ["kinematic_trajectory_generator.h"],
     deps = [
-        "//lcmtypes:lcmt_robot",
         "//common",
-        "//multibody:utils",
         "//examples/Cassie:cassie_utils",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
@@ -81,10 +85,10 @@ cc_library(
     srcs = ["cassie_reference_utils.cc"],
     hdrs = ["cassie_reference_utils.h"],
     deps = [
-        "//examples/Cassie:cassie_utils",
         "//common",
-        "//systems/trajectory_optimization/kinematic_centroidal_planner:kinematic_centroidal_planner",
+        "//examples/Cassie:cassie_utils",
         "//multibody:visualization_utils",
+        "//systems/trajectory_optimization/kinematic_centroidal_planner",
         "@drake//:drake_shared_library",
     ],
 )
@@ -94,19 +98,19 @@ cc_library(
     srcs = ["cassie_kinematic_centroidal_solver.cc"],
     hdrs = ["cassie_kinematic_centroidal_solver.h"],
     deps = [
-        "//examples/Cassie:cassie_utils",
         "//common",
-        "//systems/trajectory_optimization/kinematic_centroidal_planner",
+        "//examples/Cassie:cassie_utils",
         "//multibody:visualization_utils",
+        "//systems/trajectory_optimization/kinematic_centroidal_planner",
         "@drake//:drake_shared_library",
     ],
 )
 
-cc_library(
-    name = "osc_centroidal_gains",
-    hdrs = ["osc_centroidal_gains.h"],
-    deps = [
-        "//systems/controllers/osc:osc_gains",
-        "@drake//:drake_shared_library",
-    ],
-)
+#cc_library(
+#    name = "osc_centroidal_gains",
+#    hdrs = ["osc_centroidal_gains.h"],
+#    deps = [
+#        "//systems/controllers/osc:osc_gains",
+#        "@drake//:drake_shared_library",
+#    ],
+#)

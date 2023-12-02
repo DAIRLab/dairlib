@@ -1,6 +1,4 @@
 #pragma once
-#include "yaml-cpp/yaml.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct KinematicCentroidalGains {

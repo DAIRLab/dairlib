@@ -12,7 +12,10 @@ def pinocchio_repository(
             "unencumbered",  # Public-Domain
         ],
         modname = "pinocchio",
-        pkg_config_paths = ["/opt/openrobots/lib/pkgconfig/"],
+        pkg_config_paths = [
+            "/opt/openrobots/lib/pkgconfig/",
+            "/opt/homebrew/lib/pkgconfig/",
+        ],
         **kwargs):
     pkg_config_repository(
         name = name,

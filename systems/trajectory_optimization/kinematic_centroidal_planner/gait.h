@@ -1,9 +1,6 @@
 #pragma once
 
 #include <drake/common/trajectories/piecewise_polynomial.h>
-
-#include "yaml-cpp/yaml.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
 
 /*!

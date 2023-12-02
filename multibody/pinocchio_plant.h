@@ -43,7 +43,6 @@ class PinocchioPlant : public drake::multibody::MultibodyPlant<T> {
    * @param q
    * @param v
    */
-
   void UpdateForwardKinematics(const drake::systems::Context<double>& context);
 
   /**

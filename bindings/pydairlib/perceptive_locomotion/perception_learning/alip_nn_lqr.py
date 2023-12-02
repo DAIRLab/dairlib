@@ -128,17 +128,11 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # Q value = current cost + next_value_function, after expanding, and neglect the constant term
         # Q value = u_cost_grid  + u_next_value_grid (precomputue, quadratic) + linear_term_grid + residual_grid
 
+        # # # display residual map on meshcat
         residual_map = hmap_query.calc_world_frame_residual_map(
             np.array([ud[0], ud[1],0]), residual_grid
         )
-        # # display residual map on meshcat
-        if hmap_query.height_map_server.map_opts.meshcat is not None:
-            hmap_query.height_map_server.map_opts.meshcat.PlotSurface(
-                "residual_map", residual_map[0], residual_map[1], residual_map[2],
-                Rgba(r=1.0, g=0.0, b=0.0, a=1.0)
-            )
-            hmap_query.height_map_server.map_opts.meshcat.Flush()
-
+        
         # tensor algebra (batch operation) for calculating linear term grid
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 

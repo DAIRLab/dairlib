@@ -69,6 +69,24 @@ class HeightMapQueryObject:
             self.height_map_server .get_height_map_in_stance_frame_from_inputs(
                 self.context, query_point
             )
+        # self.context = None
+        return hmap
+    
+    def calc_world_frame_residual_map(self, query_point, residual_grid):
+        # get height map in world frame
+        if self.context is None:
+            raise RuntimeError(
+                'Heightmap Queries are one-time use objects'
+                'that must be set from inside the HeightMapServer. '
+                'Context has not been set or is out-of-date')
+        # grab original hmap in world frame
+        hmap = \
+            self.height_map_server .get_height_map_in_world_frame_from_inputs(
+                self.context, query_point
+            )
+        
+        # replace the z channel of hmap with residual predictions
+        hmap[2, :, :] = residual_grid
         self.context = None
         return hmap
 
@@ -171,6 +189,24 @@ class HeightMapServer(LeafSystem):
             )
             self.map_opts.meshcat.Flush()
         return self.get_heightmap_3d(x, stance, center)
+    
+    def get_height_map_in_world_frame_from_inputs(
+            self, context: Context, center: np.ndarray
+        ) -> np.ndarray:
+
+        fsm = self.EvalVectorInput(
+            context, self.input_port_indices['fsm']
+        ).value().ravel()[0]
+        fsm = int(fsm)
+        x = self.EvalVectorInput(
+            context, self.input_port_indices['x']
+        ).value().ravel()[:self.plant.num_positions() + self.plant.num_velocities()]
+
+        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
+
+        hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, center)
+        
+        return hmap_xyz
 
     def get_height_at_point(self, query_point: np.ndarray) -> float:
         return self.terrain.CalcHeightOfPoint(query_point)

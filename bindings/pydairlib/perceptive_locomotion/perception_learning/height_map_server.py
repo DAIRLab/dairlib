@@ -40,7 +40,7 @@ from pydairlib.systems.footstep_planning import Stance
 class HeightMapOptions:
     nx: int = 30
     ny: int = 30
-    resolution: float = 0.02
+    resolution: float = 0.04
     meshcat = None
 
 
@@ -86,7 +86,7 @@ class HeightMapQueryObject:
             )
         
         # replace the z channel of hmap with residual predictions
-        hmap[2, :, :] = residual_grid
+        hmap[2] = residual_grid
         self.context = None
         return hmap
 

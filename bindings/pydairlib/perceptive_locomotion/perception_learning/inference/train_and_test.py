@@ -19,11 +19,11 @@ default_checkpoint_path = os.path.join(
 
 @dataclass
 class Hyperparams:
-    batch_size: int = 64
+    batch_size: int = 32
     epochs: int = 400
     shuffle: bool = True
     learning_rate: float = 5e-5
-    patience: int = 10
+    patience: int = 50
     project: str = 'alip-lqr-residual'
     loss: str = 'huber'
     optimizer: str = 'Adam'

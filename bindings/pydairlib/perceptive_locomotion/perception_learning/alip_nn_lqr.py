@@ -30,7 +30,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/good-spaceship-109.pth')
+    perception_learning_base_folder, 'tmp/frosty-snow-120.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
@@ -41,7 +41,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # controller now has internal network module
         # maybe it is not worth putting things on GPU
         self.device = get_device()
-        self.residual_unet = UNet()
+        self.residual_unet = UNet(1,1)
         self.residual_unet.to(self.device)
         self.residual_unet.load_state_dict(torch.load(checkpoint_path))
         self.residual_unet.eval()
@@ -114,7 +114,10 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             combined_input = tile_and_concatenate_inputs(
                 hmap[-1, :, :], x - xd, hmap[:2, :, :]
             ).to(self.device)
-            combined_input = combined_input.unsqueeze(0)
+            # hmap = heightmap.reshape(1, heightmap.shape[0], heightmap.shape[1])
+            input_data = torch.tensor(hmap[2].reshape(1, hmap.shape[1], hmap.shape[2]), dtype=torch.float32).to(self.device)
+
+            combined_input = input_data.unsqueeze(0)
 
             # use network to predict residual grid
             # residual_grid size: (1, 20, 20) after squeeze

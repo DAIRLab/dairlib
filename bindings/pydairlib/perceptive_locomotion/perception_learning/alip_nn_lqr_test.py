@@ -163,6 +163,7 @@ def traced(func, ignoredirs=None):
 
     return wrapped
 
+
 # @traced
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()

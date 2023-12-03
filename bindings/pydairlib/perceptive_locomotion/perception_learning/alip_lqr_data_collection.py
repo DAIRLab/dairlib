@@ -264,7 +264,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
     hmap_center = np.array([ud[0], ud[1], 0])
     hmap = sim_env.get_heightmap(contexts['sim'], center=hmap_center)
-    i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.0 ** 2)
+    i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.05 ** 2)
 
     # stabilizing footstep is too far from nominal, assume we are falling or fallen
     if np.linalg.norm(u_fb - hmap[:2, i, j]) > 0.5:

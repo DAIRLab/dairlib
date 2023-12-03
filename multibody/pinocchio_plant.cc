@@ -338,6 +338,60 @@ drake::Vector3<double> PinocchioPlant<double>::CalcCenterOfMassPositionInWorld(
   return pinocchio_data_.com[0];
 }
 
+// Copied from Drake QuaternionFloatingMobilizer, since the
+// relevant methods are now private
+namespace {
+Eigen::Matrix<double, 4, 3> CalcLMatrix(const Eigen::Quaternion<double>& q_FM) {
+  // This L matrix helps us compute both N(q) and N⁺(q) since it turns out that:
+  //   N(q) = L(q_FM/2)
+  // and:
+  //   N⁺(q) = L(2 q_FM)ᵀ
+  // See Eqs. 5 and 6 in Section 9.2 of Paul's book
+  // [Mitiguy (August 7) 2017, §9.2], for the time derivative of the vector
+  // component of the quaternion (Euler parameters). Notice however here we use
+  // qs and qv for the "scalar" and "vector" components of the quaternion q_FM,
+  // respectively, while Mitiguy uses ε₀ and ε (in bold), respectively.
+  // This mobilizer is parameterized by the angular velocity w_FM, i.e. time
+  // derivatives of the vector component of the quaternion are taken in the F
+  // frame. If you are confused by this, notice that the vector component of a
+  // quaternion IS a vector, and therefore you must specify in what frame time
+  // derivatives are taken.
+  //
+  // Notice this is equivalent to:
+  // Dt_F(q) = 1/2 * w_FM⋅q_FM, where ⋅ denotes the "quaternion product" and
+  // both the vector component qv_FM of q_FM and w_FM are expressed in frame F.
+  // Dt_F(q) is short for [Dt_F(q)]_F.
+  // The expression above can be written as:
+  // Dt_F(q) = 1/2 * (-w_FM.dot(qv_F); qs * w_FM + w_FM.cross(qv_F))
+  //         = 1/2 * (-w_FM.dot(qv_F); qs * w_FM - qv_F.cross(w_FM))
+  //         = 1/2 * (-w_FM.dot(qv_F); (qs * Id - [qv_F]x) * w_FM)
+  //         = L(q_FM/2) * w_FM
+  // That is:
+  //        |         -qv_Fᵀ    |
+  // L(q) = | qs * Id - [qv_F]x |
+
+  const double qs = q_FM.w();             // The scalar component.
+  const Vector3<double> qv = q_FM.vec();  // The vector component.
+  const Vector3<double> mqv = -qv;        // minus qv  .
+
+  // NOTE: the rows of this matrix are in an order consistent with the order
+  // in which we store the quaternion in the state, with the scalar component
+  // first followed by the vector component.
+  return (Eigen::Matrix<double, 4, 3>() << mqv.transpose(), qs, qv.z(), mqv.y(),
+          mqv.z(), qs, qv.x(), qv.y(), mqv.x(), qs)
+          .finished();
+}
+
+Eigen::Matrix<double, 4, 3> AngularVelocityToQuaternionRateMatrix(
+  const Eigen::Quaternion<double>& q_FM) {
+  // With L given by CalcLMatrix we have:
+  // N(q) = L(q_FM/2)
+  return CalcLMatrix(
+    {q_FM.w() / 2.0, q_FM.x() / 2.0, q_FM.y() / 2.0, q_FM.z() / 2.0}
+  );
+}
+}
+
 template <>
 drake::Vector3<AutoDiffXd>
 PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
@@ -352,8 +406,7 @@ PinocchioPlant<AutoDiffXd>::CalcCenterOfMassPositionInWorld(
   Matrix3X<double> gradient_q =
       pinocchio::jacobianCenterOfMass(pinocchio_model_, pinocchio_data_, q_pin);
   Matrix3X<double> gradient_v = MatrixXd::Zero(3, n_v_);
-  auto map = drake::multibody::internal::QuaternionFloatingMobilizer<
-      double>::AngularVelocityToQuaternionRateMatrix(drake_quat);
+  auto map = AngularVelocityToQuaternionRateMatrix(drake_quat);
   MatrixXd gradient_quat =
       4 * map * rot.transpose() * gradient_q.block<3, 3>(0, 3).transpose();
   Matrix3X<double> gradient_pos = gradient_q.block<3, 3>(0, 0) * rot;
@@ -437,8 +490,8 @@ PinocchioPlant<AutoDiffXd>::CalcSpatialMomentumInWorldAboutPoint(
   auto drake_quat =
       Eigen::Quaternion<double>(q_drake(0), q_drake(1), q_drake(2), q_drake(3));
   drake::MatrixX<double> rot = drake_quat.toRotationMatrix().transpose();
-  auto map = drake::multibody::internal::QuaternionFloatingMobilizer<
-      double>::AngularVelocityToQuaternionRateMatrix(drake_quat);
+
+  auto map =  AngularVelocityToQuaternionRateMatrix(drake_quat);
 //  MatrixXd gradient_quat =
 //      4 * map * rot.transpose() * dhdq.block<6, 3>(0, 3).transpose();
   MatrixXd gradient_quat = 4 * dhdq.block<6, 3>(0, 3) * rot * map.transpose();

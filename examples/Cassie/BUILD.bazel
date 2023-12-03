@@ -373,6 +373,7 @@ cc_binary(
     name = "centroidal_mpc_tracking_controller",
     srcs = ["centroidal_mpc_tracking_controller.cc"],
     data = ["//examples/Cassie/kinematic_centroidal_planner:gains"],
+    tags = ["manual"],
     deps = [
         ":cassie_urdf",
         ":cassie_utils",

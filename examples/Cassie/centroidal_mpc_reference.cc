@@ -126,7 +126,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(state_receiver->get_output_port(),
                   kcmpc->get_state_input_port());
   builder.Connect(kcmpc->get_output_port(), reference_pub->get_input_port());
-  builder.Connect(high_level_command->get_xy_output_port(),
+  builder.Connect(high_level_command->get_output_port_xy(),
                   kcmpc->get_input_port_target_vel());
   builder.Connect(cassie_out_receiver->get_output_port(),
                   cassie_out_to_radio->get_input_port());

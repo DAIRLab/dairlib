@@ -96,9 +96,9 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
             'tmp/initial_conditions_2.npz'
         )
     )
-    # datapoint = ic_generator.random()
-    datapoint = ic_generator.choose(0)
-    datapoint['desired_velocity'] = np.array([0.5, 0])
+    datapoint = ic_generator.random()
+    # datapoint = ic_generator.choose(0)
+    datapoint['desired_velocity'] = np.array([0.4, 0])
 
     context = diagram.CreateDefaultContext()
 
@@ -168,7 +168,7 @@ def traced(func, ignoredirs=None):
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        perception_learning_base_folder, 'params/wavy_terrain.yaml'
     )
     sim_params.visualize = True
     run(sim_params)

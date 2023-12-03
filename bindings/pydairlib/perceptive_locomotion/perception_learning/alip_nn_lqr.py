@@ -33,7 +33,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/crimson-capybara-132.pth')
+    perception_learning_base_folder, 'tmp/earthy-hill-139.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
@@ -141,7 +141,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         hmap_query.plot_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
-            final_grid, Rgba(1.0, 0.0, 0.0, 1.0)
+            residual_grid, Rgba(1.0, 0.0, 0.0, 1.0)
         )
 
         # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid

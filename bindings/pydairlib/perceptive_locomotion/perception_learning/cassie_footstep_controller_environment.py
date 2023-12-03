@@ -194,7 +194,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         if params.visualize:
 
             builder.AddSystem(self.plant_visualizer)
-            self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
+            # self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
             if params.use_perception:
                 self.grid_map_visualizer = GridMapVisualizer(

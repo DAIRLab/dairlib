@@ -22,8 +22,8 @@ class Hyperparams:
     batch_size: int = 32
     epochs: int = 400
     shuffle: bool = True
-    learning_rate: float = 5e-5
-    patience: int = 10
+    learning_rate: float = 1e-5
+    patience: int = 20
     project: str = 'alip-lqr-residual'
     loss: str = 'huber'
     optimizer: str = 'Adam'

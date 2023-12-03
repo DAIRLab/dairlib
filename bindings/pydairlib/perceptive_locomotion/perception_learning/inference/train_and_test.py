@@ -122,11 +122,11 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
     device = torch_utils.get_device()
     model = UNet(7, 1)
     for param in model.parameters():
-        param.data.uniform_(-1e-3, 1e-3)
+        param.data.uniform_(-5e-3, 5e-3)
 
     # set the last layer to zeros
-    for param in model.outc.parameters():
-        param.data.zero_()
+    # for param in model.outc.parameters():
+    #     param.data.zero_()
 
     model.to(device)
 

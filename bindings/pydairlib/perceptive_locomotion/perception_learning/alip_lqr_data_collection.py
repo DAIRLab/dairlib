@@ -225,7 +225,7 @@ def get_data_sequence(sim_env: CassieFootstepControllerEnvironment,
             'v': plant.GetVelocities(plant_context)
         }
     data = []
-    max_steps = 100
+    max_steps = 50
     contexts = initialize_sim(
         sim_env, controller, diagram, datapoint
     )
@@ -333,7 +333,7 @@ def data_process(i, q, visualize):
     num_data = 200
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        perception_learning_base_folder, 'params/wavy_terrain.yaml'
     )
     sim_params.visualize = visualize
     data = run_experiment(sim_params, num_data, i)
@@ -341,7 +341,7 @@ def data_process(i, q, visualize):
 
 
 def main(save_file: str, visualize: bool):
-    num_jobs = 1 if visualize else int(os.cpu_count() / 2) - 1
+    num_jobs = 1 if visualize else int(os.cpu_count() -1)
     job_queue = multiprocessing.Queue()
     job_list = []
 

@@ -75,7 +75,7 @@ C3Controller::C3Controller(
                            x_des_size))
           .get_index();
   target_input_port_ =
-      this->DeclareVectorInputPort("desired_position", x_des_size).get_index();
+      this->DeclareVectorInputPort("x_lcs_des", x_des_size).get_index();
 
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -168,7 +168,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   for (int i : vector<int>({0, 2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.2, 0.7, 1);
+    c3_->AddLinearConstraint(A, 0.2, 0.8, 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);

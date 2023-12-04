@@ -11,6 +11,8 @@ struct FrankaSimParams {
   std::string table_w_supports_model;
   std::string tray_model;
   std::string box_model;
+  std::string left_support_model;
+  std::string right_support_model;
 
   double dt;
   double realtime_rate;
@@ -18,6 +20,7 @@ struct FrankaSimParams {
   double franka_publish_rate;
   double tray_publish_rate;
 
+  int scene_index;
   bool visualize;
   bool publish_efforts;
 
@@ -25,6 +28,8 @@ struct FrankaSimParams {
   std::vector<double> q_init_plate;
   std::vector<double> q_init_box;
   std::vector<double> tool_attachment_frame;
+  std::vector<double> left_support_position;
+  std::vector<double> right_support_position;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -34,6 +39,8 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(table_w_supports_model));
     a->Visit(DRAKE_NVP(tray_model));
     a->Visit(DRAKE_NVP(box_model));
+    a->Visit(DRAKE_NVP(left_support_model));
+    a->Visit(DRAKE_NVP(right_support_model));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
@@ -41,6 +48,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(franka_publish_rate));
     a->Visit(DRAKE_NVP(tray_publish_rate));
 
+    a->Visit(DRAKE_NVP(scene_index));
     a->Visit(DRAKE_NVP(visualize));
     a->Visit(DRAKE_NVP(publish_efforts));
 
@@ -48,6 +56,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(q_init_plate));
     a->Visit(DRAKE_NVP(q_init_box));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
-
+    a->Visit(DRAKE_NVP(left_support_position));
+    a->Visit(DRAKE_NVP(right_support_position));
   }
 };

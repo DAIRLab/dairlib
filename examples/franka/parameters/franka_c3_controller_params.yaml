@@ -8,7 +8,6 @@ end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 end_effector_name: plate
 
 tool_attachment_frame: [0, 0, 0.107]
-#franka_model: examples/franka/urdf/franka_no_collision.urdf
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 #plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf

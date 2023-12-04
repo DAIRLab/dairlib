@@ -51,7 +51,7 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
   num_object_velocities_ = 6;
   lcs_state_port_ =
       this->DeclareVectorOutputPort(
-              "lcs_state",
+              "x_lcs",
               FrankaKinematicsVector<double>(
                   num_end_effector_positions_, num_object_positions_,
                   num_end_effector_velocities_, num_object_velocities_),

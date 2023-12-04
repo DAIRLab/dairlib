@@ -17,7 +17,7 @@ C3StateSender::C3StateSender(int state_size,
   target_state_ = this->DeclareVectorInputPort("target_state",
                                                BasicVector<double>(state_size))
                       .get_index();
-  actual_state_ = this->DeclareVectorInputPort("c3_solution",
+  actual_state_ = this->DeclareVectorInputPort("actual_state",
                                                TimestampedVector<double>(state_size))
                       .get_index();
 

@@ -74,6 +74,7 @@ int do_main(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant, &scene_graph);
+  parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
 
@@ -98,6 +99,27 @@ int do_main(int argc, char* argv[]) {
                    R_X_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
+
+  if (sim_params.scene_index == 1){
+    drake::multibody::ModelInstanceIndex left_support_index =
+        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
+    drake::multibody::ModelInstanceIndex right_support_index =
+        parser.AddModels(FindResourceOrThrow(sim_params.right_support_model))[0];
+    Vector3d first_support_position =
+        StdVectorToVectorXd(sim_params.left_support_position);
+    Vector3d second_support_position =
+        StdVectorToVectorXd(sim_params.right_support_position);
+    RigidTransform<double> T_S1_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), first_support_position);
+    RigidTransform<double> T_S2_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), second_support_position);
+    plant.WeldFrames(plant.world_frame(),
+                     plant.GetFrameByName("support", left_support_index),
+                     T_S1_W);
+    plant.WeldFrames(plant.world_frame(),
+                     plant.GetFrameByName("support", right_support_index),
+                     T_S2_W);
+  }
 
   plant.Finalize();
 

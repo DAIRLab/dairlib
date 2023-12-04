@@ -6,7 +6,6 @@
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
-#include <drake/geometry/meshcat_visualizer_params.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/parsing/parser.h>
@@ -16,20 +15,15 @@
 #include <drake/systems/lcm/lcm_publisher_system.h>
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <drake/systems/primitives/multiplexer.h>
-#include <drake/systems/primitives/vector_log_sink.h>
 #include <drake/visualization/visualization_config_functions.h>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -68,18 +62,18 @@ int DoMain(int argc, char* argv[]) {
   // load urdf and sphere
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
-  //  double output_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
+  parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
-//  drake::multibody::ModelInstanceIndex box_index =
-//      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
+  //  drake::multibody::ModelInstanceIndex box_index =
+  //      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -87,23 +81,45 @@ int DoMain(int argc, char* argv[]) {
   Vector3d tool_attachment_frame =
       StdVectorToVectorXd(sim_params.tool_attachment_frame);
 
-
-  RigidTransform<double> R_X_W = RigidTransform<double>(
+  RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), tool_attachment_frame);
+
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   R_X_W);
+                   T_X_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
+
+  if (sim_params.scene_index == 1){
+    drake::multibody::ModelInstanceIndex left_support_index =
+        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
+    drake::multibody::ModelInstanceIndex right_support_index =
+        parser.AddModels(FindResourceOrThrow(sim_params.right_support_model))[0];
+    Vector3d first_support_position =
+        StdVectorToVectorXd(sim_params.left_support_position);
+    Vector3d second_support_position =
+        StdVectorToVectorXd(sim_params.right_support_position);
+    RigidTransform<double> T_S1_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), first_support_position);
+    RigidTransform<double> T_S2_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), second_support_position);
+    plant.WeldFrames(plant.world_frame(),
+                     plant.GetFrameByName("support", left_support_index),
+                     T_S1_W);
+    plant.WeldFrames(plant.world_frame(),
+                     plant.GetFrameByName("support", right_support_index),
+                     T_S2_W);
+  }
 
   const drake::geometry::GeometrySet& paddle_geom_set =
       plant.CollectRegisteredGeometries({
           &plant.GetBodyByName("panda_link4"),
           &plant.GetBodyByName("panda_link5"),
           &plant.GetBodyByName("panda_link6"),
-          &plant.GetBodyByName("panda_link7"),
+//          &plant.GetBodyByName("panda_link7"),
           &plant.GetBodyByName("panda_link8"),
+//          &plant.GetBodyByName("plate"),
       });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
@@ -127,21 +143,21 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.tray_publish_rate));
-//  auto box_state_sender =
-//      builder.AddSystem<systems::ObjectStateSender>(plant, box_index);
-//  auto box_state_pub =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-//          lcm_channel_params.box_state_channel, lcm,
-//          1.0 / sim_params.publish_rate));
+  //  auto box_state_sender =
+  //      builder.AddSystem<systems::ObjectStateSender>(plant, box_index);
+  //  auto box_state_pub =
+  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+  //          lcm_channel_params.box_state_channel, lcm,
+  //          1.0 / sim_params.publish_rate));
 
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
-//  builder.Connect(plant.get_state_output_port(box_index),
-//                  box_state_sender->get_input_port_state());
+  //  builder.Connect(plant.get_state_output_port(box_index),
+  //                  box_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
-//  builder.Connect(box_state_sender->get_output_port(),
-//                  box_state_pub->get_input_port());
+  //  builder.Connect(box_state_sender->get_output_port(),
+  //                  box_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -182,13 +198,13 @@ int DoMain(int argc, char* argv[]) {
   q[q_map.at("tray_y")] = sim_params.q_init_plate[5];
   q[q_map.at("tray_z")] = sim_params.q_init_plate[6];
 
-//  q[q_map["box_qw"]] = sim_params.q_init_box[0];
-//  q[q_map["box_qx"]] = sim_params.q_init_box[1];
-//  q[q_map["box_qy"]] = sim_params.q_init_box[2];
-//  q[q_map["box_qz"]] = sim_params.q_init_box[3];
-//  q[q_map["box_x"]] = sim_params.q_init_box[4];
-//  q[q_map["box_y"]] = sim_params.q_init_box[5];
-//  q[q_map["box_z"]] = sim_params.q_init_box[6];
+  //  q[q_map["box_qw"]] = sim_params.q_init_box[0];
+  //  q[q_map["box_qx"]] = sim_params.q_init_box[1];
+  //  q[q_map["box_qy"]] = sim_params.q_init_box[2];
+  //  q[q_map["box_qz"]] = sim_params.q_init_box[3];
+  //  q[q_map["box_x"]] = sim_params.q_init_box[4];
+  //  q[q_map["box_y"]] = sim_params.q_init_box[5];
+  //  q[q_map["box_z"]] = sim_params.q_init_box[6];
 
   plant.SetPositions(&plant_context, q);
 

@@ -7,7 +7,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 29
+                                 "x_index" : 27
                                 },
                  "type_data": {"color":[0, 1, 1],
                                "alpha": 0.5,
@@ -20,7 +20,7 @@
                   "abstract_channel" : "CONTROLLER_INPUT",
                   "abstract_type" : "dairlib.lcmt_c3",
                   "abstract_field" : "data",
-                  "x_index" : 32
+                  "x_index" : 30
                 },
                 "type_data": {"color":[0, 1, 1],
                   "alpha": 0.5,
@@ -33,7 +33,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 35
+                                 "x_index" : 33
                                 },
                  "type_data": {"color":[0, 1, 1],
                                "alpha": 0.5,
@@ -47,7 +47,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 38
+                                 "x_index" : 36
                                 },
                  "type_data": {"color":[1, 0, 1],
                                "alpha": 0.5,
@@ -61,7 +61,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 41
+                                 "x_index" : 39
                                 },
                  "type_data": {"color":[1, 1, 0],
                                "alpha": 0.5,
@@ -75,7 +75,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 44
+                                 "x_index" : 42
                                 },
                  "type_data": {"color":[1, 0, 0],
                                "alpha": 0.5,
@@ -91,7 +91,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 50
+                                 "x_index" : 48
                                 },
                  "type_data": {"color":[1, 0.6, 0],
                                "alpha": 0.5,
@@ -105,7 +105,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 53
+                                 "x_index" : 51
                                 },
                  "type_data": {"color":[0, 0, 0],
                                "alpha": 0.5,
@@ -120,7 +120,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 56
+                                 "x_index" : 54
                                 },
                  "type_data": {"color":[0.6, 0.2, 0.4],
                                "alpha": 0.5,
@@ -134,7 +134,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 59
+                                 "x_index" : 57
                                 },
                  "type_data": {"color":[0, 0, 1],
                                "alpha": 0.5,
@@ -148,7 +148,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 62
+                                 "x_index" : 60
                                 },
                  "type_data": {"color":[0, 0.5, 1],
                                "alpha": 0.5,
@@ -162,7 +162,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 65
+                                 "x_index" : 63
                                 },
                  "type_data": {"color":[0, 1, 0],
                                "alpha": 0.5,
@@ -176,7 +176,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 68
+                                 "x_index" : 66
                                 },
                  "type_data": {"color":[0.5, 1, 0],
                                "alpha": 0.5,
@@ -190,7 +190,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 71
+                                 "x_index" : 69
                                 },
                  "type_data": {"color":[1, 1, 0.8],
                                "alpha": 0.5,
@@ -204,7 +204,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 74
+                                 "x_index" : 72
                                 },
                  "type_data": {"color":[1, 0, 0],
                                "alpha": 0.5,
@@ -218,7 +218,7 @@
                                  "abstract_channel" : "CONTROLLER_INPUT",
                                  "abstract_type" : "dairlib.lcmt_c3",
                                  "abstract_field" : "data",
-                                 "x_index" : 77
+                                 "x_index" : 75
                                 },
                  "type_data": {"color":[0, 1, 0],
                                "alpha": 0.5,

@@ -192,7 +192,8 @@ class HeightMapServer(LeafSystem):
         if self.map_opts.meshcat is not None:
             hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, center)
             self.map_opts.meshcat.PlotSurface(
-                "hmap", hmap_xyz[0], hmap_xyz[1], hmap_xyz[2]
+                "hmap", hmap_xyz[0], hmap_xyz[1], hmap_xyz[2],
+                Rgba(0, 0, 1, 0.5)
             )
             self.map_opts.meshcat.Flush()
         return self.get_heightmap_3d(x, stance, center)

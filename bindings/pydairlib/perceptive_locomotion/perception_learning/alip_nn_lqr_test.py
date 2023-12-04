@@ -168,7 +168,7 @@ def traced(func, ignoredirs=None):
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/wavy_terrain.yaml'
+        perception_learning_base_folder, 'params/wavy_test.yaml'
     )
     sim_params.visualize = True
     run(sim_params)

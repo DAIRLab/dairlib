@@ -70,6 +70,17 @@ class AlipFootstepLQROptions:
         )
 
 
+def calc_collision_cost_grid(X: np.ndarray, Y: np.ndarray, ud) -> np.ndarray:
+    assert (X.shape == Y.shape)
+
+    # If in left stance, ud[1] < 0, crossover means y > 0
+    sign_allowed = np.sign(ud[1])
+    sign_y = np.sign(Y)
+    cost = np.zeros(Y.shape)
+    cost[sign_y != sign_allowed] = np.inf
+    return cost
+
+
 class AlipFootstepLQR(LeafSystem):
 
     def __init__(self, alip_params: AlipFootstepLQROptions):

@@ -46,7 +46,8 @@ from pydrake.systems.all import (
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQROptions,
-    AlipFootstepLQR
+    AlipFootstepLQR,
+    calc_collision_cost_grid
 )
 from pydairlib.perceptive_locomotion.perception_learning.terrain_utils import (
     make_stairs, random_stairs
@@ -167,9 +168,9 @@ def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
     return {'root': context, 'sim': sim_context, 'controller': controller_context}
 
 
-def get_noisy_footstep_command_indices(footstep_command: np.ndarray,
-                                       hmap: np.ndarray,
-                                       variance: float) -> Tuple[int, int]:
+def get_noisy_footstep_command_indices(
+        footstep_command: np.ndarray, hmap: np.ndarray,
+        collision_cost: np.ndarray, variance: float) -> Tuple[int, int]:
     # New: the input should be LQR reference (ud) + noise
     wx = np.random.normal(loc=0, scale=np.sqrt(variance))
     wy = np.random.normal(loc=0, scale=np.sqrt(variance))
@@ -184,7 +185,10 @@ def get_noisy_footstep_command_indices(footstep_command: np.ndarray,
             np.expand_dims(noisy_footstep_command, 1), 1),
         axis=0
     )
-    i, j = np.unravel_index(distance.argmin(), distance.shape)
+
+    cost = collision_cost + distance
+
+    i, j = np.unravel_index(cost.argmin(), cost.shape)
     return i, j
 
 
@@ -264,7 +268,9 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
     hmap_center = np.array([ud[0], ud[1], 0])
     hmap = sim_env.get_heightmap(contexts['sim'], center=hmap_center)
-    i, j = get_noisy_footstep_command_indices(u_fb, hmap, 0.05 ** 2)
+    collision_cost = calc_collision_cost_grid(hmap[0], hmap[1], ud)
+
+    i, j = get_noisy_footstep_command_indices(u_fb, hmap, collision_cost, .04 ** 2)
 
     # stabilizing footstep is too far from nominal, assume we are falling or fallen
     if np.linalg.norm(u_fb - hmap[:2, i, j]) > 0.5:
@@ -330,7 +336,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize):
-    num_data = 200
+    num_data = 1000
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/wavy_terrain.yaml'

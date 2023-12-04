@@ -8,7 +8,8 @@ from pydrake.geometry import Rgba
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR,
-    AlipFootstepLQROptions
+    AlipFootstepLQROptions,
+    calc_collision_cost_grid
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
@@ -103,7 +104,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             np.array([ud[0], ud[1], 0])
         )
         _, H, W = hmap.shape
-
+        collision_cost = calc_collision_cost_grid(hmap[0], hmap[1], ud)
         # put the input space in error coordinates, equivalent to hmap[:2] = self.ue_grid
         hmap[:2] -= np.expand_dims(np.expand_dims(ud, 1), 1)
 
@@ -137,11 +138,11 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
         # sum up the grid values, add select the minimum value index
-        final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
+        final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
 
         hmap_query.plot_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
-            residual_grid, Rgba(1.0, 0.0, 0.0, 1.0)
+            residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
         )
 
         # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid

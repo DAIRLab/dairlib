@@ -74,6 +74,9 @@ C3Controller::C3Controller(
               "x_lcs", TimestampedVector<double>(
                            x_des_size))
           .get_index();
+//  lcs_input_port_ =
+//      this->DeclareAbstractInputPort("lcs", LCS());
+
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", x_des_size).get_index();
 

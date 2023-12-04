@@ -67,6 +67,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
                              C3Output::C3Intermediates* c3_intermediates) const;
 
   drake::systems::InputPortIndex target_input_port_;
+  drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;

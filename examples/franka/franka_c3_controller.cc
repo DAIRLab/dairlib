@@ -3,9 +3,7 @@
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/systems/analysis/simulator.h>
 #include <drake/systems/framework/diagram_builder.h>
-#include <drake/systems/lcm/lcm_interface_system.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <drake/systems/primitives/constant_vector_source.h>
@@ -17,14 +15,11 @@
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
-#include "examples/franka/systems/end_effector_trajectory.h"
 #include "examples/franka/systems/franka_kinematics.h"
 #include "examples/franka/systems/plate_balancing_target.h"
-#include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3_controller.h"
-#include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -82,7 +77,6 @@ int DoMain(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.package_map().Add("franka_urdfs", "examples/franka/urdf");
   parser_franka.AddModels(
       drake::FindResourceOrThrow(controller_params.franka_model));
   drake::multibody::ModelInstanceIndex end_effector_index =
@@ -112,32 +106,69 @@ int DoMain(int argc, char* argv[]) {
   auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
-  auto [plant_plate, scene_graph] =
+  auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
-  Parser parser_plate(&plant_plate);
+  Parser parser_plate(&plant_for_lcs);
   parser_plate.AddModels(controller_params.plate_model);
   parser_plate.AddModels(controller_params.tray_model);
 
-  plant_plate.WeldFrames(plant_plate.world_frame(),
-                         plant_plate.GetFrameByName("base_link"), X_WI);
-  plant_plate.Finalize();
-  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_plate_ad =
-      drake::systems::System<double>::ToAutoDiffXd(plant_plate);
+  drake::multibody::ModelInstanceIndex left_support_index;
+  drake::multibody::ModelInstanceIndex right_support_index;
+  if (controller_params.scene_index == 1){
+     left_support_index =
+        parser_plate.AddModels(FindResourceOrThrow(controller_params.left_support_model))[0];
+    right_support_index =
+        parser_plate.AddModels(FindResourceOrThrow(controller_params.right_support_model))[0];
+    Vector3d first_support_position =
+        StdVectorToVectorXd(controller_params.left_support_position);
+    Vector3d second_support_position =
+        StdVectorToVectorXd(controller_params.right_support_position);
+    RigidTransform<double> T_S1_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), first_support_position);
+    RigidTransform<double> T_S2_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(), second_support_position);
+    plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
+                     plant_for_lcs.GetFrameByName("support", left_support_index),
+                     T_S1_W);
+    plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
+                     plant_for_lcs.GetFrameByName("support", right_support_index),
+                     T_S2_W);
+  }
+
+  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
+                           plant_for_lcs.GetFrameByName("base_link"), X_WI);
+  plant_for_lcs.Finalize();
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
+      drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
 
   auto plant_diagram = plant_builder.Build();
   std::unique_ptr<drake::systems::Context<double>> diagram_context =
       plant_diagram->CreateDefaultContext();
   auto& plate_context = plant_diagram->GetMutableSubsystemContext(
-      plant_plate, diagram_context.get());
-  auto plate_context_ad = plant_plate_ad->CreateDefaultContext();
+      plant_for_lcs, diagram_context.get());
+  auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
   ///
   std::vector<drake::geometry::GeometryId> plate_contact_points =
-      plant_plate.GetCollisionGeometriesForBody(
-          plant_plate.GetBodyByName("plate"));
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("plate"));
+  if (controller_params.scene_index == 1) {
+    std::vector<drake::geometry::GeometryId> left_support_contact_points =
+        plant_for_lcs.GetCollisionGeometriesForBody(
+            plant_for_lcs.GetBodyByName("support", left_support_index));
+    std::vector<drake::geometry::GeometryId> right_support_contact_points =
+        plant_for_lcs.GetCollisionGeometriesForBody(
+            plant_for_lcs.GetBodyByName("support", right_support_index));
+    plate_contact_points.insert(plate_contact_points.end(),
+                                left_support_contact_points.begin(),
+                                left_support_contact_points.end());
+    plate_contact_points.insert(plate_contact_points.end(),
+                                right_support_contact_points.begin(),
+                                right_support_contact_points.end());
+  }
   std::vector<drake::geometry::GeometryId> tray_geoms =
-      plant_plate.GetCollisionGeometriesForBody(
-          plant_plate.GetBodyByName("tray"));
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("tray"));
   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
       contact_geoms;
   contact_geoms["PLATE"] = plate_contact_points;
@@ -214,10 +245,10 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(tray_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
   auto controller = builder.AddSystem<systems::C3Controller>(
-      plant_plate, &plate_context, *plant_plate_ad, plate_context_ad.get(),
+      plant_for_lcs, &plate_context, *plant_for_lcs_autodiff, plate_context_ad.get(),
       contact_pairs, c3_options);
   auto c3_trajectory_generator =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_plate,
+      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
                                                         c3_options);
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",

@@ -1,5 +1,6 @@
 
-c3_options_file: examples/franka/parameters/franka_c3_options_translation.yaml
+c3_options_file: examples/franka/parameters/franka_c3_options_w_supports.yaml
+#c3_options_file: examples/franka/parameters/franka_c3_options_translation.yaml
 #c3_options_file: examples/franka/parameters/franka_c3_options_floating.yaml
 osqp_settings_file: examples/Cassie/osc_run/osc_running_qp_settings.yaml
 
@@ -11,6 +12,14 @@ tool_attachment_frame: [0, 0, 0.107]
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 #plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf
+
+scene_index: 1
+
+left_support_model: examples/franka/urdf/left_support_point_contact.urdf
+right_support_model: examples/franka/urdf/right_support_point_contact.urdf
+left_support_position: [0.55, 0.15, 0.225]
+right_support_position: [0.8, -0.15, 0.225]
+
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan

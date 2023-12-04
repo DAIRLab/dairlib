@@ -128,13 +128,13 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (80) includes:
+  State output port (92) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
     xball_dot (6) -- angular and linear velocities of object
     lambda (4) -- end effector/object forces (4 friction directions)
-    visualization (53) -- miscellaneous visualization-related debugging values:
+    visualization (65) -- miscellaneous visualization-related debugging values:
       (9) 3 sample xyz locations
       (3) next xyz position of the end effector
       (3) optimal xyz sample location
@@ -149,8 +149,12 @@ C3Controller_franka::C3Controller_franka(
       (3) feasible predicted jack location at end of best sampled end effector location's C3 plan
       (3) optimistic predicted jack location at end of best sampled end effector location's C3 plan
       (3) fixed goal location for jack when using 'fixed goal' trajectory type
+      (3) start point of the trajectory
+      (3) end point of the trajectory
       (4) Quaternion associated with the jack at the end of the horizon as predicted from current location
       (4) Quaternion associated with the jack at the end of the horizon as predicted from best sample location
+      (3) Way point 1 when repositioning
+      (3) Way point 2 when repositioning
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -674,6 +678,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     }
   //End of parallelization
 
+      // print cost of each sample
+      // std::cout << "\tModified costs: "<<std::endl;
+      // for (int i = 0; i < num_samples; i++) {
+      //   std::cout << "\tsample "<<i<<"is = "<< cost_vector[i] << ", "<<std::endl;
+      // }
+
   // Determine whether to switch between C3 and repositioning modes if there are other samples to consider.
   SampleIndex index = CURRENT_LOCATION_INDEX;
   if (num_samples > 1) {
@@ -814,6 +824,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // Take action based on whether trying to run C3 or reposition.
   // Initialize next state desired.
   VectorXd st_desired(STATE_VECTOR_SIZE);
+  // Initializing the repositioning trajectory points to 0 for visualization.
+  std::vector<Vector3d> points(4, VectorXd::Zero(3));
+  
   // DO C3.
   if (C3_flag_ == true) {
     // TODO: this can be switched to a function call since it's a repeat of a few other sections.
@@ -896,7 +909,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
                   predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
-                  start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic;
+                  start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic,
+                  points[1], points[2];
   }
   // REPOSITION.
   else {
@@ -929,7 +943,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
       // Build control points for the repositioning curve.
       // Set the first point to the current end effector location and the last point to the optimal sample location.
-      std::vector<Vector3d> points(4, VectorXd::Zero(3));
+      // std::vector<Vector3d> points(4, VectorXd::Zero(3));
       points[0] = end_effector;
       points[3] = target;
 
@@ -961,7 +975,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
                   predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
-                  start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic;
+                  start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic,
+                  points[1], points[2];
   }
   
 

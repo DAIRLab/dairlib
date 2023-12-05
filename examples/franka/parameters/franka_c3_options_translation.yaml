@@ -1,12 +1,12 @@
 admm_iter: 4
 rho: 0.1
 rho_scale: 1
-num_threads: 6
+num_threads: 5
 delta_option: 1
 # options are 'MIQP' or 'QP'
 projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
-#contact_model: 'stewart_and_trinkle'
+#contact_model: 'anitescu'
 contact_model: 'stewart_and_trinkle'
 warm_start: true
 
@@ -25,13 +25,6 @@ w_G: 1
 # Penalty on all decision variables, assuming scalar
 w_U: 0.5
 
-# n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
-# size = n_x ( 3 + 7 + 3 + 6 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
-# size = n_x ( 3 + 7 + 3 + 6 ) + n_lambda (2 * 3 * 2) + n_u (3) = 34 for anitescu
-g_size: 40
-u_size: 40
-#g_size: 34
-#u_size: 34
 # State Tracking Error, assuming diagonal
 q_vector: [175, 175, 175, 0, 0, 0, 0, 15000, 15000, 15000,
            5, 5, 10, 1, 1, 1, 5, 5, 5]
@@ -44,11 +37,8 @@ g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_gamma: [1, 1, 1]
 g_lambda_n: [1, 1, 1]
 g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_u: [1, 1, 1]
-#g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-#           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-
-
 
 # Penalty on all decision variables
 #u_vector: [1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 10, 10, 10, 10, 10, 10,
@@ -57,10 +47,5 @@ u_x: [1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 10, 10, 10, 10, 10, 1
 u_gamma: [1, 1, 1]
 u_lambda_n: [1, 1, 1]
 u_lambda_t: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+u_lambda: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 u_u: [10, 10, 10]
-
-
-#g_vector: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1,
-#           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-#u_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-#           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

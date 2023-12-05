@@ -1,4 +1,4 @@
-#include "ball_rolling_controller.h"
+#include "c3_ball_rolling_controller.h"
 
 #include <utility>
 #include <chrono>
@@ -48,7 +48,7 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-C3Controller_franka::C3Controller_franka(
+C3BallRollingController::C3BallRollingController(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::MultibodyPlant<double>& plant_f,
     const drake::multibody::MultibodyPlant<double>& plant_franka,
@@ -120,7 +120,7 @@ C3Controller_franka::C3Controller_franka(
 
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
-          TimestampedVector<double>(38), &C3Controller_franka::CalcControl)
+          TimestampedVector<double>(38), &C3BallRollingController::CalcControl)
       .get_index();
 
   q_map_franka_ = multibody::MakeNameToPositionsMap(plant_franka_);
@@ -138,8 +138,8 @@ C3Controller_franka::C3Controller_franka(
   dt_filter_length_ = param_.dt_filter_length;
 }
 
-void C3Controller_franka::CalcControl(const Context<double>& context,
-                                      TimestampedVector<double>* state_contact_desired) const {
+void C3BallRollingController::CalcControl(const Context<double>& context,
+                                          TimestampedVector<double>* state_contact_desired) const {
 
   // get values
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
@@ -572,8 +572,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   // }
 }
 
-void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
-                                          const Eigen::Vector3d end_effector, double timestamp) const {
+void C3BallRollingController::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
+                                              const Eigen::Vector3d end_effector, double timestamp) const {
   /// estimate q_plant
   std::cout << "here" << std::endl;
   if (abs(param_.ball_stddev) > 1e-9) {
@@ -636,7 +636,7 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
   v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
 }
 
-Eigen::Vector3d C3Controller_franka::ProjectStateEstimate(
+Eigen::Vector3d C3BallRollingController::ProjectStateEstimate(
     const Eigen::Vector3d& endeffector,
     const Eigen::Vector3d& estimate) const {
 

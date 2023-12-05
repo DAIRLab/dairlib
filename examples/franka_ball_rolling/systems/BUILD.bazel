@@ -5,14 +5,14 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "c3_systems",
     srcs = [
-        "ball_rolling_controller.cc",
+        "c3_ball_rolling_controller.cc",
         "gravity_compensator.cc",
         "c3_trajectory_source.cc",
         "c3_state_estimator.cc",
         "robot_output_passthrough.cc"
     ],
     hdrs = [
-        "ball_rolling_controller.h",
+        "c3_ball_rolling_controller.h",
         "gravity_compensator.h",
         "c3_trajectory_source.h",
         "c3_state_estimator.h",

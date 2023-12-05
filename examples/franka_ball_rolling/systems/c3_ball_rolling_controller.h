@@ -46,9 +46,9 @@ namespace dairlib {
 namespace systems {
 namespace controllers {
 
-class C3Controller_franka : public LeafSystem<double> {
+class C3BallRollingController : public LeafSystem<double> {
  public:
-  C3Controller_franka(
+    C3BallRollingController(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::multibody::MultibodyPlant<double>& plant_f,
       const drake::multibody::MultibodyPlant<double>& plant_franka,

@@ -6,8 +6,8 @@ delta_option: 1
 # options are 'MIQP' or 'QP'
 projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
-#contact_model: 'stewart_and_trinkle'
 contact_model: 'stewart_and_trinkle'
+# contact_model: 'anitescu'
 warm_start: false
 
 mu: [0.4, 0.4, 0.4, 0.05, 0.05, 0.05]
@@ -27,9 +27,9 @@ w_U: 0.5
 
 # n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
 # size = n_x ( 3 + 7 + 3 + 6 ) + n_lambda (2 * 6  + 2 * 6 * 2) + n_u (3) = 58 for stewart and trinkle
-# size = n_x ( 3 + 7 + 3 + 6 ) + n_lambda (2 * 3 * 2) + n_u (3) = 34 for anitescu
-g_size: 58
-u_size: 58
+# size = n_x ( 3 + 7 + 3 + 6 ) + n_lambda (2 * 6 * 2) + n_u (3) = 34 for anitescu
+# g_size: 58
+# u_size: 58
 #g_size: 34
 #u_size: 34
 # State Tracking Error, assuming diagonal
@@ -43,10 +43,12 @@ g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_gamma: [1, 1, 1, 1, 1, 1]
 g_lambda_n: [1, 1, 1, 1, 1, 1]
 g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_u: [1, 1, 1]
 
 u_x: [1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 10, 10, 10, 10, 10, 10]
 u_gamma: [1, 1, 1, 1, 1, 1]
 u_lambda_n: [1, 1, 1, 1, 1, 1]
 u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+u_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 u_u: [10, 10, 10]

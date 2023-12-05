@@ -1,5 +1,7 @@
 #include <vector>
 #include <math.h>
+#include <gflags/gflags.h>
+#include <signal.h>
 
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -12,6 +14,7 @@
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/math/rigid_transform.h>
 #include "drake/math/autodiff.h"
+#include "drake/systems/primitives/trajectory_source.h"
 
 
 #include "systems/robot_lcm_systems.h"
@@ -22,15 +25,32 @@
 #include "systems/system_utils.h"
 
 #include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/systems/c3_trajectory_source.h"
 #include "examples/franka_ball_rolling/systems/gravity_compensator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 
-// #include "ros/ros.h"
-// #include "std_msgs/Float64MultiArray.h"
-// #include "systems/ros/ros_publisher_system.h"
-// #include "systems/ros/c3_ros_conversions.h"
+//#define ROS
+
+#ifdef ROS
+
+#include "ros/ros.h"
+#include "std_msgs/Float64MultiArray.h"
+#include "systems/ros/ros_publisher_system.h"
+#include "systems/ros/c3_ros_conversions.h"
+
+void SigintHandler(int sig) {
+  ros::shutdown();
+  exit(sig);
+}
+
+#endif
+
+DEFINE_string(channel, "FRANKA_OUTPUT",
+              "LCM channel for receiving state. "
+              "Use FRANKA_OUTPUT to get state from simulator, and "
+              "use FRANKA_ROS_OUTPUT to get state from from franka_ros");
 
 namespace dairlib {
 
@@ -49,6 +69,8 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/franka_ball_rolling/parameters.yaml");
 
@@ -96,8 +118,8 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness * MatrixXd::Identity(3,3);
   K.block(3,3,3,3) << translational_stiffness * MatrixXd::Identity(3,3);
-  B.block(0,0,3,3) << param.rotational_stiffness * sqrt(rotational_stiffness) * MatrixXd::Identity(3,3);
-  B.block(3,3,3,3) << 2 * param.translational_damping_ratio * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
+  B.block(0,0,3,3) << param.rotational_damping * MatrixXd::Identity(3,3);
+  B.block(3,3,3,3) << 2 * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
 
   MatrixXd K_null = param.stiffness_null * MatrixXd::Identity(7,7);
   MatrixXd B_null = param.damping_null * MatrixXd::Identity(7,7);
@@ -119,72 +141,99 @@ int DoMain(int argc, char* argv[]){
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/
+  /// get trajectory info from c3
+  auto c3_subscriber = builder.AddSystem(
+    LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
+      "CONTROLLER_INPUT", &drake_lcm));
+  auto c3_receiver = 
+    builder.AddSystem<systems::RobotC3Receiver>(14, 9, 6, 9);
+  builder.Connect(c3_subscriber->get_output_port(0),
+    c3_receiver->get_input_port(0));
+  builder.Connect(c3_receiver->get_output_port(0),
+    controller->get_input_port(1));
+
+  /* -------------------------------------------------------------------------------------------*/
 
   builder.Connect(state_receiver->get_output_port(0), 
     controller->get_input_port(0));
   
-  auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
-  builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
-  builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
+  if (FLAGS_channel == "FRANKA_OUTPUT"){
+    auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+    builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
+    builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
 
-  auto control_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-        "FRANKA_INPUT", &drake_lcm, 
-        {drake::systems::TriggerType::kForced}, 0.0));
-  builder.Connect(control_sender->get_output_port(),
-      control_publisher->get_input_port());
-  
-  auto c3_subscriber = builder.AddSystem(
-    LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
-      "CONTROLLER_INPUT", &drake_lcm));
-  auto c3_receiver = builder.AddSystem<systems::RobotC3Receiver>(10, 9, 6, 9);
-  builder.Connect(c3_subscriber->get_output_port(0), c3_receiver->get_input_port(0));
-  builder.Connect(c3_receiver->get_output_port(0), controller->get_input_port(1));
-
+    auto control_publisher = builder.AddSystem(
+        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          "FRANKA_INPUT", &drake_lcm, 
+          {drake::systems::TriggerType::kForced}, 0.0));
+    builder.Connect(control_sender->get_output_port(),
+        control_publisher->get_input_port());
+  }
   /* -------------------------------------------------------------------------------------------*/
-  /// Publish to ROS topic
-  // ros::init(argc, argv, "test_ros_publisher_system");
-  // ros::NodeHandle node_handle;
-  // auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
-  // auto ros_publisher = builder.AddSystem(
-  //     systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
-  
-  // builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
-  // builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
+#ifdef ROS
+  else if (FLAGS_channel == "FRANKA_ROS_OUTPUT"){
+    /// Publish to ROS topic
+    ros::init(argc, argv, "c3_impedance_controller");
+    ros::NodeHandle node_handle;
+    signal(SIGINT, SigintHandler);
+
+    auto impedance_to_ros = builder.AddSystem<systems::TimestampedVectorToROS>(7);
+    // try making this kForced
+    auto ros_publisher = builder.AddSystem(
+        systems::RosPublisherSystem<std_msgs::Float64MultiArray>::Make("/c3/franka_input", &node_handle, .0005));
+    
+    builder.Connect(controller->get_output_port(), impedance_to_ros->get_input_port());
+    builder.Connect(impedance_to_ros->get_output_port(), ros_publisher->get_input_port());
+
+    auto ros_lcm_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+    auto echo_ros_lcm = builder.AddSystem(
+        LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
+          "FRANKA_INPUT_WO_G", &drake_lcm, 
+          {drake::systems::TriggerType::kForced}, 0.0));
+    builder.Connect(controller->get_output_port(),    
+        ros_lcm_sender->get_input_port());
+    builder.Connect(ros_lcm_sender->get_output_port(),
+        echo_ros_lcm->get_input_port());
+  }
+#endif
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_control_impedance");
+  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_run_c3_impedance_experiments");
 
 
   auto context_d = diagram->CreateDefaultContext();
   auto& receiver_context = diagram->GetMutableSubsystemContext(*state_receiver, context_d.get());
   (void) receiver_context; // suppressed unused variable warning
 
-  // std::cout << "Waiting for first c3 lcm message" << std::endl;
-  // c3_subscriber->WaitForMessage(0, nullptr, param.c3_sub_timeout);
-
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
-
+      &drake_lcm, std::move(diagram), state_receiver, FLAGS_channel, true);
+  
   /// initialize message
-  std::vector<double> msg_data(34, 0);
+  std::vector<double> msg_data(38, 0);
   msg_data[0] = param.initial_start(0);
   msg_data[1] = param.initial_start(1);
   msg_data[2] = param.initial_start(2);
-  msg_data[3] = 1;
-  msg_data[7] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
-  msg_data[8] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
-  msg_data[9] = param.ball_radius + param.table_offset;
-  msg_data[28] = msg_data[7];
-  msg_data[29] = msg_data[8];
-  msg_data[30] = msg_data[9];
-  msg_data[31] = msg_data[7];
-  msg_data[32] = msg_data[8];
-  msg_data[33] = msg_data[9];
+  msg_data[3] = 0;
+  msg_data[4] = 1;
+  msg_data[5] = 0;
+  msg_data[6] = 0;
+  msg_data[7] = 1;
+  msg_data[8] = 0;
+  msg_data[9] = 0;
+  msg_data[10] = 0;
+  msg_data[11] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
+  msg_data[12] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
+  msg_data[13] = param.ball_radius + param.table_offset;
+  msg_data[32] = msg_data[7];
+  msg_data[33] = msg_data[8];
+  msg_data[34] = msg_data[9];
+  msg_data[35] = msg_data[7];
+  msg_data[36] = msg_data[8];
+  msg_data[37] = msg_data[9];
 
   dairlib::lcmt_c3 init_msg;
   init_msg.data = msg_data;
-  init_msg.data_size = 34;
+  init_msg.data_size = 38;
   init_msg.utime = 0.0;
 
   /// assign initial message
@@ -198,7 +247,7 @@ int DoMain(int argc, char* argv[]){
       ik_subscriber_context
           .get_mutable_abstract_state<dairlib::lcmt_c3>(0);
   mutable_state = init_msg;
-  
+
   loop.Simulate(std::numeric_limits<double>::infinity());
 
   return 0;

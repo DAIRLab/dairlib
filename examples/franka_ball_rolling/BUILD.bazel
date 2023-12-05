@@ -42,23 +42,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "lcm_control_impedence",
-    srcs = ["lcm_control_impedance.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/controllers:impedance_controller",
-        "//examples/franka_ball_rolling:c3_parameters",
-        "//examples/franka_ball_rolling/systems:c3_systems",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-    ],
-    data = [":trifinger_urdf",
-            "@drake//manipulation/models/franka_description:models"]
-)
-
-cc_binary(
     name = "lcm_control_demo",
     srcs = ["lcm_control_demo.cc"],
     deps = [
@@ -125,4 +108,82 @@ cc_binary(
     ],
     data = [":trifinger_urdf",
         "@drake//manipulation/models/franka_description:models"]
+)
+
+
+## clean up part ##
+cc_library(
+    name = "ball_rolling_urdf",
+    data = glob([
+    	"robot_properties_fingers/urdf/**",
+    	"robot_properties_fingers/urdf/pro/**",
+    	"robot_properties_fingers/urdf/edu/**",
+    	"robot_properties_fingers/meshes/**",
+    	"robot_properties_fingers/meshes/pro/**",
+    	"robot_properties_fingers/meshes/pro/detailed/**",
+    	"robot_properties_fingers/meshes/edu/**",
+        "robot_properties_fingers/cube/**"])
+)
+
+cc_binary(
+    name = "lcm_ball_rolling_planner",
+    srcs = ["lcm_ball_rolling_planner.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:c3_controller_franka",
+        "//examples/franka_ball_rolling:c3_parameters",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = ["@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
+    name = "lcm_simulate_franka",
+    srcs = ["lcm_simulate_franka.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//examples/franka_ball_rolling:c3_parameters",
+        "//common",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = ["@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
+    name = "lcm_impedance_controller",
+    srcs = ["lcm_impedance_controller.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:impedance_controller",
+        "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_ball_rolling/systems:c3_systems",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = ["@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
+  name = "lcm_state_estimator",
+  srcs = ["lcm_state_estimator.cc"],
+  deps = ["//examples/franka_ball_rolling/systems:c3_systems",
+          "//examples/franka_ball_rolling:c3_parameters",
+          "//systems:robot_lcm_systems",
+          "//systems:system_utils",
+          "//systems/framework:lcm_driven_loop",
+          "@gflags"
+  ],
+  data = ["@drake//manipulation/models/franka_description:models"
+  ],
 )

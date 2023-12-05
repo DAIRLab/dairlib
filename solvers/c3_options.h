@@ -4,12 +4,11 @@
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter = 2;  // total number of ADMM iterations   //2
-  float rho = 0.1;    // inital value of the rho parameter
-  float rho_scale =
-      3;  // scaling of rho parameter (/rho = rho_scale * /rho) //3
-  int num_threads = 0;   // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option = 1;  // different options for delta update
+  int admm_iter;  // total number of ADMM iterations   //2
+  float rho;    // inital value of the rho parameter
+  float rho_scale;  // scaling of rho parameter (/rho = rho_scale * /rho) //3
+  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
   bool warm_start;
@@ -38,8 +37,7 @@ struct C3Options {
   std::vector<double> u_lambda_t;
   std::vector<double> u_u;
 
-  double mu;
-  double mu_plate;
+  std::vector<double> mu;
   double dt;
   double solve_dt;
   int num_friction_directions;
@@ -64,7 +62,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(warm_start));
 
     a->Visit(DRAKE_NVP(mu));
-    a->Visit(DRAKE_NVP(mu_plate));
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(solve_dt));
     a->Visit(DRAKE_NVP(num_friction_directions));

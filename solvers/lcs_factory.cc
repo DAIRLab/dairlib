@@ -33,7 +33,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
-    int num_friction_directions, double mu, double dt, int N,
+    int num_friction_directions, const std::vector<double>& mu, double dt, int N,
     ContactModel contact_model) {
   //  int n_q = plant_ad.num_positions();
   //  int n_v = plant_ad.num_velocities();
@@ -178,7 +178,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
 
     E.block(n_contacts, 0, n_contacts, n_q) =
         dt * dt * J_n * AB_v_q + J_n * NqInverse;
-    ;
     E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
         dt * J_t * AB_v_q;
     E.block(n_contacts, n_q, n_contacts, n_v) =
@@ -187,7 +186,9 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
             n_v) = J_t + dt * J_t * AB_v_v;
 
     F.block(0, n_contacts, n_contacts, n_contacts) =
-        mu * MatrixXd::Identity(n_contacts, n_contacts);
+        Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+            mu.data(), mu.size()).asDiagonal();
+
     F.block(0, 2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions) = -E_t;
 
@@ -220,7 +221,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   } else if (contact_model == ContactModel::kAnitescu) {
     MatrixXd Nqinv = Nq.completeOrthogonalDecomposition().pseudoInverse();
     //    auto M_ldlt = ExtractValue(M).ldlt();
-    MatrixXd J_c = E_t.transpose() * J_n + mu * J_t;
+    MatrixXd J_c = E_t.transpose() * J_n + mu[0] * J_t;
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
     D.block(0, 0, n_q, n_contacts) = dt * Nq * MinvJ_c_T;

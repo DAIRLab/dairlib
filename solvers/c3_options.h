@@ -1,5 +1,5 @@
 #pragma once
-
+#include <iostream>
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct C3Options {
@@ -26,7 +26,17 @@ struct C3Options {
   std::vector<double> q_vector;
   std::vector<double> r_vector;
   std::vector<double> g_vector;
+  std::vector<double> g_x;
+  std::vector<double> g_gamma;
+  std::vector<double> g_lambda_n;
+  std::vector<double> g_lambda_t;
+  std::vector<double> g_u;
   std::vector<double> u_vector;
+  std::vector<double> u_x;
+  std::vector<double> u_gamma;
+  std::vector<double> u_lambda_n;
+  std::vector<double> u_lambda_t;
+  std::vector<double> u_u;
 
   double mu;
   double mu_plate;
@@ -68,9 +78,38 @@ struct C3Options {
     a->Visit(DRAKE_NVP(g_size));
     a->Visit(DRAKE_NVP(u_size));
     a->Visit(DRAKE_NVP(q_vector));
-    a->Visit(DRAKE_NVP(g_vector));
-    a->Visit(DRAKE_NVP(u_vector));
     a->Visit(DRAKE_NVP(r_vector));
+//    a->Visit(DRAKE_NVP(g_vector));
+    a->Visit(DRAKE_NVP(g_x));
+    a->Visit(DRAKE_NVP(g_gamma));
+    a->Visit(DRAKE_NVP(g_lambda_n));
+    a->Visit(DRAKE_NVP(g_lambda_t));
+    a->Visit(DRAKE_NVP(g_u));
+//    a->Visit(DRAKE_NVP(u_vector));
+    a->Visit(DRAKE_NVP(u_x));
+    a->Visit(DRAKE_NVP(u_gamma));
+    a->Visit(DRAKE_NVP(u_lambda_n));
+    a->Visit(DRAKE_NVP(u_lambda_t));
+    a->Visit(DRAKE_NVP(u_u));
+
+    g_vector = std::vector<double>();
+    g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
+    g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
+    g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
+    g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
+    g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
+    u_vector = std::vector<double>();
+    u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
+    u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
+    u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
+    u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
+    u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
+
+    for (auto value : u_vector){
+      std::cout << value << std::endl;
+    }
+    DRAKE_DEMAND(u_size == u_vector.size());
+    DRAKE_DEMAND(g_size == g_vector.size());
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());

@@ -31,44 +31,46 @@ class C3 {
      const std::vector<Eigen::VectorXd>& warm_start_u_ = {},
      bool warm_start = false);
 
+  virtual ~C3() = default;
+
   /// Solve the MPC problem
   /// @param x0 The initial state of the system
-  /// @param delta Copy variable solution
-  /// @param w Scaled dual variable solution
+  /// @param delta A pointer to the copy variable solution
+  /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
-  Eigen::VectorXd Solve(Eigen::VectorXd& x0,
-                        std::vector<Eigen::VectorXd>& delta,
-                        std::vector<Eigen::VectorXd>& w);
+  std::vector<Eigen::VectorXd> Solve(const Eigen::VectorXd& x0,
+                                     std::vector<Eigen::VectorXd>& delta,
+                                     std::vector<Eigen::VectorXd>& w);
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
-  /// @param G The G variables from previous step
-  Eigen::VectorXd ADMMStep(Eigen::VectorXd& x0,
+  /// @param G A pointer to the G variables from previous step
+  Eigen::VectorXd ADMMStep(const Eigen::VectorXd& x0,
                            std::vector<Eigen::VectorXd>* delta,
                            std::vector<Eigen::VectorXd>* w,
                            std::vector<Eigen::MatrixXd>* G);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
-  /// @param WD The (w - delta) variables
-  /// @param G The G variables from previous step
-  std::vector<Eigen::VectorXd> SolveQP(Eigen::VectorXd& x0,
+  /// @param WD A pointer to the (w - delta) variables
+  /// @param G A pointer to the G variables from previous step
+  std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        std::vector<Eigen::MatrixXd>& G,
                                        std::vector<Eigen::VectorXd>& WD);
 
   /// Solve the projection problem for all timesteps
-  /// @param WZ (z + w) variables
-  /// @param G The G variables from previous step
+  /// @param WZ A pointer to the (z + w) variables
+  /// @param G A pointer to the G variables from previous step
   std::vector<Eigen::VectorXd> SolveProjection(
-      std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,  Eigen::VectorXd& x0);
+      std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
 
   /// allow users to add constraints (adds for all timesteps)
-  /// @param A, Lowerbound, Upperbound Lowerbound <= A^T x <= Upperbound
+  /// @param A, lower_bound, upper_bound lower_bound <= A^T x <= upper_bound
   /// @param constraint inputconstraint, stateconstraint, forceconstraint
-  void AddLinearConstraint(Eigen::RowVectorXd& A, double& Lowerbound,
-                           double& Upperbound, int& constraint);
+  void AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
+                           double upper_bound, int constraint);
 
   /// allow user to remove all constraints
   void RemoveConstraints();
@@ -80,17 +82,22 @@ class C3 {
 
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
-  /// @param U The U variables
-  /// @param delta_c The copy of (z + w) variables
-  virtual Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
-                                                const Eigen::VectorXd& delta_c,
-                                                const Eigen::MatrixXd& E,
-                                                const Eigen::MatrixXd& F,
-                                                const Eigen::MatrixXd& H,
-                                                const Eigen::VectorXd& c,
-                                                const int& warm_start_index,
-                                                const bool& constrain_first_x,
-                                                const Eigen::VectorXd& x0) = 0;
+  /// @param U A pointer to the U variables
+  /// @param delta_c A pointer to the copy of (z + w) variables
+  virtual Eigen::VectorXd SolveSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const int& warm_start_index) = 0;
+
+  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+    solver_options_ = options;
+  }
+
+  std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
+  std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
+  std::vector<Eigen::VectorXd> GetForceSolution() { return *lambda_sol_; }
+  std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
 
  public:
   const std::vector<Eigen::MatrixXd> A_;
@@ -113,7 +120,7 @@ class C3 {
   const int k_;
   const bool hflag_;
 
-protected:
+ protected:
   std::vector<Eigen::VectorXd> warm_start_delta_;
   std::vector<Eigen::VectorXd> warm_start_binary_;
   std::vector<Eigen::VectorXd> warm_start_x_;
@@ -123,7 +130,7 @@ protected:
 
  private:
   drake::solvers::MathematicalProgram prog_;
-  drake::solvers::SolverOptions OSQPoptions_;
+  drake::solvers::SolverOptions solver_options_;
   drake::solvers::OsqpSolver osqp_;
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
@@ -132,7 +139,14 @@ protected:
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
-      userconstraints_;
+      user_constraints_;
+
+  // Solutions
+
+  std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
 };
 
 }  // namespace solvers

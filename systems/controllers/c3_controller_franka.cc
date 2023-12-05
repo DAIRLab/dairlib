@@ -11,7 +11,7 @@
 #include "solvers/c3_miqp.h"
 #include "solvers/lcs_factory.h"
 
-#include "solvers/miqp.h"
+//#include "solvers/miqp.h"
 
 #include "drake/solvers/moby_lcp_solver.h"
 #include "multibody/geom_geom_collider.h"
@@ -460,7 +460,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
   /// calculate the input given x[i]
-  VectorXd input = opt.Solve(state, delta, w);
+  auto zfin = opt.Solve(state, delta, w);
+  VectorXd input = zfin[0].segment(n + m, k);
 
   warm_start_x_ = opt.GetWarmStartX();
   warm_start_lambda_ = opt.GetWarmStartLambda();

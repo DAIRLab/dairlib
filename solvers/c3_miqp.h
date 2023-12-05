@@ -27,21 +27,18 @@ class C3MIQP final : public C3 {
          const std::vector<Eigen::VectorXd>& warm_start_u = {},
          bool warm_start = false);
 
-    ~C3MIQP(){
-  }
+    ~C3MIQP() override = default;
+
   /// Virtual projection method
   Eigen::VectorXd SolveSingleProjection(const Eigen::MatrixXd& U,
-                                        const Eigen::VectorXd& delta_c,
-                                        const Eigen::MatrixXd& E,
-                                        const Eigen::MatrixXd& F,
-                                        const Eigen::MatrixXd& H,
-                                        const Eigen::VectorXd& c,
-                                        const int& warm_start_index,
-                                        const bool& constrain_first_x,
-                                        const Eigen::VectorXd& x0);
+                                          const Eigen::VectorXd& delta_c,
+                                          const Eigen::MatrixXd& E,
+                                          const Eigen::MatrixXd& F,
+                                          const Eigen::MatrixXd& H,
+                                          const Eigen::VectorXd& c,
+                                          const int& warm_start_index = -1) override;
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
-
 
  private:
   GRBEnv env_;

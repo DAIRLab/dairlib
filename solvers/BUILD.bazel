@@ -3,14 +3,14 @@
 
 package(default_visibility = ["//visibility:public"])
 
-cc_binary(
-    name = "c3_test",
-    srcs = ["test/c3_test.cc"],
-    deps = [
-        ":c3",
-        ":miqp",
-    ],
-)
+#cc_binary(
+#    name = "c3_test",
+#    srcs = ["test/c3_test.cc"],
+#    deps = [
+#        ":c3",
+#        ":miqp",
+#    ],
+#)
 
 
 #py_binary(
@@ -26,17 +26,19 @@ cc_library(
     srcs = [
         "c3.cc",
         "c3_miqp.cc",
+        "c3_qp.cc",
     ],
     hdrs = [
         "c3.h",
         "c3_miqp.h",
+        "c3_qp.h",
         "c3_options.h",
     ],
     deps = [
         ":lcs",
+        "//solvers:fast_osqp_solver",
         "@drake//:drake_shared_library",
         "@gurobi//:gurobi_cxx",
-         "//solvers:fast_osqp_solver",
     ],
     copts = [
         "-fopenmp"
@@ -47,26 +49,40 @@ cc_library(
 )
 
 cc_library(
-    name = "miqp",
+    name = "c3_output",
     srcs = [
-        "miqp.cc",
+        "c3_output.cc",
     ],
     hdrs = [
-        "miqp.h",
-         "c3_options.h",
+        "c3_output.h",
     ],
     deps = [
-        ":lcs",
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
-         "//solvers:fast_osqp_solver",
     ],
-    copts = [
-        "-fopenmp"
-    ],
-    linkopts = [
-        "-lgomp"
-    ]
 )
+
+#cc_library(
+#    name = "miqp",
+#    srcs = [
+#        "miqp.cc",
+#    ],
+#    hdrs = [
+#        "miqp.h",
+#         "c3_options.h",
+#    ],
+#    deps = [
+#        ":lcs",
+#        "@drake//:drake_shared_library",
+#         "//solvers:fast_osqp_solver",
+#    ],
+#    copts = [
+#        "-fopenmp"
+#    ],
+#    linkopts = [
+#        "-lgomp"
+#    ]
+#)
 
 cc_library(
     name = "lcs",

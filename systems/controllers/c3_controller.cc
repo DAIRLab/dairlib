@@ -22,7 +22,7 @@ using Eigen::MatrixXf;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
 using solvers::C3MIQP;
-//using solvers::C3QP;
+using solvers::C3QP;
 using solvers::LCS;
 using solvers::LCSFactory;
 using std::vector;
@@ -75,7 +75,7 @@ C3Controller::C3Controller(
                            x_des_size))
           .get_index();
   target_input_port_ =
-      this->DeclareVectorInputPort("desired_position", x_des_size).get_index();
+      this->DeclareVectorInputPort("x_lcs_des", x_des_size).get_index();
 
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -165,26 +165,26 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
 
   // Set actor bounds
-  for (int i : vector<int>({0, 2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.2, 0.7, 1);
-  }
-  for (int i : vector<int>({1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
-  }
-  for (int i : vector<int>({0, 1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -10, 10, 2);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0, 20, 2);
-  }
+//  for (int i : vector<int>({0, 2})) {
+//    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+//    A(i) = 1.0;
+//    c3_->AddLinearConstraint(A, 0.2, 0.8, 1);
+//  }
+//  for (int i : vector<int>({1})) {
+//    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+//    A(i) = 1.0;
+//    c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
+//  }
+//  for (int i : vector<int>({0, 1})) {
+//    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+//    A(i) = 1.0;
+//    c3_->AddLinearConstraint(A, -10, 10, 2);
+//  }
+//  for (int i : vector<int>({2})) {
+//    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+//    A(i) = 1.0;
+//    c3_->AddLinearConstraint(A, 0, 20, 2);
+//  }
   auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
   auto finish = std::chrono::high_resolution_clock::now();
   delta_ = delta;

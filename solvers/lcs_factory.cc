@@ -245,9 +245,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   c /= AnDn;
   H /= AnDn;
 
-//  LCS system(A, B, D, d, E, F, H, c, N, dt); currently not adding dt to lcs class, will merge later
-  LCS system(A, B, D, d, E, F, H, c, N);
-
+  LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);
 
@@ -362,9 +360,7 @@ LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,
     D.push_back(D_k);
     d.push_back(d_k);
   }
-//  return LCS(A, B, D, d, E, F, H, c, other.dt_); currently not adding dt to lcs class, will merge later
-  return LCS(A, B, D, d, E, F, H, c);
-
+  return LCS(A, B, D, d, E, F, H, c, other.dt_);
 }
 
 }  // namespace solvers

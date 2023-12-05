@@ -67,7 +67,7 @@ int DoMain(int argc, char* argv[]) {
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options =
-      drake::yaml::LoadYamlFile<C3Options>(controller_params.c3_options_file);
+      drake::yaml::LoadYamlFile<C3Options>(controller_params.c3_options_file[controller_params.scene_index]);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))

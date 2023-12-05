@@ -8,7 +8,7 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 struct FrankaC3ControllerParams {
-  std::string c3_options_file;
+  std::vector<std::string> c3_options_file;
   std::string osqp_settings_file;
   std::string franka_model;
   std::string end_effector_model;

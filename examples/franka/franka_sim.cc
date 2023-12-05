@@ -191,13 +191,15 @@ int DoMain(int argc, char* argv[]) {
   q[q_map["panda_joint6"]] = sim_params.q_init_franka[5];
   q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
 
-  q[q_map.at("tray_qw")] = sim_params.q_init_plate[0];
-  q[q_map.at("tray_qx")] = sim_params.q_init_plate[1];
-  q[q_map.at("tray_qy")] = sim_params.q_init_plate[2];
-  q[q_map.at("tray_qz")] = sim_params.q_init_plate[3];
-  q[q_map.at("tray_x")] = sim_params.q_init_plate[4];
-  q[q_map.at("tray_y")] = sim_params.q_init_plate[5];
-  q[q_map.at("tray_z")] = sim_params.q_init_plate[6];
+  auto q_init_plate = sim_params.q_init_plate[sim_params.scene_index];
+
+  q[q_map.at("tray_qw")] = q_init_plate[0];
+  q[q_map.at("tray_qx")] = q_init_plate[1];
+  q[q_map.at("tray_qy")] = q_init_plate[2];
+  q[q_map.at("tray_qz")] = q_init_plate[3];
+  q[q_map.at("tray_x")] = q_init_plate[4];
+  q[q_map.at("tray_y")] = q_init_plate[5];
+  q[q_map.at("tray_z")] = q_init_plate[6];
 
   //  q[q_map["box_qw"]] = sim_params.q_init_box[0];
   //  q[q_map["box_qx"]] = sim_params.q_init_box[1];

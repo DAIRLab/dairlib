@@ -83,7 +83,7 @@ group "7.[SIM] C3" {
         host = "localhost";
     }
     cmd "d.[SIM] sim visualizer" {
-        exec = "bazel-bin/examples/cube_franka/visualizer --channel=FRANKA_OUTPUT";
+        exec = "bazel-bin/examples/cube_franka/franka_meshcat_visualizer";
         host = "localhost";
     }
 }

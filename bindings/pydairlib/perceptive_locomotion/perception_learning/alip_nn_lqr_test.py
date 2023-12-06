@@ -18,7 +18,8 @@ from pydrake.systems.all import (
     InputPortIndex,
     OutputPortIndex,
     ConstantVectorSource,
-    ZeroOrderHold
+    ZeroOrderHold,
+    VectorLogSink,
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_nn_lqr import (
@@ -36,6 +37,8 @@ from pydairlib.perceptive_locomotion.perception_learning. \
     perception_learning_base_folder,
     InitialConditionsServer
 )
+from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import (
+    CumulativeCost)
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
@@ -51,10 +54,16 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     )
     controller = AlipFootstepNNLQR(controller_params)
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    # instantiating cost system
+    cost_system = CumulativeCost(controller_params)
+    cost_holder = VectorLogSink(1)
+
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
     builder.AddSystem(controller)
     builder.AddSystem(footstep_zoh)
+    builder.AddSystem(cost_system)
+    builder.AddSystem(cost_holder)
 
     builder.Connect(
         sim_env.get_output_port_by_name("fsm"),
@@ -80,14 +89,35 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         footstep_zoh.get_output_port(),
         sim_env.get_input_port_by_name('footstep_command')
     )
+    builder.Connect(
+        controller.get_output_port_by_name('lqr_reference'),
+        cost_system.get_input_port_by_name('lqr_reference')
+    )
+    builder.Connect(
+        controller.get_output_port_by_name('x'),
+        cost_system.get_input_port_by_name('x')
+    )
+    builder.Connect(
+        sim_env.get_output_port_by_name('fsm'),
+        cost_system.get_input_port_by_name('fsm')
+    )
+    builder.Connect(
+        sim_env.get_output_port_by_name('time_until_switch'),
+        cost_system.get_input_port_by_name('time_until_switch')
+    )
+    builder.Connect(
+        cost_system.get_output_port_by_name('cumulative_cost'),
+        cost_holder.get_input_port()
+    )        
+
 
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(diagram, '../AlipNNLQRTest')
-    return sim_env, controller, diagram
+    return sim_env, controller, cost_holder, diagram
 
 
 def run(sim_params: CassieFootstepControllerEnvironmentOptions):
-    sim_env, controller, diagram = build_diagram(sim_params)
+    sim_env, controller, cost_holder, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
 
     ic_generator = InitialConditionsServer(
@@ -111,11 +141,13 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
     # grab the sim and controller contexts for convenience
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
     controller_context = controller.GetMyMutableContextFromRoot(context)
+    cost_system_context = cost_holder.GetMyMutableContextFromRoot(context)
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
     t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
     context.SetTime(t_init)
+    print(f"t_init: {t_init}")
 
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
     sim_env.controller.SetSwingFootPositionAtLiftoff(

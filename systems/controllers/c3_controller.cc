@@ -149,6 +149,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   DRAKE_DEMAND(R_.front().cols() == lcs.k_);
   DRAKE_DEMAND(G_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
   DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
+  DRAKE_DEMAND(U_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
+  DRAKE_DEMAND(U_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
 
   if (c3_options_.projection_type == "MIQP") {
     c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
@@ -171,12 +173,12 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   for (int i : vector<int>({0, 2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.2, 0.8, 1);
+    c3_->AddLinearConstraint(A, 0.35, 0.6, 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.4, 0.4, 1);
+    c3_->AddLinearConstraint(A, -0.2, 0.2, 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);

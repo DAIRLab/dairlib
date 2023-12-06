@@ -328,8 +328,6 @@ void OperationalSpaceControl::Build() {
     n_lambda_ext_ += force_tracking_data->GetLambdaDim();
   }
 
-  std::cout << "num contact forces" << n_lambda_ext_ << std::endl;
-
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
     n_c_active_ += evaluator->num_active();

@@ -91,11 +91,11 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  if (sim_params.scene_index == 1){
+  if (sim_params.scene_index == 1) {
     drake::multibody::ModelInstanceIndex left_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.right_support_model))[0];
+    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
+        FindResourceOrThrow(sim_params.right_support_model))[0];
     Vector3d first_support_position =
         StdVectorToVectorXd(sim_params.left_support_position);
     Vector3d second_support_position =
@@ -110,6 +110,24 @@ int DoMain(int argc, char* argv[]) {
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", right_support_index),
                      T_S2_W);
+    const drake::geometry::GeometrySet& support_geom_set =
+        plant.CollectRegisteredGeometries({
+            &plant.GetBodyByName("support", left_support_index),
+            &plant.GetBodyByName("support", right_support_index),
+        });
+    const drake::geometry::GeometrySet& paddle_geom_set =
+        plant.CollectRegisteredGeometries(
+            {&plant.GetBodyByName("panda_link2"),
+             &plant.GetBodyByName("panda_link3"),
+             &plant.GetBodyByName("panda_link4"),
+             &plant.GetBodyByName("panda_link5"),
+             &plant.GetBodyByName("panda_link6"),
+             &plant.GetBodyByName("panda_link7"),
+             &plant.GetBodyByName("plate"),
+             &plant.GetBodyByName("panda_link8")});
+
+    plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+        {"paddle", support_geom_set}, {"tray", paddle_geom_set});
   }
 
   const drake::geometry::GeometrySet& paddle_geom_set =
@@ -120,7 +138,8 @@ int DoMain(int argc, char* argv[]) {
           &plant.GetBodyByName("panda_link5"),
           &plant.GetBodyByName("panda_link6"),
           &plant.GetBodyByName("panda_link8"),
-//          &plant.GetBodyByName("plate"),
+
+          //          &plant.GetBodyByName("plate"),
       });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));

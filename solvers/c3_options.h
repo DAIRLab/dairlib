@@ -19,9 +19,6 @@ struct C3Options {
   double w_G;
   double w_U;
 
-  int g_size;
-  int u_size;
-
   std::vector<double> q_vector;
   std::vector<double> r_vector;
   std::vector<double> g_vector;
@@ -30,6 +27,7 @@ struct C3Options {
   std::vector<double> g_lambda_n;
   std::vector<double> g_lambda_t;
   std::vector<double> g_lambda;
+
   std::vector<double> g_u;
   std::vector<double> u_vector;
   std::vector<double> u_x;
@@ -114,9 +112,6 @@ struct C3Options {
         u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
-
-    // DRAKE_DEMAND(u_size == u_vector.size());
-    // DRAKE_DEMAND(g_size == g_vector.size());
 
     Eigen::VectorXd q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->q_vector.data(), this->q_vector.size());

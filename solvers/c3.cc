@@ -287,15 +287,16 @@ void C3::RemoveConstraints() {
 vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
                                      vector<VectorXd>& WZ) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
+  int i;
 
-//  if (options_.num_threads > 0) {
-//    omp_set_num_threads(options_.num_threads);  // Set number of threads
-//    omp_set_nested(1);
-//  }
-  omp_set_dynamic(0);  // Explicitly disable dynamic teams
+  if (options_.num_threads > 0) {
+    omp_set_dynamic(0);  // Explicitly disable dynamic teams
+    omp_set_num_threads(options_.num_threads);  // Set number of threads
+    omp_set_nested(1);
+  }
 
 #pragma omp parallel for num_threads(N_)
-  for (int i = 0; i < N_; ++i) {
+  for (i = 0; i < N_; i++) {
     if (warm_start_) {
       deltaProj[i] =
           SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i], c_[i], i);

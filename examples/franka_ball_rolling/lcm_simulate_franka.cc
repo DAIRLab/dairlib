@@ -49,6 +49,7 @@ using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
 
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
@@ -63,11 +64,20 @@ int DoMain(int argc, char* argv[]){
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/franka_box.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  // TODO: (@Wei-Cheng Huang) make transform later be in the parameter file
+  // TODO: (@Wei-Cheng Huang) make the height of the table later be adjustable also using parameter file
+  Vector3d T_F_EE(0, 0, 0.107);
+  RigidTransform<double> X_F_EE = RigidTransform<double>(T_F_EE);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("connection"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
+
   plant.Finalize();
   
   /* -------------------------------------------------------------------------------------------*/
@@ -91,6 +101,10 @@ int DoMain(int argc, char* argv[]){
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
   auto logger = builder.AddSystem<VectorLogSink<double>>(nq+nv+nu, output_dt);
+
+  if (true) {
+        drake::visualization::AddDefaultVisualization(&builder);
+  }
   
   // multiplex state and input for logger
   std::vector<int> input_sizes = {nq+nv, nu};

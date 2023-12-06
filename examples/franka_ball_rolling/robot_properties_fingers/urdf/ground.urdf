@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="ground">
+  <link name="ground">
+   <inertial>
+      <mass value="1"/>
+      <!-- Inertia values were calculated to be consistent with the mass and
+           geometry size, assuming a uniform density. -->
+      <inertia ixx="100"  ixy="0"  ixz="0" iyy="100" iyz="0" izz="100" />
+   </inertial>
+   <visual>
+      <geometry>
+        <box size="5 5 0.1"/>
+      </geometry>
+   </visual>
+   <collision name="ground">
+      <geometry>
+        <box size="5 5 0.1"/>
+      </geometry>
+        <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
+   </collision>
+   <contact>
+            <lateral_friction value="0.0"/>
+            <rolling_friction value="0.0"/>
+            <contact_cfm value="0.0"/>
+            <contact_erp value="0.0"/>
+   </contact>
+  </link>
+
+  <!-- Visual box to connect franka to ground (table) -->
+  <link name="connection">
+     <visual>
+        <origin xyz="-0.05 0 -0.01225" />
+        <geometry>
+           <!-- TODO: make the size to be larger to make it visually right and still tunable in lcm script -->
+           <box size="0.3 0.3 0.0245"/>
+        </geometry>
+     </visual>
+  </link>
+
+  <joint name="connection_to_ground" type="fixed">
+     <parent link="connection"/>
+     <child link="ground"/>
+     <!-- lowered the table since Franka table is a bit lower as well (offset by -0.0301)-->
+     <origin xyz="0 0 -0.07450000000000001"/> <!-- -0.05 + table_offset-->
+  </joint>
+
+
+  <drake:collision_filter_group name="ground_group">
+  <drake:member link="ground"/>
+  <drake:ignored_collision_filter_group name="ground_group"/>
+  </drake:collision_filter_group>
+</robot>

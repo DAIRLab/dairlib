@@ -81,7 +81,7 @@ cc_binary(
         "//systems/framework:lcm_driven_loop",
         "//systems/controllers:c3_controller_franka_cube",
         "//examples/cube_franka:c3_parameters",
-
+        "//examples/cube_franka/systems:c3_trajectory_generator",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -89,6 +89,26 @@ cc_binary(
     data = [":trifinger_urdf",
             "@drake//manipulation/models/franka_description:models"]
 )
+
+cc_binary(
+    name = "franka_meshcat_visualizer",
+    srcs = ["franka_meshcat_visualizer.cc"],
+    data = [
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 
 # cc_binary(
 #    name = "run_impedance_experiment",

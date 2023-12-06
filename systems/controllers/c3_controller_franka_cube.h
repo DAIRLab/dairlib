@@ -19,6 +19,7 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "solvers/lcs_factory_franka.h"
 
+#include "solvers/c3_output.h"
 #include "drake/common/autodiff.h"
 #include "drake/geometry/scene_graph.h"
 #include "drake/math/autodiff_gradient.h"
@@ -87,17 +88,26 @@ class C3Controller_franka : public LeafSystem<double> {
 
   const drake::systems::OutputPort<double>& get_input_port_output() const {
     return this->get_output_port(state_output_port_);
-
   }
+
+  const drake::systems::OutputPort<double>& get_output_port_solution() const {
+    return this->get_output_port(c3_solution_port_);
+  }
+
 
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
+  void OutputC3Solution(const drake::systems::Context<double>& context,
+                    C3Output::C3Solution* c3_solution) const;
+
   void StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
                        const Eigen::Vector3d end_effector, double timestamp) const;
 
   int state_input_port_;
   int state_output_port_;
+  int c3_solution_port_;
+
   const MultibodyPlant<double>& plant_;
   MultibodyPlant<double>& plant_f_;
   const MultibodyPlant<double>& plant_franka_;
@@ -144,6 +154,9 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable Eigen::Vector3d prev_position_;
   mutable Eigen::Vector3d prev_velocity_;
   mutable std::deque<Eigen::Vector3d> past_velocities_;
+
+  mutable vector<vector<VectorXd>> all_fullsols_;
+  mutable vector<VectorXd> fullsols_;
 
   mutable bool received_first_message_{false};
   mutable double first_message_time_{-1.0};

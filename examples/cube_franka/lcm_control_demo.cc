@@ -23,6 +23,7 @@
 #include "systems/system_utils.h"
 
 #include "examples/cube_franka/c3_parameters.h"
+#include "examples/cube_franka/systems/c3_trajectory_generator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/c3_controller_franka_cube.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -44,6 +45,8 @@ using drake::systems::Context;
 using drake::multibody::Parser;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
+using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;
@@ -333,11 +336,28 @@ int DoMain(int argc, char* argv[]){
                                   num_friction_directions, mu, Q, R, G, U, 
                                   xdesired, pp);
 
+  auto actor_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "ACTOR_CHANNEL", &drake_lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+  auto object_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "OBJECT_CHANNEL", &drake_lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
   // Function Arguments: int num_positions, int num_velocities, int lambda_size, int  misc_size
   auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(NUM_POSITIONS, NUM_VELOCITIES, NUM_LAMBDAS, NUM_VISUALIZATION);
 
   builder.Connect(state_receiver->get_output_port(0), controller->get_input_port(0));    
-  builder.Connect(controller->get_output_port(), state_force_sender->get_input_port(0));
+  builder.Connect(controller->get_input_port_output(), state_force_sender->get_input_port(0));
+  auto c3_trajectory_generator =
+    builder.AddSystem<systems::C3TrajectoryGenerator>(plant, N);
+  builder.Connect(controller->get_output_port_solution(), c3_trajectory_generator->get_input_port_c3_solution());
+  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+                  actor_trajectory_sender->get_input_port());
+  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
+                  object_trajectory_sender->get_input_port());
 
   // determine if ttl 0 or 1 should be used for publishing
   drake::lcm::DrakeLcm* pub_lcm;

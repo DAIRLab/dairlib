@@ -29,6 +29,8 @@ using std::vector;
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::MatrixX;
+using Eigen::MatrixXf;
+using Eigen::VectorXf;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::MultibodyPlant;
@@ -166,10 +168,34 @@ C3Controller_franka::C3Controller_franka(
   q_map_ = multibody::MakeNameToPositionsMap(plant_);
   v_map_ = multibody::MakeNameToVelocitiesMap(plant_);
 
+  all_fullsols_ = std::vector<vector<VectorXd>>(1 + std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos));
+
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
       "examples/cube_franka/parameters.yaml");
   max_desired_velocity_ = param_.velocity_limit;
+
+  n_ = 19;
+  m_ = 4*4;     // 4 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
+  k_ = 3;
+  N_ = param_.horizon_length;
+
+  fullsols_ = std::vector<VectorXd>(N_);
+  for (int i = 0; i < N_; ++i) {
+    fullsols_[i] = Eigen::VectorXd::Zero(n_ + m_ + k_);
+  }
+
+  int n_q_ = plant_.num_positions();
+  int n_v_ = plant_.num_velocities();
+  auto c3_solution = C3Output::C3Solution();
+  c3_solution.x_sol_ = MatrixXf::Zero(n_, N_);
+  c3_solution.lambda_sol_ = MatrixXf::Zero(m_, N_);
+  c3_solution.u_sol_ = MatrixXf::Zero(k_, N_);
+  c3_solution.time_vector_ = VectorXf::Zero(N_);
+  c3_solution_port_ =
+      this->DeclareAbstractOutputPort("c3_solution", c3_solution,
+                                      &C3Controller_franka::OutputC3Solution)
+          .get_index();
 
   // filter info
   prev_timestamp_ = 0;
@@ -202,10 +228,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                       TimestampedVector<double>* state_contact_desired) const {
 
   // Set up some variables and initialize warm start.
-  N_ = param_.horizon_length;
-  n_ = 19;
-  m_ = 4*4;     // 4 forces per contact pair, 3 pairs for 3 capsules with ground, 1 pair for ee and closest capsule.
-  k_ = 3;
+
 
   // Do separate warm starting for samples than for current end effector location.
   // --> Current end effector location.  This will be updated with every control loop.
@@ -580,7 +603,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   std::vector<double> cost_vector(num_samples);                                   // Vector of costs per sample.
   std::vector<VectorXd> predicted_states_at_end_horizon_optimistic(num_samples, VectorXd::Zero(n_));  // Vector of optimistic predicted last states.
   std::vector<VectorXd> predicted_states_at_end_horizon_feasible(num_samples, VectorXd::Zero(n_));    // Vector of feasible predicted last states.
-  vector<VectorXd> fullsol_current_location;                                      // Current location C3 solution.
+  vector<VectorXd> fullsol_current_location;                                      // Current location C3 solution.  TODO replaced by below.
 
   // Omp parallelization settings.
   // NOTE:  Need to disable using the parameter num_threads in c3_options.h for the inner C3 parallelization by setting the
@@ -654,6 +677,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       vector<VectorXd> predicted_state_trajectory = c3_cost_trajectory_pair.second;
       predicted_states_at_end_horizon_feasible[i] = predicted_state_trajectory.back();
       predicted_states_at_end_horizon_optimistic[i] = fullsol_sample_location.back().head(n_);      // Get x portion from z vector.
+
+      // TODO: Save the full solution but change other now redundant code.
+      // all_fullsols_.at(i) = fullsol_sample_location;
+      fullsols_ = fullsol_sample_location;
 
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
@@ -993,6 +1020,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
+}
+
+void C3Controller_franka::OutputC3Solution(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const {
+  double t = context.get_time();
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = t + i * param_.planning_timestep;
+    c3_solution->x_sol_.col(i) = fullsols_[i].segment(0, n_).cast<float>();
+    c3_solution->lambda_sol_.col(i) =
+        fullsols_[i].segment(n_, m_).cast<float>();
+    c3_solution->u_sol_.col(i) =
+        fullsols_[i].segment(n_ + m_, k_).cast<float>();
+  }
 }
 
 

@@ -23,3 +23,24 @@ cc_library(
         "//examples/cube_franka:c3_parameters",
     ],
 )
+
+cc_library(
+    name = "c3_trajectory_generator",
+    srcs = [
+        "c3_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "c3_trajectory_generator.h",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

@@ -98,6 +98,7 @@ cc_library(
         "//examples/cube_franka:c3_parameters",
         "//systems/framework:vector",
         "//solvers:c3",
+        "//solvers:c3_output",
         "//solvers:lcs",
         "@drake//:drake_shared_library",
     ],

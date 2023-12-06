@@ -30,25 +30,6 @@
    </contact>
   </link>
 
-  <!-- Visual box to connect franka to ground (table) -->
-  <link name="connection">
-     <visual>
-        <origin xyz="-0.05 0 -0.01225" />
-        <geometry>
-           <!-- TODO: make the size to be larger to make it visually right and still tunable in lcm script -->
-           <box size="0.3 0.3 0.0245"/>
-        </geometry>
-     </visual>
-  </link>
-
-  <joint name="connection_to_ground" type="fixed">
-     <parent link="connection"/>
-     <child link="ground"/>
-     <!-- lowered the table since Franka table is a bit lower as well (offset by -0.0301)-->
-     <origin xyz="0 0 -0.07450000000000001"/> <!-- -0.05 + table_offset-->
-  </joint>
-
-
   <drake:collision_filter_group name="ground_group">
   <drake:member link="ground"/>
   <drake:ignored_collision_filter_group name="ground_group"/>

@@ -65,6 +65,7 @@ int DoMain(int argc, char* argv[]){
 
   Parser parser(&plant);
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
@@ -73,10 +74,17 @@ int DoMain(int argc, char* argv[]){
   // TODO: (@Wei-Cheng Huang) make transform later be in the parameter file
   // TODO: (@Wei-Cheng Huang) make the height of the table later be adjustable also using parameter file
   Vector3d T_F_EE(0, 0, 0.107);
+  // z is half table width + table offset
+  Vector3d T_F_G(0, 0, -0.0745);
+
   RigidTransform<double> X_F_EE = RigidTransform<double>(T_F_EE);
+  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
+
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("connection"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("visual_table_offset"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("ground"), X_F_G);
+
 
   plant.Finalize();
   

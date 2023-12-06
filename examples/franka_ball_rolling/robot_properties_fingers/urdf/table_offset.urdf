@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="visual_table_offset">
+  <!-- Visual box to show the offset that connect franka to ground (table) -->
+  <link name="visual_table_offset">
+     <visual>
+        <origin xyz="-0.05 0 -0.2" />
+        <geometry>
+           <box size="0.3 0.3 0.4"/>
+        </geometry>
+     </visual>
+  </link>
+</robot>

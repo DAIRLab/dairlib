@@ -147,7 +147,6 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
     #  First, align the timing with what's given by the initial condition
     t_init = datapoint['stance'] * t_s2s + t_ds + t_eps + datapoint['phase']
     context.SetTime(t_init)
-    print(f"t_init: {t_init}")
 
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
     sim_env.controller.SetSwingFootPositionAtLiftoff(

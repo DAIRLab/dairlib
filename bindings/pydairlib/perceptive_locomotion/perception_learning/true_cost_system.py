@@ -16,7 +16,12 @@ from pydrake.systems.all import (
     LeafSystem,
     Context,
     InputPort,
-    OutputPort
+    OutputPort,
+    EventStatus
+)
+
+from pydrake.systems.framework import (
+    DiscreteValues,
 )
 
 from pydrake.multibody.plant import MultibodyPlant
@@ -24,8 +29,7 @@ from pydrake.multibody.plant import MultibodyPlant
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQROptions)
 
-# define another leaf system that takes alip_state as input evaluates the time 
-# between impacts and computes the cumulative cost
+# This is a system that accumulates cost over time, once per stride.
 class CumulativeCost(LeafSystem):
     def __init__(self, alip_params: AlipFootstepLQROptions):
         super().__init__()
@@ -52,11 +56,9 @@ class CumulativeCost(LeafSystem):
         }
 
         self.params = alip_params
-        self.cost = 0
-        self.prev_stance = None
-        self.curr_stance = None
-        # This discrete state is used to make sure to update the cost only once in every stance
-        self.isCostComputed = self.DeclareDiscreteState(1)
+        
+        self.calculated_cost_this_stride = self.DeclareDiscreteState(1)
+        self.cumulative_cost = self.DeclareDiscreteState(1)
         self.DeclarePerStepDiscreteUpdateEvent(self.calculate_cumulative_cost)
 
     def get_input_port_by_name(self, name: str) -> InputPort:
@@ -67,58 +69,25 @@ class CumulativeCost(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
     
-    def calculate_cumulative_cost(self, context: Context, cumulative_cost: BasicVector) -> None:
+    def calculate_cumulative_cost(self, context: Context, discrete_state : DiscreteValues) -> None:
         fsm = self.EvalVectorInput(context, self.input_port_indices['fsm'])
         time_until_switch = self.EvalVectorInput(context, self.input_port_indices['time_until_switch'])
-
-        self.curr_stance = "Left" if fsm == 0 or fsm == 3 else "Right"
-
-        # if prev stance is none, then it is in the first stance
-        # if curr stance is the same as prev stance and time until switch is less than epsilon, then update cost and update the discrete state
-        # Only compute cost once in every stance
-
-        if self.prev_stance is None:
-            self.prev_stance = self.curr_stance
-            # TODO: Figure out how to set cost to x0.T @ Q @ x0 here.
-        else:
-            if ((self.curr_stance == self.prev_stance) & (time_until_switch[0] < 0.5) & (self.isCostComputed.get_value() == 0)):
-                cost = BasicVector(1)
-                cost = np.array([300])
-                self.prev_stance = self.curr_stance
-                # print("directly printing cost = ", cost)
-                # update ComputeCost
-                self.DeclarePerStepDiscreteUpdateEvent()
-                cumulative_cost.set_value(cost)
-                self.isCostComputed.set_value(1)
-                print("updated isCostComputed = ", self.get_mutable_vector(isCostComputed).get_value))
-
-        if self.prev_stance != self.curr_stance:
-            self.prev_stance = self.curr_stance
-            self.isCostComputed.set_value(0)
-            print("resetting isComputedFlag = ", context.get_discrete_state_vector()())
-            
-
-                
-        
-
-        if time_until_switch[0] < 0.5:
-            # print("need to calculate cost")
-            # set output port value
-            cost = BasicVector(1)
-            cost = np.array([300])
-            # print("directly printing cost = ", cost)
-            cumulative_cost.set_value(cost)
+        t_threshold = 0.1
 
         x = self.EvalVectorInput(context, self.input_port_indices['x'])
+        x = x.value()
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
-        # self.cost += (x - xd_ud[:4]).dot(self.params.Q).dot(x - xd_ud[:4]) + \
-        #     0.5 * xd_ud[4:].dot(self.params.R).dot(xd_ud[4:])
-        # self.get_mutable_output_port(self.output_port_indices['cumulative_cost']). \
-        #     set_value(self.cost)
+        xd = xd_ud.value()[:4]
+        ud = xd_ud.value()[4:]
 
-    # def calculate_time_between_impacts(self, context: Context, time_between_impacts: BasicVector) -> None:
-    #     x = self.EvalVectorInput(context, self.input_port_indices['x'])
-    #     time_between_impacts.SetAtIndex(0, x[3])
+        if time_until_switch[0] > t_threshold:
+            context.get_mutable_discrete_state(self.calculated_cost_this_stride).set_value(np.array([0]))
+        elif ((context.get_mutable_discrete_state(self.calculated_cost_this_stride).get_value()[0] == 0) & (int(fsm[0]) == 0 or int(fsm[0]) == 1)):
+            cost_so_far = context.get_mutable_discrete_state(self.cumulative_cost).get_value()[0]
+            curr_cost = (x - xd).T @ self.params.Q @ (x - xd) + ud.T @ self.params.R @ ud
+            cost_so_far += curr_cost
+            
+            context.get_mutable_discrete_state(self.cumulative_cost).set_value(np.array([cost_so_far]))
+            context.get_mutable_discrete_state(self.calculated_cost_this_stride).set_value(np.array([1]))
 
-
-     
+        return EventStatus.Succeeded()

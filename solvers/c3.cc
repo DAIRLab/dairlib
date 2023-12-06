@@ -243,9 +243,12 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(const VectorXd& x0, 
   XX[0] = x0;
 
   // Get the N step lcs rollout.
-  for (int i = 0; i < N_; i++){
-    XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
-  }
+  // for (int i = 0; i < N_; i++){
+  //   XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+  //   std::cout<<"UU inside c3 = "<<UU[i]<<std::endl;
+  // }
+
+  
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.
   std::vector<Eigen::MatrixXd> Q_eff = Q_;

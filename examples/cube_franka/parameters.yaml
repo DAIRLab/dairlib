@@ -17,14 +17,14 @@ moving_offset: 0 #0.0005
 pushing_offset: 0 #-0.001
 
 # c3 parameters
-mu: 1                  # changes need to be consistent with urdf
+mu: 0.3                  # changes need to be consistent with urdf
 use_full_cost: true        # debugging parameter, if false uses ball location error only to compare current with sample c3 costs.
 Q_default: 0
 Q_finger: 1000      # finger xyz cost  # TODO tune these
 Q_ball_x: 100000 #10000  # TODO tune these
 Q_ball_y: 100000  #10000  # TODO tune these
 Q_ball_z: 1000
-Q_finger_vel: 20000  #10        # translational velocity cost  # TODO may need to tune these
+Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to tune these
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 500 #0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
@@ -103,17 +103,17 @@ min_angle_from_vertical: 0  #0.785    # radians minimum angle from vertical (i.e
 max_angle_from_vertical: 1.822    # radians maximum angle from vertical (i.e. closest to bottom of sphere) used for spherical surface sampling (2).
 num_additional_samples_repos: 2   # number of additional samples to consider when doing repositioning.
 num_additional_samples_c3: 1      # number of additional samples to consider when doing C3.
-spline_width: 0.13   #0.09
-travel_cost_per_meter: 100
+spline_width: 0.08   #0.09
+travel_cost_per_meter: 1000
 travel_speed: 0.75     # desired meters/second of repositioning
 
 
 #Threading parameters
-num_threads: 1     # Total number of threads to use. 0 means use all threads on machine.
+num_threads: 12     # Total number of threads to use. 0 means use all threads on machine.
 
 #Switching parameters
-switching_hysteresis: 400 #150
-reposition_fixed_cost: 500    # This needs to be higher than the switching hysteresis to ensure switching
+switching_hysteresis: 20000 #150
+reposition_fixed_cost: 400    # This needs to be higher than the switching hysteresis to ensure switching
                               # back to C3 once it repositions and reaches a repositioning goal.
 finished_reposition_cost: 1000000   # Added cost to repositioning target if travel reached the end of the spline last step.
 

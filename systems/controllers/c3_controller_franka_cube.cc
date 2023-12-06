@@ -128,13 +128,13 @@ C3Controller_franka::C3Controller_franka(
           .get_index();
 
   /*
-  State output port (92) includes:
+  State output port (95) includes:
     xee (7) -- orientation and position of end effector
     xball (7) -- orientation and position of object (i.e. "ball")
     xee_dot (3) -- linear velocity of end effector
     xball_dot (6) -- angular and linear velocities of object
     lambda (4) -- end effector/object forces (4 friction directions)
-    visualization (65) -- miscellaneous visualization-related debugging values:
+    visualization (68) -- miscellaneous visualization-related debugging values:
       (9) 3 sample xyz locations
       (3) next xyz position of the end effector
       (3) optimal xyz sample location
@@ -155,6 +155,7 @@ C3Controller_franka::C3Controller_franka(
       (4) Quaternion associated with the jack at the end of the horizon as predicted from best sample location
       (3) Way point 1 when repositioning
       (3) Way point 2 when repositioning
+      (3) Temporary end effector location 
   */
   state_output_port_ = this->DeclareVectorOutputPort(
           "xee, xball, xee_dot, xball_dot, lambda, visualization",
@@ -639,6 +640,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       // Solve optimization problem, add travel cost to the optimal C3 cost.
       // std::cout<<i<<" before solve"<<std::endl;
       vector<VectorXd> fullsol_sample_location = opt_test.SolveFullSolution(test_state, delta, w);  // Outputs full z.
+      // Print the predicted state trajectory across horizon.
+      // std::cout << "Predicted force trajectory of sample  "<< i <<"is " << std::endl;
+      // for (int j = 0; j < N_; j++) {
+      // //   // std::cout << (predicted_state_trajectory[j].segment(7, 3)).transpose() << std::endl;
+      //   std::cout<<"\t ee-jack force at time step "<<j<<" = "<<(fullsol_sample_location[j].segment(n_,4)).transpose()<<std::endl;
+      // }
       // std::cout<<i<<" after solve"<<std::endl;
       vector<VectorXd> optimalinputseq = opt_test.OptimalInputSeq(fullsol_sample_location);         // Outputs u over horizon.
       auto c3_cost_trajectory_pair = opt_test.CalcCost(test_state, optimalinputseq, param_.use_full_cost);    //Returns a pair (C3 cost for sample, Trajectory vector x0, x1 .. xN)
@@ -646,14 +653,20 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       double xy_travel_distance = (test_state.head(2) - end_effector.head(2)).norm();               // Ignore differences in z.
       // std::cout<<"xy_travel_distance "<<i<< "is: "<<xy_travel_distance<<std::endl;
       cost_vector[i] = c3_cost + param_.travel_cost_per_meter*xy_travel_distance;                   // Total sample cost considers travel distance.
-      std::cout<<"cost_vector "<<i<< "is: "<<cost_vector[i]<<std::endl;
+      // std::cout<<"cost_vector "<<i<< "is: "<<cost_vector[i]<<std::endl;
 
       // Save the feasible and optimistic predicted states at the end of the horizon.
       vector<VectorXd> predicted_state_trajectory = c3_cost_trajectory_pair.second;
+      // std::cout<<"predicted state trajectory: "<<std::endl;
+      // for (int j = 0; j < N_; j++) {
+      //   std::cout<<"\t"<<predicted_state_trajectory[j].segment(7,3).transpose()<<std::endl;
+      // }
+      
+
       predicted_states_at_end_horizon_feasible[i] = predicted_state_trajectory.back();
       predicted_states_at_end_horizon_optimistic[i] = fullsol_sample_location.back().head(n_);      // Get x portion from z vector.
 
-            // print cost of each sample
+      // // print cost of each sample
       // std::cout << "Costs: ";
       // for (int i = 0; i < num_samples; i++) {
       //   std::cout << "\tsample "<<i<<"is = "<< cost_vector[i] << ", "<<std::endl;
@@ -661,6 +674,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
+        if ((C3_flag_ == true) & ((end_effector - prev_current_ee_loc_).norm() < 0.002)) {
+            // add some constant cost to the current location to encourage switching to repositioning.
+            std::cout<<"adding constant cost to current location"<<std::endl;
+            cost_vector[i] = cost_vector[i] + 200*c3_count_;
+            c3_count_++;
+        }
         fullsol_current_location = fullsol_sample_location;
 
         // After solving, store the solutions as warm starts for the next round.
@@ -685,10 +704,10 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   //End of parallelization
 
       // print cost of each sample
-      // std::cout << "\tModified costs: "<<std::endl;
-      // for (int i = 0; i < num_samples; i++) {
-      //   std::cout << "\tsample "<<i<<"is = "<< cost_vector[i] << ", "<<std::endl;
-      // }
+      std::cout << "\tModified costs: "<<std::endl;
+      for (int i = 0; i < num_samples; i++) {
+        std::cout << "\tsample "<<i<<"is = "<< cost_vector[i] << ", "<<std::endl;
+      }
 
   // Determine whether to switch between C3 and repositioning modes if there are other samples to consider.
   SampleIndex index = CURRENT_LOCATION_INDEX;
@@ -725,6 +744,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     if (curr_ee_cost > best_additional_sample_cost + param_.switching_hysteresis) {
       C3_flag_ = false;
       finished_reposition_flag_ = false;
+      c3_count_ = 0;
     }
   }
   else {                    // Currently repositioning.
@@ -832,6 +852,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   VectorXd st_desired(STATE_VECTOR_SIZE);
   // Initializing the repositioning trajectory points to 0 for visualization.
   std::vector<Vector3d> points(4, VectorXd::Zero(3));
+  points[0] = end_effector;
   
   // DO C3.
   if (C3_flag_ == true) {
@@ -904,6 +925,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
     // Set the indicator in visualization to C3 location, at a negative y value.
     Eigen::Vector3d indicator_xyz {0, -0.4, 0.1};
+    prev_current_ee_loc_ = end_effector;  // Save the current end effector location for comparison in the next loop.
     
 
     // Update desired next state.
@@ -914,7 +936,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
                   predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
                   start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic,
-                  points[1], points[2];
+                  points[1], points[2], points[0];
   }
   // REPOSITION.
   else {
@@ -971,6 +993,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Set the indicator in visualization to repositioning location, at a positive y value.
     Eigen::Vector3d indicator_xyz {0, 0.4, 0.1};
+    prev_current_ee_loc_ = end_effector;  // Save the current end effector location for comparison in the next loop.
 
     // Set desired next state.
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(4),
@@ -980,7 +1003,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
                   predicted_jack_loc_best_sample_feasible, predicted_jack_loc_best_sample_optimistic, fixed_goal_,
                   start_point_, end_point_, predicted_jack_orientation_current_optimistic, predicted_jack_orientation_best_sample_optimistic,
-                  points[1], points[2];
+                  points[1], points[2], points[0];
   }
   
 

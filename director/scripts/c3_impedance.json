@@ -139,7 +139,7 @@
                  "type_data": {"color":[0, 0, 1],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.005
+                               "radius": 0.050
                              }
                 },
 
@@ -153,7 +153,7 @@
                  "type_data": {"color":[0, 0.5, 1],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.005
+                               "radius": 0.050
                              }
                 },
  
@@ -167,7 +167,7 @@
                  "type_data": {"color":[0, 1, 0],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.005
+                               "radius": 0.050
                              }
                 },
  
@@ -181,7 +181,7 @@
                  "type_data": {"color":[0.5, 1, 0],
                                "alpha": 0.5,
                                "type": "point",
-                               "radius": 0.005
+                               "radius": 0.050
                              }
                 },
 
@@ -252,6 +252,20 @@
                                "alpha": 0.5,
                                "type": "point",
                                "radius": 0.01
+                             }
+                },
+
+                {"name": "end effector location (x,y,z)",
+                "source_data" : {"category":"lcm",
+                                 "abstract_channel" : "CONTROLLER_INPUT",
+                                 "abstract_type" : "dairlib.lcmt_c3",
+                                 "abstract_field" : "data",
+                                 "x_index" : 92
+                                },
+                 "type_data": {"color":[0.4, 0, 0.4],
+                               "alpha": 0.5,
+                               "type": "point",
+                               "radius": 0.03
                              }
                 },
                 

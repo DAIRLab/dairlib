@@ -49,7 +49,7 @@ using drake::geometry::GeometryId;
 #define NUM_POSITIONS 14
 #define NUM_VELOCITIES 9
 #define NUM_LAMBDAS 4
-#define NUM_VISUALIZATION 65
+#define NUM_VISUALIZATION 68
 #define STATE_VECTOR_SIZE NUM_POSITIONS + NUM_VELOCITIES + NUM_LAMBDAS + NUM_VISUALIZATION
 #define PI 3.14159265359
 
@@ -180,6 +180,8 @@ class C3Controller_franka : public LeafSystem<double> {
   mutable Eigen::VectorXd fixed_goal_ = VectorXd::Zero(3);
   mutable Eigen::VectorXd start_point_ = VectorXd::Zero(3);
   mutable Eigen::VectorXd end_point_ = VectorXd::Zero(3);
+  mutable Eigen::Vector3d prev_current_ee_loc_ = VectorXd::Zero(3);
+  mutable double c3_count_ = 0;
   // kalman filter
   // mutable VectorXd xhat_prev;
   // mutable MatrixXd P_prev;

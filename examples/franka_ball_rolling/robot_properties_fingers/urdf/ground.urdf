@@ -9,11 +9,13 @@
       <inertia ixx="100"  ixy="0"  ixz="0" iyy="100" iyz="0" izz="100" />
    </inertial>
    <visual>
+      <origin xyz="0 0 -0.05" />
       <geometry>
         <box size="5 5 0.1"/>
       </geometry>
    </visual>
    <collision name="ground">
+      <origin xyz="0 0 -0.05" />
       <geometry>
         <box size="5 5 0.1"/>
       </geometry>

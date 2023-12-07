@@ -6,6 +6,11 @@ std::vector<double> CopyVectorXdToStdVector(
                              eigen_vec.data() + eigen_vec.size());
 }
 
+Eigen::VectorXd StdVectorToVectorXd(std::vector<double> std_vec) {
+    return Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(std_vec.data(),
+                                                         std_vec.size());
+}
+
 Eigen::VectorXd eigen_clamp(
     const Eigen::VectorXd& value, const Eigen::VectorXd& lb, const Eigen::VectorXd& ub){
   DRAKE_DEMAND(value.size() == lb.size());

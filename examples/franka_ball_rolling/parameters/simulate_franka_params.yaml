@@ -1,0 +1,30 @@
+# --------------------------  URDF Model Path Settings  -----------------------------#
+franka_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf
+end_effector_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf
+ball_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf
+ground_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf
+offset_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf
+
+# ----------------------  Simulation, Publish and Rate Settings  ---------------------#
+sim_dt: 0.0001
+publish_dt: 0.0001
+realtime_rate: 1.0
+
+# -----------------------  Extra Model Fixed Frame Settings  ------------------------#
+# the tranlsation vector of end effector to panda link 7
+tool_attachment_frame: [0, 0, 0.107]
+# the tranlsation vector of end effector to panda link 0 (world frame)
+ground_offset_frame: [0, 0, -0.0245]
+
+# ---------------------------  Initial Condition Settings  --------------------------#
+# q_franka: seven joint angles of franka
+q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
+# q_ball: only define the quaternion [qw, qi, qj, qk], position xy computed according to
+#  x_c, y_c, traj_radius, and phase, position z is fixed value for planer ball rolling,
+# calculated through ball radius and offset value
+q_init_ball: [1, 0, 0, 0]
+traj_radius: 0.1
+phase: 0
+x_c: 0.55
+y_c: 0
+ball_radius: 0.0315

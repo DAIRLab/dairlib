@@ -125,6 +125,17 @@ cc_library(
         "robot_properties_fingers/cube/**"])
 )
 
+cc_library(
+    name = "simulate_franka_params",
+    hdrs = ["parameters/simulate_franka_params.h"],
+    data = [
+        "parameters/simulate_franka_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "lcm_ball_rolling_planner",
     srcs = ["lcm_ball_rolling_planner.cc"],
@@ -149,7 +160,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
-        "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_ball_rolling:simulate_franka_params",
         "//common",
         "@drake//:drake_shared_library",
         "@gflags",

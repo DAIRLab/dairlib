@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
@@ -21,10 +20,9 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
-#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -49,13 +47,13 @@ using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
   // load parameters
-  C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
-    "examples/franka_ball_rolling/parameters.yaml");
+  SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<SimulateFrankaParams>(
+    "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
 
   // load urdf and sphere
   DiagramBuilder<double> builder;
-  double sim_dt = param.sim_dt;
-  double output_dt = param.sim_dt; // should have an output dt in param
+  double sim_dt = sim_param.sim_dt;
+  double publish_dt = sim_param.publish_dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
   Parser parser(&plant);
@@ -66,14 +64,8 @@ int DoMain(int argc, char* argv[]){
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  // TODO: (@Wei-Cheng Huang) make transform later be in the parameter file
-  // TODO: (@Wei-Cheng Huang) make the height of the table later be adjustable also using parameter file
-  Vector3d T_F_EE(0, 0, 0.107);
-  // z is half table width + table offset
-  Vector3d T_F_G(0, 0, -0.0745);
-
-  RigidTransform<double> X_F_EE = RigidTransform<double>(T_F_EE);
-  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
+  RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);
+  RigidTransform<double> X_F_G = RigidTransform<double>(sim_param.ground_offset_frame);
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
@@ -89,8 +81,8 @@ int DoMain(int argc, char* argv[]){
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
-    &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
-    1/output_dt, true, 0.0);
+          &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
+          1 / publish_dt, true, 0.0);
 
   /// meshcat visualizer
     drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
@@ -103,7 +95,7 @@ int DoMain(int argc, char* argv[]){
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
-  auto logger = builder.AddSystem<VectorLogSink<double>>(nq+nv+nu, output_dt);
+  auto logger = builder.AddSystem<VectorLogSink<double>>(nq+nv+nu, publish_dt);
 
   if (true) {
         drake::visualization::AddDefaultVisualization(&builder);
@@ -124,7 +116,7 @@ int DoMain(int argc, char* argv[]){
   
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(param.realtime_rate);
+  simulator.set_target_realtime_rate(sim_param.realtime_rate);
 
   auto& plant_context = diagram->GetMutableSubsystemContext(
       plant, &simulator.get_mutable_context());
@@ -133,23 +125,23 @@ int DoMain(int argc, char* argv[]){
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
-  q[q_map["panda_joint1"]] = param.q_init_franka(0);
-  q[q_map["panda_joint2"]] = param.q_init_franka(1);
-  q[q_map["panda_joint3"]] = param.q_init_franka(2);
-  q[q_map["panda_joint4"]] = param.q_init_franka(3);
-  q[q_map["panda_joint5"]] = param.q_init_franka(4);
-  q[q_map["panda_joint6"]] = param.q_init_franka(5);
-  q[q_map["panda_joint7"]] = param.q_init_franka(6);
+  q[q_map["panda_joint1"]] = sim_param.q_init_franka(0);
+  q[q_map["panda_joint2"]] = sim_param.q_init_franka(1);
+  q[q_map["panda_joint3"]] = sim_param.q_init_franka(2);
+  q[q_map["panda_joint4"]] = sim_param.q_init_franka(3);
+  q[q_map["panda_joint5"]] = sim_param.q_init_franka(4);
+  q[q_map["panda_joint6"]] = sim_param.q_init_franka(5);
+  q[q_map["panda_joint7"]] = sim_param.q_init_franka(6);
 
   // initialize ball
-  double traj_radius = param.traj_radius;
-  q[q_map["base_qw"]] = param.q_init_ball(0);
-  q[q_map["base_qx"]] = param.q_init_ball(1);
-  q[q_map["base_qy"]] = param.q_init_ball(2);
-  q[q_map["base_qz"]] = param.q_init_ball(3);
-  q[q_map["base_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
-  q[q_map["base_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
-  q[q_map["base_z"]] = param.ball_radius + param.table_offset;
+  double traj_radius = sim_param.traj_radius;
+  q[q_map["base_qw"]] = sim_param.q_init_ball(0);
+  q[q_map["base_qx"]] = sim_param.q_init_ball(1);
+  q[q_map["base_qy"]] = sim_param.q_init_ball(2);
+  q[q_map["base_qz"]] = sim_param.q_init_ball(3);
+  q[q_map["base_x"]] = sim_param.x_c + traj_radius * sin(M_PI * sim_param.phase / 180.0);
+  q[q_map["base_y"]] = sim_param.y_c + traj_radius * cos(M_PI * sim_param.phase / 180.0);
+  q[q_map["base_z"]] = sim_param.ball_radius - sim_param.ground_offset_frame(2);
 
   plant.SetPositions(&plant_context, q);
 
@@ -158,8 +150,6 @@ int DoMain(int argc, char* argv[]){
 
   simulator.Initialize();
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
-
-  // do data logging here
 
   return 0;
 }

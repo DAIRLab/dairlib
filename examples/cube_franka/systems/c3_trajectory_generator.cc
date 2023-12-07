@@ -54,10 +54,6 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
   const auto& c3_solution =
       this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
-  std::cout << "c3_solution->x_sol_ = " << c3_solution->x_sol_.rows() << std::endl;
-  std::cout << "c3_solution->x_sol_ = " << c3_solution->x_sol_.cols() << std::endl;
-  std::cout << "state = " << n_q_ + n_v_ << std::endl;
-  std::cout << "N = " << N_ << std::endl;
   DRAKE_DEMAND(c3_solution->x_sol_.rows() == n_q_ + n_v_);
   DRAKE_DEMAND(c3_solution->x_sol_.cols() == N_);
 

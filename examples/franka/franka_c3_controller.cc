@@ -86,11 +86,9 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
-  Vector3d tool_attachment_frame =
-      StdVectorToVectorXd(controller_params.tool_attachment_frame);
 
   RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), tool_attachment_frame);
+      drake::math::RotationMatrix<double>(), controller_params.tool_attachment_frame);
   plant_franka.WeldFrames(
       plant_franka.GetFrameByName("panda_link7"),
       plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
@@ -119,14 +117,10 @@ int DoMain(int argc, char* argv[]) {
         parser_plate.AddModels(FindResourceOrThrow(controller_params.left_support_model))[0];
     right_support_index =
         parser_plate.AddModels(FindResourceOrThrow(controller_params.right_support_model))[0];
-    Vector3d first_support_position =
-        StdVectorToVectorXd(controller_params.left_support_position);
-    Vector3d second_support_position =
-        StdVectorToVectorXd(controller_params.right_support_position);
     RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), first_support_position);
+        drake::math::RotationMatrix<double>(), controller_params.left_support_position);
     RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), second_support_position);
+        drake::math::RotationMatrix<double>(), controller_params.right_support_position);
     plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                      plant_for_lcs.GetFrameByName("support", left_support_index),
                      T_S1_W);

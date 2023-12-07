@@ -125,5 +125,42 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
   const int N_;
 };
 
+/// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
+/// and draws it through meshcat.
+class LcmForceDrawer : public drake::systems::LeafSystem<double> {
+ public:
+  explicit LcmForceDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                          std::string force_trajectory_name,
+                          std::string actor_trajectory_name);
+
+  const drake::systems::InputPort<double>& get_input_port_trajectory() const {
+    return this->get_input_port(trajectory_input_port_);
+  }
+
+  void SetLineColor(drake::geometry::Rgba rgba) { rgba_ = rgba; }
+
+  void SetNumSamples(int N) {
+    DRAKE_DEMAND(N > 1);
+    N_ = N;
+  }
+
+ private:
+  void OutputTrajectory(const drake::systems::Context<double>& context,
+                        drake::trajectories::Trajectory<double>* traj) const;
+
+  drake::systems::EventStatus DrawTrajectory(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  drake::systems::InputPortIndex trajectory_input_port_;
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  const std::string force_path_ = "c3_forces";
+  const std::string actor_trajectory_name_;
+  const std::string force_trajectory_name_;
+  drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
+  int N_ = 5;
+  const double radius_ = 0.002;
+};
+
 }  // namespace systems
 }  // namespace dairlib

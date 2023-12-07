@@ -88,13 +88,11 @@ int do_main(int argc, char* argv[]) {
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-  Vector3d tool_attachment_frame =
-      StdVectorToVectorXd(sim_params.tool_attachment_frame);
 
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), tool_attachment_frame);
+      drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
@@ -105,14 +103,10 @@ int do_main(int argc, char* argv[]) {
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
     drake::multibody::ModelInstanceIndex right_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.right_support_model))[0];
-    Vector3d first_support_position =
-        StdVectorToVectorXd(sim_params.left_support_position);
-    Vector3d second_support_position =
-        StdVectorToVectorXd(sim_params.right_support_position);
     RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), first_support_position);
+        drake::math::RotationMatrix<double>(), sim_params.left_support_position);
     RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), second_support_position);
+        drake::math::RotationMatrix<double>(), sim_params.right_support_position);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_S1_W);
@@ -186,6 +180,10 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<systems::LcmPoseDrawer>(
           meshcat, FindResourceOrThrow(sim_params.end_effector_model), "end_effector_position_target",
           "end_effector_orientation_target");
+  auto end_effector_force_drawer =
+      builder.AddSystem<systems::LcmForceDrawer>(
+          meshcat, "end_effector_position_target",
+          "end_effector_force_target");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
@@ -203,6 +201,8 @@ int do_main(int argc, char* argv[]) {
                   object_pose_drawer->get_input_port_trajectory());
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   end_effector_pose_drawer->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_actor->get_output_port(),
+                  end_effector_force_drawer->get_input_port_trajectory());
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),

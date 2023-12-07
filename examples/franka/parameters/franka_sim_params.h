@@ -2,7 +2,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-using Eigen::MatrixXd;
 
 struct FrankaSimParams {
   std::string franka_model;
@@ -24,12 +23,12 @@ struct FrankaSimParams {
   bool visualize;
   bool publish_efforts;
 
-  std::vector<double> q_init_franka;
-  std::vector<std::vector<double>> q_init_plate;
-  std::vector<double> q_init_box;
-  std::vector<double> tool_attachment_frame;
-  std::vector<double> left_support_position;
-  std::vector<double> right_support_position;
+  Eigen::VectorXd q_init_franka;
+  std::vector<Eigen::VectorXd> q_init_plate;
+  Eigen::VectorXd q_init_box;
+  Eigen::VectorXd tool_attachment_frame;
+  Eigen::VectorXd left_support_position;
+  Eigen::VectorXd right_support_position;
 
   template <typename Archive>
   void Serialize(Archive* a) {

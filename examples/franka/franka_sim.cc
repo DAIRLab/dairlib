@@ -78,13 +78,11 @@ int DoMain(int argc, char* argv[]) {
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-  Vector3d tool_attachment_frame =
-      StdVectorToVectorXd(sim_params.tool_attachment_frame);
 
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), tool_attachment_frame);
+      drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    T_X_W);
@@ -96,14 +94,10 @@ int DoMain(int argc, char* argv[]) {
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
         FindResourceOrThrow(sim_params.right_support_model))[0];
-    Vector3d first_support_position =
-        StdVectorToVectorXd(sim_params.left_support_position);
-    Vector3d second_support_position =
-        StdVectorToVectorXd(sim_params.right_support_position);
     RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), first_support_position);
+        drake::math::RotationMatrix<double>(), sim_params.left_support_position);
     RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), second_support_position);
+        drake::math::RotationMatrix<double>(), sim_params.right_support_position);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_S1_W);
@@ -181,7 +175,6 @@ int DoMain(int argc, char* argv[]) {
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
-  int nu = plant.num_actuators();
 
   if (sim_params.visualize) {
     drake::visualization::AddDefaultVisualization(&builder);
@@ -201,24 +194,10 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
-  // initialize EE close to {0.5, 0, 0.12}[m] in task space
-  q[q_map["panda_joint1"]] = sim_params.q_init_franka[0];
-  q[q_map["panda_joint2"]] = sim_params.q_init_franka[1];
-  q[q_map["panda_joint3"]] = sim_params.q_init_franka[2];
-  q[q_map["panda_joint4"]] = sim_params.q_init_franka[3];
-  q[q_map["panda_joint5"]] = sim_params.q_init_franka[4];
-  q[q_map["panda_joint6"]] = sim_params.q_init_franka[5];
-  q[q_map["panda_joint7"]] = sim_params.q_init_franka[6];
+  q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  auto q_init_plate = sim_params.q_init_plate[sim_params.scene_index];
+  q.tail(plant.num_positions(tray_index)) = sim_params.q_init_plate[sim_params.scene_index];
 
-  q[q_map.at("tray_qw")] = q_init_plate[0];
-  q[q_map.at("tray_qx")] = q_init_plate[1];
-  q[q_map.at("tray_qy")] = q_init_plate[2];
-  q[q_map.at("tray_qz")] = q_init_plate[3];
-  q[q_map.at("tray_x")] = q_init_plate[4];
-  q[q_map.at("tray_y")] = q_init_plate[5];
-  q[q_map.at("tray_z")] = q_init_plate[6];
 
   //  q[q_map["box_qw"]] = sim_params.q_init_box[0];
   //  q[q_map["box_qx"]] = sim_params.q_init_box[1];

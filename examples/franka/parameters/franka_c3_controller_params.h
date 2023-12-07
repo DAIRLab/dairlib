@@ -4,9 +4,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-
 struct FrankaC3ControllerParams {
   std::vector<std::string> c3_options_file;
   std::string osqp_settings_file;
@@ -19,17 +16,17 @@ struct FrankaC3ControllerParams {
   std::string right_support_model;
   bool include_end_effector_orientation;
   double target_frequency;
-  std::vector<double> tool_attachment_frame;
+  Eigen::Vector3d tool_attachment_frame;
 
   int scene_index;
 
-  std::vector<double> neutral_position;
+  Eigen::Vector3d neutral_position;
   double x_scale;
   double y_scale;
   double z_scale;
 
-  std::vector<double> left_support_position;
-  std::vector<double> right_support_position;
+  Eigen::Vector3d left_support_position;
+  Eigen::Vector3d right_support_position;
 
   template <typename Archive>
   void Serialize(Archive* a) {

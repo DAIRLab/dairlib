@@ -34,6 +34,11 @@ class CumulativeCost(LeafSystem):
     def __init__(self, alip_params: AlipFootstepLQROptions):
         super().__init__()
 
+        self.params = alip_params
+        self.calculated_cost_this_stride = self.DeclareDiscreteState(1)
+        self.cumulative_cost = self.DeclareDiscreteState(1)
+        self.DeclarePerStepDiscreteUpdateEvent(self.calculate_cumulative_cost)
+
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
                 "xd_ud[x,y]", 6
@@ -50,16 +55,9 @@ class CumulativeCost(LeafSystem):
         }
 
         self.output_port_indices = {
-            'cumulative_cost': self.DeclareVectorOutputPort(
-                "cumulative_cost", 1, self.calculate_cumulative_cost
-            ).get_index()
+            'cost' : self.DeclareStateOutputPort(
+                "cost", self.cumulative_cost).get_index()
         }
-
-        self.params = alip_params
-        
-        self.calculated_cost_this_stride = self.DeclareDiscreteState(1)
-        self.cumulative_cost = self.DeclareDiscreteState(1)
-        self.DeclarePerStepDiscreteUpdateEvent(self.calculate_cumulative_cost)
 
     def get_input_port_by_name(self, name: str) -> InputPort:
         assert (name in self.input_port_indices)
@@ -69,7 +67,7 @@ class CumulativeCost(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
     
-    def calculate_cumulative_cost(self, context: Context, discrete_state : DiscreteValues) -> None:
+    def calculate_cumulative_cost(self, context: Context, output_cost : DiscreteValues) -> None:
         fsm = self.EvalVectorInput(context, self.input_port_indices['fsm'])
         time_until_switch = self.EvalVectorInput(context, self.input_port_indices['time_until_switch'])
         t_threshold = 0.1

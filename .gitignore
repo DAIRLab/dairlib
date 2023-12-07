@@ -18,3 +18,4 @@ log.txt
 *.out
 lcmlog*
 /examples/cube_franka/gurobi_autotune/*
+logs/*

@@ -106,7 +106,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         cost_system.get_input_port_by_name('time_until_switch')
     )
     builder.Connect(
-        cost_system.get_output_port_by_name('cumulative_cost'),
+        cost_system.get_output_port_by_name('cost'),
         cost_holder.get_input_port()
     )        
 
@@ -199,7 +199,7 @@ def traced(func, ignoredirs=None):
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/wavy_test.yaml'
+        perception_learning_base_folder, 'params/stair_curriculum.yaml'
     )
     sim_params.visualize = True
     run(sim_params)

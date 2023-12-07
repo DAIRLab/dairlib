@@ -29,6 +29,7 @@ from pydrake.multibody.plant import MultibodyPlant
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQROptions)
 
+
 # This is a system that accumulates cost over time, once per stride.
 class CumulativeCost(LeafSystem):
     def __init__(self, alip_params: AlipFootstepLQROptions):

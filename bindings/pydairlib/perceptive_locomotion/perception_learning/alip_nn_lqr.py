@@ -34,7 +34,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/dauntless-donkey-145.pth')
+    perception_learning_base_folder, 'tmp/rose-sponge-148.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):

@@ -50,12 +50,13 @@ int DoMain(int argc, char* argv[]){
   SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<SimulateFrankaParams>(
     "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
 
-  // load urdf and sphere
+  // set simulation step and publish time rates
   DiagramBuilder<double> builder;
   double sim_dt = sim_param.sim_dt;
   double publish_dt = sim_param.publish_dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
+  // load urdf models
   Parser parser(&plant);
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
@@ -97,6 +98,7 @@ int DoMain(int argc, char* argv[]){
   int nu = plant.num_actuators();
   auto logger = builder.AddSystem<VectorLogSink<double>>(nq+nv+nu, publish_dt);
 
+  // default visualizer that shows everything
   if (true) {
         drake::visualization::AddDefaultVisualization(&builder);
   }

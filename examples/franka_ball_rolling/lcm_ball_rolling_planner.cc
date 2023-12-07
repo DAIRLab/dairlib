@@ -2,13 +2,10 @@
 #include <math.h>
 #include <gflags/gflags.h>
 
-#include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include <drake/lcm/drake_lcm.h>
-#include <drake/multibody/tree/multibody_element.h>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/common/trajectories/piecewise_polynomial.h>
 #include <drake/math/rigid_transform.h>
@@ -16,14 +13,12 @@
 
 
 #include "systems/robot_lcm_systems.h"
-#include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_c3.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/system_utils.h"
 
 #include "examples/franka_ball_rolling/c3_parameters.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/controllers/c3_controller_franka.h"
 #include "systems/framework/lcm_driven_loop.h"
 
@@ -47,6 +42,7 @@ using multibody::MakeNameToVelocitiesMap;
 using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
@@ -61,12 +57,16 @@ int DoMain(int argc, char* argv[]){
   Parser parser(&plant);
   parser.package_map().Add("robot_properties_fingers",
                         "examples/franka_ball_rolling/robot_properties_fingers");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_simple.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
 
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  Vector3d T_F_G(0, 0, -0.0745);
+  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("ground"), X_F_G);
   plant.Finalize();
 
   DiagramBuilder<double> builder;
@@ -79,10 +79,14 @@ int DoMain(int argc, char* argv[]){
   Parser parser_f(&plant_f);
   parser_f.package_map().Add("robot_properties_fingers",
                         "examples/franka_ball_rolling/robot_properties_fingers");
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/trifinger_minimal_collision_2.urdf");
+  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_simple.urdf");
   parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
+  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
   RigidTransform<double> X_WI_f = RigidTransform<double>::Identity();
+  Vector3d T_F_G_f(0, 0, -0.0745);
+  RigidTransform<double> X_F_G_f = RigidTransform<double>(T_F_G);
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f);
+  plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("ground"), X_F_G_f);
   plant_f.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_ad_f = 
@@ -99,10 +103,23 @@ int DoMain(int argc, char* argv[]){
 
   auto [plant_franka, scene_graph_franka] = AddMultibodyPlantSceneGraph(&builder_franka, sim_dt);
   Parser parser_franka(&plant_franka);
-  parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/franka_box.urdf");
+  parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
+  parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
+  parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
+  parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
   parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI_franka = RigidTransform<double>::Identity();
+
+  Vector3d T_F_EE_franka(0, 0, 0.107);
+  Vector3d T_F_G_franka(0, 0, -0.0745);
+
+  RigidTransform<double> X_F_EE_franka = RigidTransform<double>(T_F_EE_franka);
+  RigidTransform<double> X_F_G_franka = RigidTransform<double>(T_F_G_franka);
+
   plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"), plant_franka.GetFrameByName("end_effector_base"), X_F_EE_franka);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"), plant_franka.GetFrameByName("visual_table_offset"), X_WI_franka);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"), plant_franka.GetFrameByName("ground"), X_F_G_franka);
   plant_franka.Finalize();
   auto context_franka = plant_franka.CreateDefaultContext();
 
@@ -290,11 +307,11 @@ int DoMain(int argc, char* argv[]){
   xdesired.push_back(xdesiredinit);
 
   drake::geometry::GeometryId finger_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("tip_link_1_real"))[0];
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("end_effector_simple"))[0];
   drake::geometry::GeometryId sphere_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId ground_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("box"))[0];
+    plant_f.GetCollisionGeometriesForBody(plant_f.GetBodyByName("ground"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = 
     {finger_geoms, sphere_geoms, ground_geoms};
 

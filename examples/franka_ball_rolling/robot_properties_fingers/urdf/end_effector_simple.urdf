@@ -42,41 +42,41 @@
     </collision>
   </link>
   
-  <link name="tip_link_1_fake_x" />
+  <link name="end_effector_simple_fake_x" />
   
-  <link name="tip_link_1_fake_y" />
+  <link name="end_effector_simple_fake_y" />
   
-  <joint name="tip_link_1_to_base_x" type="prismatic">
+  <joint name="end_effector_simple_to_base_x" type="prismatic">
     <parent link="base_link"/>
-    <child link="tip_link_1_fake_x"/>
+    <child link="end_effector_simple_fake_x"/>
     <axis xyz="1 0 0"/>
   </joint>
-  <joint name="tip_link_1_to_base_y" type="prismatic">
-    <parent link="tip_link_1_fake_x"/>
-    <child link="tip_link_1_fake_y"/>
+  <joint name="end_effector_simple_to_base_y" type="prismatic">
+    <parent link="end_effector_simple_fake_x"/>
+    <child link="end_effector_simple_fake_y"/>
     <axis xyz="0 1 0"/>
   </joint>
-    <joint name="tip_link_1_to_base_z" type="prismatic">
-    <parent link="tip_link_1_fake_y"/>
+    <joint name="end_effector_simple_to_base_z" type="prismatic">
+    <parent link="end_effector_simple_fake_y"/>
     <child link="end_effector_simple"/>
     <axis xyz="0 0 1"/>
   </joint>
   
-   <transmission name="tip_link_1_to_base_trans_x" type="SimpleTransmission">
-    <actuator name="tip_link_1_to_base_act_x"/>
-    <joint name="tip_link_1_to_base_x"/>
+   <transmission name="end_effector_simple_to_base_trans_x" type="SimpleTransmission">
+    <actuator name="end_effector_simple_to_base_act_x"/>
+    <joint name="end_effector_simple_to_base_x"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
-     <transmission name="tip_link_1_to_base_trans_y" type="SimpleTransmission">
-    <actuator name="tip_link_1_to_base_act_y"/>
-    <joint name="tip_link_1_to_base_y"/>
+     <transmission name="end_effector_simple_to_base_trans_y" type="SimpleTransmission">
+    <actuator name="end_effector_simple_to_base_act_y"/>
+    <joint name="end_effector_simple_to_base_y"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
-     <transmission name="tip_link_1_to_base_trans_z" type="SimpleTransmission">
-    <actuator name="tip_link_1_to_base_act_z"/>
-    <joint name="tip_link_1_to_base_z"/>
+     <transmission name="end_effector_simple_to_base_trans_z" type="SimpleTransmission">
+    <actuator name="end_effector_simple_to_base_act_z"/>
+    <joint name="end_effector_simple_to_base_z"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   

@@ -21,13 +21,8 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "common/find_resource.h"
-#include "dairlib/lcmt_robot_input.hpp"
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_c3.hpp"
 #include "examples/franka_ball_rolling/c3_parameters.h"
 #include "multibody/multibody_utils.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -136,7 +131,7 @@ int DoMain(int argc, char* argv[]){
   
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
-  
+
   // initialize EE close to {0.5, 0, 0.12}[m] in task space
   q[q_map["panda_joint1"]] = param.q_init_franka(0);
   q[q_map["panda_joint2"]] = param.q_init_franka(1);

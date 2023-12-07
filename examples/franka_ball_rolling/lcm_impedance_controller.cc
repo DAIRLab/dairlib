@@ -78,12 +78,24 @@ int DoMain(int argc, char* argv[]){
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/franka_box.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
+  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
   parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  Vector3d T_F_EE(0, 0, 0.107);
+  Vector3d T_F_G(0, 0, -0.0745);
+
+  RigidTransform<double> X_F_EE = RigidTransform<double>(T_F_EE);
+  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
+
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("visual_table_offset"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("ground"), X_F_G);
   plant.Finalize();
 
   DiagramBuilder<double> builder;
@@ -94,10 +106,16 @@ int DoMain(int argc, char* argv[]){
   DiagramBuilder<double> builder_f;
   auto [plant_f, scene_graph] = AddMultibodyPlantSceneGraph(&builder_f, 0.0);
   Parser parser_f(&plant_f);
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/franka_box.urdf");
+  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
+  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
+  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
+  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
   parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
 
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("panda_link0"), X_WI);
+  plant_f.WeldFrames(plant_f.GetFrameByName("panda_link7"), plant_f.GetFrameByName("end_effector_base"), X_F_EE);
+  plant_f.WeldFrames(plant_f.GetFrameByName("panda_link0"), plant_f.GetFrameByName("visual_table_offset"), X_WI);
+  plant_f.WeldFrames(plant_f.GetFrameByName("panda_link0"), plant_f.GetFrameByName("ground"), X_F_G);
   plant_f.Finalize();
 
   auto diagram_f = builder_f.Build();
@@ -128,7 +146,7 @@ int DoMain(int argc, char* argv[]){
   drake::geometry::GeometryId sphere_geoms = 
     plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId EE_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("panda_link10"))[0];
+    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("end_effector_tip"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
 
   int num_friction_directions = 2;

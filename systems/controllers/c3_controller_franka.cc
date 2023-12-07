@@ -208,12 +208,12 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   plant_franka_.SetVelocities(&context_franka_, robot_output->GetVelocities());
   Vector3d EE_offset_ = param_.EE_offset;
   const drake::math::RigidTransform<double> H_mat =
-      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
+      plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("end_effector_tip"));
   const RotationMatrix<double> R_current = H_mat.rotation();
   Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
 
   // jacobian and end_effector_dot
-  auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
+  auto EE_frame_ = &plant_franka_.GetBodyByName("end_effector_tip").body_frame();
   auto world_frame_ = &plant_franka_.world_frame();
   MatrixXd J_fb (6, plant_franka_.num_velocities());
   plant_franka_.CalcJacobianSpatialVelocity(
@@ -286,18 +286,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   
   /// rolling phase
   if ( ts < roll_phase ) {
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_x")] = state[7];
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_y")] = state[8];
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_z")] = traj_desired_vector[q_map_.at("end_effector_simple_to_base_z")] + 0.004;
   }
   /// upwards phase
   else if (ts < roll_phase + return_phase / 3){
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[0]; //0.55;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[1]; //0.1;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(1) + table_offset;
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_x")] = state[0]; //0.55;
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_y")] = state[1]; //0.1;
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_z")] = param_.gait_parameters(1) + table_offset;
 
   }
   /// side ways phase
@@ -305,18 +305,18 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(2) + table_offset;
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_x")] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_y")] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_z")] = param_.gait_parameters(2) + table_offset;
   }
   /// position finger phase
   else{
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7];
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8];
 //    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] + 0.004;
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_x")] = state[7] - back_dist*error_hat(0);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_y")] = state[8] - back_dist*error_hat(1);
-    traj_desired_vector[q_map_.at("tip_link_1_to_base_z")] = param_.gait_parameters(3) + table_offset;
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_x")] = state[7] - back_dist*error_hat(0);
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_y")] = state[8] - back_dist*error_hat(1);
+    traj_desired_vector[q_map_.at("end_effector_simple_to_base_z")] = param_.gait_parameters(3) + table_offset;
   }
   std::vector<VectorXd> traj_desired(Q_.size() , traj_desired_vector);
 

@@ -20,6 +20,7 @@ from pydrake.systems.all import (
     ConstantVectorSource,
     ZeroOrderHold,
     VectorLogSink,
+    LogVectorOutput,
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.alip_nn_lqr import (
@@ -45,7 +46,7 @@ from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
-        -> Tuple[CassieFootstepControllerEnvironment, AlipFootstepNNLQR, Diagram]:
+        -> Tuple[CassieFootstepControllerEnvironment, AlipFootstepNNLQR, Diagram, LogVectorOutput]:
     sim_env = CassieFootstepControllerEnvironment(sim_params)
     controller_params = AlipFootstepLQROptions.calculate_default_options(
         sim_params.mpfc_gains_yaml,
@@ -56,14 +57,14 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     # instantiating cost system
     cost_system = CumulativeCost(controller_params)
-    cost_holder = VectorLogSink(1)
+    cost_logger = VectorLogSink(1)
 
     builder = DiagramBuilder()
     builder.AddSystem(sim_env)
     builder.AddSystem(controller)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(cost_system)
-    builder.AddSystem(cost_holder)
+    builder.AddSystem(cost_logger)
 
     builder.Connect(
         sim_env.get_output_port_by_name("fsm"),
@@ -107,17 +108,17 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     )
     builder.Connect(
         cost_system.get_output_port_by_name('cost'),
-        cost_holder.get_input_port()
-    )        
+        cost_logger.get_input_port()
+    )
 
 
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(diagram, '../AlipNNLQRTest')
-    return sim_env, controller, cost_holder, diagram
+    return sim_env, controller, cost_logger, diagram
 
 
-def run(sim_params: CassieFootstepControllerEnvironmentOptions):
-    sim_env, controller, cost_holder, diagram = build_diagram(sim_params)
+def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
+    sim_env, controller, cost_logger, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
 
     ic_generator = InitialConditionsServer(
@@ -126,8 +127,8 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
             'tmp/initial_conditions_2.npz'
         )
     )
-    datapoint = ic_generator.random()
-    # datapoint = ic_generator.choose(0)
+    # datapoint = ic_generator.random()
+    datapoint = ic_generator.choose(i)
     datapoint['desired_velocity'] = np.array([0.4, 0])
 
     context = diagram.CreateDefaultContext()
@@ -141,7 +142,7 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
     # grab the sim and controller contexts for convenience
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
     controller_context = controller.GetMyMutableContextFromRoot(context)
-    cost_system_context = cost_holder.GetMyMutableContextFromRoot(context)
+    cost_system_context = cost_logger.GetMyMutableContextFromRoot(context)
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
@@ -159,7 +160,10 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions):
     )
 
     simulator.reset_context(context)
-    simulator.AdvanceTo(np.inf)
+    simulator.AdvanceTo(t_init + 5)
+
+    cost_log = cost_logger.FindLog(context).data()
+    return cost_log, t_init
 
 def reexecute_if_unbuffered():
     """Ensures that output is immediately flushed (e.g. for segfaults).
@@ -202,7 +206,17 @@ def main():
         perception_learning_base_folder, 'params/stair_curriculum.yaml'
     )
     sim_params.visualize = True
-    run(sim_params)
+    cost_list = []
+    t_list = []
+    for i in range(10):
+        cost, t_init = run(sim_params, i)
+        cost_list.append(cost)
+        t_list.append(t_init)
+    cost = np.array(cost_list)
+    np.save(
+        f'{perception_learning_base_folder}/tmp'
+        f'/accumulated_cost_with_time.npy', cost
+    )
 
 
 if __name__ == '__main__':

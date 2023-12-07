@@ -34,7 +34,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/rose-sponge-148.pth')
+    perception_learning_base_folder, 'tmp/cosmic-plasma-149.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
@@ -138,14 +138,15 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
         # sum up the grid values, add select the minimum value index
-        final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
+        # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
+        final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
+
 
         hmap_query.plot_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
             residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
         )
 
-        # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape
         )

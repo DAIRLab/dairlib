@@ -336,18 +336,24 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize):
-    num_data = 1000
+    num_data = 400
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/wavy_terrain.yaml'
-    )
+
+    if i % 3 == 0:
+        sim_params.terrain = os.path.join(
+            perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        )
+    else:
+        sim_params.terrain = os.path.join(
+            perception_learning_base_folder, 'params/wavy_terrain.yaml'
+        )
     sim_params.visualize = visualize
     data = run_experiment(sim_params, num_data, i)
     q.put(data)
 
 
 def main(save_file: str, visualize: bool):
-    num_jobs = 1 if visualize else int(os.cpu_count() -1)
+    num_jobs = 20
     job_queue = multiprocessing.Queue()
     job_list = []
 

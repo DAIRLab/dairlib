@@ -33,26 +33,32 @@ class LCS {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N,
       double dt);
 
+  LCS(const LCS& other);
+  LCS& operator=(const LCS&);
+  LCS(LCS&&) = default;
+  LCS& operator=(LCS&&) = default;
+
   /// Simulate the system for one-step
   /// @param x_init Initial x value
   /// @param input Input value
   const Eigen::VectorXd Simulate(Eigen::VectorXd& x_init, Eigen::VectorXd& input);
 
  public:
-  const std::vector<Eigen::MatrixXd> A_;
-  const std::vector<Eigen::MatrixXd> B_;
-  const std::vector<Eigen::MatrixXd> D_;
-  const std::vector<Eigen::VectorXd> d_;
-  const std::vector<Eigen::MatrixXd> E_;
-  const std::vector<Eigen::MatrixXd> F_;
-  const std::vector<Eigen::MatrixXd> H_;
-  const std::vector<Eigen::VectorXd> c_;
-  const int N_;
-  const double dt_;
+  std::vector<Eigen::MatrixXd> A_;
+  std::vector<Eigen::MatrixXd> B_;
+  std::vector<Eigen::MatrixXd> D_;
+  std::vector<Eigen::VectorXd> d_;
+  std::vector<Eigen::MatrixXd> E_;
+  std::vector<Eigen::MatrixXd> F_;
+  std::vector<Eigen::MatrixXd> H_;
+  std::vector<Eigen::VectorXd> c_;
+  Eigen::MatrixXd J_c_;
+  int N_;
+  double dt_;
 
-  const int n_;
-  const int m_;
-  const int k_;
+  int n_;
+  int m_;
+  int k_;
 };
 
 }  // namespace solvers

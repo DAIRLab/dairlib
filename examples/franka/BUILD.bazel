@@ -76,6 +76,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/controllers",
         "//systems/controllers:c3_controller",
+        "//systems/controllers:lcs_factory_system",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
         "//systems/trajectory_optimization:c3_output_systems",

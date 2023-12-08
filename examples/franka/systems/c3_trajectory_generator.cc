@@ -7,6 +7,7 @@
 #include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_output.h"
+#include "solvers/lcs.h"
 
 namespace dairlib {
 
@@ -17,6 +18,7 @@ using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
+using solvers::LCS;
 using systems::TimestampedVector;
 
 namespace systems {
@@ -29,15 +31,32 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
-  n_lambda_ =
-      2 * c3_options_.num_contacts +
-      2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    n_lambda_ =
+        2 * c3_options_.num_contacts +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  } else if (c3_options_.contact_model == "anitescu") {
+    n_lambda_ =
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  }
   n_u_ = plant_.num_actuators();
 
   c3_solution_port_ =
       this->DeclareAbstractInputPort("c3_solution",
                                      drake::Value<C3Output::C3Solution>())
           .get_index();
+
+  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  auto lcs = LCS(A, B, D, d, E, F, H, c, N_, c3_options_.dt);
+  lcs_port_ =
+      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs)).get_index();
 
   actor_trajectory_port_ =
       this->DeclareAbstractOutputPort(
@@ -50,6 +69,12 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
               "c3_object_trajectory_output",
               dairlib::lcmt_timestamped_saved_traj(),
               &C3TrajectoryGenerator::OutputObjectTrajectory)
+          .get_index();
+  force_trajectory_port_ =
+      this->DeclareAbstractOutputPort(
+              "c3_force_trajectory_output",
+              dairlib::lcmt_timestamped_saved_traj(),
+              &C3TrajectoryGenerator::OutputLCSForceTrajectory)
           .get_index();
 }
 
@@ -122,8 +147,8 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
   object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
   object_traj.datapoints = knots;
   object_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"}, "object_target",
-                         "object_target", false);
+  LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
+                         "object_target", "object_target", false);
 
   LcmTrajectory::Trajectory object_orientation_traj;
   // first 3 rows are rpy, last 3 rows are angular velocity
@@ -138,6 +163,28 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
       c3_solution->time_vector_.cast<double>();
   lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
                          object_orientation_traj);
+
+  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_traj->utime = context.get_time() * 1e6;
+}
+
+void C3TrajectoryGenerator::OutputLCSForceTrajectory(
+    const drake::systems::Context<double>& context,
+    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+  const auto& c3_solution =
+      this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
+  //  auto& lcs = this->EvalAbstractInput(context, lcs_port_)->get_value<LCS>();
+
+  DRAKE_DEMAND(c3_solution->lambda_sol_.rows() == n_lambda_);
+  MatrixXd knots = c3_solution->lambda_sol_.cast<double>();
+  LcmTrajectory::Trajectory lcs_force_trajectory;
+  lcs_force_trajectory.traj_name = "lcs_force_trajectory";
+  lcs_force_trajectory.datatypes =
+      std::vector<std::string>(knots.rows(), "double");
+  lcs_force_trajectory.datapoints = knots;
+  lcs_force_trajectory.time_vector = c3_solution->time_vector_.cast<double>();
+  LcmTrajectory lcm_traj({lcs_force_trajectory}, {"lcs_force_trajectory"},
+                         "lcs_force_trajectory", "lcs_force_trajectory", false);
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = context.get_time() * 1e6;

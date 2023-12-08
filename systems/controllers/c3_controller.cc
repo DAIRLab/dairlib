@@ -2,10 +2,6 @@
 
 #include <utility>
 
-#include <drake/solvers/moby_lcp_solver.h>
-
-#include "common/find_resource.h"
-#include "examples/franka/systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
@@ -33,16 +29,9 @@ namespace systems {
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
-    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-        contact_geoms,
     C3Options c3_options)
     : plant_(plant),
       context_(context),
-      plant_ad_(plant_ad),
-      context_ad_(context_ad),
-      contact_pairs_(contact_geoms),
       c3_options_(std::move(c3_options)),
       Q_(std::vector<MatrixXd>(c3_options_.N + 1, c3_options_.Q)),
       R_(std::vector<MatrixXd>(c3_options_.N, c3_options_.R)),
@@ -54,6 +43,7 @@ C3Controller::C3Controller(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
+  dt_ = c3_options_.dt;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
         2 * c3_options_.num_contacts +
@@ -64,6 +54,7 @@ C3Controller::C3Controller(
   }
 
   n_u_ = plant_.num_actuators();
+  u_prev_ = VectorXd::Zero(n_u_);
 
   int x_des_size = plant_.num_positions(ModelInstanceIndex(2)) +
                    plant_.num_positions(ModelInstanceIndex(3)) +
@@ -74,8 +65,19 @@ C3Controller::C3Controller(
               "x_lcs", TimestampedVector<double>(
                            x_des_size))
           .get_index();
-//  lcs_input_port_ =
-//      this->DeclareAbstractInputPort("lcs", LCS());
+
+  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  auto lcs = LCS(A, B, D, d, E, F, H, c, N_, dt_);
+
+  lcs_input_port_ =
+      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs)).get_index();
 
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", x_des_size).get_index();
@@ -112,37 +114,16 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(
           context, lcs_state_input_port_);
+  auto& lcs = this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
+
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
-  VectorXd q_v_u =
-      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
-                     plant_.num_actuators());
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
-  drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
+
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
-  int n_x = plant_.num_positions() + plant_.num_velocities();
-  int n_u = plant_.num_actuators();
 
-  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x));
-  plant_ad_.SetPositionsAndVelocities(context_ad_, q_v_u_ad.head(n_x));
-  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u), context_);
-  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u),
-                                               context_ad_);
-  solvers::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = solvers::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = solvers::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
-  auto [lcs, scale] = LCSFactory::LinearizePlantToLCS(
-      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
-      c3_options_.N, contact_model);
   DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
   DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
   DRAKE_DEMAND(R_.front().rows() == lcs.k_);
@@ -215,6 +196,7 @@ void C3Controller::OutputC3Solution(
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
+  u_prev_ = z_sol[0].segment(n_x_ + n_lambda_, n_u_);
 }
 
 void C3Controller::OutputC3Intermediates(

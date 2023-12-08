@@ -28,18 +28,18 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   explicit C3Controller(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::systems::Context<drake::AutoDiffXd>* context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-          contact_geoms,
       C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_state() const {
+  const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
     return this->get_input_port(lcs_state_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_lcs() const {
+    return this->get_input_port(lcs_input_port_);
   }
 
   const drake::systems::OutputPort<double>& get_output_port_c3_solution()
@@ -67,21 +67,18 @@ class C3Controller : public drake::systems::LeafSystem<double> {
                              C3Output::C3Intermediates* c3_intermediates) const;
 
   drake::systems::InputPortIndex target_input_port_;
-  drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
+  drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-      contact_pairs_;
+
   C3Options c3_options_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
+          "solvers/osqp_options_default.yaml")
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // convenience for variable sizes
@@ -90,12 +87,14 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   int n_x_;
   int n_lambda_;
   int n_u_;
+  double dt_;
 
   mutable std::unique_ptr<solvers::C3> c3_;
   mutable std::vector<Eigen::VectorXd> delta_;
   mutable std::vector<Eigen::VectorXd> w_;
+  mutable Eigen::VectorXd u_prev_;
   mutable double solve_time_;
-  //  std::unique_ptr<solvers::LCS> lcs_;
+
   drake::systems::DiscreteStateIndex plan_start_time_index_;
   std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;

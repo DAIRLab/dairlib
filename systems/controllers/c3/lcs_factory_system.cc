@@ -1,0 +1,102 @@
+#include "lcs_factory_system.h"
+
+#include <utility>
+
+#include "multibody/multibody_utils.h"
+#include "solvers/lcs.h"
+#include "solvers/lcs_factory.h"
+#include "systems/framework/timestamped_vector.h"
+
+namespace dairlib {
+
+using drake::multibody::ModelInstanceIndex;
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using drake::systems::DiscreteValues;
+using Eigen::MatrixXd;
+using Eigen::MatrixXf;
+using Eigen::VectorXd;
+using solvers::LCS;
+using solvers::LCSFactory;
+using systems::TimestampedVector;
+
+namespace systems {
+
+LCSFactorySystem::LCSFactorySystem(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::Context<double>* context,
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+        contact_geoms,
+    C3Options c3_options)
+    : plant_(plant),
+      context_(context),
+      plant_ad_(plant_ad),
+      context_ad_(context_ad),
+      contact_pairs_(contact_geoms),
+      c3_options_(std::move(c3_options)),
+      N_(c3_options_.N) {
+  this->set_name("lcs_factory_system");
+
+  n_q_ = plant_.num_positions();
+  n_v_ = plant_.num_velocities();
+  n_x_ = n_q_ + n_v_;
+  dt_ = c3_options_.dt;
+  n_lambda_ =
+      2 * c3_options_.num_contacts +
+      2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  n_u_ = plant_.num_actuators();
+
+  lcs_state_input_port_ =
+      this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
+          .get_index();
+
+  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  lcs_port_ = this->DeclareAbstractOutputPort(
+                      "lcs", LCS(A, B, D, d, E, F, H, c, N_, dt_),
+                      &LCSFactorySystem::OutputLCS)
+                  .get_index();
+}
+
+void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
+                                 LCS* output_lcs) const {
+  const TimestampedVector<double>* lcs_x =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        lcs_state_input_port_);
+
+  VectorXd q_v_u =
+      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
+                     plant_.num_actuators());
+  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+  drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
+
+  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x_));
+  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), context_);
+  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
+                                               context_ad_);
+  solvers::ContactModel contact_model;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model = solvers::ContactModel::kStewartAndTrinkle;
+  } else if (c3_options_.contact_model == "anitescu") {
+    contact_model = solvers::ContactModel::kAnitescu;
+  } else {
+    throw std::runtime_error("unknown or unsupported contact model");
+  }
+
+  double scale;
+  std::tie(*output_lcs, scale) = LCSFactory::LinearizePlantToLCS(
+      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.N, contact_model);
+}
+
+}  // namespace systems
+}  // namespace dairlib

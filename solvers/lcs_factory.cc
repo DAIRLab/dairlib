@@ -108,7 +108,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
 
     phi(i) = phi_i;
-
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
               n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
@@ -255,7 +254,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);
-
   return ret;
 }
 

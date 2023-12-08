@@ -258,14 +258,22 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 
 LcmForceDrawer::LcmForceDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    std::string actor_trajectory_name, std::string force_trajectory_name)
+    std::string actor_trajectory_name, std::string force_trajectory_name,
+    std::string lcs_force_trajectory_name)
     : meshcat_(meshcat),
       actor_trajectory_name_(std::move(actor_trajectory_name)),
-      force_trajectory_name_(std::move(force_trajectory_name)) {
+      force_trajectory_name_(std::move(force_trajectory_name)),
+      lcs_force_trajectory_name_(std::move(lcs_force_trajectory_name)) {
   this->set_name("LcmForceDrawer: " + force_trajectory_name_);
-  trajectory_input_port_ =
+  actor_trajectory_input_port_ =
       this->DeclareAbstractInputPort(
-              "lcmt_timestamped_saved_traj",
+              "lcmt_timestamped_saved_traj: actor",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
+          .get_index();
+
+  force_trajectory_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_timestamped_saved_traj: force",
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
@@ -277,32 +285,39 @@ LcmForceDrawer::LcmForceDrawer(
   const drake::geometry::Cylinder cylinder(radius_, 1.0);
   const double arrowhead_height = radius_ * 2.0;
   const double arrowhead_width = radius_ * 2.0;
-  const drake::geometry::MeshcatCone arrowhead(arrowhead_height, arrowhead_width,
-                              arrowhead_width);
+  const drake::geometry::MeshcatCone arrowhead(
+      arrowhead_height, arrowhead_width, arrowhead_width);
 
-  meshcat_->SetObject(force_path_ + "/force_C_W/cylinder", cylinder,
+  meshcat_->SetObject(force_path_ + "/u_lcs/cylinder", cylinder,
                       {1, 0, 0, 1});
-  meshcat_->SetObject(force_path_ + "/force_C_W/head", arrowhead,
-                      {1, 0, 0, 1});
-//  meshcat_->SetObject(force_path_ + "/moment_C_W/cylinder", cylinder,
-//                      {0, 0, 1, 1});
-//  meshcat_->SetObject(force_path_ + "/moment_C_W/head", arrowhead,
-//                      {0, 0, 1, 1});
+  meshcat_->SetObject(force_path_ + "/u_lcs/head", arrowhead, {1, 0, 0, 1});
+  for (int i = 0; i < 5; ++i) {
+    for (int force_component = 0; force_component < 4; ++force_component) {
+      const std::string lcs_force_path = force_path_ + "/lcs_force_" + std::to_string(i) +
+          "/" + std::to_string(force_component);
+      meshcat_->SetObject(lcs_force_path +
+                              "/cylinder",
+                          cylinder, {1, 0, 0, 1});
+      meshcat_->SetObject(lcs_force_path + "/head",
+                          arrowhead, {1, 0, 0, 1});
+    }
+  }
 
-  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawTrajectory);
+  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
+  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
 }
 
-drake::systems::EventStatus LcmForceDrawer::DrawTrajectory(
+drake::systems::EventStatus LcmForceDrawer::DrawForce(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
-              context, trajectory_input_port_)
+              context, actor_trajectory_input_port_)
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
   const auto& lcmt_traj =
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
-          context, trajectory_input_port_);
+          context, actor_trajectory_input_port_);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
   const auto& force_trajectory_block =
       lcm_traj.GetTrajectory(force_trajectory_name_);
@@ -325,32 +340,92 @@ drake::systems::EventStatus LcmForceDrawer::DrawTrajectory(
 
   auto force = force_trajectory.value(force_trajectory_block.time_vector[0]);
 
-  meshcat_->SetTransform(force_path_, RigidTransformd(pose));
+  meshcat_->SetTransform(force_path_ + "/u_lcs", RigidTransformd(pose));
 
   auto force_norm = force.norm();
   // Stretch the cylinder in z.
   if (force_norm >= 0.01) {
-    meshcat_->SetTransform(force_path_ + "/force_C_W",
-                           RigidTransformd(RotationMatrixd::MakeFromOneVector(
-                               force, 2)));
-    const double height = force_norm / 10;
-    meshcat_->SetProperty(force_path_ + "/force_C_W/cylinder", "position",
+    meshcat_->SetTransform(
+        force_path_ + "/u_lcs",
+        RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
+    const double height = force_norm / newtons_per_meter_;
+    meshcat_->SetProperty(force_path_ + "/u_lcs/cylinder", "position",
                           {0, 0, 0.5 * height});
     // Note: Meshcat does not fully support non-uniform scaling (see #18095).
     // We get away with it here since there is no rotation on this frame and
     // no children in the kinematic tree.
-    meshcat_->SetProperty(force_path_ + "/force_C_W/cylinder", "scale",
+    meshcat_->SetProperty(force_path_ + "/u_lcs/cylinder", "scale",
                           {1, 1, height});
     // Translate the arrowheads.
     const double arrowhead_height = radius_ * 2.0;
     meshcat_->SetTransform(
-        force_path_ + "/force_C_W/head",
+        force_path_ + "/u_lcs/head",
         RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                         Vector3d{0, 0, height + arrowhead_height}));
-    meshcat_->SetProperty(force_path_, "visible", true);
+    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", true);
   } else {
-//    meshcat_->SetProperty(force_path_ + "/force_C_W", "visible", false);
-    meshcat_->SetProperty(force_path_, "visible", false);
+    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
+  }
+  return drake::systems::EventStatus::Succeeded();
+}
+
+drake::systems::EventStatus LcmForceDrawer::DrawForces(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+              context, force_trajectory_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  const auto& lcmt_traj =
+      this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+          context, force_trajectory_input_port_);
+  auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
+  const auto& force_trajectory_block =
+      lcm_traj.GetTrajectory(lcs_force_trajectory_name_);
+  auto force_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+      force_trajectory_block.time_vector, force_trajectory_block.datapoints);
+  auto all_forces = force_trajectory.value(force_trajectory_block.time_vector[0]).col(0);
+  for (int i = 0; i < 5; ++i) {
+    VectorXd pose = VectorXd::Zero(3); //TODO(yangwill) fix this
+    const std::string& force_path_root =
+        force_path_ + "/lcs_force_" + std::to_string(i) + "/";
+    meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
+    VectorXd force = all_forces.segment(4 * i, 4);
+    std::vector<Vector3d> bases_vectors = {{0, -0.4, 1},
+                                           {0, 0.4, 1},
+                                           {-0.4, 0.0, 1},
+                                           {0.4, 0.0, 1}};
+    for (int j = 0; j < 4; ++j) {
+      auto force_norm = force(j);
+      // Stretch the cylinder in z.
+      const std::string& force_arrow_path =
+          force_path_root + std::to_string(j);
+      if (force_norm >= 0.01) {
+        meshcat_->SetTransform(
+            force_arrow_path,
+            RigidTransformd(RotationMatrixd::MakeFromOneVector(bases_vectors[j], 2)));
+        const double height = force_norm / newtons_per_meter_;
+        meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
+                              {0, 0, 0.5 * height});
+        // Note: Meshcat does not fully support non-uniform scaling (see
+        // #18095). We get away with it here since there is no rotation on this
+        // frame and no children in the kinematic tree.
+        meshcat_->SetProperty(force_arrow_path + "/cylinder", "scale",
+                              {1, 1, height});
+        // Translate the arrowheads.
+        const double arrowhead_height = radius_ * 2.0;
+        meshcat_->SetTransform(
+            force_arrow_path + "/head",
+            RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
+                            Vector3d{0, 0, height + arrowhead_height}));
+        meshcat_->SetProperty(force_arrow_path, "visible", true);
+      } else {
+        //    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible",
+        //    false);
+        meshcat_->SetProperty(force_arrow_path, "visible", false);
+      }
+    }
   }
   return drake::systems::EventStatus::Succeeded();
 }

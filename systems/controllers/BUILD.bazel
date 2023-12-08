@@ -52,12 +52,22 @@ cc_library(
 )
 
 cc_library(
+    name = "lcs_factory_system",
+    srcs = ["c3/lcs_factory_system.cc"],
+    hdrs = ["c3/lcs_factory_system.h"],
+    deps = [
+        "//multibody:utils",
+        "//solvers:c3",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "c3_controller",
     srcs = ["c3_controller.cc"],
     hdrs = ["c3_controller.h"],
     deps = [
-        "//common:find_resource",
-        "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",

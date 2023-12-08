@@ -24,6 +24,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
+#include "systems/controllers/c3/lcs_factory_system.h"
 
 namespace dairlib {
 
@@ -138,7 +139,7 @@ int DoMain(int argc, char* argv[]) {
   auto plant_diagram = plant_builder.Build();
   std::unique_ptr<drake::systems::Context<double>> diagram_context =
       plant_diagram->CreateDefaultContext();
-  auto& plate_context = plant_diagram->GetMutableSubsystemContext(
+  auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
   auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
@@ -196,6 +197,10 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
+  auto force_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_force_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
 
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
@@ -238,9 +243,11 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(2));
   builder.Connect(tray_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
-  auto controller = builder.AddSystem<systems::C3Controller>(
-      plant_for_lcs, &plate_context, *plant_for_lcs_autodiff, plate_context_ad.get(),
+  auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
+      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff, plate_context_ad.get(),
       contact_pairs, c3_options);
+  auto controller = builder.AddSystem<systems::C3Controller>(
+      plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
                                                         c3_options);
@@ -261,12 +268,16 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(target_state_mux->get_output_port(),
                   controller->get_input_port_target());
+  builder.Connect(lcs_factory->get_output_port_lcs(),
+                  controller->get_input_port_lcs());
   builder.Connect(tray_state_sub->get_output_port(),
                   tray_state_receiver->get_input_port());
   builder.Connect(tray_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  controller->get_input_port_state());
+                  controller->get_input_port_lcs_state());
+  builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  lcs_factory->get_input_port_lcs_state());
   builder.Connect(radio_sub->get_output_port(),
                   plate_balancing_target->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),
@@ -275,6 +286,8 @@ int DoMain(int argc, char* argv[]) {
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
+  builder.Connect(c3_trajectory_generator->get_output_port_force_trajectory(),
+                  force_trajectory_sender->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),

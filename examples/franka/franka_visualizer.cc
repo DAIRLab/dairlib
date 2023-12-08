@@ -158,6 +158,9 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_object = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, lcm));
+  auto trajectory_sub_force = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_force_channel, lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
@@ -183,7 +186,8 @@ int do_main(int argc, char* argv[]) {
   auto end_effector_force_drawer =
       builder.AddSystem<systems::LcmForceDrawer>(
           meshcat, "end_effector_position_target",
-          "end_effector_force_target");
+          "end_effector_force_target",
+          "lcs_force_trajectory");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
@@ -202,7 +206,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   end_effector_pose_drawer->get_input_port_trajectory());
   builder.Connect(trajectory_sub_actor->get_output_port(),
-                  end_effector_force_drawer->get_input_port_trajectory());
+                  end_effector_force_drawer->get_input_port_actor_trajectory());
+  builder.Connect(trajectory_sub_force->get_output_port(),
+                  end_effector_force_drawer->get_input_port_force_trajectory());
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),

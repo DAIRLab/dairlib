@@ -12,9 +12,9 @@ publish_dt: 0.0001
 realtime_rate: 1.0
 
 # -----------------------  Extra Model Fixed Frame Settings  ------------------------#
-# the tranlsation vector of end effector to panda link 7
-tool_attachment_frame: [0, 0, 0.107]
-# the tranlsation vector of end effector to panda link 0 (world frame)
+# the tranlsation vector of end effector base frame to panda link 7
+tool_attachment_frame: [0, 0, 0.107] # should match real measurement
+# the tranlsation vector of ground to panda link 0 (also world frame)
 ground_offset_frame: [0, 0, -0.0245]
 
 # ---------------------------  Initial Condition Settings  --------------------------#

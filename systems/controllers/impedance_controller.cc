@@ -39,15 +39,13 @@ ImpedanceController::ImpedanceController(
     const drake::multibody::MultibodyPlant<double>& plant_f,
     drake::systems::Context<double>& context,
     drake::systems::Context<double>& context_f,
-    const MatrixXd& K, 
+    const MatrixXd& K,
     const MatrixXd& B,
     const MatrixXd& K_null,
     const MatrixXd& B_null,
     const VectorXd& qd,
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
-    int num_friction_directions,
-    double moving_offset,
-    double pushing_offset)
+    int num_friction_directions)
     : plant_(plant),
       plant_f_(plant_f),
       context_(context),
@@ -58,10 +56,8 @@ ImpedanceController::ImpedanceController(
       B_null_(B_null),
       qd_(qd),
       contact_geoms_(contact_geoms),
-      num_friction_directions_(num_friction_directions),
-      moving_offset_(moving_offset),
-      pushing_offset_(pushing_offset){
-  
+      num_friction_directions_(num_friction_directions){
+
   // plant parameters
   int num_positions = plant_.num_positions();
   int num_velocities = plant_.num_velocities();
@@ -73,7 +69,7 @@ ImpedanceController::ImpedanceController(
               "x, u, t",
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
-  
+
   // xee: 7D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 29D + visuals)
   c3_state_input_port_ =
       this->DeclareVectorInputPort(
@@ -96,23 +92,17 @@ ImpedanceController::ImpedanceController(
   world_frame_ = &plant_.world_frame();
   contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
   n_ = 7;
-  enable_heuristic_ = param_.enable_heuristic;
   enable_contact_ = param_.enable_contact;
 
   // define franka limits
   // TODO: parse these from urdf instead of hard coding
-  lower_limits_ = VectorXd::Zero(n_);
-  upper_limits_ = VectorXd::Zero(n_);
   torque_limits_ = VectorXd::Zero(n_);
-  lower_limits_ << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
-  upper_limits_ << 2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
   torque_limits_ << 87, 87, 87, 87, 12, 12, 12;
-  joint_ranges_ = upper_limits_ - lower_limits_;
 
   // control-related variables
   // TODO: using fixed Rd for the time being
   Matrix3d Rd_eigen;
-  Rd_eigen << 
+  Rd_eigen <<
     1,  0,  0,
     0, -1,  0,
     0,  0, -1;
@@ -136,7 +126,7 @@ ImpedanceController::ImpedanceController(
 // CARTESIAN IMPEDANCE CONTROLLER
 void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
-                                 
+
   auto start = std::chrono::high_resolution_clock::now();
   // parse values
   auto robot_output =
@@ -165,7 +155,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   Quaterniond orientation_d(state(3), state(4), state(5), state(6));
   xd_dot.tail(3) << state.segment(14, 3);
   lambda << state.segment(24, 5);
-  
+
   //update the context_
   plant_.SetPositions(&context_, q);
   plant_.SetVelocities(&context_, v);
@@ -193,13 +183,13 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   VectorXd C_franka = C.head(n_);
   VectorXd tau_g_franka = tau_g.head(n_);
   MatrixXd J_franka = J.block(0, 0, 6, n_);
-  
+
   // forward kinematics
-  const drake::math::RigidTransform<double> H = 
+  const drake::math::RigidTransform<double> H =
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("end_effector_tip"));
   const RotationMatrix<double> R = H.rotation();
   Vector3d d = H.translation() + R*EE_offset_;
-  //std::cout << "position\n" << d << std::endl; 
+  //std::cout << "position\n" << d << std::endl;
 
   // build task space state vectors
   VectorXd x = VectorXd::Zero(6);
@@ -215,13 +205,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
 
   // Quaterniond w_desired = RotationMatrix<double>(w_d_aa).ToQuaternion();
-
-  double settling_time = param_.stabilize_time1 + param_.move_time + param_.stabilize_time2;
-  if (enable_heuristic_ && timestamp > settling_time){
-    Vector3d xd_new = ApplyHeuristic(xd.tail(3), xd_dot.tail(3), lambda, d, x_dot.tail(3), 
-                                 ball_xyz, ball_xyz_d, settling_time, timestamp);
-    xd.tail(3) << xd_new;
-  }
 
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R, orientation_d);
@@ -241,7 +224,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   MatrixXd M_inv = M_franka.inverse();
   MatrixXd Lambda = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent end effector mass matrix
-  
+
   /// integral term
   VectorXd tau_int = VectorXd::Zero(7);
   if (timestamp > 1) {
@@ -256,7 +239,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     }
   }
   VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + tau_int + C_franka;
-  
+
   // add feedforward force term if contact is desired
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
   if (enable_contact_ && lambda.norm() > param_.contact_threshold){
@@ -285,20 +268,9 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
   prev_time_ = timestamp;
-  
+
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-
-  // debug prints every 10th of a second
-  int print_enabled = 0; // print flag
-  if (print_enabled && trunc(timestamp*10) / 10.0 == timestamp && timestamp >= settling_time){
-    std::cout << std::setprecision(6) << std::fixed;
-    
-    std::cout << timestamp << std::endl;
-    std::cout << "xtilde\n" << xtilde << std::endl;
-
-    std::cout << std::endl;
-  }
 }
 
 Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& R,
@@ -328,24 +300,6 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
     J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
               plant_f_.num_velocities()) =
         J_i.block(1, 0, 2 * num_friction_directions_, plant_f_.num_velocities());
-  }
-}
-
-void ImpedanceController::CheckJointLimits(const VectorXd& q, double timestamp) const{
-  VectorXd thresholds = 0.05 * joint_ranges_;
-  std::cout << std::setprecision(3) << std::fixed;
-
-  for (int i = 0; i < n_; i++){
-    if (upper_limits_(i) - q(i) < thresholds(i)){
-      std::cout << "[time: " << timestamp << "] " << "Joint " 
-                << i+1 <<  " is " << upper_limits_(i)-q(i) 
-                << "rad away from its upper limit." << std::endl;
-    }
-    else if (q(i) - lower_limits_(i) < thresholds(i)){
-      std::cout << "[time: " << timestamp << "] " << "Joint " 
-                << i+1 <<  " is " << q(i)-lower_limits_(i) 
-                << "rad away from its lower limit." << std::endl;
-    }
   }
 }
 
@@ -388,49 +342,6 @@ bool ImpedanceController::SaturatedClamp(const VectorXd& tau, const VectorXd& cl
 
 
   return false;
-}
-
-Vector3d ImpedanceController::ApplyHeuristic(
-    const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
-    const VectorXd& x, const VectorXd& x_dot,
-    const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
-    double settling_time, double timestamp) const {
-
-  /*
-  NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
-  THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
-  */
-  
-  Vector3d xd_new = xd;
-  Vector3d ball_to_EE = (x-ball_xyz) / (x-ball_xyz).norm();
-
-  double roll_phase = param_.roll_phase;
-  double return_phase = param_.return_phase;
-  double period = roll_phase + return_phase;
-  double shifted_time = timestamp - settling_time - return_phase;
-  if (shifted_time < 0) shifted_time += period;
-  double ts = shifted_time - period * floor((shifted_time / period));
-
-  if (lambda.norm() > param_.contact_threshold && ts < roll_phase && x_dot(2) < 0){
-    double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
-    if (diff > 0){
-      xd_new = xd_new - diff*ball_to_EE;
-    }
-    xd_new = xd_new + pushing_offset_*ball_to_EE;
-  }
-  else{
-    double diff = (x-ball_xyz).norm() - param_.ball_radius - param_.finger_radius;
-    if (diff < 0){
-      xd_new = xd_new - diff*ball_to_EE;
-    }
-    xd_new = xd_new + moving_offset_*ball_to_EE;
-  }
-
-  // if (x_dot(2) > 0){
-  //   xd_new(2) = xd_new(2) + moving_offset_;
-  // }
-
-  return xd_new;
 }
 
 }  // namespace controllers

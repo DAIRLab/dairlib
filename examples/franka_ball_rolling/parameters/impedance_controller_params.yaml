@@ -6,20 +6,39 @@ ball_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.ur
 ground_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf
 offset_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf
 
-# ----------------------  Simulation, Publish and Rate Settings  ---------------------#
-sim_dt: 0.0001
-publish_dt: 0.0001
-realtime_rate: 1.0
-
 # -----------------------  Extra Model Fixed Frame Settings  ------------------------#
-# the tranlsation vector of end effector to panda link 7
+# the tranlsation vector of end effector base frame to panda link 7
 tool_attachment_frame: [0, 0, 0.107] # should match real measurement
-# the tranlsation vector of end effector to panda link 0 (world frame)
+# the tranlsation vector of ground to panda link 0 (world frame)
 ground_offset_frame: [0, 0, -0.0245] # should match real measurement table height calibration
+# the end-effector offset should match urdf definition and real measurement, the offset is
+# the distance from end of cylinder (link frame) to end effector (spherical) center
+end_effector_offset: [0, 0, 0.0153]
 
-# ---------------------------  Initial Condition Settings  --------------------------#
+
+# -------------------------  impedance controller parameters  ------------------------#
+translational_stiffness: [500, 500, 500]
+rotational_stiffness: [900, 900, 900]
+translational_damping: [45, 45, 45]
+rotational_damping: [20 ,20 ,20]
+
+stiffness_null: [4, 4, 4, 4, 4, 4, 4]
+damping_null: [4, 4, 4, 4, 4, 4, 4]
+q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
+
+translational_integral_gain: [0, 0, 0]
+rotational_integral_gain: [0, 0, 0]
+integrator_clamp: [30, 30, 30, 30, 8, 8, 8]
+torque_limits: [87, 87, 87, 87, 12, 12, 12]
+
+enable_contact: 1
+contact_threshold: 0.01
+
+# ---------------------------  Initial Condition Settings  ---------------------------#
 # q_franka: seven joint angles of franka
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
+# initial starting point of end-effector
+initial_start: [0.55, 0, 0.12]
 # q_ball: only define the quaternion [qw, qi, qj, qk], position xy computed according to
 #  x_c, y_c, traj_radius, and phase, position z is fixed value for planer ball rolling,
 # calculated through ball radius and offset value
@@ -29,3 +48,7 @@ phase: 0
 x_c: 0.55
 y_c: 0
 ball_radius: 0.0315 # should match real measurement and urdf
+
+# -------------------------- Geometry and Contact Settings --------------------------- #
+num_friction_directions: 2
+

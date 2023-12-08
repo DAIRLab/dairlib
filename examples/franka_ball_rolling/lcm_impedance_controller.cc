@@ -18,7 +18,7 @@
 #include "dairlib/lcmt_c3.hpp"
 #include "multibody/multibody_utils.h"
 
-#include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/parameters/impedance_controller_params.h"
 #include "examples/franka_ball_rolling/systems/gravity_compensator.h"
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -49,26 +49,23 @@ using Eigen::MatrixXd;
 int DoMain(int argc, char* argv[]){
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
-    "examples/franka_ball_rolling/parameters.yaml");
+  ImpedanceControllerParams impedance_param = drake::yaml::LoadYamlFile<ImpedanceControllerParams>(
+    "examples/franka_ball_rolling/parameters/impedance_controller_params.yaml");
 
   drake::lcm::DrakeLcm drake_lcm;
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile(impedance_param.franka_model);
+  parser.AddModelFromFile(impedance_param.offset_model);
+  parser.AddModelFromFile(impedance_param.ground_model);
+  parser.AddModelFromFile(impedance_param.end_effector_model);
+  parser.AddModelFromFile(impedance_param.ball_model);
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Vector3d T_F_EE(0, 0, 0.107);
-  Vector3d T_F_G(0, 0, -0.0745);
-
-  RigidTransform<double> X_F_EE = RigidTransform<double>(T_F_EE);
-  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
+  RigidTransform<double> X_F_EE = RigidTransform<double>(impedance_param.tool_attachment_frame);
+  RigidTransform<double> X_F_G = RigidTransform<double>(impedance_param.ground_offset_frame);
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
@@ -80,57 +77,63 @@ int DoMain(int argc, char* argv[]){
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
 
   /* -------------------------------------------------------------------------------------------*/
+  // additional plant_contact linked with scene_graph and additional diagram_contact is built
+  // all for the geometry and contact information needed for feedforward force_feedback in the
+  // impedance controller, it's update in impedance controller should be synchronized with the
+  // general plant!
 
-  DiagramBuilder<double> builder_f;
-  auto [plant_f, scene_graph] = AddMultibodyPlantSceneGraph(&builder_f, 0.0);
-  Parser parser_f(&plant_f);
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
-  parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
+  DiagramBuilder<double> builder_contact;
+  auto [plant_contact, scene_graph] = AddMultibodyPlantSceneGraph(&builder_contact, 0.0);
+  Parser parser_contact(&plant_contact);
+  parser_contact.AddModelFromFile(impedance_param.franka_model);
+  parser_contact.AddModelFromFile(impedance_param.offset_model);
+  parser_contact.AddModelFromFile(impedance_param.ground_model);
+  parser_contact.AddModelFromFile(impedance_param.end_effector_model);
+  parser_contact.AddModelFromFile(impedance_param.ball_model);
 
-  plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("panda_link0"), X_WI);
-  plant_f.WeldFrames(plant_f.GetFrameByName("panda_link7"), plant_f.GetFrameByName("end_effector_base"), X_F_EE);
-  plant_f.WeldFrames(plant_f.GetFrameByName("panda_link0"), plant_f.GetFrameByName("visual_table_offset"), X_WI);
-  plant_f.WeldFrames(plant_f.GetFrameByName("panda_link0"), plant_f.GetFrameByName("ground"), X_F_G);
-  plant_f.Finalize();
+  plant_contact.WeldFrames(plant_contact.world_frame(), plant_contact.GetFrameByName("panda_link0"), X_WI);
+  plant_contact.WeldFrames(plant_contact.GetFrameByName("panda_link7"), plant_contact.GetFrameByName("end_effector_base"), X_F_EE);
+  plant_contact.WeldFrames(plant_contact.GetFrameByName("panda_link0"), plant_contact.GetFrameByName("visual_table_offset"), X_WI);
+  plant_contact.WeldFrames(plant_contact.GetFrameByName("panda_link0"), plant_contact.GetFrameByName("ground"), X_F_G);
+  plant_contact.Finalize();
 
-  auto diagram_f = builder_f.Build();
-  auto diagram_context_f = diagram_f->CreateDefaultContext();
-  auto& context_f = diagram_f->GetMutableSubsystemContext(plant_f, diagram_context_f.get());
+  auto diagram_contact = builder_contact.Build();
+  auto diagram_context_contact = diagram_contact->CreateDefaultContext();
+  auto& context_contact = diagram_contact->GetMutableSubsystemContext(plant_contact, diagram_context_contact.get());
 
   /* -------------------------------------------------------------------------------------------*/
 
   auto context = plant.CreateDefaultContext();
 
-  double translational_stiffness = param.translational_stiffness;
-  double rotational_stiffness = param.rotational_stiffness;
+  MatrixXd translational_stiffness = impedance_param.translational_stiffness.asDiagonal();
+  MatrixXd rotational_stiffness = impedance_param.rotational_stiffness.asDiagonal();
+  MatrixXd translational_damping = impedance_param.translational_damping.asDiagonal();
+  MatrixXd rotational_damping = impedance_param.rotational_damping.asDiagonal();
 
   MatrixXd K = MatrixXd::Zero(6,6);
   MatrixXd B = MatrixXd::Zero(6,6);
-  K.block(0,0,3,3) << rotational_stiffness * MatrixXd::Identity(3,3);
-  K.block(3,3,3,3) << translational_stiffness * MatrixXd::Identity(3,3);
-  B.block(0,0,3,3) << param.rotational_damping * MatrixXd::Identity(3,3);
-  B.block(3,3,3,3) << 2 * sqrt(translational_stiffness) * MatrixXd::Identity(3,3);
+  K.block(0,0,3,3) << rotational_stiffness;
+  K.block(3,3,3,3) << translational_stiffness;
+  B.block(0,0,3,3) << rotational_damping;
+  B.block(3,3,3,3) << translational_damping;
 
-  MatrixXd K_null = param.stiffness_null * MatrixXd::Identity(7,7);
-  MatrixXd B_null = param.damping_null * MatrixXd::Identity(7,7);
-  VectorXd qd = param.q_null_desired;
+  MatrixXd stiffness_null = impedance_param.stiffness_null.asDiagonal();
+  MatrixXd damping_null = impedance_param.damping_null.asDiagonal();
+
+  MatrixXd K_null = impedance_param.stiffness_null;
+  MatrixXd B_null = impedance_param.damping_null;
+  VectorXd qd = impedance_param.q_null_desired;
 
   drake::geometry::GeometryId sphere_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0];
+    plant_contact.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId EE_geoms = 
-    plant_f.GetCollisionGeometriesForBody(plant.GetBodyByName("end_effector_tip"))[0];
+    plant_contact.GetCollisionGeometriesForBody(plant.GetBodyByName("end_effector_tip"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
 
-  int num_friction_directions = 2;
-  double moving_offset = param.moving_offset;
-  double pushing_offset = param.pushing_offset;
-
+  int num_friction_directions = impedance_param.num_friction_directions;
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
-      plant, plant_f, *context, context_f, K, B, K_null, B_null, qd,
-      contact_geoms, num_friction_directions, moving_offset, pushing_offset);
+          plant, plant_contact, *context, context_contact, K, B, K_null, B_null, qd,
+          contact_geoms, num_friction_directions);
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/
@@ -165,8 +168,8 @@ int DoMain(int argc, char* argv[]){
   /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();
-  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/lcm_impedance_controller");
-  DrawAndSaveDiagramGraph(*diagram_f, "examples/franka_ball_rolling/lcm_impedance_controller_contact");
+//  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/lcm_impedance_controller");
+//  DrawAndSaveDiagramGraph(*diagram_contact, "examples/franka_ball_rolling/lcm_impedance_controller_contact");
 
 
   auto context_d = diagram->CreateDefaultContext();
@@ -178,9 +181,9 @@ int DoMain(int argc, char* argv[]){
   
   /// initialize message
   std::vector<double> msg_data(38, 0);
-  msg_data[0] = param.initial_start(0);
-  msg_data[1] = param.initial_start(1);
-  msg_data[2] = param.initial_start(2);
+  msg_data[0] = impedance_param.initial_start(0);
+  msg_data[1] = impedance_param.initial_start(1);
+  msg_data[2] = impedance_param.initial_start(2);
   msg_data[3] = 0;
   msg_data[4] = 1;
   msg_data[5] = 0;
@@ -189,9 +192,9 @@ int DoMain(int argc, char* argv[]){
   msg_data[8] = 0;
   msg_data[9] = 0;
   msg_data[10] = 0;
-  msg_data[11] = param.traj_radius * sin(M_PI * param.phase / 180.0) + param.x_c;
-  msg_data[12] = param.traj_radius * cos(M_PI * param.phase / 180.0) + param.y_c;
-  msg_data[13] = param.ball_radius + param.table_offset;
+  msg_data[11] = impedance_param.traj_radius * sin(M_PI * impedance_param.phase / 180.0) + impedance_param.x_c;
+  msg_data[12] = impedance_param.traj_radius * cos(M_PI * impedance_param.phase / 180.0) + impedance_param.y_c;
+  msg_data[13] = impedance_param.ball_radius - impedance_param.ground_offset_frame(2);;
   msg_data[32] = msg_data[7];
   msg_data[33] = msg_data[8];
   msg_data[34] = msg_data[9];

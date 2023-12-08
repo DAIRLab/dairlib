@@ -91,9 +91,7 @@ class ImpedanceController : public LeafSystem<double> {
       const Eigen::MatrixXd& B_null,
       const Eigen::VectorXd& qd,
       const std::vector<drake::geometry::GeometryId>& contact_geoms,
-      int num_friction_directions,
-      double moving_offset,
-      double pushing_offset);
+      int num_friction_directions);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(franka_state_input_port_);
@@ -106,7 +104,7 @@ class ImpedanceController : public LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_input_port_output() const {
     return this->get_output_port(control_output_port_);
   }
-  
+
  private:
   // computes the control input
   void CalcControl(const drake::systems::Context<double>& context,
@@ -117,7 +115,6 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the contact jacobians in J_n and J_t
   void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
-  void CheckJointLimits(const VectorXd& q, double timestamp) const;
   void ClampJointTorques(VectorXd& tau, double timestamp) const;
   void ClampIntegratorTorque(VectorXd& tau, const VectorXd& clamp) const;
   bool SaturatedClamp(const VectorXd& tau, const VectorXd& clamp) const;
@@ -126,11 +123,6 @@ class ImpedanceController : public LeafSystem<double> {
   NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
   THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
   */
-  Vector3d ApplyHeuristic(
-      const VectorXd& xd, const VectorXd& xd_dot, const VectorXd& lambda,
-      const VectorXd& x, const VectorXd& x_dot,
-      const VectorXd& ball_xyz, const VectorXd& ball_xyz_d,
-      double settling_time, double timestamp) const;
 
   // ports
   int franka_state_input_port_;
@@ -150,14 +142,8 @@ class ImpedanceController : public LeafSystem<double> {
   const VectorXd qd_;
   std::vector<drake::geometry::GeometryId> contact_geoms_;
   const int num_friction_directions_;
-  const double moving_offset_;
-  const double pushing_offset_;
   C3Parameters param_;
-  int enable_heuristic_;
   int enable_contact_;
-  Eigen::VectorXd upper_limits_;
-  Eigen::VectorXd lower_limits_;
-  Eigen::VectorXd joint_ranges_;
   Eigen::VectorXd torque_limits_;
 
   mutable Eigen::VectorXd integrator_;

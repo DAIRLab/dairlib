@@ -187,7 +187,7 @@ cc_binary(
         "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
         "//systems/controllers:impedance_controller",
-        "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_ball_rolling:impedance_controller_params",
         "//examples/franka_ball_rolling/systems:c3_systems",
         "//systems:system_utils",
         "@drake//:drake_shared_library",

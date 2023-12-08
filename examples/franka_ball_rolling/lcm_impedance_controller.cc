@@ -22,6 +22,7 @@
 #include "examples/franka_ball_rolling/systems/gravity_compensator.h"
 #include "systems/controllers/impedance_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/system_utils.h"
 
 
 DEFINE_string(channel, "FRANKA_OUTPUT",
@@ -164,7 +165,8 @@ int DoMain(int argc, char* argv[]){
   /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_run_c3_impedance_experiments");
+  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/lcm_impedance_controller");
+  DrawAndSaveDiagramGraph(*diagram_f, "examples/franka_ball_rolling/lcm_impedance_controller_contact");
 
 
   auto context_d = diagram->CreateDefaultContext();

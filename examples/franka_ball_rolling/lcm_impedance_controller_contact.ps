@@ -1,0 +1,943 @@
+%!PS-Adobe-3.0
+%%Creator: graphviz version 2.43.0 (0)
+%%Title: _298
+%%Pages: (atend)
+%%BoundingBox: (atend)
+%%EndComments
+save
+%%BeginProlog
+/DotDict 200 dict def
+DotDict begin
+
+/setupLatin1 {
+mark
+/EncodingVector 256 array def
+ EncodingVector 0
+
+ISOLatin1Encoding 0 255 getinterval putinterval
+EncodingVector 45 /hyphen put
+
+% Set up ISO Latin 1 character encoding
+/starnetISO {
+        dup dup findfont dup length dict begin
+        { 1 index /FID ne { def }{ pop pop } ifelse
+        } forall
+        /Encoding EncodingVector def
+        currentdict end definefont
+} def
+/Times-Roman starnetISO def
+/Times-Italic starnetISO def
+/Times-Bold starnetISO def
+/Times-BoldItalic starnetISO def
+/Helvetica starnetISO def
+/Helvetica-Oblique starnetISO def
+/Helvetica-Bold starnetISO def
+/Helvetica-BoldOblique starnetISO def
+/Courier starnetISO def
+/Courier-Oblique starnetISO def
+/Courier-Bold starnetISO def
+/Courier-BoldOblique starnetISO def
+cleartomark
+} bind def
+
+%%BeginResource: procset graphviz 0 0
+/coord-font-family /Times-Roman def
+/default-font-family /Times-Roman def
+/coordfont coord-font-family findfont 8 scalefont def
+
+/InvScaleFactor 1.0 def
+/set_scale {
+       dup 1 exch div /InvScaleFactor exch def
+       scale
+} bind def
+
+% styles
+/solid { [] 0 setdash } bind def
+/dashed { [9 InvScaleFactor mul dup ] 0 setdash } bind def
+/dotted { [1 InvScaleFactor mul 6 InvScaleFactor mul] 0 setdash } bind def
+/invis {/fill {newpath} def /stroke {newpath} def /show {pop newpath} def} bind def
+/bold { 2 setlinewidth } bind def
+/filled { } bind def
+/unfilled { } bind def
+/rounded { } bind def
+/diagonals { } bind def
+/tapered { } bind def
+
+% hooks for setting color 
+/nodecolor { sethsbcolor } bind def
+/edgecolor { sethsbcolor } bind def
+/graphcolor { sethsbcolor } bind def
+/nopcolor {pop pop pop} bind def
+
+/beginpage {	% i j npages
+	/npages exch def
+	/j exch def
+	/i exch def
+	/str 10 string def
+	npages 1 gt {
+		gsave
+			coordfont setfont
+			0 0 moveto
+			(\() show i str cvs show (,) show j str cvs show (\)) show
+		grestore
+	} if
+} bind def
+
+/set_font {
+	findfont exch
+	scalefont setfont
+} def
+
+% draw text fitted to its expected width
+/alignedtext {			% width text
+	/text exch def
+	/width exch def
+	gsave
+		width 0 gt {
+			[] 0 setdash
+			text stringwidth pop width exch sub text length div 0 text ashow
+		} if
+	grestore
+} def
+
+/boxprim {				% xcorner ycorner xsize ysize
+		4 2 roll
+		moveto
+		2 copy
+		exch 0 rlineto
+		0 exch rlineto
+		pop neg 0 rlineto
+		closepath
+} bind def
+
+/ellipse_path {
+	/ry exch def
+	/rx exch def
+	/y exch def
+	/x exch def
+	matrix currentmatrix
+	newpath
+	x y translate
+	rx ry scale
+	0 0 1 0 360 arc
+	setmatrix
+} bind def
+
+/endpage { showpage } bind def
+/showpage { } def
+
+/layercolorseq
+	[	% layer color sequence - darkest to lightest
+		[0 0 0]
+		[.2 .8 .8]
+		[.4 .8 .8]
+		[.6 .8 .8]
+		[.8 .8 .8]
+	]
+def
+
+/layerlen layercolorseq length def
+
+/setlayer {/maxlayer exch def /curlayer exch def
+	layercolorseq curlayer 1 sub layerlen mod get
+	aload pop sethsbcolor
+	/nodecolor {nopcolor} def
+	/edgecolor {nopcolor} def
+	/graphcolor {nopcolor} def
+} bind def
+
+/onlayer { curlayer ne {invis} if } def
+
+/onlayers {
+	/myupper exch def
+	/mylower exch def
+	curlayer mylower lt
+	curlayer myupper gt
+	or
+	{invis} if
+} def
+
+/curlayer 0 def
+
+%%EndResource
+%%EndProlog
+%%BeginSetup
+14 default-font-family set_font
+% /arrowlength 10 def
+% /arrowwidth 5 def
+
+% make sure pdfmark is harmless for PS-interpreters other than Distiller
+/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse
+% make '<<' and '>>' safe on PS Level 1 devices
+/languagelevel where {pop languagelevel}{1} ifelse
+2 lt {
+    userdict (<<) cvn ([) cvn load put
+    userdict (>>) cvn ([) cvn load put
+} if
+
+%%EndSetup
+setupLatin1
+%%Page: 1 1
+%%PageBoundingBox: 36 36 798 943
+%%PageOrientation: Portrait
+0 0 1 beginpage
+gsave
+36 36 762 907 boxprim clip newpath
+1 1 set_scale 0 rotate 40 40 translate
+% cluster298diagram
+gsave
+1 setlinewidth
+0 0 0 graphcolor
+newpath 8 8 moveto
+8 891 lineto
+746 891 lineto
+746 8 lineto
+closepath stroke
+0 0 0 graphcolor
+14 /Times-Roman set_font
+351 872.3 moveto 52 (Diagram) alignedtext
+grestore
+% cluster298subsystems
+gsave
+1 setlinewidth
+0 0 1 graphcolor
+newpath 16 16 moveto
+16 852 lineto
+738 852 lineto
+738 16 lineto
+closepath stroke
+grestore
+% s3
+gsave
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 805 moveto
+32 839 lineto
+520 839 lineto
+520 805 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+229.5 825.8 moveto 93 (MultibodyPlant) alignedtext
+0 0 0 nodecolor
+14 /Times-Roman set_font
+243 811.8 moveto 66 (name=plant) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 784 moveto
+32 805 lineto
+237 805 lineto
+237 784 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+89.5 790.8 moveto 90 (geometry_query) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 784 moveto
+237 805 lineto
+520 805 lineto
+520 784 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+336.5 790.8 moveto 84 (geometry_pose) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 763 moveto
+32 784 lineto
+237 784 lineto
+237 763 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+48.5 769.8 moveto 172 (WorldModelInstance_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 763 moveto
+237 784 lineto
+520 784 lineto
+520 763 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+280.5 769.8 moveto 196 (WorldModelInstance_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 742 moveto
+32 763 lineto
+237 763 lineto
+237 742 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+45.5 748.8 moveto 178 (DefaultModelInstance_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 742 moveto
+237 763 lineto
+520 763 lineto
+520 742 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+277.5 748.8 moveto 202 (DefaultModelInstance_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 721 moveto
+32 742 lineto
+237 742 lineto
+237 721 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+90 727.8 moveto 89 (panda_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 721 moveto
+237 742 lineto
+520 742 lineto
+520 721 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+322.5 727.8 moveto 112 (panda_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 700 moveto
+32 721 lineto
+237 721 lineto
+237 700 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+54.5 706.8 moveto 160 (visual_table_offset_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 700 moveto
+237 721 lineto
+520 721 lineto
+520 700 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+287 706.8 moveto 183 (visual_table_offset_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 679 moveto
+32 700 lineto
+237 700 lineto
+237 679 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+87 685.8 moveto 95 (ground_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 679 moveto
+237 700 lineto
+520 700 lineto
+520 679 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+319.5 685.8 moveto 118 (ground_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 658 moveto
+32 679 lineto
+237 679 lineto
+237 658 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+59 664.8 moveto 151 (end_effector_full_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 658 moveto
+237 679 lineto
+520 679 lineto
+520 658 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+291.5 664.8 moveto 174 (end_effector_full_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 637 moveto
+32 658 lineto
+237 658 lineto
+237 637 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+78.5 643.8 moveto 112 (sphere_v2_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 637 moveto
+237 658 lineto
+520 658 lineto
+520 637 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+310.5 643.8 moveto 136 (sphere_v2_net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 616 moveto
+32 637 lineto
+237 637 lineto
+237 616 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+109.5 622.8 moveto 50 (actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 616 moveto
+237 637 lineto
+520 637 lineto
+520 616 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+342 622.8 moveto 73 (net_actuation) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 595 moveto
+32 616 lineto
+237 616 lineto
+237 595 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+38 601.8 moveto 193 (WorldModelInstance_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 595 moveto
+237 616 lineto
+520 616 lineto
+520 595 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+366 601.8 moveto 25 (state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 574 moveto
+32 595 lineto
+237 595 lineto
+237 574 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+35 580.8 moveto 199 (DefaultModelInstance_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 574 moveto
+237 595 lineto
+520 595 lineto
+520 574 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+346.5 580.8 moveto 64 (body_poses) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 553 moveto
+32 574 lineto
+237 574 lineto
+237 553 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+79.5 559.8 moveto 110 (panda_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 553 moveto
+237 574 lineto
+520 574 lineto
+520 553 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+331.5 559.8 moveto 94 (spatial_velocities) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 532 moveto
+32 553 lineto
+237 553 lineto
+237 532 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+44 538.8 moveto 181 (visual_table_offset_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 532 moveto
+237 553 lineto
+520 553 lineto
+520 532 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+322 538.8 moveto 113 (spatial_accelerations) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 511 moveto
+32 532 lineto
+237 532 lineto
+237 511 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+76.5 517.8 moveto 116 (ground_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 511 moveto
+237 532 lineto
+520 532 lineto
+520 511 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+311 517.8 moveto 135 (generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 490 moveto
+32 511 lineto
+237 511 lineto
+237 490 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+48.5 496.8 moveto 172 (end_effector_full_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 490 moveto
+237 511 lineto
+520 511 lineto
+520 490 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+304.5 496.8 moveto 148 (WorldModelInstance_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 469 moveto
+32 490 lineto
+237 490 lineto
+237 469 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+68 475.8 moveto 133 (sphere_v2_desired_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 469 moveto
+237 490 lineto
+520 490 lineto
+520 469 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+250 475.8 moveto 257 (WorldModelInstance_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 448 moveto
+32 469 lineto
+237 469 lineto
+237 448 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+62.5 454.8 moveto 144 (applied_generalized_force) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 448 moveto
+237 469 lineto
+520 469 lineto
+520 448 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+301.5 454.8 moveto 154 (DefaultModelInstance_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 32 427 moveto
+32 448 lineto
+237 448 lineto
+237 427 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+76 433.8 moveto 117 (applied_spatial_force) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 427 moveto
+237 448 lineto
+520 448 lineto
+520 427 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+247 433.8 moveto 263 (DefaultModelInstance_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0.75294 nodecolor
+newpath 32 427 moveto
+32 28 lineto
+237 28 lineto
+stroke
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 406 moveto
+237 427 lineto
+520 427 lineto
+520 406 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+346.5 412.8 moveto 64 (panda_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 385 moveto
+237 406 lineto
+520 406 lineto
+520 385 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+291.5 391.8 moveto 174 (panda_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 364 moveto
+237 385 lineto
+520 385 lineto
+520 364 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+311 370.8 moveto 135 (visual_table_offset_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 343 moveto
+237 364 lineto
+520 364 lineto
+520 343 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+256.5 349.8 moveto 244 (visual_table_offset_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 322 moveto
+237 343 lineto
+520 343 lineto
+520 322 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+343.5 328.8 moveto 70 (ground_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 301 moveto
+237 322 lineto
+520 322 lineto
+520 301 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+288.5 307.8 moveto 180 (ground_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 280 moveto
+237 301 lineto
+520 301 lineto
+520 280 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+315.5 286.8 moveto 126 (end_effector_full_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 259 moveto
+237 280 lineto
+520 280 lineto
+520 259 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+261 265.8 moveto 235 (end_effector_full_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 238 moveto
+237 259 lineto
+520 259 lineto
+520 238 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+334.5 244.8 moveto 88 (sphere_v2_state) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 217 moveto
+237 238 lineto
+520 238 lineto
+520 217 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+280 223.8 moveto 197 (sphere_v2_generalized_acceleration) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 196 moveto
+237 217 lineto
+520 217 lineto
+520 196 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+243 202.8 moveto 271 (WorldModelInstance_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 175 moveto
+237 196 lineto
+520 196 lineto
+520 175 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+240 181.8 moveto 277 (DefaultModelInstance_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 154 moveto
+237 175 lineto
+520 175 lineto
+520 154 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+285 160.8 moveto 187 (panda_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 133 moveto
+237 154 lineto
+520 154 lineto
+520 133 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+249.5 139.8 moveto 258 (visual_table_offset_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 112 moveto
+237 133 lineto
+520 133 lineto
+520 112 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+282 118.8 moveto 193 (ground_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 91 moveto
+237 112 lineto
+520 112 lineto
+520 91 lineto
+closepath stroke
+0 0 0.75294 nodecolor
+14 /Times-Roman set_font
+254 97.8 moveto 249 (end_effector_full_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 70 moveto
+237 91 lineto
+520 91 lineto
+520 70 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+273 76.8 moveto 211 (sphere_v2_generalized_contact_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 49 moveto
+237 70 lineto
+520 70 lineto
+520 49 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+336.5 55.8 moveto 84 (reaction_forces) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 237 28 moveto
+237 49 lineto
+520 49 lineto
+520 28 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+337.5 34.8 moveto 82 (contact_results) alignedtext
+grestore
+% s4
+gsave
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 572 806 moveto
+572 840 lineto
+722 840 lineto
+722 806 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+610.5 826.8 moveto 73 (SceneGraph) alignedtext
+0 0 0 nodecolor
+14 /Times-Roman set_font
+594 812.8 moveto 106 (name=scene_graph) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 572 785 moveto
+572 806 lineto
+685 806 lineto
+685 785 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+599 791.8 moveto 59 (plant_pose) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 685 764 moveto
+685 806 lineto
+722 806 lineto
+722 764 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+688 781.3 moveto 31 (query) alignedtext
+1 setlinewidth
+solid
+0 0 0 nodecolor
+newpath 572 764 moveto
+572 785 lineto
+685 785 lineto
+685 764 lineto
+closepath stroke
+0 0 0 nodecolor
+14 /Times-Roman set_font
+575 770.8 moveto 107 (plant_configuration) alignedtext
+grestore
+% s3->s4
+gsave
+1 setlinewidth
+0 0 0 edgecolor
+newpath 521 795 moveto
+539.4028 795 546.3757 795 560.8495 795 curveto
+stroke
+0 0 0 edgecolor
+newpath 561 798.5001 moveto
+571 795 lineto
+561 791.5001 lineto
+closepath fill
+1 setlinewidth
+solid
+0 0 0 edgecolor
+newpath 561 798.5001 moveto
+571 795 lineto
+561 791.5001 lineto
+closepath stroke
+grestore
+% s4->s3
+gsave
+1 setlinewidth
+0 0 0 edgecolor
+newpath 723 785 moveto
+734.12 785 730.0186 767.7043 722 760 curveto
+671.3628 711.3478 622.6662 721.4068 564 760 curveto
+530.2372 782.2106 561.7628 821.2894 528 843.5 curveto
+481.9581 873.7883 71.3691 882.0657 32 843.5 curveto
+19.6065 831.3594 12.5506 807.3528 21.5011 798.4383 curveto
+stroke
+0 0 0 edgecolor
+newpath 22.7883 801.6947 moveto
+31 795 lineto
+20.4058 795.1126 lineto
+closepath fill
+1 setlinewidth
+solid
+0 0 0 edgecolor
+newpath 22.7883 801.6947 moveto
+31 795 lineto
+20.4058 795.1126 lineto
+closepath stroke
+grestore
+endpage
+showpage
+grestore
+%%PageTrailer
+%%EndPage: 1
+%%Trailer
+%%Pages: 1
+%%BoundingBox: 36 36 798 943
+end
+restore
+%%EOF

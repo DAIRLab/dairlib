@@ -30,6 +30,8 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "lcm/lcm_trajectory.h"
 
 //CHANGE FOR WHEN YOU DO THE SPHERE EXAMPLE
 #include "examples/cube_franka/c3_parameters.h"
@@ -98,6 +100,10 @@ class C3Controller_franka : public LeafSystem<double> {
     return this->get_output_port(c3_sample_solution_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_sample_locations() const {
+    return this->get_output_port(sample_locations_port_);
+  }
+
 
  private:
   void CalcControl(const drake::systems::Context<double>& context,
@@ -106,6 +112,10 @@ class C3Controller_franka : public LeafSystem<double> {
                     C3Output::C3Solution* c3_solution) const;
   void OutputC3BestSampleSolution(const drake::systems::Context<double>& context,
                     C3Output::C3Solution* c3_sample_solution) const;
+  // void OutputSampleLocations(const drake::systems::Context<double>& context,
+  //                   TimestampedVector<double>* sample_locations) const;
+  void OutputSampleLocations(const drake::systems::Context<double>& context,
+                    dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
   void StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
                        const Eigen::Vector3d end_effector, double timestamp) const;
@@ -114,6 +124,7 @@ class C3Controller_franka : public LeafSystem<double> {
   int state_output_port_;
   int c3_solution_port_;
   int c3_sample_solution_port_;
+  int sample_locations_port_;
 
   const MultibodyPlant<double>& plant_;
   MultibodyPlant<double>& plant_f_;
@@ -164,7 +175,8 @@ class C3Controller_franka : public LeafSystem<double> {
 
   mutable vector<vector<VectorXd>> all_fullsols_;
   mutable std::vector<VectorXd> best_additional_sample_fullsol_;
-  // mutable vector<VectorXd> fullsols_;
+  mutable std::vector<VectorXd> candidate_states_;
+  mutable std::vector<solvers::LCS> candidate_lcs_objects_;
 
   mutable bool received_first_message_{false};
   mutable double first_message_time_{-1.0};

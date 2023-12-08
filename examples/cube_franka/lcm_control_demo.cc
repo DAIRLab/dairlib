@@ -379,6 +379,21 @@ int DoMain(int argc, char* argv[]){
                   actor_sample_trajectory_sender->get_input_port());
   builder.Connect(c3_sample_trajectory_generator->get_output_port_object_trajectory(),
                   object_sample_trajectory_sender->get_input_port());
+
+  // Add a system for visualizing the sample locations.
+  auto sample_locations_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "SAMPLE_LOCATIONS_CHANNEL", &drake_lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+  // auto c3_trajectory_generator =
+  // builder.AddSystem<systems::C3TrajectoryGenerator>(plant, N, "c3_trajectory_generator");
+  // TODO: Change the connection to use the sample locations.
+  // builder.Connect(controller->get_output_port_sample_locations(), c3_trajectory_generator->get_input_port_c3_solution());
+  // builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+  //                 sample_locations_sender->get_input_port());
+  // TODO: actually maybe there's a way just to get this??
+  builder.Connect(controller->get_output_port_sample_locations(), sample_locations_sender->get_input_port());
   
 
   // determine if ttl 0 or 1 should be used for publishing

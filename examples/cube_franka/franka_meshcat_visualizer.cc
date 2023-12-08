@@ -122,8 +122,8 @@ int do_main(int argc, char* argv[]) {
           "end_effector_orientation_target", param.horizon_length, "current_location");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
-  trajectory_drawer_actor->SetNumSamples(5);
-  trajectory_drawer_object->SetNumSamples(5);
+  trajectory_drawer_actor->SetNumSamples(param.horizon_length);
+  trajectory_drawer_object->SetNumSamples(param.horizon_length);
 
   // Subscribe to the current position's C3 plan.
   auto trajectory_sub_actor = builder.AddSystem(
@@ -151,15 +151,15 @@ int do_main(int argc, char* argv[]) {
   auto sample_object_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
           meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/jack_best_sample.urdf"), "c3_sample_trajectory_generator_object_position_target",
-          "c3_sample_trajectory_generator_object_orientation_target", 5, "sample_location"); 
+          "c3_sample_trajectory_generator_object_orientation_target", param.horizon_length, "sample_location"); 
   auto sample_end_effector_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
           meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/end_effector_best_sample.urdf"), "c3_sample_trajectory_generator_end_effector_position_target",
-          "c3_sample_trajectory_generator_end_effector_orientation_target", 5, "sample_location");
+          "c3_sample_trajectory_generator_end_effector_orientation_target", param.horizon_length, "sample_location");
   sample_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   sample_trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
-  sample_trajectory_drawer_actor->SetNumSamples(5);
-  sample_trajectory_drawer_object->SetNumSamples(5);
+  sample_trajectory_drawer_actor->SetNumSamples(param.horizon_length);
+  sample_trajectory_drawer_object->SetNumSamples(param.horizon_length);
   auto sample_trajectory_sub_actor = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           "ACTOR_SAMPLE_CHANNEL", lcm));

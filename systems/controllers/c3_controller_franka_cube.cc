@@ -192,6 +192,20 @@ C3Controller_franka::C3Controller_franka(
     }
   }
 
+  candidate_states_ = std::vector<VectorXd>(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos));
+  for (int i = 0; i < std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos); ++i) {
+    candidate_states_[i] = Eigen::VectorXd::Zero(n_);
+  }
+
+  // auto dummy_system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
+  //     plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
+  //     num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
+  // solvers::LCS dummy_lcs = dummy_system_scaling_pair.first;
+  // candidate_lcs_objects_ = std::vector<solvers::LCS>(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos));
+  // for (int i = 0; i < std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos); ++i) {
+  //   candidate_lcs_objects_.push_back(dummy_lcs);
+  // }
+
   int n_q_ = plant_.num_positions();
   int n_v_ = plant_.num_velocities();
   auto c3_solution = C3Output::C3Solution();
@@ -213,6 +227,18 @@ C3Controller_franka::C3Controller_franka(
   c3_sample_solution_port_ =
       this->DeclareAbstractOutputPort("c3_sample_solution", c3_sample_solution,
                                       &C3Controller_franka::OutputC3BestSampleSolution)
+          .get_index();
+
+  // sample_locations_port_ =
+  //     this->DeclareVectorOutputPort("sample_locations", TimestampedVector<double>(3*(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos))),
+  //                                     &C3Controller_franka::OutputSampleLocations)
+  //         .get_index();
+
+  sample_locations_port_ =
+      this->DeclareAbstractOutputPort(
+              "sample_locations",
+              dairlib::lcmt_timestamped_saved_traj(),
+              &C3Controller_franka::OutputSampleLocations)
           .get_index();
 
   // filter info
@@ -547,8 +573,6 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   int candidate_state_size = plant_.num_positions() + plant_.num_velocities();
   // NOTE:  These vectors are initialized as empty since assigning a particular index in a vector of LCS objects is not allowed.
   // Items are appended to the vectors in the below for loop.  Be careful about possible memory issues as a result.
-  std::vector<VectorXd> candidate_states;
-  std::vector<solvers::LCS> candidate_lcs_objects;
   for (int i = 0; i < num_samples; i++) {
     Eigen::VectorXd candidate_state;
 
@@ -607,14 +631,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                                                 // solve errors frequently in the future.
 
     // Store the candidate states and LCS objects.
-    candidate_states.push_back(candidate_state);
-    candidate_lcs_objects.push_back(test_lcs);
-  }
-
-  // For visualization only, we need there to be at least 4 items in the candidate_states vector.  Add vectors of zeros to fill
-  // any remaining gap.
-  while (candidate_states.size() < 4) {
-    candidate_states.push_back(VectorXd::Zero(candidate_state_size));
+    candidate_states_[i] = candidate_state;
+    candidate_lcs_objects_.at(i) = test_lcs;
   }
 
   // Instantiate variables before loop; they get assigned values inside loop.
@@ -644,8 +662,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Loop over samples to compute their costs.
     for (int i = 0; i < num_samples; i++) {
       // Get the candidate state and its LCS representation.
-      VectorXd test_state = candidate_states.at(i);
-      solvers::LCS test_system = candidate_lcs_objects.at(i);
+      VectorXd test_state = candidate_states_.at(i);
+      solvers::LCS test_system = candidate_lcs_objects_.at(i);
 
       // By default use zeros for warm start.  Overwrite for current end effector location.
       std::vector<VectorXd> warm_start_delta = warm_start_delta_zeros_;
@@ -740,7 +758,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     index = (SampleIndex)(std::distance(std::begin(additional_sample_cost_vector), it) + 1);
   }
 
-  VectorXd best_additional_sample = candidate_states[index];
+  VectorXd best_additional_sample = candidate_states_[index];
   double best_additional_sample_cost = cost_vector[index];
   best_additional_sample_fullsol_ = all_fullsols_[index];
 
@@ -949,7 +967,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Update desired next state.
     st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(4),
-                  candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
+                  candidate_states_[1].head(3), candidate_states_[2].head(3), candidate_states_[3].head(3),
                   state_next.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                   C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
@@ -1015,7 +1033,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
     // Set desired next state.
     st_desired << next_point.head(3), orientation_d, best_additional_sample.tail(16), VectorXd::Zero(4),
-                  candidate_states[1].head(3), candidate_states[2].head(3), candidate_states[3].head(3),
+                  candidate_states_[1].head(3), candidate_states_[2].head(3), candidate_states_[3].head(3),
                   next_point.head(3), best_additional_sample.head(3), indicator_xyz, curr_ee_cost, best_additional_sample_cost,
                    C3_flag_ * 100, traj_desired.at(0).segment(7,3), ball_xyz, goal_ee_location_c3,
                   predicted_jack_loc_current_feasible, predicted_jack_loc_current_optimistic,
@@ -1068,6 +1086,34 @@ void C3Controller_franka::OutputC3BestSampleSolution(
   }
 }
 
+void C3Controller_franka::OutputSampleLocations(
+    const drake::systems::Context<double>& context,
+    TimestampedVector<double>* output_traj) const {
+
+  int num_samples = std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos);
+  MatrixXd sample_locations = MatrixXd::Zero(3, num_samples);
+  for (int i = 0; i < num_samples; i++){
+    sample_locations.col(i) = candidate_states_[i].head(3);
+  }
+
+  LcmTrajectory::Trajectory sample_locations_traj;
+  sample_locations_traj.traj_name = "sample_positions";
+  sample_locations_traj.datatypes = std::vector<std::string>(sample_locations.rows(), "double");
+  sample_locations_traj.datapoints = sample_locations;
+  LcmTrajectory lcm_traj({sample_locations_traj}, {"sample_positions"}, "sample_positions",
+                         "sample_positions", false);
+
+  sample_locations_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  sample_locations_traj->utime = context.get_time() * 1e6;
+
+  // Eigen::VectorXd sample_locations_vector = Eigen::VectorXd::Zero(3*num_samples);
+  // for (int i = 0; i < num_samples; i++){
+  //   sample_locations_vector.segment(3*i, 3) = candidate_states_[i].head(3);
+  // sample_locations_traj.time_vector = c3_solution->time_vector_.cast<double>();
+  // double t = context.get_time();
+  // sample_locations->SetDataVector(sample_locations_vector);
+  // sample_locations->set_timestamp(t);
+}
 
 }  // namespace controllers
 }  // namespace systems

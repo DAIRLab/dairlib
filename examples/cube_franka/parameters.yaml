@@ -28,8 +28,8 @@ Q_finger_vel: 10  #10        # translational velocity cost  # TODO may need to t
 Q_ball_vel: 0.1 #0.1         # translational velocity cost  # TODO may need to tune these
 R: 500 #0.01                 # torque cost in xyz  # TODO may need to tune these
 G: 0.01 #0.1             #ADMM related  # TODO may need to tune these
-G_EE: 0.001
-G_ground: 0.00001
+G_EE: 0.001               # Currently this is not used, in favor of just G
+G_ground: 0.00001         # Currently this is not used, in favor of just G
 U_default: 1              #ADMM projection step related
 U_pos: 1000000 #10000           # first 10 diag elements of U, corresponding to positions  #ADMM projection step related
 U_vel: 100   #1000              # next 9 diag elements of U, corresponding to velocities
@@ -92,7 +92,7 @@ model_table_offset: -0.0245 #-0.0245 # changes need to be consistent with model 
 
 
 #Sampling parameters
-force_skip_sampling: false    # flag to skip doing sampling and just run C3 on its own.
+force_skip_sampling: true    # flag to skip doing sampling and just run C3 on its own.
 sampling_strategy: 2          # Select sampling strategy. 
                               # 0 means radially symmetric sampling on a circle. 
                               # 1 means random sampling on a 2D circle. 

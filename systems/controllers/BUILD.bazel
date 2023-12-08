@@ -101,6 +101,7 @@ cc_library(
         "//solvers:c3_output",
         "//solvers:lcs",
         "@drake//:drake_shared_library",
+        "//lcm:lcm_trajectory_saver",
     ],
     copts = [
         "-fopenmp"

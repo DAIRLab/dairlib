@@ -68,7 +68,7 @@ class CumulativeCost(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
     
-    def calculate_cumulative_cost(self, context: Context, output_cost : DiscreteValues) -> None:
+    def calculate_cumulative_cost(self, context: Context, discrete_state : DiscreteValues) -> None:
         fsm = self.EvalVectorInput(context, self.input_port_indices['fsm'])
         time_until_switch = self.EvalVectorInput(context, self.input_port_indices['time_until_switch'])
         t_threshold = 0.1
@@ -80,13 +80,13 @@ class CumulativeCost(LeafSystem):
         ud = xd_ud.value()[4:]
 
         if time_until_switch[0] > t_threshold:
-            context.get_mutable_discrete_state(self.calculated_cost_this_stride).set_value(np.array([0]))
+            discrete_state.get_mutable_vector(self.calculated_cost_this_stride).set_value(np.array([0]))
         elif ((context.get_mutable_discrete_state(self.calculated_cost_this_stride).get_value()[0] == 0) & (int(fsm[0]) == 0 or int(fsm[0]) == 1)):
             cost_so_far = context.get_mutable_discrete_state(self.cumulative_cost).get_value()[0]
             curr_cost = (x - xd).T @ self.params.Q @ (x - xd) + ud.T @ self.params.R @ ud
             cost_so_far += curr_cost
-            
-            context.get_mutable_discrete_state(self.cumulative_cost).set_value(np.array([cost_so_far]))
-            context.get_mutable_discrete_state(self.calculated_cost_this_stride).set_value(np.array([1]))
+
+            discrete_state.get_mutable_vector(self.cumulative_cost).set_value(np.array([cost_so_far]))
+            discrete_state.get_mutable_vector(self.calculated_cost_this_stride).set_value(np.array([1]))
 
         return EventStatus.Succeeded()

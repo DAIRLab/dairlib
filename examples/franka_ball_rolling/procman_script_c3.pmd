@@ -5,30 +5,7 @@
     }
 }
 
-group "2.[SIM] C3_Ball_Rolling" {
-    cmd "a.[SIM] C3_Planner" {
-        exec = "bazel-bin/examples/franka_ball_rolling/lcm_control_demo --TTL 0";
-        host = "localhost";
-    }
-    cmd "b.[SIM] Impedance Controller" {
-         exec = "bazel-bin/examples/franka_ball_rolling/run_c3_impedance_experiment";
-         host = "localhost";
-    }
-    cmd "c.[SIM] Simulate Franka" {
-        exec = "bazel-bin/examples/franka_ball_rolling/simulate_franka_lcm";
-        host = "localhost";
-    }
-    cmd "d.[SIM] State_Estimator" {
-        exec = "bazel-bin/examples/franka_ball_rolling/run_state_estimator --TTL 0";
-        host = "localhost";
-    }
-    cmd "e.[SIM] Sim Visualizer" {
-        exec = "bazel-bin/examples/franka_ball_rolling/visualizer --channel=FRANKA_OUTPUT";
-        host = "localhost";
-    }
-}
-
-group "3.[SIM] Clean_Up_Test" {
+group "2.[SIM] Clean_Up_Test" {
     cmd "a.[SIM] C3" {
         exec = "bazel-bin/examples/franka_ball_rolling/lcm_ball_rolling_planner --TTL 0";
         host = "localhost";

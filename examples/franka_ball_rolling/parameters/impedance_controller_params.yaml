@@ -1,5 +1,5 @@
 # --------------------------  URDF Model Path Settings  -----------------------------#
-# (ground truth, simulate) full model
+# full model urdfs
 franka_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf
 end_effector_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf
 ball_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf
@@ -13,9 +13,9 @@ realtime_rate: 1.0
 
 # -----------------------  Extra Model Fixed Frame Settings  ------------------------#
 # the tranlsation vector of end effector to panda link 7
-tool_attachment_frame: [0, 0, 0.107]
+tool_attachment_frame: [0, 0, 0.107] # should match real measurement
 # the tranlsation vector of end effector to panda link 0 (world frame)
-ground_offset_frame: [0, 0, -0.0245]
+ground_offset_frame: [0, 0, -0.0245] # should match real measurement table height calibration
 
 # ---------------------------  Initial Condition Settings  --------------------------#
 # q_franka: seven joint angles of franka
@@ -28,4 +28,4 @@ traj_radius: 0.1
 phase: 0
 x_c: 0.55
 y_c: 0
-ball_radius: 0.0315
+ball_radius: 0.0315 # should match real measurement and urdf

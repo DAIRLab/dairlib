@@ -136,6 +136,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "impedance_controller_params",
+    hdrs = ["parameters/impedance_controller_params.h"],
+    data = [
+        "parameters/impedance_controller_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "lcm_ball_rolling_planner",
     srcs = ["lcm_ball_rolling_planner.cc"],

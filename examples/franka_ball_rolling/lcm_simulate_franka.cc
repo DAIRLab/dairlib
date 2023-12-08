@@ -58,11 +58,11 @@ int DoMain(int argc, char* argv[]){
 
   // load urdf models
   Parser parser(&plant);
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf");
-  parser.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
+  parser.AddModelFromFile(sim_param.franka_model);
+  parser.AddModelFromFile(sim_param.offset_model);
+  parser.AddModelFromFile(sim_param.ground_model);
+  parser.AddModelFromFile(sim_param.end_effector_model);
+  parser.AddModelFromFile(sim_param.ball_model);
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);

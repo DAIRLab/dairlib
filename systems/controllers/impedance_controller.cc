@@ -1,8 +1,5 @@
 #include "impedance_controller.h"
 
-//#include
-//"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
-
 using std::vector;
 
 using drake::AutoDiffVecXd;
@@ -11,7 +8,6 @@ using drake::MatrixX;
 using drake::VectorX;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
-//using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
 using drake::math::RotationMatrix;
 using drake::multibody::MultibodyPlant;
@@ -25,20 +21,15 @@ using Eigen::Vector3d;
 using Eigen::Quaterniond;
 using std::vector;
 
-bool isZeroVector(const VectorXd& a, double eps = 1e-6){
-  assert(eps > 0);
-  return (a.array().abs() <= eps*VectorXd::Ones(a.size()).array()).all();
-}
-
 namespace dairlib {
 namespace systems {
 namespace controllers {
 
 ImpedanceController::ImpedanceController(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::multibody::MultibodyPlant<double>& plant_f,
+    const drake::multibody::MultibodyPlant<double>& plant_contact,
     drake::systems::Context<double>& context,
-    drake::systems::Context<double>& context_f,
+    drake::systems::Context<double>& context_contact,
     const MatrixXd& K,
     const MatrixXd& B,
     const MatrixXd& K_null,
@@ -47,9 +38,9 @@ ImpedanceController::ImpedanceController(
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
     int num_friction_directions)
     : plant_(plant),
-      plant_f_(plant_f),
+      plant_f_(plant_contact),
       context_(context),
-      context_f_(context_f),
+      context_f_(context_contact),
       K_(K),
       B_(B),
       K_null_(K_null),

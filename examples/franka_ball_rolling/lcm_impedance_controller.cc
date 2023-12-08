@@ -125,9 +125,9 @@ int DoMain(int argc, char* argv[]){
   VectorXd qd = impedance_param.q_null_desired;
 
   drake::geometry::GeometryId sphere_geoms = 
-    plant_contact.GetCollisionGeometriesForBody(plant.GetBodyByName("sphere"))[0];
+    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("sphere"))[0];
   drake::geometry::GeometryId EE_geoms = 
-    plant_contact.GetCollisionGeometriesForBody(plant.GetBodyByName("end_effector_tip"))[0];
+    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("end_effector_tip"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
 
   int num_friction_directions = impedance_param.num_friction_directions;

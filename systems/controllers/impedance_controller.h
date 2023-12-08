@@ -7,55 +7,25 @@
 #include <iostream>
 #include <iomanip>
 
-
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
 #include "systems/framework/output_vector.h"
-
 #include "drake/systems/framework/leaf_system.h"
-//#include
-//"external/drake/common/_virtual_includes/autodiff/drake/common/eigen_autodiff_types.h"
-//#include
-//"external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/systems/framework/context.h"
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "multibody/geom_geom_collider.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "solvers/lcs_factory.h"
-
-#include "drake/common/autodiff.h"
 #include "drake/geometry/scene_graph.h"
-#include "drake/math/autodiff_gradient.h"
-#include "drake/multibody/optimization/manipulator_equation_constraint.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-
-#include "drake/common/trajectories/piecewise_polynomial.h"
-
-// Adam's includes
-#include <drake/multibody/inverse_kinematics/inverse_kinematics.h>
-#include <drake/systems/framework/continuous_state.h>
-#include <drake/systems/framework/vector_base.h>
 #include <drake/math/rigid_transform.h>
-#include <drake/solvers/mathematical_program.h>
-#include <drake/multibody/math/spatial_velocity.h>
-
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
-#include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
-
-#include "drake/solvers/choose_best_solver.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/solvers/solve.h"
-
 #include "examples/franka_trajectory_following/c3_parameters.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"

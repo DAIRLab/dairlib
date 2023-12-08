@@ -56,9 +56,11 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
 
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    cost_zoh = ZeroOrderHold(0.05, 1) # only need to log the cost at sparse intervals, since it updates once per stride
     cost_logger = VectorLogSink(1)
 
     builder.AddSystem(footstep_zoh)
+    builder.AddSystem(cost_zoh)
     builder.AddSystem(cost_logger)
 
     builder.Connect(
@@ -74,7 +76,11 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
         sim_env.get_input_port_by_name('footstep_command')
     )
     builder.Connect(
-        cost_system.get_output_port_by_name('cost'),
+        cost_system.get_output_port(),
+        cost_zoh.get_input_port()
+    )
+    builder.Connect(
+        cost_zoh.get_output_port(),
         cost_logger.get_input_port()
     )
 

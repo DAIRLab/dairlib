@@ -52,7 +52,7 @@ class CumulativeCost(LeafSystem):
         }
 
         self.output_port_indices = {
-            'cost' : self.DeclareStateOutputPort(
+            'cost': self.DeclareStateOutputPort(
                 "cost", self.cumulative_cost).get_index()
         }
 

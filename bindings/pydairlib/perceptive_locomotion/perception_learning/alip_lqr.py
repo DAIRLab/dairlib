@@ -192,14 +192,10 @@ class AlipFootstepLQR(LeafSystem):
             some book-keeping to get the appropriate states and deal with
             left/right stance.
         """
-        xd_ud = BasicVector(6)
-        self.calc_lqr_reference(context, xd_ud)
-        xd = xd_ud.value()[:4]
-        ud = xd_ud.value()[4:]
-
-        x = BasicVector(4)
-        self.calc_discrete_alip_state(context, x)
-        x = x.value()
+        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+        xd = xd_ud[:4]
+        ud = xd_ud[4:]
+        x = self.get_output_port_by_name('x').Eval(context)
 
         # LQR feedback - for now assume the height of the ground is zero
         footstep_command = np.zeros((3,))

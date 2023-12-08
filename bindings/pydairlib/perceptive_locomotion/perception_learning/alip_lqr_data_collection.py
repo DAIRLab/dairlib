@@ -71,30 +71,9 @@ from pydairlib.multibody import (
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         -> Tuple[CassieFootstepControllerEnvironment, AlipFootstepLQR, Diagram]:
-    sim_env = CassieFootstepControllerEnvironment(sim_params)
-    controller_params = AlipFootstepLQROptions.calculate_default_options(
-        sim_params.mpfc_gains_yaml,
-        sim_env.controller_plant,
-        sim_env.controller_plant.CreateDefaultContext(),
-    )
-    controller = AlipFootstepLQR(controller_params)
     builder = DiagramBuilder()
-    builder.AddSystem(sim_env)
-    builder.AddSystem(controller)
-
-    builder.Connect(
-        sim_env.get_output_port_by_name("fsm"),
-        controller.get_input_port_by_name("fsm")
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name("time_until_switch"),
-        controller.get_input_port_by_name("time_until_switch")
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name("alip_state"),
-        controller.get_input_port_by_name("state")
-    )
-
+    sim_env = CassieFootstepControllerEnvironment(sim_params)
+    controller = sim_env.AddToBuilderWithFootstepController(builder, AlipFootstepLQR)
     diagram = builder.Build()
     return sim_env, controller, diagram
 
@@ -335,48 +314,55 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
     return True
 
 
-def data_process(i, q, visualize):
-    num_data = 400
-    sim_params = CassieFootstepControllerEnvironmentOptions()
-
-    if i % 3 == 0:
-        sim_params.terrain = os.path.join(
-            perception_learning_base_folder, 'params/stair_curriculum.yaml'
-        )
-    else:
-        sim_params.terrain = os.path.join(
-            perception_learning_base_folder, 'params/wavy_terrain.yaml'
-        )
-    sim_params.visualize = visualize
+def data_process(i, q, visualize, terrain):
+    num_data = 200
+    sim_params = CassieFootstepControllerEnvironmentOptions(
+        terrain=terrain, visualize=visualize
+    )
     data = run_experiment(sim_params, num_data, i)
     q.put(data)
 
 
 def main(save_file: str, visualize: bool):
-    num_jobs = 20
+    min_jobs = 100
+    jobs_per_group = int(os.cpu_count() / 2)
+    groups = int(np.ceil(min_jobs / jobs_per_group))
+
     job_queue = multiprocessing.Queue()
     job_list = []
 
-    testing = False
+    stairs = os.path.join(
+        perception_learning_base_folder,
+        'params/stair_curriculum.yaml'
+    )
+
+    wavy = os.path.join(
+        perception_learning_base_folder,
+        'params/wavy_terrain.yaml'
+    )
+
+    testing = True
     if testing:
-        data_process(0, job_queue, True)
+        data_process(0, job_queue, True, stairs)
 
-    for i in range(num_jobs):
-        process = multiprocessing.Process(
-            target=data_process, args=(i, job_queue, visualize)
-        )
-        job_list.append(process)
-        process.start()
-    results = [job_queue.get() for job in job_list]
+    for group in range(groups):
+        terrain = stairs if group % 4 == 0 else wavy
+        for i in range(jobs_per_group):
+            process = multiprocessing.Process(
+                target=data_process, args=(i, job_queue, visualize, terrain)
+            )
+            job_list.append(process)
+            process.start()
+        results = [job_queue.get() for job in job_list]
 
-    data_rearrange = []
-    for i in range(len(results)):
-        for res in results[i]:
-            data_rearrange.append(res)
-
-    data_path = os.path.join(perception_learning_base_folder, 'tmp', save_file)
-    np.savez(data_path, data_rearrange)
-    print(f'Data saved to {data_path}')
+        data_rearrange = []
+        for i in range(len(results)):
+            for res in results[i]:
+                data_rearrange.append(res)
+        group_save_file = f'{save_file}-{group}.npz'
+        data_path = os.path.join(perception_learning_base_folder, 'tmp', group_save_file)
+        np.savez(data_path, data_rearrange)
+        print(f'Data saved to {data_path}')
 
 
 if __name__ == '__main__':
@@ -384,7 +370,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--save_file',
         type=str,
-        default='data.npz',
+        default='data',
         help='Filepath where data should be saved'
     )
     parser.add_argument(

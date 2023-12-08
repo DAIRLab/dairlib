@@ -45,39 +45,22 @@ from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 
-def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
+def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
+                  checkpoint_path) \
         -> Tuple[CassieFootstepControllerEnvironment, AlipFootstepNNLQR, Diagram, LogVectorOutput]:
+    builder = DiagramBuilder()
     sim_env = CassieFootstepControllerEnvironment(sim_params)
-    controller_params = AlipFootstepLQROptions.calculate_default_options(
-        sim_params.mpfc_gains_yaml,
-        sim_env.controller_plant,
-        sim_env.controller_plant.CreateDefaultContext(),
+    controller = sim_env.AddToBuilderWithFootstepController(
+        builder, AlipFootstepNNLQR, model_path=checkpoint_path
     )
-    controller = AlipFootstepNNLQR(controller_params)
+    cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
+
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
-    # instantiating cost system
-    cost_system = CumulativeCost(controller_params)
     cost_logger = VectorLogSink(1)
 
-    builder = DiagramBuilder()
-    builder.AddSystem(sim_env)
-    builder.AddSystem(controller)
     builder.AddSystem(footstep_zoh)
-    builder.AddSystem(cost_system)
     builder.AddSystem(cost_logger)
 
-    builder.Connect(
-        sim_env.get_output_port_by_name("fsm"),
-        controller.get_input_port_by_name("fsm")
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name("time_until_switch"),
-        controller.get_input_port_by_name("time_until_switch")
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name("alip_state"),
-        controller.get_input_port_by_name("state")
-    )
     builder.Connect(
         sim_env.get_output_port_by_name('height_map'),
         controller.get_input_port_by_name('height_map')
@@ -91,26 +74,9 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         sim_env.get_input_port_by_name('footstep_command')
     )
     builder.Connect(
-        controller.get_output_port_by_name('lqr_reference'),
-        cost_system.get_input_port_by_name('lqr_reference')
-    )
-    builder.Connect(
-        controller.get_output_port_by_name('x'),
-        cost_system.get_input_port_by_name('x')
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name('fsm'),
-        cost_system.get_input_port_by_name('fsm')
-    )
-    builder.Connect(
-        sim_env.get_output_port_by_name('time_until_switch'),
-        cost_system.get_input_port_by_name('time_until_switch')
-    )
-    builder.Connect(
         cost_system.get_output_port_by_name('cost'),
         cost_logger.get_input_port()
     )
-
 
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(diagram, '../AlipNNLQRTest')
@@ -118,7 +84,11 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
 
 def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
-    sim_env, controller, cost_logger, diagram = build_diagram(sim_params)
+
+    checkpoint_path = os.path.join(
+        perception_learning_base_folder, 'tmp/rose-sponge-148.pth')
+
+    sim_env, controller, cost_logger, diagram = build_diagram(sim_params, checkpoint_path)
     simulator = Simulator(diagram)
 
     ic_generator = InitialConditionsServer(
@@ -165,47 +135,13 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     cost_log = cost_logger.FindLog(context).data()
     return cost_log, t_init
 
-def reexecute_if_unbuffered():
-    """Ensures that output is immediately flushed (e.g. for segfaults).
-    ONLY use this at your entrypoint. Otherwise, you may have code be
-    re-executed that will clutter your console."""
-    import os
-    import shlex
-    import sys
-    if os.environ.get("PYTHONUNBUFFERED") in (None, ""):
-        os.environ["PYTHONUNBUFFERED"] = "1"
-        argv = list(sys.argv)
-        if argv[0] != sys.executable:
-            argv.insert(0, sys.executable)
-        cmd = " ".join([shlex.quote(arg) for arg in argv])
-        sys.stdout.flush()
-        os.execv(argv[0], argv)
 
-
-def traced(func, ignoredirs=None):
-    """Decorates func such that its execution is traced, but filters out any
-     Python code outside of the system prefix."""
-    import functools
-    import sys
-    import trace
-    if ignoredirs is None:
-        ignoredirs = ["/usr", sys.prefix]
-    tracer = trace.Trace(trace=1, count=0, ignoredirs=ignoredirs)
-
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        return tracer.runfunc(func, *args, **kwargs)
-
-    return wrapped
-
-
-# @traced
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'
     )
-    sim_params.visualize = True
+    sim_params.visualize = False
     cost_list = []
     t_list = []
     for i in range(10):
@@ -220,5 +156,4 @@ def main():
 
 
 if __name__ == '__main__':
-    reexecute_if_unbuffered()
     main()

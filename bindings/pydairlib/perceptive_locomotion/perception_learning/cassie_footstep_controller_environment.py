@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from os import path
-from typing import Dict, Union
+from typing import Dict, Union, Type
 
 import numpy as np
 
@@ -15,6 +15,8 @@ from pydairlib.perceptive_locomotion.diagrams import (
 from pydairlib.systems.footstep_planning import Stance
 from pydairlib.systems.plant_visualizer import PlantVisualizer
 from pydairlib.systems.perception import GridMapVisualizer
+from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import \
+    AlipFootstepLQROptions
 from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
     import HeightMapServer, HeightMapOptions
 from pydairlib.multibody import SquareSteppingStoneList
@@ -27,6 +29,7 @@ from pydrake.systems.all import (
     Simulator,
     InputPort,
     OutputPort,
+    LeafSystem,
     DiagramBuilder,
     InputPortIndex,
     OutputPortIndex,
@@ -63,7 +66,6 @@ class InitialConditionsServer:
         self.idx = idx
         data = self.data[self.idx]
         return data
-
 
 
 @dataclass
@@ -316,6 +318,36 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
         if self.params.use_perception:
             self.perception_module.InitializeEkf(context, q, v)
+
+    def AddToBuilderWithFootstepController(
+            self, builder: DiagramBuilder,
+            footstep_controller_type: Type, **controller_kwargs):
+        builder.AddSystem(self)
+        footstep_controller = footstep_controller_type(
+            self.make_my_controller_options(),
+            **controller_kwargs
+        )
+        builder.AddSystem(footstep_controller)
+        builder.Connect(
+            self.get_output_port_by_name("fsm"),
+            footstep_controller.get_input_port_by_name("fsm")
+        )
+        builder.Connect(
+            self.get_output_port_by_name("time_until_switch"),
+            footstep_controller.get_input_port_by_name("time_until_switch")
+        )
+        builder.Connect(
+            self.get_output_port_by_name("alip_state"),
+            footstep_controller.get_input_port_by_name("state")
+        )
+        return footstep_controller
+
+    def make_my_controller_options(self):
+        return AlipFootstepLQROptions.calculate_default_options(
+            self.params.mpfc_gains_yaml,
+            self.controller_plant,
+            self.controller_plant.CreateDefaultContext(),
+        )
 
 
 def main():

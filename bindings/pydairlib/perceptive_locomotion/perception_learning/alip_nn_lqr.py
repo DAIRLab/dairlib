@@ -3,9 +3,6 @@ import torch
 import numpy as np
 import time
 
-from pydrake.geometry import Rgba
-
-
 from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
     AlipFootstepLQR,
     AlipFootstepLQROptions,
@@ -33,21 +30,25 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
 
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
-checkpoint_path = os.path.join(
-    perception_learning_base_folder, 'tmp/cosmic-plasma-149.pth')
 
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
 
-    def __init__(self, alip_params: AlipFootstepLQROptions):
+    def __init__(self, alip_params: AlipFootstepLQROptions,
+                 model_path: str = ''):
         super().__init__(alip_params)
+
+        if model_path == '':
+            raise RuntimeError('AlipNNLQRFootstepController model path cannot be empty\n')
 
         # controller now has internal network module
         # maybe it is not worth putting things on GPU
         self.device = get_device()
         self.residual_unet = UNet(7, 1)
         self.residual_unet.to(self.device)
-        self.residual_unet.load_state_dict(torch.load(checkpoint_path))
+        self.residual_unet.load_state_dict(
+            torch.load(model_path)
+        )
         self.residual_unet.eval()
 
         self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
@@ -55,14 +56,20 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             model_value=Value(HeightMapQueryObject())
         ).get_index()
 
-        # input error cooridinate ue grid precomputation
+        # input error coordinate ue grid precomputation
         self.map_opts = HeightMapOptions()
         H = self.map_opts.nx
         W = self.map_opts.ny
-        uxgrid = np.linspace(-self.map_opts.resolution * H / 2,
-            self.map_opts.resolution * H / 2, H)
-        uygrid = np.linspace(-self.map_opts.resolution * W / 2,
-            self.map_opts.resolution * W / 2, W)
+        uxgrid = np.linspace(
+            -self.map_opts.resolution * H / 2,
+            self.map_opts.resolution * H / 2,
+            H
+        )
+        uygrid = np.linspace(
+            -self.map_opts.resolution * W / 2,
+            self.map_opts.resolution * W / 2,
+            W
+        )
         UX, UY = np.meshgrid(uxgrid, uygrid)
         self.ue_grid = np.stack([UX, UY])
 
@@ -73,9 +80,14 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         self.linear_coeff_grid = np.zeros((self.A.shape[0], H, W))
         for i in range(H):
             for j in range(W):
-                self.u_cost_grid[i, j] = (self.ue_grid[:,i,j]).T @ self.params.R @ (self.ue_grid[:,i,j])
-                self.u_next_value_grid[i, j] = (self.ue_grid[:,i,j]).T @ self.B.T @ self.S @ self.B @ (self.ue_grid[:,i,j])
-                self.linear_coeff_grid[:, i, j] = 2 * self.A.T @ self.S @ self.B @ (self.ue_grid[:,i,j])
+                self.u_cost_grid[i, j] = \
+                    self.ue_grid[:, i, j].T @ self.params.R @ \
+                    self.ue_grid[:, i, j]
+                self.u_next_value_grid[i, j] = \
+                    self.ue_grid[:, i, j].T @ self.B.T @ self.S @ self.B @\
+                    self.ue_grid[:, i, j]
+                self.linear_coeff_grid[:, i, j] = \
+                    2 * self.A.T @ self.S @ self.B @ self.ue_grid[:, i, j]
 
     def calculate_optimal_footstep(
             self, context: Context, footstep: BasicVector) -> None:
@@ -83,16 +95,12 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             Calculate the optimal footstep location using NN prediction and
             LQR Q function through grid search
         """
-        # get desired state and desired input
-        xd_ud = BasicVector(6)
-        self.calc_lqr_reference(context, xd_ud)
-        xd = xd_ud.value()[:4]
-        ud = xd_ud.value()[4:]
 
-        # get current state
-        x = BasicVector(4)
-        self.calc_discrete_alip_state(context, x)
-        x = x.value()
+        # get control parameters
+        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+        xd = xd_ud[:4]
+        ud = xd_ud[4:]
+        x = self.get_output_port_by_name('x').Eval(context)
 
         # get heightmap query object
         hmap_query = self.EvalAbstractInput(
@@ -105,28 +113,15 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         )
         _, H, W = hmap.shape
         collision_cost = calc_collision_cost_grid(hmap[0], hmap[1], ud)
-        # put the input space in error coordinates, equivalent to hmap[:2] = self.ue_grid
-        hmap[:2] -= np.expand_dims(np.expand_dims(ud, 1), 1)
-
-        # use utils to tile the state, input and heightmap
-        # combined_input = torch.cat([hmap_input, state, input_space_grid]
-        # here hmap_input = hmap[-1, :, :], input_space_grid = hmap[:2, :, :]
-        # combined_input size: (1, 7, 20, 20) after unsqueeze, additional dimension
-        # needed for current implementation
 
         with torch.inference_mode():
             combined_input = tile_and_concatenate_inputs(
-                hmap[-1, :, :], x - xd, hmap[:2, :, :]
+                hmap[-1], x - xd, self.ue_grid
             ).to(self.device)
             combined_input = combined_input.unsqueeze(0)
 
-            # use network to predict residual grid
-            # residual_grid size: (1, 20, 20) after squeeze
-            # transform to numpy and reduce the additional dimension
-            # still, maybe not put things onto GPU
-
             residual_grid = self.residual_unet(combined_input).squeeze(0)
-            residual_grid = residual_grid.detach().cpu().numpy().reshape(H,W)
+            residual_grid = residual_grid.detach().cpu().numpy().reshape(H, W)
 
         # display residual map on meshcat
         residual_grid_world = hmap_query.calc_height_map_world_frame(
@@ -141,7 +136,6 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
 
-
         hmap_query.plot_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
             residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
@@ -153,6 +147,4 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
         # footstep command from corresponding grid
         footstep_command = hmap[:, footstep_i, footstep_j]
-        # note that now hmap[:2, i, j] is error corrdinate ue since we subtract ud before
-        footstep_command[:2] += ud
         footstep.set_value(footstep_command)

@@ -168,7 +168,7 @@ C3Controller_franka::C3Controller_franka(
   q_map_ = multibody::MakeNameToPositionsMap(plant_);
   v_map_ = multibody::MakeNameToVelocitiesMap(plant_);
 
-  all_fullsols_ = std::vector<vector<VectorXd>>(1 + std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos));
+ 
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
@@ -180,9 +180,16 @@ C3Controller_franka::C3Controller_franka(
   k_ = 3;
   N_ = param_.horizon_length;
 
-  fullsols_ = std::vector<VectorXd>(N_);
+  best_additional_sample_fullsol_ = std::vector<VectorXd>(N_);
   for (int i = 0; i < N_; ++i) {
-    fullsols_[i] = Eigen::VectorXd::Zero(n_ + m_ + k_);
+    best_additional_sample_fullsol_[i] = Eigen::VectorXd::Zero(n_ + m_ + k_);
+  }
+
+  all_fullsols_ = std::vector<vector<VectorXd>>(1 + std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos), std::vector<VectorXd>(N_));
+  for (int i = 0; i < all_fullsols_.size(); ++i) {
+    for (int j = 0; j < N_; ++j) {
+      all_fullsols_[i][j] = Eigen::VectorXd::Zero(n_ + m_ + k_);
+    }
   }
 
   int n_q_ = plant_.num_positions();
@@ -195,6 +202,17 @@ C3Controller_franka::C3Controller_franka(
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
                                       &C3Controller_franka::OutputC3Solution)
+          .get_index();
+
+  auto c3_sample_solution = C3Output::C3Solution();
+  c3_sample_solution.x_sol_ = MatrixXf::Zero(n_, N_);
+  c3_sample_solution.lambda_sol_ = MatrixXf::Zero(m_, N_);
+  c3_sample_solution.u_sol_ = MatrixXf::Zero(k_, N_);
+  c3_sample_solution.time_vector_ = VectorXf::Zero(N_);
+
+  c3_sample_solution_port_ =
+      this->DeclareAbstractOutputPort("c3_sample_solution", c3_sample_solution,
+                                      &C3Controller_franka::OutputC3BestSampleSolution)
           .get_index();
 
   // filter info
@@ -679,8 +697,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
       predicted_states_at_end_horizon_optimistic[i] = fullsol_sample_location.back().head(n_);      // Get x portion from z vector.
 
       // TODO: Save the full solution but change other now redundant code.
-      // all_fullsols_.at(i) = fullsol_sample_location;
-      fullsols_ = fullsol_sample_location;
+      all_fullsols_.at(i) = fullsol_sample_location;
 
       // For current location, store away the warm starts and the solution results in case C3 is used after this loop.
       if (i == CURRENT_LOCATION_INDEX) {
@@ -725,6 +742,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
 
   VectorXd best_additional_sample = candidate_states[index];
   double best_additional_sample_cost = cost_vector[index];
+  best_additional_sample_fullsol_ = all_fullsols_[index];
 
   // Grab the feasible and optimistic predicted end object location for the current and best sampled end effector locations.
   VectorXd predicted_jack_loc_current_feasible   = predicted_states_at_end_horizon_feasible[  CURRENT_LOCATION_INDEX].segment(7, 3);
@@ -1028,11 +1046,25 @@ void C3Controller_franka::OutputC3Solution(
   double t = context.get_time();
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = t + i * param_.planning_timestep;
-    c3_solution->x_sol_.col(i) = fullsols_[i].segment(0, n_).cast<float>();
+    c3_solution->x_sol_.col(i) = all_fullsols_[0][i].segment(0, n_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
-        fullsols_[i].segment(n_, m_).cast<float>();
+        all_fullsols_[0][i].segment(n_, m_).cast<float>();
     c3_solution->u_sol_.col(i) =
-        fullsols_[i].segment(n_ + m_, k_).cast<float>();
+        all_fullsols_[0][i].segment(n_ + m_, k_).cast<float>();
+  }
+}
+
+void C3Controller_franka::OutputC3BestSampleSolution(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_sample_solution) const {
+  double t = context.get_time();
+  for (int i = 0; i < N_; i++) {
+    c3_sample_solution->time_vector_(i) = t + i * param_.planning_timestep;
+    c3_sample_solution->x_sol_.col(i) = best_additional_sample_fullsol_[i].segment(0, n_).cast<float>();
+    c3_sample_solution->lambda_sol_.col(i) =
+        best_additional_sample_fullsol_[i].segment(n_, m_).cast<float>();
+    c3_sample_solution->u_sol_.col(i) =
+        best_additional_sample_fullsol_[i].segment(n_ + m_, k_).cast<float>();
   }
 }
 

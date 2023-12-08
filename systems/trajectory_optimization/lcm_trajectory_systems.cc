@@ -180,15 +180,15 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name, int num_poses)
+    const std::string& orientation_trajectory_name, int num_poses, const std::string& name)
     : meshcat_(meshcat),
       translation_trajectory_name_(translation_trajectory_name),
       orientation_trajectory_name_(orientation_trajectory_name),
-      N_(num_poses) {
+      N_(num_poses){
   this->set_name("/poses/" + model_file);
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.4), "", meshcat);
+      model_file, N_, 1.0 * VectorXd::Ones(N_), "", meshcat, name);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",

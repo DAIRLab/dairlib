@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<!-- This urdf is used to feed into the meshcat visualizer to visualize the predicted end effector locations in the C3 plan of the current location for sampling based mpc -->
+<robot name="end_effector">
+    <link name="end_effector">
+   <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
+      <mass value="0.057"/>
+      <interia ixx="0.0" iyy="0.0" izz="0.0" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+            <material>
+    <!-- <color rgba="1 0.75 0.79 1"/> blue transparent color for visualization -->
+    <color rgba="1 0 0 1"/> <!-- gray transparent color for visualization -->
+    </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+    </collision>
+  </link>
+    
+</robot>

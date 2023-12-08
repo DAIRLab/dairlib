@@ -20,7 +20,7 @@ namespace systems {
 class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit C3TrajectoryGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant, int N);
+      const drake::multibody::MultibodyPlant<double>& plant, int N, std::string name);
 
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
     return this->get_input_port(c3_solution_port_);
@@ -51,6 +51,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex actor_trajectory_port_;
   drake::systems::OutputPortIndex object_trajectory_port_;
+  std::string name_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;

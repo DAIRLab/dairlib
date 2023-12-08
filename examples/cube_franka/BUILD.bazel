@@ -104,6 +104,7 @@ cc_binary(
         "//systems:system_utils",
         "//systems/primitives",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//examples/cube_franka:c3_parameters",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

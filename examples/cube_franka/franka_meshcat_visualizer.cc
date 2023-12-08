@@ -16,6 +16,8 @@
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
+#include "examples/cube_franka/c3_parameters.h"
+
 #include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
@@ -58,6 +60,8 @@ DEFINE_string(channel, "FRANKA_OUTPUT",
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
+    "examples/cube_franka/parameters.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -96,13 +100,6 @@ int do_main(int argc, char* argv[]) {
 
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
-  
-  auto trajectory_sub_actor = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          "ACTOR_CHANNEL", lcm));
-  auto trajectory_sub_object = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          "OBJECT_CHANNEL", lcm));
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / 60.0;
@@ -112,21 +109,29 @@ int do_main(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(params));
   auto trajectory_drawer_actor =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
-                                                      "end_effector_position_target");
+                                                      "c3_trajectory_generator_end_effector_position_target");
   auto trajectory_drawer_object =
-      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_position_target");
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "c3_trajectory_generator_object_position_target");
   auto object_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
-          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/jack.urdf"), "object_position_target",
-          "object_orientation_target");
+          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/jack_current_sample.urdf"), "c3_trajectory_generator_object_position_target",
+          "object_orientation_target", param.horizon_length, "current_location");
   auto end_effector_pose_drawer =
       builder.AddSystem<systems::LcmPoseDrawer>(
-          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/end_effector.urdf"), "end_effector_position_target",
-          "end_effector_orientation_target");
+          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/end_effector_current.urdf"), "c3_trajectory_generator_end_effector_position_target",
+          "end_effector_orientation_target", param.horizon_length, "current_location");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
   trajectory_drawer_object->SetNumSamples(5);
+
+  // Subscribe to the current position's C3 plan.
+  auto trajectory_sub_actor = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "ACTOR_CHANNEL", lcm));
+  auto trajectory_sub_object = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "OBJECT_CHANNEL", lcm));
 
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   trajectory_drawer_actor->get_input_port_trajectory());
@@ -136,6 +141,41 @@ int do_main(int argc, char* argv[]) {
                   object_pose_drawer->get_input_port_trajectory());
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   end_effector_pose_drawer->get_input_port_trajectory());
+
+  // Subscribe to the best sample's C3 plan.
+  auto sample_trajectory_drawer_actor =
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
+                                                      "c3_sample_trajectory_generator_end_effector_position_target");
+  auto sample_trajectory_drawer_object =
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "c3_sample_trajectory_generator_object_position_target");
+  auto sample_object_pose_drawer =
+      builder.AddSystem<systems::LcmPoseDrawer>(
+          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/jack_best_sample.urdf"), "c3_sample_trajectory_generator_object_position_target",
+          "c3_sample_trajectory_generator_object_orientation_target", 5, "sample_location"); 
+  auto sample_end_effector_pose_drawer =
+      builder.AddSystem<systems::LcmPoseDrawer>(
+          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/end_effector_best_sample.urdf"), "c3_sample_trajectory_generator_end_effector_position_target",
+          "c3_sample_trajectory_generator_end_effector_orientation_target", 5, "sample_location");
+  sample_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
+  sample_trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+  sample_trajectory_drawer_actor->SetNumSamples(5);
+  sample_trajectory_drawer_object->SetNumSamples(5);
+  auto sample_trajectory_sub_actor = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "ACTOR_SAMPLE_CHANNEL", lcm));
+  auto sample_trajectory_sub_object = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "OBJECT_SAMPLE_CHANNEL", lcm));
+
+  builder.Connect(sample_trajectory_sub_actor->get_output_port(),
+                  sample_trajectory_drawer_actor->get_input_port_trajectory());
+  builder.Connect(sample_trajectory_sub_object->get_output_port(),
+                  sample_trajectory_drawer_object->get_input_port_trajectory());
+  builder.Connect(sample_trajectory_sub_object->get_output_port(),
+                  sample_object_pose_drawer->get_input_port_trajectory());
+  builder.Connect(sample_trajectory_sub_actor->get_output_port(),
+                  sample_end_effector_pose_drawer->get_input_port_trajectory());
+
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();

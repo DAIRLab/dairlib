@@ -30,7 +30,7 @@ PY_LIBRARIES = [
     "//bindings/pydairlib/common",
     "//bindings/pydairlib/lcm",
     "//bindings/pydairlib/multibody",
-    "//bindings/pydairlib/systems",
+#    "//bindings/pydairlib/systems",
     "//bindings/pydairlib/solvers",
 ]
 

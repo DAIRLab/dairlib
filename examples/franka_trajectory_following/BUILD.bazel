@@ -24,56 +24,56 @@ cc_library(
     ],
 )
 
-cc_binary(
-    name = "simulate_franka_lcm",
-    srcs = ["simulate_franka_lcm.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//examples/franka_trajectory_following:c3_parameters",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-    ],
-    data = [":trifinger_urdf",
-            "@drake//manipulation/models/franka_description:models"]
-)
-
-cc_binary(
-    name = "lcm_control_impedence",
-    srcs = ["lcm_control_impedance.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/controllers:impedance_controller",
-        "//examples/franka_trajectory_following:c3_parameters",
-        # "//systems/ros:ros_pubsub_systems",
-        # "//systems/ros:c3_ros_conversions",
-        "//examples/franka_trajectory_following/systems:c3_systems",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-    ],
-    data = [":trifinger_urdf",
-            "@drake//manipulation/models/franka_description:models"]
-)
-
-cc_binary(
-    name = "lcm_control_demo",
-    srcs = ["lcm_control_demo.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/controllers:c3_controller_franka",
-        "//examples/franka_trajectory_following:c3_parameters",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-    data = [":trifinger_urdf",
-            "@drake//manipulation/models/franka_description:models"]
-)
+#cc_binary(
+#    name = "simulate_franka_lcm",
+#    srcs = ["simulate_franka_lcm.cc"],
+#    deps = [
+#        "//systems:robot_lcm_systems",
+#        "//systems/controllers",
+#        "//systems/framework:lcm_driven_loop",
+#        "//examples/franka_trajectory_following:c3_parameters",
+#        "//systems:system_utils",
+#        "@drake//:drake_shared_library",
+#    ],
+#    data = [":trifinger_urdf",
+#            "@drake//manipulation/models/franka_description:models"]
+#)
+#
+#cc_binary(
+#    name = "lcm_control_impedence",
+#    srcs = ["lcm_control_impedance.cc"],
+#    deps = [
+#        "//systems:robot_lcm_systems",
+#        "//systems/controllers",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/controllers:impedance_controller",
+#        "//examples/franka_trajectory_following:c3_parameters",
+#        # "//systems/ros:ros_pubsub_systems",
+#        # "//systems/ros:c3_ros_conversions",
+#        "//examples/franka_trajectory_following/systems:c3_systems",
+#        "//systems:system_utils",
+#        "@drake//:drake_shared_library",
+#    ],
+#    data = [":trifinger_urdf",
+#            "@drake//manipulation/models/franka_description:models"]
+#)
+#
+#cc_binary(
+#    name = "lcm_control_demo",
+#    srcs = ["lcm_control_demo.cc"],
+#    deps = [
+#        "//systems:robot_lcm_systems",
+#        "//systems/controllers",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/controllers:c3_controller_franka",
+#        "//examples/franka_trajectory_following:c3_parameters",
+#        "//systems:system_utils",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#    data = [":trifinger_urdf",
+#            "@drake//manipulation/models/franka_description:models"]
+#)
 
 # cc_binary(
 #    name = "run_impedance_experiment",
@@ -172,25 +172,25 @@ cc_binary(
 #           "@drake//manipulation/models/franka_description:models"]
 #)
 
-cc_binary(
-    name = "run_c3_impedance_experiment",
-    srcs = ["run_c3_impedance_experiment.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/controllers:impedance_controller",
-        "//examples/franka_trajectory_following:c3_parameters",
-        # "//systems/ros:ros_pubsub_systems",
-        # "//systems/ros:c3_ros_conversions",
-        "//examples/franka_trajectory_following/systems:c3_systems",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-    data = [":trifinger_urdf",
-            "@drake//manipulation/models/franka_description:models"]
-)
+#cc_binary(
+#    name = "run_c3_impedance_experiment",
+#    srcs = ["run_c3_impedance_experiment.cc"],
+#    deps = [
+#        "//systems:robot_lcm_systems",
+#        "//systems/controllers",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/controllers:impedance_controller",
+#        "//examples/franka_trajectory_following:c3_parameters",
+#        # "//systems/ros:ros_pubsub_systems",
+#        # "//systems/ros:c3_ros_conversions",
+#        "//examples/franka_trajectory_following/systems:c3_systems",
+#        "//systems:system_utils",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#    data = [":trifinger_urdf",
+#            "@drake//manipulation/models/franka_description:models"]
+#)
 
 #cc_binary(
 #    name = "run_c3_position_experiment",
@@ -231,34 +231,34 @@ cc_binary(
 #            "@drake//manipulation/models/franka_description:models"]
 # )
 
-cc_binary(
-  name = "run_state_estimator",
-  srcs = ["run_state_estimator.cc"],
-  deps = ["//examples/franka_trajectory_following/systems:c3_systems",
-          "//examples/franka_trajectory_following:c3_parameters",
-          "//systems:robot_lcm_systems",
-          "//systems:system_utils",
-          "//systems/framework:lcm_driven_loop",
-          "@gflags"
-  ],
-  data = ["//examples/franka_trajectory_following:trifinger_urdf",
-          "@drake//manipulation/models/franka_description:models"
-  ],
-)
-
-cc_binary(
-    name = "visualizer",
-    srcs = ["visualizer.cc"],
-    deps = [
-        "//multibody:utils",
-        "//multibody:visualization_utils",
-        "//systems:robot_lcm_systems",
-        "//examples/franka_trajectory_following:c3_parameters",
-        "//systems/primitives",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-    data = [":trifinger_urdf",
-        "@drake//manipulation/models/franka_description:models"]
-)
+#cc_binary(
+#  name = "run_state_estimator",
+#  srcs = ["run_state_estimator.cc"],
+#  deps = ["//examples/franka_trajectory_following/systems:c3_systems",
+#          "//examples/franka_trajectory_following:c3_parameters",
+#          "//systems:robot_lcm_systems",
+#          "//systems:system_utils",
+#          "//systems/framework:lcm_driven_loop",
+#          "@gflags"
+#  ],
+#  data = ["//examples/franka_trajectory_following:trifinger_urdf",
+#          "@drake//manipulation/models/franka_description:models"
+#  ],
+#)
+#
+#cc_binary(
+#    name = "visualizer",
+#    srcs = ["visualizer.cc"],
+#    deps = [
+#        "//multibody:utils",
+#        "//multibody:visualization_utils",
+#        "//systems:robot_lcm_systems",
+#        "//examples/franka_trajectory_following:c3_parameters",
+#        "//systems/primitives",
+#        "//systems:system_utils",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#    data = [":trifinger_urdf",
+#        "@drake//manipulation/models/franka_description:models"]
+#)

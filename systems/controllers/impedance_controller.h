@@ -26,7 +26,8 @@
 #include <drake/math/rigid_transform.h>
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
-#include "examples/franka_trajectory_following/c3_parameters.h"
+#include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/parameters/impedance_controller_params.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 
@@ -93,6 +94,8 @@ class ImpedanceController : public LeafSystem<double> {
   NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
   THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
   */
+  // parameters
+  ImpedanceControllerParams impedance_param_;
 
   // ports
   int franka_state_input_port_;
@@ -104,19 +107,20 @@ class ImpedanceController : public LeafSystem<double> {
   const MultibodyPlant<double>& plant_f_;
   drake::systems::Context<double>& context_;
   drake::systems::Context<double>& context_f_;
+
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
+  mutable Eigen::VectorXd integrator_;
   Eigen::MatrixXd I_;
   const MatrixXd K_null_;
   const MatrixXd B_null_;
   const VectorXd qd_;
+
   std::vector<drake::geometry::GeometryId> contact_geoms_;
   const int num_friction_directions_;
-  C3Parameters param_;
+
   int enable_contact_;
   Eigen::VectorXd torque_limits_;
-
-  mutable Eigen::VectorXd integrator_;
   mutable double prev_time_;
 
   // frame, EE, and contact info
@@ -125,9 +129,6 @@ class ImpedanceController : public LeafSystem<double> {
   Eigen::Vector3d EE_offset_;
   std::vector<SortedPair<GeometryId>> contact_pairs_;
   int n_; // franka DoF = 7
-
-  // control related variables
-  Quaterniond orientation_d_;
 };
 
 }  // namespace controller

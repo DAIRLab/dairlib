@@ -74,41 +74,32 @@ ImpedanceController::ImpedanceController(
                              .get_index();
 
   // get c3_parameters
-  param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+  impedance_param_ = drake::yaml::LoadYamlFile<ImpedanceControllerParams>(
+          "examples/franka_ball_rolling/parameters/impedance_controller_params.yaml");
 
-  // define end effector and contact
-  EE_offset_ << param_.EE_offset;
+  // define end effector and contact setting
+  EE_offset_ << impedance_param_.end_effector_offset;
   EE_frame_ = &plant_.GetBodyByName("end_effector_tip").body_frame();
   world_frame_ = &plant_.world_frame();
-  contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
   n_ = 7;
-  enable_contact_ = param_.enable_contact;
+
+  // define force feedforward contact setting
+  contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
+  enable_contact_ = impedance_param_.enable_contact;
 
   // define franka limits
-  // TODO: parse these from urdf instead of hard coding
-  torque_limits_ = VectorXd::Zero(n_);
-  torque_limits_ << 87, 87, 87, 87, 12, 12, 12;
-
-  // control-related variables
-  // TODO: using fixed Rd for the time being
-  Matrix3d Rd_eigen;
-  Rd_eigen <<
-    1,  0,  0,
-    0, -1,  0,
-    0,  0, -1;
-  RotationMatrix<double> Rd(Rd_eigen);
-  // RotationMatrix<double> rot_y = RotationMatrix<double>::MakeYRotation(20 * 3.14 / 180.0);
-  // orientation_d_ = (Rd * rot_y).ToQuaternion();
-  orientation_d_ = Rd.ToQuaternion();
+  torque_limits_ = impedance_param_.torque_limits;
 
   // TODO: prototyping integrator term
   // if this works, will need to make this more principled
   // pass in integrator gains from constructor, use states instead of mutables, etc
   integrator_ = VectorXd::Zero(6);
   I_ = MatrixXd::Zero(6,6);
-  I_.block(0,0,3,3) << param_.rotational_integral_gain * MatrixXd::Identity(3,3);
-  I_.block(3,3,3,3) << param_.translational_integral_gain * MatrixXd::Identity(3,3);
+  MatrixXd rotational_integral_gain = impedance_param_.rotational_integral_gain.asDiagonal();
+  MatrixXd translational_integral_gain = impedance_param_.rotational_integral_gain.asDiagonal();
+
+  I_.block(0,0,3,3) << rotational_integral_gain;
+  I_.block(3,3,3,3) << translational_integral_gain;
 
   prev_time_ = 0.0;
 }
@@ -134,7 +125,6 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
   // TODO: parse out info here
   VectorXd state = c3_output->get_data();
-
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
   VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
@@ -167,7 +157,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
       *EE_frame_, EE_offset_,
       *world_frame_, *world_frame_, &J);
 
-  // perform all truncations
+  // perform all truncations, since the plant contains the franka and the ball
   VectorXd q_franka = q.head(n_);
   VectorXd v_franka = v.head(n_);
   MatrixXd M_franka = M.block(0 ,0, n_, n_);
@@ -176,64 +166,49 @@ void ImpedanceController::CalcControl(const Context<double>& context,
   MatrixXd J_franka = J.block(0, 0, 6, n_);
 
   // forward kinematics
-  const drake::math::RigidTransform<double> H =
+  const drake::math::RigidTransform<double> H_W_EE =
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("end_effector_tip"));
-  const RotationMatrix<double> R = H.rotation();
-  Vector3d d = H.translation() + R*EE_offset_;
-  //std::cout << "position\n" << d << std::endl;
+  const RotationMatrix<double> R_W_EE = H_W_EE.rotation();
+  Vector3d p = H_W_EE.translation() + R_W_EE * EE_offset_;
 
-  // build task space state vectors
+  // build task space state vectors, task space state is the end-effecot [orientation, position]
   VectorXd x = VectorXd::Zero(6);
-  x.tail(3) << d;
+  x.tail(3) << p;
   VectorXd x_dot = J_franka * v_franka;
 
-  // compute xd_dot.head(3) angular velocity
-  // RotationMatrix<double> R_d(orientation_d);
-  // Eigen::AngleAxis<double> w_d_aa = (R.inverse() * R_d).ToAngleAxis();
-  // std::cout <<  w_d_aa.angle() << std::endl << std::endl;
-  // w_d_aa.angle() = 0.1 * w_d_aa.angle() / 70.0;
-
-
-
-  // Quaterniond w_desired = RotationMatrix<double>(w_d_aa).ToQuaternion();
-
   VectorXd xtilde = xd - x;
-  xtilde.head(3) << this->CalcRotationalError(R, orientation_d);
-  // std::cout << xtilde << std::endl << std::endl;
+  xtilde.head(3) << this->CalcRotationalError(R_W_EE, orientation_d);
   VectorXd xtilde_dot = xd_dot - x_dot;
 
-  // double ang_speed = x_dot.head(3).norm();
-  // Eigen::Vector3d axis = x_dot.head(3) / ang_speed;
-  // if (ang_speed > 0.001){
-  //   RotationMatrix<double> w_current(Eigen::AngleAxis<double>(ang_speed, axis));
-  //   xtilde_dot.head(3) = this->CalcRotationalError(w_current, w_desired);
-  // }
-  // else{
-  //   RotationMatrix<double> w_current(Eigen::AngleAxis<double>(0, Vector3d(1, 0, 0)));
-  //   xtilde_dot.head(3) = this->CalcRotationalError(w_current, w_desired);
-  // }
-
+  // M_task_space is the task space intertia matrix, also is the capital Lambda in the appendix of the paper
   MatrixXd M_inv = M_franka.inverse();
-  MatrixXd Lambda = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent end effector mass matrix
+  MatrixXd M_task_space = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent task space mass matrix
 
-  /// integral term
+  // use integral term if it is helping, to turn down just set all integral gain to be zero
   VectorXd tau_int = VectorXd::Zero(7);
   if (timestamp > 1) {
     double dt = timestamp - prev_time_;
     VectorXd integrator_temp = integrator_;
     integrator_ += xtilde * dt;
-    tau_int = J_franka.transpose() * Lambda * I_*integrator_;
-    if (SaturatedClamp(tau_int, param_.integrator_clamp)){
+    tau_int = J_franka.transpose() * M_task_space * I_ * integrator_;
+    if (SaturatedClamp(tau_int, impedance_param_.integrator_clamp)){
       std::cout << "clamped integrator torque" << std::endl;
       integrator_ = integrator_temp;
-      ClampIntegratorTorque(tau_int, param_.integrator_clamp);
+      ClampIntegratorTorque(tau_int, impedance_param_.integrator_clamp);
     }
   }
-  VectorXd tau = J_franka.transpose() * Lambda * (K_*xtilde + B_*xtilde_dot) + tau_int + C_franka;
 
-  // add feedforward force term if contact is desired
+  VectorXd tau = J_franka.transpose() * M_task_space * (K_ * xtilde + B_ * xtilde_dot) + tau_int + C_franka;
+
+  // compute nullspace projection, J_gen_inv means generalized inverse of J_franka, used to define the null-space
+  // projector, here we use the dynamical consistent generalized inverse, i.e. inverse weighted by the mass matrix
+  MatrixXd J_gen_inv = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
+  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_gen_inv;
+  tau += N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
+
+  // add feedforward force term if contact is desired, need to add options for different contact models
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
-  if (enable_contact_ && lambda.norm() > param_.contact_threshold){
+  if (enable_contact_ && lambda.norm() > impedance_param_.contact_threshold){
     //std::cout << "here" << std::endl;
     // compute contact jacobian
     VectorXd phi(contact_pairs_.size());
@@ -246,22 +221,11 @@ void ImpedanceController::CalcControl(const Context<double>& context,
     tau = tau - Jc.transpose() * lambda;
   }
 
-  // compute nullspace projection
-  MatrixXd J_ginv_tranpose = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
-  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_ginv_tranpose;
-  //VectorXd qd = VectorXd::Zero(7);
-  //qd << qd_.head(4), q(4), q(5), q(6);
-  tau += N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
-
-//  this->CheckJointLimits(q.head(7), timestamp);
+  // clamp the final output torque to safety limit
   this->ClampJointTorques(tau, timestamp);
-
   control->SetDataVector(tau);
   control->set_timestamp(timestamp);
   prev_time_ = timestamp;
-
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
 }
 
 Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& R,
@@ -282,8 +246,7 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
                             VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const {
   for (int i = 0; i < (int) contact_pairs.size(); i++) {
     multibody::GeomGeomCollider collider(
-        plant_f_, contact_pairs[i]);  // deleted num_fricton_directions (check with
-                                   // Michael about changes in geomgeom)
+        plant_f_, contact_pairs[i]);
     auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
     phi(i) = phi_i;
 
@@ -297,17 +260,11 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
 void ImpedanceController::ClampJointTorques(VectorXd& tau, double timestamp) const {
   VectorXd thresholds = 0.95 * torque_limits_;
   std::cout << std::setprecision(3) << std::fixed;
-
   for (int i = 0; i < n_; i++){
     int sign = 1;
     if (tau(i) < 0) sign = -1;
 
     if (abs(tau(i)) > thresholds(i)){
-//      std::cout << "[time: " << timestamp << "] " << "Joint "
-//                << i+1 << "'s desired torque of " << tau(i)
-//                << " is close to or above its torque limit of "
-//                << torque_limits_(i) <<". This torque input has been clamped to "
-//                << sign * thresholds(i) << "." << std::endl;
       tau(i) = sign * thresholds(i);
     }
   }
@@ -317,7 +274,6 @@ void ImpedanceController::ClampIntegratorTorque(VectorXd& tau, const VectorXd& c
   for (int i = 0; i < tau.size(); i++){
     int sign = 1;
     if (tau(i) < 0) sign = -1;
-
     if (abs(tau(i)) > clamp(i)){
       tau(i) = sign * clamp(i);
     }
@@ -330,8 +286,6 @@ bool ImpedanceController::SaturatedClamp(const VectorXd& tau, const VectorXd& cl
       return true;
     }
   }
-
-
   return false;
 }
 

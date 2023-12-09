@@ -18,6 +18,7 @@ from pydrake.systems.all import (
 )
 
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
+from pydairlib.geometry.meshcat_utils import MeshcatUtils
 
 from pydairlib.cassie.cassie_utils import (
     AddCassieMultibody,
@@ -94,6 +95,14 @@ class HeightMapQueryObject:
         if self.height_map_server.map_opts.meshcat is not None:
             self.height_map_server.map_opts.meshcat.PlotSurface(
                 path, X, Y, Z, rgba
+            )
+            self.height_map_server.map_opts.meshcat.Flush()
+
+    def plot_colored_surface(self, path, X, Y, Z, colors):
+        if self.height_map_server.map_opts.meshcat is not None:
+            MeshcatUtils.PlotColoredSurface(path,
+                self.height_map_server.map_opts.meshcat,
+                X, Y, Z, colors, False, 1.0
             )
             self.height_map_server.map_opts.meshcat.Flush()
 

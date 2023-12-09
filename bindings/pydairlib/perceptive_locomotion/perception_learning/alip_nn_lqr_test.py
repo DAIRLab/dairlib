@@ -92,7 +92,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
 def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
 
     checkpoint_path = os.path.join(
-        perception_learning_base_folder, 'tmp/rose-sponge-148.pth')
+        perception_learning_base_folder, 'tmp/cosmic-plasma-149.pth')
 
     sim_env, controller, cost_logger, diagram = build_diagram(sim_params, checkpoint_path)
     simulator = Simulator(diagram)
@@ -147,7 +147,7 @@ def main():
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'
     )
-    sim_params.visualize = False
+    sim_params.visualize = True
     cost_list = []
     t_list = []
     for i in range(10):

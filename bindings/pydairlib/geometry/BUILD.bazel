@@ -42,6 +42,20 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "meshcat_utils_py",
+    cc_deps = [
+        "//geometry:meshcat_utils",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "meshcat_utils",
+    cc_srcs = ["meshcat_utils_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

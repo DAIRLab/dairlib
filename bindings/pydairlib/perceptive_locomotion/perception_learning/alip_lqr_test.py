@@ -43,9 +43,6 @@ def main():
     controller = AlipFootstepLQR(controller_params)
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
-
-
-
     builder.AddSystem(sim_env)
 
     desired_velocity = ConstantVectorSource(np.array([0.1, 0]))

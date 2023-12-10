@@ -28,6 +28,8 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.unet \
 from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
     import get_device, tile_and_concatenate_inputs
 
+from matplotlib.cm import ScalarMappable
+
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
@@ -141,15 +143,12 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         #     residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
         # )
 
-        residual_min = np.min(residual_grid)
-        residual_max = np.max(residual_grid)
-        residual_R = -(residual_grid - residual_min) / (residual_max - residual_min) + 1.0
-        residual_G = -(residual_grid - residual_min) / (residual_max - residual_min) + 1.0
-        residual_B = 1.0 * np.ones((H, W))
+        color_mappable = ScalarMappable(cmap='jet')
+        colors = color_mappable.to_rgba(residual_grid)
 
         hmap_query.plot_colored_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
-            residual_grid_world[2], residual_R, residual_G, residual_B
+            residual_grid_world[2], colors[:, :, 0], colors[:, :, 1], colors[:, :, 2]
         )
 
         footstep_i, footstep_j = np.unravel_index(

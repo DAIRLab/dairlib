@@ -136,7 +136,7 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     )
 
     simulator.reset_context(context)
-    simulator.AdvanceTo(t_init + 5)
+    simulator.AdvanceTo(t_init + 20)
 
     cost_log = cost_logger.FindLog(context).data()
     return cost_log, t_init

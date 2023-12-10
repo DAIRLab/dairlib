@@ -11,7 +11,7 @@ using drake::geometry::Meshcat;
 class MeshcatUtils{
  public:
     MeshcatUtils() = default;
-    void PlotColoredSurface(std::string_view path,
+    static void PlotColoredSurface(std::string_view path,
                             std::shared_ptr<Meshcat>,
                             const Eigen::Ref<const Eigen::MatrixXd>& X,
                             const Eigen::Ref<const Eigen::MatrixXd>& Y,

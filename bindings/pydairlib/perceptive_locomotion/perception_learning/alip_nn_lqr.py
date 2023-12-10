@@ -141,19 +141,16 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         #     residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
         # )
 
-        residual_heatmap = 0.5 * np.ones((3, H*W))
-        residual_max = np.max(residual_grid)
         residual_min = np.min(residual_grid)
-        residual_heatmap[0,:] = (residual_grid.flatten() - residual_min) / (residual_max - residual_min)
-        residual_heatmap[1,:] = (residual_grid.flatten() - residual_min) / (residual_max - residual_min)
-        # residual_heatmap[2,:] = (residual_grid.flatten() - residual_min) / (residual_max - residual_min)
-
+        residual_max = np.max(residual_grid)
+        residual_R = -(residual_grid - residual_min) / (residual_max - residual_min) + 1.0
+        residual_G = -(residual_grid - residual_min) / (residual_max - residual_min) + 1.0
+        residual_B = 1.0 * np.ones((H, W))
 
         hmap_query.plot_colored_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
-            residual_grid_world[2], residual_heatmap,
+            residual_grid_world[2], residual_R, residual_G, residual_B
         )
-
 
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape

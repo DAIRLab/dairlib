@@ -15,11 +15,15 @@ void MeshcatUtils::PlotColoredSurface(std::string_view path,
                                       const Eigen::Ref<const Eigen::MatrixXd>& X,
                                       const Eigen::Ref<const Eigen::MatrixXd>& Y,
                                       const Eigen::Ref<const Eigen::MatrixXd>& Z,
-                                      const Eigen::Ref<const Eigen::Matrix3Xd>& colors, bool wireframe,
-                                      double wireframe_line_width) {
-  DRAKE_DEMAND(Y.rows() == X.rows() && Y.cols() == X.cols());
-  DRAKE_DEMAND(Z.rows() == X.rows() && Z.cols() == X.cols());
-  const int rows = X.rows(), cols = X.cols();
+                                      const Eigen::Ref<const Eigen::MatrixXd>& R,
+                                      const Eigen::Ref<const Eigen::MatrixXd>& G,
+                                      const Eigen::Ref<const Eigen::MatrixXd>& B,
+                                      bool wireframe, double wireframe_line_width) {
+  for (const auto& mat: {Y, Z, R, G, B}) {
+      DRAKE_DEMAND(mat.cols() == X.cols() && mat.rows() == X.rows());
+  }
+  const int rows = X.rows();
+  const int cols = X.cols();
 
   if (wireframe) {
     int count = -1;
@@ -48,9 +52,13 @@ void MeshcatUtils::PlotColoredSurface(std::string_view path,
     using MapRowVector = const Eigen::Map<const Eigen::RowVectorXd>;
 
     Eigen::Matrix3Xd vertices(3, rows * cols);
+    Eigen::Matrix3Xd colors(3, rows * cols);
     vertices.row(0) = MapRowVector(X.data(), rows * cols);
     vertices.row(1) = MapRowVector(Y.data(), rows * cols);
     vertices.row(2) = MapRowVector(Z.data(), rows * cols);
+    colors.row(0) = MapRowVector(R.data(), rows * cols);
+    colors.row(1) = MapRowVector(G.data(), rows * cols);
+    colors.row(2) = MapRowVector(B.data(), rows * cols);
 
     // Make a regular grid as in https://stackoverflow.com/q/44934631.
     const int num_boxes = (rows - 1) * (cols - 1);

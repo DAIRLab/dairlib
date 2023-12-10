@@ -15,9 +15,11 @@ PYBIND11_MODULE(meshcat_utils, m) {
     m.doc() = "Binding meshcat_utils";
     m.def("PlotColoredSurface",
          &MeshcatUtils::PlotColoredSurface,
-             py::arg("path"),py::arg("MeshcatObject"),py::arg("X"),
-             py::arg("Y"), py::arg("Z"),py::arg("colors"),
-             py::arg("wireframe") = false, py::arg("wireframe_line_width")= 1.0);
+         py::arg("path"),py::arg("MeshcatObject"),
+         py::arg("X"), py::arg("Y"), py::arg("Z"),
+         py::arg("R"), py::arg("G"), py::arg("B"),
+         py::arg("wireframe") = false,
+         py::arg("wireframe_line_width") = 1.0);
 }
 }
 }

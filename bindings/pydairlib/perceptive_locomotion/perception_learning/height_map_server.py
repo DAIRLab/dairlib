@@ -98,11 +98,11 @@ class HeightMapQueryObject:
             )
             self.height_map_server.map_opts.meshcat.Flush()
 
-    def plot_colored_surface(self, path, X, Y, Z, colors):
+    def plot_colored_surface(self, path, X, Y, Z, R, G, B):
         if self.height_map_server.map_opts.meshcat is not None:
             PlotColoredSurface(path,
                 self.height_map_server.map_opts.meshcat,
-                X, Y, Z, colors, False, 1.0
+                X, Y, Z, R, G, B, False, 1.0
             )
             self.height_map_server.map_opts.meshcat.Flush()
 

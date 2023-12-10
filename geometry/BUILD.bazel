@@ -88,3 +88,13 @@ cc_test(
         "@gtest//:main",
     ],
 )
+
+cc_library(
+    name = "meshcat_utils",
+    srcs = ["meshcat_utils.cc"],
+    hdrs = ["meshcat_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@eigen",
+    ],
+)

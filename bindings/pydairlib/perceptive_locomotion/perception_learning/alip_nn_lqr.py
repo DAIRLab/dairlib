@@ -127,7 +127,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         residual_grid_world = hmap_query.calc_height_map_world_frame(
             np.array([ud[0], ud[1], 0])
         )
-        residual_grid_world[2] = residual_grid
+        # residual_grid_world[2] = residual_grid
 
         # tensor algebra (batch operation) for calculating linear term grid
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
@@ -136,10 +136,24 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
 
-        hmap_query.plot_surface(
+        # hmap_query.plot_surface(
+        #     "residual", residual_grid_world[0], residual_grid_world[1],
+        #     residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
+        # )
+
+        residual_heatmap = 0.5 * np.ones((3, H*W))
+        residual_max = np.max(residual_grid)
+        residual_min = np.min(residual_grid)
+        residual_heatmap[0,:] = (residual_grid.flatten() - residual_min) / (residual_max - residual_min)
+        residual_heatmap[1,:] = (residual_grid.flatten() - residual_min) / (residual_max - residual_min)
+        # residual_heatmap[2,:] = (residual_grid.flatten() - residual_min) / (residual_max - residual_min)
+
+
+        hmap_query.plot_colored_surface(
             "residual", residual_grid_world[0], residual_grid_world[1],
-            residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
+            residual_grid_world[2], residual_heatmap,
         )
+
 
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape

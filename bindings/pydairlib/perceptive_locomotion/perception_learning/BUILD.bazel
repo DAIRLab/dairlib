@@ -63,6 +63,7 @@ py_library(
     deps = [
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/geometry:meshcat_utils_py",
         "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",
     ],

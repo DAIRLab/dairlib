@@ -197,10 +197,6 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-  auto force_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_force_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
 
   auto c3_output_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
@@ -213,6 +209,10 @@ int DoMain(int argc, char* argv[]) {
   auto c3_actual_state_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_forces_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
+          lcm_channel_params.c3_force_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
@@ -282,12 +282,14 @@ int DoMain(int argc, char* argv[]) {
                   plate_balancing_target->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
+  builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
+                  c3_output_sender->get_input_port_lcs_contact_jacobian());
   builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
-  builder.Connect(c3_trajectory_generator->get_output_port_force_trajectory(),
-                  force_trajectory_sender->get_input_port());
+//  builder.Connect(c3_trajectory_generator->get_output_port_force_trajectory(),
+//                  force_trajectory_sender->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
@@ -302,6 +304,8 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_sender->get_input_port_c3_intermediates());
   builder.Connect(c3_output_sender->get_output_port_c3_debug(),
                   c3_output_publisher->get_input_port());
+  builder.Connect(c3_output_sender->get_output_port_c3_force(),
+                  c3_forces_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

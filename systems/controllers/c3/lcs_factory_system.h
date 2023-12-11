@@ -32,13 +32,20 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(lcs_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_jacobian() const {
+    return this->get_output_port(lcs_contact_jacobian_port_);
+  }
+
  private:
   void OutputLCS(const drake::systems::Context<double>& context,
                  solvers::LCS* output_traj) const;
+  void OutputLCSContactJacobian(const drake::systems::Context<double>& context,
+                 Eigen::MatrixXd* output_jacobian) const;
 
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::OutputPortIndex actor_trajectory_port_;
   drake::systems::OutputPortIndex lcs_port_;
+  drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;

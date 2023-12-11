@@ -43,9 +43,14 @@ LCSFactorySystem::LCSFactorySystem(
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
   dt_ = c3_options_.dt;
-  n_lambda_ =
-      2 * c3_options_.num_contacts +
-      2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    n_lambda_ =
+        2 * c3_options_.num_contacts +
+            2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  } else if (c3_options_.contact_model == "anitescu") {
+    n_lambda_ =
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+  }
   n_u_ = plant_.num_actuators();
 
   lcs_state_input_port_ =
@@ -63,6 +68,10 @@ LCSFactorySystem::LCSFactorySystem(
   lcs_port_ = this->DeclareAbstractOutputPort(
                       "lcs", LCS(A, B, D, d, E, F, H, c, N_, dt_),
                       &LCSFactorySystem::OutputLCS)
+                  .get_index();
+  lcs_contact_jacobian_port_ = this->DeclareAbstractOutputPort(
+                      "J_lcs", Eigen::MatrixXd(n_x_, n_lambda_),
+                      &LCSFactorySystem::OutputLCSContactJacobian)
                   .get_index();
 }
 
@@ -93,6 +102,37 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
 
   double scale;
   std::tie(*output_lcs, scale) = LCSFactory::LinearizePlantToLCS(
+      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.N, contact_model);
+}
+
+void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<double>& context,
+                                                Eigen::MatrixXd* output_jacobian) const {
+  const TimestampedVector<double>* lcs_x =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        lcs_state_input_port_);
+
+  VectorXd q_v_u =
+      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
+                     plant_.num_actuators());
+  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+//  drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
+
+  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x_));
+  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), context_);
+//  multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
+//                                               context_ad_);
+  solvers::ContactModel contact_model;
+  if (c3_options_.contact_model == "stewart_and_trinkle") {
+    contact_model = solvers::ContactModel::kStewartAndTrinkle;
+  } else if (c3_options_.contact_model == "anitescu") {
+    contact_model = solvers::ContactModel::kAnitescu;
+  } else {
+    throw std::runtime_error("unknown or unsupported contact model");
+  }
+
+  *output_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);

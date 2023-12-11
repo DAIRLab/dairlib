@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
+#include <dairlib/lcmt_c3_forces.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
@@ -159,7 +160,7 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, lcm));
   auto trajectory_sub_force = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+      LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_channel, lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);

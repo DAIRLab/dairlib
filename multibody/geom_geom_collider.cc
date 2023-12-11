@@ -38,7 +38,7 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::EvalPolytope(
 
   if (num_friction_directions == 1) {
     throw std::runtime_error(
-      "GeomGeomCollider cannot specificy 1 friction direction unless "
+      "GeomGeomCollider cannot specify 1 friction direction unless "
           "using EvalPlanar.");
   }
 

@@ -42,12 +42,9 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   Mcons1 << E, F, H;
 
   // set up for constraints (\lambda >= 0)
-  MatrixXd MM1;
-  MM1 = MatrixXd::Zero(m_, n_);
-  MatrixXd MM2;
-  MM2 = MatrixXd::Identity(m_, m_);
-  MatrixXd MM3;
-  MM3 = MatrixXd::Zero(m_, k_);
+  MatrixXd MM1 = MatrixXd::Zero(m_, n_);
+  MatrixXd MM2 = MatrixXd::Identity(m_, m_);
+  MatrixXd MM3 = MatrixXd::Zero(m_, k_);
   MatrixXd Mcons2(m_, n_ + m_ + k_);
   Mcons2 << MM1, MM2, MM3;
 
@@ -85,8 +82,9 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = 100000;  // big M variable
+  int M = std::numeric_limits<int>::max();  // big M variable
   double coeff[n_ + m_ + k_];
+  double coeff2[n_ + m_ + k_];
 
   for (int i = 0; i < m_; i++) {
     GRBLinExpr cexpr = 0;
@@ -104,10 +102,10 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
-      coeff[j] = Mcons1.row(i)(j);
+      coeff2[j] = Mcons1.row(i)(j);
     }
 
-    cexpr2.addTerms(coeff, delta_k, n_ + m_ + k_);
+    cexpr2.addTerms(coeff2, delta_k, n_ + m_ + k_);
     model.addConstr(cexpr2 + c(i) >= 0);
     model.addConstr(cexpr2 + c(i) <= M * binary[i]);
   }

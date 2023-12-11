@@ -142,6 +142,7 @@ vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   }
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
+  std::cout << "lambda_sol " << z_sol_->at(0).segment(n_, m_) << std::endl;
   return zfin;
 }
 
@@ -187,6 +188,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (hflag_ == 1) {
+    std::cout << "solving lcp: " << std::endl;
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);

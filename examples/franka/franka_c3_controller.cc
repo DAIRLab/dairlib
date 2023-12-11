@@ -290,8 +290,6 @@ int DoMain(int argc, char* argv[]) {
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
                   object_trajectory_sender->get_input_port());
-//  builder.Connect(c3_trajectory_generator->get_output_port_force_trajectory(),
-//                  force_trajectory_sender->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
@@ -308,6 +306,8 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_publisher->get_input_port());
   builder.Connect(c3_output_sender->get_output_port_c3_force(),
                   c3_forces_publisher->get_input_port());
+//  builder.Connect(c3_output_sender->get_output_port_next_c3_input(),
+//                  lcs_factory->get_input_port_lcs_input());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

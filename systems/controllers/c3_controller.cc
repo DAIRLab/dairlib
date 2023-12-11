@@ -54,7 +54,6 @@ C3Controller::C3Controller(
   }
 
   n_u_ = plant_.num_actuators();
-  u_prev_ = VectorXd::Zero(n_u_);
 
   int x_des_size = plant_.num_positions(ModelInstanceIndex(2)) +
                    plant_.num_positions(ModelInstanceIndex(3)) +
@@ -196,7 +195,6 @@ void C3Controller::OutputC3Solution(
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
-  u_prev_ = z_sol[0].segment(n_x_ + n_lambda_, n_u_);
 }
 
 void C3Controller::OutputC3Intermediates(

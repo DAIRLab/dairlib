@@ -368,6 +368,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
 drake::systems::EventStatus LcmForceDrawer::DrawForces(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+  std::cout << context.get_time() << std::endl;
   if (this->EvalInputValue<dairlib::lcmt_c3_forces>(
               context, force_trajectory_input_port_)
           ->utime < 1e-3) {
@@ -408,8 +409,6 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
                           Vector3d{0, 0, height + arrowhead_height}));
       meshcat_->SetProperty(force_arrow_path, "visible", true);
     } else {
-      //    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible",
-      //    false);
       meshcat_->SetProperty(force_arrow_path, "visible", false);
     }
   }

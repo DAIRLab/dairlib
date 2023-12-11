@@ -288,11 +288,11 @@ LcmForceDrawer::LcmForceDrawer(
   const drake::geometry::MeshcatCone arrowhead(
       arrowhead_height, arrowhead_width, arrowhead_width);
 
-  meshcat_->SetObject(force_path_ + "/u_lcs/cylinder", cylinder, {1, 0, 0, 1});
-  meshcat_->SetObject(force_path_ + "/u_lcs/head", arrowhead, {1, 0, 0, 1});
+  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder, {0, 0, 1, 1});
+  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead, {0, 0, 1, 1});
   for (int i = 0; i < 20; ++i) {
     const std::string lcs_force_path = force_path_ + "/lcs_force_" +
-                                       std::to_string(i);
+                                       std::to_string(i) + "/arrow";
     meshcat_->SetObject(lcs_force_path + "/cylinder", cylinder, {1, 0, 0, 1});
     meshcat_->SetObject(lcs_force_path + "/head", arrowhead, {1, 0, 0, 1});
   }
@@ -333,27 +333,29 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
   }
 
   auto force = force_trajectory.value(force_trajectory_block.time_vector[0]);
-
-  meshcat_->SetTransform(force_path_ + "/u_lcs", RigidTransformd(pose));
+  const std::string& force_path_root =
+      force_path_ + "/u_lcs/";
+  meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
+  const std::string& force_arrow_path = force_path_root + "arrow";
 
   auto force_norm = force.norm();
   // Stretch the cylinder in z.
   if (force_norm >= 0.01) {
     meshcat_->SetTransform(
-        force_path_ + "/u_lcs",
+        force_arrow_path,
         RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
     const double height = force_norm / newtons_per_meter_;
-    meshcat_->SetProperty(force_path_ + "/u_lcs/cylinder", "position",
+    meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                           {0, 0, 0.5 * height});
     // Note: Meshcat does not fully support non-uniform scaling (see #18095).
     // We get away with it here since there is no rotation on this frame and
     // no children in the kinematic tree.
-    meshcat_->SetProperty(force_path_ + "/u_lcs/cylinder", "scale",
+    meshcat_->SetProperty(force_arrow_path + "/cylinder", "scale",
                           {1, 1, height});
     // Translate the arrowheads.
     const double arrowhead_height = radius_ * 2.0;
     meshcat_->SetTransform(
-        force_path_ + "/u_lcs/head",
+        force_arrow_path + "/head",
         RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                         Vector3d{0, 0, height + arrowhead_height}));
     meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", true);
@@ -379,16 +381,13 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
         c3_forces->forces[i].contact_point, 3);
 
     const std::string& force_path_root =
-        force_path_ + "/lcs_force_" + std::to_string(i);
+        force_path_ + "/lcs_force_" + std::to_string(i) + "/";
     meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
-    if (i > 11){
-      meshcat_->SetTransform(force_path_root, RigidTransformd(Vector3d(-1, 0, 0)));
-    }
     const VectorXd force = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         c3_forces->forces[i].contact_force, 3);
     auto force_norm = force.norm();
     // Stretch the cylinder in z.
-    const std::string& force_arrow_path = force_path_root;
+    const std::string& force_arrow_path = force_path_root + "arrow";
     if (force_norm >= 0.01) {
       meshcat_->SetTransform(
           force_arrow_path,

@@ -43,7 +43,7 @@ class LCSFactory {
       int num_friction_directions, const std::vector<double>& mu, double dt,
       int N, ContactModel = ContactModel::kStewartAndTrinkle);
 
-  static Eigen::MatrixXd ComputeContactJacobian(
+  static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,

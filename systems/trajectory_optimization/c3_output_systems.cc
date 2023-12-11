@@ -26,6 +26,8 @@ C3OutputSender::C3OutputSender() {
           .get_index();
   lcs_contact_jacobian_port_ =
       this->DeclareAbstractInputPort("J_lcs", drake::Value<MatrixXd>()).get_index();
+  lcs_contact_points_port_ =
+      this->DeclareAbstractInputPort("p_lcs", drake::Value<std::vector<VectorXd>>()).get_index();
 
   this->set_name("c3_output_sender");
   lcm_c3_output_port_ = this->DeclareAbstractOutputPort(
@@ -58,19 +60,26 @@ void C3OutputSender::OutputC3Forces(
       this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
   const auto& J_c =
       this->EvalInputValue<MatrixXd>(context, lcs_contact_jacobian_port_);
+  const auto& contact_points =
+      this->EvalInputValue<std::vector<VectorXd>>(context, lcs_contact_points_port_);
   output_traj->num_forces = c3_solution->lambda_sol_.rows();
   output_traj->forces.resize(output_traj->num_forces);
-  for (int i = 0; i < c3_solution->lambda_sol_.rows(); ++i){
-    auto force = lcmt_force();
-    force.contact_point[0] = 0;
-    force.contact_point[1] = 0;
-    force.contact_point[2] = 0;
-    // 6, 7, 8 are the indices for the x,y,z components of the tray
-    // TODO(yangwill): find a cleaner way to figure out the equivalent forces expressed in the world frame
-    force.contact_force[0] = c3_solution->lambda_sol_(i, 0) * J_c->row(i)(6);
-    force.contact_force[1] = c3_solution->lambda_sol_(i, 0) * J_c->row(i)(7);
-    force.contact_force[2] = c3_solution->lambda_sol_(i, 0) * J_c->row(i)(8);
-    output_traj->forces[i] = force;
+  int forces_per_contact = J_c->rows() / contact_points->size();
+  int contact_var_start;
+  for (int contact_index = 0; contact_index < contact_points->size(); ++contact_index){
+    contact_var_start = forces_per_contact * contact_index;
+    for (int i = 0; i < forces_per_contact; ++i){
+      auto force = lcmt_force();
+      force.contact_point[0] = contact_points->at(contact_index)[0];
+      force.contact_point[1] = contact_points->at(contact_index)[1];
+      force.contact_point[2] = contact_points->at(contact_index)[2];
+      // 6, 7, 8 are the indices for the x,y,z components of the tray
+      // TODO(yangwill): find a cleaner way to figure out the equivalent forces expressed in the world frame
+      force.contact_force[0] = c3_solution->lambda_sol_(contact_var_start + i, 0) * J_c->row(contact_var_start + i)(6);
+      force.contact_force[1] = c3_solution->lambda_sol_(contact_var_start + i, 0) * J_c->row(contact_var_start + i)(7);
+      force.contact_force[2] = c3_solution->lambda_sol_(contact_var_start + i, 0) * J_c->row(contact_var_start + i)(8);
+      output_traj->forces[contact_var_start + i] = force;
+    }
   }
   output_traj->utime = context.get_time() * 1e6;
 }

@@ -36,16 +36,26 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(lcs_contact_jacobian_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_points() const {
+    return this->get_output_port(lcs_contact_points_port_);
+  }
+
  private:
+  drake::systems::EventStatus UpdateLCS(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
   void OutputLCS(const drake::systems::Context<double>& context,
                  solvers::LCS* output_traj) const;
   void OutputLCSContactJacobian(const drake::systems::Context<double>& context,
                  Eigen::MatrixXd* output_jacobian) const;
+  void OutputLCSContactPoints(const drake::systems::Context<double>& context,
+                 std::vector<Eigen::VectorXd>* contact_points) const;
 
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::OutputPortIndex actor_trajectory_port_;
   drake::systems::OutputPortIndex lcs_port_;
   drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
+  drake::systems::OutputPortIndex lcs_contact_points_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
@@ -55,6 +65,9 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
       contact_pairs_;
 
   C3Options c3_options_;
+
+//  mutable std::vector<Eigen::VectorXd> witness_points_;
+//  mutable Eigen::MatrixXd contact_jacobian_;
 
   // convenience for variable sizes
   int n_q_;

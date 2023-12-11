@@ -251,7 +251,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   return ret;
 }
 
-Eigen::MatrixXd LCSFactory::ComputeContactJacobian(
+std::pair<Eigen::MatrixXd, std::vector<VectorXd>> LCSFactory::ComputeContactJacobian(
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
@@ -273,14 +273,16 @@ Eigen::MatrixXd LCSFactory::ComputeContactJacobian(
   VectorXd phi(n_contacts);
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
-
+  std::vector<VectorXd> contact_points;
   for (int i = 0; i < n_contacts; i++) {
     multibody::GeomGeomCollider collider(
         plant,
         contact_geoms[i]);  // deleted num_friction_directions (check with
     // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
-
+    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
+    // TODO(yangwill): think about if we want to push back both witness points
+    contact_points.push_back(p_WCa);
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
@@ -291,7 +293,7 @@ Eigen::MatrixXd LCSFactory::ComputeContactJacobian(
     MatrixXd J_c = MatrixXd::Zero(
         n_contacts + 2 * n_contacts * num_friction_directions, n_v);
     J_c << J_n, J_t;
-    return J_c;
+    return std::make_pair(J_c, contact_points);
   } else if (contact_model == ContactModel::kAnitescu) {
     MatrixXd E_t =
         MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions);
@@ -314,7 +316,7 @@ Eigen::MatrixXd LCSFactory::ComputeContactJacobian(
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
-    return J_c;
+    return std::make_pair(J_c, contact_points);
   }
 }
 

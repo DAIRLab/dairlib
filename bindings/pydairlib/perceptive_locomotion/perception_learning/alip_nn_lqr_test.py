@@ -145,13 +145,13 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        perception_learning_base_folder, 'params/wavy_terrain.yaml'
     )
     sim_params.visualize = True
     cost_list = []
     t_list = []
     for i in range(10):
-        cost, t_init = run(sim_params, i)
+        cost, t_init = run(sim_params, 20000 + 1000 * i)
         cost_list.append(cost)
         t_list.append(t_init)
     cost = np.array(cost_list)

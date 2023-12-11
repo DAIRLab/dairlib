@@ -343,7 +343,7 @@ def main(save_file: str, visualize: bool):
 
     testing = True
     if testing:
-        data_process(0, job_queue, True, stairs)
+        data_process(0, job_queue, True, wavy)
 
     for group in range(groups):
         terrain = stairs if group % 4 == 0 else wavy

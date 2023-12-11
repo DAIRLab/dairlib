@@ -15,6 +15,8 @@ import (
     HeightMapOptions
 )
 
+from pydairlib.perceptive_locomotion.perception_learning.vision_utils import edges_blurred
+
 from pydrake.geometry import Rgba
 from pydrake.common.value import Value
 from pydrake.systems.all import (
@@ -29,6 +31,7 @@ from pydairlib.perceptive_locomotion.perception_learning.inference.torch_utils \
     import get_device, tile_and_concatenate_inputs
 
 from matplotlib.cm import ScalarMappable
+from matplotlib.colors import LogNorm
 
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
@@ -124,6 +127,8 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
             residual_grid = self.residual_unet(combined_input).squeeze(0)
             residual_grid = residual_grid.detach().cpu().numpy().reshape(H, W)
+        # hmap_edges = edges_blurred(hmap[2], 3.0)
+        # residual_grid = 100 * hmap_edges / np.max(hmap_edges)
 
         # display residual map on meshcat
         residual_grid_world = hmap_query.calc_height_map_world_frame(
@@ -135,13 +140,9 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
         # sum up the grid values, add select the minimum value index
-        # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
-        final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
-
-        # hmap_query.plot_surface(
-        #     "residual", residual_grid_world[0], residual_grid_world[1],
-        #     residual_grid, Rgba(0.8, 0.0, 0.0, 1.0)
-        # )
+        final_grid_tmp = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
+        final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
+        # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
 
         color_mappable = ScalarMappable(cmap='jet')
         colors = color_mappable.to_rgba(residual_grid)

@@ -25,6 +25,7 @@ py_library(
     srcs = ["alip_nn_lqr.py"],
     deps = [
         ":alip_lqr",
+        ":vision_utils",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:torch_utils",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:unet",
         "//bindings/pydairlib/systems",
@@ -67,6 +68,12 @@ py_library(
         "//bindings/pydairlib/multibody",
         "@drake//bindings/pydrake",
     ],
+)
+
+py_library(
+    name = "vision_utils",
+    srcs = ["vision_utils.py"],
+    deps = [],
 )
 
 py_library(

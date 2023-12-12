@@ -60,15 +60,15 @@ void C3OutputSender::OutputC3Lcm(const drake::systems::Context<double>& context,
 
 void C3OutputSender::OutputC3Forces(
     const drake::systems::Context<double>& context,
-    dairlib::lcmt_c3_forces* output_traj) const {
+    dairlib::lcmt_c3_forces* c3_forces_output) const {
   const auto& c3_solution =
       this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
   const auto& J_c =
       this->EvalInputValue<MatrixXd>(context, lcs_contact_jacobian_port_);
   const auto& contact_points = this->EvalInputValue<std::vector<VectorXd>>(
       context, lcs_contact_points_port_);
-  output_traj->num_forces = c3_solution->lambda_sol_.rows();
-  output_traj->forces.resize(output_traj->num_forces);
+  c3_forces_output->num_forces = c3_solution->lambda_sol_.rows();
+  c3_forces_output->forces.resize(c3_forces_output->num_forces);
   int forces_per_contact = J_c->rows() / contact_points->size();
   int contact_var_start;
   for (int contact_index = 0; contact_index < contact_points->size();
@@ -91,10 +91,10 @@ void C3OutputSender::OutputC3Forces(
       force.contact_force[2] =
           c3_solution->lambda_sol_(contact_var_start + i, 0) *
           J_c->row(contact_var_start + i)(8);
-      output_traj->forces[contact_var_start + i] = force;
+      c3_forces_output->forces[contact_var_start + i] = force;
     }
   }
-  output_traj->utime = context.get_time() * 1e6;
+  c3_forces_output->utime = context.get_time() * 1e6;
 }
 
 // void C3OutputSender::OutputNextC3Input(const drake::systems::Context<double>&

@@ -108,6 +108,7 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   Parser parser_plate(&plant_for_lcs);
+  parser_plate.SetAutoRenaming(true);
   parser_plate.AddModels(controller_params.plate_model);
   parser_plate.AddModels(controller_params.tray_model);
 

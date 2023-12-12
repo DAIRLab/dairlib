@@ -117,6 +117,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
 
     prog_.AddLinearEqualityConstraint(
         LinEq, -d_.at(i), {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)});
+//    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
   for (int i = 0; i < N_ + 1; i++) {
     prog_.AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * xdesired_.at(i),

@@ -55,7 +55,7 @@ class C3OutputSender : public drake::systems::LeafSystem<double> {
                    dairlib::lcmt_c3_output* output) const;
 
   void OutputC3Forces(const drake::systems::Context<double>& context,
-                      dairlib::lcmt_c3_forces* output_traj) const;
+                      dairlib::lcmt_c3_forces* c3_forces_output) const;
 
   void OutputNextC3Input(const drake::systems::Context<double>& context,
                          drake::systems::BasicVector<double>* u_next) const;

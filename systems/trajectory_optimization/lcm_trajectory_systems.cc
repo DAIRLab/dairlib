@@ -399,7 +399,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     const std::string& force_path_root =
         force_path_ + "/lcs_force_" + std::to_string(i) + "/";
     if (force_norm >= 0.01) {
-      if (!meshcat_->HasPath(force_path_root)) {
+      if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
                             {1, 0, 0, 1});
         meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_, {1, 0, 0, 1});
@@ -413,7 +413,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
       const std::string& force_arrow_path = force_path_root + "arrow";
       meshcat_->SetTransform(
           force_arrow_path,
-          RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 0)));
+          RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
       const double height = force_norm / newtons_per_meter_;
       meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                             {0, 0, 0.5 * height});

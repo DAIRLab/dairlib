@@ -16,8 +16,8 @@ scene_index: 1
 
 left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
-left_support_position: [0.55, 0.15, 0.225]
-right_support_position: [0.8, -0.15, 0.225]
+left_support_position: [0.65, 0.15, 0.225]
+right_support_position: [0.65, -0.15, 0.225]
 
 
 include_end_effector_orientation: false

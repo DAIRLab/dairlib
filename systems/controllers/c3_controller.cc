@@ -28,8 +28,7 @@ namespace systems {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    C3Options c3_options)
+    drake::systems::Context<double>* context, C3Options c3_options)
     : plant_(plant),
       context_(context),
       c3_options_(std::move(c3_options)),
@@ -60,9 +59,8 @@ C3Controller::C3Controller(
                    plant_.num_velocities(ModelInstanceIndex(2)) +
                    plant_.num_velocities(ModelInstanceIndex(3));
   lcs_state_input_port_ =
-      this->DeclareVectorInputPort(
-              "x_lcs", TimestampedVector<double>(
-                           x_des_size))
+      this->DeclareVectorInputPort("x_lcs",
+                                   TimestampedVector<double>(x_des_size))
           .get_index();
 
   MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
@@ -111,17 +109,16 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(
-          context, lcs_state_input_port_);
-  auto& lcs = this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        lcs_state_input_port_);
+  auto& lcs =
+      this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
 
-
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
-
 
   DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
   DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
@@ -190,8 +187,14 @@ void C3Controller::OutputC3Solution(
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = t + i * c3_options_.dt;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    c3_solution->lambda_sol_.col(i) =
-        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    if (c3_options_.contact_model == "anitescu") {
+      c3_solution->lambda_sol_.col(i) =
+          c3_options_.dt * z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    } else {
+      c3_solution->lambda_sol_.col(i) =
+          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    }
+
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }

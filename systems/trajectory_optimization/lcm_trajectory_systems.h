@@ -161,7 +161,12 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex actor_trajectory_input_port_;
   drake::systems::InputPortIndex force_trajectory_input_port_;
+
+  drake::systems::DiscreteStateIndex actor_last_update_time_index_;
+  drake::systems::DiscreteStateIndex forces_last_update_time_index_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  const drake::geometry::Cylinder cylinder_ = drake::geometry::Cylinder(0.002, 1.0);
+  const drake::geometry::MeshcatCone arrowhead_ = drake::geometry::MeshcatCone(0.004, 0.004, 0.004);
   const std::string force_path_ = "c3_forces";
   const std::string actor_trajectory_name_;
   const std::string force_trajectory_name_;
@@ -169,7 +174,7 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
   int N_ = 5;
   const double radius_ = 0.002;
-  const double newtons_per_meter_ = 40;
+  const double newtons_per_meter_ = 10;
 };
 
 }  // namespace systems

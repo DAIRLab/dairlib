@@ -279,23 +279,28 @@ LcmForceDrawer::LcmForceDrawer(
 
   meshcat_->SetProperty(force_path_, "visible", true, 0);
 
+  actor_last_update_time_index_ = this->DeclareDiscreteState(1);
+  forces_last_update_time_index_ = this->DeclareDiscreteState(1);
   // Add the geometry to meshcat.
   // Set radius 1.0 so that it can be scaled later by the force/moment norm in
   // the path transform.
-  const drake::geometry::Cylinder cylinder(radius_, 1.0);
-  const double arrowhead_height = radius_ * 2.0;
-  const double arrowhead_width = radius_ * 2.0;
-  const drake::geometry::MeshcatCone arrowhead(
-      arrowhead_height, arrowhead_width, arrowhead_width);
+  //  const drake::geometry::Cylinder cylinder(radius_, 1.0);
+  //  const double arrowhead_height = radius_ * 2.0;
+  //  const double arrowhead_width = radius_ * 2.0;
+  //  const drake::geometry::MeshcatCone arrowhead(
+  //      arrowhead_height, arrowhead_width, arrowhead_width);
 
-  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder, {0, 0, 1, 1});
-  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead, {0, 0, 1, 1});
-  for (int i = 0; i < 20; ++i) {
-    const std::string lcs_force_path = force_path_ + "/lcs_force_" +
-                                       std::to_string(i) + "/arrow";
-    meshcat_->SetObject(lcs_force_path + "/cylinder", cylinder, {1, 0, 0, 1});
-    meshcat_->SetObject(lcs_force_path + "/head", arrowhead, {1, 0, 0, 1});
-  }
+  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
+                      {0, 0, 1, 1});
+  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
+                      {0, 0, 1, 1});
+  //  for (int i = 0; i < 18; ++i) {
+  //    const std::string lcs_force_path = force_path_ + "/lcs_force_" +
+  //                                       std::to_string(i) + "/arrow";
+  //    meshcat_->SetObject(lcs_force_path + "/cylinder", cylinder, {1, 0, 0,
+  //    1}); meshcat_->SetObject(lcs_force_path + "/head", arrowhead, {1, 0, 0,
+  //    1});
+  //  }
 
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
@@ -309,6 +314,12 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
+  if (discrete_state->get_value(actor_last_update_time_index_)[0] >=
+      context.get_time()) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(actor_last_update_time_index_)[0] =
+      context.get_time();
   const auto& lcmt_traj =
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, actor_trajectory_input_port_);
@@ -333,8 +344,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
   }
 
   auto force = force_trajectory.value(force_trajectory_block.time_vector[0]);
-  const std::string& force_path_root =
-      force_path_ + "/u_lcs/";
+  const std::string& force_path_root = force_path_ + "/u_lcs/";
   meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
   const std::string& force_arrow_path = force_path_root + "arrow";
 
@@ -344,7 +354,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
     meshcat_->SetTransform(
         force_arrow_path,
         RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
-    const double height = force_norm / newtons_per_meter_;
+    const double height = force_norm / newtons_per_meter_ / 10;
     meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                           {0, 0, 0.5 * height});
     // Note: Meshcat does not fully support non-uniform scaling (see #18095).
@@ -368,31 +378,42 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
 drake::systems::EventStatus LcmForceDrawer::DrawForces(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  std::cout << context.get_time() << std::endl;
   if (this->EvalInputValue<dairlib::lcmt_c3_forces>(
               context, force_trajectory_input_port_)
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
+  if (discrete_state->get_value(forces_last_update_time_index_)[0] >=
+      context.get_time()) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(forces_last_update_time_index_)[0] =
+      context.get_time();
+
   const auto& c3_forces = this->EvalInputValue<dairlib::lcmt_c3_forces>(
       context, force_trajectory_input_port_);
   for (int i = 0; i < c3_forces->num_forces; ++i) {
-
-    const VectorXd pose = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
-        c3_forces->forces[i].contact_point, 3);
-
-    const std::string& force_path_root =
-        force_path_ + "/lcs_force_" + std::to_string(i) + "/";
-    meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
     const VectorXd force = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         c3_forces->forces[i].contact_force, 3);
     auto force_norm = force.norm();
-    // Stretch the cylinder in z.
-    const std::string& force_arrow_path = force_path_root + "arrow";
+    const std::string& force_path_root =
+        force_path_ + "/lcs_force_" + std::to_string(i) + "/";
     if (force_norm >= 0.01) {
+      if (!meshcat_->HasPath(force_path_root)) {
+        meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
+                            {1, 0, 0, 1});
+        meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_, {1, 0, 0, 1});
+      }
+
+      const VectorXd pose = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+          c3_forces->forces[i].contact_point, 3);
+
+      meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
+      // Stretch the cylinder in z.
+      const std::string& force_arrow_path = force_path_root + "arrow";
       meshcat_->SetTransform(
           force_arrow_path,
-          RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
+          RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 0)));
       const double height = force_norm / newtons_per_meter_;
       meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                             {0, 0, 0.5 * height});
@@ -407,9 +428,9 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
           force_arrow_path + "/head",
           RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                           Vector3d{0, 0, height + arrowhead_height}));
-      meshcat_->SetProperty(force_arrow_path, "visible", true);
+      meshcat_->SetProperty(force_path_root, "visible", true);
     } else {
-      meshcat_->SetProperty(force_arrow_path, "visible", false);
+      meshcat_->SetProperty(force_path_root, "visible", false);
     }
   }
   return drake::systems::EventStatus::Succeeded();

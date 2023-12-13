@@ -54,7 +54,7 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 DEFINE_string(osqp_settings,
-              "examples/Cassie/osc_run/osc_running_qp_settings.yaml",
+              "examples/franka/parameters/franka_osc_qp_settings.yaml",
               "Filepath containing qp settings");
 DEFINE_string(controller_parameters,
               "examples/franka/parameters/franka_osc_controller_params.yaml",

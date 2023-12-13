@@ -29,6 +29,9 @@
             <geometry>
                 <box size="0.4 0.025 0.45"/>
             </geometry>
+            <material name="silver">
+              <color rgba="0.75 0.75 0.75 0.5"/>
+            </material>
         </visual>
     </link>
 </robot>

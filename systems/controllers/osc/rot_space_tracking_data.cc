@@ -84,7 +84,9 @@ void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
   Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
                           ydot_des_(3));
-  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
+//  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
+  DRAKE_DEMAND(ydot_des_.size() == 3);
+  Vector3d w_des_ = ydot_des_;
   // Because we transform the error here rather than in the parent
   // options_tracking_data, and because J_y is already transformed in the view
   // frame, we need to undo the transformation on J_y

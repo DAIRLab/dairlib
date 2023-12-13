@@ -1,7 +1,7 @@
 
 c3_options_file: [examples/franka/parameters/franka_c3_options_translation.yaml,
                    examples/franka/parameters/franka_c3_options_w_supports.yaml]
-osqp_settings_file: examples/Cassie/osc_run/osc_running_qp_settings.yaml
+osqp_settings_file: examples/franka/parameters/franka_c3_qp_settings.yaml
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf

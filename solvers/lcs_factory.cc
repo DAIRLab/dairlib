@@ -163,7 +163,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     D.block(0, n_contacts, n_q, n_contacts) = dt * dt * qdotNv * MinvJ_n_T;
 
     D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
-    std::cout << "D: " << D << std::endl;
     E.block(n_contacts, 0, n_contacts, n_q) =
         dt * dt * J_n * AB_v_q + J_n * vNqdot;
     E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
@@ -223,14 +222,14 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
 
-    D.block(0, 0, n_q, n_lambda) = dt * qdotNv * MinvJ_c_T;
-    D.block(n_q, 0, n_v, n_lambda) = MinvJ_c_T;
+    D.block(0, 0, n_q, n_lambda) = dt * dt * qdotNv * MinvJ_c_T;
+    D.block(n_q, 0, n_v, n_lambda) = dt * MinvJ_c_T;
 
     E.block(0, 0, n_lambda, n_q) =
         dt * J_c * AB_v_q + E_t.transpose() * J_n * vNqdot / dt;
     E.block(0, n_q, n_lambda, n_v) = J_c + dt * J_c * AB_v_v;
 
-    F = J_c * MinvJ_c_T;
+    F = dt * J_c * MinvJ_c_T;
 
     H = dt * J_c * AB_v_u;
     c = E_t.transpose() * phi / dt + dt * J_c * d_v -

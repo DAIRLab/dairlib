@@ -22,7 +22,7 @@ right_support_position: [0.65, -0.15, 0.225]
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
-target_frequency: 50
+target_frequency: 0 #unused
 
 neutral_position: [0.55, 0, 0.45]
 x_scale: 0.1

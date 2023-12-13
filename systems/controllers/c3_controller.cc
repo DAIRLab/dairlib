@@ -187,13 +187,16 @@ void C3Controller::OutputC3Solution(
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = t + i * c3_options_.dt;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    if (c3_options_.contact_model == "anitescu") {
-      c3_solution->lambda_sol_.col(i) =
-          c3_options_.dt * z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    } else {
-      c3_solution->lambda_sol_.col(i) =
-          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    }
+    //    if (c3_options_.contact_model == "anitescu") {
+    //      c3_solution->lambda_sol_.col(i) =
+    //          c3_options_.dt * z_sol[i].segment(n_x_,
+    //          n_lambda_).cast<float>();
+    //    } else {
+    //      c3_solution->lambda_sol_.col(i) =
+    //          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    //    }
+    c3_solution->lambda_sol_.col(i) =
+        z_sol[i].segment(n_x_, n_lambda_).cast<float>();
 
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();

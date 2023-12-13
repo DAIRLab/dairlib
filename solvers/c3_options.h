@@ -1,12 +1,13 @@
 #pragma once
 #include <iostream>
+
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter;  // total number of ADMM iterations   //2
-  float rho;    // inital value of the rho parameter
-  float rho_scale;  // scaling of rho parameter (/rho = rho_scale * /rho) //3
+  int admm_iter;     // total number of ADMM iterations   //2
+  float rho;         // inital value of the rho parameter
+  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho) //3
   int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
   int delta_option;  // different options for delta update
   std::string projection_type;
@@ -76,14 +77,14 @@ struct C3Options {
     // a->Visit(DRAKE_NVP(u_size));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
-//    a->Visit(DRAKE_NVP(g_vector));
+    //    a->Visit(DRAKE_NVP(g_vector));
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
     a->Visit(DRAKE_NVP(g_lambda_n));
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
-//    a->Visit(DRAKE_NVP(u_vector));
+    //    a->Visit(DRAKE_NVP(u_vector));
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));
@@ -93,23 +94,23 @@ struct C3Options {
 
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
-    if (contact_model == "stewart_and_trinkle"){
-        g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
-        g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
-        g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
-    }else{
-        g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
+    if (contact_model == "stewart_and_trinkle") {
+      g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
+      g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
+      g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
+    } else {
+      g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
     }
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
-    if (contact_model == "stewart_and_trinkle"){
-        u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
-        u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
-        u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
-    }else{
-        u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
+    if (contact_model == "stewart_and_trinkle") {
+      u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
+      u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
+      u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
+    } else {
+      u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
 

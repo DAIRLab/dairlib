@@ -4,10 +4,10 @@ rho_scale: 1
 num_threads: 5
 delta_option: 1
 # options are 'MIQP' or 'QP'
-projection_type: 'MIQP'
+projection_type: 'QP'
 # options are 'stewart_and_trinkle' or 'anitescu'
-#contact_model: 'anitescu'
-contact_model: 'stewart_and_trinkle'
+contact_model: 'anitescu'
+#contact_model: 'stewart_and_trinkle'
 warm_start: true
 
 mu: [0.2, 0.2, 0.2]
@@ -26,26 +26,24 @@ w_G: 1
 w_U: 0.5
 
 # State Tracking Error, assuming diagonal
-q_vector: [175, 175, 175, 0, 0, 0, 0, 15000, 15000, 15000,
+q_vector: [175, 175, 175, 10, 10, 10, 10, 15000, 15000, 15000,
            5, 5, 10, 1, 1, 1, 5, 5, 5]
 
 # Penalty on efforts, assuming diagonal
 r_vector: [0.1, 0.1, 1]
 
 # Penalty on all decision variables
-g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_x: [1, 1, 1, 1, 1, 1, 1, 10, 10, 10, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_gamma: [1, 1, 1]
 g_lambda_n: [1, 1, 1]
 g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-g_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_lambda: [.05, .05, .05, .05, .05, .05, .05, .05, .05, .05, .05, .05]
 g_u: [1, 1, 1]
 
 # Penalty on all decision variables
-#u_vector: [1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 10, 10, 10, 10, 10, 10,
-#           1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 10, 10, 10]
-u_x: [1, 1, 1, 100, 100, 100, 100, 100, 100, 100, 1, 1, 1, 10, 10, 10, 10, 10, 10]
+u_x: [1, 1, 1, 1, 1, 1, 1, 10, 10, 10, 1, 1, 1, 10, 10, 10, 10, 10, 10]
 u_gamma: [1, 1, 1]
 u_lambda_n: [1, 1, 1]
 u_lambda_t: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-u_lambda: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+u_lambda: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 u_u: [10, 10, 10]

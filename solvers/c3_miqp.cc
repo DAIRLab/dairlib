@@ -23,7 +23,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const vector<MatrixXd>& Q,
          warm_start_u, warm_start), env_(true) {
 
   // Create an environment
-  env_.set("LogToConsole", "0");
+//  env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
   env_.set("Threads", "2");
   env_.start();
@@ -49,7 +49,13 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   Mcons2 << MM1, MM2, MM3;
 
   // Create an empty model
+//  GRBEnv env = GRBEnv();
+//  env.start();
+//  env_.start();
+
   GRBModel model = GRBModel(env_);
+//  model.set(GRB_IntParam_LogToConsole, 1);
+//  model.set(GRB_StringParam_LogFile, "grb_debug");
   //model.set("FeasibilityTol", "0.01");
   //model.set("IterationLimit", "40");
 
@@ -82,7 +88,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = std::numeric_limits<int>::max();  // big M variable
+  int M = 1000;  // big M variable
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
 
@@ -125,7 +131,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
     warm_start_delta_[warm_start_index] = delta_kc;
     warm_start_binary_[warm_start_index] = binaryc;
   }
-
   return delta_kc;
 }
 

@@ -54,13 +54,8 @@ C3Controller::C3Controller(
 
   n_u_ = plant_.num_actuators();
 
-  int x_des_size = plant_.num_positions(ModelInstanceIndex(2)) +
-                   plant_.num_positions(ModelInstanceIndex(3)) +
-                   plant_.num_velocities(ModelInstanceIndex(2)) +
-                   plant_.num_velocities(ModelInstanceIndex(3));
   lcs_state_input_port_ =
-      this->DeclareVectorInputPort("x_lcs",
-                                   TimestampedVector<double>(x_des_size))
+      this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
 
   MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
@@ -77,7 +72,7 @@ C3Controller::C3Controller(
       this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs)).get_index();
 
   target_input_port_ =
-      this->DeclareVectorInputPort("x_lcs_des", x_des_size).get_index();
+      this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
 
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);

@@ -86,8 +86,8 @@ GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
   Vector3d p_WCb = Vector3d::Zero();
   plant_.CalcPointsPositions(context, frameA, p_ACa, plant_.world_frame(),
                              &p_WCa);
-  plant_.CalcPointsPositions(context, frameB, p_BCb,
-                                           plant_.world_frame(), &p_WCb);
+  plant_.CalcPointsPositions(context, frameB, p_BCb, plant_.world_frame(),
+                             &p_WCb);
   return std::pair<VectorX<double>, VectorX<double>>(p_WCa, p_WCb);
 }
 

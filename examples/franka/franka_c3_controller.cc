@@ -110,7 +110,6 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_plate(&plant_for_lcs);
   parser_plate.SetAutoRenaming(true);
   parser_plate.AddModels(controller_params.plate_model);
-  parser_plate.AddModels(controller_params.tray_model);
 
   drake::multibody::ModelInstanceIndex left_support_index;
   drake::multibody::ModelInstanceIndex right_support_index;
@@ -130,6 +129,8 @@ int DoMain(int argc, char* argv[]) {
                      plant_for_lcs.GetFrameByName("support", right_support_index),
                      T_S2_W);
   }
+  parser_plate.AddModels(controller_params.tray_model);
+
 
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);

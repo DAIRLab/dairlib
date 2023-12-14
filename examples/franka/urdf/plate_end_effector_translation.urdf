@@ -20,19 +20,19 @@
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0.0725 0.0 0.004"/>
+      <origin rpy="0 0 0" xyz="0.0725 0.0 0.0035"/>
     </collision>
     <collision name="top_left">
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.03625 0.06278 0.004"/>
+      <origin rpy="0 0 0" xyz="-0.03625 0.06278 0.0035"/>
     </collision>
     <collision name="bottom_left">
       <geometry>
         <sphere radius="0.001"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="-0.03625 -0.06278 0.004"/>
+      <origin rpy="0 0 0" xyz="-0.03625 -0.06278 0.0035"/>
     </collision>
   </link>
   <joint name="plate_x" type="prismatic">

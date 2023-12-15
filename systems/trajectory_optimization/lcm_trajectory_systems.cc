@@ -272,6 +272,9 @@ LcmForceDrawer::LcmForceDrawer(
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
+  robot_time_input_port_ =
+      this->DeclareVectorInputPort("t_robot", 1).get_index();
+
   force_trajectory_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_forces",
                                      drake::Value<dairlib::lcmt_c3_forces>{})
@@ -281,26 +284,10 @@ LcmForceDrawer::LcmForceDrawer(
 
   actor_last_update_time_index_ = this->DeclareDiscreteState(1);
   forces_last_update_time_index_ = this->DeclareDiscreteState(1);
-  // Add the geometry to meshcat.
-  // Set radius 1.0 so that it can be scaled later by the force/moment norm in
-  // the path transform.
-  //  const drake::geometry::Cylinder cylinder(radius_, 1.0);
-  //  const double arrowhead_height = radius_ * 2.0;
-  //  const double arrowhead_width = radius_ * 2.0;
-  //  const drake::geometry::MeshcatCone arrowhead(
-  //      arrowhead_height, arrowhead_width, arrowhead_width);
-
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
                       {0, 0, 1, 1});
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
                       {0, 0, 1, 1});
-  //  for (int i = 0; i < 18; ++i) {
-  //    const std::string lcs_force_path = force_path_ + "/lcs_force_" +
-  //                                       std::to_string(i) + "/arrow";
-  //    meshcat_->SetObject(lcs_force_path + "/cylinder", cylinder, {1, 0, 0,
-  //    1}); meshcat_->SetObject(lcs_force_path + "/head", arrowhead, {1, 0, 0,
-  //    1});
-  //  }
 
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
@@ -323,12 +310,16 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
   const auto& lcmt_traj =
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, actor_trajectory_input_port_);
+  const auto& robot_time_vec =
+      this->EvalVectorInput(
+          context, robot_time_input_port_);
+  double robot_time = robot_time_vec->GetAtIndex(0);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
   const auto& force_trajectory_block =
       lcm_traj.GetTrajectory(force_trajectory_name_);
   const auto& actor_trajectory_block =
       lcm_traj.GetTrajectory(actor_trajectory_name_);
-  auto force_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+  auto force_trajectory = PiecewisePolynomial<double>::ZeroOrderHold(
       force_trajectory_block.time_vector, force_trajectory_block.datapoints);
   VectorXd pose;
   if (actor_trajectory_block.datapoints.rows() == 3) {
@@ -343,7 +334,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
     pose = trajectory.value(actor_trajectory_block.time_vector[0]);
   }
 
-  auto force = force_trajectory.value(force_trajectory_block.time_vector[0]);
+  auto force = force_trajectory.value(robot_time);
   const std::string& force_path_root = force_path_ + "/u_lcs/";
   meshcat_->SetTransform(force_path_root, RigidTransformd(pose));
   const std::string& force_arrow_path = force_path_root + "arrow";
@@ -402,7 +393,8 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
                             {1, 0, 0, 1});
-        meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_, {1, 0, 0, 1});
+        meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_,
+                            {1, 0, 0, 1});
       }
 
       const VectorXd pose = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(

@@ -162,7 +162,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     A(i) = 1.0;
     c3_->AddLinearConstraint(A, 0, 20, 2);
   }
-  auto z_sol = c3_->Solve(lcs_x->get_data(), delta, w);
+  c3_->Solve(lcs_x->get_data(), delta, w);
   auto finish = std::chrono::high_resolution_clock::now();
   delta_ = delta;
   w_ = w;
@@ -182,14 +182,6 @@ void C3Controller::OutputC3Solution(
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = t + i * c3_options_.dt;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
-    //    if (c3_options_.contact_model == "anitescu") {
-    //      c3_solution->lambda_sol_.col(i) =
-    //          c3_options_.dt * z_sol[i].segment(n_x_,
-    //          n_lambda_).cast<float>();
-    //    } else {
-    //      c3_solution->lambda_sol_.col(i) =
-    //          z_sol[i].segment(n_x_, n_lambda_).cast<float>();
-    //    }
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
 
@@ -201,7 +193,7 @@ void C3Controller::OutputC3Solution(
 void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
-  double t = context.get_discrete_state(plan_start_time_index_)[0];
+  double t = context.get_discrete_state(plan_start_time_index_)[0] + solve_time_;
 
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;

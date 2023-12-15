@@ -6,9 +6,9 @@
   <link name="plate_y"/>
   <link name="plate">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0.004"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <mass value="0.37"/>
-      <inertia ixx="0.00097234" ixy="0" ixz="0" iyy="0.00097255" iyz="0" izz="0.0019447"/>
+      <inertia ixx="0.00048818" ixy="0" ixz="0" iyy="0.00048818" iyz="0" izz="0.00097241"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>

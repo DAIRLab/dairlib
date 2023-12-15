@@ -140,6 +140,10 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(actor_trajectory_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_robot_time() const {
+    return this->get_input_port(robot_time_input_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_force_trajectory() const {
     return this->get_input_port(force_trajectory_input_port_);
   }
@@ -160,6 +164,7 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
       drake::systems::DiscreteValues<double> *discrete_state) const;
 
   drake::systems::InputPortIndex actor_trajectory_input_port_;
+  drake::systems::InputPortIndex robot_time_input_port_;
   drake::systems::InputPortIndex force_trajectory_input_port_;
 
   drake::systems::DiscreteStateIndex actor_last_update_time_index_;

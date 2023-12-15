@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <dairlib/lcmt_c3_forces.hpp>
+#include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
@@ -36,8 +36,8 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::ObjectStateReceiver;
+using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
@@ -99,15 +99,17 @@ int do_main(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  if (sim_params.scene_index == 1){
+  if (sim_params.scene_index == 1) {
     drake::multibody::ModelInstanceIndex left_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), sim_params.left_support_position);
-    RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), sim_params.right_support_position);
+    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
+        FindResourceOrThrow(sim_params.right_support_model))[0];
+    RigidTransform<double> T_S1_W =
+        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                               sim_params.left_support_position);
+    RigidTransform<double> T_S2_W =
+        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                               sim_params.right_support_position);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_S1_W);
@@ -140,6 +142,9 @@ int do_main(int argc, char* argv[]) {
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
+  auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      franka_state_receiver->get_output_port(0).size(),
+      franka_state_receiver->get_output_port(0).size() - 1, 1);
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(tray_index));
@@ -159,8 +164,8 @@ int do_main(int argc, char* argv[]) {
   auto trajectory_sub_object = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, lcm));
-  auto trajectory_sub_force = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
+  auto trajectory_sub_force =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_channel, lcm));
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
@@ -172,23 +177,20 @@ int do_main(int argc, char* argv[]) {
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
   auto trajectory_drawer_actor =
-      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
-                                                      "end_effector_position_target");
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(
+          meshcat, "end_effector_position_target");
   auto trajectory_drawer_object =
-      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat, "object_position_target");
-  auto object_pose_drawer =
-      builder.AddSystem<systems::LcmPoseDrawer>(
-          meshcat, FindResourceOrThrow(sim_params.tray_model), "object_position_target",
-          "object_orientation_target");
-  auto end_effector_pose_drawer =
-      builder.AddSystem<systems::LcmPoseDrawer>(
-          meshcat, FindResourceOrThrow(sim_params.end_effector_model), "end_effector_position_target",
-          "end_effector_orientation_target");
-  auto end_effector_force_drawer =
-      builder.AddSystem<systems::LcmForceDrawer>(
-          meshcat, "end_effector_position_target",
-          "end_effector_force_target",
-          "lcs_force_trajectory");
+      builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
+                                                      "object_position_target");
+  auto object_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, FindResourceOrThrow(sim_params.tray_model),
+      "object_position_target", "object_orientation_target");
+  auto end_effector_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+      meshcat, FindResourceOrThrow(sim_params.end_effector_model),
+      "end_effector_position_target", "end_effector_orientation_target");
+  auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
+      meshcat, "end_effector_position_target", "end_effector_force_target",
+      "lcs_force_trajectory");
   trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
   trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
   trajectory_drawer_actor->SetNumSamples(5);
@@ -215,6 +217,9 @@ int do_main(int argc, char* argv[]) {
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*franka_state_receiver, *franka_passthrough);
+  builder.Connect(*franka_state_receiver, *robot_time_passthrough);
+  builder.Connect(robot_time_passthrough->get_output_port(),
+                  end_effector_force_drawer->get_input_port_robot_time());
   builder.Connect(*tray_state_receiver, *tray_passthrough);
   builder.Connect(*box_state_receiver, *box_passthrough);
 

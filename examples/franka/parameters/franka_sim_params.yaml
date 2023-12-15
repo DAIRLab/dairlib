@@ -12,7 +12,7 @@ tray_publish_rate: 1000
 actuator_delay: 0.000
 
 scene_index: 1
-visualize: false
+visualize: true
 publish_efforts: true
 
 tool_attachment_frame: [0, 0, 0.107]

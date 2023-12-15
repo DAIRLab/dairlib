@@ -1,0 +1,58 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+pybind_py_library(
+    name = "grid_map_py",
+    cc_deps = [
+        "@grid_map//grid_map_core",
+    ],
+    cc_so_name = "grid_map",
+    cc_srcs = ["grid_map_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [],
+)
+
+py_binary(
+    name = "test_core",
+    srcs = ["test/test_core.py"],
+    deps = [
+        ":grid_map",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":module_py",
+    ":grid_map_py",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "grid_map",
+    visibility = ["//visibility:public"],
+    deps = PY_LIBRARIES,
+)

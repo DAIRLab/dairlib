@@ -31,11 +31,10 @@ from pydairlib.perceptive_locomotion.perception_learning.terrain_utils import (
     make_stairs, random_stairs
 )
 
-from pydairlib.perceptive_locomotion.perception_learning. \
+from pydairlib.perceptive_locomotion.systems. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
-    perception_learning_base_folder,
     InitialConditionsServer
 )
 from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import (
@@ -43,6 +42,8 @@ from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+
+perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,

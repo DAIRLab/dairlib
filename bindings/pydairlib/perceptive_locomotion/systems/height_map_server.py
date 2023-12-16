@@ -6,9 +6,6 @@ from pydrake.multibody.plant import (
     MultibodyPlant
 )
 
-from pydrake.geometry.all import Meshcat
-from pydrake.geometry import Rgba
-
 from pydrake.systems.all import (
     LeafSystem,
     InputPort,

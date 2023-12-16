@@ -3,19 +3,17 @@ import torch
 import numpy as np
 import time
 
-from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
+from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQR,
     AlipFootstepLQROptions,
     calc_collision_cost_grid
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
+from pydairlib.perceptive_locomotion.systems.height_map_server \
 import (
     HeightMapQueryObject,
     HeightMapOptions
 )
-
-from pydairlib.perceptive_locomotion.perception_learning.vision_utils import edges_blurred
 
 from pydrake.geometry import Rgba
 from pydrake.common.value import Value

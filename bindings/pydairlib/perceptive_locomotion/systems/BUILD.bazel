@@ -1,0 +1,81 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_library(
+    name = "alip_lqr",
+    srcs = ["alip_lqr.py"],
+    deps = [
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "height_map_server",
+    srcs = ["height_map_server.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/geometry:meshcat_utils_py",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "cassie_footstep_controller_environment",
+    srcs = ["cassie_footstep_controller_environment.py"],
+    deps = [
+        ":alip_lqr",
+        ":height_map_server",
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "alip_lqr_test",
+    srcs = ["alip_lqr_test.py"],
+    deps = [
+        ":alip_lqr",
+        ":cassie_footstep_controller_environment",
+    ],
+)
+
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":cassie_footstep_controller_environment",
+    ":alip_lqr",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "systems",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

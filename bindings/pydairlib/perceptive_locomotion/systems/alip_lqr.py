@@ -150,7 +150,7 @@ class AlipFootstepLQR(LeafSystem):
             self.input_port_indices['fsm']
         ).value().ravel()[0]
         fsm = int(fsm)
-        # print("fsm values = ", fsm)
+
         # get the reference trajectory for the current stance mode
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
 
@@ -175,7 +175,6 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['time_until_switch']
         ).value().ravel()[0]
-        # print("time_until_switch = ", time_until_switch)
 
         x = CalcMassNormalizedAd(
             self.params.height, time_until_switch

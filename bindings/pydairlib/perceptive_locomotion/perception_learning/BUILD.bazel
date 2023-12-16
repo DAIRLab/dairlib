@@ -12,22 +12,13 @@ load(
 )
 
 py_library(
-    name = "alip_lqr",
-    srcs = ["alip_lqr.py"],
-    deps = [
-        "//bindings/pydairlib/systems",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
     name = "alip_nn_lqr",
     srcs = ["alip_nn_lqr.py"],
     deps = [
-        ":alip_lqr",
-        ":vision_utils",
+        "//bindings/pydairlib/perceptive_locomotion:vision_utils",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:torch_utils",
         "//bindings/pydairlib/perceptive_locomotion/perception_learning/inference:unet",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
     ],
@@ -37,43 +28,11 @@ py_library(
     name = "true_cost_system",
     srcs = ["true_cost_system.py"],
     deps = [
-        ":alip_lqr",
         ":alip_nn_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
     ],
-)
-
-py_library(
-    name = "cassie_footstep_controller_environment",
-    srcs = ["cassie_footstep_controller_environment.py"],
-    deps = [
-        ":alip_lqr",
-        ":height_map_server",
-        "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/common",
-        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
-        "//bindings/pydairlib/systems",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "height_map_server",
-    srcs = ["height_map_server.py"],
-    deps = [
-        "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/geometry:convex_polygon_py",
-        "//bindings/pydairlib/geometry:meshcat_utils_py",
-        "//bindings/pydairlib/multibody",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "vision_utils",
-    srcs = ["vision_utils.py"],
-    deps = [],
 )
 
 py_library(
@@ -88,23 +47,13 @@ py_library(
 )
 
 py_binary(
-    name = "alip_lqr_test",
-    srcs = ["alip_lqr_test.py"],
-    deps = [
-        ":alip_lqr",
-        ":cassie_footstep_controller_environment",
-        ":true_cost_system",
-    ],
-)
-
-py_binary(
     name = "alip_nn_lqr_test",
     srcs = ["alip_nn_lqr_test.py"],
     deps = [
         ":alip_nn_lqr",
-        ":cassie_footstep_controller_environment",
         ":terrain_utils",
         ":true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
 
@@ -112,9 +61,9 @@ py_binary(
     name = "alip_lqr_data_collection",
     srcs = ["alip_lqr_data_collection.py"],
     deps = [
-        ":alip_lqr",
-        ":cassie_footstep_controller_environment",
         ":terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
 
@@ -122,8 +71,8 @@ py_binary(
     name = "alip_lqr_cost_experiment",
     srcs = ["alip_lqr_cost_experiment.py"],
     deps = [
-        ":alip_lqr",
-        ":cassie_footstep_controller_environment",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
 
@@ -143,8 +92,9 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":cassie_footstep_controller_environment",
-    ":alip_lqr",
+    ":alip_nn_lqr",
+    ":true_cost_system",
+    ":terrain_utils",
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -44,29 +44,23 @@ from pydrake.systems.all import (
     ConstantVectorSource
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
+from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQROptions,
     AlipFootstepLQR,
     calc_collision_cost_grid
 )
-from pydairlib.perceptive_locomotion.perception_learning.terrain_utils import (
-    make_stairs, random_stairs
-)
 
-from pydairlib.perceptive_locomotion.perception_learning. \
-    cassie_footstep_controller_environment import (
+from pydairlib.perceptive_locomotion.systems. \
+cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
-    perception_learning_base_folder,
     InitialConditionsServer
-)
-
-from pydairlib.multibody import (
-    ReExpressWorldVector3InBodyYawFrame
 )
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
 # from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+
+perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \

@@ -19,7 +19,7 @@ from pydrake.systems.framework import (
     DiscreteValues,
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
+from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQROptions)
 
 

@@ -15,9 +15,9 @@ from pydairlib.perceptive_locomotion.diagrams import (
 from pydairlib.systems.footstep_planning import Stance
 from pydairlib.systems.plant_visualizer import PlantVisualizer
 from pydairlib.systems.perception import GridMapVisualizer
-from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import \
+from pydairlib.perceptive_locomotion.systems.alip_lqr import \
     AlipFootstepLQROptions
-from pydairlib.perceptive_locomotion.perception_learning.height_map_server \
+from pydairlib.perceptive_locomotion.systems.height_map_server \
     import HeightMapServer, HeightMapOptions
 from pydairlib.multibody import SquareSteppingStoneList
 
@@ -36,15 +36,11 @@ from pydrake.systems.all import (
     ConstantVectorSource,
 )
 
-perception_learning_base_folder = \
-    "bindings/pydairlib/perceptive_locomotion/perception_learning"
+params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
 
 class InitialConditionsServer:
-    def __init__(self, fname=path.join(
-        perception_learning_base_folder,
-        'tmp/initial_conditions.npz'
-    )):
+    def __init__(self, fname: Union[str, path]):
         datafile = np.load(fname, allow_pickle=True)
         self.data = datafile['arr_0']
         self.idx = 0
@@ -71,31 +67,25 @@ class InitialConditionsServer:
 @dataclass
 class CassieFootstepControllerEnvironmentOptions:
     terrain: Union[str, SquareSteppingStoneList] = path.join(
-        perception_learning_base_folder,
-        'params/terrain.yaml'
+        params_folder, 'terrain.yaml'
     )
     rgdb_extrinsics_yaml: str = path.join(
-        perception_learning_base_folder,
-        'params/rgbd_extrinsics.yaml'
+        params_folder, 'rgbd_extrinsics.yaml'
     )
     osc_gains_yaml: str = path.join(
-        perception_learning_base_folder,
-        'params/osc_gains.yaml'
+        params_folder, 'osc_gains.yaml'
     )
     mpfc_gains_yaml: str = path.join(
-        perception_learning_base_folder,
-        'params/mpfc_gains.yaml'
+        params_folder, 'mpfc_gains.yaml'
     )
     osqp_options_yaml: str = path.join(
-        perception_learning_base_folder,
-        'params/osqp_options_osc.yaml'
+        params_folder, 'osqp_options_osc.yaml'
     )
     elevation_mapping_params_yaml: str = path.join(
-        perception_learning_base_folder,
-        'params/elevation_mapping_params.yaml'
+        params_folder, 'elevation_mapping_params.yaml'
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
-    use_perception: bool = False
+    simulate_perception: bool = False
     visualize: bool = True
 
 
@@ -139,7 +129,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         self.perception_module = None
         self.plant_visualizer = PlantVisualizer(params.urdf) if params.visualize else None
 
-        if params.use_perception:
+        if params.simulate_perception:
             self.sensor_info = {
                 "pelvis_depth":
                     self.cassie_sim.get_depth_camera_info("pelvis_depth"),
@@ -198,7 +188,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             builder.AddSystem(self.plant_visualizer)
             # self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
-            if params.use_perception:
+            if params.simulate_perception:
                 self.grid_map_visualizer = GridMapVisualizer(
                     self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
                 )
@@ -257,7 +247,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             ),
         }
 
-        if self.params.use_perception:
+        if self.params.simulate_perception:
             raise NotImplementedError("Need to add heightmap outputs for "
                                       "using perception")
         else:
@@ -277,7 +267,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
     def get_heightmap(self, context: Context,
                       center: np.ndarray = None) -> np.ndarray:
-        if self.params.use_perception:
+        if self.params.simulate_perception:
             raise NotImplementedError(
                 "Need to implement heightmap getter for simulated perception."
             )
@@ -316,7 +306,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             )
         else:
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
-        if self.params.use_perception:
+        if self.params.simulate_perception:
             self.perception_module.InitializeEkf(context, q, v)
 
     def AddToBuilderWithFootstepController(

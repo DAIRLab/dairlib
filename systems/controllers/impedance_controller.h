@@ -36,6 +36,7 @@
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using drake::systems::State;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RotationMatrix;
@@ -80,20 +81,20 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the control input
   void CalcControl(const drake::systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
+  // updates the integral term
+  drake::systems::EventStatus UpdateIntegralTerm(const Context<double>& context,
+          drake::systems::State<double>* drake_state) const;
+
   // computes the rotational error
   Eigen::Vector3d CalcRotationalError(const drake::math::RotationMatrix<double>& R,
     const Quaterniond& orientation_d) const;
   // computes the contact jacobians in J_n and J_t
   void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
                     VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
-  void ClampJointTorques(VectorXd& tau, double timestamp) const;
+  void ClampJointTorques(VectorXd &tau) const;
   void ClampIntegratorTorque(VectorXd& tau, const VectorXd& clamp) const;
   bool SaturatedClamp(const VectorXd& tau, const VectorXd& clamp) const;
 
-  /*
-  NOTE: THE TIMING FUNCTIONALITY IN THIS FUNCTION IS VERY MUCH OUT OF DATE!!
-  THIS FUNCTION SHOULD NOT BE USED IN ITS CURRENT STATE
-  */
   // parameters
   ImpedanceControllerParams impedance_param_;
 
@@ -103,32 +104,44 @@ class ImpedanceController : public LeafSystem<double> {
   int control_output_port_;
   
   // constructor variables
+  // plant and context
   const MultibodyPlant<double>& plant_;
   const MultibodyPlant<double>& plant_f_;
   drake::systems::Context<double>& context_;
   drake::systems::Context<double>& context_f_;
 
+  // stiffness and damping
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
-  mutable Eigen::VectorXd integrator_;
-  Eigen::MatrixXd I_;
+
+  // stiffness and damping (null space)
   const MatrixXd K_null_;
   const MatrixXd B_null_;
   const VectorXd qd_;
 
-  std::vector<drake::geometry::GeometryId> contact_geoms_;
-  const int num_friction_directions_;
+  // integral control and time recording settings
+  int prev_time_; // this is the index for prev_time (Double type abstract state)
+  int enable_integral_;
+  int integrator_; // this is the index for integrator (6D drake state)
+  Eigen::MatrixXd I_;
 
+  // contact force feedforward settings
   int enable_contact_;
-  Eigen::VectorXd torque_limits_;
-  mutable double prev_time_;
+  const int num_friction_directions_;
+  std::vector<drake::geometry::GeometryId> contact_geoms_;
+  std::vector<SortedPair<GeometryId>> contact_pairs_;
 
-  // frame, EE, and contact info
+  // clamp torque limit settings
+  Eigen::VectorXd torque_limits_;
+
+  // frame, joint numbers and kinematics settings
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
-  std::vector<SortedPair<GeometryId>> contact_pairs_;
   int n_; // franka DoF = 7
+
+  // final control output, used for being accessed by context in CalControl
+  int tau_; // final control torque (7D drake state)
 };
 
 }  // namespace controller

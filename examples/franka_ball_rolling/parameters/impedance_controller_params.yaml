@@ -26,6 +26,7 @@ stiffness_null: [4, 4, 4, 4, 4, 4, 4]
 damping_null: [4, 4, 4, 4, 4, 4, 4]
 q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
 
+enable_integral: 1
 translational_integral_gain: [0, 0, 0]
 rotational_integral_gain: [0, 0, 0]
 integrator_clamp: [30, 30, 30, 30, 8, 8, 8]

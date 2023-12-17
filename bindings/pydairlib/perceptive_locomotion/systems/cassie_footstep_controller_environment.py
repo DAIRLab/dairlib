@@ -248,8 +248,10 @@ class CassieFootstepControllerEnvironment(Diagram):
         }
 
         if self.params.simulate_perception:
-            raise NotImplementedError("Need to add heightmap outputs for "
-                                      "using perception")
+            output_port_indices['height_map'] = builder.ExportOutput(
+                self.perception_module.get_output_port_elevation_map(),
+                'elevation_map'
+            )
         else:
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.height_map_server.get_output_port(),

@@ -13,12 +13,12 @@ from pydrake.systems.all import (
     ZeroOrderHold,
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
+from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQROptions,
     AlipFootstepLQR
 )
 
-from pydairlib.perceptive_locomotion.perception_learning. \
+from pydairlib.perceptive_locomotion.systems. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
@@ -27,10 +27,13 @@ from pydairlib.perceptive_locomotion.perception_learning. \
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 import numpy as np
+from grid_map import GridMap
 
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
+    sim_params.simulate_perception = True
+    sim_params.visualize = True
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -84,13 +87,20 @@ def main():
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
+    sim_context = sim_env.GetMyMutableContextFromRoot(context)
 
     sim_env.initialize_state(context, diagram)
 
     simulator.reset_context(context)
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
-    simulator.AdvanceTo(np.inf)
+    t_next = 1.0
+    while t_next < np.inf:
+        simulator.AdvanceTo(t_next)
+        elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
+        elevation_map.convertToDefaultStartInedx()
+        import pdb; pdb.set_trace()
+        t_next += 1.0
 
 
 if __name__ == "__main__":

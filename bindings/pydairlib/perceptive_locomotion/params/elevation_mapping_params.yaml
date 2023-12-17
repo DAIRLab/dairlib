@@ -3,7 +3,7 @@ sensor_poses: [
         sensor_name: "pelvis_depth",
         sensor_parent_body: "pelvis",
         sensor_pose_in_parent_body_yaml:
-          "bindings/pydairlib/perceptive_locomotion/perception_learning/params/rgbd_extrinsics.yaml"
+          "bindings/pydairlib/perceptive_locomotion/params/rgbd_extrinsics.yaml"
     }
 ]
 

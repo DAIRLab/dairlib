@@ -18,6 +18,7 @@ PACKAGE_INFO = get_pybind_package_info("//bindings")
 pybind_py_library(
     name = "grid_map_py",
     cc_deps = [
+        "@drake//bindings/pydrake/common:value_pybind",
         "@grid_map//grid_map_core",
     ],
     cc_so_name = "grid_map",

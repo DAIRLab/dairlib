@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
+#include "drake/bindings/pydrake/common/value_pybind.h"
 
 namespace py = pybind11;
 using grid_map::GridMap;
@@ -24,7 +25,7 @@ py::enum_<InterpolationMethods>(core, "InterpolationMethods")
     .value("INTER_CUBIC", InterpolationMethods::INTER_CUBIC)
     .export_values();
 
-py::class_<GridMap, std::shared_ptr<GridMap>>(core, "GridMapBinding")
+py::class_<GridMap, std::shared_ptr<GridMap>>(core, "GridMap")
 // Constructors (copy handled below and destruction is done by pybind11 itself)
 // (move constructor and operator= are not handled in python)
   .def(py::init<const std::vector<std::string>>())
@@ -124,4 +125,5 @@ py::class_<GridMap, std::shared_ptr<GridMap>>(core, "GridMapBinding")
 
 PYBIND11_MODULE(grid_map, m) {
   init_core(m);
+  drake::pydrake::AddValueInstantiation<GridMap>(m);
 }

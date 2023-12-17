@@ -36,18 +36,18 @@ ImpedanceController::ImpedanceController(
     const MatrixXd& B,
     const MatrixXd& K_null,
     const MatrixXd& B_null,
-    const VectorXd& qd,
+    const VectorXd& qd_null,
     const std::vector<drake::geometry::GeometryId>& contact_geoms,
     int num_friction_directions)
     : plant_(plant),
-      plant_f_(plant_contact),
+      plant_contact_(plant_contact),
       context_(context),
-      context_f_(context_contact),
+      context_contact_(context_contact),
       K_(K),
       B_(B),
       K_null_(K_null),
       B_null_(B_null),
-      qd_(qd),
+      qd_null_(qd_null),
       contact_geoms_(contact_geoms),
       num_friction_directions_(num_friction_directions){
 
@@ -118,7 +118,7 @@ ImpedanceController::ImpedanceController(
 // CARTESIAN IMPEDANCE CONTROLLER
 void ImpedanceController::CalcControl(const Context<double>& context,
                                TimestampedVector<double>* control) const {
-  // clamp the final output torque to safety limit
+  // grab the computed torque from the drake state and set timestamp
   auto robot_output =
           (OutputVector<double>*)this->EvalVectorInput(context, franka_state_input_port_);
   double timestamp = robot_output->get_timestamp();
@@ -129,7 +129,7 @@ void ImpedanceController::CalcControl(const Context<double>& context,
 
 EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &context,
                                                     State<double> *drake_state) const {
-  // note the actually impdace control torque calculation is done in the even status, it is because
+  // note the actual impedance control torque calculation is done in the even status, it is because
   // this way can avoid duplicating code for setting integral torque term, we make previous time
   // integrator internal drake state, to replace the original mutable class variable, we also make
   // final impedance output torque tau a drake state, so that in CalControl we directly set control
@@ -163,9 +163,9 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   //update the context_
   plant_.SetPositions(&context_, q);
   plant_.SetVelocities(&context_, v);
-  plant_f_.SetPositions(&context_f_, q);
-  plant_f_.SetVelocities(&context_f_, v);
-  //multibody::SetInputsIfNew<double>(plant_f_, u, &context_f_);
+  // synchronize the contact plant and context
+  plant_contact_.SetPositions(&context_contact_, q);
+  plant_contact_.SetVelocities(&context_contact_, v);
 
   // calculate manipulator equation terms and Jacobian
   MatrixXd M(plant_.num_velocities(), plant_.num_velocities());
@@ -228,7 +228,7 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   // projector, here we use the dynamical consistent generalized inverse, i.e. inverse weighted by the mass matrix
   MatrixXd J_gen_inv = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_gen_inv;
-  tau += N * (K_null_*(qd_-q_franka) - B_null_*v_franka);
+  tau += N * (K_null_*(qd_null_ - q_franka) - B_null_ * v_franka);
 
   // add feedforward force term if contact is desired, need to add options for different contact models
   MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
@@ -274,14 +274,14 @@ void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<Geom
                             VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const {
   for (int i = 0; i < (int) contact_pairs.size(); i++) {
     multibody::GeomGeomCollider collider(
-        plant_f_, contact_pairs[i]);
-    auto [phi_i, J_i] = collider.EvalPolytope(context_f_, num_friction_directions_);
+            plant_contact_, contact_pairs[i]);
+    auto [phi_i, J_i] = collider.EvalPolytope(context_contact_, num_friction_directions_);
     phi(i) = phi_i;
 
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
-              plant_f_.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_directions_, plant_f_.num_velocities());
+              plant_contact_.num_velocities()) =
+        J_i.block(1, 0, 2 * num_friction_directions_, plant_contact_.num_velocities());
   }
 }
 

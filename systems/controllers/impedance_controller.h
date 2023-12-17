@@ -61,7 +61,7 @@ class ImpedanceController : public LeafSystem<double> {
       const Eigen::MatrixXd& B,
       const Eigen::MatrixXd& K_null,
       const Eigen::MatrixXd& B_null,
-      const Eigen::VectorXd& qd,
+      const Eigen::VectorXd& qd_null,
       const std::vector<drake::geometry::GeometryId>& contact_geoms,
       int num_friction_directions);
 
@@ -106,9 +106,9 @@ class ImpedanceController : public LeafSystem<double> {
   // constructor variables
   // plant and context
   const MultibodyPlant<double>& plant_;
-  const MultibodyPlant<double>& plant_f_;
+  const MultibodyPlant<double>& plant_contact_;
   drake::systems::Context<double>& context_;
-  drake::systems::Context<double>& context_f_;
+  drake::systems::Context<double>& context_contact_;
 
   // stiffness and damping
   const Eigen::MatrixXd K_;
@@ -117,7 +117,7 @@ class ImpedanceController : public LeafSystem<double> {
   // stiffness and damping (null space)
   const MatrixXd K_null_;
   const MatrixXd B_null_;
-  const VectorXd qd_;
+  const VectorXd qd_null_;
 
   // integral control and time recording settings
   int prev_time_; // this is the index for prev_time (Double type abstract state)

@@ -98,7 +98,7 @@ def main():
     while t_next < np.inf:
         simulator.AdvanceTo(t_next)
         elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
-        elevation_map.convertToDefaultStartInedx()
+        elevation_map.convertToDefaultStartIndex()
         import pdb; pdb.set_trace()
         t_next += 1.0
 

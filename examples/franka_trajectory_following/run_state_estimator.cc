@@ -80,7 +80,7 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_channel == "FRANKA_OUTPUT"){
     /// connections for sim experiment
     auto to_ball_position =
-      builder.AddSystem<dairlib::systems::FrankaBallToBallPosition>(
+      builder.AddSystem<dairlib::systems::TrueBallToEstimatedBall>(
         param.ball_stddev, 1.0/80.0);
     builder.Connect(passthrough->get_output_port(0),
       to_ball_position->get_input_port(0));

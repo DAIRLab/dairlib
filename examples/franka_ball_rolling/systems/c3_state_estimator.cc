@@ -20,16 +20,15 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
     p_filter_length_(p_FIR_values.size()), v_filter_length_(v_FIR_values.size()) {
 
 
-  param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+  state_estimate_param_ = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
 
   /// declare discrete states
   Vector3d initial_position;
-  initial_position(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
-  initial_position(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
-  initial_position(2) = param_.ball_radius + param_.table_offset;
-  VectorXd initial_orientation = VectorXd::Zero(4);
-  initial_orientation << 1, 0, 0, 0;
+  initial_position(0) = state_estimate_param_.x_c + state_estimate_param_.traj_radius * sin(state_estimate_param_.phase * M_PI / 180);
+  initial_position(1) = state_estimate_param_.y_c + state_estimate_param_.traj_radius * cos(state_estimate_param_.phase * M_PI / 180);
+  initial_position(2) = state_estimate_param_.ball_radius - state_estimate_param_.ground_offset_frame(2);
+  VectorXd initial_orientation = state_estimate_param_.q_init_ball;
 
   p_idx_ = this->DeclareDiscreteState(initial_position);
   orientation_idx_ = this->DeclareDiscreteState(initial_orientation);
@@ -95,7 +94,7 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
   if (id != prev_id){
     double dt = timestamp - prev_time;
     if (!std::isnan(ball_position.xyz[0]) && dt > 1e-9){
-      /// estimate position
+      /// estimate position and apply FIR filter
       Vector3d prev_position = state->get_discrete_state(p_idx_).value();
       p_history.push_back(Vector3d(
         ball_position.xyz[0], ball_position.xyz[1], ball_position.xyz[2]));
@@ -107,7 +106,7 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       }
       state->get_mutable_discrete_state(p_idx_).get_mutable_value() << estimated_position;
 
-      /// estimate velocity
+      /// estimate velocity through finite difference and apply FIR filter
       v_history.push_back(
         (estimated_position - prev_position) / dt);
       v_history.pop_front();
@@ -119,7 +118,7 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       state->get_mutable_discrete_state(v_idx_).get_mutable_value() << estimated_velocity;
 
       ///  estimate angular velocity
-      double ball_radius = param_.ball_radius;
+      double ball_radius = state_estimate_param_.ball_radius;
       Vector3d r_ball(0, 0, ball_radius);
       Vector3d w = r_ball.cross(estimated_velocity) / (ball_radius * ball_radius);
       state->get_mutable_discrete_state(w_idx_).get_mutable_value() << w;
@@ -130,12 +129,13 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
       RotationMatrix<double> curr_orientation(quaternion);
       RotationMatrix<double> rotation = this->RodriguesFormula(w / w.norm(), w.norm() * dt);
       VectorXd new_orientation = (rotation * curr_orientation).ToQuaternionAsVector4();
+
+      // comment the following two lines to update the new orientation, not important for this work
       // state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
       //   << new_orientation;
+
       state->get_mutable_discrete_state(orientation_idx_).get_mutable_value() 
         << 1, 0, 0, 0;
-      
-
     }
     /// update prev_time
     prev_time = timestamp;
@@ -174,7 +174,8 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   }
   velocities.tail(num_ball_velocities_) << angular_velocity, ball_velocity;
   
-  VectorXd value = VectorXd::Zero(14+13);
+  VectorXd value = VectorXd::Zero(num_franka_positions_ + num_franka_velocities_
+          + num_ball_positions_ + num_ball_velocities_);
   value << positions, velocities;
   output->SetFromVector(value);
 }
@@ -211,33 +212,33 @@ RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, 
 /* ------------------------------------------------------------------------------ */
 /// Method implementation of FrankaBallToBallPosition class
 
-FrankaBallToBallPosition::FrankaBallToBallPosition(
+TrueBallToEstimatedBall::TrueBallToEstimatedBall(
   double stddev, double period) : 
   stddev_(stddev), period_(period) {
-  
-  param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+
+  state_estimate_param_ = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
 
   /// declare discrete states
   Vector3d initial_position;
-  initial_position(0) = param_.x_c + param_.traj_radius * sin(param_.phase * 3.14159265 / 180);
-  initial_position(1) = param_.y_c + param_.traj_radius * cos(param_.phase * 3.14159265 / 180);
-  initial_position(2) = param_.ball_radius + param_.table_offset;
+  initial_position(0) = state_estimate_param_.x_c + state_estimate_param_.traj_radius * sin(state_estimate_param_.phase * M_PI  / 180);
+  initial_position(1) = state_estimate_param_.y_c + state_estimate_param_.traj_radius * cos(state_estimate_param_.phase * M_PI / 180);
+  initial_position(2) = state_estimate_param_.ball_radius - state_estimate_param_.ground_offset_frame(2);
 
   p_idx_ = this->DeclareDiscreteState(initial_position);
   id_idx_ = this->DeclareDiscreteState(1); // automatically initialized to 0;
   utime_idx_ = this->DeclareDiscreteState(1);
   
   this->DeclarePeriodicDiscreteUpdateEvent(period_, 0,
-    &FrankaBallToBallPosition::UpdateBallPosition);
+    &TrueBallToEstimatedBall::UpdateBallPosition);
 
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareAbstractOutputPort("lcmt_ball_position",
-                                  &FrankaBallToBallPosition::ConvertOutput);
+                                  &TrueBallToEstimatedBall::ConvertOutput);
 }
 
-EventStatus FrankaBallToBallPosition::UpdateBallPosition(
+EventStatus TrueBallToEstimatedBall::UpdateBallPosition(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   
@@ -252,13 +253,16 @@ EventStatus FrankaBallToBallPosition::UpdateBallPosition(
   if (stddev_ > 1e-12){
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0, param_.ball_stddev};
+    std::normal_distribution<> d{0, stddev_};
 
     ///changes
 
     double x_noise = d(gen);
     double y_noise = d(gen);
 
+    /// apply 3 sigma rule to clamp the noise, or use the maximum observed
+    /// noise value to clamp (here is real experiment it is about 0.01 m)
+//    double noise_threshold = 3 * stddev_;
     double noise_threshold = 0.01;
     if (x_noise > noise_threshold) {
       x_noise = noise_threshold;
@@ -276,15 +280,14 @@ EventStatus FrankaBallToBallPosition::UpdateBallPosition(
   }
 
   discrete_state->get_mutable_vector(p_idx_).get_mutable_value() << position;
-  discrete_state->get_mutable_vector(utime_idx_).get_mutable_value() 
-    << franka_output.utime;
+  discrete_state->get_mutable_vector(utime_idx_).get_mutable_value() << franka_output.utime;
   double id = discrete_state->get_vector(id_idx_).get_value()(0);
   discrete_state->get_mutable_vector(id_idx_).get_mutable_value() << id+1;
 
   return EventStatus::Succeeded();
 }
 
-void FrankaBallToBallPosition::ConvertOutput(
+void TrueBallToEstimatedBall::ConvertOutput(
                     const drake::systems::Context<double>& context,
                     dairlib::lcmt_ball_position* output) const {
   

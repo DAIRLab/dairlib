@@ -211,7 +211,7 @@ RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, 
 /* ------------------------------------------------------------------------------ */
 /// Method implementation of FrankaBallToBallPosition class
 
-FrankaBallToBallPosition::FrankaBallToBallPosition(
+TrueBallToEstimatedBall::TrueBallToEstimatedBall(
   double stddev, double period) : 
   stddev_(stddev), period_(period) {
   
@@ -229,15 +229,15 @@ FrankaBallToBallPosition::FrankaBallToBallPosition(
   utime_idx_ = this->DeclareDiscreteState(1);
   
   this->DeclarePeriodicDiscreteUpdateEvent(period_, 0,
-    &FrankaBallToBallPosition::UpdateBallPosition);
+    &TrueBallToEstimatedBall::UpdateBallPosition);
 
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
   this->DeclareAbstractOutputPort("lcmt_ball_position",
-                                  &FrankaBallToBallPosition::ConvertOutput);
+                                  &TrueBallToEstimatedBall::ConvertOutput);
 }
 
-EventStatus FrankaBallToBallPosition::UpdateBallPosition(
+EventStatus TrueBallToEstimatedBall::UpdateBallPosition(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   
@@ -284,7 +284,7 @@ EventStatus FrankaBallToBallPosition::UpdateBallPosition(
   return EventStatus::Succeeded();
 }
 
-void FrankaBallToBallPosition::ConvertOutput(
+void TrueBallToEstimatedBall::ConvertOutput(
                     const drake::systems::Context<double>& context,
                     dairlib::lcmt_ball_position* output) const {
   

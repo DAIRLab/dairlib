@@ -71,9 +71,8 @@ int DoMain(int argc, char* argv[]) {
     state_estimator->get_input_port(0));
 
   /// connect state_susbcriber ball position port
-
   auto to_ball_position =
-          builder.AddSystem<dairlib::systems::FrankaBallToBallPosition>(
+          builder.AddSystem<dairlib::systems::TrueBallToEstimatedBall>(
               state_estimator_param.ball_noise_stddev, 1.0/state_estimator_param.estimation_rate);
   builder.Connect(passthrough->get_output_port(0),
       to_ball_position->get_input_port(0));

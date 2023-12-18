@@ -1,5 +1,4 @@
-#include <math.h>
-
+#include <cmath>
 #include <vector>
 
 #include <drake/common/yaml/yaml_io.h>

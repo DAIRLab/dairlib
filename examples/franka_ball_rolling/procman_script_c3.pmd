@@ -28,6 +28,13 @@ group "2.[SIM] Clean_Up_Test" {
     }
 }
 
+group "3. lcm spy" {
+    cmd "a.[SIM] C3" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
 group "4.Logging, Utils" {
     cmd "a.start_logging" {
         exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";

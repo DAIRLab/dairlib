@@ -93,9 +93,9 @@ class C3StateEstimator : public LeafSystem<double> {
 // This is designed to mimic the behaviour of the true camera system
 // i.e. it only outputs updated ball positions every 'period' seconds
 // and adds random guassian noise to the x and y positions
-class FrankaBallToBallPosition : public LeafSystem<double> {
+class TrueBallToEstimatedBall : public LeafSystem<double> {
  public:
-   FrankaBallToBallPosition(double stddev, double period);
+   TrueBallToEstimatedBall(double stddev, double period);
  
  private:
   drake::systems::EventStatus UpdateBallPosition(

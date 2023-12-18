@@ -29,20 +29,6 @@ cc_library(
         "//solvers:lcs",
         "//solvers:c3",
         "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_ball_rolling:c3_state_estimator_params"
     ],
-)
-
-cc_binary(
-  name = "test_state_estimator",
-  srcs = ["test/test_state_estimator.cc"],
-  deps = [":c3_systems",
-          "//systems:robot_lcm_systems",
-          "//systems:system_utils",
-          "//systems/ros:ros_pubsub_systems",
-          "//systems/ros:c3_ros_conversions"
-  ],
-  data = ["//examples/franka_ball_rolling:trifinger_urdf",
-          "@drake//manipulation/models/franka_description:models"
-  ],
-  tags=["ros"],
 )

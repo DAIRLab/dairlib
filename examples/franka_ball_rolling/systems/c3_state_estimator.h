@@ -4,7 +4,7 @@
 #include <utility>
 #include <iostream>
 #include <deque>
-
+#include <cmath>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -19,7 +19,7 @@
 #include <drake/systems/framework/vector_base.h>
 #include <drake/math/rotation_matrix.h>
 
-#include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 
@@ -37,7 +37,7 @@ namespace dairlib {
 namespace systems {
 
 // A class that estimates the balls position and velocity
-// from noisey position data and appends it to the robot output
+// from noisy position data and appends it to the robot output
 // of the franka arm.  Intended use case is for C3 experiments.
 class C3StateEstimator : public LeafSystem<double> {
  public:
@@ -56,10 +56,10 @@ class C3StateEstimator : public LeafSystem<double> {
   void OutputEfforts(const drake::systems::Context<double>& context,
                     BasicVector<double>* output) const;
   drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis, double theta) const;
-  
-  C3Parameters param_;
 
-  // deques for tracking history
+  C3StateEstimatorParams state_estimate_param_;
+
+  // deques for tracking history, use drake state (indices)
   int p_idx_;
   int orientation_idx_;
   int v_idx_;
@@ -73,15 +73,18 @@ class C3StateEstimator : public LeafSystem<double> {
   int franka_input_port_;
   int ball_input_port_;
 
+  // FIR filter design
   std::vector<double> p_FIR_values_;
   std::vector<double> v_FIR_values_;
   const int p_filter_length_;
   const int v_filter_length_;
 
   // useful variables
+  // franka is fully actuated 7 DOF arm
   const int num_franka_positions_{7};
   const int num_franka_velocities_{7};
   const int num_franka_efforts_{7};
+  // ball is isolated rigid body, orientation use quaternion
   const int num_ball_positions_{7};
   const int num_ball_velocities_{6};
   const int num_ball_efforts_{0};
@@ -93,9 +96,9 @@ class C3StateEstimator : public LeafSystem<double> {
 // This is designed to mimic the behaviour of the true camera system
 // i.e. it only outputs updated ball positions every 'period' seconds
 // and adds random guassian noise to the x and y positions
-class FrankaBallToBallPosition : public LeafSystem<double> {
+class TrueBallToEstimatedBall : public LeafSystem<double> {
  public:
-   FrankaBallToBallPosition(double stddev, double period);
+   TrueBallToEstimatedBall(double stddev, double period);
  
  private:
   drake::systems::EventStatus UpdateBallPosition(
@@ -105,11 +108,13 @@ class FrankaBallToBallPosition : public LeafSystem<double> {
   void ConvertOutput(const drake::systems::Context<double>& context,
                     dairlib::lcmt_ball_position* output) const;
 
+  C3StateEstimatorParams state_estimate_param_;
+
+  // tracking position, time and id history, use drake state (indices)
   int p_idx_;
   int id_idx_;
   int utime_idx_;
 
-  C3Parameters param_;
   const double stddev_;
   const double period_;
 };

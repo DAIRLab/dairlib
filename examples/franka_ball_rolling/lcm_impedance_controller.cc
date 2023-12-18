@@ -122,7 +122,7 @@ int DoMain(int argc, char* argv[]){
 
   MatrixXd K_null = impedance_param.stiffness_null;
   MatrixXd B_null = impedance_param.damping_null;
-  VectorXd qd = impedance_param.q_null_desired;
+  VectorXd qd_null = impedance_param.q_null_desired;
 
   drake::geometry::GeometryId sphere_geoms = 
     plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("sphere"))[0];
@@ -132,7 +132,7 @@ int DoMain(int argc, char* argv[]){
 
   int num_friction_directions = impedance_param.num_friction_directions;
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
-          plant, plant_contact, *context, context_contact, K, B, K_null, B_null, qd,
+          plant, plant_contact, *context, context_contact, K, B, K_null, B_null, qd_null,
           contact_geoms, num_friction_directions);
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 

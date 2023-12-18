@@ -19,7 +19,7 @@ group "2.[SIM] Clean_Up_Test" {
         host = "localhost";
     }
     cmd "d.[SIM]run_state_estimator" {
-        exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator --TTL 0";
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator";
         host = "localhost";
     }
     cmd "e.[SIM] sim visualizer" {

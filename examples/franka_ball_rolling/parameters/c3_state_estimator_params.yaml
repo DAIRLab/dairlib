@@ -1,0 +1,39 @@
+# --------------------------  URDF Model Path Settings  -----------------------------#
+# full model urdfs
+franka_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf
+end_effector_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf
+ball_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf
+ground_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf
+offset_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf
+
+# -----------------------  Extra Model Fixed Frame Settings  ------------------------#
+# the tranlsation vector of end effector base frame to panda link 7
+tool_attachment_frame: [0, 0, 0.107] # should match real measurement
+# the tranlsation vector of ground to panda link 0 (world frame)
+ground_offset_frame: [0, 0, -0.0245] # should match real measurement table height calibration
+# the end-effector offset should match urdf definition and real measurement, the offset is
+# the distance from end of cylinder (link frame) to end effector (spherical) center
+end_effector_offset: [0, 0, 0.0153]
+
+
+# ---------------------- noise, filter and publish rate settings  ---------------------#
+# position and velocity FIR filter parameters
+p_FIR_value: [0.2, 0.8]
+v_FIR_value: [0.1, 0.9]
+# ball noise standard deviation (mimic real noisy measurement)
+ball_noise_stddev: 0.00
+# state estimation publish rate, in Hz (mimic real possibly slow measurement)
+estimation_rate: 80
+
+# ---------------------------  Initial Condition Settings  ---------------------------#
+# q_ball: only define the quaternion [qw, qi, qj, qk], position xy computed according to
+#  x_c, y_c, traj_radius, and phase, position z is fixed value for planer ball rolling,
+# calculated through ball radius and offset value
+# the tranlsation vector of ground to panda link 0 (world frame)
+q_init_ball: [1, 0, 0, 0]
+traj_radius: 0.1
+phase: 0
+x_c: 0.55
+y_c: 0
+ball_radius: 0.0315 # should match real measurement and urdf
+

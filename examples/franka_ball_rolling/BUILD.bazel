@@ -147,6 +147,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "c3_state_estimator_params",
+    hdrs = ["parameters/c3_state_estimator_params.h"],
+    data = [
+        "parameters/c3_state_estimator_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "lcm_ball_rolling_planner",
     srcs = ["lcm_ball_rolling_planner.cc"],
@@ -201,6 +212,7 @@ cc_binary(
   srcs = ["lcm_state_estimator.cc"],
   deps = ["//examples/franka_ball_rolling/systems:c3_systems",
           "//examples/franka_ball_rolling:c3_parameters",
+          "//examples/franka_ball_rolling:c3_state_estimator_params",
           "//systems:robot_lcm_systems",
           "//systems:system_utils",
           "//systems/framework:lcm_driven_loop",

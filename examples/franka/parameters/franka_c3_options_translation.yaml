@@ -1,13 +1,13 @@
 admm_iter: 4
 rho: 0.1
-rho_scale: 1
+rho_scale: 2
 num_threads: 5
 delta_option: 1
 # options are 'MIQP' or 'QP'
-projection_type: 'QP'
+projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
-contact_model: 'anitescu'
-#contact_model: 'stewart_and_trinkle'
+#contact_model: 'anitescu'
+contact_model: 'stewart_and_trinkle'
 warm_start: true
 
 mu: [0.2, 0.2, 0.2]
@@ -37,7 +37,7 @@ g_x: [1, 1, 1, 1, 1, 1, 1, 10, 10, 10, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0
 g_gamma: [1, 1, 1]
 g_lambda_n: [1, 1, 1]
 g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-g_lambda: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+g_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 g_u: [1, 1, 1]
 
 # Penalty on all decision variables
@@ -45,5 +45,5 @@ u_x: [1, 1, 1, 1, 1, 1, 1, 10, 10, 10, 1, 1, 1, 10, 10, 10, 10, 10, 10]
 u_gamma: [1, 1, 1]
 u_lambda_n: [1, 1, 1]
 u_lambda_t: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-u_lambda: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
+u_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 u_u: [10, 10, 10]

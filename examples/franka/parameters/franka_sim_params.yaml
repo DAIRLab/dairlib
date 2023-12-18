@@ -11,7 +11,7 @@ franka_publish_rate: 1000
 tray_publish_rate: 1000
 actuator_delay: 0.000
 
-scene_index: 1
+scene_index: 0
 visualize: true
 publish_efforts: true
 

@@ -58,10 +58,10 @@ void LcmTrajectoryReceiver::OutputTrajectory(
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
 
     if (trajectory_block.datapoints.rows() == 3) {
-      //      *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-      //          trajectory_block.time_vector, trajectory_block.datapoints);
-      *casted_traj = PiecewisePolynomial<double>::ZeroOrderHold(
+      *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
           trajectory_block.time_vector, trajectory_block.datapoints);
+      //      *casted_traj = PiecewisePolynomial<double>::ZeroOrderHold(
+      //          trajectory_block.time_vector, trajectory_block.datapoints);
     } else {
       *casted_traj = PiecewisePolynomial<double>::CubicHermite(
           trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
@@ -311,8 +311,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, actor_trajectory_input_port_);
   const auto& robot_time_vec =
-      this->EvalVectorInput(
-          context, robot_time_input_port_);
+      this->EvalVectorInput(context, robot_time_input_port_);
   double robot_time = robot_time_vec->GetAtIndex(0);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
   const auto& force_trajectory_block =

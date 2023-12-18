@@ -108,21 +108,23 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     }
   }
 
-  MatrixXd LinEq(n_, 2 * n_ + k_ + m_);
-  LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
+  MatrixXd LinEq(n_, 2 * n_ + m_ + k_);
+  LinEq.block(0, n_ + m_ + k_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_, n_) = A_.at(i);
-    LinEq.block(0, n_, n_, k_) = B_.at(i);
-    LinEq.block(0, n_ + k_, n_, m_) = D_.at(i);
+    LinEq.block(0, n_, n_, m_) = D_.at(i);
+    LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
 
     prog_.AddLinearEqualityConstraint(
-        LinEq, -d_.at(i), {x_.at(i), u_.at(i), lambda_.at(i), x_.at(i + 1)});
+        LinEq, -d_.at(i), {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)});
+    //    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
+  input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
-    prog_.AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * xdesired_.at(i),
+    prog_.AddQuadraticCost(2 * Q_.at(i), -2 * Q_.at(i) * xdesired_.at(i),
                            x_.at(i), 1);
     if (i < N_) {
-      prog_.AddQuadraticCost(R_.at(i) * 2, VectorXd::Zero(k_), u_.at(i), 1);
+      input_costs_[i] = prog_.AddQuadraticCost(2 * R_.at(i), VectorXd::Zero(k_), u_.at(i), 1).evaluator();
     }
   }
 }
@@ -132,6 +134,11 @@ vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   vector<MatrixXd> Gv = G_;
   VectorXd z;
 
+  for (int i = 0; i < N_; ++i){
+    input_costs_[i]->UpdateCoefficients(2 * R_.at(i), -2 * R_.at(i) * u_sol_->at(i));
+  }
+//  input_costs_[0]->UpdateCoefficients(2 * R_.at(0), -2 * R_.at(0) * u_sol_->at(0));
+
   for (int i = 0; i < options_.admm_iter - 1; i++) {
     z = ADMMStep(x0, &delta, &w, &Gv);
   }
@@ -140,8 +147,7 @@ vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
-
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD);
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, true);
   return zfin;
 }
 
@@ -179,7 +185,7 @@ VectorXd C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 }
 
 vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
-                             vector<VectorXd>& WD) {
+                             vector<VectorXd>& WD, bool is_final_solve) {
   for (auto& constraint : constraints_) {
     prog_.RemoveConstraint(constraint);
   }
@@ -187,6 +193,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
   if (hflag_ == 1) {
+    std::cout << "solving lcp: " << std::endl;
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
     LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
@@ -201,18 +208,18 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
   for (int i = 0; i < N_ + 1; i++) {
     if (i < N_) {
       costs_.push_back(prog_.AddQuadraticCost(
-          G.at(i).block(0, 0, n_, n_) * 2,
-          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_),
-          x_.at(i)));
+          2 * G.at(i).block(0, 0, n_, n_),
+          -2 * G.at(i).block(0, 0, n_, n_) * WD.at(i).segment(0, n_), x_.at(i),
+          1));
       costs_.push_back(prog_.AddQuadraticCost(
-          G.at(i).block(n_, n_, m_, m_) * 2,
+          2 * G.at(i).block(n_, n_, m_, m_),
           -2 * G.at(i).block(n_, n_, m_, m_) * WD.at(i).segment(n_, m_),
-          lambda_.at(i)));
+          lambda_.at(i), 1));
       costs_.push_back(
-          prog_.AddQuadraticCost(G.at(i).block(n_ + m_, n_ + m_, k_, k_) * 2,
+          prog_.AddQuadraticCost(2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_),
                                  -2 * G.at(i).block(n_ + m_, n_ + m_, k_, k_) *
                                      WD.at(i).segment(n_ + m_, k_),
-                                 u_.at(i)));
+                                 u_.at(i), 1));
     }
   }
 
@@ -231,12 +238,14 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
 
   if (result.is_success()) {
     for (int i = 0; i < N_; i++) {
-      x_sol_->at(i) = result.GetSolution(x_[i]);
-      lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
-      u_sol_->at(i) = result.GetSolution(u_[i]);
-      z_sol_->at(i).segment(0, n_) = x_sol_->at(i);
-      z_sol_->at(i).segment(n_, m_) = lambda_sol_->at(i);
-      z_sol_->at(i).segment(n_ + m_, k_) = u_sol_->at(i);
+      if (is_final_solve){
+        x_sol_->at(i) = result.GetSolution(x_[i]);
+        lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
+        u_sol_->at(i) = result.GetSolution(u_[i]);
+      }
+      z_sol_->at(i).segment(0, n_) = result.GetSolution(x_[i]);
+      z_sol_->at(i).segment(n_, m_) = result.GetSolution(lambda_[i]);
+      z_sol_->at(i).segment(n_ + m_, k_) = result.GetSolution(u_[i]);
 
       if (warm_start_) {
         // update warm start parameters

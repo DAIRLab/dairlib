@@ -51,7 +51,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   auto ln_ = prog.NewContinuousVariables(m_, "lambda");
   auto un_ = prog.NewContinuousVariables(k_, "u");
 
-  double alpha = 0.3;
+  double alpha = 0.01;
   double scaling = 1000;
 
   MatrixXd EFH(m_, n_ + m_ + k_);
@@ -80,10 +80,10 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   //  prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(m_), ln_, 1);
   prog.AddQuadraticCost((1 - alpha) * F, VectorXd::Zero(m_), ln_, 1);
 
-  solver_options.SetOption(OsqpSolver::id(), "max_iter", 250);
+  solver_options.SetOption(OsqpSolver::id(), "max_iter", 500);
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
   solver_options.SetOption(OsqpSolver::id(), "polish", 1);
-  solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 3);
+  solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 1);
   solver_options.SetOption(OsqpSolver::id(), "rho", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);
   solver_options.SetOption(OsqpSolver::id(), "linsys_solver", 0);

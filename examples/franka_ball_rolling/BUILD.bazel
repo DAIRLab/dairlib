@@ -126,6 +126,17 @@ cc_library(
 )
 
 cc_library(
+    name = "c3_ball_rolling_params",
+    hdrs = ["parameters/c3_ball_rolling_params.h"],
+    data = [
+        "parameters/c3_ball_rolling_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "simulate_franka_params",
     hdrs = ["parameters/simulate_franka_params.h"],
     data = [
@@ -167,6 +178,7 @@ cc_binary(
         "//systems/framework:lcm_driven_loop",
         "//systems/controllers:c3_controller_franka",
         "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_ball_rolling:c3_ball_rolling_params",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",

@@ -1,17 +1,10 @@
 #include "c3_ball_rolling_controller.h"
-
-#include <utility>
-#include <chrono>
-
-
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/common/sorted_pair.h"
 #include "external/drake/tools/install/libdrake/_virtual_includes/drake_shared_library/drake/multibody/plant/multibody_plant.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/lcs_factory.h"
-
-//#include "solvers/miqp.h"
 
 #include "drake/solvers/moby_lcp_solver.h"
 #include "multibody/geom_geom_collider.h"
@@ -130,7 +123,9 @@ C3BallRollingController::C3BallRollingController(
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+      "examples/franka_ball_rolling/parameters.yaml");
+  ball_rolling_param_ = drake::yaml::LoadYamlFile<C3BallRollingParam>(
+            "examples/franka_ball_rolling/parameters/c3_ball_rolling_params.yaml");
   max_desired_velocity_ = param_.velocity_limit;
 
   // filter info
@@ -559,82 +554,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     moving_average_.push_back(timestamp - prev_timestamp_);
   }
   prev_timestamp_ = timestamp;
-  // prev_position_ = ball_xyz;
-  // prev_velocity_ = v_ball;
-
-  /// update moving average filter and prev variables
-  // if (past_velocities_.size() < 10){
-  //   past_velocities_.push_back(v_ball);
-  // }
-  // else {
-  //   past_velocities_.pop_front();
-  //   past_velocities_.push_back(v_ball);
-  // }
 }
 
-void C3BallRollingController::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
-                                              const Eigen::Vector3d end_effector, double timestamp) const {
-  /// estimate q_plant
-  std::cout << "here" << std::endl;
-  if (abs(param_.ball_stddev) > 1e-9) {
-    std::random_device rd{};
-    std::mt19937 gen{rd()};
-    std::normal_distribution<> d{0, param_.ball_stddev};
-
-
-    double dist_x = d(gen);
-    double dist_y = d(gen);
-
-
-    double noise_threshold = 0.01;
-    if (dist_x > noise_threshold) {
-      dist_x = noise_threshold;
-    } else if (dist_x < -noise_threshold) {
-      dist_x = -noise_threshold;
-    }
-    if (dist_y > noise_threshold) {
-      dist_y = noise_threshold;
-    } else if (dist_y < -noise_threshold) {
-      dist_y = -noise_threshold;
-    }
-    double x_obs = q_plant(q_map_franka_.at("base_x")) + dist_x;
-    double y_obs = q_plant(q_map_franka_.at("base_y")) + dist_y;
-
-    double alpha_p = param_.alpha_p;
-    q_plant(q_map_franka_.at("base_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
-    q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
-
-    ///project estimate
-    q_plant.tail(7) << 1, 0, 0, 0, ProjectStateEstimate(end_effector, q_plant.tail(3));;
-  }
-  else{
-    q_plant.tail(7) << 1, 0, 0, 0, q_plant.tail(3);
-  }
-
-  /// estimate v_plant
-//  std::cout << "before\n" << v_plant.tail(6) << std::endl;
-  double alpha_v = param_.alpha_v;
-  double ball_radius = param_.ball_radius;
-
-  ///1
-  Vector3d ball_xyz_dot = v_plant.tail(3);
-
-  ///2
-  // Vector3d curr_velocity = (q_plant.tail(3) - prev_position_) / (timestamp - prev_timestamp_);
-  // Vector3d ball_xyz_dot = alpha_v * curr_velocity + (1-alpha_v)*prev_velocity_;
-  // ball_xyz_dot(2) = 0; // expect no velocity in z direction
-
-  ///3
-//  Vector3d average = Vector3d::Zero(3);
-//  for(int i = 0; i < 10; i++){
-//    average = average + past_velocities_[i]/10;
-//  }
-//  Vector3d ball_xyz_dot = average;
-
-  Vector3d r_ball(0, 0, ball_radius);
-  Vector3d computed_ang_vel = r_ball.cross(ball_xyz_dot) / (ball_radius * ball_radius);
-  v_plant.tail(6) << computed_ang_vel, ball_xyz_dot;
-}
 
 Eigen::Vector3d C3BallRollingController::ProjectStateEstimate(
     const Eigen::Vector3d& endeffector,

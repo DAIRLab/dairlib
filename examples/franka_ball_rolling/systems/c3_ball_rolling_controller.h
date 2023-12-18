@@ -30,7 +30,8 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
-#include "examples/franka_ball_rolling//c3_parameters.h"
+#include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/parameters/c3_ball_rolling_params.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 #include <random>
@@ -82,8 +83,6 @@ class C3BallRollingController : public LeafSystem<double> {
  private:
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
-  void StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,
-                       const Eigen::Vector3d end_effector, double timestamp) const;
   Eigen::Vector3d ProjectStateEstimate(
       const Eigen::Vector3d& endeffector, const Eigen::Vector3d& estimate) const;
 
@@ -111,6 +110,7 @@ class C3BallRollingController : public LeafSystem<double> {
   const std::vector<Eigen::VectorXd> xdesired_;
   const drake::trajectories::PiecewisePolynomial<double> pp_;
   C3Parameters param_;
+  C3BallRollingParam ball_rolling_param_;
   std::map<string, int> q_map_franka_;
   std::map<string, int> v_map_franka_;
   std::map<string, int> q_map_;
@@ -124,11 +124,7 @@ class C3BallRollingController : public LeafSystem<double> {
   mutable double prev_timestamp_;
   uint32_t dt_filter_length_;
 
-  // velocity
-  mutable Eigen::Vector3d prev_position_;
-  mutable Eigen::Vector3d prev_velocity_;
-  mutable std::deque<Eigen::Vector3d> past_velocities_;
-
+  // first message settings
   mutable bool received_first_message_{false};
   mutable double first_message_time_{-1.0};
 

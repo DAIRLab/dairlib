@@ -29,6 +29,7 @@ cc_library(
         "//solvers:lcs",
         "//solvers:c3",
         "//examples/franka_ball_rolling:c3_parameters",
-        "//examples/franka_ball_rolling:c3_state_estimator_params"
+        "//examples/franka_ball_rolling:c3_state_estimator_params",
+        "//examples/franka_ball_rolling:c3_ball_rolling_params"
     ],
 )

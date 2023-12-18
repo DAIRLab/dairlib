@@ -88,7 +88,7 @@ cc_library(
     ],
 )
 
-## should add more dep in the future
+## new c3 settings: should add more dep in the future
 cc_library(
     name = "c3_controller",
     srcs = ["c3_controller.cc"],
@@ -102,6 +102,19 @@ cc_library(
         "//solvers:c3",
         "//solvers:c3_output",
         "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+## new c3 settings: should add more dep in the future
+cc_library(
+    name = "lcs_factory_system",
+    srcs = ["c3/lcs_factory_system.cc"],
+    hdrs = ["c3/lcs_factory_system.h"],
+    deps = [
+        "//multibody:utils",
+        "//solvers:c3",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

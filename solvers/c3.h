@@ -58,7 +58,8 @@ class C3 {
   /// @param G A pointer to the G variables from previous step
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        std::vector<Eigen::MatrixXd>& G,
-                                       std::vector<Eigen::VectorXd>& WD);
+                                       std::vector<Eigen::VectorXd>& WD,
+                                       bool is_final_solve = false);
 
   /// Solve the projection problem for all timesteps
   /// @param WZ A pointer to the (z + w) variables
@@ -136,6 +137,7 @@ class C3 {
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>

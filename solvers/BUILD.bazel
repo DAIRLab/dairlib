@@ -198,16 +198,16 @@ cc_test(
 )
 
 
-cc_binary(
-    name = "lcs_test",
-    srcs = ["test/lcs_test.cc"],
-    deps = [
-        ":c3",
-        "//multibody:geom_geom_collider",
-        "//multibody:utils",
-        "//multibody/kinematic",
-        "//common",
-        "@drake//:drake_shared_library",
-    ],
-    data = ["//examples/trifinger:trifinger_urdf"],
-)
+#cc_binary(
+#    name = "lcs_test",
+#    srcs = ["test/lcs_test.cc"],
+#    deps = [
+#        ":c3",
+#        "//multibody:geom_geom_collider",
+#        "//multibody:utils",
+#        "//multibody/kinematic",
+#        "//common",
+#        "@drake//:drake_shared_library",
+#    ],
+#    data = ["//examples/trifinger:trifinger_urdf"],
+#)

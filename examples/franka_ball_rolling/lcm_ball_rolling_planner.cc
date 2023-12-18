@@ -19,6 +19,7 @@
 #include "systems/system_utils.h"
 
 #include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_ball_rolling/parameters/c3_ball_rolling_params.h"
 #include "systems/controllers/c3_controller_franka.h"
 #include "systems/framework/lcm_driven_loop.h"
 
@@ -49,6 +50,8 @@ int DoMain(int argc, char* argv[]){
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   C3Parameters param = drake::yaml::LoadYamlFile<C3Parameters>(
     "examples/franka_ball_rolling/parameters.yaml");
+  C3BallRollingParam ball_rolling_param = drake::yaml::LoadYamlFile<C3BallRollingParam>(
+          "examples/franka_ball_rolling/parameters/c3_ball_rolling_params.yaml");
   drake::lcm::DrakeLcm drake_lcm;
   drake::lcm::DrakeLcm drake_lcm_network("udpm://239.255.76.67:7667?ttl=1");
 

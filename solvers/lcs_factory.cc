@@ -33,10 +33,8 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
     const vector<SortedPair<GeometryId>>& contact_geoms,
-    int num_friction_directions, double mu, double dt, int N,
-    ContactModel contact_model) {
-  //  int n_q = plant_ad.num_positions();
-  //  int n_v = plant_ad.num_velocities();
+    int num_friction_directions, const std::vector<double>& mu, double dt,
+    int N, ContactModel contact_model) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
   int n_u = plant_ad.num_actuators();
 
@@ -85,17 +83,12 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   MatrixXd d_q = ExtractValue(qdot_no_contact);
   Eigen::SparseMatrix<double> Nqt;
   Nqt = plant.MakeVelocityToQDotMap(context);
-  MatrixXd Nq = MatrixXd(Nqt);
+  MatrixXd qdotNv = MatrixXd(Nqt);
 
-  // plant_ad.MapQDotToVelocity(context_ad, qdot_no_contact, &vel);
-
-  // std::optional<Eigen::SparseMatrix<double>> NqI = std::nullopt;
   Eigen::SparseMatrix<double> NqI;
   NqI = plant.MakeQDotToVelocityMap(context);
-  MatrixXd NqInverse = MatrixXd(NqI);
-  ///
-  /// Contact-related terms
-  ///
+  MatrixXd vNqdot = MatrixXd(NqI);
+
   VectorXd phi(n_contacts);
   MatrixXd J_n(n_contacts, n_v);
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
@@ -108,7 +101,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
 
     phi(i) = phi_i;
-
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
               n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
@@ -129,15 +121,15 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   plant.CalcMassMatrix(context, &M_double);
 
   A.block(0, 0, n_q, n_q) =
-      MatrixXd::Identity(n_q, n_q) + dt * dt * Nq * AB_v_q;
-  A.block(0, n_q, n_q, n_v) = dt * Nq + dt * dt * Nq * AB_v_v;
+      MatrixXd::Identity(n_q, n_q) + dt * dt * qdotNv * AB_v_q;
+  A.block(0, n_q, n_q, n_v) = dt * qdotNv + dt * dt * qdotNv * AB_v_v;
   A.block(n_q, 0, n_v, n_q) = dt * AB_v_q;
   A.block(n_q, n_q, n_v, n_v) = dt * AB_v_v + MatrixXd::Identity(n_v, n_v);
 
-  B.block(0, 0, n_q, n_u) = dt * dt * Nq * AB_v_u;
+  B.block(0, 0, n_q, n_u) = dt * dt * qdotNv * AB_v_u;
   B.block(n_q, 0, n_v, n_u) = dt * AB_v_u;
 
-  d.head(n_q) = dt * dt * Nq * d_v;
+  d.head(n_q) = dt * dt * qdotNv * d_v;
   d.tail(n_v) = dt * d_v;
 
   MatrixXd E_t =
@@ -148,37 +140,31 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
         MatrixXd::Ones(1, 2 * num_friction_directions);
   }
 
-  //  MatrixXd D(n_x, n_contact_vars);
-  //  MatrixXd E(n_contact_vars, n_x);
-  //  MatrixXd F(n_contact_vars, n_contact_vars);
-  //  MatrixXd H(n_contact_vars, n_u);
-  //  VectorXd c(n_contact_vars);
-  int n_contact_vars = 0;
+  int n_lambda = 0;
   if (contact_model == ContactModel::kStewartAndTrinkle) {
-    n_contact_vars = 2 * n_contacts + 2 * n_contacts * num_friction_directions;
+    n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions;
   } else {
-    n_contact_vars = 2 * n_contacts * num_friction_directions;
+    n_lambda = 2 * n_contacts * num_friction_directions;
   }
 
-  MatrixXd D = MatrixXd::Zero(n_x, n_contact_vars);
-  MatrixXd E = MatrixXd::Zero(n_contact_vars, n_x);
-  MatrixXd F = MatrixXd::Zero(n_contact_vars, n_contact_vars);
-  MatrixXd H = MatrixXd::Zero(n_contact_vars, n_u);
-  VectorXd c = VectorXd::Zero(n_contact_vars);
+  // Matrices with contact variables
+  MatrixXd D = MatrixXd::Zero(n_x, n_lambda);
+  MatrixXd E = MatrixXd::Zero(n_lambda, n_x);
+  MatrixXd F = MatrixXd::Zero(n_lambda, n_lambda);
+  MatrixXd H = MatrixXd::Zero(n_lambda, n_u);
+  VectorXd c = VectorXd::Zero(n_lambda);
 
   if (contact_model == ContactModel::kStewartAndTrinkle) {
     D.block(0, 2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions) =
-        dt * dt * Nq * MinvJ_t_T;
+        dt * dt * qdotNv * MinvJ_t_T;
     D.block(n_q, 2 * n_contacts, n_v,
             2 * n_contacts * num_friction_directions) = dt * MinvJ_t_T;
 
-    D.block(0, n_contacts, n_q, n_contacts) = dt * dt * Nq * MinvJ_n_T;
+    D.block(0, n_contacts, n_q, n_contacts) = dt * dt * qdotNv * MinvJ_n_T;
 
     D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
-
     E.block(n_contacts, 0, n_contacts, n_q) =
-        dt * dt * J_n * AB_v_q + J_n * NqInverse;
-    ;
+        dt * dt * J_n * AB_v_q + J_n * vNqdot;
     E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
         dt * J_t * AB_v_q;
     E.block(n_contacts, n_q, n_contacts, n_v) =
@@ -187,7 +173,10 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
             n_v) = J_t + dt * J_t * AB_v_v;
 
     F.block(0, n_contacts, n_contacts, n_contacts) =
-        mu * MatrixXd::Identity(n_contacts, n_contacts);
+        Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(mu.data(),
+                                                            mu.size())
+            .asDiagonal();
+
     F.block(0, 2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions) = -E_t;
 
@@ -216,24 +205,35 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     //  std::cout << "phi: " << phi << std::endl;
     c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
-        J_t * dt * d_v - J_n * NqInverse * plant.GetPositions(context);
+        J_t * dt * d_v - J_n * vNqdot * plant.GetPositions(context);
   } else if (contact_model == ContactModel::kAnitescu) {
-    MatrixXd Nqinv = Nq.completeOrthogonalDecomposition().pseudoInverse();
-    //    auto M_ldlt = ExtractValue(M).ldlt();
-    MatrixXd J_c = E_t.transpose() * J_n + mu * J_t;
+    VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+        mu.data(), mu.size());
+    VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);
+    for (int i = 0; i < mu_vec.rows(); i++) {
+      double cur = mu_vec(i);
+      anitescu_mu_vec(4 * i) = cur;
+      anitescu_mu_vec(4 * i + 1) = cur;
+      anitescu_mu_vec(4 * i + 2) = cur;
+      anitescu_mu_vec(4 * i + 3) = cur;
+    }
+    MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
+    MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
-    D.block(0, 0, n_q, n_contacts) = dt * Nq * MinvJ_c_T;
-    D.block(n_q, 0, n_v, n_contacts) = MinvJ_c_T;
-    E.block(0, 0, n_contacts, n_q) =
-        dt * J_c * AB_v_q + E_t.transpose() * J_n * Nqinv / dt;
-    E.block(0, n_q, n_contacts, n_v) = J_c + dt * J_c * AB_v_v;
 
-    F = J_c * MinvJ_c_T;
+    D.block(0, 0, n_q, n_lambda) = dt * dt * qdotNv * MinvJ_c_T;
+    D.block(n_q, 0, n_v, n_lambda) = dt * MinvJ_c_T;
+
+    E.block(0, 0, n_lambda, n_q) =
+        dt * J_c * AB_v_q + E_t.transpose() * J_n * vNqdot / dt;
+    E.block(0, n_q, n_lambda, n_v) = J_c + dt * J_c * AB_v_v;
+
+    F = dt * J_c * MinvJ_c_T;
 
     H = dt * J_c * AB_v_u;
     c = E_t.transpose() * phi / dt + dt * J_c * d_v -
-        E_t.transpose() * J_n * Nqinv * plant.GetPositions(context) / dt;
+        E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
   }
 
   auto Dn = D.squaredNorm();
@@ -248,8 +248,74 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);
-
   return ret;
+}
+
+std::pair<Eigen::MatrixXd, std::vector<VectorXd>>
+LCSFactory::ComputeContactJacobian(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context,
+    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+    const drake::systems::Context<drake::AutoDiffXd>& context_ad,
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+        contact_geoms,
+    int num_friction_directions, const std::vector<double>& mu, double dt,
+    int N, dairlib::solvers::ContactModel contact_model) {
+  int n_contacts = contact_geoms.size();
+
+  int n_v = plant.num_velocities();
+
+  VectorXd phi(n_contacts);
+  MatrixXd J_n(n_contacts, n_v);
+  MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
+  std::vector<VectorXd> contact_points;
+  for (int i = 0; i < n_contacts; i++) {
+    multibody::GeomGeomCollider collider(
+        plant,
+        contact_geoms[i]);  // deleted num_friction_directions (check with
+    // Michael about changes in geomgeom)
+    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
+    // TODO(yangwill): think about if we want to push back both witness points
+    contact_points.push_back(p_WCa);
+    phi(i) = phi_i;
+    J_n.row(i) = J_i.row(0);
+    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
+  }
+
+  if (contact_model == ContactModel::kStewartAndTrinkle) {
+    MatrixXd J_c = MatrixXd::Zero(
+        n_contacts + 2 * n_contacts * num_friction_directions, n_v);
+    J_c << J_n, J_t;
+    return std::make_pair(J_c, contact_points);
+  } else if (contact_model == ContactModel::kAnitescu) {
+    MatrixXd E_t =
+        MatrixXd::Zero(n_contacts, 2 * n_contacts * num_friction_directions);
+    for (int i = 0; i < n_contacts; i++) {
+      E_t.block(i, i * (2 * num_friction_directions), 1,
+                2 * num_friction_directions) =
+          MatrixXd::Ones(1, 2 * num_friction_directions);
+    }
+    int n_contact_vars = 2 * n_contacts * num_friction_directions;
+
+    VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+        mu.data(), mu.size());
+    VectorXd anitescu_mu_vec = VectorXd::Zero(n_contact_vars);
+    for (int i = 0; i < mu_vec.rows(); i++) {
+      double cur = mu_vec(i);
+      anitescu_mu_vec(4 * i) = cur;
+      anitescu_mu_vec(4 * i + 1) = cur;
+      anitescu_mu_vec(4 * i + 2) = cur;
+      anitescu_mu_vec(4 * i + 3) = cur;
+    }
+    MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
+    MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
+    return std::make_pair(J_c, contact_points);
+  } else {
+    std::cerr << ("Unknown projection type") << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
 }
 
 LCS LCSFactory::FixSomeModes(const LCS& other, set<int> active_lambda_inds,

@@ -9,7 +9,7 @@ namespace solvers {
 
 enum class ContactModel {
   kStewartAndTrinkle,  /// Stewart and Trinkle timestepping contact
-  kAnitescu      /// Anitescu convex contact
+  kAnitescu            /// Anitescu convex contact
 };
 
 class LCSFactory {
@@ -33,14 +33,25 @@ class LCSFactory {
   /// @param mu
   /// @oaram dt The timestep for discretization
   /// @param N
-  static std::pair<LCS,double> LinearizePlantToLCS(
+  static std::pair<LCS, double> LinearizePlantToLCS(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       const drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-  contact_geoms,
-  int num_friction_directions, double mu, double dt, int N, ContactModel=ContactModel::kStewartAndTrinkle);
+          contact_geoms,
+      int num_friction_directions, const std::vector<double>& mu, double dt,
+      int N, ContactModel = ContactModel::kStewartAndTrinkle);
+
+  static std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>> ComputeContactJacobian(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::systems::Context<double>& context,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      const drake::systems::Context<drake::AutoDiffXd>& context_ad,
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+          contact_geoms,
+      int num_friction_directions, const std::vector<double>& mu, double dt,
+      int N, ContactModel = ContactModel::kStewartAndTrinkle);
 
   /// Create an LCS by fixing some modes from another LCS
   /// Ignores generated inequalities that correspond to these modes, but

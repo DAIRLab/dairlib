@@ -170,6 +170,19 @@ cc_library(
 )
 
 cc_library(
+    name = "alip_com_trajectory_generator",
+    srcs = ["alip_com_trajectory_generator.cc"],
+    hdrs = ["alip_com_trajectory_generator.h"],
+    deps = [
+        "//multibody:utils",
+        "//systems/controllers/footstep_planning:alip_utils",
+        "//systems/filters:s2s_kalman_filter",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+]
+)
+
+cc_library(
     name = "alip_swing_ft_traj_gen",
     srcs = ["alip_swing_ft_traj_gen.cc"],
     hdrs = ["alip_swing_ft_traj_gen.h"],

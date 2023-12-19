@@ -146,7 +146,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   vector<pair<const Vector3d, const Frame<double>&>> left_right_foot;
 
   systems::controllers::SwingFootTrajectoryGeneratorParams swing_params;
-  systems::controllers::ComTrajInterfaceParams com_params;
+  systems::controllers::AlipComTrajGeneratorParams com_params;
 
   // Swing toe joint trajectory
   map<string, int> pos_map;

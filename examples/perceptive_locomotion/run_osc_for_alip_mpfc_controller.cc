@@ -121,11 +121,6 @@ DEFINE_bool(use_spring_model, false,
 DEFINE_bool(add_camera_inertia, true,
             "whether to add the camera assembly to the robot model");
 
-DEFINE_bool(com_height_track_terrain, true,
-            "track the terrain with the COM height, use for "
-            "piecewise steep terrain");
-
-//DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -326,12 +321,10 @@ int DoMain(int argc, char* argv[]) {
     gains_mpc.retraction_dist,
   };
 
-  systems::controllers::ComTrajInterfaceParams com_params{
+  systems::controllers::AlipComTrajGeneratorParams com_params{
       gains_mpc.h_des,
-      gains_mpc.ds_time,
       unordered_fsm_states,
       contact_points_in_each_state,
-      FLAGS_com_height_track_terrain
   };
 
   auto mpc_interface = builder.AddSystem<AlipMPCInterfaceSystem>(

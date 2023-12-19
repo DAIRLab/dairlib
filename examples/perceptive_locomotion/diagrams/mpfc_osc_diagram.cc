@@ -204,10 +204,8 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   com_params = {
       gains_mpc.h_des,
-      gains_mpc.ds_time,
       unordered_fsm_states,
       contact_points_in_each_state,
-      false
   };
 
   vector<int> post_left_post_right_ds_states =

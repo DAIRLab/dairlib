@@ -2,7 +2,6 @@
 
 #include "alip_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/trajectory.h"

@@ -2,21 +2,14 @@
 
 #include <cmath>
 #include <algorithm>
-#include <string>
-#include <iostream>
 
 #include "common/polynomial_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/minimum_snap_trajectory_generation.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/common/trajectories/bspline_trajectory.h"
 #include "drake/common/trajectories/path_parameterized_trajectory.h"
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
-#include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/pass_through.h"
-#include "drake/systems/primitives/adder.h"
-#include "drake/systems/primitives/constant_vector_source.h"
 
 using dairlib::systems::controllers::alip_utils::PointOnFramed;
 
@@ -25,27 +18,20 @@ using std::string;
 
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
+using drake::Vector1d;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
-using Eigen::Vector4d;
 using Eigen::VectorXd;
-using drake::Vector1d;
 
-using drake::multibody::Frame;
-using drake::multibody::JacobianWrtVariable;
-using drake::systems::BasicVector;
 using drake::systems::Context;
-using drake::systems::ConstantVectorSource;
-using drake::systems::PassThrough;
-using drake::systems::Adder;
+
 using drake::systems::State;
 using drake::systems::DiscreteUpdateEvent;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
-using drake::trajectories::BsplineTrajectory;
+
 using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::PathParameterizedTrajectory;
-using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::Trajectory;
 
 
@@ -205,6 +191,7 @@ SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
     Vector3d retract_delta = retraction_dist_ * retract_vel.normalized();
     control_points.col(2) += retract_delta;
   }
+
   auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
       control_points, path_breaks, Vector3d::Zero(), final_vel);
 

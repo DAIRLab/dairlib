@@ -134,7 +134,6 @@ def plot_solve_time_vs_nfootholds(logs):
     ps.save_fig('solve_time_vs_footholds.png')
 
 
-
 def plot_solve_time_vs_constraint_activation(logs):
     data = { False: [], True: [] }
 

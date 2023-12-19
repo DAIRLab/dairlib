@@ -17,10 +17,10 @@ use_floating_base: true
 plot_floating_base_positions: false
 plot_floating_base_velocities: false
 plot_floating_base_velocity_body_frame: false
-plot_joint_positions: true
-plot_joint_velocities: true
-plot_measured_efforts: true
-plot_commanded_efforts: true
+plot_joint_positions: false
+plot_joint_velocities: false
+plot_measured_efforts: false
+plot_commanded_efforts: false
 plot_contact_forces: false
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
@@ -40,5 +40,5 @@ plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
 #  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
-#  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
-#  swing_ft_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }
+  swing_ft_traj: { 'dims': [0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

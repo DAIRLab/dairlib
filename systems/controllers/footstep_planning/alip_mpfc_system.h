@@ -17,7 +17,7 @@
 namespace dairlib::systems::controllers {
 using alip_utils::PointOnFramed;
 
-struct AlipMINLPGains {
+struct AlipMPFCGains {
   double t_commit;
   double t_min;
   double t_max;
@@ -49,7 +49,7 @@ class AlipMPFC : public drake::systems::LeafSystem<double> {
       std::vector<double> left_right_stance_durations,
       double double_stance_duration,
       std::vector<PointOnFramed> left_right_foot,
-      const AlipMINLPGains& gains,
+      const AlipMPFCGains& gains,
       const drake::solvers::SolverOptions& trajopt_solver_options);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -148,6 +148,6 @@ class AlipMPFC : public drake::systems::LeafSystem<double> {
   double single_stance_duration_;
 
   // gains
-  AlipMINLPGains gains_;
+  AlipMPFCGains gains_;
 };
 }

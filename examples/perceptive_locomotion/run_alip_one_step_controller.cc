@@ -35,7 +35,7 @@ using Eigen::VectorXd;
 
 using systems::controllers::AlipOneStepFootstepController;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::AlipMINLPGains;
+using systems::controllers::AlipMPFCGains;
 using systems::controllers::FootstepSender;
 using systems::FsmSender;
 
@@ -151,7 +151,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<AlipOneStepFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains_mpc.gains);
+          gains_mpc.stance_width, left_right_toe);
 
   auto state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);

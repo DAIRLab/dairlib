@@ -35,7 +35,7 @@ AlipMPFC::AlipMPFC(
     std::vector<double> left_right_stance_durations,
     double double_stance_duration,
     std::vector<PointOnFramed> left_right_foot,
-    const AlipMINLPGains& gains,
+    const AlipMPFCGains& gains,
     const drake::solvers::SolverOptions& trajopt_solver_options) :
     plant_(plant),
     context_(plant_context),

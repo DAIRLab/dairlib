@@ -59,7 +59,7 @@ using geometry::ConvexPolygonSet;
 
 using systems::controllers::AlipMPFC;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::AlipMINLPGains;
+using systems::controllers::AlipMPFCGains;
 using systems::controllers::FootstepSender;
 using systems::FlatTerrainFootholdSource;
 using systems::FsmSender;

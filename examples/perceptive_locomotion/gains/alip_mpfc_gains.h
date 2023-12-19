@@ -38,7 +38,7 @@ struct AlipMpfcGainsImport {
   Eigen::Vector4d Rfilt_diagonal;
   Eigen::Matrix3d W_footstep_reg;
 
-  dairlib::systems::controllers::AlipMINLPGains gains;
+  dairlib::systems::controllers::AlipMPFCGains gains;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -89,7 +89,7 @@ struct AlipMpfcGainsImport {
       reset_disc = ResetDiscretization::kSPLIT;
     }
 
-    this->gains = dairlib::systems::controllers::AlipMINLPGains {
+    this->gains = dairlib::systems::controllers::AlipMPFCGains {
         this->t_commit,
         this->t_min,
         this->t_max,

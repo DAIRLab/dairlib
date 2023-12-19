@@ -40,38 +40,6 @@ cc_library(
 )
 
 cc_library(
-    name = "boxy_height_map",
-    srcs = ["boxy_height_map.cc"],
-    hdrs = ["boxy_height_map.h"],
-    deps = [
-        ":utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "cube_height_map",
-    srcs = ["cube_height_map.cc"],
-    hdrs = ["cube_height_map.h"],
-    deps = [
-        ":boxy_height_map",
-        ":utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "stairs",
-    srcs = ["stairs.cc"],
-    hdrs = ["stairs.h"],
-    deps = [
-        ":boxy_height_map",
-        ":utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "visualization_utils",
     srcs = [
         "visualization_utils.cc",

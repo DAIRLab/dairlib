@@ -156,18 +156,6 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_footstep_planner",
-    srcs = ["alip_footstep_planner.cc"],
-    hdrs = ["alip_footstep_planner.h"],
-    deps = [
-        ":control_utils",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_traj_gen",
     srcs = ["alip_traj_gen.cc"],
     hdrs = ["alip_traj_gen.h"],

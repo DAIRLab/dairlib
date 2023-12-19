@@ -28,6 +28,8 @@
 #include "systems/filters/floating_base_velocity_filter.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "systems/system_utils.h"
+
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
@@ -610,7 +612,7 @@ int DoMain(int argc, char* argv[]) {
   // Create the diagram
   auto owned_diagram = builder.Build();
   owned_diagram->set_name("osc walking controller");
-
+  DrawAndSaveDiagramGraph(*owned_diagram, "../osc_walking_controller_alip");
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm_local, std::move(owned_diagram), state_receiver, FLAGS_channel_x,

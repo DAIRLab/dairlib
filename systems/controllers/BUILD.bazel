@@ -148,18 +148,6 @@ cc_library(
 )
 
 cc_library(
-    name = "lipm_traj_gen",
-    srcs = ["lipm_traj_gen.cc"],
-    hdrs = ["lipm_traj_gen.h"],
-    deps = [
-        ":control_utils",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "minimum_snap_trajectory_generation",
     hdrs = ["minimum_snap_trajectory_generation.h"],
     deps = [
@@ -188,30 +176,6 @@ cc_library(
         "//multibody:utils",
         "//systems/controllers/footstep_planning:alip_utils",
         "//systems/filters:s2s_kalman_filter",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "swing_ft_traj_gen",
-    srcs = ["swing_ft_traj_gen.cc"],
-    hdrs = ["swing_ft_traj_gen.h"],
-    deps = [
-        ":control_utils",
-        "//multibody:utils",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "swing_foot_target_traj_gen",
-    srcs = ["swing_foot_target_traj_gen.cc"],
-    hdrs = ["swing_foot_target_traj_gen.h"],
-    deps = [
-        ":control_utils",
-        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

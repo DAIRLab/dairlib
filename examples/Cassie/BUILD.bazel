@@ -412,30 +412,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "run_osc_walking_controller",
-    srcs = ["run_osc_walking_controller.cc"],
-    tags = ["manual"],
-    deps = [
-        ":cassie_urdf",
-        ":cassie_utils",
-        "//examples/Cassie/osc",
-        "//examples/Cassie/systems:cassie_out_to_radio",
-        "//examples/Cassie/systems:simulator_drift",
-        "//multibody:utils",
-        "//multibody:view_frame",
-        "//multibody/kinematic",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers:controllers_all",
-        "//systems/controllers:fsm_event_time",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
     name = "run_osc_walking_controller_alip",
     srcs = ["run_osc_walking_controller_alip.cc"],
     deps = [

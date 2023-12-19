@@ -66,7 +66,7 @@ DEFINE_string(channel_cassie_out, "CASSIE_OUTPUT_ECHO",
               "out structure from.");
 
 DEFINE_string(mpfc_gains_filename,
-              "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml",
+              "examples/perceptive_locomotion/gains/alip_mpfc_gains.yaml",
               "Filepath to alip minlp gains");
 
 DEFINE_bool(spring_model, true, "");

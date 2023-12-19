@@ -132,10 +132,14 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   perceptive_locomotion_preprocessor_params preprocessor_params {
       "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
       {
-          {"toe_left", Vector3d(0.3, 0.1, 0.1),
+          {"toe_left", Vector3d(0.3, 0.1, 0.2),
             CassieTransformFootToToeFrame()},
-          {"toe_right", Vector3d(0.3, 0.1, 0.1),
-            CassieTransformFootToToeFrame()}
+          {"tarsus_left", Vector3d(0.5, 0.2, 0.2),
+           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
+          {"toe_right", Vector3d(0.3, 0.1, 0.2),
+            CassieTransformFootToToeFrame()},
+          {"tarsus_right", Vector3d(0.5, 0.2, 0.2),
+           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
       } // crop boxes
   };
   auto preprocessor = std::make_shared<PerceptiveLocomotionPreprocessor>(

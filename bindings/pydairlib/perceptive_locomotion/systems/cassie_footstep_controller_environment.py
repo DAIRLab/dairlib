@@ -40,7 +40,7 @@ params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
 
 class InitialConditionsServer:
-    def __init__(self, fname: Union[str, path]):
+    def __init__(self, fname: str):
         datafile = np.load(fname, allow_pickle=True)
         self.data = datafile['arr_0']
         self.idx = 0

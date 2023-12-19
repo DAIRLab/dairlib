@@ -1,6 +1,6 @@
 __pycache__/
 /build/
-/.idea/
+*.idea/
 /cmake-build-debug/
 /bazel-*
 *.ipynb_checkpoints
@@ -19,4 +19,3 @@ wandb/
 # perception learning temp files
 /bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/
 *venv/
-/bindings/pydairlib/perceptive_locomotion/.idea/

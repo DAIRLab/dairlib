@@ -1,4 +1,3 @@
-#include <iostream>
 #include "filter_utils.h"
 #include "output_vector_filter.h"
 #include "systems/framework/output_vector.h"

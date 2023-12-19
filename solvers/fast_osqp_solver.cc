@@ -464,7 +464,6 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
     }
   }
 
-
   // Extract results.
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_->info != nullptr);

@@ -3,7 +3,7 @@
 # In addition to your base ROS install,
 # you must sudo apt-get install python3-vcstool
 
-# Only tested on Ubuntu 18.04
+# Tested on ubuntu 20.04 and 18.04
 BASE_DIR="$PWD"
 
 cd $(dirname "$BASH_SOURCE")
@@ -11,8 +11,9 @@ cd $(dirname "$BASH_SOURCE")
 set -e
 
 PACKAGES="roscpp rospy std_msgs geometry_msgs geometry2 sensor_msgs tf grid_map_msgs rosbag"
-# You can add any local ROS packages you need, as long as you source
-# <YourCatkinWorkspace>/install/setup.bash before running this script
+# You can add any published ros packages you need to this list.
+# Local ROS packages should be their own bazel local_repository
+
 rm -rf bundle_ws
 mkdir bundle_ws
 pushd bundle_ws

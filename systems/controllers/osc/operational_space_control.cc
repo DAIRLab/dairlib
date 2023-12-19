@@ -808,7 +808,7 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   if (u_sol_->hasNaN()) {
     solver_->DisableWarmStart();
-    std::cout << "nan\n";
+    drake::log()->error("NaNs in OSC solution");
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

@@ -5,6 +5,10 @@ import subprocess
 
 
 def main(target_dir):
+    """
+        Script to reindex all rosbags in a directory
+        Usage: python3 tools/workspace/ros/reindex_rosbags.py /path/to/data/
+    """
     assert(os.path.isdir(target_dir))
 
     recursive = input("recursive? (y/n): ").strip().lower() == "y"

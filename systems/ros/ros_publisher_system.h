@@ -171,7 +171,6 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
    */
   drake::systems::EventStatus PublishToRosTopic(
       const drake::systems::Context<double>& context) const {
-    // drake::log()->info("Publishing ROS {} message",  topic_);
 
     const drake::AbstractValue* const input_value =
         this->EvalAbstractInput(context, kPortIndex);

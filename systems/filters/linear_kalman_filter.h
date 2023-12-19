@@ -31,7 +31,7 @@ class LinearKalmanFilter {
   LinearKalmanFilter(const KalmanFilterData& sys, double rate = .001,
       int missed_dts_before_reset = 100);
 
-  void Initialize(double t, const Eigen::VectorXd& x, const Eigen::MatrixXd& P);
+  void Initialize(double t, Eigen::VectorXd x, Eigen::MatrixXd P);
   Eigen::VectorXd Update(const KalmanFilterData& sys,
                          const Eigen::VectorXd& u,
                          const Eigen::VectorXd& y, double t);

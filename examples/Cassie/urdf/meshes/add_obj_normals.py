@@ -1,5 +1,5 @@
 '''
-    Python script to be run with blender to convert meshes to gltf
+    Python script to be run with blender to add normals to obj files
     from this directory, run
         blender --python add_obj_normals.py
 '''

@@ -316,17 +316,14 @@ int DoMain(int argc, char* argv[]) {
   vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot = {
       left_toe_origin, right_toe_origin};
 
-  systems::controllers::SwingFootInterfaceSystemParams swing_params{
+  systems::controllers::SwingFootTrajectoryGeneratorParams swing_params{
     left_right_support_fsm_states,
     left_right_foot,
     {post_left_double_support_state, post_right_double_support_state},
-    gains_mpc.h_des,
     gains.mid_foot_height,
-    0.05608,
     gains.final_foot_height,
     gains.final_foot_velocity_z,
     gains_mpc.retraction_dist,
-    true
   };
 
   systems::controllers::ComTrajInterfaceParams com_params{
@@ -513,7 +510,7 @@ int DoMain(int argc, char* argv[]) {
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
   auto stance_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
-      "com_data", gains.K_p_swing_foot,
+      "stance_foot_data", gains.K_p_swing_foot,
       gains.K_d_swing_foot, gains.W_swing_foot,
       plant_w_spr, plant_wo_spr);
   stance_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_left");

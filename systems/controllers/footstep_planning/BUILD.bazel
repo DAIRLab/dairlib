@@ -120,6 +120,23 @@ cc_library(
     hdrs = ["alip_mpc_interface_system.h"],
     deps = [
         ":alip_utils",
+        ":swing_foot_trajectory_generator",
+        "//common:polynomial_utils",
+        "//multibody:utils",
+        "//systems/controllers:alip_traj_gen",
+        "//systems/controllers:control_utils",
+        "//systems/controllers:minimum_snap_trajectory_generation",
+        "//systems/framework:vector",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "swing_foot_trajectory_generator",
+    srcs = ["swing_foot_trajectory_generator.cc"],
+    hdrs = ["swing_foot_trajectory_generator.h"],
+    deps = [
         "//common:polynomial_utils",
         "//multibody:utils",
         "//systems/controllers:alip_traj_gen",

@@ -196,13 +196,10 @@ MpfcOscDiagram::MpfcOscDiagram(
       left_right_support_fsm_states,
       left_right_foot,
       {post_left_double_support_state, post_right_double_support_state},
-      gains_mpc.h_des,
       gains.mid_foot_height,
-      0.05608,
       gains.final_foot_height,
       gains.final_foot_velocity_z,
       gains_mpc.retraction_dist,
-      true
   };
 
   com_params = {
@@ -514,7 +511,7 @@ void MpfcOscDiagram::SetSwingFootPositionAtLiftoff(
       "swing_ft_traj_interface_system"
   );
   const auto swing_traj_sys_casted =
-      dynamic_cast<const systems::controllers::SwingFootInterfaceSystem*>(
+      dynamic_cast<const systems::controllers::SwingFootTrajectoryGenerator*>(
           &swing_traj_sys
       );
   auto& swing_traj_ctx = swing_traj_sys_casted->GetMyMutableContextFromRoot(context);

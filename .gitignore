@@ -1,6 +1,6 @@
 __pycache__/
 /build/
-*.idea/
+/.idea/
 /cmake-build-debug/
 /bazel-*
 *.ipynb_checkpoints
@@ -11,11 +11,5 @@ attic/multibody/solver_log/
 .vscode
 *.csv
 /examples/Cassie/saved_trajectories/
-*.npy
-/.learning_data
-callgrind.out.*
-wandb/
 
-# perception learning temp files
-/bindings/pydairlib/perceptive_locomotion/perception_learning/tmp/
-*venv/
+/venv/

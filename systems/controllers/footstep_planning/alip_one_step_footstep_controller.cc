@@ -63,7 +63,7 @@ AlipOneStepFootstepController::AlipOneStepFootstepController(
   footstep_target_state_idx_ = DeclareDiscreteState(3);
 
   // State Update
-  this->DeclareForcedUnrestrictedUpdateEvent(
+  this->DeclarePerStepUnrestrictedUpdateEvent(
       &AlipOneStepFootstepController::UnrestrictedUpdate);
 
   // Input ports

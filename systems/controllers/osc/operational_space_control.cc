@@ -738,11 +738,11 @@ VectorXd OperationalSpaceControl::SolveQp(
       double alpha_right = 0;
       if (prev_distinct_fsm_state_ == right_support_state_) {
         // We want left foot force to gradually increase
-        alpha_left = std::clamp(1.0 - s, 0.1, 1.0);
+        alpha_left = std::clamp(1.0 - s, 0.0, 1.0);
         alpha_right = -s;
       } else if (prev_distinct_fsm_state_ == left_support_state_) {
         alpha_left = -s;
-        alpha_right = std::clamp(1.0 - s, 0.1, 1.0);
+        alpha_right = std::clamp(1.0 - s, 0.0, 1.0);
       }
       A(0, 0) = alpha_left;
       A(0, 1) = alpha_left;

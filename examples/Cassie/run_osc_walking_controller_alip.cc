@@ -193,8 +193,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> state_durations;
 
   left_right_fsm_states = {left_stance_state, right_stance_state};
-  post_left_right_fsm_states = {post_right_double_support_state,
-                                post_left_double_support_state};
+  post_left_right_fsm_states = {post_left_double_support_state,
+                                post_right_double_support_state};
   state_durations = {left_support_duration, right_support_duration};
 
   std::vector<std::pair<const Vector3d, const Frame<double>&>> left_right_toe =

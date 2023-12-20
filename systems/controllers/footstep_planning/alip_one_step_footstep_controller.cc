@@ -51,6 +51,8 @@ AlipOneStepFootstepController::AlipOneStepFootstepController(
   for (int i = 0; i < left_right_stance_fsm_states_.size(); i++){
     stance_foot_map_.insert(
         {left_right_stance_fsm_states_.at(i), left_right_foot.at(i)});
+    stance_foot_map_.insert(
+        {post_left_right_fsm_states_.at(i), left_right_foot.at(i)});
   }
 
   // Must declare the discrete states before assigning their output ports so
@@ -61,7 +63,7 @@ AlipOneStepFootstepController::AlipOneStepFootstepController(
   footstep_target_state_idx_ = DeclareDiscreteState(3);
 
   // State Update
-  this->DeclarePerStepUnrestrictedUpdateEvent(
+  this->DeclareForcedUnrestrictedUpdateEvent(
       &AlipOneStepFootstepController::UnrestrictedUpdate);
 
   // Input ports
@@ -74,15 +76,15 @@ AlipOneStepFootstepController::AlipOneStepFootstepController(
   next_impact_time_output_port_ = DeclareStateOutputPort(
       "t_next", next_impact_time_state_idx_
     ).get_index();
-  prev_impact_time_output_port_ = DeclareVectorOutputPort(
-      "t_prev", 1, &AlipOneStepFootstepController::CopyPrevSwitchingTimeOutput
+  prev_impact_time_output_port_ = DeclareStateOutputPort(
+      "t_prev", prev_impact_time_state_idx_
     ).get_index();
   footstep_target_output_port_ = DeclareStateOutputPort(
       "p_SW", footstep_target_state_idx_
   ).get_index();
-  fsm_output_port_ = DeclareVectorOutputPort(
-      "fsm", 1, &AlipOneStepFootstepController::CopyFsmOutput
-    ).get_index();
+  fsm_output_port_ = DeclareStateOutputPort(
+      "fsm", fsm_state_idx_
+  ).get_index();
 
 }
 
@@ -94,47 +96,58 @@ drake::systems::EventStatus AlipOneStepFootstepController::UnrestrictedUpdate(
       this->EvalVectorInput(context, state_input_port_));
   const Vector2d& vdes =
       this->EvalVectorInput(context, vdes_input_port_)->get_value();
-  double t_next_impact =
-      state->get_discrete_state(next_impact_time_state_idx_).get_value()(0);
-  double t_prev_impact =
-      state->get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+
+
 
   // get state and time from robot_output, set plant context
   const VectorXd robot_state = robot_output->GetState();
   double t = robot_output->get_timestamp();
   SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
 
-  // initialize local variables
-  int fsm_idx = static_cast<int>(
-      state->get_discrete_state(fsm_state_idx_).get_value()(0));
+  // declare local fsm variables
+  int fsm_state;
+  double t_next_impact;
+  double t_prev_impact;
+
+  const double two_stride_period =
+      2 * (single_stance_duration_ + double_stance_duration_);
+  const double one_stride_period =
+      single_stance_duration_ + double_stance_duration_;
+  double periods = t / two_stride_period;
+  double remainder = periods - std::floor(periods);
+  double phase = remainder * two_stride_period;
+  double period_start = (periods - remainder) * two_stride_period;
+
+
+  if (phase < double_stance_duration_) { // Post idx 0 double stance
+    fsm_state = post_left_right_fsm_states_.back();
+    t_prev_impact = period_start;
+    t_next_impact = period_start + double_stance_duration_;
+  } else if (phase < one_stride_period) { // idx 0 single stance
+    fsm_state = left_right_stance_fsm_states_.front();
+    t_prev_impact = period_start + double_stance_duration_;
+    t_next_impact = period_start + one_stride_period;
+  } else if (phase < one_stride_period + double_stance_duration_) { // post idx 0 double stance
+    fsm_state = post_left_right_fsm_states_.front();
+    t_prev_impact = period_start + one_stride_period;
+    t_next_impact = period_start + one_stride_period + double_stance_duration_;
+  } else { // idx 1 single stance
+    fsm_state = left_right_stance_fsm_states_.back();
+    t_prev_impact = period_start + one_stride_period + double_stance_duration_;
+    t_next_impact = period_start + two_stride_period;
+  }
+
+  // Forward kinematics quantities
   Vector3d CoM_w = Vector3d::Zero();
   Vector3d p_w = Vector3d::Zero();
   Vector3d p_next_in_ds = Vector3d::Zero();
   Vector3d L = Vector3d::Zero();
 
-  if (t_next_impact == 0.0) {
-    t_next_impact = t + single_stance_duration_ + double_stance_duration_;
-    t_prev_impact = t;
-  }
-
-  // Check if it's time to switch the fsm or commit to the current footstep
-  if (t >= t_next_impact) {
-    fsm_idx ++;
-    fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
-    t_prev_impact = t;
-    t_next_impact = t + double_stance_duration_ + single_stance_duration_;
-  }
-  int fsm_state = curr_fsm(fsm_idx);
-
-  double ds_fraction = std::clamp(
-      (t - t_prev_impact) / double_stance_duration_, 0.0, 1.0);
-  std::vector<double> CoP_fractions = {ds_fraction, 1.0 - ds_fraction};
-
   // get the alip state
   alip_utils::CalcAlipState(
       plant_, context_, robot_state,
-      {stance_foot_map_.at(fsm_state), stance_foot_map_.at(next_fsm(fsm_idx))},
-      CoP_fractions, &CoM_w, &L, &p_w);
+      {stance_foot_map_.at(fsm_state)},
+      {1.0}, &CoM_w, &L, &p_w);
 
   plant_.CalcPointsPositions(
       *context_,
@@ -160,7 +173,7 @@ drake::systems::EventStatus AlipOneStepFootstepController::UnrestrictedUpdate(
       footstep_target_state_idx_).get_mutable_value();
   target.head<2>() = footstep_target;
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
-      fsm_idx*VectorXd::Ones(1));
+      fsm_state*VectorXd::Ones(1));
   state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
       t_next_impact * VectorXd::Ones(1));
   state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
@@ -231,36 +244,5 @@ void AlipOneStepFootstepController::CalcFootStepAndStanceFootHeight(
   // get the footstep command in the stance frame
   *x_fs += alip_pred.head<2>();
 }
-
-void AlipOneStepFootstepController::CopyPrevSwitchingTimeOutput(
-    const Context<double> &context, BasicVector<double>* t_prev_out) const {
-  double t_prev =
-      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      this->EvalVectorInput(context, state_input_port_));
-
-  if (robot_output->get_timestamp() - t_prev < double_stance_duration_) {
-    t_prev_out->get_mutable_value()(0) = t_prev;
-  } else {
-    t_prev_out->get_mutable_value()(0) = t_prev + double_stance_duration_;
-  }
-}
-
-void AlipOneStepFootstepController::CopyFsmOutput(
-    const Context<double> &context, BasicVector<double> *fsm) const {
-  double t_prev =
-      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
-  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      this->EvalVectorInput(context, state_input_port_));
-  int fsm_idx = static_cast<int>(
-      context.get_discrete_state(fsm_state_idx_).get_value()(0));
-
-  if(robot_output->get_timestamp() - t_prev < double_stance_duration_) {
-    fsm->set_value(VectorXd::Ones(1) * post_left_right_fsm_states_.at(fsm_idx));
-  } else {
-    fsm->set_value(VectorXd::Ones(1) * left_right_stance_fsm_states_.at(fsm_idx));
-  }
-}
-
 
 }

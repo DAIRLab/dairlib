@@ -60,9 +60,9 @@ contact_point_pos: 0.5
 
 # Swing foot trajectory
 max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.18
+footstep_offset: 0.25
 center_line_offset: 0.04
-mid_foot_height: 0.18
+mid_foot_height: 0.17
 final_foot_height: 0.02
 final_foot_velocity_z: 0.9
 
@@ -84,11 +84,11 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    100]
+      0,    0,    50]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     6]
+      0,    0,     2]
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
@@ -122,12 +122,12 @@ SwingFootW:
     0,    0,     4]
 SwingFootKp:
   [ 220,  0,     0,
-    0,   180,    0,
-    0,    0,    180]
+    0,   200,    0,
+    0,    0,   180]
 SwingFootKd:
   [4,  0,  0,
-   0,  3.5,  0,
-   0,  0,  3.5]
+   0,  4,  0,
+   0,  0,  4]
 
 AlipKalmanQ:
   [.001, .001, .01, .01]

@@ -50,13 +50,6 @@ class AlipOneStepFootstepController : public drake::systems::LeafSystem<double> 
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
-  void CopyFsmOutput(const drake::systems::Context<double>& context,
-                     drake::systems::BasicVector<double>* fsm) const;
-
-  void CopyPrevSwitchingTimeOutput(
-      const drake::systems::Context<double> &context,
-      drake::systems::BasicVector<double>* t_prev_out) const;
-
   void CalcFootStepAndStanceFootHeight(
       const Eigen::Vector3d& stance_foot_pos_yaw_frame,
       const Eigen::Vector3d& com_pos_yaw_frame,
@@ -66,18 +59,6 @@ class AlipOneStepFootstepController : public drake::systems::LeafSystem<double> 
       const double end_time_of_this_interval,
       int fsm_state,
       Eigen::Vector2d* x_fs) const;
-
-  // FSM helper functions
-  int curr_fsm(int fsm_idx) const {
-    return left_right_stance_fsm_states_.at(fsm_idx);
-  }
-  int next_fsm(int fsm_idx) const {
-    int next= fsm_idx + 1;
-    if (next >= left_right_stance_fsm_states_.size()) {
-      return curr_fsm(0);
-    }
-    return curr_fsm(next);
-  }
 
   // drake input ports
   drake::systems::InputPortIndex state_input_port_;

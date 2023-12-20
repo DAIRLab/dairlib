@@ -2,9 +2,9 @@ controller_frequency: 1000
 
 # OSC gains
 w_input: 0.0000
-w_input_reg: 0.000001
-w_accel: 0.00000001
-w_lambda: 0.00000001
+w_input_reg: 0.01
+w_accel: 0.00001
+w_lambda: 0.00001
 w_soft_constraint: 80
 impact_threshold: 0.025
 impact_tau: 0.005
@@ -62,9 +62,9 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.18
 center_line_offset: 0.04
-mid_foot_height: 0.17
+mid_foot_height: 0.18
 final_foot_height: 0.02
-final_foot_velocity_z: -.1
+final_foot_velocity_z: 0.9
 
 # LIPM trajectory
 lipm_height: 0.85
@@ -84,19 +84,19 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    50]
+      0,    0,    100]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     2.5]
+      0,    0,     6]
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [200,      0,    0,
-    0,    200,    0,
-    0,      0,    0]
+  [200,    0,    0,
+   0,    200,    0,
+   0,      0,    0]
 PelvisBalanceKd:
   [   10,     0,    0,
       0,    10,    0,
@@ -121,13 +121,13 @@ SwingFootW:
     0,    4,     0,
     0,    0,     4]
 SwingFootKp:
-  [ 150,    0,     0,
-    0,  150,     0,
-    0,    0,   200]
+  [ 220,  0,     0,
+    0,   180,    0,
+    0,    0,    180]
 SwingFootKd:
-  [   1,    0,     0,
-      0,    1,     0,
-      0,    0,     1]
+  [4,  0,  0,
+   0,  3.5,  0,
+   0,  0,  3.5]
 
 AlipKalmanQ:
   [.001, .001, .01, .01]

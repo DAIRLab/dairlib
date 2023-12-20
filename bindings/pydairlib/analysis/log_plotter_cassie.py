@@ -5,10 +5,10 @@ import code
 import numpy as np
 
 import dairlib
-from process_lcm_log import get_log_data
-from cassie_plot_config import CassiePlotConfig
-import cassie_plotting_utils as cassie_plots
-import mbp_plotting_utils as mbp_plots
+from pydairlib.analysis.process_lcm_log import get_log_data
+from pydairlib.analysis.cassie_plot_config import CassiePlotConfig
+import pydairlib.analysis.cassie_plotting_utils as cassie_plots
+import pydairlib.analysis.mbp_plotting_utils as mbp_plots
 from pydairlib.common.plot_styler import PlotStyler
 
 

@@ -262,18 +262,6 @@ int DoMain(int argc, char* argv[]) {
   double right_support_duration = gains_mpc.ss_time;
   double double_support_duration = gains_mpc.ds_time;
 
-  vector<int> fsm_states;
-  vector<double> state_durations;
-  if (FLAGS_is_two_phase) {
-    fsm_states = {left_stance_state, right_stance_state};
-    state_durations = {left_support_duration, right_support_duration};
-  } else {
-    fsm_states = {left_stance_state, post_left_double_support_state,
-                  right_stance_state, post_right_double_support_state};
-    state_durations = {left_support_duration, double_support_duration,
-                       right_support_duration, double_support_duration};
-  }
-
   auto fsm = builder.AddSystem<FsmReceiver>(plant_w_spr);
   builder.Connect(mpc_receiver->get_output_port_fsm(),
                   fsm->get_input_port_fsm_info());
@@ -529,7 +517,7 @@ int DoMain(int argc, char* argv[]) {
       "alip_com_traj", gains.K_p_com, gains.K_d_com,
       gains.W_com, plant_w_spr, plant_wo_spr);
   center_of_mass_traj->SetViewFrame(pelvis_view_frame);
-  
+
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj->AddFiniteStateToTrack(-1);
   osc->AddTrackingData(std::move(center_of_mass_traj));

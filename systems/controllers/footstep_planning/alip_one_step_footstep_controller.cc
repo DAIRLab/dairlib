@@ -74,8 +74,8 @@ AlipOneStepFootstepController::AlipOneStepFootstepController(
   next_impact_time_output_port_ = DeclareStateOutputPort(
       "t_next", next_impact_time_state_idx_
     ).get_index();
-  prev_impact_time_output_port_ = DeclareStateOutputPort(
-      "t_prev", prev_impact_time_state_idx_
+  prev_impact_time_output_port_ = DeclareVectorOutputPort(
+      "t_prev", 1, &AlipOneStepFootstepController::CopyPrevSwitchingTimeOutput
     ).get_index();
   footstep_target_output_port_ = DeclareStateOutputPort(
       "p_SW", footstep_target_state_idx_
@@ -230,6 +230,20 @@ void AlipOneStepFootstepController::CalcFootStepAndStanceFootHeight(
 
   // get the footstep command in the stance frame
   *x_fs += alip_pred.head<2>();
+}
+
+void AlipOneStepFootstepController::CopyPrevSwitchingTimeOutput(
+    const Context<double> &context, BasicVector<double>* t_prev_out) const {
+  double t_prev =
+      context.get_discrete_state(prev_impact_time_state_idx_).get_value()(0);
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+
+  if (robot_output->get_timestamp() - t_prev < double_stance_duration_) {
+    t_prev_out->get_mutable_value()(0) = t_prev;
+  } else {
+    t_prev_out->get_mutable_value()(0) = t_prev + double_stance_duration_;
+  }
 }
 
 void AlipOneStepFootstepController::CopyFsmOutput(

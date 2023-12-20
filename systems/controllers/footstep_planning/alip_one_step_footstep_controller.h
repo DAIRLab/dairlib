@@ -53,6 +53,10 @@ class AlipOneStepFootstepController : public drake::systems::LeafSystem<double> 
   void CopyFsmOutput(const drake::systems::Context<double>& context,
                      drake::systems::BasicVector<double>* fsm) const;
 
+  void CopyPrevSwitchingTimeOutput(
+      const drake::systems::Context<double> &context,
+      drake::systems::BasicVector<double>* t_prev_out) const;
+
   void CalcFootStepAndStanceFootHeight(
       const Eigen::Vector3d& stance_foot_pos_yaw_frame,
       const Eigen::Vector3d& com_pos_yaw_frame,

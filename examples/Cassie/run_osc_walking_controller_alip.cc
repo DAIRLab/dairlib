@@ -200,14 +200,18 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::pair<const Vector3d, const Frame<double>&>> left_right_toe =
       {left_toe_mid, right_toe_mid};
 
+  std::vector<std::pair<const Vector3d, const Frame<double>&>> left_right_foot =
+      {left_toe_origin, right_toe_origin};
+
   auto foot_placement_controller =
       builder.AddSystem<systems::controllers::AlipOneStepFootstepController>(
           plant_w_spr, context_w_spr.get(), left_right_fsm_states,
           post_left_right_fsm_states, state_durations, double_support_duration,
           2 * gains.footstep_offset, left_right_toe);
+
   systems::controllers::SwingFootTrajectoryGeneratorParams swing_params{
       left_right_fsm_states,
-      left_right_toe,
+      left_right_foot,
       {post_left_double_support_state, post_right_double_support_state},
       gains.mid_foot_height,
       gains.final_foot_height,
@@ -394,7 +398,7 @@ int DoMain(int argc, char* argv[]) {
   stance_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_left");
   stance_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_right");
 
-  auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData> (
+  auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data.get(),
       stance_foot_data.get());
@@ -412,6 +416,8 @@ int DoMain(int argc, char* argv[]) {
       "alip_com_traj", gains.K_p_com, gains.K_d_com, gains.W_com,
       plant_w_spr, plant_w_spr
   );
+  center_of_mass_traj->SetViewFrame(pelvis_view_frame);
+
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj->AddFiniteStateToTrack(-1);
   osc->AddTrackingData(std::move(center_of_mass_traj));

@@ -130,9 +130,9 @@ cc_library(
     srcs = ["swing_foot_trajectory_generator.cc"],
     hdrs = ["swing_foot_trajectory_generator.h"],
     deps = [
+        ":alip_utils",
         "//common:polynomial_utils",
         "//multibody:utils",
-        "//systems/controllers:alip_traj_gen",
         "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",

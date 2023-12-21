@@ -25,7 +25,7 @@
 #include "systems/ros/ros_publisher_system.h"
 #include "systems/ros/robot_state_to_ros_pose.h"
 #include "systems/ros/multibody_plant_tf_broadcaster_system.h"
-#include "systems/perception/pointcloud/drake_to_ros_pointcloud.h"
+#include "systems/perception/pointcloud/drake_to_ros_point_cloud.h"
 
 void SigintHandler(int sig) {
   ros::shutdown();
@@ -54,7 +54,7 @@ void SigintHandler(int sig) {
 namespace dairlib {
 
 #ifdef DAIR_ROS_ON
-using camera::DrakeToRosPointCloud;
+using perception::DrakeToRosPointCloud;
 #endif
 
 using systems::SubvectorPassThrough;

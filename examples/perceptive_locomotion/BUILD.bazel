@@ -5,6 +5,12 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "elevation_mapping",
     srcs = ["elevation_mapping.cc"],
+    local_defines = select(
+            {
+                "//tools/workspace/ros:dair_ros_off": [],
+                "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+            },
+        ),
     deps = [
         "//examples/Cassie:cassie_utils",
         "//lcmtypes:lcmt_robot",
@@ -18,7 +24,15 @@ cc_binary(
         "//systems/perception:perceptive_locomotion_preprocessor",
         "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
         "@gflags",
-    ],
+    ] + select(
+       {
+           "//tools/workspace/ros:dair_ros_on": [
+               "//systems/ros:dairlib_ros",
+               "//systems/perception/pointcloud:ros_point_cloud2_receiver"
+           ],
+           "//tools/workspace/ros:dair_ros_off": [],
+       },
+    ),
 )
 
 cc_binary(

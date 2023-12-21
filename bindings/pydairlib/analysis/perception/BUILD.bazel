@@ -33,7 +33,7 @@ py_binary(
     tags = ["ros"],
     deps = [
         "//bindings/pydairlib/common:plot_styler",
-        "//bindings/pydairlib/geometry:convex_foothold_py",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/geometry:polygon_utils_py",
         "@drake//bindings/pydrake",
     ],

@@ -36,26 +36,33 @@ void DrakeToRosPointCloud::CopyInputToPCL(
   modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
   modifier.resize(input_cloud.size());
 
-  const auto& rgbs = input_cloud.rgbs();
+
   const auto& xyzs = input_cloud.xyzs();
 
   sensor_msgs::PointCloud2Iterator<float> iter_x(*cloud, "x");
   sensor_msgs::PointCloud2Iterator<float> iter_y(*cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(*cloud, "z");
 
-  sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(*cloud, "r");
-  sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(*cloud, "g");
-  sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(*cloud, "b");
-
-  for (int i = 0; i < input_cloud.size(); i++,
-      ++iter_x, ++iter_y, ++iter_z, ++iter_r, ++iter_g, ++iter_b) {
+  for (int i = 0; i < input_cloud.size(); ++i, ++iter_x, ++iter_y, ++iter_z) {
     *iter_x = xyzs(0, i);
     *iter_y = xyzs(1, i);
     *iter_z = xyzs(2, i);
-    *iter_r = rgbs(0, i);
-    *iter_g = rgbs(1, i);
-    *iter_b = rgbs(2, i);
   }
+
+
+  if (input_cloud.has_rgbs()) {
+    const auto &rgbs = input_cloud.rgbs();
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(*cloud, "r");
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(*cloud, "g");
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(*cloud, "b");
+
+    for (int i = 0; i < input_cloud.size(); ++i, ++iter_r, ++iter_g, ++iter_b) {
+      *iter_r = rgbs(0, i);
+      *iter_g = rgbs(1, i);
+      *iter_b = rgbs(2, i);
+    }
+  }
+
   cloud->header.frame_id = frame_id_;
   cloud->header.stamp = ros::Time::now();
 }

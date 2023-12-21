@@ -103,8 +103,9 @@ int DoMain(int argc, char* argv[]) {
            CassieTransformFootToToeFrame()},
           {"tarsus_right", Vector3d(0.5, 0.2, 0.2),
            drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-      } // crop boxes
+      }
   };
+  processor_params.min_y = -0.27;
 
   auto elevation_mapping = builder.AddSystem<ElevationMappingSystem>(
       plant, plant_context.get(), mapping_params

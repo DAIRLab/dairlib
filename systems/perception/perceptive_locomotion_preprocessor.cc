@@ -17,7 +17,8 @@ PerceptiveLocomotionPreprocessor::PerceptiveLocomotionPreprocessor(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const perceptive_locomotion_preprocessor_params &params,
     const SensorProcessorBase::GeneralParameters& general_params) :
-    StructuredLightSensorProcessor(general_params), plant_(plant), context_(context) {
+    StructuredLightSensorProcessor(general_params),
+    plant_(plant), context_(context), params_(params) {
 
   // Read the sensor params into the super class
   this->readParameters(params.sensor_params_yaml_);
@@ -34,7 +35,7 @@ PerceptiveLocomotionPreprocessor::PerceptiveLocomotionPreprocessor(
     crop_box.setMin(min_extent);
     crop_box.setMax(max_extent);
     crop_box.setNegative(true); // remove points inside the box
-    crop_boxes_.insert(
+    robot_crop_boxes_.insert(
         {crop_box_params.body_name,
         {crop_box_params.pose_in_parent_body, crop_box}}
     );
@@ -55,12 +56,24 @@ bool PerceptiveLocomotionPreprocessor::filterPointCloudSensorType(
   );
   passThroughFilter.filter(*pointCloud);
 
+  passThroughFilter.setFilterFieldName("y");
+  passThroughFilter.setFilterLimits(params_.min_y, params_.max_y);
+  passThroughFilter.filter(*pointCloud);
+
+  passThroughFilter.setFilterFieldName("x");
+  passThroughFilter.setFilterLimits(params_.min_x, params_.max_x);
+  passThroughFilter.filter(*pointCloud);
+
+  passThroughFilter.setFilterFieldName("z");
+  passThroughFilter.setFilterLimits(params_.min_z, params_.max_z);
+  passThroughFilter.filter(*pointCloud);
+
   // X_WS
   RigidTransformd sensor_pose(
       RotationMatrixd(transformationSensorToMap_.linear()),
       transformationSensorToMap_.translation());
 
-  for (auto& [name, pose_and_crop_box]: crop_boxes_) {
+  for (auto& [name, pose_and_crop_box]: robot_crop_boxes_) {
     const auto parent_pose = plant_.EvalBodyPoseInWorld(
         *context_, plant_.GetBodyByName(name)
     );

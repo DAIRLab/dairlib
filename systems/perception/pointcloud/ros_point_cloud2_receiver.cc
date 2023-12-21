@@ -56,6 +56,7 @@ void RosPointCloud2Receiver<PointT>::CopyInputToPcl(
       context, 0)->template get_value<sensor_msgs::PointCloud2>();
   auto& pcl_cloud = *ptr;
   pcl_cloud = convertPointCloud2ToPCLDirectly<PointT>(cloud_msg);
+  pcl_cloud->header.stamp = context.get_time() * 1e6;
 }
 
 

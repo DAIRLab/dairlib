@@ -1,9 +1,9 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "lcm_to_pcl_pointcloud",
-    srcs = ["lcm_to_pcl_pointcloud.cc"],
-    hdrs = ["lcm_to_pcl_pointcloud.h"],
+    name = "lcm_to_pcl_point_cloud",
+    srcs = ["lcm_to_pcl_point_cloud.cc"],
+    hdrs = ["lcm_to_pcl_point_cloud.h"],
     deps = [
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
@@ -12,9 +12,9 @@ cc_library(
 )
 
 cc_library(
-    name = "drake_to_pcl_pointcloud",
-    srcs = ["drake_to_pcl_pointcloud.cc"],
-    hdrs = ["drake_to_pcl_pointcloud.h"],
+    name = "drake_to_pcl_point_cloud",
+    srcs = ["drake_to_pcl_point_cloud.cc"],
+    hdrs = ["drake_to_pcl_point_cloud.h"],
     deps = [
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
@@ -34,9 +34,9 @@ cc_library(
 )
 
 cc_library(
-    name = "drake_to_ros_pointcloud",
-    srcs = ["drake_to_ros_pointcloud.cc"],
-    hdrs = ["drake_to_ros_pointcloud.h"],
+    name = "drake_to_ros_point_cloud",
+    srcs = ["drake_to_ros_point_cloud.cc"],
+    hdrs = ["drake_to_ros_point_cloud.h"],
     tags = ["ros"],
     deps = [
         "@drake//:drake_shared_library",
@@ -51,4 +51,17 @@ cc_library(
     deps = [
         "@drake//:drake_shared_library",
     ],
+)
+
+
+cc_library(
+    name = "ros_point_cloud2_receiver",
+    srcs = ["ros_point_cloud2_receiver.cc"],
+    hdrs = ["ros_point_cloud2_receiver.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
+        "@pcl//:common",
+        "@ros",
+    ]
 )

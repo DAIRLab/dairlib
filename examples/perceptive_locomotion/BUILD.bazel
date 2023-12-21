@@ -16,7 +16,7 @@ cc_binary(
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:grid_map_visualizer",
         "//systems/perception:perceptive_locomotion_preprocessor",
-        "//systems/perception/pointcloud:lcm_to_pcl_pointcloud",
+        "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
         "@gflags",
     ],
 )
@@ -149,7 +149,7 @@ cc_binary(
     ] + select(
         {
             "//tools/workspace/ros:dair_ros_on": [
-                "//systems/perception/pointcloud:drake_to_ros_pointcloud",
+                "//systems/perception/pointcloud:drake_to_ros_point_cloud",
                 "//systems/ros:dairlib_ros",
             ],
             "//tools/workspace/ros:dair_ros_off": [],

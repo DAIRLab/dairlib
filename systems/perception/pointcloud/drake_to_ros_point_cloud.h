@@ -4,7 +4,7 @@
 #include "sensor_msgs/PointCloud2.h"
 
 namespace dairlib {
-namespace camera {
+namespace perception {
 
 class DrakeToRosPointCloud : public drake::systems::LeafSystem<double> {
  public:

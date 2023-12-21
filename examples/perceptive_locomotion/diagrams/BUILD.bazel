@@ -67,7 +67,7 @@ cc_library(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/perception:elevation_mapping_system",
-        "//systems/perception/pointcloud:drake_to_pcl_pointcloud",
+        "//systems/perception/pointcloud:drake_to_pcl_point_cloud",
         "//systems/perception/pointcloud:voxel_grid_filter",
         "//systems/primitives",
         "@drake//:drake_shared_library",

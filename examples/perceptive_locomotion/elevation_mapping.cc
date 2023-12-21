@@ -10,7 +10,7 @@
 #include "systems/perception/grid_map_visualizer.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
-#include "systems/perception/pointcloud/lcm_to_pcl_pointcloud.h"
+#include "systems/perception/pointcloud/lcm_to_pcl_point_cloud.h"
 #include "systems/perception/camera_utils.h"
 #include "systems/plant_visualizer.h"
 #include "systems/system_utils.h"

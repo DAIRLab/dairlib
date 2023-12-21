@@ -1,7 +1,7 @@
 #include "perception_module_diagram.h"
 
 // dairlib
-#include "systems/perception/pointcloud/drake_to_pcl_pointcloud.h"
+#include "systems/perception/pointcloud/drake_to_pcl_point_cloud.h"
 #include "systems/perception/pointcloud/voxel_grid_filter.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"

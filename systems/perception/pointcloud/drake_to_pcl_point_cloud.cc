@@ -1,4 +1,4 @@
-#include "drake_to_pcl_pointcloud.h"
+#include "drake_to_pcl_point_cloud.h"
 #include "elevation_mapping/PointXYZRGBConfidenceRatio.hpp"
 #include "pcl/filters/filter.h"
 #include "pcl/filters/passthrough.h"

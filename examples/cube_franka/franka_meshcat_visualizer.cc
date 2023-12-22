@@ -176,8 +176,31 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(sample_trajectory_sub_actor->get_output_port(),
                   sample_end_effector_pose_drawer->get_input_port_trajectory());
 
+  // Subscribe to the sample locations.
+  // TODO: Figure out if the argument should be 1 or num_samples.
+  // If num_samples, then figure out how to read.
+//   std::cout<<"Here 1"<<std::endl;
+
+  auto sample_locations_sub_object = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          "SAMPLE_LOCATIONS_CHANNEL", lcm));
+//   std::cout<<"Here 3"<<std::endl;
+
+  auto sample_locations_drawer =
+      builder.AddSystem<systems::LcmPoseDrawer>(
+          meshcat, FindResourceOrThrow("examples/cube_franka/robot_properties_fingers/urdf/sample_spheres.urdf"), "sample_locations",
+          "sample_orientations", 1, "sample_locations"); 
+//   std::cout<<"Here 2"<<std::endl;
+
+
+  builder.Connect(sample_locations_sub_object->get_output_port(),
+                  sample_locations_drawer->get_input_port_trajectory());
+//   std::cout<<"Here 4"<<std::endl;
+
+
 
   auto diagram = builder.Build();
+  DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/meshcat_diagram_visualizer");
   auto context = diagram->CreateDefaultContext();
   auto& state_sub_context = diagram->GetMutableSubsystemContext(
       *state_sub, context.get());

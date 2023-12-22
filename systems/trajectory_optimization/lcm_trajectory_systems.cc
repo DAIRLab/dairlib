@@ -186,15 +186,19 @@ LcmPoseDrawer::LcmPoseDrawer(
       orientation_trajectory_name_(orientation_trajectory_name),
       N_(num_poses){
   this->set_name("/poses/" + model_file);
+  std::cout<<"name"<<translation_trajectory_name<<std::endl;
+  std::cout<<"\tIN LCM POSE DRAWER"<<std::endl;
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
       model_file, N_, 1.0 * VectorXd::Ones(N_), "", meshcat, name);
+  
+  
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
-
+  std::cout<<"\tREACHED HERE"<<std::endl;
   DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
 }
 
@@ -214,6 +218,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
 
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
+  std::cout<<"IN DRAW TRAJECTORY"<<std::endl;
   auto translation_trajectory = PiecewisePolynomial<double>::CubicHermite(
       lcm_translation_traj.time_vector,
       lcm_translation_traj.datapoints.topRows(3),

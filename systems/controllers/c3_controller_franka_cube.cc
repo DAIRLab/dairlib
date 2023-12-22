@@ -200,11 +200,13 @@ C3Controller_franka::C3Controller_franka(
   // auto dummy_system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
   //     plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
   //     num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
+
   // solvers::LCS dummy_lcs = dummy_system_scaling_pair.first;
   // candidate_lcs_objects_ = std::vector<solvers::LCS>(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos));
   // for (int i = 0; i < std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos); ++i) {
-  //   candidate_lcs_objects_.push_back(dummy_lcs);
+  //   candidate_lcs_objects_.at(i) = dummy_lcs;
   // }
+  std::cout<<"candidate_lcs_objects_ size: "<<candidate_lcs_objects_.size()<<std::endl;
 
   int n_q_ = plant_.num_positions();
   int n_v_ = plant_.num_velocities();
@@ -229,8 +231,8 @@ C3Controller_franka::C3Controller_franka(
                                       &C3Controller_franka::OutputC3BestSampleSolution)
           .get_index();
 
-  // sample_locations_port_ =
-  //     this->DeclareVectorOutputPort("sample_locations", TimestampedVector<double>(3*(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos))),
+  // _port_ =
+  //     this->DeclareVectorOutputPort("", TimestampedVector<double>(3*(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos))),
   //                                     &C3Controller_franka::OutputSampleLocations)
   //         .get_index();
 
@@ -574,6 +576,7 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   // NOTE:  These vectors are initialized as empty since assigning a particular index in a vector of LCS objects is not allowed.
   // Items are appended to the vectors in the below for loop.  Be careful about possible memory issues as a result.
   for (int i = 0; i < num_samples; i++) {
+    // std::cout<<"REACHED HERE "<<i<<std::endl;
     Eigen::VectorXd candidate_state;
 
     if(i == CURRENT_LOCATION_INDEX){
@@ -631,8 +634,13 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
                                                                 // solve errors frequently in the future.
 
     // Store the candidate states and LCS objects.
-    candidate_states_[i] = candidate_state;
-    candidate_lcs_objects_.at(i) = test_lcs;
+    candidate_states_.at(i) = candidate_state;
+    std::cout<<"candidate states at assignment "<<i<<" = "<<candidate_states_[i]<<std::endl;
+    // candidate_lcs_objects_.at(i) = test_lcs;
+    candidate_lcs_objects_.push_back(test_lcs);
+  }
+  for(int i = 0; i<num_samples; i++){
+      std::cout<<"candidate states after assignment "<<i<<" = "<<candidate_states_[i]<<std::endl;
   }
 
   // Instantiate variables before loop; they get assigned values inside loop.
@@ -1047,6 +1055,9 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
   state_contact_desired->SetDataVector(st_desired);
   state_contact_desired->set_timestamp(timestamp);
 
+  // Clearing the candidate lcs objects.
+  // candidate_lcs_objects_.clear();
+
   // Update moving average filter and prev variables.
   if (moving_average_.size() < dt_filter_length_){
     moving_average_.push_back(timestamp - prev_timestamp_);
@@ -1088,23 +1099,29 @@ void C3Controller_franka::OutputC3BestSampleSolution(
 
 void C3Controller_franka::OutputSampleLocations(
     const drake::systems::Context<double>& context,
-    TimestampedVector<double>* output_traj) const {
-
+    dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+  // std::cout<<"HERE 1"<<std::endl;
   int num_samples = std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos);
+  // std::cout<<"num_samples ="<<num_samples<<std::endl;
   MatrixXd sample_locations = MatrixXd::Zero(3, num_samples);
+  // std::cout<<"sample matrix = "<<sample_locations.col(i)<<std::endl;
+
   for (int i = 0; i < num_samples; i++){
     sample_locations.col(i) = candidate_states_[i].head(3);
+    // std::cout<<"\tsample matrix inside loop = "<<sample_locations.col(i)<<std::endl;
+    // std::cout<<"\tcandidate states in loop = "<<candidate_states_[i].head(3)<<std::endl;
   }
-
+  // std::cout<<"HERE IN FUNCTIONS"<<std::endl;
   LcmTrajectory::Trajectory sample_locations_traj;
-  sample_locations_traj.traj_name = "sample_positions";
+  sample_locations_traj.traj_name = "sample_locations";
   sample_locations_traj.datatypes = std::vector<std::string>(sample_locations.rows(), "double");
   sample_locations_traj.datapoints = sample_locations;
-  LcmTrajectory lcm_traj({sample_locations_traj}, {"sample_positions"}, "sample_positions",
-                         "sample_positions", false);
+  LcmTrajectory lcm_traj({sample_locations_traj}, {"sample_locations_2"}, "sample_locations_3",
+                         "sample_locations_4", false);
 
-  sample_locations_traj->saved_traj = lcm_traj.GenerateLcmObject();
-  sample_locations_traj->utime = context.get_time() * 1e6;
+  output_traj->saved_traj = lcm_traj.GenerateLcmObject();
+  output_traj->utime = context.get_time() * 1e6;
+  // std::cout<<"Output trajectory "<<&output_traj<<std::endl;
 
   // Eigen::VectorXd sample_locations_vector = Eigen::VectorXd::Zero(3*num_samples);
   // for (int i = 0; i < num_samples; i++){

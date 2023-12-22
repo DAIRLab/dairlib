@@ -93,7 +93,7 @@ int do_main(int argc, char* argv[]) {
   // state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_visualizer");
+  DrawAndSaveDiagramGraph(*diagram, "examples/cube_franka/diagram_visualizer");
 
   auto context = diagram->CreateDefaultContext();
 

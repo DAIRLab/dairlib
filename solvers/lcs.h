@@ -31,6 +31,11 @@ class LCS {
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c, const int& N);
 
+  /// Copy constructor
+  LCS(const LCS& other);
+  /// Copy assignment operator 
+  LCS& operator=(const LCS&);
+
   /// Simulate the system for one-step
   /// @param x_init Initial x value
   /// @param input Input value
@@ -40,15 +45,15 @@ class LCS {
   void SetScaling(double scaling);
 
  public:
-  const std::vector<Eigen::MatrixXd> A_;
-  const std::vector<Eigen::MatrixXd> B_;
-  const std::vector<Eigen::MatrixXd> D_;
-  const std::vector<Eigen::VectorXd> d_;
-  const std::vector<Eigen::MatrixXd> E_;
-  const std::vector<Eigen::MatrixXd> F_;
-  const std::vector<Eigen::MatrixXd> H_;
-  const std::vector<Eigen::VectorXd> c_;
-  const int N_;
+  std::vector<Eigen::MatrixXd> A_;
+  std::vector<Eigen::MatrixXd> B_;
+  std::vector<Eigen::MatrixXd> D_;
+  std::vector<Eigen::VectorXd> d_;
+  std::vector<Eigen::MatrixXd> E_;
+  std::vector<Eigen::MatrixXd> F_;
+  std::vector<Eigen::MatrixXd> H_;
+  std::vector<Eigen::VectorXd> c_;
+  int N_;
 
  private:
   mutable double scaling_ = 0.000646507;

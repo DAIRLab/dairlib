@@ -197,12 +197,12 @@ C3Controller_franka::C3Controller_franka(
     candidate_states_[i] = Eigen::VectorXd::Zero(n_);
   }
 
-  // auto dummy_system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
-  //     plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
-  //     num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
+  auto dummy_system_scaling_pair = solvers::LCSFactoryConvex::LinearizePlantToLCS(
+      plant_f_, context_f_, plant_ad_f_, context_ad_f_, contact_pairs_,
+      num_friction_directions_, mu_, param_.planning_timestep, param_.horizon_length);
 
-  // solvers::LCS dummy_lcs = dummy_system_scaling_pair.first;
-  // candidate_lcs_objects_ = std::vector<solvers::LCS>(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos));
+  solvers::LCS dummy_lcs = dummy_system_scaling_pair.first;
+  candidate_lcs_objects_ = std::vector<solvers::LCS>(std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos), dummy_lcs);
   // for (int i = 0; i < std::max(param_.num_additional_samples_c3, param_.num_additional_samples_repos); ++i) {
   //   candidate_lcs_objects_.at(i) = dummy_lcs;
   // }
@@ -636,8 +636,8 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     // Store the candidate states and LCS objects.
     candidate_states_.at(i) = candidate_state;
     std::cout<<"candidate states at assignment "<<i<<" = "<<candidate_states_[i]<<std::endl;
-    // candidate_lcs_objects_.at(i) = test_lcs;
-    candidate_lcs_objects_.push_back(test_lcs);
+    candidate_lcs_objects_.at(i) = test_lcs;
+    // candidate_lcs_objects_.push_back(test_lcs);
   }
   for(int i = 0; i<num_samples; i++){
       std::cout<<"candidate states after assignment "<<i<<" = "<<candidate_states_[i]<<std::endl;

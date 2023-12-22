@@ -28,6 +28,49 @@ LCS::LCS(const MatrixXd& A, const MatrixXd& B, const MatrixXd& D,
           vector<MatrixXd>(N, E), vector<MatrixXd>(N, F),
           vector<MatrixXd>(N, H), vector<VectorXd>(N, c)) {}
 
+LCS::LCS(const LCS& lcs)
+    : N_(lcs.N_) {
+  A_.resize(N_);
+  B_.resize(N_);
+  D_.resize(N_);
+  d_.resize(N_);
+  E_.resize(N_);
+  F_.resize(N_);
+  H_.resize(N_);
+  c_.resize(N_);
+  for (int i = 0; i < lcs.N_; ++i) {
+    A_.at(i) = lcs.A_.at(i);
+    B_.at(i) = lcs.B_.at(i);
+    D_.at(i) = lcs.D_.at(i);
+    d_.at(i) = lcs.d_.at(i);
+    E_.at(i) = lcs.E_.at(i);
+    F_.at(i) = lcs.F_.at(i);
+    H_.at(i) = lcs.H_.at(i);
+    c_.at(i) = lcs.c_.at(i);
+  }
+}
+
+LCS& LCS::operator=(const LCS& lcs) {
+  N_ = lcs.N_;
+  A_.resize(N_);
+  B_.resize(N_);
+  D_.resize(N_);
+  d_.resize(N_);
+  E_.resize(N_);
+  F_.resize(N_);
+  H_.resize(N_);
+  c_.resize(N_);
+  for (int i = 0; i < lcs.N_; ++i) {
+    A_.at(i) = lcs.A_.at(i);
+    B_.at(i) = lcs.B_.at(i);
+    D_.at(i) = lcs.D_.at(i);
+    d_.at(i) = lcs.d_.at(i);
+    E_.at(i) = lcs.E_.at(i);
+    F_.at(i) = lcs.F_.at(i);
+    H_.at(i) = lcs.H_.at(i);
+    c_.at(i) = lcs.c_.at(i);
+  }
+}
 VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) const {
   VectorXd x_final;
 

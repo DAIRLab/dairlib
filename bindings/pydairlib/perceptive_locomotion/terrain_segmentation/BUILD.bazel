@@ -1,0 +1,56 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_binary(
+    name = "terrain_segmentation_test",
+    srcs = ["terrain_segmentation_test.py"],
+    deps = [":terrain_segmentation_system"],
+)
+
+py_library(
+    name = "terrain_segmentation_system",
+    srcs = ["terrain_segmentation_system.py"],
+    deps = [
+        ":vision_utils",
+        "//bindings/grid_map",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "vision_utils",
+    srcs = ["vision_utils.py"],
+    deps = [],
+)
+
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = []
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "terrain_segmentation",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

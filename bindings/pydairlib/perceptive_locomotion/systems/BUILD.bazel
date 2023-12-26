@@ -53,7 +53,6 @@ py_binary(
         ":alip_lqr",
         ":cassie_footstep_controller_environment",
         "//bindings/grid_map",
-        "//bindings/pydairlib/perceptive_locomotion:vision_utils",
     ],
 )
 

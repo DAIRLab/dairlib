@@ -27,14 +27,10 @@ from pydairlib.perceptive_locomotion.systems. \
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 import numpy as np
-from grid_map import GridMap
-from pydairlib.perceptive_locomotion import vision_utils
 
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
-    sim_params.simulate_perception = True
     sim_params.visualize = True
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
@@ -89,20 +85,13 @@ def main():
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
-    sim_context = sim_env.GetMyMutableContextFromRoot(context)
-
     sim_env.initialize_state(context, diagram)
 
     simulator.reset_context(context)
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
-    t_next = 0.05
-    while t_next < np.inf:
-        simulator.AdvanceTo(t_next)
-        elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
-        elevation_map.convertToDefaultStartIndex()
-        vision_utils.get_safe_terrain(elevation_map['elevation'], elevation_map.getResolution())
-        t_next += 0.05
+
+    simulator.AdvanceTo(np.inf)
 
 
 if __name__ == "__main__":

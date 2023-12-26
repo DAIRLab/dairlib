@@ -53,15 +53,15 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "ros_point_cloud2_receiver",
     srcs = ["ros_point_cloud2_receiver.cc"],
     hdrs = ["ros_point_cloud2_receiver.h"],
+    tags = ["ros"],
     deps = [
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:point_xyzrgb_confidence_ratio",
         "@pcl//:common",
         "@ros",
-    ]
+    ],
 )

@@ -42,8 +42,8 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
   server_address_.sin_family = AF_INET;  // IPv4
   server_address_.sin_port = htons(port);
 
-  // Declare a forced publish so that any time Publish(.) is called on this
-  // system (or a Diagram containing it), a message is emitted.
+  // Declare a forced publish so that any time ForcedPublish(.) is called on
+  // this system (or a Diagram containing it), a message is emitted.
   if (publish_triggers.find(TriggerType::kForced) != publish_triggers.end()) {
     this->DeclareForcedPublishEvent(
       &CassieUDPPublisher::PublishInputAsUDPMessage);
@@ -64,12 +64,9 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
     DRAKE_DEMAND(publish_period == 0);
   }
   if (publish_triggers.find(TriggerType::kPerStep) != publish_triggers.end()) {
-    this->DeclarePerStepEvent(
-        drake::systems::PublishEvent<double>([this](
-            const drake::systems::Context<double>& context,
-            const drake::systems::PublishEvent<double>&) {
-          this->PublishInputAsUDPMessage(context);
-        }));
+    this->DeclarePerStepPublishEvent(
+        &CassieUDPPublisher::PublishInputAsUDPMessage
+    );
   }
 }
 

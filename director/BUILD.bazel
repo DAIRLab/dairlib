@@ -9,7 +9,6 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
         "@drake//tools:drake_visualizer_py",
         "@drake//tools:meldis",
-        "@pydrake_pegged",
     ],
 )
 

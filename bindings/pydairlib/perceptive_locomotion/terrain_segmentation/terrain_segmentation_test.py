@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from copy import deepcopy
 import matplotlib.pyplot as plt
@@ -16,21 +18,28 @@ def main():
     imdata = np.zeros((terrain[0].getSize()))
 
     # Create a figure and axis
-    fig, ax = plt.subplots()
+    fig, (ax1, ax2) = plt.subplots(1,2)
 
     # Display the initial frame using imshow
-    img = ax.imshow(imdata, interpolation='none', aspect='auto', vmin=-1, vmax=1)
+    img1 = ax1.imshow(imdata, interpolation='none', aspect=1, vmin=0, vmax=1)
+    img2 = ax2.imshow(imdata, interpolation='none', aspect=1, vmin=-0.1, vmax=0.4)
 
     def anim_callback(i):
         terrain_segmentation.get_input_port().FixValue(context, terrain[i])
+        tic = time.perf_counter()
         terrain_segmentation.CalcForcedUnrestrictedUpdate(context, context.get_mutable_state())
+        toc = time.perf_counter()
+        print(f'processing took: {toc-tic} sec')
         segment = terrain_segmentation.get_output_port().Eval(context)
-        segment = segment['safe_probabilities']
-        img.set_array(segment)
-        return [img]
+        segment = segment['segmentation']
+        img1.set_array(segment)
+
+        terrain[i].convertToDefaultStartIndex()
+        img2.set_array(terrain[i]['elevation'])
+        return [img1, img2]
 
     animation = FuncAnimation(
-        fig, anim_callback, frames=range(len(terrain)), blit=True, interval=100
+        fig, anim_callback, frames=range(len(terrain)), blit=True, interval=33
     )
 
     # animation.save('../test_anim.gif', fps=30)

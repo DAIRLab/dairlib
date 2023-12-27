@@ -6,7 +6,8 @@ from pydrake.systems.all import (
     EventStatus
 )
 
-from grid_map import GridMap
+from grid_map import GridMap, InpaintWithMinimumValues
+
 from scipy.ndimage import sobel, gaussian_filter
 from scipy.signal import convolve2d
 import numpy as np
@@ -38,7 +39,8 @@ class TerrainSegmentationSystem(LeafSystem):
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         elevation_map = self.get_input_port(self.input_port_grid_map).Eval(context)
         elevation_map.convertToDefaultStartIndex()
-        hmap = elevation_map['elevation']
+        InpaintWithMinimumValues(elevation_map, 'elevation', 'elevation_inpainted')
+        hmap = elevation_map['elevation_inpainted']
 
         segmented = state.get_mutable_abstract_state(self.segmentation_state_idx).get_value()
 

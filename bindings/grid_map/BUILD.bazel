@@ -16,6 +16,19 @@ load(
 PACKAGE_INFO = get_pybind_package_info("//bindings")
 
 pybind_py_library(
+    name = "grid_map_filters_py",
+    cc_deps = [
+        "//systems/perception/grid_map_filters:inpainting",
+    ],
+    cc_so_name = "grid_map_filters",
+    cc_srcs = ["grid_map_filters_py.cc"],
+    py_deps = [
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
     name = "grid_map_py",
     cc_deps = [
         "@drake//bindings/pydrake/common:value_pybind",
@@ -49,6 +62,7 @@ py_binary(
 PY_LIBRARIES = [
     ":module_py",
     ":grid_map_py",
+    ":grid_map_filters_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -18,11 +18,11 @@ def main():
     imdata = np.zeros((terrain[0].getSize()))
 
     # Create a figure and axis
-    fig, (ax1, ax2) = plt.subplots(1,2)
+    fig, (ax1, ax2) = plt.subplots(1, 2)
 
     # Display the initial frame using imshow
     img1 = ax1.imshow(imdata, interpolation='none', aspect=1, vmin=0, vmax=1)
-    img2 = ax2.imshow(imdata, interpolation='none', aspect=1, vmin=-0.1, vmax=0.4)
+    img2 = ax2.imshow(imdata, interpolation='none', aspect=1, vmin=-0.0, vmax=0.6)
 
     def anim_callback(i):
         terrain_segmentation.get_input_port().FixValue(context, terrain[i])
@@ -39,7 +39,7 @@ def main():
         return [img1, img2]
 
     animation = FuncAnimation(
-        fig, anim_callback, frames=range(len(terrain)), blit=True, interval=200
+        fig, anim_callback, frames=range(len(terrain)), blit=True, interval=20
     )
 
     # animation.save('../test_anim.gif', fps=30)

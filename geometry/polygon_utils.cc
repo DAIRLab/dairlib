@@ -3,6 +3,7 @@
 #include <memory>
 #include <chrono>
 #include <cmath>
+
 #include "polygon_utils.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/gurobi_solver.h"
@@ -16,16 +17,19 @@ using Eigen::VectorXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using drake::Vector1d;
-using convex_plane_decomposition_msgs::PlanarRegion;
-using convex_plane_decomposition_msgs::PlanarTerrain;
-using convex_plane_decomposition_msgs::Point2d;
-using convex_plane_decomposition_msgs::Polygon2d;
-using convex_plane_decomposition_msgs::PolygonWithHoles2d;
+
 using drake::geometry::optimization::VPolytope;
 using drake::geometry::optimization::HPolyhedron;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::OsqpSolver;
+
+#ifdef DAIR_ROS_ON
+using convex_plane_decomposition_msgs::PlanarRegion;
+using convex_plane_decomposition_msgs::PlanarTerrain;
+using convex_plane_decomposition_msgs::Point2d;
+using convex_plane_decomposition_msgs::Polygon2d;
+using convex_plane_decomposition_msgs::PolygonWithHoles2d;
 
 
 ConvexPolygon GetConvexHullOfPlanarRegion(
@@ -37,6 +41,157 @@ ConvexPolygon GetConvexHullOfPlanarRegion(
   tf2::fromMsg(foothold.plane_parameters, X_WP);
   return MakeFootholdFromConvexPolytope(convex_hull, X_WP);
 }
+
+ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
+    const PlanarRegion& foothold) {
+
+  MatrixXd verts = GetVerticesAsMatrix2Xd(
+      foothold.boundary.outer_boundary);
+  VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+
+  Eigen::Isometry3d X_WP;
+  tf2::fromMsg(foothold.plane_parameters, X_WP);
+
+  return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
+}
+
+std::vector<ConvexPolygon> DecomposeTerrain(const PlanarTerrain& terrain,
+                                             double concavity_threshold) {
+  std::vector<ConvexPolygon> all_footholds;
+  for (const auto& planar_region : terrain.planarRegions) {
+    auto regions = DecomposeRegion(planar_region, concavity_threshold);
+    all_footholds.insert(all_footholds.end(), regions.begin(), regions.end());
+  }
+  return all_footholds;
+}
+
+std::vector<ConvexPolygon> DecomposeRegion(const PlanarRegion& planar_region,
+                                            double concavity_threshold) {
+  std::unique_ptr<acd2d::IConcavityMeasure> measure =
+      std::make_unique<acd2d::HybridMeasurement1>();
+  acd2d::cd_2d cd;
+
+  auto planar_region_eigen =
+      GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(planar_region.boundary);
+  planar_region_eigen.first = CleanOutline(planar_region_eigen.first);
+
+  double area = PolygonArea(planar_region_eigen.first);
+  if (area < 0.1) {
+    return {};
+  }
+
+  bool fail_check = is_degenerate(planar_region_eigen.first);
+
+  acd2d::cd_polygon poly =
+      ValidateHoles(planar_region_eigen.first, planar_region_eigen.second) ?
+      MakeAcdPolygon(planar_region_eigen, cd.buf()) :
+      MakeAcdPolygon({planar_region_eigen.first, {}}, cd.buf());
+  cd.addPolygon(poly);
+
+  if (not fail_check) {
+    try {
+      cd.maybe_decomposeAll(concavity_threshold, measure.get());
+    } catch (const std::exception &e) {
+      fail_check = true;
+    }
+  }
+
+  fail_check = fail_check or cd.getDoneList().empty();
+
+  // If ACD or polygon validation fails,
+  // backup by getting one polygon for the whole region ignoring holes
+  if (fail_check) {
+    MatrixXd verts = GetVerticesAsMatrix2Xd(planar_region.boundary.outer_boundary);
+    VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+    Eigen::Isometry3d X_WP;
+    tf2::fromMsg(planar_region.plane_parameters, X_WP);
+    return {
+      MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+    };
+  }
+
+  std::vector<ConvexPolygon> footholds;
+  for (const auto& poly_out : cd.getDoneList()) {
+    // low probability that a triangle is a meaningful size
+    if (poly_out.front().getSize() > 3) {
+      MatrixXd verts = Acd2d2Eigen(poly_out.front());
+      if (PolygonArea(verts) > 0.1) {
+        VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+        Eigen::Isometry3d X_WP;
+        tf2::fromMsg(planar_region.plane_parameters, X_WP);
+        footholds.push_back(
+            MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+        );
+      }
+    }
+  }
+  return footholds;
+}
+
+MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
+  int n = polygon.points.size();
+  MatrixXd verts = MatrixXd::Zero(2, n);
+  for (int i = 0; i < n; i++) {
+    const auto &pt  = polygon.points.at(i);
+    verts.col(i)(0) = pt.x;
+    verts.col(i)(1) = pt.y;
+  }
+  return verts;
+}
+
+std::pair<MatrixXd, std::vector<MatrixXd>> GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(
+    const PolygonWithHoles2d &foothold) {
+  std::vector<MatrixXd> holes{};
+  for (const auto& hole: foothold.holes) {
+    holes.push_back(
+        GetVerticesAsMatrix2Xd(hole)
+    );
+  }
+  return {
+    GetVerticesAsMatrix2Xd(foothold.outer_boundary),
+    holes
+  };
+}
+
+double PolygonArea(const Polygon2d& polygon) {
+  // https://en.wikipedia.org/wiki/Shoelace_formula
+  double a_sum = 0;
+  int n = polygon.points.size();
+  for (int i = 0; i < n; i++) {
+    int im1 = i > 0 ? i - 1 : n-1; // i - 1, wrapped to the end of the polygon
+    int ip1 = i % n;               // i + 1, wrapped to the beginning
+    a_sum += polygon.points.at(i).x * (
+        polygon.points.at(ip1).y - polygon.points.at(im1).y
+    );
+  }
+  return 0.5 * a_sum;
+}
+
+acd2d::cd_poly MakeAcdPoly(
+    const Polygon2d& poly2d,
+    acd2d::cd_databuffer& buf, acd2d::cd_poly::POLYTYPE type) {
+  acd2d::cd_poly poly(type);
+  poly.beginPoly();
+  double prev_x = 1e6, prev_y = 1e6;
+  for(const auto& p : poly2d.points) {
+    double d = (prev_x - p.x) * (prev_x - p.x) + (prev_y - p.y) * (prev_y - p.y);
+    if (d > 1e-6) {
+      poly.addVertex(buf, p.x, p.y);
+      prev_x = p.x;
+      prev_y = p.y;
+    }
+  }
+  poly.endPoly();
+  return poly;
+}
+
+acd2d::cd_polygon MakeAcdPolygon(
+    const PolygonWithHoles2d& poly2d, acd2d::cd_databuffer& buf) {
+  return MakeAcdPolygon(
+      GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(poly2d), buf);
+}
+
+#endif
 
 ConvexPolygon MakeFootholdFromConvexPolytope(
     const VPolytope& poly2d, const Eigen::Isometry3d& plane_pose) {
@@ -64,22 +219,6 @@ ConvexPolygon MakeFootholdFromConvexPolytope(
     foothold.AddVertices(p2, p1);
   }
   return foothold;
-}
-
-
-HPolyhedron HPolyhedronFrom2dSortedConvexVPolytope(const VPolytope& poly_in) {
-  const auto& verts = poly_in.vertices();
-  DRAKE_DEMAND(verts.rows() == 2);
-  MatrixXd A = MatrixXd::Zero(verts.cols(), 2);
-  VectorXd b = VectorXd::Zero(verts.cols());
-  for (int i = 0; i < verts.cols(); i++) {
-    VectorXd v = verts.col((i + 1) % verts.cols()) - verts.col(i);
-    A(i, 0) = -v(1);
-    A(i, 1) = v(0);
-    A.row(i).normalize();
-    b.segment<1>(i) = A.row(i) * verts.col(i);
-  }
-  return HPolyhedron(A, b);
 }
 
 namespace {
@@ -281,34 +420,6 @@ namespace {
   }
 }
 
-void MaybeAddFootholdToSetFromRos(
-    ConvexPolygonSet& footholds, const PlanarRegion& foothold,
-    double minimum_area) {
-  Eigen::MatrixXd verts = GetVerticesAsMatrix2Xd(
-      foothold.boundary.outer_boundary);
-  VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-
-  if (convex_hull_v.CalcVolume() < minimum_area) { return; }
-
-  Eigen::Isometry3d X_WP;
-  tf2::fromMsg(foothold.plane_parameters, X_WP);
-  footholds.append(MakeFootholdFromInscribedConvexPolygon(
-      verts, convex_hull_v, X_WP));
-}
-
-ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
-    const PlanarRegion& foothold) {
-
-  MatrixXd verts = GetVerticesAsMatrix2Xd(
-      foothold.boundary.outer_boundary);
-  VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-
-  Eigen::Isometry3d X_WP;
-  tf2::fromMsg(foothold.plane_parameters, X_WP);
-
-  return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
-}
-
 ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
     const MatrixXd& verts,
     const drake::geometry::optimization::VPolytope& convex_hull_v,
@@ -331,78 +442,6 @@ ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
   return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
-std::vector<ConvexPolygon> DecomposeTerrain(const PlanarTerrain& terrain,
-                                             double concavity_threshold) {
-  std::vector<ConvexPolygon> all_footholds;
-  for (const auto& planar_region : terrain.planarRegions) {
-    auto regions = DecomposeRegion(planar_region, concavity_threshold);
-    all_footholds.insert(all_footholds.end(), regions.begin(), regions.end());
-  }
-  return all_footholds;
-}
-
-std::vector<ConvexPolygon> DecomposeRegion(const PlanarRegion& planar_region,
-                                            double concavity_threshold) {
-  std::unique_ptr<acd2d::IConcavityMeasure> measure =
-      std::make_unique<acd2d::HybridMeasurement1>();
-  acd2d::cd_2d cd;
-
-  auto planar_region_eigen =
-      GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(planar_region.boundary);
-  planar_region_eigen.first = CleanOutline(planar_region_eigen.first);
-
-  double area = PolygonArea(planar_region_eigen.first);
-  if (area < 0.1) {
-    return {};
-  }
-
-  bool fail_check = is_degenerate(planar_region_eigen.first);
-
-  acd2d::cd_polygon poly =
-      ValidateHoles(planar_region_eigen.first, planar_region_eigen.second) ?
-      MakeAcdPolygon(planar_region_eigen, cd.buf()) :
-      MakeAcdPolygon({planar_region_eigen.first, {}}, cd.buf());
-  cd.addPolygon(poly);
-
-  if (not fail_check) {
-    try {
-      cd.maybe_decomposeAll(concavity_threshold, measure.get());
-    } catch (const std::exception &e) {
-      fail_check = true;
-    }
-  }
-
-  fail_check = fail_check or cd.getDoneList().empty();
-
-  // If ACD or polygon validation fails,
-  // backup by getting one polygon for the whole region ignoring holes
-  if (fail_check) {
-    MatrixXd verts = GetVerticesAsMatrix2Xd(planar_region.boundary.outer_boundary);
-    VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-    Eigen::Isometry3d X_WP;
-    tf2::fromMsg(planar_region.plane_parameters, X_WP);
-    return {
-      MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
-    };
-  }
-
-  std::vector<ConvexPolygon> footholds;
-  for (const auto& poly_out : cd.getDoneList()) {
-    // low probability that a triangle is a meaningful size
-    if (poly_out.front().getSize() > 3) {
-      MatrixXd verts = Acd2d2Eigen(poly_out.front());
-      if (PolygonArea(verts) > 0.1) {
-        VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-        Eigen::Isometry3d X_WP;
-        tf2::fromMsg(planar_region.plane_parameters, X_WP);
-        footholds.push_back(
-            MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
-        );
-      }
-    }
-  }
-  return footholds;
-}
 
 std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>> planar_region) {
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
@@ -472,31 +511,6 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
   return footholds;
 }
 
-MatrixXd GetVerticesAsMatrix2Xd(const Polygon2d &polygon) {
-  int n = polygon.points.size();
-  MatrixXd verts = MatrixXd::Zero(2, n);
-  for (int i = 0; i < n; i++) {
-    const auto &pt  = polygon.points.at(i);
-    verts.col(i)(0) = pt.x;
-    verts.col(i)(1) = pt.y;
-  }
-  return verts;
-}
-
-std::pair<MatrixXd, std::vector<MatrixXd>> GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(
-    const PolygonWithHoles2d &foothold) {
-  std::vector<MatrixXd> holes{};
-  for (const auto& hole: foothold.holes) {
-    holes.push_back(
-        GetVerticesAsMatrix2Xd(hole)
-    );
-  }
-  return {
-    GetVerticesAsMatrix2Xd(foothold.outer_boundary),
-    holes
-  };
-}
-
 VectorXd centroid (const MatrixXd& verts) {
   DRAKE_DEMAND(verts.size() > 0);
   const int n = verts.cols();
@@ -526,30 +540,6 @@ acd2d::cd_poly MakeAcdPoly(
   }
   poly.endPoly();
   return poly;
-}
-
-acd2d::cd_poly MakeAcdPoly(
-    const Polygon2d& poly2d,
-    acd2d::cd_databuffer& buf, acd2d::cd_poly::POLYTYPE type) {
-  acd2d::cd_poly poly(type);
-  poly.beginPoly();
-  double prev_x = 1e6, prev_y = 1e6;
-  for(const auto& p : poly2d.points) {
-    double d = (prev_x - p.x) * (prev_x - p.x) + (prev_y - p.y) * (prev_y - p.y);
-    if (d > 1e-6) {
-      poly.addVertex(buf, p.x, p.y);
-      prev_x = p.x;
-      prev_y = p.y;
-    }
-  }
-  poly.endPoly();
-  return poly;
-}
-
-acd2d::cd_polygon MakeAcdPolygon(
-    const PolygonWithHoles2d& poly2d, acd2d::cd_databuffer& buf) {
-  return MakeAcdPolygon(
-      GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(poly2d), buf);
 }
 
 acd2d::cd_polygon MakeAcdPolygon(
@@ -646,20 +636,6 @@ double PolygonArea(const MatrixXd& verts) {
     Vector2d p = verts.col(i) - c;
     Vector2d q = verts.col((i+1) % n) - c;
     a_sum += p(0) * q(1) - p(1) * q(0);
-  }
-  return 0.5 * a_sum;
-}
-
-double PolygonArea(const Polygon2d& polygon) {
-  // https://en.wikipedia.org/wiki/Shoelace_formula
-  double a_sum = 0;
-  int n = polygon.points.size();
-  for (int i = 0; i < n; i++) {
-    int im1 = i > 0 ? i - 1 : n-1; // i - 1, wrapped to the end of the polygon
-    int ip1 = i % n;               // i + 1, wrapped to the beginning
-    a_sum += polygon.points.at(i).x * (
-        polygon.points.at(ip1).y - polygon.points.at(im1).y
-    );
   }
   return 0.5 * a_sum;
 }

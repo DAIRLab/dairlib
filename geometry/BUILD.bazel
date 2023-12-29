@@ -41,14 +41,19 @@ cc_library(
     name = "polygon_utils",
     srcs = ["polygon_utils.cc"],
     hdrs = ["polygon_utils.h"],
-    tags = ["ros"],
     deps = [
         ":convex_polygon",
         ":convex_polygon_set",
         "//solvers:fast_osqp_solver",
         "@acd2d",
-        "@ros-local",
-    ],
+    ] + select(
+        {
+            "//tools/workspace/ros:dair_ros_on": [
+                "@ros-local",
+            ],
+            "//tools/workspace/ros:dair_ros_off": [],
+        },
+    ),
 )
 
 cc_library(

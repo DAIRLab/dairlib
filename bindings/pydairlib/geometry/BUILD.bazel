@@ -24,7 +24,6 @@ pybind_py_library(
         ":module_py",
     ],
     py_imports = ["."],
-    tags = ["ros"],
 )
 
 pybind_py_library(
@@ -73,10 +72,8 @@ py_library(
 
 PY_LIBRARIES = [
     ":convex_polygon_py",
-] + select({
-    "//tools/workspace/ros:dair_ros_on": ["polygon_utils_py"],
-    "//tools/workspace/ros:dair_ros_off": [],
-})
+    ":polygon_utils_py",
+]
 
 # Package roll-up (for Bazel dependencies).
 py_library(

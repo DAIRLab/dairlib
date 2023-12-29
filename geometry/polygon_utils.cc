@@ -480,12 +480,14 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
     }
     cd.addPolygon(poly);
   }
+  std::cout << "registered " << cd.getTodoList().size() << " polygons" << std::endl;
   try {
     cd.maybe_decomposeAll(0.15, measure.get());
   } catch (const std::exception& e) {
     std::cout << e.what();
     return {};
   }
+  std::cout << "decomposed into " << cd.getDoneList().size() << " polygons" << std::endl;
 
   std::vector<ConvexPolygon> footholds;
   auto mid = std::chrono::high_resolution_clock::now();

@@ -14,7 +14,10 @@ load(
 py_binary(
     name = "terrain_segmentation_test",
     srcs = ["terrain_segmentation_test.py"],
-    deps = [":terrain_segmentation_system"],
+    deps = [
+        ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
+    ],
 )
 
 py_library(
@@ -23,6 +26,17 @@ py_library(
     deps = [
         ":vision_utils",
         "//bindings/grid_map",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "convex_terrain_decomposition_system",
+    srcs = ["convex_terrain_decomposition_system.py"],
+    deps = [
+        ":vision_utils",
+        "//bindings/grid_map",
+        "//bindings/pydairlib/geometry",
         "@drake//bindings/pydrake",
     ],
 )
@@ -46,7 +60,11 @@ py_library(
     ],
 )
 
-PY_LIBRARIES = []
+PY_LIBRARIES = [
+    ":terrain_segmentation_system",
+    ":convex_terrain_decomposition_system",
+    ":vision_utils",
+]
 
 # Package roll-up (for Bazel dependencies).
 py_library(

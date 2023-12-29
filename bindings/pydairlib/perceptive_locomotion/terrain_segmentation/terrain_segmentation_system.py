@@ -13,7 +13,8 @@ from scipy.signal import convolve2d
 import numpy as np
 import cv2
 
-from pydairlib.perceptive_locomotion.terrain_segmentation.vision_utils import edges
+from pydairlib.perceptive_locomotion.terrain_segmentation.\
+    vision_utils import edges
 
 
 class TerrainSegmentationSystem(LeafSystem):
@@ -40,17 +41,17 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         self.safety_hysteresis = 0.6
 
-    def get_raw_safety_score(self, elevation_map, resolution):
+    def get_raw_safety_score(self, elevation: np.ndarray, resolution: float):
         # only use a small amount of blur for first order safety criterion
         blurred_narrow = gaussian_filter(
-            elevation_map / resolution, 1.0, truncate=3
+            elevation / resolution, 1.0, truncate=3
         )
         image_gradient_magnitude = edges(blurred_narrow)
         first_order_safety_score = np.exp(-0.25 * image_gradient_magnitude)
 
         # use a larger blur for second order safety criterion
         blurred_wide = gaussian_filter(
-            elevation_map / resolution, 2.0, truncate=3
+            elevation / resolution, 2.0, truncate=3
         )
         curvature = convolve2d(blurred_wide, self.laplacian_kernel, mode='same')
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
@@ -58,7 +59,6 @@ class TerrainSegmentationSystem(LeafSystem):
 
         # treat safety scores like independent probabilities
         return second_order_safety_score * first_order_safety_score
-
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing

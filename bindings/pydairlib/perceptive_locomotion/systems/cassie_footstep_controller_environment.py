@@ -9,6 +9,7 @@ from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.perceptive_locomotion.diagrams import (
     HikingSimDiagram,
     MpfcOscDiagram,
+    MpfcOscDiagramInputType,
     PerceptionModuleDiagram
 )
 
@@ -113,7 +114,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.controller_plant,
             params.osc_gains_yaml,
             params.mpfc_gains_yaml,
-            params.osqp_options_yaml
+            params.osqp_options_yaml,
+            MpfcOscDiagramInputType.kFootstepCommand
         )
         self.cassie_sim = HikingSimDiagram(
             params.terrain,

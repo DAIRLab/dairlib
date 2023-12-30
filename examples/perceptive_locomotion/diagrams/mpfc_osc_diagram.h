@@ -72,6 +72,11 @@ using multibody::KinematicEvaluatorSet;
 using multibody::MakeNameToVelocitiesMap;
 using multibody::MakeNameToPositionsMap;
 
+enum MpfcOscDiagramInputType {
+  kFootstepCommand,
+  kLcmtAlipMpcOutput
+};
+
 class MpfcOscDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(MpfcOscDiagram)
@@ -80,13 +85,19 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   MpfcOscDiagram(drake::multibody::MultibodyPlant<double>& plant,
                  const string& osc_gains_filename,
                  const string& mpc_gains_filename,
-                 const string& osqp_settings_filename);
+                 const string& osqp_settings_filename,
+                 MpfcOscDiagramInputType input_type);
 
   const InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);
   }
   const InputPort<double>& get_input_port_footstep_command() const {
+    DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kFootstepCommand);
     return get_input_port(input_port_footstep_command_);
+  }
+  const InputPort<double>& get_input_port_alip_mpc_output() const {
+    DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kLcmtAlipMpcOutput);
+    return get_input_port(input_port_alip_mpc_output_);
   }
   const InputPort<double>& get_input_port_radio() const {
     return get_input_port(input_port_radio_);
@@ -112,6 +123,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
  private:
 
+  const MpfcOscDiagramInputType input_type_;
   drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context;
 
@@ -190,6 +202,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_footstep_command_;
+  drake::systems::InputPortIndex input_port_alip_mpc_output_;
   drake::systems::InputPortIndex input_port_radio_;
 
   drake::systems::OutputPortIndex output_port_u_cmd_;

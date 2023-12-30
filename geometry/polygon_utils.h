@@ -21,6 +21,7 @@ namespace dairlib {
 namespace geometry {
 
 #ifdef DAIR_ROS_ON
+
 /*!
  * Makes a convex polygon by simply taking the convex hull of a non-convex
  * planar region. Useful for debugging and visualizations but not recommended
@@ -49,7 +50,7 @@ std::vector<ConvexPolygon> DecomposeRegion(
     const convex_plane_decomposition_msgs::PlanarRegion &planar_region,
     double concavity_threshold);
 
-ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
+ConvexPolygon MakeInscribedConvexPolygon(
     const convex_plane_decomposition_msgs::PlanarRegion &foothold);
 
 Eigen::MatrixXd GetVerticesAsMatrix2Xd(
@@ -58,15 +59,16 @@ Eigen::MatrixXd GetVerticesAsMatrix2Xd(
 std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>
 GetPlanarBoundaryAndHolesFromPolygonWithHoles2d(
     const convex_plane_decomposition_msgs::PolygonWithHoles2d &foothold);
+
 acd2d::cd_poly MakeAcdPoly(
     const convex_plane_decomposition_msgs::Polygon2d &poly2d,
     acd2d::cd_databuffer &buf,
     acd2d::cd_poly::POLYTYPE type = acd2d::cd_poly::POLYTYPE::POUT);
+
 acd2d::cd_polygon MakeAcdPolygon(
     const convex_plane_decomposition_msgs::PolygonWithHoles2d &poly2d,
     acd2d::cd_databuffer &buf);
 double PolygonArea(const convex_plane_decomposition_msgs::Polygon2d &poly);
-
 
 #endif
 
@@ -93,7 +95,7 @@ std::vector<Eigen::MatrixXd> Acd(const Eigen::MatrixXd &verts,
                                  double concavity_threshold);
 
 
-ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
+ConvexPolygon MakeInscribedConvexPolygon(
     const Eigen::MatrixXd &verts,
     const drake::geometry::optimization::VPolytope &convex_hull,
     const Eigen::Isometry3d &X_WP);

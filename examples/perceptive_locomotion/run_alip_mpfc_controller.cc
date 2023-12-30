@@ -3,9 +3,6 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
-#include "dairlib/lcmt_footstep_target.hpp"
-#include "dairlib/lcmt_fsm_info.hpp"
 
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"

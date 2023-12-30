@@ -16,6 +16,7 @@ namespace pydairlib{
 using perceptive_locomotion::MpfcOscDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
+using perceptive_locomotion::MpfcOscDiagramInputType;
 using multibody::SquareSteppingStoneList;
 
 PYBIND11_MODULE(diagrams, m) {
@@ -24,12 +25,20 @@ PYBIND11_MODULE(diagrams, m) {
 
   using py_rvp = py::return_value_policy;
 
+  py::enum_<MpfcOscDiagramInputType>(m, "MpfcOscDiagramInputType")
+      .value("kFootstepCommand", MpfcOscDiagramInputType::kFootstepCommand)
+      .value("kLcmtAlipMpcOutput", MpfcOscDiagramInputType::kLcmtAlipMpcOutput);
+
   py::class_<MpfcOscDiagram, drake::systems::Diagram<double>>(
       m, "MpfcOscDiagram")
       .def(py::init<drake::multibody::MultibodyPlant<double>&,
-           const std::string&, const std::string&, const std::string&>(),
-           py::arg("plant"), py::arg("osc_gains_filename"),
-           py::arg("mpc_gains_filename"), py::arg("oscp_settings_filename"))
+           const std::string&, const std::string&, const std::string&,
+           MpfcOscDiagramInputType>(),
+           py::arg("plant"),
+           py::arg("osc_gains_filename"),
+           py::arg("mpc_gains_filename"),
+           py::arg("oscp_settings_filename"),
+           py::arg("input_type"))
       .def("get_input_port_state",
            &MpfcOscDiagram::get_input_port_state,
            py_rvp::reference_internal)

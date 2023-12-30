@@ -66,7 +66,8 @@ using multibody::MakeNameToPositionsMap;
 MpfcOscDiagram::MpfcOscDiagram(
     drake::multibody::MultibodyPlant<double>& plant,
     const string& osc_gains_filename, const string& mpc_gains_filename,
-    const string& osqp_settings_filename) :
+    const string& osqp_settings_filename, MpfcOscDiagramInputType input_type) :
+    input_type_(input_type),
     plant_(&plant),
     left_toe(LeftToeFront(plant)),
     left_heel(LeftToeRear(plant)),
@@ -126,22 +127,39 @@ MpfcOscDiagram::MpfcOscDiagram(
       plant, plant_context.get(), gains.vel_scale_rot,
       gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
 
-  auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
-  auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
-      gains_mpc.ss_time, gains_mpc.ds_time, plant);
-  auto fsm_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
-      gains_mpc.ss_time, gains_mpc.ds_time, plant);
-  builder.Connect(state_receiver->get_output_port(0),
-                  footstep_passthrough->get_input_port_state());
-  builder.Connect(*footstep_passthrough, *mpc_receiver);
-  builder.Connect(state_receiver->get_output_port(0),
-                  fsm_passthrough->get_input_port_state());
-  builder.Connect(*fsm_passthrough, *mpc_receiver_fsm);
-  auto dummy_foothold_source =
-      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(Vector3d::Zero());
-  builder.Connect(dummy_foothold_source->get_output_port(),
-                  fsm_passthrough->get_input_port_footstep());
+  auto fsm = builder.AddSystem<FsmReceiver>(plant);
+
+  if (input_type_ == MpfcOscDiagramInputType::kFootstepCommand) {
+    auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
+    auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
+        gains_mpc.ss_time, gains_mpc.ds_time, plant);
+    auto fsm_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
+        gains_mpc.ss_time, gains_mpc.ds_time, plant);
+    builder.Connect(state_receiver->get_output_port(0),
+                    footstep_passthrough->get_input_port_state());
+    builder.Connect(*footstep_passthrough, *mpc_receiver);
+    builder.Connect(state_receiver->get_output_port(0),
+                    fsm_passthrough->get_input_port_state());
+    builder.Connect(*fsm_passthrough, *mpc_receiver_fsm);
+    auto dummy_foothold_source =
+        builder.AddSystem<drake::systems::ConstantVectorSource<double>>(Vector3d::Zero());
+    builder.Connect(dummy_foothold_source->get_output_port(),
+                    fsm_passthrough->get_input_port_footstep());
+    builder.Connect(mpc_receiver_fsm->get_output_port_fsm(),
+                    fsm->get_input_port_fsm_info());
+
+    input_port_footstep_command_ = builder.ExportInput(
+        footstep_passthrough->get_input_port_footstep(), "footstep"
+    );
+
+  } else {
+    builder.Connect(mpc_receiver->get_output_port_fsm(),
+                    fsm->get_input_port_fsm_info());
+    input_port_alip_mpc_output_ = builder.ExportInput(
+        mpc_receiver->get_input_port(), "lcmt_alip_mpc_output"
+    );
+  }
 
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_input_port_state());
@@ -169,9 +187,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   right_support_duration = gains_mpc.ss_time;
   double_support_duration = gains_mpc.ds_time;
 
-  auto fsm = builder.AddSystem<FsmReceiver>(plant);
-  builder.Connect(mpc_receiver_fsm->get_output_port_fsm(),
-                  fsm->get_input_port_fsm_info());
+
   builder.Connect(state_receiver->get_output_port(),
                   fsm->get_input_port_state());
 
@@ -485,9 +501,6 @@ MpfcOscDiagram::MpfcOscDiagram(
   input_port_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcm_robot_output"
   );
-  input_port_footstep_command_ = builder.ExportInput(
-      footstep_passthrough->get_input_port_footstep(), "footstep"
-  );
   input_port_radio_ = builder.ExportInput(
       high_level_command->get_input_port_radio(), "lcmt_radio_out"
   );
@@ -497,6 +510,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   // Create the diagram
   builder.BuildInto(this);
   this->set_name("osc_controller_for_alip_mpfc");
+  DrawAndSaveDiagramGraph(*this);
 }
 
 void MpfcOscDiagram::SetSwingFootPositionAtLiftoff(

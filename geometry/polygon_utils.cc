@@ -42,7 +42,7 @@ ConvexPolygon GetConvexHullOfPlanarRegion(
   return MakeFootholdFromConvexPolytope(convex_hull, X_WP);
 }
 
-ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
+ConvexPolygon MakeInscribedConvexPolygon(
     const PlanarRegion& foothold) {
 
   MatrixXd verts = GetVerticesAsMatrix2Xd(
@@ -52,7 +52,7 @@ ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
   Eigen::Isometry3d X_WP;
   tf2::fromMsg(foothold.plane_parameters, X_WP);
 
-  return MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP);
+  return MakeInscribedConvexPolygon(verts, convex_hull_v, X_WP);
 }
 
 std::vector<ConvexPolygon> DecomposeTerrain(const PlanarTerrain& terrain,
@@ -106,7 +106,7 @@ std::vector<ConvexPolygon> DecomposeRegion(const PlanarRegion& planar_region,
     Eigen::Isometry3d X_WP;
     tf2::fromMsg(planar_region.plane_parameters, X_WP);
     return {
-      MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+      MakeInscribedConvexPolygon(verts, convex_hull_v, X_WP)
     };
   }
 
@@ -120,7 +120,7 @@ std::vector<ConvexPolygon> DecomposeRegion(const PlanarRegion& planar_region,
         Eigen::Isometry3d X_WP;
         tf2::fromMsg(planar_region.plane_parameters, X_WP);
         footholds.push_back(
-            MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+            MakeInscribedConvexPolygon(verts, convex_hull_v, X_WP)
         );
       }
     }
@@ -420,7 +420,7 @@ namespace {
   }
 }
 
-ConvexPolygon MakeFootholdFromInscribedConvexPolygon(
+ConvexPolygon MakeInscribedConvexPolygon(
     const MatrixXd& verts,
     const drake::geometry::optimization::VPolytope& convex_hull_v,
     const Eigen::Isometry3d& X_WP) {
@@ -465,7 +465,6 @@ std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>
 
 std::vector<ConvexPolygon> ProcessTerrain2d(
     std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
-  auto start = std::chrono::high_resolution_clock::now();
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
   acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
@@ -480,17 +479,13 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
     }
     cd.addPolygon(poly);
   }
-  std::cout << "registered " << cd.getTodoList().size() << " polygons" << std::endl;
   try {
     cd.maybe_decomposeAll(0.15, measure.get());
   } catch (const std::exception& e) {
     std::cout << e.what();
     return {};
   }
-  std::cout << "decomposed into " << cd.getDoneList().size() << " polygons" << std::endl;
-
   std::vector<ConvexPolygon> footholds;
-  auto mid = std::chrono::high_resolution_clock::now();
   int processed_count = 0;
   for (const auto& poly_out : cd.getDoneList()) {
     // very low probability that a triangle is a meaningful size
@@ -500,16 +495,12 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
       Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
       if (PolygonArea(verts) > 0.04) {
         footholds.push_back(
-            MakeFootholdFromInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+            MakeInscribedConvexPolygon(verts, convex_hull_v, X_WP)
         );
         processed_count++;
       }
     }
   }
-  auto end = std::chrono::high_resolution_clock::now();
-  auto split1 = static_cast<std::chrono::duration<double>>(mid - start).count();
-  auto split2 = static_cast<std::chrono::duration<double>>(end-mid).count();
-  std::cout << "processing took " << split1   << ", " << split2 << " s for " << processed_count << " final polys \n";
   return footholds;
 }
 

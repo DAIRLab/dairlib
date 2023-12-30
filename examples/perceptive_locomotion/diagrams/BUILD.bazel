@@ -3,6 +3,24 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "alip_mpfc_diagram",
+    srcs = ["alip_mpfc_diagram.cc"],
+    hdrs = ["alip_mpfc_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
+        "//geometry:convex_polygon",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:solver_options_io",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:alip_mpfc_system",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "mpfc_osc_diagram",
     srcs = ["mpfc_osc_diagram.cc"],
     hdrs = ["mpfc_osc_diagram.h"],

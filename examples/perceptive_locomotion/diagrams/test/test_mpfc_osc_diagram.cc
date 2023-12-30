@@ -39,7 +39,8 @@ int DoMain() {
   auto builder = drake::systems::DiagramBuilder<double>();
 
   auto osc_diagram = builder.AddSystem<MpfcOscDiagram>(
-      plant, gains_file, gains_mpc_file, osqp_options
+      plant, gains_file, gains_mpc_file, osqp_options,
+      MpfcOscDiagramInputType::kFootstepCommand
   );
   auto sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml

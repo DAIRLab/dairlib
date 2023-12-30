@@ -57,7 +57,6 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         for i, boundary in enumerate(safe_regions):
             if is_outer_contour(hierarchy[i]):
                 boundary_points = np.zeros_like(boundary.squeeze(), dtype=float)
-
                 for j in range(boundary_points.shape[0]):
                     boundary_points[j] = grid.getPosition(
                         index=boundary.squeeze()[j]
@@ -67,9 +66,14 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                 child_index = hierarchy[i][2]
 
                 while child_index > 0:
-                    hole_scaled = resolution * safe_regions[child_index]\
-                        .astype(float).squeeze().T
-                    polygon[1].append(hole_scaled)
+                    hole_points = np.zeros_like(
+                        safe_regions[child_index].squeeze(), dtype=float
+                    )
+                    for j in range(hole_points.shape[0]):
+                        hole_points[j] = grid.getPosition(
+                            index=safe_regions[child_index].squeeze()[j]
+                        )
+                    polygon[1].append(hole_points.transpose())
                     child_index = hierarchy[child_index][0]
                 polygons.append(polygon)
 

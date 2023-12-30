@@ -1,3 +1,5 @@
+import pdb
+
 import cv2
 import numpy as np
 from grid_map import GridMap
@@ -38,7 +40,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
 
-        nonconvex_safe_regions, hierarchy = cv2.findContours(
+        safe_regions, hierarchy = cv2.findContours(
             safe_terrain_image, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE
         )
 
@@ -51,22 +53,27 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         def is_outer_contour(hierarchy_vector):
             return hierarchy_vector[-1] < 0
 
-        polygons_with_holes = []
-        for i, boundary in enumerate(nonconvex_safe_regions):
+        polygons = []
+        for i, boundary in enumerate(safe_regions):
             if is_outer_contour(hierarchy[i]):
-                boundary_scaled = resolution * boundary.astype(float).squeeze().T
-                polygon = (boundary_scaled, [])
+                boundary_points = np.zeros_like(boundary.squeeze(), dtype=float)
+
+                for j in range(boundary_points.shape[0]):
+                    boundary_points[j] = grid.getPosition(
+                        index=boundary.squeeze()[j]
+                    )
+
+                polygon = (np.fliplr(boundary_points.transpose()), [])
                 child_index = hierarchy[i][2]
 
                 while child_index > 0:
-                    hole_scaled = \
-                        resolution * nonconvex_safe_regions[child_index].astype(float).\
-                            squeeze().T
+                    hole_scaled = resolution * safe_regions[child_index]\
+                        .astype(float).squeeze().T
                     polygon[1].append(hole_scaled)
                     child_index = hierarchy[child_index][0]
-                polygons_with_holes.append(polygon)
+                polygons.append(polygon)
 
-        polygons = ProcessTerrain2d(polygons_with_holes)
-        out.set_value(ConvexPolygonSet(polygons))
+        convex_polygons = ProcessTerrain2d(polygons)
+        out.set_value(ConvexPolygonSet(convex_polygons))
 
 

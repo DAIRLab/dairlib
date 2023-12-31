@@ -1,6 +1,6 @@
-#include "alip_mpfc_diagram.h"
-
 #include <iostream>
+
+#include "alip_mpfc_diagram.h"
 #include "dairlib/lcmt_robot_output.hpp"
 
 #include "examples/Cassie/cassie_utils.h"
@@ -9,7 +9,6 @@
 #include "systems/controllers/footstep_planning/alip_mpfc_system.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 
 #include "geometry/convex_polygon_set.h"
 
@@ -34,35 +33,30 @@ using systems::controllers::AlipMPFC;
 using systems::controllers::alip_utils::PointOnFramed;
 using systems::controllers::AlipMPFCGains;
 
-using drake::multibody::SpatialInertia;
-using drake::multibody::RotationalInertia;
-using drake::multibody::Frame;
 using drake::systems::TriggerType;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerTypeSet;
 
-AlipMPFCDiagram::AlipMPFCDiagram(const std::string& gains_filename,
-                                 double debug_publish_period) {
+AlipMPFCDiagram::AlipMPFCDiagram(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const std::string& gains_filename,
+    double debug_publish_period) :
+    plant_(plant),
+    left_toe(LeftToeFront(plant_)),
+    left_heel(LeftToeRear(plant_)),
+    left_toe_mid({(left_toe.first + left_heel.first) / 2,
+                  plant.GetFrameByName("toe_left")}),
+    right_toe_mid({(left_toe.first + left_heel.first) / 2,
+                   plant.GetFrameByName("toe_right")}) {
 
-  auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(gains_filename);
+  left_right_toe.push_back(left_toe_mid);
+  left_right_toe.push_back(right_toe_mid);
 
-  // Build Cassie MBP
-  drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  auto instance_w_spr = AddCassieMultibody(
-      &plant_w_spr,
-      nullptr,
-      true,
-      "examples/Cassie/urdf/cassie_v2.urdf",
-      true,
-      false
-  );
-
-  plant_w_spr.Finalize();
-  auto context_w_spr = plant_w_spr.CreateDefaultContext();
+  gains_mpc = drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(gains_filename);
+  plant_context_ = plant_.CreateDefaultContext();
 
   gains_mpc.SetFilterData(
-      plant_w_spr.CalcTotalMass(*context_w_spr), gains_mpc.h_des);
+      plant_.CalcTotalMass(*plant_context_), gains_mpc.h_des);
 
 
   // Build the controller diagram
@@ -70,42 +64,40 @@ AlipMPFCDiagram::AlipMPFCDiagram(const std::string& gains_filename,
 
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
-  auto left_toe = LeftToeFront(plant_w_spr);
-  auto left_heel = LeftToeRear(plant_w_spr);
-
   double single_support_duration = gains_mpc.ss_time;
   double double_support_duration = gains_mpc.ds_time;
 
-
-  std::vector<int> left_right_fsm_states;
-  std::vector<int> post_left_right_fsm_states;
-  std::vector<double> state_durations;
-
-  left_right_fsm_states = {left_stance_state, right_stance_state};
-  post_left_right_fsm_states = {post_right_double_support_state,
-                                post_left_double_support_state};
   state_durations = {single_support_duration, single_support_duration};
 
-  Vector3d mid_contact_point = (left_toe.first + left_heel.first) / 2;
-  auto left_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_left"));
-  auto right_toe_mid = PointOnFramed(mid_contact_point, plant_w_spr.GetFrameByName("toe_right"));
-  std::vector<PointOnFramed> left_right_toe = {left_toe_mid, right_toe_mid};
-
-  const auto& planner_solver_options =
+  planner_solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(
               "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml"
           )).GetAsSolverOptions(drake::solvers::GurobiSolver::id());
 
-  auto foot_placement_controller =
-      builder.AddSystem<AlipMPFC>(
-          plant_w_spr, context_w_spr.get(), left_right_fsm_states,
-          post_left_right_fsm_states, state_durations, double_support_duration,
-          left_right_toe, gains_mpc.gains, planner_solver_options);
+  auto foot_placement_controller = builder.AddSystem<AlipMPFC>(
+      plant_, plant_context_.get(), left_right_fsm_states,
+      post_left_right_fsm_states, state_durations, double_support_duration,
+      left_right_toe, gains_mpc.gains, planner_solver_options);
 
-  auto state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_w_spr);
+  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_);
 
+  builder.Connect(state_receiver->get_output_port(),
+                  foot_placement_controller->get_input_port_state());
+
+  input_port_state_ = builder.ExportInput(
+      state_receiver->get_input_port(), "lcmt_robot_output"
+  );
+  input_port_footholds_ = builder.ExportInput(
+      foot_placement_controller->get_input_port_footholds(), "footholds"
+  );
+  input_port_vdes_ = builder.ExportInput(
+      foot_placement_controller->get_input_port_vdes(), "desired_velocity"
+  );
+  output_port_mpc_output_ = builder.ExportOutput(
+      foot_placement_controller->get_output_port_mpc_output(),
+      "lcmt_alip_mpc_output"
+  );
 
   // Create the diagram
   builder.BuildInto(this);

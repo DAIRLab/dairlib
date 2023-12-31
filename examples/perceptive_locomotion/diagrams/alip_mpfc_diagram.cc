@@ -36,6 +36,7 @@ using systems::controllers::AlipMPFCGains;
 using drake::systems::TriggerType;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerTypeSet;
+using drake::systems::lcm::LcmPublisherSystem;
 
 AlipMPFCDiagram::AlipMPFCDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -85,6 +86,14 @@ AlipMPFCDiagram::AlipMPFCDiagram(
   builder.Connect(state_receiver->get_output_port(),
                   foot_placement_controller->get_input_port_state());
 
+  if (debug_publish_period > 0) {
+    auto mpc_debug_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<lcmt_mpc_debug>(
+            "ALIP_MPFC_DEBUG", &lcm_local, debug_publish_period));
+    builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
+                    mpc_debug_pub->get_input_port());
+  }
+
   input_port_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcmt_robot_output"
   );
@@ -101,7 +110,7 @@ AlipMPFCDiagram::AlipMPFCDiagram(
 
   // Create the diagram
   builder.BuildInto(this);
-  DrawAndSaveDiagramGraph(*this, "../alip_mpfc");
+  DrawAndSaveDiagramGraph(*this, "../alip_mpfc_diagram");
 
 }
 

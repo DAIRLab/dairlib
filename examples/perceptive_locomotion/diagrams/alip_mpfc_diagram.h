@@ -14,7 +14,20 @@ class AlipMPFCDiagram  : public drake::systems::Diagram<double> {
  public:
   AlipMPFCDiagram(const drake::multibody::MultibodyPlant<double>& plant,
                   const std::string& gains_filename,
-                  double debug_publish_period=0);
+                  double debug_publish_period);
+
+  const drake::systems::InputPort<double>& get_input_port_state() const {
+      return get_input_port(input_port_state_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_footholds() const {
+      return get_input_port(input_port_footholds_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_vdes() const {
+      return get_input_port(input_port_vdes_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_mpc_output() const {
+      return get_output_port(output_port_mpc_output_);
+  }
 
  private:
 

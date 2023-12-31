@@ -1,6 +1,8 @@
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
+
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "systems/plant_visualizer.h"
@@ -22,6 +24,7 @@ int DoMain() {
       AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
   plant.Finalize();
 
+
   std::string gains_file =
       "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
   std::string gains_mpc_file =
@@ -35,6 +38,8 @@ int DoMain() {
   std::string elevation_mapping_params_yaml =
       "examples/perceptive_locomotion/camera_calib/"
       "elevation_mapping_params_simulation.yaml";
+
+  auto mpfc = AlipMPFCDiagram(plant, gains_mpc_file, 1.0/100);
 
   auto builder = drake::systems::DiagramBuilder<double>();
 

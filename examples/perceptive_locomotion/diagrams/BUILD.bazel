@@ -117,6 +117,7 @@ cc_binary(
     name = "test_mpfc_osc_diagram",
     srcs = ["test/test_mpfc_osc_diagram.cc"],
     deps = [
+        ":alip_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",

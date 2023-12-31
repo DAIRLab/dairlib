@@ -6,7 +6,7 @@
 #include "examples/perceptive_locomotion/diagrams/mpfc_osc_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/perception_module_diagram.h"
-
+#include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
 
 namespace py = pybind11;
 
@@ -17,6 +17,7 @@ using perceptive_locomotion::MpfcOscDiagram;
 using perceptive_locomotion::HikingSimDiagram;
 using perceptive_locomotion::PerceptionModuleDiagram;
 using perceptive_locomotion::MpfcOscDiagramInputType;
+using perceptive_locomotion::AlipMPFCDiagram;
 using multibody::SquareSteppingStoneList;
 
 PYBIND11_MODULE(diagrams, m) {
@@ -44,6 +45,9 @@ PYBIND11_MODULE(diagrams, m) {
            py_rvp::reference_internal)
       .def("get_input_port_footstep_command",
            &MpfcOscDiagram::get_input_port_footstep_command,
+           py_rvp::reference_internal)
+      .def("get_input_port_alip_mpc_output",
+           &MpfcOscDiagram::get_input_port_alip_mpc_output,
            py_rvp::reference_internal)
       .def("get_input_port_radio",
            &MpfcOscDiagram::get_input_port_radio,
@@ -132,6 +136,26 @@ PYBIND11_MODULE(diagrams, m) {
               const Eigen::VectorXd&, const Eigen::VectorXd&>(
                   &PerceptionModuleDiagram::InitializeEkf, py::const_))
       .def("Make", &PerceptionModuleDiagram::Make);
+
+  py::class_<AlipMPFCDiagram, drake::systems::Diagram<double>>(
+      m, "AlipMPFCDiagram")
+      .def(py::init<const drake::multibody::MultibodyPlant<double>&,
+                    const std::string&, double>(),
+                    py::arg("plant"), py::arg("gains_filename"),
+                    py::arg("debug_publish_period"))
+      .def("get_input_port_state",
+           &AlipMPFCDiagram::get_input_port_state,
+           py_rvp::reference_internal)
+      .def("get_input_port_footholds",
+           &AlipMPFCDiagram::get_input_port_footholds,
+           py_rvp::reference_internal)
+      .def("get_input_port_vdes",
+           &AlipMPFCDiagram::get_input_port_vdes,
+           py_rvp::reference_internal)
+      .def("get_output_port_mpc_output",
+           &AlipMPFCDiagram::get_output_port_mpc_output,
+           py_rvp::reference_internal);
+
 
 }
 

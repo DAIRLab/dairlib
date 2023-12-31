@@ -32,6 +32,15 @@ py_binary(
 )
 
 py_binary(
+    name = "full_stack_simulation_test",
+    srcs = ["full_stack_simulation_test.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion/systems",
+        "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation",
+    ],
+)
+
+py_binary(
     name = "multipose_visualizer_from_lcm_log",
     srcs = ["multipose_visualizer_from_lcm_log.py"],
     data = [

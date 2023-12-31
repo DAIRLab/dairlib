@@ -86,6 +86,8 @@ class CassieFootstepControllerEnvironmentOptions:
         params_folder, 'elevation_mapping_params.yaml'
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
+    controller_input_type: MpfcOscDiagramInputType = \
+        MpfcOscDiagramInputType.kFootstepCommand
     simulate_perception: bool = False
     visualize: bool = True
 
@@ -115,7 +117,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             params.osc_gains_yaml,
             params.mpfc_gains_yaml,
             params.osqp_options_yaml,
-            MpfcOscDiagramInputType.kFootstepCommand
+            params.controller_input_type
         )
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
@@ -220,6 +222,11 @@ class CassieFootstepControllerEnvironment(Diagram):
             'footstep_command': builder.ExportInput(
                 self.controller.get_input_port_footstep_command(),
                 "footstep_command"
+            ),
+        } if self.params.controller_input_type == MpfcOscDiagramInputType.kFootstepCommand else {
+            'alip_mpc_output': builder.ExportInput(
+                self.controller.get_input_port_alip_mpc_output(),
+                "alip_mpc_output"
             ),
         }
         return input_port_indices

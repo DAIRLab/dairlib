@@ -107,6 +107,7 @@ cc_library(
 cc_library(
     name = "diagrams",
     deps = [
+        ":alip_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",

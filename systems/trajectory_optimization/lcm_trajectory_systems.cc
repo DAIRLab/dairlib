@@ -318,7 +318,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
       lcm_traj.GetTrajectory(force_trajectory_name_);
   const auto& actor_trajectory_block =
       lcm_traj.GetTrajectory(actor_trajectory_name_);
-  auto force_trajectory = PiecewisePolynomial<double>::ZeroOrderHold(
+  auto force_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       force_trajectory_block.time_vector, force_trajectory_block.datapoints);
   VectorXd pose;
   if (actor_trajectory_block.datapoints.rows() == 3) {

@@ -55,7 +55,7 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
       n_((LCS.A_)[0].cols()),
       m_((LCS.D_)[0].cols()),
       k_((LCS.B_)[0].cols()),
-      hflag_(H_[0].isZero(0)),
+      h_is_zero_(H_[0].isZero(0)),
       prog_(MathematicalProgram()),
       solver_options_(SolverOptions()),
       osqp_(OsqpSolver()) {
@@ -124,75 +124,80 @@ C3::C3(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
     prog_.AddQuadraticCost(2 * Q_.at(i), -2 * Q_.at(i) * xdesired_.at(i),
                            x_.at(i), 1);
     if (i < N_) {
-      input_costs_[i] = prog_.AddQuadraticCost(2 * R_.at(i), VectorXd::Zero(k_), u_.at(i), 1).evaluator();
+      input_costs_[i] =
+          prog_.AddQuadraticCost(2 * R_.at(i), VectorXd::Zero(k_), u_.at(i), 1)
+              .evaluator();
     }
   }
 }
 
-vector<VectorXd> C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
-                           vector<VectorXd>& w) {
+void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
+               vector<VectorXd>& w) {
   vector<MatrixXd> Gv = G_;
   VectorXd z;
 
-  for (int i = 0; i < N_; ++i){
-    input_costs_[i]->UpdateCoefficients(2 * R_.at(i), -2 * R_.at(i) * u_sol_->at(i));
+  for (int i = 0; i < N_; ++i) {
+    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
+                                        -2 * R_.at(i) * u_sol_->at(i));
   }
-//  input_costs_[0]->UpdateCoefficients(2 * R_.at(0), -2 * R_.at(0) * u_sol_->at(0));
 
   for (int i = 0; i < options_.admm_iter - 1; i++) {
-    z = ADMMStep(x0, &delta, &w, &Gv);
+    ADMMStep(x0, &delta, &w, &Gv);
   }
 
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, true);
-  return zfin;
+
+  *z_sol_ = delta;
+  z_sol_->at(0).segment(0, n_) = x0;
+  for (int i = 1; i < N_; ++i) {
+    z_sol_->at(i).segment(0, n_) =
+        A_.at(i) * x_sol_->at(i - 1) + B_.at(i) * u_sol_->at(i - 1) +
+        D_.at(i) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+  }
 }
 
-VectorXd C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
-                      vector<VectorXd>* w, vector<MatrixXd>* Gv) {
+void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
+                  vector<VectorXd>* w, vector<MatrixXd>* Gv) {
   vector<VectorXd> WD(N_, VectorXd::Zero(n_ + m_ + k_));
 
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
-  vector<VectorXd> z = SolveQP(x0, *Gv, WD);
+  vector<VectorXd> z = SolveQP(x0, *Gv, WD, true);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
 
-  if (U_[0].isZero(0) == 0) {
-    vector<MatrixXd> Uv = U_;
-
-    *delta = SolveProjection(Uv, ZW);
-  } else {
+  if (U_[0].isZero(0)) {
     *delta = SolveProjection(*Gv, ZW);
+
+  } else {
+    *delta = SolveProjection(U_, ZW);
   }
+//  *z_sol_ = *delta;
 
   for (int i = 0; i < N_; i++) {
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
-
     Gv->at(i) = Gv->at(i) * options_.rho_scale;
   }
-
-  return z[0];
 }
 
-vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
-                             vector<VectorXd>& WD, bool is_final_solve) {
+vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
+                             const vector<VectorXd>& WD, bool is_final_solve) {
   for (auto& constraint : constraints_) {
     prog_.RemoveConstraint(constraint);
   }
   constraints_.clear();
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
-  if (hflag_ == 1) {
+  if (h_is_zero_ == 1) {
     std::cout << "solving lcp: " << std::endl;
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
@@ -238,7 +243,7 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, vector<MatrixXd>& G,
 
   if (result.is_success()) {
     for (int i = 0; i < N_; i++) {
-      if (is_final_solve){
+      if (is_final_solve) {
         x_sol_->at(i) = result.GetSolution(x_[i]);
         lambda_sol_->at(i) = result.GetSolution(lambda_[i]);
         u_sol_->at(i) = result.GetSolution(u_[i]);
@@ -293,7 +298,7 @@ void C3::RemoveConstraints() {
   user_constraints_.clear();
 }
 
-vector<VectorXd> C3::SolveProjection(vector<MatrixXd>& G,
+vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
                                      vector<VectorXd>& WZ) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
   int i;

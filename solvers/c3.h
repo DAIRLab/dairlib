@@ -37,34 +37,32 @@ class C3 {
   /// @param delta A pointer to the copy variable solution
   /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
-  std::vector<Eigen::VectorXd> Solve(const Eigen::VectorXd& x0,
-                                     std::vector<Eigen::VectorXd>& delta,
-                                     std::vector<Eigen::VectorXd>& w);
+  void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
+             std::vector<Eigen::VectorXd>& w);
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
   /// @param delta The copy variables from the previous step
   /// @param w The scaled dual variables from the previous step
   /// @param G A pointer to the G variables from previous step
-  Eigen::VectorXd ADMMStep(const Eigen::VectorXd& x0,
-                           std::vector<Eigen::VectorXd>* delta,
-                           std::vector<Eigen::VectorXd>* w,
-                           std::vector<Eigen::MatrixXd>* G);
+  void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
+                std::vector<Eigen::VectorXd>* w,
+                std::vector<Eigen::MatrixXd>* G);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
   /// @param WD A pointer to the (w - delta) variables
   /// @param G A pointer to the G variables from previous step
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
-                                       std::vector<Eigen::MatrixXd>& G,
-                                       std::vector<Eigen::VectorXd>& WD,
+                                       const std::vector<Eigen::MatrixXd>& G,
+                                       const std::vector<Eigen::VectorXd>& WD,
                                        bool is_final_solve = false);
 
   /// Solve the projection problem for all timesteps
   /// @param WZ A pointer to the (z + w) variables
   /// @param G A pointer to the G variables from previous step
   std::vector<Eigen::VectorXd> SolveProjection(
-      std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
+      const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
 
   /// allow users to add constraints (adds for all timesteps)
   /// @param A, lower_bound, upper_bound lower_bound <= A^T x <= upper_bound
@@ -118,7 +116,7 @@ class C3 {
   const int n_;
   const int m_;
   const int k_;
-  const bool hflag_;
+  const bool h_is_zero_;
 
  protected:
   std::vector<Eigen::VectorXd> warm_start_delta_;

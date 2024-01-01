@@ -90,7 +90,7 @@ def main():
     simulator.reset_context(context)
     simulator.set_target_realtime_rate(1.0)
 
-    simulator.AdvanceTo(np.inf)
+    # simulator.AdvanceTo(np.inf)
 
 
 

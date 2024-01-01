@@ -246,22 +246,29 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_switching_time(),
                 'time_until_switch'
             ),
-            'state': builder.ExportOutput(
-                self.cassie_sim.get_output_port_state(),
-                'x, u, t'
-            ),
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
             ),
         }
-
         if self.params.simulate_perception:
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.perception_module.get_output_port_elevation_map(),
                 'elevation_map'
             )
+            output_port_indices['lcmt_robot_output'] = builder.ExportOutput(
+                self.perception_module.get_output_port_robot_output(),
+                'lcmt_robot_output'
+            )
+            output_port_indices['state'] = builder.ExportOutput(
+                self.perception_module.get_output_port_state(),
+                'x, u, t'
+            ),
         else:
+            output_port_indices['state'] = builder.ExportOutput(
+                self.cassie_sim.get_output_port_state(),
+                'x, u, t'
+            ),
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.height_map_server.get_output_port(),
                 'height_map_query'

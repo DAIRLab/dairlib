@@ -60,7 +60,7 @@ def main():
         sim_env.get_input_port_by_name('footstep_command')
     )
 
-    # external user assign desire velocity to controller
+    # external user assign desired velocity to controller
     builder.Connect(
         desired_velocity.get_output_port(),
         controller.get_input_port_by_name("desired_velocity")

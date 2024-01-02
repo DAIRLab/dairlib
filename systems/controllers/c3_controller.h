@@ -56,6 +56,8 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  solvers::LCS CreatePlaceholderLCS() const;
+
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;

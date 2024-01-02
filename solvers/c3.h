@@ -14,21 +14,24 @@
 
 namespace dairlib {
 namespace solvers {
+
 class C3 {
  public:
+  struct CostMatrices {
+    CostMatrices() = default;
+    CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
+                 const std::vector<Eigen::MatrixXd>& R,
+                 const std::vector<Eigen::MatrixXd>& G,
+                 const std::vector<Eigen::MatrixXd>& U);
+    std::vector<Eigen::MatrixXd> Q;
+    std::vector<Eigen::MatrixXd> R;
+    std::vector<Eigen::MatrixXd> G;
+    std::vector<Eigen::MatrixXd> U;
+  };
   /// @param LCS LCS parameters
   /// @param Q, R, G, U Cost function parameters
-  C3(const LCS& LCS, const std::vector<Eigen::MatrixXd>& Q,
-     const std::vector<Eigen::MatrixXd>& R,
-     const std::vector<Eigen::MatrixXd>& G,
-     const std::vector<Eigen::MatrixXd>& U,
-     const std::vector<Eigen::VectorXd>& xdesired, const C3Options& options,
-     const std::vector<Eigen::VectorXd>& warm_start_delta = {},
-     const std::vector<Eigen::VectorXd>& warm_start_binary = {},
-     const std::vector<Eigen::VectorXd>& warm_start_x_ = {},
-     const std::vector<Eigen::VectorXd>& warm_start_lambda_ = {},
-     const std::vector<Eigen::VectorXd>& warm_start_u_ = {},
-     bool warm_start = false);
+  C3(const LCS& LCS, const CostMatrices& costs,
+     const std::vector<Eigen::VectorXd>& x_desired, const C3Options& options);
 
   virtual ~C3() = default;
 
@@ -47,7 +50,8 @@ class C3 {
   /// @param G A pointer to the G variables from previous step
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
-                std::vector<Eigen::MatrixXd>* G);
+                std::vector<Eigen::MatrixXd>* G,
+                int admm_iteration);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
@@ -56,13 +60,15 @@ class C3 {
   std::vector<Eigen::VectorXd> SolveQP(const Eigen::VectorXd& x0,
                                        const std::vector<Eigen::MatrixXd>& G,
                                        const std::vector<Eigen::VectorXd>& WD,
+                                       int admm_iteration,
                                        bool is_final_solve = false);
 
   /// Solve the projection problem for all timesteps
   /// @param WZ A pointer to the (z + w) variables
   /// @param G A pointer to the G variables from previous step
   std::vector<Eigen::VectorXd> SolveProjection(
-      const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ);
+      const std::vector<Eigen::MatrixXd>& G, std::vector<Eigen::VectorXd>& WZ,
+      int admm_iteration);
 
   /// allow users to add constraints (adds for all timesteps)
   /// @param A, lower_bound, upper_bound lower_bound <= A^T x <= upper_bound
@@ -86,6 +92,7 @@ class C3 {
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const int admm_iteration,
       const int& warm_start_index) = 0;
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
@@ -98,41 +105,47 @@ class C3 {
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
 
  public:
-  const std::vector<Eigen::MatrixXd> A_;
-  const std::vector<Eigen::MatrixXd> B_;
-  const std::vector<Eigen::MatrixXd> D_;
-  const std::vector<Eigen::VectorXd> d_;
-  const std::vector<Eigen::MatrixXd> E_;
-  const std::vector<Eigen::MatrixXd> F_;
-  const std::vector<Eigen::MatrixXd> H_;
-  const std::vector<Eigen::VectorXd> c_;
-  const std::vector<Eigen::MatrixXd> Q_;
-  const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> U_;
-  const std::vector<Eigen::MatrixXd> G_;
-  const std::vector<Eigen::VectorXd> xdesired_;
-  const C3Options options_;
+  void UpdateLCS(const LCS& lcs);
+  void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+
+ protected:
+  std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
+  std::vector<std::vector<Eigen::VectorXd>> warm_start_binary_;
+  std::vector<std::vector<Eigen::VectorXd>> warm_start_x_;
+  std::vector<std::vector<Eigen::VectorXd>> warm_start_lambda_;
+  std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
+  bool warm_start_;
   const int N_;
   const int n_;
   const int m_;
   const int k_;
-  const bool h_is_zero_;
-
- protected:
-  std::vector<Eigen::VectorXd> warm_start_delta_;
-  std::vector<Eigen::VectorXd> warm_start_binary_;
-  std::vector<Eigen::VectorXd> warm_start_x_;
-  std::vector<Eigen::VectorXd> warm_start_lambda_;
-  std::vector<Eigen::VectorXd> warm_start_u_;
-  bool warm_start_;
 
  private:
+  std::vector<Eigen::MatrixXd> A_;
+  std::vector<Eigen::MatrixXd> B_;
+  std::vector<Eigen::MatrixXd> D_;
+  std::vector<Eigen::VectorXd> d_;
+  std::vector<Eigen::MatrixXd> E_;
+  std::vector<Eigen::MatrixXd> F_;
+  std::vector<Eigen::MatrixXd> H_;
+  std::vector<Eigen::VectorXd> c_;
+  const std::vector<Eigen::MatrixXd> Q_;
+  const std::vector<Eigen::MatrixXd> R_;
+  const std::vector<Eigen::MatrixXd> U_;
+  const std::vector<Eigen::MatrixXd> G_;
+  std::vector<Eigen::VectorXd> x_desired_;
+  const C3Options options_;
+
+  bool h_is_zero_;
+
   drake::solvers::MathematicalProgram prog_;
   drake::solvers::SolverOptions solver_options_;
   drake::solvers::OsqpSolver osqp_;
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+  std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
+  std::vector<drake::solvers::QuadraticCost*> target_cost_;
   std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
   std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>

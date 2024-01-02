@@ -17,6 +17,7 @@ using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
+using solvers::C3;
 using solvers::C3MIQP;
 using solvers::C3QP;
 using solvers::LCS;
@@ -41,6 +42,7 @@ C3Controller::C3Controller(
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
+  n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
   dt_ = c3_options_.dt;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
@@ -54,22 +56,56 @@ C3Controller::C3Controller(
 
   n_u_ = plant_.num_actuators();
 
+  // Creates placeholder lcs to construct base C3 problem
+  // Placeholder LCS will have correct size as it's already determined by the
+  // contact model
+  auto lcs_placeholder = CreatePlaceholderLCS();
+  auto x_desired_placeholder =
+      std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  if (c3_options_.projection_type == "MIQP") {
+    c3_ = std::make_unique<C3MIQP>(lcs_placeholder,
+                                   C3::CostMatrices(Q_, R_, G_, U_),
+                                   x_desired_placeholder, c3_options_);
+
+  } else if (c3_options_.projection_type == "QP") {
+    c3_ = std::make_unique<C3QP>(lcs_placeholder,
+                                 C3::CostMatrices(Q_, R_, G_, U_),
+                                 x_desired_placeholder, c3_options_);
+
+  } else {
+    std::cerr << ("Unknown projection type") << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
+
+  c3_->SetOsqpSolverOptions(solver_options_);
+
+  // Set actor bounds
+  for (int i : vector<int>({0, 2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 0.35, 0.6, 1);
+  }
+  for (int i : vector<int>({1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -0.2, 0.2, 1);
+  }
+  for (int i : vector<int>({0, 1})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, -10, 10, 2);
+  }
+  for (int i : vector<int>({2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 0, 20, 2);
+  }
+
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
-
-  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
-  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
-  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
-  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
-  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
-  VectorXd c = VectorXd::Zero(n_lambda_);
-  auto lcs = LCS(A, B, D, d, E, F, H, c, N_, dt_);
-
   lcs_input_port_ =
-      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs)).get_index();
+      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder)).get_index();
 
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
@@ -96,6 +132,18 @@ C3Controller::C3Controller(
   DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
 }
 
+LCS C3Controller::CreatePlaceholderLCS() const {
+  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
+  VectorXd d = VectorXd::Zero(n_x_);
+  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
+  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
+  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
+  VectorXd c = VectorXd::Zero(n_lambda_);
+  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.dt);
+}
+
 drake::systems::EventStatus C3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
@@ -108,6 +156,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
                                                         lcs_state_input_port_);
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
+  const drake::VectorX<double>& x_lcs = lcs_x->get_data();
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
@@ -115,54 +164,25 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
-  DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
-  DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
-  DRAKE_DEMAND(R_.front().rows() == lcs.k_);
-  DRAKE_DEMAND(R_.front().cols() == lcs.k_);
-  DRAKE_DEMAND(G_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
-  DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
-  DRAKE_DEMAND(U_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
-  DRAKE_DEMAND(U_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
+//  DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
+//  DRAKE_DEMAND(Q_.front().cols() == lcs.n_);
+//  DRAKE_DEMAND(R_.front().rows() == lcs.k_);
+//  DRAKE_DEMAND(R_.front().cols() == lcs.k_);
+//  DRAKE_DEMAND(G_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
+//  DRAKE_DEMAND(G_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
+//  DRAKE_DEMAND(U_.front().rows() == lcs.n_ + lcs.m_ + lcs.k_);
+//  DRAKE_DEMAND(U_.front().cols() == lcs.n_ + lcs.m_ + lcs.k_);
 
-  if (c3_options_.projection_type == "MIQP") {
-    c3_ = std::make_unique<C3MIQP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
-
-  } else if (c3_options_.projection_type == "QP") {
-    c3_ = std::make_unique<C3QP>(lcs, Q_, R_, G_, U_, x_desired, c3_options_);
-
-  } else {
-    std::cerr << ("Unknown projection type") << std::endl;
-    DRAKE_THROW_UNLESS(false);
-  }
   c3_->SetOsqpSolverOptions(solver_options_);
+  c3_->UpdateLCS(lcs);
+  c3_->UpdateTarget(x_desired);
 
   VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-  delta_init.head(n_x_) = lcs_x->get_data();
+  delta_init.head(n_x_) = x_lcs;
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-
-  // Set actor bounds
-  for (int i : vector<int>({0, 2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.35, 0.6, 1);
-  }
-  for (int i : vector<int>({1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.2, 0.2, 1);
-  }
-  for (int i : vector<int>({0, 1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -10, 10, 2);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0, 20, 2);
-  }
-  c3_->Solve(lcs_x->get_data(), delta, w);
+  
+  c3_->Solve(x_lcs, delta, w);
   auto finish = std::chrono::high_resolution_clock::now();
   delta_ = delta;
   w_ = w;

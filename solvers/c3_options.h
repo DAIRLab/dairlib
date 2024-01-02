@@ -5,9 +5,9 @@
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter;     // total number of ADMM iterations   //2
-  float rho;         // inital value of the rho parameter
-  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho) //3
+  int admm_iter;     // total number of ADMM iterations
+  float rho;         // initial value of the rho parameter
+  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
   int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
   int delta_option;  // different options for delta update
   std::string projection_type;
@@ -73,18 +73,14 @@ struct C3Options {
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
-    // a->Visit(DRAKE_NVP(g_size));
-    // a->Visit(DRAKE_NVP(u_size));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
-    //    a->Visit(DRAKE_NVP(g_vector));
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
     a->Visit(DRAKE_NVP(g_lambda_n));
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
-    //    a->Visit(DRAKE_NVP(u_vector));
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));

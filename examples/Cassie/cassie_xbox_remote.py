@@ -58,6 +58,8 @@ def main():
     i = 0
     latching_switch_a = 1
     latching_switch_b = 1
+    latching_switch_x = 0
+    latching_switch_y = 0
     print("Teleop Status: " + str(latching_switch_a))
     print("End Effector Follow Status: " + str(latching_switch_b))
     while not done:
@@ -77,6 +79,13 @@ def main():
                 if event.button == 1:
                     latching_switch_b = not latching_switch_b
                     print("End Effector Follow Status: " + str(latching_switch_b))
+                if event.button == 2:
+                    latching_switch_x = not latching_switch_x
+                    print("End Effector Follow Status: " + str(latching_switch_b))
+                if event.button == 3:
+                    latching_switch_y = not latching_switch_y
+                    print("End Effector Follow Status: " + str(latching_switch_b))
+
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
@@ -90,6 +99,8 @@ def main():
 
         radio_msg.channel[13] = latching_switch_b
         radio_msg.channel[14] = latching_switch_a
+        radio_msg.channel[11] = latching_switch_x
+        radio_msg.channel[12] = latching_switch_y
         # radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 

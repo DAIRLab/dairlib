@@ -1,6 +1,6 @@
-admm_iter: 4
+admm_iter: 2
 rho: 0 # does not do anything
-rho_scale: 2.1
+rho_scale: 8
 num_threads: 5
 delta_option: 1
 # options are 'MIQP' or 'QP'
@@ -8,7 +8,7 @@ projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 #contact_model: 'stewart_and_trinkle'
 contact_model: 'anitescu'
-warm_start: false
+warm_start: true
 
 mu: [0.8, 0.8, 0.8, 0.1, 0.1, 0.1, 0.1]
 dt: 0.08

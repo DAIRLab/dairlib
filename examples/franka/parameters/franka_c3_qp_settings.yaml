@@ -12,7 +12,7 @@ int_options:
   scaled_termination: 1
   check_termination: 100
 double_options:
-  rho: 0.001
+  rho: 0.1
   sigma: 1e-6
   eps_abs: 1e-5
   eps_rel: 1e-5

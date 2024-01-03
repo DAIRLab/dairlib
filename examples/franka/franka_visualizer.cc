@@ -83,8 +83,6 @@ int do_main(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
-  drake::multibody::ModelInstanceIndex box_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -136,8 +134,6 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
       builder.AddSystem<ObjectStateReceiver>(plant, tray_index);
-  auto box_state_receiver =
-      builder.AddSystem<ObjectStateReceiver>(plant, box_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
@@ -148,13 +144,9 @@ int do_main(int argc, char* argv[]) {
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(tray_index));
-  auto box_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      tray_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(box_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(tray_index),
-                                  plant.num_positions(box_index)};
+                                  plant.num_positions(tray_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
@@ -199,7 +191,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
-  builder.Connect(box_passthrough->get_output_port(), mux->get_input_port(2));
   builder.Connect(trajectory_sub_actor->get_output_port(),
                   trajectory_drawer_actor->get_input_port_trajectory());
   builder.Connect(trajectory_sub_object->get_output_port(),
@@ -221,11 +212,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(robot_time_passthrough->get_output_port(),
                   end_effector_force_drawer->get_input_port_robot_time());
   builder.Connect(*tray_state_receiver, *tray_passthrough);
-  builder.Connect(*box_state_receiver, *box_passthrough);
 
   builder.Connect(*franka_state_sub, *franka_state_receiver);
   builder.Connect(*tray_state_sub, *tray_state_receiver);
-  builder.Connect(*box_state_sub, *box_state_receiver);
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
@@ -240,8 +229,6 @@ int do_main(int argc, char* argv[]) {
       plant, franka_state_sub_context);
   tray_state_receiver->InitializeSubscriberPositions(plant,
                                                      tray_state_sub_context);
-  box_state_receiver->InitializeSubscriberPositions(plant,
-                                                    box_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

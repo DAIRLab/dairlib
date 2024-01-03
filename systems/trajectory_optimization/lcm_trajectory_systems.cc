@@ -285,9 +285,11 @@ LcmForceDrawer::LcmForceDrawer(
   actor_last_update_time_index_ = this->DeclareDiscreteState(1);
   forces_last_update_time_index_ = this->DeclareDiscreteState(1);
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
-                      {0, 0, 1, 1});
+                      {0, 1, 0, 1});
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
-                      {0, 0, 1, 1});
+                      {0, 1, 0, 1});
+  meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
+
 
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);

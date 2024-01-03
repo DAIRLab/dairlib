@@ -209,8 +209,8 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   z_sol_->at(0).segment(0, n_) = x0;
   for (int i = 1; i < N_; ++i) {
     z_sol_->at(i).segment(0, n_) =
-        A_.at(i) * x_sol_->at(i - 1) + B_.at(i) * u_sol_->at(i - 1) +
-        D_.at(i) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+        A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
+        D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
   }
 }
 

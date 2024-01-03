@@ -141,7 +141,6 @@ int DoMain(int argc, char* argv[]) {
       {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
-
   /* -------------------------------------------------------------------------------------------*/
 
   drake::lcm::DrakeLcm drake_lcm;

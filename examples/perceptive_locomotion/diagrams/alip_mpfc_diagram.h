@@ -1,8 +1,10 @@
 #pragma once
 
+#include "drake/lcm/drake_lcm.h"
 #include "drake/solvers/solver_options.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/multibody/plant/multibody_plant.h"
+
 #include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 
 
@@ -31,7 +33,7 @@ class AlipMPFCDiagram  : public drake::systems::Diagram<double> {
 
  private:
 
-
+  drake::lcm::DrakeLcm lcm_local;
   const drake::multibody::MultibodyPlant<double>& plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
 

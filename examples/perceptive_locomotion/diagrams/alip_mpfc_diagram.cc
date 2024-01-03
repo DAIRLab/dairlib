@@ -14,7 +14,6 @@
 
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/lcm/drake_lcm.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
 namespace dairlib {
@@ -42,6 +41,7 @@ AlipMPFCDiagram::AlipMPFCDiagram(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& gains_filename,
     double debug_publish_period) :
+    lcm_local("udpm://239.255.76.67:7667?ttl=0"),
     plant_(plant),
     left_toe(LeftToeFront(plant_)),
     left_heel(LeftToeRear(plant_)),
@@ -62,8 +62,6 @@ AlipMPFCDiagram::AlipMPFCDiagram(
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
-
-  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   double single_support_duration = gains_mpc.ss_time;
   double double_support_duration = gains_mpc.ds_time;

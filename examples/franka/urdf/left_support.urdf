@@ -15,7 +15,7 @@
         <collision name="collision">
             <origin rpy="0 0 0" xyz="0 0 0.0"/>
             <geometry>
-                <box size="0.4 0.025 0.45"/>
+                <box size="0.4 0.02 0.048"/>
             </geometry>
             <drake:proximity_properties>
                 <drake:rigid_hydroelastic/>
@@ -27,10 +27,10 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0.0"/>
             <geometry>
-                <box size="0.4 0.025 0.45"/>
+                <box size="0.4 0.02 0.048"/>
             </geometry>
             <material name="silver">
-              <color rgba="0.75 0.75 0.75 0.5"/>
+              <color rgba="0.75 0.75 0.75 1"/>
             </material>
         </visual>
     </link>

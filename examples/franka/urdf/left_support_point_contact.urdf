@@ -13,13 +13,13 @@
                     izz="0.013"/>
         </inertial>
         <collision name="point_1">
-            <origin rpy="0 0 0" xyz="-0.08 0.0 0.225"/>
+            <origin rpy="0 0 0" xyz="-0.08 0.0 0.024"/>
             <geometry>
               <sphere radius="0.001"/>
             </geometry>
         </collision>
         <collision name="point_2">
-            <origin rpy="0 0 0" xyz="0.08 0.0 0.225"/>
+            <origin rpy="0 0 0" xyz="0.08 0.0 0.024"/>
             <geometry>
               <sphere radius="0.001"/>
             </geometry>
@@ -27,7 +27,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0.0"/>
             <geometry>
-                <box size="0.4 0.025 0.45"/>
+                <box size="0.4 0.02 0.048"/>
             </geometry>
         </visual>
     </link>

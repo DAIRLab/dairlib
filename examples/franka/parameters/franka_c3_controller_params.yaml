@@ -7,7 +7,7 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 end_effector_name: plate
 
-tool_attachment_frame: [0, 0, 0.107]
+tool_attachment_frame: [0, 0, 0.1324]
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
 #plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf
@@ -18,15 +18,15 @@ scene_index: 1
 #right_support_model: examples/franka/urdf/left_support.urdf
 left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
-left_support_position: [0.7, 0.15, 0.225]
-right_support_position: [0.7, -0.15, 0.225]
+left_support_position: [0.7, 0.15, 0.4808]
+right_support_position: [0.7, -0.15, 0.4808]
 
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
 
-neutral_position: [0.5, 0, 0.443]
+neutral_position: [0.45, 0, 0.5]
 x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1

@@ -37,6 +37,7 @@ import numpy as np
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
+    sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
     sim_params.visualize = True
     sim_params.simulate_perception = True
     sim_params.controller_input_type = MpfcOscDiagramInputType.kLcmtAlipMpcOutput

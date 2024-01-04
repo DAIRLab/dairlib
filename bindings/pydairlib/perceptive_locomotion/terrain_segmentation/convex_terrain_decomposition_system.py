@@ -48,6 +48,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             return
 
         hierarchy = hierarchy.squeeze()
+        hierarchy = np.reshape(hierarchy, (-1, 4))
 
         # vector is an outer contour if is has no parent
         def is_outer_contour(hierarchy_vector):

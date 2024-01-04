@@ -72,8 +72,6 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
-  //  drake::multibody::ModelInstanceIndex box_index =
-  //      parser.AddModels(FindResourceOrThrow(sim_params.box_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -132,8 +130,6 @@ int DoMain(int argc, char* argv[]) {
           &plant.GetBodyByName("panda_link5"),
           &plant.GetBodyByName("panda_link6"),
           &plant.GetBodyByName("panda_link8"),
-
-          //          &plant.GetBodyByName("plate"),
       });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
@@ -156,21 +152,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.tray_publish_rate));
-  //  auto box_state_sender =
-  //      builder.AddSystem<systems::ObjectStateSender>(plant, box_index);
-  //  auto box_state_pub =
-  //      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-  //          lcm_channel_params.box_state_channel, lcm,
-  //          1.0 / sim_params.publish_rate));
 
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
-  //  builder.Connect(plant.get_state_output_port(box_index),
-  //                  box_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
-  //  builder.Connect(box_state_sender->get_output_port(),
-  //                  box_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -196,15 +182,6 @@ int DoMain(int argc, char* argv[]) {
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
   q.tail(plant.num_positions(tray_index)) = sim_params.q_init_plate[sim_params.scene_index];
-
-
-  //  q[q_map["box_qw"]] = sim_params.q_init_box[0];
-  //  q[q_map["box_qx"]] = sim_params.q_init_box[1];
-  //  q[q_map["box_qy"]] = sim_params.q_init_box[2];
-  //  q[q_map["box_qz"]] = sim_params.q_init_box[3];
-  //  q[q_map["box_x"]] = sim_params.q_init_box[4];
-  //  q[q_map["box_y"]] = sim_params.q_init_box[5];
-  //  q[q_map["box_z"]] = sim_params.q_init_box[6];
 
   plant.SetPositions(&plant_context, q);
 

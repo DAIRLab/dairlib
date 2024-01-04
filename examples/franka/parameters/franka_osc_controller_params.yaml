@@ -4,10 +4,10 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector_massless.urdf
 end_effector_name: plate
 
-tool_attachment_frame: [0, 0, 0.107]
+tool_attachment_frame: [0, 0, 0.1324]
 
-neutral_position: [0.55, 0, 0.43]
-x_scale: 0.05
+neutral_position: [0.55, 0, 0.48]
+x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1
 
@@ -55,13 +55,13 @@ EndEffectorRotW:
     0, 10, 0,
     0, 0, 10 ]
 EndEffectorRotKp:
-  [ 400, 0, 0,
-    0, 400, 0,
-    0, 0,  400]
+  [ 800, 0, 0,
+    0, 800, 0,
+    0, 0,  800]
 EndEffectorRotKd:
-  [ 20, 0, 0,
-    0, 20, 0,
-    0, 0, 20 ]
+  [ 40, 0, 0,
+    0, 40, 0,
+    0, 0, 40]
 LambdaEndEffectorW:
   [ 1, 0, 0,
     0, 1, 0,

@@ -19,9 +19,9 @@
             </geometry>
         </collision>
         <collision name="point_2">
-            <origin rpy="0 0 0" xyz="0 0 0.0"/>
+            <origin rpy="0 0 0" xyz="-0.1 0.0 0.024"/>
             <geometry>
-                <box size="0.4 0.02 0.0481"/>
+              <sphere radius="0.001"/>
             </geometry>
         </collision>
         <visual>

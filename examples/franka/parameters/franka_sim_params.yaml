@@ -15,9 +15,9 @@ scene_index: 1
 visualize: true
 publish_efforts: true
 
-tool_attachment_frame: [0, 0, 0.1324] # original tool attachment frame + 1in for the spacer
-left_support_position: [0.8, 0.15, 0.4808]
-right_support_position: [0.8, -0.15, 0.4808]
+tool_attachment_frame: [0, 0, 0.107]
+left_support_position: [0.8, 0.15, 0.45]
+right_support_position: [0.8, -0.15, 0.45]
 
 dt: 0.0005
 realtime_rate: 1.0
@@ -25,6 +25,6 @@ realtime_rate: 1.0
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
 q_init_plate: [[1, 0, 0, 0, 0.56, 0.04, 0.515],
-               [1, 0, 0, 0, 0.72, 0.00, 0.515]]
+               [1, 0, 0, 0, 0.7, 0.00, 0.515]]
 #q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]

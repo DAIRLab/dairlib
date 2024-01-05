@@ -80,15 +80,20 @@ C3Controller::C3Controller(
   c3_->SetOsqpSolverOptions(solver_options_);
 
   // Set actor bounds
-  for (int i : vector<int>({0, 2})) {
+  for (int i : vector<int>({0})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.35, 0.6, 1);
+    c3_->AddLinearConstraint(A, 0.4, 0.6, 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.2, 0.2, 1);
+    c3_->AddLinearConstraint(A, -0.1, 0.1, 1);
+  }
+  for (int i : vector<int>({2})) {
+    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+    A(i) = 1.0;
+    c3_->AddLinearConstraint(A, 0.35, 0.55, 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -163,6 +168,13 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
+
+  DRAKE_DEMAND(lcs_x->get_data()[0] > 0.35 );
+  DRAKE_DEMAND(lcs_x->get_data()[0] < 0.65);
+  DRAKE_DEMAND(lcs_x->get_data()[1] > -0.1);
+  DRAKE_DEMAND(lcs_x->get_data()[1] < 0.1);
+  DRAKE_DEMAND(lcs_x->get_data()[2] > 0.35);
+  DRAKE_DEMAND(lcs_x->get_data()[2] < 0.55);
 
 //  DRAKE_DEMAND(Q_.front().rows() == lcs.n_);
 //  DRAKE_DEMAND(Q_.front().cols() == lcs.n_);

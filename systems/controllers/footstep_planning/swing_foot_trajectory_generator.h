@@ -7,7 +7,7 @@
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "drake/common/trajectories/path_parameterized_trajectory.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
 namespace systems {
@@ -73,7 +73,7 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double> &context,
       drake::systems::DiscreteValues<double> *discrete_state) const;
 
-  drake::trajectories::PathParameterizedTrajectory<double>
+  drake::trajectories::PiecewisePolynomial<double>
   CreateSplineForSwingFoot(
       double start_time, double end_time,
       const Eigen::Vector3d &init_pos,

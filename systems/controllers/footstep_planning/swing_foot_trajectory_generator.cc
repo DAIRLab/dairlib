@@ -3,9 +3,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include "common/polynomial_utils.h"
 #include "multibody/multibody_utils.h"
-#include "systems/controllers/minimum_snap_trajectory_generation.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/path_parameterized_trajectory.h"
@@ -72,10 +70,7 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
       this->DeclareVectorInputPort("footstep_target_in_stance_frame", 3).get_index();
 
   // Provide an instance to allocate the memory first (for the output)
-  PathParameterizedTrajectory<double> pp(
-      PiecewisePolynomial<double>(VectorXd::Zero(1)),
-      PiecewisePolynomial<double>(VectorXd::Zero(1))
-  );
+  PiecewisePolynomial<double> pp(Vector1d::Zero());
   Trajectory<double> &traj_instance = pp;
   swing_foot_traj_output_port_ = this->DeclareAbstractOutputPort(
           "swing_foot_xyz_in_stance_frame", traj_instance,
@@ -141,7 +136,7 @@ EventStatus SwingFootTrajectoryGenerator::DiscreteVariableUpdate(
   return EventStatus::Succeeded();
 }
 
-drake::trajectories::PathParameterizedTrajectory<double>
+drake::trajectories::PiecewisePolynomial<double>
 SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
     double start_time, double end_time, const Vector3d &init_pos,
     const Vector3d &final_pos) const {
@@ -149,11 +144,8 @@ SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
   Vector3d final = final_pos;
   final(2) += desired_final_foot_height_;
 
-  const Vector2d time_scaling_breaks(start_time, end_time);
-  auto time_scaling_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
-      time_scaling_breaks, Vector2d(0, 1).transpose());
+  const Vector3d time_breaks(start_time, (start_time + end_time) / 2, end_time);
 
-  std::vector<double> path_breaks = {0, 0.5, 1.0};
   Eigen::Matrix3d control_points = Matrix3d::Zero();
   control_points.col(0) = init_pos;
   control_points.col(2) = final;
@@ -161,8 +153,6 @@ SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
   enum StepType { kFlat, kUp, kDown };
   StepType step_type = kFlat;
 
-  // set midpoint similarly to https://arxiv.org/pdf/2206.14049.pdf
-  // (Section V/E)
   Vector3d swing_foot_disp = final - init_pos;
   if (abs(swing_foot_disp(2)) < 0.025){
     swing_foot_disp(2) = 0;
@@ -172,6 +162,8 @@ SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
     step_type = kDown;
   }
 
+  // set midpoint similarly to https://arxiv.org/pdf/2206.14049.pdf
+  // (Section V/E)
   double disp_yaw = atan2(swing_foot_disp(1), swing_foot_disp(0));
   Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0);
   Vector3d n = n_planar.cross(swing_foot_disp).normalized();
@@ -192,11 +184,9 @@ SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
     control_points.col(2) += retract_delta;
   }
 
-  auto swing_foot_path = minsnap::MakeMinSnapTrajFromWaypoints(
-      control_points, path_breaks, Vector3d::Zero(), final_vel);
-
-  auto swing_foot_spline = PathParameterizedTrajectory<double>(
-      swing_foot_path, time_scaling_trajectory);
+  auto swing_foot_spline =
+      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+          time_breaks, control_points, Vector3d::Zero(), final_vel);
 
   return swing_foot_spline;
 }
@@ -245,7 +235,7 @@ void SwingFootTrajectoryGenerator::CalcSwingTraj(
       touchdown_time - 0.001);
 
   // Assign traj
-  auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
+  auto pp_traj = dynamic_cast<PiecewisePolynomial<double> *>(traj);
   *pp_traj = CreateSplineForSwingFoot(
       start_time_of_this_interval,
       touchdown_time,

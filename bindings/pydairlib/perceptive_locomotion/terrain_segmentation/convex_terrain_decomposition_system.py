@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from skspatial.objects import Plane
 
-from grid_map import GridMap, InterpolationMethods
+from grid_map import GridMap, InterpolationMethods, InpaintWithMinimumValues
 
 from pydrake.systems.all import (
     Value,
@@ -32,10 +32,11 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         )
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
+        InpaintWithMinimumValues(elevation_map, "elevation", "elevation_inpainted")
         verts3d = polygon.GetVertices().squeeze().transpose()
         for v in verts3d:
             v[-1] = elevation_map.atPosition(
-                "elevation", v[:2], InterpolationMethods.INTER_LINEAR
+                "elevation_inpainted", v[:2], InterpolationMethods.INTER_LINEAR
             )
         nan_row_filter = ~np.isnan(verts3d).any(axis=1)
         verts3d_filtered = verts3d[nan_row_filter]
@@ -72,14 +73,15 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         polygons = []
         for i, boundary in enumerate(safe_regions):
+            boundary = np.fliplr(boundary.squeeze())
             if is_outer_contour(hierarchy[i]):
-                boundary_points = np.zeros_like(boundary.squeeze(), dtype=float)
+                boundary_points = np.zeros_like(boundary, dtype=float)
                 for j in range(boundary_points.shape[0]):
                     boundary_points[j] = grid.getPosition(
-                        index=boundary.squeeze()[j]
+                        index=boundary[j]
                     )
 
-                polygon = (np.fliplr(boundary_points.transpose()), [])
+                polygon = (boundary_points.transpose(), [])
                 child_index = hierarchy[i][2]
 
                 while child_index > 0:

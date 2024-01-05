@@ -84,17 +84,23 @@ AlipMPFCDiagram::AlipMPFCDiagram(
   builder.Connect(state_receiver->get_output_port(),
                   foot_placement_controller->get_input_port_state());
 
+  input_port_state_ = builder.ExportInput(
+      state_receiver->get_input_port(), "lcmt_robot_output"
+  );
+
   if (debug_publish_period > 0) {
     auto mpc_debug_pub = builder.AddSystem(
         LcmPublisherSystem::Make<lcmt_mpc_debug>(
             "ALIP_MPFC_DEBUG", &lcm_local, debug_publish_period));
     builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
                     mpc_debug_pub->get_input_port());
+    auto state_debug_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<lcmt_robot_output>(
+            "CASSIE_STATE_MPC_DEBUG", &lcm_local, debug_publish_period));
+    builder.ConnectInput(input_port_state_, state_debug_pub->get_input_port());
   }
 
-  input_port_state_ = builder.ExportInput(
-      state_receiver->get_input_port(), "lcmt_robot_output"
-  );
+
   input_port_footholds_ = builder.ExportInput(
       foot_placement_controller->get_input_port_footholds(), "footholds"
   );

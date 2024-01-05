@@ -58,8 +58,8 @@ def main():
     i = 0
     latching_switch_a = 1
     latching_switch_b = 1
-    latching_switch_x = 0
-    latching_switch_y = 0
+    latching_switch_x = 1
+    latching_switch_y = 1
     print("Teleop Status: " + str(latching_switch_a))
     print("End Effector Follow Status: " + str(latching_switch_b))
     while not done:
@@ -81,7 +81,7 @@ def main():
                     print("End Effector Follow Status: " + str(latching_switch_b))
                 if event.button == 2:
                     latching_switch_x = not latching_switch_x
-                    print("End Effector Follow Status: " + str(latching_switch_b))
+                    print("Force Tracking Status: " + str(latching_switch_x))
                 if event.button == 3:
                     latching_switch_y = not latching_switch_y
                     print("End Effector Follow Status: " + str(latching_switch_b))

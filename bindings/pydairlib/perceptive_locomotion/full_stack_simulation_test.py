@@ -48,7 +48,7 @@ def main():
     controller = AlipMPFCDiagram(
         sim_env.controller_plant, sim_params.mpfc_gains_yaml, 1/30
     )
-    desired_velocity = ConstantVectorSource(np.array([0.1, 0]))
+    desired_velocity = ConstantVectorSource(np.array([0.5, 0]))
     terrain_segmentation = TerrainSegmentationSystem()
     convex_decomposition = ConvexTerrainDecompositionSystem()
 

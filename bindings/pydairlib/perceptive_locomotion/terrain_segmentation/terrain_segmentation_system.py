@@ -55,7 +55,7 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         curvature = convolve2d(blurred_wide, self.laplacian_kernel, mode='same')
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
-        second_order_safety_score = np.exp(-2.0 * below_edges)
+        second_order_safety_score = np.exp(-3.0 * below_edges)
 
         # treat safety scores like independent probabilities
         return second_order_safety_score * first_order_safety_score

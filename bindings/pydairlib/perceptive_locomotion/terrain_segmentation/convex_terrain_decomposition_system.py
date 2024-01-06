@@ -15,6 +15,27 @@ from pydrake.systems.all import (
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 from pydairlib.geometry.polygon_utils import ProcessTerrain2d
 
+import matplotlib.pyplot as plt
+
+
+def plot_polygon(verts, linestyle='solid', color='color'):
+    # plot a polygon (for debugging)
+    assert(verts.shape[0] == 2)
+    tmp = np.vstack((verts.T, verts[:, 0]))
+    plt.plot(-tmp[:, 1], tmp[:, 0], linestyle=linestyle, color=color)
+
+
+def plot_polygon_with_holes(poly):
+    plot_polygon(poly[0], linestyle='solid', color='black')
+    for p in poly[1]:
+        plot_polygon(p, linestyle='dashed', color='grey')
+
+
+def plot_polygons_with_holes(polys):
+    for p in polys:
+        plot_polygon_with_holes(p)
+    plt.show()
+
 
 class ConvexTerrainDecompositionSystem(LeafSystem):
 
@@ -36,14 +57,11 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         verts3d = polygon.GetVertices().squeeze().transpose()
         for v in verts3d:
             v[-1] = elevation_map.atPosition(
-                "elevation_inpainted", v[:2], InterpolationMethods.INTER_LINEAR
+                "elevation_inpainted", v[:2], InterpolationMethods.INTER_CUBIC
             )
-        nan_row_filter = ~np.isnan(verts3d).any(axis=1)
-        verts3d_filtered = verts3d[nan_row_filter]
-
         plane = None
         try:
-            plane = Plane.best_fit(verts3d_filtered)
+            plane = Plane.best_fit(verts3d)
         except ValueError:
             import pdb; pdb.set_trace()
 
@@ -85,18 +103,23 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                 child_index = hierarchy[i][2]
 
                 while child_index > 0:
+                    hole_boundary = np.fliplr(safe_regions[child_index].squeeze())
                     hole_points = np.zeros_like(
-                        safe_regions[child_index].squeeze(), dtype=float
+                        hole_boundary, dtype=float
                     )
                     for j in range(hole_points.shape[0]):
                         hole_points[j] = grid.getPosition(
-                            index=safe_regions[child_index].squeeze()[j]
+                            index=hole_boundary[j]
                         )
                     polygon[1].append(hole_points.transpose())
                     child_index = hierarchy[child_index][0]
                 polygons.append(polygon)
 
         convex_polygons = ProcessTerrain2d(polygons)
+        if polygons and not convex_polygons:
+            plot_polygons_with_holes(polygons)
+            import pdb; pdb.set_trace()
+
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
             polygon.SetPlane(normal, point)

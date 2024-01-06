@@ -91,11 +91,11 @@ def main():
     simulator.reset_context(context)
     simulator.set_target_realtime_rate(1.0)
 
-    tnext = 0.01
+    tnext = 0.005
     while tnext < np.inf:
         diagram.CalcForcedUnrestrictedUpdate(context, context.get_mutable_state())
         simulator.AdvanceTo(tnext)
-        tnext += 0.01
+        tnext += 0.005
 
 
 if __name__ == '__main__':

@@ -457,8 +457,13 @@ std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>
 
   std::vector<MatrixXd> poly_out_list;
   for (const auto& poly_out : cd.getDoneList()) {
-    // low probability that a triangle is a meaningful size
-    poly_out_list.push_back(Acd2d2Eigen(poly_out.front()));
+    auto poly_eigen = Acd2d2Eigen(poly_out.front());
+
+    // Only push back valid polygons (3 or more vertices)
+    if (poly_eigen.cols() > 2) {
+      poly_out_list.push_back(poly_eigen);
+    }
+
   }
   return poly_out_list;
 }
@@ -471,6 +476,11 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
     if (is_degenerate(planar_region.first)) {
       continue;
     }
+    double area = PolygonArea(planar_region.first);
+    if (area < 0.1) {
+      continue;
+    }
+
     acd2d::cd_polygon poly;
     if (ValidateHoles(planar_region.first, planar_region.second)) {
       poly = MakeAcdPolygon(planar_region, cd.buf());
@@ -479,6 +489,8 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
     }
     cd.addPolygon(poly);
   }
+
+//  std::cout << "registered " << cd.getTodoList().size() << " polys to decomp\n";
   try {
     cd.maybe_decomposeAll(0.15, measure.get());
   } catch (const std::exception& e) {
@@ -487,20 +499,22 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
   }
   std::vector<ConvexPolygon> footholds;
   int processed_count = 0;
+
+//  std::cout << "registered " << cd.getDoneList().size() << " decomposed polys\n";
   for (const auto& poly_out : cd.getDoneList()) {
-    // very low probability that a triangle is a meaningful size
-    if (poly_out.front().getSize() > 3) {
-      MatrixXd verts = Acd2d2Eigen(poly_out.front());
-      VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
-      Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
-      if (PolygonArea(verts) > 0.04) {
-        footholds.push_back(
-            MakeInscribedConvexPolygon(verts, convex_hull_v, X_WP)
-        );
-        processed_count++;
-      }
+    MatrixXd verts = Acd2d2Eigen(poly_out.front());
+    if (verts.cols() < 3) {
+      continue;
     }
+    VPolytope convex_hull_v = VPolytope(verts).GetMinimalRepresentation();
+    Eigen::Isometry3d X_WP = Eigen::Isometry3d::Identity();
+    footholds.push_back(
+        MakeInscribedConvexPolygon(verts, convex_hull_v, X_WP)
+    );
+    processed_count++;
   }
+//  std::cout << "processed " << processed_count << " footholds";
+//  std::cout << footholds.size() << " final footholds\n";
   return footholds;
 }
 
@@ -559,14 +573,20 @@ std::vector<MatrixXd> Acd(const MatrixXd& verts, double concavity_threshold) {
 
   std::vector<MatrixXd> polylist;
   for (const auto& poly_out : cd.getDoneList()) {
-    polylist.push_back(Acd2d2Eigen(poly_out.front()));
+    auto poly_eigen = Acd2d2Eigen(poly_out.front());
+    // Only push back valid polygons (3 or more vertices)
+    if (poly_eigen.cols() > 2) {
+      polylist.push_back(poly_eigen);
+    }
   }
   return polylist;
 }
 
 MatrixXd Acd2d2Eigen(const acd2d::cd_poly& poly) {
   int n = poly.getSize();
-  DRAKE_DEMAND(n > 2);
+  if (n < 3) {
+    return MatrixXd::Zero(2, 0);
+  }
   MatrixXd verts = MatrixXd::Zero(2, n);
   auto ptr = poly.getHead();
   DRAKE_DEMAND(ptr != nullptr);

@@ -290,7 +290,6 @@ LcmForceDrawer::LcmForceDrawer(
                       {0, 1, 0, 1});
   meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
 
-
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
 }

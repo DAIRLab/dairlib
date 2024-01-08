@@ -14,7 +14,8 @@ namespace dairlib {
 namespace systems {
 
 PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
-    const MultibodyPlant<double>& object_plant) {
+    const MultibodyPlant<double>& object_plant, double first_target_range)
+    : first_target_range_(first_target_range) {
   // Input/Output Setup
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -44,7 +45,8 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
-  if ((tray_state->GetPositions().tail(3) - neutral_pose_).norm() < 0.05) {
+  if ((tray_state->GetPositions().tail(3) - neutral_pose_).norm() <
+      first_target_range_) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 1;
   }
   return EventStatus::Succeeded();

@@ -24,6 +24,7 @@ struct FrankaC3ControllerParams {
   double x_scale;
   double y_scale;
   double z_scale;
+  double near_target_threshold;
 
   Eigen::Vector3d left_support_position;
   Eigen::Vector3d right_support_position;
@@ -48,6 +49,7 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));
     a->Visit(DRAKE_NVP(z_scale));
+    a->Visit(DRAKE_NVP(near_target_threshold));
 
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));

@@ -1,8 +1,10 @@
 #pragma once
 
-#include "drake/systems/framework/leaf_system.h"
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "systems/framework/state_vector.h"
+
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -10,7 +12,8 @@ namespace systems {
 class PlateBalancingTargetGenerator
     : public drake::systems::LeafSystem<double> {
  public:
-  PlateBalancingTargetGenerator(const drake::multibody::MultibodyPlant<double>& object_plant);
+  PlateBalancingTargetGenerator(
+      const drake::multibody::MultibodyPlant<double>& object_plant);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -39,12 +42,16 @@ class PlateBalancingTargetGenerator
                              drake::systems::BasicVector<double>* target) const;
   void CalcTrayTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex tray_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex tray_target_port_;
 
+  drake::systems::DiscreteStateIndex reached_first_target_idx_;
   Eigen::Vector3d neutral_pose_;
   double x_scale_;
   double y_scale_;

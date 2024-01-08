@@ -8,7 +8,8 @@ box_model: examples/franka/urdf/default_box.urdf
 left_support_model: examples/franka/urdf/left_support.urdf
 right_support_model: examples/franka/urdf/left_support.urdf
 franka_publish_rate: 1000
-tray_publish_rate: 20
+tray_publish_rate: 10
+visualizer_publish_rate: 30
 actuator_delay: 0.000
 
 scene_index: 1

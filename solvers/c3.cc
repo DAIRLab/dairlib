@@ -191,10 +191,10 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
                vector<VectorXd>& w) {
   vector<MatrixXd> Gv = G_;
 
-  for (int i = 0; i < N_ - 1; ++i) {
-    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
-                                        -2 * R_.at(i) * u_sol_->at(i + 1));
-  }
+  //  for (int i = 0; i < N_ - 1; ++i) {
+  //    input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
+  //                                        -2 * R_.at(i) * u_sol_->at(i));
+  //  }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
     ADMMStep(x0, &delta, &w, &Gv, iter);
@@ -285,10 +285,12 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   //  /// initialize decision variables to warm start
   if (warm_start_) {
-    for (int i = 0; i < N_; i++) {
-      prog_.SetInitialGuess(x_[i], warm_start_x_[admm_iteration][i]);
-      prog_.SetInitialGuess(lambda_[i], warm_start_lambda_[admm_iteration][i]);
-      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i]);
+    prog_.SetInitialGuess(x_[0], x0);
+    for (int i = 0; i < N_ - 1; i++) {
+      prog_.SetInitialGuess(x_[i], warm_start_x_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(lambda_[i],
+                            warm_start_lambda_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i + 1]);
     }
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
@@ -367,8 +369,13 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
     if (warm_start_) {
-      deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                           c_[i], admm_iteration, i);
+      if (i == N_ - 1) {
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, -1);
+      } else {
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
+                                             c_[i], admm_iteration, i + 1);
+      }
     } else {
       deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
                                            c_[i], admm_iteration, -1);

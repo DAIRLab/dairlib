@@ -53,18 +53,18 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   for (int i = 0; i < m_; i++) {
     binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
-//    if (warm_start_index != -1) {
-//      binary[i].set(GRB_DoubleAttr_Start,
-//                    warm_start_binary_[admm_iteration][warm_start_index](i));
-//    }
+    if (warm_start_index != -1) {
+      binary[i].set(GRB_DoubleAttr_Start,
+                    warm_start_binary_[admm_iteration][warm_start_index](i));
+    }
   }
 
   for (int i = 0; i < n_ + m_ + k_; i++) {
     delta_k[i] = model.addVar(-10000.0, 10000.0, 0.0, GRB_CONTINUOUS);
-//    if (warm_start_index != -1) {
-//      delta_k[i].set(GRB_DoubleAttr_Start,
-//                     warm_start_delta_[admm_iteration][warm_start_index](i));
-//    }
+    if (warm_start_index != -1) {
+      delta_k[i].set(GRB_DoubleAttr_Start,
+                     warm_start_delta_[admm_iteration][warm_start_index](i));
+    }
   }
 
   GRBQuadExpr obj = 0;

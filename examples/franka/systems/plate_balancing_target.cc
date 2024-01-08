@@ -1,18 +1,25 @@
 #include "plate_balancing_target.h"
-
+#include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 
+using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
+using dairlib::systems::StateVector;
 using Eigen::VectorXd;
 
 namespace dairlib {
 namespace systems {
 
-PlateBalancingTargetGenerator::PlateBalancingTargetGenerator() {
+PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(const MultibodyPlant<double>& object_plant) {
   // Input/Output Setup
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
+  tray_state_port_ =
+      this->DeclareVectorInputPort(
+              "x_object", StateVector<double>(object_plant.num_positions(),
+                                              object_plant.num_velocities()))
           .get_index();
   end_effector_target_port_ =
       this->DeclareVectorOutputPort(
@@ -54,12 +61,17 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
     BasicVector<double>* target) const {
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  const StateVector<double>* tray_state =
+      (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
   VectorXd target_tray_state = VectorXd::Zero(7);
   VectorXd tray_position = neutral_pose_;
   tray_position[2] += 0.015; // thickness of end effector and tray
   tray_position(0) += radio_out->channel[0] * x_scale_;
   tray_position(1) += radio_out->channel[1] * y_scale_;
   tray_position(2) += radio_out->channel[2] * z_scale_;
+  if ((tray_state->GetPositions().tail(3) - tray_position).norm() < 0.1){
+    tray_position[2] += 0.1; // raise the tray once it is close
+  }
   target_tray_state << 1, 0, 0, 0, tray_position;
   target->SetFromVector(target_tray_state);
 }

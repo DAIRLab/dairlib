@@ -1,7 +1,5 @@
 #include "examples/franka/systems/franka_kinematics.h"
 
-#include <iostream>
-
 #include "common/find_resource.h"
 #include "multibody/multibody_utils.h"
 

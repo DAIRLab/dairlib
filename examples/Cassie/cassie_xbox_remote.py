@@ -56,12 +56,13 @@ def main():
 
     done = False
     i = 0
-    latching_switch_a = 1
+    latching_switch_a = 0
     latching_switch_b = 1
-    latching_switch_x = 1
+    latching_switch_x = 0
     latching_switch_y = 1
     print("Teleop Status: " + str(latching_switch_a))
     print("End Effector Follow Status: " + str(latching_switch_b))
+    print("Force Tracking Status: " + str(latching_switch_x))
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands

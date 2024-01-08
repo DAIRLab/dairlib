@@ -16,6 +16,7 @@ solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
 N: 5
+gamma: 1
 
 # matrix scaling
 w_Q: 30

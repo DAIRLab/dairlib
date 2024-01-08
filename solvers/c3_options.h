@@ -13,8 +13,10 @@ struct C3Options {
   std::string projection_type;
   std::string contact_model;
   bool warm_start;
+  bool use_predicted_x0;
 
   int N;
+  double gamma;
   double w_Q;
   double w_R;
   double w_G;
@@ -61,6 +63,7 @@ struct C3Options {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
     a->Visit(DRAKE_NVP(warm_start));
+    a->Visit(DRAKE_NVP(use_predicted_x0));
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));
@@ -69,6 +72,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
+    a->Visit(DRAKE_NVP(gamma));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));

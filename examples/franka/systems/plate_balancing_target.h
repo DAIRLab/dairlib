@@ -1,6 +1,8 @@
 #pragma once
 
 #include "drake/systems/framework/leaf_system.h"
+#include <drake/multibody/plant/multibody_plant.h>
+#include "systems/framework/state_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -8,10 +10,14 @@ namespace systems {
 class PlateBalancingTargetGenerator
     : public drake::systems::LeafSystem<double> {
  public:
-  PlateBalancingTargetGenerator();
+  PlateBalancingTargetGenerator(const drake::multibody::MultibodyPlant<double>& object_plant);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_tray_state() const {
+    return this->get_input_port(tray_state_port_);
   }
 
   const drake::systems::OutputPort<double>&
@@ -35,6 +41,7 @@ class PlateBalancingTargetGenerator
                       drake::systems::BasicVector<double>* target) const;
 
   drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex tray_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex tray_target_port_;
 
@@ -42,7 +49,6 @@ class PlateBalancingTargetGenerator
   double x_scale_;
   double y_scale_;
   double z_scale_;
-  //  std::vector<Eigen::Vector4d> half_plane_bounds_;
 };
 
 }  // namespace systems

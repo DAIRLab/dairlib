@@ -163,7 +163,7 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
 
   drake::geometry::MeshcatVisualizerParams params;
-  params.publish_period = 1.0 / 30.0;
+  params.publish_period = 1.0 / 15.0;
   params.enable_alpha_slider = true;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(

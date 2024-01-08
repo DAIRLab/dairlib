@@ -221,7 +221,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
 
   auto plate_balancing_target =
-      builder.AddSystem<systems::PlateBalancingTargetGenerator>();
+      builder.AddSystem<systems::PlateBalancingTargetGenerator>(plant_tray);
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
       controller_params.neutral_position.data(),
       controller_params.neutral_position.size());
@@ -276,6 +276,8 @@ int DoMain(int argc, char* argv[]) {
                   tray_state_receiver->get_input_port());
   builder.Connect(tray_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
+  builder.Connect(tray_state_receiver->get_output_port(),
+                  plate_balancing_target->get_input_port_tray_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_lcs_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),

@@ -11,13 +11,13 @@ contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
 
-mu: [0.9, 0.9, 0.9, 0.1, 0.1, 0.1, 0.1]
+mu: [0.5, 0.5, 0.5, 0.1, 0.1, 0.1, 0.1]
 dt: 0.075
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 7
 N: 5
-gamma: 0.9
+gamma: 1
 
 # matrix scaling
 w_Q: 50

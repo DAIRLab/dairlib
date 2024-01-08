@@ -18,6 +18,10 @@ from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQR
 )
 
+from pydairlib.perceptive_locomotion.systems.alip_mpfc import (
+    AlipMPFC
+)
+
 from pydairlib.perceptive_locomotion.systems. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,

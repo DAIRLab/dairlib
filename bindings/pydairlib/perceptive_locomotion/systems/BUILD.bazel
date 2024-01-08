@@ -21,6 +21,16 @@ py_library(
 )
 
 py_library(
+    name = "alip_mpfc",
+    srcs = ["alip_mpfc.py"],
+    deps = [
+        ":alip_lqr",
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
     name = "height_map_server",
     srcs = ["height_map_server.py"],
     deps = [
@@ -47,10 +57,11 @@ py_library(
 )
 
 py_binary(
-    name = "alip_lqr_test",
-    srcs = ["alip_lqr_test.py"],
+    name = "alip_footstep_controller_test",
+    srcs = ["alip_footstep_controller_test.py"],
     deps = [
         ":alip_lqr",
+        ":alip_mpfc",
         ":cassie_footstep_controller_environment",
         "//bindings/grid_map",
     ],

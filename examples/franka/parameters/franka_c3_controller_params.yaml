@@ -19,15 +19,15 @@ scene_index: 1
 left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
 
-left_support_position: [0.8, 0.15, 0.45]
-right_support_position: [0.8, -0.15, 0.45]
+left_support_position: [0.8, 0.15, 0.46]
+right_support_position: [0.8, -0.15, 0.46]
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
 
 near_target_threshold: 0.07
-neutral_position: [0.45, 0, 0.47]
+neutral_position: [0.45, 0, 0.485]
 x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1

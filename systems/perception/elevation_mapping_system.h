@@ -115,6 +115,12 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
       const std::string& sensor_name,
       std::shared_ptr<elevation_mapping::SensorProcessorBase> processor);
 
+  void InitializeFlatTerrain(
+      const Eigen::VectorXd& robot_state,
+      std::vector<std::pair<const Eigen::Vector3d,
+                const drake::multibody::Frame<double>&>> contacts,
+                double init_radius, drake::systems::Context<double>&) const;
+
  private:
 
   drake::systems::EventStatus ElevationMapUpdateEvent(

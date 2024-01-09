@@ -214,6 +214,51 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   return drake::systems::EventStatus::Succeeded();
 }
 
+void ElevationMappingSystem::InitializeFlatTerrain(
+    const VectorXd& robot_state,
+    std::vector<std::pair<const Eigen::Vector3d,
+                const drake::multibody::Frame<double>&>> contacts,
+                double init_radius, Context<double>& context) const {
+
+  multibody::SetPositionsAndVelocitiesIfNew<double>(
+      plant_, robot_state, context_
+  );
+  auto& map = context.get_mutable_abstract_state<ElevationMap>(
+      elevation_map_state_index_
+  );
+
+  PointCloudType::Ptr init_pc;
+
+  double resolution = map.getRawGridMap().getResolution();
+  int npoints = std::ceil(init_radius / resolution);
+  float half_len = init_radius / (2.0 * resolution);
+
+  for (const auto& contact : contacts) {
+
+    Vector3d point_pos;
+    plant_.CalcPointsPositions(
+        *context_, contact.second, contact.first, plant_.world_frame(),
+        &point_pos
+    );
+
+    for (int xi = 0; xi < npoints; ++xi) {
+      for (int yi = 0; yi < npoints; ++yi) {
+        Eigen::Vector4f pt_xyzw(
+            xi * resolution - half_len, yi * resolution - half_len, 0, 1.0
+        );
+        pt_xyzw.head<3>() += point_pos.cast<float>();
+
+        pcl::PointXYZRGBConfidenceRatio pt;
+        pt.getArray4fMap() = Eigen::Map<Eigen::Array4f>(pt_xyzw.data());
+        pt.confidence_ratio = 0.99;
+        init_pc->push_back(pt);
+      }
+    }
+  }
+  Eigen::VectorXf variances = Eigen::VectorXf::Constant(init_pc->size(), 0.01);
+  map.add(init_pc, variances, 0, RigidTransformd());
+}
+
 void ElevationMappingSystem::CopyGridMap(
     const Context<double>& context, GridMap* grid_map) const {
   *grid_map = context.get_abstract_state<ElevationMap>(

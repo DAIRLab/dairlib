@@ -118,8 +118,8 @@ int DoMain(int argc, char* argv[]) {
 
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
 
-  drake::systems::LeafSystem<double>* pcl_subscriber;
-  drake::systems::LeafSystem<double>* pcl_receiver;
+  drake::systems::LeafSystem<double>* pcl_subscriber = nullptr;
+  drake::systems::LeafSystem<double>* pcl_receiver = nullptr;
 
 
   if (FLAGS_get_points_from_ros) {

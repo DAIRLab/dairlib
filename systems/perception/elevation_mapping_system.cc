@@ -60,13 +60,8 @@ ElevationMappingSystem::ElevationMappingSystem(
   input_port_pose_covariance_ = DeclareVectorInputPort("cov", 36).get_index();
 
   // create the elevation map
-  // TODO (@Brian-Acosta) expose the elevation mapping parameters
-  grid_map::Length length(2.0, 2.0);
-  double resolution = 0.025;
   ElevationMap map;
-  map.setGeometry(length, resolution, track_point_.head<2>());
-
-  //TODO (@Brian-Acosta) how to handle map and motion updater initialization?
+  map.setGeometry(params.map_length, params.resolution, track_point_.head<2>());
 
   auto model_value_map = drake::Value<ElevationMap>(map);
   auto model_value_updater = drake::Value<RobotMotionMapUpdater>();

@@ -81,7 +81,7 @@ class AlipMPFC(LeafSystem):
         }
 
     def get_quadradic_cost_for_vdes(self, vdes: np.ndarray) -> \
-        tuple[np.narray, np.ndarray, np.ndarray]:
+        tuple[np.ndarray, np.ndarray, np.ndarray]:
         g = self.period_two_orbit_premul @ self.B @ vdes
         y = self.period_two_orbit_orth @ g
 

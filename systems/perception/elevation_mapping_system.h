@@ -32,6 +32,8 @@ struct elevation_mapping_params {
   elevation_map_update_params update_params;
   std::string base_frame_name;
   Eigen::Vector3d track_point;
+  grid_map::Length map_length;
+  double resolution;
 };
 
 struct elevation_mapping_params_io {
@@ -39,7 +41,9 @@ struct elevation_mapping_params_io {
   std::string map_update_trigger_type;
   std::string base_frame_name;
   std::vector<double> track_point;
+  std::vector<double> map_length;
   double map_update_rate_hz;
+  double resolution;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -48,6 +52,8 @@ struct elevation_mapping_params_io {
     a->Visit(DRAKE_NVP(base_frame_name));
     a->Visit(DRAKE_NVP(track_point));
     a->Visit(DRAKE_NVP(map_update_rate_hz));
+    a->Visit(DRAKE_NVP(map_length));
+    a->Visit(DRAKE_NVP(resolution));
   }
 
   static elevation_mapping_params ReadElevationMappingParamsFromYaml(
@@ -78,8 +84,11 @@ struct elevation_mapping_params_io {
           params_io.map_update_rate_hz;
     }
     DRAKE_DEMAND(params_io.track_point.size() == 3);
+    DRAKE_DEMAND(params_io.map_length.size() == 2);
     params_out.track_point = Eigen::Vector3d::Map(params_io.track_point.data());
     params_out.base_frame_name = params_io.base_frame_name;
+    params_out.map_length = grid_map::Length::Map(params_io.map_length.data());
+    params_out.resolution = params_io.resolution;
     return params_out;
   };
 };

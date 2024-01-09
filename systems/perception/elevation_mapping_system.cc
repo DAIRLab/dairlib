@@ -218,7 +218,7 @@ void ElevationMappingSystem::InitializeFlatTerrain(
     const VectorXd& robot_state,
     std::vector<std::pair<const Eigen::Vector3d,
                 const drake::multibody::Frame<double>&>> contacts,
-                double init_radius, Context<double>& context) const {
+    double init_radius, Context<double>& context) const {
 
   multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant_, robot_state, context_

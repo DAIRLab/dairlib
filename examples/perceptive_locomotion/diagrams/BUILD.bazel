@@ -81,6 +81,7 @@ cc_library(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",

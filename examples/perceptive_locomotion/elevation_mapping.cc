@@ -19,6 +19,7 @@ void SigintHandler(int sig) {
 #include "drake/lcmt_point_cloud.hpp"
 
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/perceptive_locomotion/cassie_perception_utils.h"
 
 #include "systems/robot_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -92,28 +93,13 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_elevation_mapping_params_yaml
       );
 
-  perceptive_locomotion_preprocessor_params processor_params {
-      "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
-      {
-          {"toe_left", Vector3d(0.3, 0.1, 0.2),
-           CassieTransformFootToToeFrame()},
-          {"tarsus_left", Vector3d(0.5, 0.2, 0.2),
-           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-          {"toe_right", Vector3d(0.3, 0.1, 0.2),
-           CassieTransformFootToToeFrame()},
-          {"tarsus_right", Vector3d(0.5, 0.2, 0.2),
-           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-      }
-  };
-  processor_params.min_y = -0.27;
-
   auto elevation_mapping = builder.AddSystem<ElevationMappingSystem>(
       plant, plant_context.get(), mapping_params
   );
-  auto processor = std::make_shared<PerceptiveLocomotionPreprocessor>(
-      plant, plant_context.get(), processor_params,
-      elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
-  );
+  std::shared_ptr<PerceptiveLocomotionPreprocessor> processor =
+      perceptive_locomotion::MakeCassieElevationMappingPreProcessor(
+          plant, plant_context.get()
+      );
   elevation_mapping->AddSensorPreProcessor("pelvis_depth", std::move(processor));
 
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);

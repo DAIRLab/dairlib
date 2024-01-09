@@ -11,6 +11,7 @@
 #include "examples/Cassie/networking/cassie_output_receiver.h"
 #include "examples/Cassie/cassie_state_estimator.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
+#include "examples/perceptive_locomotion/cassie_perception_utils.h"
 #include "multibody/multibody_utils.h"
 
 // drake
@@ -129,23 +130,9 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // configure depth sensors
   DRAKE_DEMAND(depth_sensor_info.size() == mapping_params.sensor_poses.size());
 
-  perceptive_locomotion_preprocessor_params preprocessor_params {
-      "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
-      {
-          {"toe_left", Vector3d(0.3, 0.1, 0.2),
-            CassieTransformFootToToeFrame()},
-          {"tarsus_left", Vector3d(0.5, 0.2, 0.2),
-           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-          {"toe_right", Vector3d(0.3, 0.1, 0.2),
-            CassieTransformFootToToeFrame()},
-          {"tarsus_right", Vector3d(0.5, 0.2, 0.2),
-           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-      } // crop boxes
-  };
-  auto preprocessor = std::make_shared<PerceptiveLocomotionPreprocessor>(
-      *plant_, plant_context_.get(), preprocessor_params,
-      elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
-  );
+auto preprocessor =
+    perceptive_locomotion::MakeCassieElevationMappingPreProcessor(
+        *plant_, plant_context_.get());
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
   base_cov_dummy.resize(36,1);
@@ -159,7 +146,9 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
     const auto &sensor_name = sensor_pose.sensor_name_;
     DRAKE_DEMAND(depth_sensor_info.count(sensor_name) == 1);
 
-    elevation_mapping_system->AddSensorPreProcessor(sensor_name, preprocessor);
+    elevation_mapping_system->AddSensorPreProcessor(
+        sensor_name, std::move(preprocessor)
+    );
     auto frame_rate = builder.AddNamedSystem<drake::systems::ZeroOrderHold>(
         "frame_rate_" + sensor_name,
         1.0 / 30.0, drake::Value<drake::systems::sensors::ImageDepth32F>()

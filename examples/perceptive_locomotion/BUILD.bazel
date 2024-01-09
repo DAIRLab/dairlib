@@ -2,16 +2,29 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "cassie_perception_utils",
+    srcs = ["cassie_perception_utils.cc"],
+    hdrs = ["cassie_perception_utils.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//systems/perception:elevation_mapping_system",
+        "//systems/perception:perceptive_locomotion_preprocessor",
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_binary(
     name = "elevation_mapping",
     srcs = ["elevation_mapping.cc"],
     local_defines = select(
-            {
-                "//tools/workspace/ros:dair_ros_off": [],
-                "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
-            },
-        ),
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+        },
+    ),
     deps = [
+        ":cassie_perception_utils",
         "//examples/Cassie:cassie_utils",
         "//lcmtypes:lcmt_robot",
         "//systems:plant_visualizer",
@@ -25,13 +38,13 @@ cc_binary(
         "//systems/perception/pointcloud:lcm_to_pcl_point_cloud",
         "@gflags",
     ] + select(
-       {
-           "//tools/workspace/ros:dair_ros_on": [
-               "//systems/ros:dairlib_ros",
-               "//systems/perception/pointcloud:ros_point_cloud2_receiver"
-           ],
-           "//tools/workspace/ros:dair_ros_off": [],
-       },
+        {
+            "//tools/workspace/ros:dair_ros_on": [
+                "//systems/perception/pointcloud:ros_point_cloud2_receiver",
+                "//systems/ros:dairlib_ros",
+            ],
+            "//tools/workspace/ros:dair_ros_off": [],
+        },
     ),
 )
 

@@ -13,7 +13,7 @@ class PlateBalancingTargetGenerator
     : public drake::systems::LeafSystem<double> {
  public:
   PlateBalancingTargetGenerator(
-      const drake::multibody::MultibodyPlant<double>& object_plant, double first_target_range = 0.075);
+      const drake::multibody::MultibodyPlant<double>& object_plant, double target_threshold = 0.075);
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
@@ -33,7 +33,9 @@ class PlateBalancingTargetGenerator
     return this->get_output_port(tray_target_port_);
   }
 
-  void SetRemoteControlParameters(const Eigen::Vector3d& neutral_pose,
+  void SetRemoteControlParameters(const Eigen::Vector3d& initial_pose,
+      const Eigen::Vector3d& first_target,
+                                  const Eigen::Vector3d& second_target,
                                   double x_scale, double y_scale,
                                   double z_scale);
 
@@ -52,8 +54,10 @@ class PlateBalancingTargetGenerator
   drake::systems::OutputPortIndex tray_target_port_;
 
   drake::systems::DiscreteStateIndex reached_first_target_idx_;
-  Eigen::Vector3d neutral_pose_;
-  double first_target_range_;
+  Eigen::Vector3d initial_pose_;
+  Eigen::Vector3d first_target_;
+  Eigen::Vector3d second_target_;
+  double target_threshold_;
   double x_scale_;
   double y_scale_;
   double z_scale_;

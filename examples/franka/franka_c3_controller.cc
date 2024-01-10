@@ -19,12 +19,12 @@
 #include "examples/franka/systems/plate_balancing_target.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
+#include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
-#include "systems/controllers/c3/lcs_factory_system.h"
 
 namespace dairlib {
 
@@ -67,8 +67,8 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_controller_settings);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
-  C3Options c3_options =
-      drake::yaml::LoadYamlFile<C3Options>(controller_params.c3_options_file[controller_params.scene_index]);
+  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
+      controller_params.c3_options_file[controller_params.scene_index]);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
@@ -88,8 +88,9 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
 
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), controller_params.tool_attachment_frame);
+  RigidTransform<double> T_EE_W =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             controller_params.tool_attachment_frame);
   plant_franka.WeldFrames(
       plant_franka.GetFrameByName("panda_link7"),
       plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
@@ -113,24 +114,25 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::ModelInstanceIndex left_support_index;
   drake::multibody::ModelInstanceIndex right_support_index;
-  if (controller_params.scene_index == 1){
-     left_support_index =
-        parser_plate.AddModels(FindResourceOrThrow(controller_params.left_support_model))[0];
-    right_support_index =
-        parser_plate.AddModels(FindResourceOrThrow(controller_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), controller_params.left_support_position);
-    RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), controller_params.right_support_position);
-    plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                     plant_for_lcs.GetFrameByName("support", left_support_index),
-                     T_S1_W);
-    plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                     plant_for_lcs.GetFrameByName("support", right_support_index),
-                     T_S2_W);
+  if (controller_params.scene_index == 1) {
+    left_support_index = parser_plate.AddModels(
+        FindResourceOrThrow(controller_params.left_support_model))[0];
+    right_support_index = parser_plate.AddModels(
+        FindResourceOrThrow(controller_params.right_support_model))[0];
+    RigidTransform<double> T_S1_W =
+        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                               controller_params.left_support_position);
+    RigidTransform<double> T_S2_W =
+        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                               controller_params.right_support_position);
+    plant_for_lcs.WeldFrames(
+        plant_for_lcs.world_frame(),
+        plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
+    plant_for_lcs.WeldFrames(
+        plant_for_lcs.world_frame(),
+        plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
   }
   parser_plate.AddModels(controller_params.tray_model);
-
 
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
@@ -222,12 +224,10 @@ int DoMain(int argc, char* argv[]) {
 
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(plant_tray);
-  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-      controller_params.neutral_position.data(),
-      controller_params.neutral_position.size());
   plate_balancing_target->SetRemoteControlParameters(
-      neutral_position, controller_params.x_scale, controller_params.y_scale,
-      controller_params.z_scale);
+      controller_params.initial_pose, controller_params.first_target,
+      controller_params.second_target, controller_params.x_scale,
+      controller_params.y_scale, controller_params.z_scale);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -246,8 +246,8 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(tray_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
-      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff, plate_context_ad.get(),
-      contact_pairs, c3_options);
+      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
+      plate_context_ad.get(), contact_pairs, c3_options);
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =
@@ -310,8 +310,8 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_publisher->get_input_port());
   builder.Connect(c3_output_sender->get_output_port_c3_force(),
                   c3_forces_publisher->get_input_port());
-//  builder.Connect(c3_output_sender->get_output_port_next_c3_input(),
-//                  lcs_factory->get_input_port_lcs_input());
+  //  builder.Connect(c3_output_sender->get_output_port_next_c3_input(),
+  //                  lcs_factory->get_input_port_lcs_input());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));

@@ -14,8 +14,8 @@ namespace dairlib {
 namespace systems {
 
 PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
-    const MultibodyPlant<double>& object_plant, double first_target_range)
-    : first_target_range_(first_target_range) {
+    const MultibodyPlant<double>& object_plant, double target_threshold)
+    : target_threshold_(target_threshold) {
   // Input/Output Setup
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -45,17 +45,24 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
-  if ((tray_state->GetPositions().tail(3) - neutral_pose_).norm() <
-      first_target_range_) {
+  if (context.get_discrete_state(reached_first_target_idx_)[0] == 0 &&
+      (tray_state->GetPositions().tail(3) - first_target_).norm() <
+          target_threshold_) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 1;
+  }
+  if ((tray_state->GetPositions().tail(3) - second_target_).norm() < 0.02) {
+    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 2;
   }
   return EventStatus::Succeeded();
 }
 
 void PlateBalancingTargetGenerator::SetRemoteControlParameters(
-    const Eigen::Vector3d& neutral_pose, double x_scale, double y_scale,
+    const Eigen::Vector3d& initial_pose, const Eigen::Vector3d& first_target,
+    const Eigen::Vector3d& second_target, double x_scale, double y_scale,
     double z_scale) {
-  neutral_pose_ = neutral_pose;
+  initial_pose_ = initial_pose;
+  first_target_ = first_target;
+  second_target_ = second_target;
   x_scale_ = x_scale;
   y_scale_ = y_scale;
   z_scale_ = z_scale;
@@ -67,15 +74,20 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
 
-  VectorXd y0 = neutral_pose_;
+  VectorXd y0 = first_target_;
   // Update target if remote trigger is active
+  if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
+    y0 = second_target_;  // raise the tray once it is close
+    y0[2] -= 0.015;
+  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2) {
+    y0 = initial_pose_;  // raise the tray once it is close
+    y0[2] -= 0.015;
+    y0[0] -= 0.1;
+  }
   if (radio_out->channel[13] > 0) {
     y0(0) += radio_out->channel[0] * x_scale_;
     y0(1) += radio_out->channel[1] * y_scale_;
     y0(2) += radio_out->channel[2] * z_scale_;
-  }
-  if (context.get_discrete_state(reached_first_target_idx_)[0]) {
-    y0[2] += 0.1;  // raise the tray once it is close
   }
   target->SetFromVector(y0);
 }
@@ -86,14 +98,17 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   VectorXd target_tray_state = VectorXd::Zero(7);
-  VectorXd tray_position = neutral_pose_;
+  VectorXd tray_position = first_target_;
   tray_position[2] += 0.015;  // thickness of end effector and tray
+
+  if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
+    tray_position = second_target_;  // raise the tray once it is close
+  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2) {
+    tray_position = initial_pose_;  // raise the tray once it is close
+  }
   tray_position(0) += radio_out->channel[0] * x_scale_;
   tray_position(1) += radio_out->channel[1] * y_scale_;
   tray_position(2) += radio_out->channel[2] * z_scale_;
-  if (context.get_discrete_state(reached_first_target_idx_)[0]) {
-    tray_position[2] += 0.1;  // raise the tray once it is close
-  }
   target_tray_state << 1, 0, 0, 0, tray_position;
   target->SetFromVector(target_tray_state);
 }

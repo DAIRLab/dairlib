@@ -27,7 +27,9 @@ include_end_effector_orientation: false
 target_frequency: 0 #unused
 
 near_target_threshold: 0.07
-neutral_position: [0.45, 0, 0.485]
+initial_pose: [0.65, 0.00, 0.485]
+first_target: [0.45, 0, 0.47]
+second_target: [0.45, 0, 0.57]
 x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1

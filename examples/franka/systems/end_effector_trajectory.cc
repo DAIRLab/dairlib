@@ -1,5 +1,5 @@
 #include "end_effector_trajectory.h"
-
+#include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
@@ -66,17 +66,11 @@ PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
       this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-  double t = robot_output->get_timestamp();
-  double dt = 0.1;
   VectorXd y0 = neutral_pose_;
   y0(0) += radio_out->channel[0] * x_scale_;
   y0(1) += radio_out->channel[1] * y_scale_;
   y0(2) += radio_out->channel[2] * z_scale_;
-  VectorXd ydot0 = VectorXd::Zero(3);
-  std::vector<double> breaks = {t, t + dt};
-  std::vector<MatrixXd> samples = {y0, y0 + dt * ydot0};
-  return drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold(
-      breaks, samples);
+  return drake::trajectories::PiecewisePolynomial<double>(y0);
 }
 
 void EndEffectorTrajectoryGenerator::CalcTraj(
@@ -97,8 +91,10 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     if (trajectory_input.value(0).isZero()) {
 //      *casted_traj = GeneratePose(context);
     } else {
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
+      if ((context.get_time() - trajectory_input.start_time()) < 0.13){
+        *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
+            const PiecewisePolynomial<double>*>(&trajectory_input);
+      }
     }
   }
 }

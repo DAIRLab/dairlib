@@ -63,7 +63,7 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
           target_threshold_) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 3;
   }
-  if (radio_out->channel[12] > 0 &&
+  if (radio_out->channel[15] < 0 &&
       context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 0;
   }

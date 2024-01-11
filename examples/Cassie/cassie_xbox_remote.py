@@ -102,7 +102,7 @@ def main():
         radio_msg.channel[14] = latching_switch_a
         radio_msg.channel[11] = latching_switch_x
         radio_msg.channel[12] = latching_switch_y
-        # radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
+        radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
         publisher.publish("RADIO", radio_msg.encode())

@@ -17,8 +17,8 @@ visualize: true
 publish_efforts: true
 
 tool_attachment_frame: [0, 0, 0.107]
-left_support_position: [0.8, 0.15, 0.45]
-right_support_position: [0.8, -0.15, 0.45]
+left_support_position: [0.8, 0.15, 0.46]
+right_support_position: [0.8, -0.15, 0.46]
 
 dt: 0.0005
 realtime_rate: 1.0

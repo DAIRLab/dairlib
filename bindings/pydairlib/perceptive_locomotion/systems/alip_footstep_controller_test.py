@@ -45,7 +45,8 @@ def main():
     )
     builder = DiagramBuilder()
 
-    controller = AlipFootstepLQR(controller_params)
+    # controller = AlipFootstepLQR(controller_params)
+    controller = AlipMPFC(controller_params)
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(sim_env)

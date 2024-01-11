@@ -14,6 +14,7 @@ from pydrake.systems.all import (
 from pydrake.solvers import (
     MathematicalProgram,
     GurobiSolver,
+    OsqpSolver
 )
 
 from pydairlib.systems.footstep_planning import (
@@ -42,6 +43,7 @@ class AlipMPFC(LeafSystem):
         self.params = alip_params
         self.A, self.B = AlipStepToStepDynamics(
             self.params.height,
+            self.params.mass,
             self.params.single_stance_duration,
             self.params.double_stance_duration,
             self.params.reset_discretization
@@ -56,6 +58,11 @@ class AlipMPFC(LeafSystem):
         self.period_two_orbit_premul = np.linalg.inv(np.eye(4) - self.A @ self.A)
         self.period_two_orbit_basis = self.period_two_orbit_premul @ (self.A @ self.B - self.B)
         self.period_two_orbit_orth = null_space(self.period_two_orbit_basis.T).T
+        self.period_two_orbit_subspace_cost_hessian = \
+            (2 * self.period_two_orbit_orth.T @ self.period_two_orbit_orth)
+        self.period_two_orbit_subspace_cost_gradient_premul = \
+            (self.period_two_orbit_subspace_cost_hessian @
+             self.period_two_orbit_premul @ self.B)
 
         self.input_port_indices = {
             'desired_velocity': self.DeclareVectorInputPort(
@@ -91,9 +98,27 @@ class AlipMPFC(LeafSystem):
                 np.eye(4), np.zeros((4,)), self.xx[i]
             ) for i in range(self.N - 1)
         ]
+        self.input_reg = [
+            self.prog.AddQuadraticErrorCost(
+                self.params.R, np.zeros((2,)), self.uu[i]
+            ) for i in range(self.N - 1)
+        ]
+        self.terminal_cost = self.prog.AddQuadraticErrorCost(
+            self.S, np.zeros((4,)), self.xx[-1]
+        )
+        self.initial_state_constraint = self.prog.AddLinearEqualityConstraint(
+            np.eye(4), np.zeros((4,)), self.xx[0]
+        )
+        self.dynamics_constraints = [
+            self.prog.AddLinearEqualityConstraint(
+                self.A @ self.xx[i] + self.B @ self.uu[i] - self.xx[i + 1],
+                np.zeros((4,))
+            ) for i in range(self.N - 1)
+        ]
+        self.solver = OsqpSolver()
 
     def get_quadradic_cost_for_vdes(self, vdes: np.ndarray) -> \
-        tuple[np.ndarray, np.ndarray, np.ndarray]:
+        Tuple[np.ndarray, np.ndarray, np.ndarray]:
         g = self.period_two_orbit_premul @ self.B @ vdes
         y = self.period_two_orbit_orth @ g
 
@@ -121,7 +146,7 @@ class AlipMPFC(LeafSystem):
         ).value().ravel()[0]
 
         x = CalcAd(
-            self.params.height, time_until_switch
+            self.params.height, self.params.mass, time_until_switch
         ) @ current_alip_state
 
         x_disc.set_value(x)
@@ -141,6 +166,31 @@ class AlipMPFC(LeafSystem):
         # get the reference trajectory for the current stance mode
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
         xd, ud0, ud1 = self.make_period_two_orbit(stance, vdes)
+
+        ud = [ud0, ud1]
+        for i in range(self.N - 1):
+            self.input_reg[i].evaluator().UpdateCoefficients(
+                2 * self.params.R, -2 * ud[i % 2], 0
+            )
+            self.running_cost[i].evaluator().UpdateCoefficients(
+                self.period_two_orbit_subspace_cost_hessian,
+                self.period_two_orbit_subspace_cost_gradient_premul @ vdes
+            )
+        self.terminal_cost.evaluator().UpdateCoefficients(
+            100 * self.period_two_orbit_subspace_cost_hessian,
+            100 * self.period_two_orbit_subspace_cost_gradient_premul @ vdes
+        )
+
+        x0 = BasicVector(4)
+        self.calc_discrete_alip_state(context, x0)
+        self.initial_state_constraint.evaluator().UpdateCoefficients(
+            np.eye(4), x0.get_value()
+        )
+        result = self.solver.Solve(self.prog)
+        u = result.GetSolution(self.uu[0])
+        footstep_command = np.zeros((3,))
+        footstep_command[:2] = u
+        footstep.set_value(footstep_command)
 
     def make_period_two_orbit(self, stance: Stance, vdes: np.ndarray) -> \
         Tuple[np.ndarray, np.ndarray, np.ndarray]:

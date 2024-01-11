@@ -42,6 +42,12 @@ cc_library(
     name = "polygon_utils",
     srcs = ["polygon_utils.cc"],
     hdrs = ["polygon_utils.h"],
+    local_defines = select(
+        {
+            "//tools/workspace/ros:dair_ros_off": [],
+            "//tools/workspace/ros:dair_ros_on": ["DAIR_ROS_ON"],
+        },
+    ),
     deps = [
         ":convex_polygon",
         ":convex_polygon_set",

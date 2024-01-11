@@ -12,8 +12,8 @@ from pydrake.systems.all import (
 )
 
 from pydrake.solvers import (
+    MathematicalProgram,
     GurobiSolver,
-    ProgramType
 )
 
 from pydairlib.systems.footstep_planning import (
@@ -80,6 +80,18 @@ class AlipMPFC(LeafSystem):
             ).get_index()
         }
 
+        self.N = 3
+        self.prog = MathematicalProgram()
+        self.xx = [self.prog.NewContinuousVariables(4) for _ in range(self.N)]
+        self.uu = [
+            self.prog.NewContinuousVariables(2) for _ in range(self.N - 1)
+        ]
+        self.running_cost = [
+            self.prog.AddQuadraticErrorCost(
+                np.eye(4), np.zeros((4,)), self.xx[i]
+            ) for i in range(self.N - 1)
+        ]
+
     def get_quadradic_cost_for_vdes(self, vdes: np.ndarray) -> \
         tuple[np.ndarray, np.ndarray, np.ndarray]:
         g = self.period_two_orbit_premul @ self.B @ vdes
@@ -116,13 +128,6 @@ class AlipMPFC(LeafSystem):
 
     def calculate_optimal_footstep(
             self, context: Context, footstep: BasicVector) -> None:
-        """
-            Calculate the optimal (LQR) footstep location.
-            This is essentially (29) in https://arxiv.org/pdf/2101.09588.pdf,
-            using the LQR gain instead of the deadbeat gain. It also involves
-            some book-keeping to get the appropriate states and deal with
-            left/right stance.
-        """
         vdes = self.EvalVectorInput(
             context,
             self.input_port_indices['desired_velocity']
@@ -135,11 +140,10 @@ class AlipMPFC(LeafSystem):
 
         # get the reference trajectory for the current stance mode
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
-        xd, ud0, ud1 = self.make_lqr_reference(stance, vdes)
-        
+        xd, ud0, ud1 = self.make_period_two_orbit(stance, vdes)
 
-    def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
-            Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def make_period_two_orbit(self, stance: Stance, vdes: np.ndarray) -> \
+        Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
             Calculate a reference ALIP trajectory following the philosophy
             outlined in https://arxiv.org/pdf/2309.07993.pdf, section IV.D

@@ -61,5 +61,8 @@ build --action_env=LD_LIBRARY_PATH=
 build --define=WITH_SNOPT=ON
 build --define=WITH_GUROBI=ON
 
+# cannot build clarabel on Ubuntu 20.04 due to eigen incompatability
+build --define=NO_CLARABEL=ON
+
 # use python3 by default
 build --python_path=python3

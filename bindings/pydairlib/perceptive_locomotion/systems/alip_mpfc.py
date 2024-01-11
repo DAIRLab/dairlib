@@ -60,9 +60,12 @@ class AlipMPFC(LeafSystem):
         self.period_two_orbit_orth = null_space(self.period_two_orbit_basis.T).T
         self.period_two_orbit_subspace_cost_hessian = \
             (2 * self.period_two_orbit_orth.T @ self.period_two_orbit_orth)
-        self.period_two_orbit_subspace_cost_gradient_premul = \
-            (self.period_two_orbit_subspace_cost_hessian @
-             self.period_two_orbit_premul @ self.B)
+        self.gradient_premul_period_one = \
+            -2 * (self.period_two_orbit_subspace_cost_hessian @
+                  self.period_two_orbit_premul @ self.B)
+        self.gradient_premul_period_two = \
+            -2 * (self.period_two_orbit_subspace_cost_hessian @ self.A @
+                  self.period_two_orbit_premul @ self.B)
 
         self.input_port_indices = {
             'desired_velocity': self.DeclareVectorInputPort(
@@ -172,13 +175,19 @@ class AlipMPFC(LeafSystem):
             self.input_reg[i].evaluator().UpdateCoefficients(
                 2 * self.params.R, -2 * ud[i % 2], 0
             )
+            linear_term = \
+                self.gradient_premul_period_one if i % 2 == 0 else \
+                    self.gradient_premul_period_two
             self.running_cost[i].evaluator().UpdateCoefficients(
                 self.period_two_orbit_subspace_cost_hessian,
-                self.period_two_orbit_subspace_cost_gradient_premul @ vdes
+                linear_term @ vdes
             )
+
+        linear_term = self.gradient_premul_period_one if self.N % 2 else (
+            self.gradient_premul_period_two)
         self.terminal_cost.evaluator().UpdateCoefficients(
-            100 * self.period_two_orbit_subspace_cost_hessian,
-            100 * self.period_two_orbit_subspace_cost_gradient_premul @ vdes
+            10 * self.period_two_orbit_subspace_cost_hessian,
+            10 * linear_term @ vdes
         )
 
         x0 = BasicVector(4)

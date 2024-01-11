@@ -142,7 +142,6 @@ C3Controller::C3Controller(
       this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
                                       &C3Controller::OutputC3Intermediates)
           .get_index();
-
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_ = VectorXd::Zero(n_x_);
   DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
@@ -191,7 +190,6 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   DRAKE_DEMAND(lcs_x->get_data()[2] > 0.35);
   DRAKE_DEMAND(lcs_x->get_data()[2] < 0.6);
 
-  c3_->SetOsqpSolverOptions(solver_options_);
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
 

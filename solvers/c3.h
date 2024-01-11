@@ -96,7 +96,7 @@ class C3 {
       const int& warm_start_index) = 0;
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
-    solver_options_ = options;
+    prog_.SetSolverOptions(options);
   }
 
   std::vector<Eigen::VectorXd> GetFullSolution() { return *z_sol_; }
@@ -139,7 +139,6 @@ class C3 {
   bool h_is_zero_;
 
   drake::solvers::MathematicalProgram prog_;
-  drake::solvers::SolverOptions solver_options_;
   drake::solvers::OsqpSolver osqp_;
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;

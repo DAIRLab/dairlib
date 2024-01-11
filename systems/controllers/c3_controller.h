@@ -53,6 +53,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
+    c3_->SetOsqpSolverOptions(solver_options_);
   }
 
  private:

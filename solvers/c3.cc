@@ -62,7 +62,6 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
       options_(options),
       h_is_zero_(H_[0].isZero(0)),
       prog_(MathematicalProgram()),
-      solver_options_(SolverOptions()),
       osqp_(OsqpSolver()) {
   if (warm_start_) {
     warm_start_delta_.resize(options_.admm_iter);
@@ -295,7 +294,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
 
-  prog_.SetSolverOptions(solver_options_);
   MathematicalProgramResult result = osqp_.Solve(prog_);
 
   if (result.is_success()) {

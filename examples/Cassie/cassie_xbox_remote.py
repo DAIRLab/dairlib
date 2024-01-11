@@ -85,7 +85,7 @@ def main():
                     print("Force Tracking Status: " + str(latching_switch_x))
                 if event.button == 3:
                     latching_switch_y = not latching_switch_y
-                    print("End Effector Follow Status: " + str(latching_switch_b))
+                    print("Ready to Reset Status: " + str(latching_switch_y))
 
 
         # Send LCM message

@@ -14,6 +14,7 @@ struct C3Options {
   std::string contact_model;
   bool warm_start;
   bool use_predicted_x0;
+  double solve_time_filter_alpha;
 
   int N;
   double gamma;
@@ -64,6 +65,7 @@ struct C3Options {
     }
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
+    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));

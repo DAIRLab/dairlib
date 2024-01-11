@@ -53,6 +53,7 @@ C3Controller::C3Controller(
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
   dt_ = c3_options_.dt;
+  solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
         2 * c3_options_.num_contacts +
@@ -230,7 +231,7 @@ void C3Controller::OutputC3Solution(
   if (filtered_solve_time_ < dt_) {
     double weight = (dt_ - filtered_solve_time_) / dt_;
     x_pred_ = weight * z_sol[0].segment(0, n_x_) +
-        (1 - weight) * z_sol[1].segment(0, n_x_);
+              (1 - weight) * z_sol[1].segment(0, n_x_);
   } else {
     x_pred_ = z_sol[1].segment(0, n_x_);
   }

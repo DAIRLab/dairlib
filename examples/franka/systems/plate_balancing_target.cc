@@ -45,13 +45,27 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+
+  // Ugly FSM
   if (context.get_discrete_state(reached_first_target_idx_)[0] == 0 &&
       (tray_state->GetPositions().tail(3) - first_target_).norm() <
           target_threshold_) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 1;
   }
-  if ((tray_state->GetPositions().tail(3) - second_target_).norm() < 0.02) {
+  if ((tray_state->GetPositions().tail(3) - second_target_).norm() <
+      0.75 * target_threshold_) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 2;
+  }
+  if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 &&
+      (tray_state->GetPositions().tail(3) - initial_pose_).norm() <
+          target_threshold_) {
+    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 3;
+  }
+  if (radio_out->channel[12] > 0 &&
+      context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
+    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 0;
   }
   return EventStatus::Succeeded();
 }
@@ -79,8 +93,9 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
   if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
     y0 = second_target_;  // raise the tray once it is close
     y0[2] -= 0.015;
-  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2) {
-    y0 = initial_pose_;  // raise the tray once it is close
+  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 ||
+             context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
+    y0 = initial_pose_;  // put the tray back
     y0[2] -= 0.015;
     y0[0] -= 0.1;
   }
@@ -103,7 +118,8 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
 
   if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
     tray_position = second_target_;  // raise the tray once it is close
-  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2) {
+  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 ||
+             context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
     tray_position = initial_pose_;  // raise the tray once it is close
   }
   tray_position(0) += radio_out->channel[0] * x_scale_;

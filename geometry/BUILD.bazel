@@ -6,6 +6,7 @@ cc_library(
     name = "convex_polygon_ros_receiver",
     srcs = ["convex_polygon_ros_receiver.cc"],
     hdrs = ["convex_polygon_ros_receiver.h"],
+    local_defines = ["DAIR_ROS_ON"],
     tags = ["ros"],
     deps = [
         ":convex_polygon_set",
@@ -71,6 +72,7 @@ cc_library(
 cc_binary(
     name = "polytest",
     srcs = ["test/polygon_utils_test.cc"],
+    local_defines = ["DAIR_ROS_ON"],
     tags = ["ros"],
     deps = [
         ":polygon_utils",

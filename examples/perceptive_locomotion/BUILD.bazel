@@ -90,6 +90,7 @@ cc_binary(
 cc_binary(
     name = "foothold_translator",
     srcs = ["foothold_translator.cc"],
+    local_defines = ["DAIR_ROS_ON"],
     tags = ["ros"],
     deps = [
         "//geometry:convex_polygon_lcm_systems",

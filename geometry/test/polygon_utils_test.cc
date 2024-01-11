@@ -1,8 +1,9 @@
 #include <chrono>
 #include <gflags/gflags.h>
-#include "geometry/polygon_utils.h"
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+
+#include "geometry/polygon_utils.h"
 
 DEFINE_string(
     bagpath,

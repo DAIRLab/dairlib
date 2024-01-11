@@ -54,9 +54,10 @@ class AlipMPFC(LeafSystem):
             self.params.Q,
             self.params.R
         )
-
-        self.period_two_orbit_premul = np.linalg.inv(np.eye(4) - self.A @ self.A)
-        self.period_two_orbit_basis = self.period_two_orbit_premul @ (self.A @ self.B - self.B)
+        self.period_two_orbit_premul = (
+            np.linalg.inv(np.eye(4) - self.A @ self.A))
+        self.period_two_orbit_basis = \
+            self.period_two_orbit_premul @ (self.A @ self.B - self.B)
         self.period_two_orbit_orth = null_space(self.period_two_orbit_basis.T).T
         self.period_two_orbit_subspace_cost_hessian = \
             (2 * self.period_two_orbit_orth.T @ self.period_two_orbit_orth)

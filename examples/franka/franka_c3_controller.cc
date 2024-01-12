@@ -223,10 +223,10 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
 
   auto plate_balancing_target =
-      builder.AddSystem<systems::PlateBalancingTargetGenerator>(plant_tray);
+      builder.AddSystem<systems::PlateBalancingTargetGenerator>(plant_tray, controller_params.end_effector_thickness, controller_params.near_target_threshold);
   plate_balancing_target->SetRemoteControlParameters(
-      controller_params.initial_pose, controller_params.first_target,
-      controller_params.second_target, controller_params.x_scale,
+      controller_params.first_target[controller_params.scene_index], controller_params.second_target[controller_params.scene_index],
+      controller_params.third_target[controller_params.scene_index], controller_params.x_scale,
       controller_params.y_scale, controller_params.z_scale);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =

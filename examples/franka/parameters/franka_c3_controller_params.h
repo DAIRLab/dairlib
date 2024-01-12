@@ -20,9 +20,9 @@ struct FrankaC3ControllerParams {
 
   int scene_index;
 
-  Eigen::Vector3d initial_pose;
-  Eigen::Vector3d first_target;
-  Eigen::Vector3d second_target;
+  std::vector<Eigen::Vector3d> first_target;
+  std::vector<Eigen::Vector3d> second_target;
+  std::vector<Eigen::Vector3d> third_target;
   double x_scale;
   double y_scale;
   double z_scale;
@@ -30,6 +30,7 @@ struct FrankaC3ControllerParams {
 
   Eigen::Vector3d left_support_position;
   Eigen::Vector3d right_support_position;
+  double end_effector_thickness;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -47,9 +48,9 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(scene_index));
 
-    a->Visit(DRAKE_NVP(initial_pose));
     a->Visit(DRAKE_NVP(first_target));
     a->Visit(DRAKE_NVP(second_target));
+    a->Visit(DRAKE_NVP(third_target));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));
     a->Visit(DRAKE_NVP(z_scale));
@@ -57,5 +58,6 @@ struct FrankaC3ControllerParams {
 
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
+    a->Visit(DRAKE_NVP(end_effector_thickness));
   }
 };

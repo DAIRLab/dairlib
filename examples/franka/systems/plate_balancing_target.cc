@@ -14,8 +14,10 @@ namespace dairlib {
 namespace systems {
 
 PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
-    const MultibodyPlant<double>& object_plant, double target_threshold)
-    : target_threshold_(target_threshold) {
+    const MultibodyPlant<double>& object_plant, double end_effector_thickness,
+    double target_threshold)
+    : end_effector_thickness_(end_effector_thickness),
+      target_threshold_(target_threshold) {
   // Input/Output Setup
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
@@ -59,7 +61,7 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 2;
   }
   if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 &&
-      (tray_state->GetPositions().tail(3) - initial_pose_).norm() <
+      (tray_state->GetPositions().tail(3) - third_target_).norm() <
           target_threshold_) {
     discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 3;
   }
@@ -71,12 +73,12 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
 }
 
 void PlateBalancingTargetGenerator::SetRemoteControlParameters(
-    const Eigen::Vector3d& initial_pose, const Eigen::Vector3d& first_target,
-    const Eigen::Vector3d& second_target, double x_scale, double y_scale,
+    const Eigen::Vector3d& first_target, const Eigen::Vector3d& second_target,
+    const Eigen::Vector3d& third_target, double x_scale, double y_scale,
     double z_scale) {
-  initial_pose_ = initial_pose;
   first_target_ = first_target;
   second_target_ = second_target;
+  third_target_ = third_target;
   x_scale_ = x_scale;
   y_scale_ = y_scale;
   z_scale_ = z_scale;
@@ -88,23 +90,24 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
 
-  VectorXd y0 = first_target_;
+  VectorXd end_effector_position = first_target_;
   // Update target if remote trigger is active
   if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
-    y0 = second_target_;  // raise the tray once it is close
-    y0[2] -= 0.015;
+    end_effector_position = second_target_;  // raise the tray once it is close
   } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 ||
              context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
-    y0 = initial_pose_;  // put the tray back
-    y0[2] -= 0.015;
-    y0[0] -= 0.1;
+    end_effector_position = third_target_;  // put the tray back
+  }
+  end_effector_position[2] -= end_effector_thickness_;  // place end effector below tray
+  if (end_effector_position[0] > 0.6) {
+    end_effector_position[0] = 0.6;  // keep it within the workspace
   }
   if (radio_out->channel[13] > 0) {
-    y0(0) += radio_out->channel[0] * x_scale_;
-    y0(1) += radio_out->channel[1] * y_scale_;
-    y0(2) += radio_out->channel[2] * z_scale_;
+    end_effector_position(0) += radio_out->channel[0] * x_scale_;
+    end_effector_position(1) += radio_out->channel[1] * y_scale_;
+    end_effector_position(2) += radio_out->channel[2] * z_scale_;
   }
-  target->SetFromVector(y0);
+  target->SetFromVector(end_effector_position);
 }
 
 void PlateBalancingTargetGenerator::CalcTrayTarget(
@@ -114,18 +117,17 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   VectorXd target_tray_state = VectorXd::Zero(7);
   VectorXd tray_position = first_target_;
-  tray_position[2] += 0.015;  // thickness of end effector and tray
 
   if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
     tray_position = second_target_;  // raise the tray once it is close
   } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 ||
              context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
-    tray_position = initial_pose_;  // raise the tray once it is close
+    tray_position = third_target_;  // raise the tray once it is close
   }
   tray_position(0) += radio_out->channel[0] * x_scale_;
   tray_position(1) += radio_out->channel[1] * y_scale_;
   tray_position(2) += radio_out->channel[2] * z_scale_;
-  target_tray_state << 1, 0, 0, 0, tray_position;
+  target_tray_state << 1, 0, 0, 0, tray_position; // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }
 

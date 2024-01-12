@@ -29,7 +29,7 @@ w_G: 0.1
 w_U: 0.1
 
 # State Tracking Error, assuming diagonal
-q_vector: [150, 100, 100, 1, 1, 1, 1, 15000, 15000, 15000,
+q_vector: [150, 100, 100, 0, 1, 1, 0, 15000, 15000, 15000,
            5, 5, 10, 1, 100, 1, 5, 5, 5]
 # Penalty on efforts, assuming diagonal
 r_vector: [0.1, 0.1, 0.1]

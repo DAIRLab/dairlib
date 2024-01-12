@@ -88,6 +88,22 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "ros_diagrams_py",
+    cc_deps = [
+        "//examples/perceptive_locomotion/diagrams:elevation_mapping_ros_diagram",
+        "@drake//:drake_shared_library",
+    ],
+    tags=["ros"],
+    cc_so_name = "ros_diagrams",
+    cc_srcs = ["ros_diagrams_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 PY_LIBRARIES = [
     ":diagrams_py",
 ]

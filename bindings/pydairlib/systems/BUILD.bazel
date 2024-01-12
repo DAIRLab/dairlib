@@ -60,6 +60,22 @@ pybind_py_library(
 )
 
 pybind_py_library(
+    name = "ros_py",
+    tags = ["ros"],
+    cc_deps = [
+        "//systems/ros:ros_interface_system",
+        "//systems/ros:ros_pubsub_systems",
+    ],
+    cc_so_name = "ros",
+    cc_srcs = ["ros_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
     name = "plant_visualizer_py",
     cc_deps = [
         "//systems:plant_visualizer",

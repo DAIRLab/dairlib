@@ -19,8 +19,8 @@ scene_index: 1
 left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
 
-left_support_position: [0.8, 0.15, 0.453]
-right_support_position: [0.8, -0.15, 0.453]
+left_support_position: [0.8, 0.15, 0.455]
+right_support_position: [0.8, -0.15, 0.455]
 end_effector_thickness: 0.015
 
 include_end_effector_orientation: false
@@ -29,7 +29,7 @@ target_frequency: 0 #unused
 
 near_target_threshold: 0.05
 first_target: [[0.45, 0.0, 0.45],
-               [0.45, 0, 0.486]]
+               [0.45, 0, 0.488]]
 second_target: [[0.45, 0.0, 0.45],
                 [0.45, 0, 0.65]]
 third_target: [[0.45, 0.0, 0.45],

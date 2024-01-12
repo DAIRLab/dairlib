@@ -44,6 +44,7 @@ using perception::DrakeToPclPointCloud;
 using drake::systems::BasicVector;
 using drake::systems::AbstractStateIndex;
 using drake::systems::ConstantVectorSource;
+using drake::multibody::Frame;
 
 PerceptionModuleDiagram::PerceptionModuleDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
@@ -122,7 +123,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
       elevation_mapping_params_io::ReadElevationMappingParamsFromYaml(
           elevation_mapping_params_yaml_path
       );
-  auto elevation_mapping_system =
+  elevation_mapping_system_ =
       builder.AddSystem<perception::ElevationMappingSystem>(
       *plant_, plant_context_.get(), mapping_params
   );
@@ -130,8 +131,8 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // configure depth sensors
   DRAKE_DEMAND(depth_sensor_info.size() == mapping_params.sensor_poses.size());
 
-auto preprocessor =
-    perceptive_locomotion::MakeCassieElevationMappingPreProcessor(
+  auto preprocessor =
+      perceptive_locomotion::MakeCassieElevationMappingPreProcessor(
         *plant_, plant_context_.get());
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
@@ -146,7 +147,7 @@ auto preprocessor =
     const auto &sensor_name = sensor_pose.sensor_name_;
     DRAKE_DEMAND(depth_sensor_info.count(sensor_name) == 1);
 
-    elevation_mapping_system->AddSensorPreProcessor(
+    elevation_mapping_system_->AddSensorPreProcessor(
         sensor_name, std::move(preprocessor)
     );
     auto frame_rate = builder.AddNamedSystem<drake::systems::ZeroOrderHold>(
@@ -172,7 +173,7 @@ auto preprocessor =
     builder.Connect(*voxel_filter, *point_cloud_converter);
     builder.Connect(
         point_cloud_converter->get_output_port(),
-        elevation_mapping_system->get_input_port_pointcloud(sensor_name)
+        elevation_mapping_system_->get_input_port_pointcloud(sensor_name)
     );
     input_port_depth_image_.insert({
         sensor_name,
@@ -195,15 +196,15 @@ auto preprocessor =
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
   builder.Connect(state_estimator_->get_robot_output_port(),
-                  elevation_mapping_system->get_input_port_state());
+                  elevation_mapping_system_->get_input_port_state());
   builder.Connect(cov_source->get_output_port(),
-                  elevation_mapping_system->get_input_port_covariance());
+                  elevation_mapping_system_->get_input_port_covariance());
 
   input_port_cassie_out_ = builder.ExportInput(
       delay->get_input_port(), "lcmt_cassie_out"
   );
   output_port_elevation_map_ = builder.ExportOutput(
-      elevation_mapping_system->get_output_port_grid_map(), "elevation_grid_map"
+      elevation_mapping_system_->get_output_port_grid_map(), "elevation_grid_map"
   );
   output_port_robot_output_ = builder.ExportOutput(
       robot_output_sender->get_output_port(), "lcmt_robot_output"
@@ -280,6 +281,21 @@ void PerceptionModuleDiagram::InitializeEkf(
   state_estimator_->setPreviousImuMeasurement(
       &state_estimator_context, init_imu
   );
+}
+
+void PerceptionModuleDiagram::InitializeElevationMap(
+    const Eigen::VectorXd& robot_state,
+    drake::systems::Context<double>* root_context) const {
+
+  auto& context = elevation_mapping_system_->GetMyMutableContextFromRoot(
+      root_context
+  );
+  std::pair<const Vector3d, const Frame<double>&> left_heel = LeftToeRear(*plant_);
+  std::pair<const Vector3d, const Frame<double>&> right_heel = RightToeRear(*plant_);
+
+  elevation_mapping_system_->InitializeFlatTerrain(
+      robot_state, {left_heel, right_heel}, 1.0, context);
+
 }
 
 void PerceptionModuleDiagram::InitializeEkf(

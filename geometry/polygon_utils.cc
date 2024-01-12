@@ -494,7 +494,7 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
   try {
     cd.maybe_decomposeAll(0.15, measure.get());
   } catch (const std::exception& e) {
-    std::cout << e.what();
+    std::cout << e.what() << std::endl;
     return {};
   }
   std::vector<ConvexPolygon> footholds;

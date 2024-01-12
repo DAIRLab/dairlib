@@ -221,12 +221,14 @@ void ElevationMappingSystem::InitializeFlatTerrain(
   auto& map = context.get_mutable_abstract_state<ElevationMap>(
       elevation_map_state_index_
   );
-
-  PointCloudType::Ptr init_pc;
+  auto& motion_updater = context.get_mutable_abstract_state<RobotMotionMapUpdater>(
+      motion_updater_state_index_
+  );
+  PointCloudType::Ptr init_pc = std::make_shared<PointCloudType>();
 
   double resolution = map.getRawGridMap().getResolution();
-  int npoints = std::ceil(init_radius / resolution);
-  float half_len = init_radius / (2.0 * resolution);
+  int npoints =  2 * std::ceil(init_radius / resolution);
+  float half_len = init_radius;
 
   for (const auto& contact : contacts) {
 
@@ -245,12 +247,24 @@ void ElevationMappingSystem::InitializeFlatTerrain(
 
         pcl::PointXYZRGBConfidenceRatio pt;
         pt.getArray4fMap() = Eigen::Map<Eigen::Array4f>(pt_xyzw.data());
-        pt.confidence_ratio = 0.99;
         init_pc->push_back(pt);
       }
     }
   }
   Eigen::VectorXf variances = Eigen::VectorXf::Constant(init_pc->size(), 0.01);
+
+  MatrixXd pose_covariance = MatrixXd::Identity(6,6);
+  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
+  const auto base_pose = plant_.EvalBodyPoseInWorld(*context_, robot_base_);
+
+  // Update the map location
+  Vector3d track_point_in_world = base_pose * track_point_;
+  map.move(track_point_in_world.head<2>());
+
+  // Apply prediction step
+  motion_updater.update(map, base_pose, pose_covariance, 0);
+
+  // apply measurement step
   map.add(init_pc, variances, 0, RigidTransformd());
 }
 

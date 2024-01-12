@@ -326,6 +326,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
         if self.params.simulate_perception:
             self.perception_module.InitializeEkf(context, q, v)
+            self.perception_module.InitializeElevationMap(np.concatenate([q, v]), context)
 
     def AddToBuilderWithFootstepController(
             self, builder: DiagramBuilder,

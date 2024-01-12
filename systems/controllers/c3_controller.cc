@@ -183,6 +183,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
+  // Force Checking of Workspace Limits
   DRAKE_DEMAND(lcs_x->get_data()[0] > 0.35);
   DRAKE_DEMAND(lcs_x->get_data()[0] < 0.65);
   DRAKE_DEMAND(lcs_x->get_data()[1] > -0.1);

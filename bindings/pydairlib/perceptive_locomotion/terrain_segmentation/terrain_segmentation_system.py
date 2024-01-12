@@ -44,18 +44,18 @@ class TerrainSegmentationSystem(LeafSystem):
     def get_raw_safety_score(self, elevation: np.ndarray, resolution: float):
         # only use a small amount of blur for first order safety criterion
         blurred_narrow = gaussian_filter(
-            elevation / resolution, 1.0, truncate=3
+            elevation / resolution, 2.0, truncate=3
         )
         image_gradient_magnitude = edges(blurred_narrow)
-        first_order_safety_score = np.exp(-0.5 * image_gradient_magnitude)
+        first_order_safety_score = np.exp(-image_gradient_magnitude)
 
         # use a larger blur for second order safety criterion
         blurred_wide = gaussian_filter(
-            elevation / resolution, 2.0, truncate=3
+            elevation / resolution, 3.0, truncate=3
         )
         curvature = convolve2d(blurred_wide, self.laplacian_kernel, mode='same')
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
-        second_order_safety_score = np.exp(-2.0 * below_edges)
+        second_order_safety_score = np.exp(-3.0 * below_edges)
 
         # treat safety scores like independent probabilities
         return second_order_safety_score * first_order_safety_score

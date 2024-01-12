@@ -12,7 +12,7 @@ warm_start: true
 use_predicted_x0: true
 solve_time_filter_alpha: 0.9
 
-mu: [0.55, 0.55, 0.55, 0.1, 0.1, 0.1, 0.1]
+mu: [0.6, 0.6, 0.6, 0.1, 0.1, 0.1, 0.1]
 dt: 0.075
 solve_dt: 0.05
 num_friction_directions: 2

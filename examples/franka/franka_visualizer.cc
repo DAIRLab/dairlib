@@ -168,6 +168,7 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
+  meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
   auto trajectory_drawer_actor =
       builder.AddSystem<systems::LcmTrajectoryDrawer>(
           meshcat, "end_effector_position_target");

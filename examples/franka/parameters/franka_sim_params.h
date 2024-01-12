@@ -24,6 +24,9 @@ struct FrankaSimParams {
   bool visualize;
   bool publish_efforts;
 
+  Eigen::VectorXd camera_pose;
+  Eigen::VectorXd camera_target;
+
   Eigen::VectorXd q_init_franka;
   std::vector<Eigen::VectorXd> q_init_plate;
   Eigen::VectorXd q_init_box;
@@ -52,6 +55,9 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(scene_index));
     a->Visit(DRAKE_NVP(visualize));
     a->Visit(DRAKE_NVP(publish_efforts));
+
+    a->Visit(DRAKE_NVP(camera_pose));
+    a->Visit(DRAKE_NVP(camera_target));
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));

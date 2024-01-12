@@ -7,6 +7,7 @@
 #include "std_msgs/String.h"
 
 #include "systems/ros/ros_publisher_system.h"
+#include "systems/ros/ros_interface_system.h"
 
 using drake::Value;
 using drake::systems::ConstantValueSource;
@@ -14,18 +15,17 @@ using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
 
 using dairlib::systems::RosPublisherSystem;
+using dairlib::systems::RosInterfaceSystem;
 
-// Shutdown ROS gracefully and then exit
-void SigintHandler(int sig) {
-  ros::shutdown();
-  exit(sig);
-}
-
-int DoMain(ros::NodeHandle& node_handle) {
+int DoMain() {
   DiagramBuilder<double> builder;
 
+  auto ros = builder.AddSystem<RosInterfaceSystem>("test_ros_publisher_system");
+
   auto msg_publisher = builder.AddSystem(
-      RosPublisherSystem<std_msgs::String>::Make("chatter", &node_handle, .25));
+      RosPublisherSystem<std_msgs::String>::Make(
+          "chatter", ros->node_handle(), .25)
+      );
 
   std_msgs::String msg;
   msg.data = "Hello world!";
@@ -43,16 +43,11 @@ int DoMain(ros::NodeHandle& node_handle) {
   simulator.Initialize();
   simulator.set_target_realtime_rate(1.0);
 
-  signal(SIGINT, SigintHandler);
-
   simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   return 0;
 }
 
 int main(int argc, char* argv[]) {
-  ros::init(argc, argv, "test_ros_publisher_system");
-  ros::NodeHandle node_handle;
-
-  return DoMain(node_handle);
+  return DoMain();
 }

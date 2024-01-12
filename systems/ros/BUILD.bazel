@@ -64,7 +64,10 @@ cc_binary(
     name = "test_ros_publisher_system",
     srcs = ["test/test_ros_publisher_system.cc"],
     tags = ["ros"],
-    deps = [":ros_pubsub_systems"],
+    deps = [
+        ":ros_pubsub_systems",
+        ":ros_interface_system"
+    ],
 )
 
 cc_binary(

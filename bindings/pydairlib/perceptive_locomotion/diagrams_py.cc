@@ -135,6 +135,7 @@ PYBIND11_MODULE(diagrams, m) {
            py::overload_cast<drake::systems::Context<double>*,
               const Eigen::VectorXd&, const Eigen::VectorXd&>(
                   &PerceptionModuleDiagram::InitializeEkf, py::const_))
+      .def("InitializeElevationMap", &PerceptionModuleDiagram::InitializeElevationMap)
       .def("Make", &PerceptionModuleDiagram::Make);
 
   py::class_<AlipMPFCDiagram, drake::systems::Diagram<double>>(

@@ -142,7 +142,7 @@ new_local_repository(
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",
-    sha256 = "ce4a1bbd15c2622d937d7f64b86304786b9bb39f79a4d4399c9eb16f87db89d5",
+    sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
     strip_prefix = "acd2d-master",
     urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
 )

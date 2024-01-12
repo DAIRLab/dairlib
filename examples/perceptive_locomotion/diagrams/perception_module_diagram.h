@@ -54,6 +54,9 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
       std::map<std::string, drake::systems::sensors::CameraInfo> depth_sensor_info,
       std::string joint_offsets_yaml = "");
 
+  void InitializeElevationMap(const Eigen::VectorXd& robot_state,
+                              drake::systems::Context<double>* root_context) const;
+
  private:
 
   // State estimator parameters
@@ -72,6 +75,7 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   systems::CassieStateEstimator* state_estimator_;
 
   perception::elevation_mapping_params elevation_mapping_params_;
+  perception::ElevationMappingSystem* elevation_mapping_system_;
 
   drake::systems::InputPortIndex input_port_cassie_out_;
   std::unordered_map<std::string, drake::systems::InputPortIndex> input_port_depth_image_;

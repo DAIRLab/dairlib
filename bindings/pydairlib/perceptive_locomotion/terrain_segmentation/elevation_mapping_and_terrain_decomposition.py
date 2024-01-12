@@ -13,6 +13,8 @@ from pydrake.systems.all import (
     TriggerType,
 )
 
+from pydrake.common.value import AbstractValue
+
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
@@ -29,7 +31,8 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
     ConvexTerrainDecompositionSystem
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
-from pydairlib.systems.framework import LcmOutputDrivenLoop
+from pydairlib.systems.framework import LcmOutputDrivenLoop, OutputVector
+from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
 
@@ -99,8 +102,7 @@ def main():
         is_forced_publish=True
     )
 
-
-    # driven_loop.Simulate(np.inf)
+    driven_loop.Simulate()
 
 
 if __name__ == '__main__':

@@ -24,7 +24,8 @@ PYBIND11_MODULE(ros_diagrams, m) {
       .def(py::init<const std::string&, const std::string&>(),
           py::arg("params_yaml"), py::arg("points_topic"))
       .def("InitializeElevationMap", &ElevationMappingRosDiagram::InitializeElevationMap)
-      .def("lcm", &ElevationMappingRosDiagram::lcm, py_rvp::reference_internal);
+      .def("lcm", &ElevationMappingRosDiagram::lcm, py_rvp::reference_internal)
+      .def("plant", &ElevationMappingRosDiagram::plant, py_rvp::reference_internal);
 
 };
 

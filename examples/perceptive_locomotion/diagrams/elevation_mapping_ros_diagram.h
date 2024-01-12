@@ -29,6 +29,10 @@ class ElevationMappingRosDiagram : public drake::systems::Diagram<double> {
 
   drake::lcm::DrakeLcm* lcm() {return &lcm_local_;}
 
+  const drake::multibody::MultibodyPlant<double>& plant() {
+    return plant_;
+  }
+
 
  private:
   // plant

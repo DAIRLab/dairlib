@@ -26,8 +26,7 @@ py::class_<LcmOutputDrivenLoop>(m, "LcmOutputDrivenLoop")
                   py::arg("diagram"), py::arg("lcm_parser"),
                   py::arg("input_channel"),  py::arg("is_forced_publish"))
     .def("Simulate", &LcmOutputDrivenLoop::Simulate,
-         py::arg("end_time") = std::numeric_limits<double>::infinity())
-    .def("WaitForMessage", &LcmOutputDrivenLoop::WaitForMessage, py::arg("value"));
+         py::arg("end_time") = std::numeric_limits<double>::infinity());
 
 py::class_<systems::TimestampedVector<double>,
            drake::systems::BasicVector<double>>(m, "TimestampedVector")

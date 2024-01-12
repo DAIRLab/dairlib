@@ -315,16 +315,6 @@ class LcmDrivenLoop {
     }
   };
 
-  void WaitForMessage(drake::AbstractValue& value) {
-    LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
-      return name_to_input_sub_map_.at(active_channel_).count() > 0;
-    });
-
-    value.set_value<InputMessageType>(
-        name_to_input_sub_map_.at(active_channel_).message()
-    );
-  }
-
  private:
   drake::lcm::DrakeLcm* drake_lcm_;
   drake::systems::Diagram<double>* diagram_ptr_;

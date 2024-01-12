@@ -37,7 +37,9 @@ PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
                               "tray_target", BasicVector<double>(7),
                               &PlateBalancingTargetGenerator::CalcTrayTarget)
                           .get_index();
-  reached_first_target_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  sequence_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  within_target_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  time_entered_target_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   DeclareForcedDiscreteUpdateEvent(
       &PlateBalancingTargetGenerator::DiscreteVariableUpdate);
 }
@@ -51,23 +53,48 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
 
   // Ugly FSM
-  if (context.get_discrete_state(reached_first_target_idx_)[0] == 0 &&
-      (tray_state->GetPositions().tail(3) - first_target_).norm() <
-          target_threshold_) {
-    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 1;
+  int current_sequence = context.get_discrete_state(sequence_index_)[0];
+  int within_target = context.get_discrete_state(within_target_index_)[0];
+  int time_entered_target =
+      context.get_discrete_state(time_entered_target_index_)[0];
+  if (current_sequence == 0) {
+    if ((tray_state->GetPositions().tail(3) - first_target_).norm() <
+        target_threshold_) {
+      if (within_target ==
+          0) {  // set the time of when the tray first hits the target
+        discrete_state->get_mutable_value(time_entered_target_index_)[0] =
+            context.get_time();
+      }
+      discrete_state->get_mutable_value(within_target_index_)[0] = 1;
+    }
+    if (within_target == 1 &&
+        (context.get_time() - time_entered_target) > 1.0) {
+      discrete_state->get_mutable_value(within_target_index_)[0] = 0;
+      discrete_state->get_mutable_value(sequence_index_)[0] = 1;
+    }
+  } else if (current_sequence == 1) {
+    if ((tray_state->GetPositions().tail(3) - second_target_).norm() <
+        target_threshold_) {
+      if (within_target ==
+          0) {  // set the time of when the tray first hits the target
+        discrete_state->get_mutable_value(time_entered_target_index_)[0] =
+            context.get_time();
+      }
+      discrete_state->get_mutable_value(within_target_index_)[0] = 1;
+    }
+    if (within_target == 1 &&
+        (context.get_time() - time_entered_target) > delay_at_top_) {
+      discrete_state->get_mutable_value(within_target_index_)[0] = 0;
+      discrete_state->get_mutable_value(sequence_index_)[0] = 2;
+    }
+  } else if (current_sequence == 2) {
+    if ((tray_state->GetPositions().tail(3) - third_target_).norm() <
+        target_threshold_) {
+      discrete_state->get_mutable_value(sequence_index_)[0] = 3;
+    }
   }
-  if ((tray_state->GetPositions().tail(3) - second_target_).norm() <
-      0.75 * target_threshold_) {
-    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 2;
-  }
-  if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 &&
-      (tray_state->GetPositions().tail(3) - third_target_).norm() <
-          target_threshold_) {
-    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 3;
-  }
-  if (radio_out->channel[15] < 0 &&
-      context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
-    discrete_state->get_mutable_value(reached_first_target_idx_)[0] = 0;
+  if (current_sequence == 3 && radio_out->channel[15] < 0) {
+    discrete_state->get_mutable_value(sequence_index_)[0] = 0;
   }
   return EventStatus::Succeeded();
 }
@@ -92,13 +119,14 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
 
   VectorXd end_effector_position = first_target_;
   // Update target if remote trigger is active
-  if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
+  if (context.get_discrete_state(sequence_index_)[0] == 1) {
     end_effector_position = second_target_;  // raise the tray once it is close
-  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 ||
-             context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
+  } else if (context.get_discrete_state(sequence_index_)[0] == 2 ||
+             context.get_discrete_state(sequence_index_)[0] == 3) {
     end_effector_position = third_target_;  // put the tray back
   }
-  end_effector_position[2] -= end_effector_thickness_;  // place end effector below tray
+  end_effector_position[2] -=
+      end_effector_thickness_;  // place end effector below tray
   if (end_effector_position[0] > 0.6) {
     end_effector_position[0] = 0.6;  // keep it within the workspace
   }
@@ -118,16 +146,16 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
   VectorXd target_tray_state = VectorXd::Zero(7);
   VectorXd tray_position = first_target_;
 
-  if (context.get_discrete_state(reached_first_target_idx_)[0] == 1) {
+  if (context.get_discrete_state(sequence_index_)[0] == 1) {
     tray_position = second_target_;  // raise the tray once it is close
-  } else if (context.get_discrete_state(reached_first_target_idx_)[0] == 2 ||
-             context.get_discrete_state(reached_first_target_idx_)[0] == 3) {
+  } else if (context.get_discrete_state(sequence_index_)[0] == 2 ||
+             context.get_discrete_state(sequence_index_)[0] == 3) {
     tray_position = third_target_;  // raise the tray once it is close
   }
   tray_position(0) += radio_out->channel[0] * x_scale_;
   tray_position(1) += radio_out->channel[1] * y_scale_;
   tray_position(2) += radio_out->channel[2] * z_scale_;
-  target_tray_state << 1, 0, 0, 0, tray_position; // tray orientation is flat
+  target_tray_state << 1, 0, 0, 0, tray_position;  // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }
 

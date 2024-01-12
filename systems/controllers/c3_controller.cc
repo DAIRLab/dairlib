@@ -102,7 +102,7 @@ C3Controller::C3Controller(
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.35, 0.6, 1);
+    c3_->AddLinearConstraint(A, 0.35, 0.7, 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -112,7 +112,7 @@ C3Controller::C3Controller(
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0, 20, 2);
+    c3_->AddLinearConstraint(A, 0, 30, 2);
   }
 
   lcs_state_input_port_ =
@@ -189,7 +189,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   DRAKE_DEMAND(lcs_x->get_data()[1] > -0.1);
   DRAKE_DEMAND(lcs_x->get_data()[1] < 0.1);
   DRAKE_DEMAND(lcs_x->get_data()[2] > 0.35);
-  DRAKE_DEMAND(lcs_x->get_data()[2] < 0.6);
+  DRAKE_DEMAND(lcs_x->get_data()[2] < 0.7);
 
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);

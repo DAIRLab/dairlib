@@ -54,11 +54,14 @@ class PlateBalancingTargetGenerator
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex tray_target_port_;
 
-  drake::systems::DiscreteStateIndex reached_first_target_idx_;
+  drake::systems::DiscreteStateIndex sequence_index_;
+  drake::systems::DiscreteStateIndex within_target_index_;
+  drake::systems::DiscreteStateIndex time_entered_target_index_;
   double end_effector_thickness_;
   Eigen::Vector3d first_target_;
   Eigen::Vector3d second_target_;
   Eigen::Vector3d third_target_;
+  const double delay_at_top_ = 5.0;
   double target_threshold_;
   double x_scale_;
   double y_scale_;

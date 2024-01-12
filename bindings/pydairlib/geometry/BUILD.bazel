@@ -30,6 +30,7 @@ pybind_py_library(
     name = "convex_polygon_py",
     cc_deps = [
         "//geometry:convex_polygon",
+        "//geometry:convex_polygon_lcm_systems",
         "//geometry:convex_polygon_set",
         "@drake//:drake_shared_library",
         "@drake//bindings/pydrake/common:value_pybind",

@@ -5,6 +5,8 @@
 
 #include "geometry/convex_polygon.h"
 #include "geometry/convex_polygon_set.h"
+#include "geometry/convex_polygon_lcm_systems.h"
+
 #include "drake/bindings/pydrake/common/value_pybind.h"
 
 
@@ -15,6 +17,7 @@ namespace pydairlib {
 
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
+using geometry::ConvexPolygonSender;
 
 PYBIND11_MODULE(convex_polygon, m) {
 m.doc() = "Binding geometry utils";
@@ -38,6 +41,8 @@ py::class_<ConvexPolygon>(m, "ConvexPolygon")
 py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
     .def(py::init<std::vector<ConvexPolygon>>(), py::arg("set"))
     .def("CalcHeightOfPoint", &ConvexPolygonSet::CalcHeightOfPoint);
+
+py::class_<ConvexPolygonSender, drake::systems::LeafSystem<double>>(m, "ConvexPolygonSender").def(py::init<>());
 
   drake::pydrake::AddValueInstantiation<ConvexPolygon>(m);
   drake::pydrake::AddValueInstantiation<ConvexPolygonSet>(m);

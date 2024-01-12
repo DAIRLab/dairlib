@@ -1,4 +1,4 @@
-from dairlib import lcmt_robot_output
+from dairlib import lcmt_robot_output, lcmt_foothold_set
 
 from pydrake.systems.all import (
     Diagram,
@@ -7,12 +7,15 @@ from pydrake.systems.all import (
     InputPort,
     OutputPort,
     DiagramBuilder,
-    InputPortIndex,
-    OutputPortIndex,
     ConstantVectorSource,
     ZeroOrderHold,
-    LcmSubscriberSystem
+    LcmPublisherSystem,
+    TriggerType,
 )
+
+import pydairlib.lcm  # needed for cpp serialization of lcm messages
+
+from pydairlib.geometry.convex_polygon import ConvexPolygonSender
 
 from pydairlib.perceptive_locomotion.ros_diagrams import (
     ElevationMappingRosDiagram
@@ -32,6 +35,7 @@ import numpy as np
 
 
 points_topic = "/camera/depth/color/points"
+cassie_state_channel = "CASSIE_STATE_SIMULATION"
 elevation_mapping_params = (
     "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params"
     ".yaml"
@@ -47,9 +51,22 @@ def main():
     )
     terrain_segmentation = TerrainSegmentationSystem()
     convex_decomposition = ConvexTerrainDecompositionSystem()
+    foothold_sender = ConvexPolygonSender()
+
+    foothold_publisher = LcmPublisherSystem.Make(
+        channel="FOOTHOLDS_PROCESSED",
+        lcm_type=lcmt_foothold_set,
+        lcm=elevation_mapping.lcm(),
+        publish_triggers={TriggerType.kForced},
+        publish_period=0.0,
+        use_cpp_serializer=True
+    )
+
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(terrain_segmentation)
     builder.AddSystem(convex_decomposition)
+    builder.AddSystem(foothold_publisher)
+    builder.AddSystem(foothold_sender)
 
     builder.Connect(
         elevation_mapping.get_output_port(),
@@ -58,6 +75,14 @@ def main():
     builder.Connect(
         terrain_segmentation.get_output_port(),
         convex_decomposition.get_input_port()
+    )
+    builder.Connect(
+        convex_decomposition.get_output_port(),
+        foothold_sender.get_input_port()
+    )
+    builder.Connect(
+        foothold_sender.get_output_port(),
+        foothold_publisher.get_input_port()
     )
 
     diagram = builder.Build()
@@ -70,11 +95,12 @@ def main():
         drake_lcm=elevation_mapping.lcm(),
         diagram=diagram,
         lcm_parser=elevation_mapping,
-        input_channel="CASSIE_NETWORK_STATE_DISPATCHER",
+        input_channel=cassie_state_channel,
         is_forced_publish=True
     )
 
-    driven_loop.Simulate(np.inf)
+
+    # driven_loop.Simulate(np.inf)
 
 
 if __name__ == '__main__':

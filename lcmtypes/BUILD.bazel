@@ -63,6 +63,5 @@ drake_java_binary(
     runtime_deps = [
         ":lcmtypes_robot_java",
         "@drake//lcmtypes:lcmtypes_drake_java",
-        "@optitrack_driver//lcmtypes:lcmtypes_optitrack",
     ],
 )

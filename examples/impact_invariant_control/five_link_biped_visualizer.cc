@@ -55,7 +55,7 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>* scene_graph = builder.AddSystem<SceneGraph>();
   scene_graph->set_name("scene_graph");
   Parser parser(&plant, scene_graph);
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.mutable_gravity_field().set_gravity_vector(-9.81 *

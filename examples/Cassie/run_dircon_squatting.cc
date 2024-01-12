@@ -104,8 +104,8 @@ void DoMain(double duration, int max_iter, const string& data_directory,
 
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  parser.AddModelFromFile(full_name);
-  parser_vis.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
+  parser_vis.AddModels(full_name);
   plant.Finalize();
   plant_vis.Finalize();
 

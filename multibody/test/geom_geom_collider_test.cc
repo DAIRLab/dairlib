@@ -28,9 +28,9 @@ void GeomGeomColliderTest() {
 
   parser.package_map().Add("robot_properties_fingers",
                            "examples/trifinger/robot_properties_fingers");
-  parser.AddModelFromFile(FindResourceOrThrow("examples/trifinger/"
+  parser.AddModels(FindResourceOrThrow("examples/trifinger/"
       "robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"));
-  parser.AddModelFromFile(FindResourceOrThrow(
+  parser.AddModels(FindResourceOrThrow(
       "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"));
 
   auto X_WI = drake::math::RigidTransform<double>::Identity();

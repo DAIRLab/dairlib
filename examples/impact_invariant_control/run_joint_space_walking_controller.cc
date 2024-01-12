@@ -75,7 +75,7 @@ int DoMain(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
       "examples/impact_invariant_control/five_link_biped.urdf");
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.Finalize();

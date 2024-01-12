@@ -51,14 +51,14 @@ int DoMain() {
   Parser parser(&plant, &scene_graph);
   const std::string& fixed_spring_urdf =
       "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  parser.AddModelFromFile(fixed_spring_urdf);
+  parser.AddModels(fixed_spring_urdf);
   plant.Finalize();
 
   MultibodyPlant<double> plant_w_spr(1e-3);
   const std::string& spring_urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf";
   Parser parser_w_spr(&plant_w_spr, &scene_graph_w_spr);
 
-  parser_w_spr.AddModelFromFile(spring_urdf);
+  parser_w_spr.AddModels(spring_urdf);
   plant_w_spr.Finalize();
   auto pos_spr_map =
       multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr, plant);

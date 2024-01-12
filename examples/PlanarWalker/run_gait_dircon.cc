@@ -230,8 +230,8 @@ int main(int argc, char* argv[]) {
   std::string full_name =
       dairlib::FindResourceOrThrow("examples/PlanarWalker/PlanarWalker.urdf");
 
-  parser.AddModelFromFile(full_name);
-  parser_vis.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
+  parser_vis.AddModels(full_name);
 
   plant->WeldFrames(
       plant->world_frame(), plant->GetFrameByName("base"),

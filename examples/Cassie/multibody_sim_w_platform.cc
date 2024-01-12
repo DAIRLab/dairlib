@@ -110,7 +110,7 @@ int do_main(int argc, char* argv[]) {
     Parser parser(&plant, &scene_graph);
     std::string terrain_name =
         FindResourceOrThrow("examples/impact_invariant_control/platform.urdf");
-    parser.AddModelFromFile(terrain_name);
+    parser.AddModels(terrain_name);
     Eigen::Vector3d offset;
     offset << FLAGS_platform_x, 0, 0.25 + FLAGS_platform_height;
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),

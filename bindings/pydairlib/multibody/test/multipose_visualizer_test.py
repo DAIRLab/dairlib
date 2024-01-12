@@ -15,7 +15,7 @@ def main():
     builder = pydrake.systems.framework.DiagramBuilder()
     plant, scene_graph = pydrake.multibody.plant.AddMultibodyPlantSceneGraph(
         builder, 0)
-    pydrake.multibody.parsing.Parser(plant).AddModelFromFile(
+    pydrake.multibody.parsing.Parser(plant).AddModels(
         FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf"))
     plant.Finalize()
     visualizer.DrawPoses(np.random.rand(plant.num_positions(),

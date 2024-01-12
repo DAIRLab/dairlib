@@ -25,7 +25,7 @@ std::unique_ptr<MultibodyPlant<double>> ConstructBallPlant(
   auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
   std::string full_name = FindResourceOrThrow("multibody/ball.urdf");
   Parser parser(ball_plant.get(), scene_graph);
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   ball_plant->Finalize();
   return ball_plant;
 }

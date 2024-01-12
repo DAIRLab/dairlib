@@ -70,7 +70,7 @@ def load_logs(plant, t_impact, window):
 def main():
     builder = DiagramBuilder()
     plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-    Parser(plant).AddModelFromFile(
+    Parser(plant).AddModels(
         "examples/impact_invariant_control/five_link_biped.urdf")
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"))
     plant.Finalize()

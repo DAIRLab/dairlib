@@ -49,7 +49,7 @@ int do_main(int argc, char* argv[]) {
   // NOTE: will need to change path as appropriate
   std::string full_name = "/home/posa/workspace/dairlib/examples/Cassie/urdf/cassie_v2.urdf";
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
 
   plant.WeldFrames(
     plant.world_frame(), plant.GetFrameByName("pelvis"),

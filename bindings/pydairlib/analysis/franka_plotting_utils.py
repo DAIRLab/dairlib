@@ -42,7 +42,7 @@ def make_plant_and_context():
 
     franka_plant = MultibodyPlant(0.0)
     franka_parser = Parser(franka_plant)
-    franka_parser.AddModelFromFile(franka_urdf)
+    franka_parser.AddModels(franka_urdf)
     end_effector_index = \
         franka_parser.AddModels(end_effector_model)[0]
     T_EE_W = RigidTransform(tool_attachment_frame)
@@ -57,7 +57,7 @@ def make_plant_and_context():
 
     tray_plant = MultibodyPlant(0.0)
     tray_parser = Parser(tray_plant)
-    tray_parser.AddModelFromFile(tray_model)
+    tray_parser.AddModels(tray_model)
 
     franka_plant.Finalize()
     tray_plant.Finalize()

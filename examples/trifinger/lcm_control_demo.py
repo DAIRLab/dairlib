@@ -47,9 +47,9 @@ plant = MultibodyPlant(0.0)
 parser = Parser(plant)
 parser.package_map().Add("robot_properties_fingers",
                          "examples/trifinger/robot_properties_fingers")
-parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+parser.AddModels(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"))
-parser.AddModelFromFile(pydairlib.common.FindResourceOrThrow(
+parser.AddModels(pydairlib.common.FindResourceOrThrow(
     "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"))
 
 # Fix the base of the finger to the world

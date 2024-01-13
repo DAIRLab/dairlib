@@ -66,8 +66,8 @@ cc_binary(
     srcs = ["test/test_ros_publisher_system.cc"],
     tags = ["ros"],
     deps = [
+        ":ros_interface_system",
         ":ros_pubsub_systems",
-        ":ros_interface_system"
     ],
 )
 

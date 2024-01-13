@@ -165,7 +165,7 @@ cc_library(
         "//systems/filters:s2s_kalman_filter",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-]
+    ],
 )
 
 cc_library(

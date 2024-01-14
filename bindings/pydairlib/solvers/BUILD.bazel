@@ -1,0 +1,55 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+pybind_py_library(
+    name = "optimization_utils_py",
+    cc_deps = [
+        "//solvers:optimization_utils",
+        "@drake//:drake_shared_library",
+        "@drake//bindings/pydrake:pydrake_pybind",
+        "@drake//bindings/pydrake:symbolic_types_pybind"
+    ],
+    cc_so_name = "optimization_utils",
+    cc_srcs = ["optimization_utils_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":optimization_utils_py",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "solvers",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

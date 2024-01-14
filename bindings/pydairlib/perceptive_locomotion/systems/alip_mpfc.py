@@ -26,6 +26,11 @@ from pydairlib.systems.footstep_planning import (
     Stance,
 )
 
+from pydairlib.solvers.optimization_utils import LinearBigMConstraint, \
+    LinearBigMEqualityConstraint
+
+from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
+
 from pydairlib.perceptive_locomotion.systems.alip_lqr import AlipFootstepLQROptions
 
 
@@ -35,7 +40,6 @@ class AlipMPFC(LeafSystem):
         super().__init__()
 
         self.solver = GurobiSolver()
-
 
         # DLQR params
         self.K = np.zeros((2, 4))
@@ -92,10 +96,15 @@ class AlipMPFC(LeafSystem):
         }
 
         self.N = 3
+        self.kMaxFootholds = 10
         self.prog = MathematicalProgram()
         self.xx = [self.prog.NewContinuousVariables(4) for _ in range(self.N)]
         self.uu = [
             self.prog.NewContinuousVariables(2) for _ in range(self.N - 1)
+        ]
+        self.mu = [
+            self.prog.NewBinaryVariables(self.kMaxFootholds) for _ in
+            range(self.kMaxFootholds)
         ]
         self.running_cost = [
             self.prog.AddQuadraticErrorCost(
@@ -119,7 +128,32 @@ class AlipMPFC(LeafSystem):
                 np.zeros((4,))
             ) for i in range(self.N - 1)
         ]
-        self.solver = OsqpSolver()
+        self.solver = GurobiSolver()
+
+        self.crossover_constraints = []
+        self.foothold_constraints = []
+        self.state_constraints = []
+        self.make_input_constraints()
+
+    def make_input_constraints(self):
+        self.crossover_constraints = [
+            self.prog.AddLinearConstraint(u[-1] >= 0) for u in self.uu
+        ]
+        self.foothold_constraints = [
+            [
+                LinearBigMConstraint(
+                    prog=self.prog,
+                    A=np.zeros((1, 2)),
+                    b=np.zeros((1,)),
+                    M=10,
+                    x=self.uu[i],
+                    z=self.mu[i][j]
+                ) for j in range(self.kMaxFootholds)
+            ] for i in range(self.N - 1)
+        ]
+
+    def update_crossover_contraints(self, stance: Stance):
+        pass
 
     def get_quadradic_cost_for_vdes(self, vdes: np.ndarray) -> \
         Tuple[np.ndarray, np.ndarray, np.ndarray]:

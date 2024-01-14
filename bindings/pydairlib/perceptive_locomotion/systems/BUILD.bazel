@@ -25,6 +25,7 @@ py_library(
     srcs = ["alip_mpfc.py"],
     deps = [
         ":alip_lqr",
+        "//bindings/pydairlib/solvers",
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
     ],

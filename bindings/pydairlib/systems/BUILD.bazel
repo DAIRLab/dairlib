@@ -61,7 +61,6 @@ pybind_py_library(
 
 pybind_py_library(
     name = "ros_py",
-    tags = ["ros"],
     cc_deps = [
         "//systems/ros:ros_interface_system",
         "//systems/ros:ros_pubsub_systems",
@@ -73,6 +72,7 @@ pybind_py_library(
         ":module_py",
     ],
     py_imports = ["."],
+    tags = ["ros"],
 )
 
 pybind_py_library(

@@ -23,15 +23,15 @@ py_binary(
 py_binary(
     name = "elevation_mapping_and_terrain_decomposition",
     srcs = ["elevation_mapping_and_terrain_decomposition.py"],
-    tags = ["ros"],
     data = ["@lcm//:lcm-python"],
+    tags = ["ros"],
     deps = [
-        ":terrain_segmentation_system",
         ":convex_terrain_decomposition_system",
+        ":terrain_segmentation_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/lcm",
-        "//bindings/pydairlib/systems",
         "//bindings/pydairlib/perceptive_locomotion:ros_diagrams_py",
+        "//bindings/pydairlib/systems",
     ],
 )
 

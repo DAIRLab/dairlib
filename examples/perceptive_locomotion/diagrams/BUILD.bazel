@@ -6,21 +6,21 @@ cc_library(
     name = "elevation_mapping_ros_diagram",
     srcs = ["elevation_mapping_ros_diagram.cc"],
     hdrs = ["elevation_mapping_ros_diagram.h"],
-    tags = ["ros"],
     local_defines = ["DAIR_ROS_ON"],
+    tags = ["ros"],
     deps = [
-        "//examples/perceptive_locomotion:cassie_perception_utils",
         "//examples/Cassie:cassie_utils",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
         "//lcmtypes:lcmt_robot",
-        "//systems:system_utils",
         "//systems:robot_lcm_systems",
+        "//systems:system_utils",
         "//systems/perception:camera_utils",
         "//systems/perception:elevation_mapping_system",
         "//systems/perception:perceptive_locomotion_preprocessor",
         "//systems/perception/pointcloud:ros_point_cloud2_receiver",
         "//systems/ros:dairlib_ros",
         "@drake//:drake_shared_library",
-        "@ros"
+        "@ros",
     ],
 )
 

@@ -6,6 +6,8 @@
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
 
+#include <iostream>
+
 namespace dairlib {
 namespace solvers {
 
@@ -101,11 +103,17 @@ class LinearBigMConstraint {
   /// Make the constraint inactive (trivially satisfied for any x).
   /// Used for MIQPs with a variable number of BigM constraints.
   void deactivate() {
+    Eigen::MatrixXd new_A = Eigen::RowVectorXd::Zero(x_.rows() + 1);
     if (active_) {
-      constraint_.evaluator()->UpdateCoefficients(
-        Eigen::RowVectorXd::Zero(x_.size() + 1),
-        drake::Vector1d::Constant(1, -std::numeric_limits<double>::infinity()),
-        drake::Vector1d::Constant(1, std::numeric_limits<double>::infinity()));
+      try {
+        constraint_.evaluator()->UpdateCoefficients(
+            new_A,
+            drake::Vector1d::Constant(1, -std::numeric_limits<double>::infinity()),
+            drake::Vector1d::Constant(1, std::numeric_limits<double>::infinity()));
+      } catch (std::runtime_error e)  {
+        std::cout << "tried to update coefficients " <<
+        constraint_.evaluator()->GetDenseA() << " to " << new_A << std::endl;
+      }
     }
     active_ = false;
   }
@@ -131,12 +139,17 @@ class LinearBigMConstraint {
     xtmp.tail<1>()(0) = 1;
     return constraint_.evaluator()->CheckSatisfied(xtmp, tol);
   }
+
+  const drake::solvers::Binding<drake::solvers::LinearConstraint>&
+      get_constraint_binding() const {
+    return constraint_;
+  }
  private:
   bool active_ = true;
   drake::solvers::Binding<drake::solvers::LinearConstraint> constraint_;
   const double M_;
-  const drake::solvers::DecisionVariable& z_;
-  const drake::solvers::VectorXDecisionVariable& x_;
+  drake::solvers::DecisionVariable z_;
+  drake::solvers::VectorXDecisionVariable x_;
 };
 
 

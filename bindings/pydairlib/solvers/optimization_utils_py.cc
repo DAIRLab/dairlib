@@ -16,6 +16,7 @@ using drake::solvers::MathematicalProgram;
 
 using solvers::LinearBigMConstraint;
 using solvers::LinearBigMEqualityConstraint;
+using py_rvp = py::return_value_policy;
 
 PYBIND11_MODULE(optimization_utils, m) {
   py::class_<LinearBigMConstraint>(m, "LinearBigMConstraint")
@@ -29,6 +30,8 @@ PYBIND11_MODULE(optimization_utils, m) {
       .def("deactivate", py::overload_cast<>(&LinearBigMConstraint::deactivate))
       .def("deactivate", py::overload_cast<MathematicalProgram&>(
            &LinearBigMConstraint::deactivate))
+      .def("get_constraint_binding", &LinearBigMConstraint::get_constraint_binding,
+           py_rvp::reference_internal)
       .def("CheckSatisfiedIfActive", &LinearBigMConstraint::CheckSatisfiedIfActive);
 
   py::class_<LinearBigMEqualityConstraint>(m, "LinearBigMEqualityConstraint")

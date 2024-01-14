@@ -98,13 +98,20 @@ class AlipMPFC(LeafSystem):
         self.N = 3
         self.kMaxFootholds = 10
         self.prog = MathematicalProgram()
-        self.xx = [self.prog.NewContinuousVariables(4) for _ in range(self.N)]
+        self.xx = [self.prog.NewContinuousVariables(4, f'x_{i}') for i in
+                   range(self.N)]
         self.uu = [
-            self.prog.NewContinuousVariables(2) for _ in range(self.N - 1)
+            self.prog.NewContinuousVariables(2, f'u_{i}') for i in
+            range(self.N - 1)
         ]
         self.mu = [
             self.prog.NewBinaryVariables(self.kMaxFootholds) for _ in
             range(self.kMaxFootholds)
+        ]
+        self.one_foothold_constraint = [
+            self.prog.AddLinearEqualityConstraint(
+                np.dot(self.mu[i], np.ones((self.kMaxFootholds,))) == 1
+            ) for i in range(self.N - 1)
         ]
         self.running_cost = [
             self.prog.AddQuadraticErrorCost(
@@ -137,13 +144,18 @@ class AlipMPFC(LeafSystem):
 
     def make_input_constraints(self):
         self.crossover_constraints = [
-            self.prog.AddLinearConstraint(u[-1] >= 0) for u in self.uu
+            self.prog.AddLinearConstraint(
+                A=np.zeros((1, 1)),
+                lb=np.array([-np.inf]),
+                ub=np.array([np.inf]),
+                vars=u[1:]
+            ) for u in self.uu
         ]
         self.foothold_constraints = [
             [
                 LinearBigMConstraint(
                     prog=self.prog,
-                    A=np.zeros((1, 2)),
+                    A=np.ones((1, 2)),
                     b=np.zeros((1,)),
                     M=10,
                     x=self.uu[i],
@@ -152,8 +164,19 @@ class AlipMPFC(LeafSystem):
             ] for i in range(self.N - 1)
         ]
 
-    def update_crossover_contraints(self, stance: Stance):
-        pass
+        for clist in self.foothold_constraints:
+            for c in clist:
+                c.deactivate()
+
+    def update_crossover_constraints(self, stance: Stance):
+        s = 1.0 if stance == Stance.kLeft else -1.0
+        for c in self.crossover_constraints:
+            c.evaluator().UpdateCoefficients(
+                new_A=np.array([[s]]),
+                new_lb=np.array([-np.inf]),
+                new_ub=np.array([-0.04])
+            )
+            s *= -1.0
 
     def get_quadradic_cost_for_vdes(self, vdes: np.ndarray) -> \
         Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -205,6 +228,7 @@ class AlipMPFC(LeafSystem):
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
         xd, ud0, ud1 = self.make_period_two_orbit(stance, vdes)
 
+        # Update costs
         ud = [ud0, ud1]
         for i in range(self.N - 1):
             self.input_reg[i].evaluator().UpdateCoefficients(
@@ -225,11 +249,15 @@ class AlipMPFC(LeafSystem):
             10 * linear_term @ vdes
         )
 
+        # Update constraints
         x0 = BasicVector(4)
         self.calc_discrete_alip_state(context, x0)
         self.initial_state_constraint.evaluator().UpdateCoefficients(
             np.eye(4), x0.get_value()
         )
+        self.update_crossover_constraints(stance)
+
+        # solve the MP
         result = self.solver.Solve(self.prog)
         u = result.GetSolution(self.uu[0])
         footstep_command = np.zeros((3,))

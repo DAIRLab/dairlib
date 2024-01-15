@@ -64,13 +64,9 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
     DRAKE_DEMAND(publish_period == 0);
   }
   if (publish_triggers.find(TriggerType::kPerStep) != publish_triggers.end()) {
-    //TODO(yangwill): fix this later for new drake
-//    this->DeclarePerStepEvent(
-//        drake::systems::PublishEvent<double>([this](
-//            const drake::systems::Context<double>& context,
-//            const drake::systems::PublishEvent<double>&) {
-//          this->PublishInputAsUDPMessage(context);
-//        }));
+    this->DeclarePerStepPublishEvent(
+        &CassieUDPPublisher::PublishInputAsUDPMessage
+    );
   }
 }
 

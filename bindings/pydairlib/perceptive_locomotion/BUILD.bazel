@@ -93,7 +93,7 @@ pybind_py_library(
 pybind_py_library(
     name = "ros_diagrams_py",
     cc_deps = [
-        "//examples/perceptive_locomotion/diagrams:elevation_mapping_ros_diagram",
+        "//examples/perceptive_locomotion/diagrams:cassie_elevation_mapping_ros_diagram",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "ros_diagrams",

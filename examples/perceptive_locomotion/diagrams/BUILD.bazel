@@ -3,9 +3,9 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "elevation_mapping_ros_diagram",
-    srcs = ["elevation_mapping_ros_diagram.cc"],
-    hdrs = ["elevation_mapping_ros_diagram.h"],
+    name = "cassie_elevation_mapping_ros_diagram",
+    srcs = ["cassie_elevation_mapping_ros_diagram.cc"],
+    hdrs = ["cassie_elevation_mapping_ros_diagram.h"],
     local_defines = ["DAIR_ROS_ON"],
     tags = ["ros"],
     deps = [

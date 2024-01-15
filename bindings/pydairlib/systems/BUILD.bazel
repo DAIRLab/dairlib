@@ -111,6 +111,7 @@ pybind_py_library(
         "//lcmtypes:lcmt_robot",
         "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
+        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "framework",

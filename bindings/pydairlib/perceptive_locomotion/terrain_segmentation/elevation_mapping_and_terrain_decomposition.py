@@ -20,7 +20,7 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
 
 from pydairlib.perceptive_locomotion.ros_diagrams import (
-    ElevationMappingRosDiagram
+    CassieElevationMappingRosDiagram
 )
 
 from pydairlib.perceptive_locomotion.terrain_segmentation. \
@@ -48,10 +48,12 @@ elevation_mapping_params = (
 def main():
     builder = DiagramBuilder()
 
-    elevation_mapping = ElevationMappingRosDiagram(
+    elevation_mapping = CassieElevationMappingRosDiagram(
         elevation_mapping_params,
         points_topic
     )
+    plant = elevation_mapping.plant()
+
     terrain_segmentation = TerrainSegmentationSystem()
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
@@ -100,6 +102,12 @@ def main():
         lcm_parser=elevation_mapping,
         input_channel=cassie_state_channel,
         is_forced_publish=True
+    )
+
+    robot_state = driven_loop.WaitForFirstState(plant)
+    elevation_mapping.InitializeElevationMap(
+        robot_state,
+        driven_loop.get_diagram_mutable_context()
     )
 
     driven_loop.Simulate()

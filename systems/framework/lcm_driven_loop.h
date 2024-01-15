@@ -157,6 +157,14 @@ class LcmDrivenLoop {
     return simulator_->get_mutable_context();
   }
 
+
+  InputMessageType wait_for_message() const {
+    LcmHandleSubscriptionsUntil(drake_lcm_, [&]() {
+      return name_to_input_sub_map_.at(active_channel_).count() > 0;
+    });
+    return name_to_input_sub_map_.at(active_channel_).message();
+  }
+
   // Start simulating the diagram
   void Simulate(double end_time = std::numeric_limits<double>::infinity()) {
     // Get mutable contexts

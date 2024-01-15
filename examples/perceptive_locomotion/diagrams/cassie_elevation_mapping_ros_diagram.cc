@@ -1,4 +1,4 @@
-#include "elevation_mapping_ros_diagram.h"
+#include "cassie_elevation_mapping_ros_diagram.h"
 
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
@@ -23,7 +23,7 @@ using systems::RobotOutputReceiver;
 using systems::RosInterfaceSystem;
 using systems::RosSubscriberSystem;
 
-ElevationMappingRosDiagram::ElevationMappingRosDiagram(
+CassieElevationMappingRosDiagram::CassieElevationMappingRosDiagram(
     const std::string& params_yaml, const std::string& points_topic) {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
@@ -91,7 +91,7 @@ ElevationMappingRosDiagram::ElevationMappingRosDiagram(
   DrawAndSaveDiagramGraph(*this);
 }
 
-void ElevationMappingRosDiagram::InitializeElevationMap(
+void CassieElevationMappingRosDiagram::InitializeElevationMap(
     const Eigen::VectorXd& robot_state,
     drake::systems::Context<double>* root_context) const {
 

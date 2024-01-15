@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "examples/perceptive_locomotion/diagrams/elevation_mapping_ros_diagram.h"
+#include "examples/perceptive_locomotion/diagrams/cassie_elevation_mapping_ros_diagram.h"
 
 namespace py = pybind11;
 using py_rvp = py::return_value_policy;
@@ -12,20 +12,20 @@ using py_rvp = py::return_value_policy;
 namespace dairlib {
 namespace pydairlib {
 
-using perceptive_locomotion::ElevationMappingRosDiagram;
+using perceptive_locomotion::CassieElevationMappingRosDiagram;
 
 PYBIND11_MODULE(ros_diagrams, m) {
   m.doc() = "Binding perceptive locomotion diagrams with ros dependencies";
 
   using py_rvp = py::return_value_policy;
 
-  py::class_<ElevationMappingRosDiagram, drake::systems::Diagram<double>>(
-      m, "ElevationMappingRosDiagram")
+  py::class_<CassieElevationMappingRosDiagram, drake::systems::Diagram<double>>(
+      m, "CassieElevationMappingRosDiagram")
       .def(py::init<const std::string&, const std::string&>(),
           py::arg("params_yaml"), py::arg("points_topic"))
-      .def("InitializeElevationMap", &ElevationMappingRosDiagram::InitializeElevationMap)
-      .def("lcm", &ElevationMappingRosDiagram::lcm, py_rvp::reference_internal)
-      .def("plant", &ElevationMappingRosDiagram::plant, py_rvp::reference_internal);
+      .def("InitializeElevationMap", &CassieElevationMappingRosDiagram::InitializeElevationMap)
+      .def("lcm", &CassieElevationMappingRosDiagram::lcm, py_rvp::reference_internal)
+      .def("plant", &CassieElevationMappingRosDiagram::plant, py_rvp::reference_internal);
 
 };
 

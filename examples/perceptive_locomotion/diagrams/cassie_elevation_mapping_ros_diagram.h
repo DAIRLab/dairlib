@@ -18,10 +18,10 @@ namespace dairlib {
 namespace perceptive_locomotion {
 
 /** diagram for elevation mapping with ros point clouds on hardware */
-class ElevationMappingRosDiagram : public drake::systems::Diagram<double> {
+class CassieElevationMappingRosDiagram : public drake::systems::Diagram<double> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(ElevationMappingRosDiagram);
-  ElevationMappingRosDiagram(const std::string& params_yaml,
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieElevationMappingRosDiagram);
+  CassieElevationMappingRosDiagram(const std::string& params_yaml,
                              const std::string& points_topic);
 
   void InitializeElevationMap(const Eigen::VectorXd& robot_state,
@@ -32,7 +32,6 @@ class ElevationMappingRosDiagram : public drake::systems::Diagram<double> {
   const drake::multibody::MultibodyPlant<double>& plant() {
     return plant_;
   }
-
 
  private:
   // plant

@@ -46,7 +46,7 @@ def main():
     builder = DiagramBuilder()
 
     # controller = AlipFootstepLQR(controller_params)
-    controller = AlipMPFC(controller_params)
+    controller = AlipMPFC(controller_params, sim_env.controller_plant)
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(sim_env)
@@ -82,7 +82,7 @@ def main():
     )
     builder.Connect(
         sim_env.get_output_port_by_name("alip_state"),
-        controller.get_input_port_by_name("state")
+        controller.get_input_port_by_name("alip_state")
     )
 
     diagram = builder.Build()

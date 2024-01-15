@@ -71,7 +71,12 @@ PYBIND11_MODULE(multibody, m) {
           py::arg("plant"),
           py::arg("context"),
           py::arg("body_name"),
-          py::arg("vec"));
+          py::arg("vec"))
+      .def("GetBodyYawRotation_R_WB",
+           &dairlib::multibody::GetBodyYawRotation_R_WB<double>,
+           py::arg("plant"),
+           py::arg("context"),
+           py::arg("body_name"));
 }
 
 }  // namespace pydairlib

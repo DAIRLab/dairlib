@@ -49,7 +49,10 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         self.foothold_output_port = self.DeclareAbstractOutputPort(
             name="safe_footholds",
             alloc=lambda: Value(ConvexPolygonSet([])),
-            calc=self.calc
+            calc=self.calc,
+            prerequisites_of_calc={
+                self.input_port_ticket(self.input_port_safe_terrain)
+            }
         )
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):

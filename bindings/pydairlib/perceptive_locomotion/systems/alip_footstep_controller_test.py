@@ -40,6 +40,7 @@ import numpy as np
 
 controller_type = 'lqr'
 
+
 def big_flat_polygon():
     poly = ConvexPolygon()
     poly.SetPlane(np.array([0., 0., 1.]), np.array([0., 0., 0.]))
@@ -65,7 +66,7 @@ def main():
         controller_type == 'lqr') else AlipMPFC(
         controller_params, sim_env.controller_plant
     )
-    footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
+    footstep_zoh = ZeroOrderHold(1.0 / 50.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(sim_env)
 

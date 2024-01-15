@@ -35,6 +35,8 @@ py_binary(
     name = "full_stack_simulation_test",
     srcs = ["full_stack_simulation_test.py"],
     deps = [
+        "//bindings/pydairlib/lcm",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/perceptive_locomotion/systems",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation",
     ],

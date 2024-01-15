@@ -263,7 +263,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             output_port_indices['state'] = builder.ExportOutput(
                 self.perception_module.get_output_port_state(),
                 'x, u, t'
-            ),
+            )
         else:
             output_port_indices['state'] = builder.ExportOutput(
                 self.cassie_sim.get_output_port_state(),

@@ -47,7 +47,7 @@ py::class_<ConvexPolygonSet>(m, "ConvexPolygonSet")
          py::overload_cast<const Eigen::Matrix3d&, const Eigen::Vector3d&>(
          &ConvexPolygonSet::ReExpressInNewFrame))
     .def("size", &ConvexPolygonSet::size)
-    .def("polygons", &ConvexPolygonSet::polygons, py_rvp::reference_internal);
+    .def("polygons", &ConvexPolygonSet::polygons, py_rvp::copy);
 
 py::class_<ConvexPolygonSender, drake::systems::LeafSystem<double>>(m, "ConvexPolygonSender").def(py::init<>());
 

@@ -26,7 +26,16 @@ class TerrainSegmentationSystem(LeafSystem):
             "elevation_map", Value(GridMap())
         ).get_index()
         self.segmentation_state_idx = self.DeclareAbstractState(
-            Value(GridMap(["elevation", "safety_score", "segmentation"]))
+            Value(
+                GridMap(
+                    [
+                        "elevation",
+                        "raw_safety_score",
+                        "safety_score",
+                        "segmentation"
+                    ]
+                )
+            )
         )
         self.DeclareStateOutputPort(
             "safe_terrain", self.segmentation_state_idx
@@ -71,7 +80,6 @@ class TerrainSegmentationSystem(LeafSystem):
         segmented_map = state.get_mutable_abstract_state(
             self.segmentation_state_idx
         ).get_value()
-        segmented_map.convertToDefaultStartIndex()
 
         # make the previous segmentation match the geometry of the elevation map
         if segmented_map.getSize()[0] == 0:
@@ -93,13 +101,14 @@ class TerrainSegmentationSystem(LeafSystem):
             elevation_map['elevation'], elevation_map.getResolution()
         )
 
+        segmented_map["raw_safety_score"][:] = raw_safety_score
         segmented_map['safety_score'][:] =\
             raw_safety_score + self.safety_hysteresis * prev_segmentation
 
         safe = (segmented_map['safety_score'] > 0.7).astype(float)
 
         # clean up small holes in the safe regions
-        kernel = np.ones((3, 3), np.uint8)
+        kernel = np.ones((5, 5), np.uint8)
         safe = cv2.morphologyEx(safe, cv2.MORPH_CLOSE, kernel)
         safe = cv2.morphologyEx(safe, cv2.MORPH_OPEN, kernel)
 

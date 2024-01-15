@@ -109,12 +109,15 @@ class AlipMPFC(LeafSystem):
             ) for i in range(self.N - 1)
         ]
         self.solver = GurobiSolver()
+        self.prog.SetSolverOption(self.solver.id(), 'Presolve', 0)
+        self.prog.SetSolverOption(self.solver.id(), 'Threads', 4)
 
         self.crossover_constraints = []
         self.foothold_constraints = []
         self.foothold_choice_constraint = []
         self.state_constraints = []
         self.make_input_constraints()
+        self.make_state_constraints()
 
         # Cassie foot frames
         front_contact_pt = np.array((-0.0457, 0.112, 0))
@@ -237,6 +240,21 @@ class AlipMPFC(LeafSystem):
             ) for i in range(self.N - 1)
         ]
 
+    def make_state_constraints(self):
+        state_bound = np.array(
+            [
+                0.5,
+                0.4,
+                2.0 * self.params.height * self.params.mass,
+                1.0 * self.params.height * self.params.mass
+            ]
+        )
+        self.state_constraints = [
+            self.prog.AddBoundingBoxConstraint(
+                -state_bound, state_bound, self.xx[i]
+            ) for i in range(1, self.N)
+        ]
+
     def update_crossover_constraints(self, stance: Stance):
         s = 1.0 if stance == Stance.kLeft else -1.0
         for c in self.crossover_constraints:
@@ -350,12 +368,20 @@ class AlipMPFC(LeafSystem):
 
         # solve the MP
         result = self.solver.Solve(self.prog)
+        if not result.is_success():
+            print(f'sovled failed with code {result.get_solution_result}')
 
         # set the result
         u = result.GetSolution(self.pp[1])
 
         footstep_command = np.zeros((3,))
         footstep_command[:2] = u
+
+        z = convex_footholds.CalcHeightOfPoint(footstep_command)
+        if np.isinf(z):
+            z = 0
+        footstep_command[2] = z
+
         footstep.set_value(footstep_command)
 
     def get_footholds_in_stance_frame(
@@ -378,6 +404,9 @@ class AlipMPFC(LeafSystem):
         footholds = self.get_input_port_by_name('convex_footholds').Eval(
             context
         )
+
+        # need to make a copy to avoid modifying the footholds
+        footholds = ConvexPolygonSet(footholds.polygons())
         footholds.ReExpressInNewFrame(pelvis_yaw_rotation, stance_pos)
 
         return footholds

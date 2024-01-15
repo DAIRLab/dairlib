@@ -84,6 +84,7 @@ py_library(
 PY_LIBRARIES = [
     ":cassie_footstep_controller_environment",
     ":alip_lqr",
+    ":alip_mpfc"
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -98,7 +98,7 @@ void AlipMPFCMeshcatVisualizer::DrawFootholds(ConvexPolygonSet& foothold_set,
       drake::geometry::Rgba(0, 0, 1, 0.5)
   };
   for (int i = 0; i < foothold_set.size(); i++) {
-    auto foothold = foothold_set.footholds().at(i);
+    auto foothold = foothold_set.polygons().at(i);
     const auto [verts, faces] = foothold.GetSurfaceMesh();
     auto faces_reversed = faces;
     Eigen::Matrix3Xd verts_line = verts;

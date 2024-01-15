@@ -268,7 +268,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             output_port_indices['state'] = builder.ExportOutput(
                 self.cassie_sim.get_output_port_state(),
                 'x, u, t'
-            ),
+            )
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.height_map_server.get_output_port(),
                 'height_map_query'

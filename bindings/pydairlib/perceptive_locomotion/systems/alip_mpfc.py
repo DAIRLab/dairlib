@@ -29,6 +29,11 @@ from pydairlib.systems.footstep_planning import (
     Stance,
 )
 
+from pydairlib.multibody import (
+    ReExpressWorldVector3InBodyYawFrame,
+    GetBodyYawRotation_R_WB
+)
+
 from pydairlib.solvers.optimization_utils import LinearBigMConstraint, \
     LinearBigMEqualityConstraint
 
@@ -37,6 +42,7 @@ from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 from pydairlib.perceptive_locomotion.systems.alip_lqr import AlipFootstepLQROptions
 
 from pydairlib.systems import OutputVector
+
 
 class AlipMPFC(LeafSystem):
 
@@ -110,6 +116,16 @@ class AlipMPFC(LeafSystem):
         self.state_constraints = []
         self.make_input_constraints()
 
+        # Cassie foot frames
+        front_contact_pt = np.array((-0.0457, 0.112, 0))
+        rear_contact_pt = np.array((0.088, 0, 0))
+        self.contact_pt = 0.5 * (front_contact_pt + rear_contact_pt)
+
+        self.contact_frames = {
+            Stance.kLeft: self.plant.GetBodyByName("toe_left").body_frame(),
+            Stance.kRight: self.plant.GetBodyByName("toe_right").body_frame()
+        }
+
     def declare_ports(self):
         self.input_port_indices = {
             'desired_velocity': self.DeclareVectorInputPort(
@@ -134,7 +150,7 @@ class AlipMPFC(LeafSystem):
             'convex_footholds': self.DeclareAbstractInputPort(
                "safe_footholds",
                Value(ConvexPolygonSet([])),
-            )
+            ).get_index()
         }
         self.output_port_indices = {
             'footstep_command': self.DeclareVectorOutputPort(
@@ -231,6 +247,16 @@ class AlipMPFC(LeafSystem):
             )
             s *= -1.0
 
+    def update_foothold_constraints(self, foothold_set):
+        polys = foothold_set.polygons()
+        n = min(self.kMaxFootholds, len(polys))
+        for constr_list in self.foothold_constraints:
+            for i in range(n):
+                A, b = polys[i].GetConstraintMatrices()
+                constr_list[i].UpdateCoefficients(A[:, :2], b)
+            for j in range(n, self.kMaxFootholds):
+                constr_list[j].deactivate()
+
     def get_quadradic_cost_for_vdes(self, vdes: np.ndarray) -> \
         Tuple[np.ndarray, np.ndarray, np.ndarray]:
         g = self.period_two_orbit_premul @ self.B @ vdes
@@ -310,29 +336,51 @@ class AlipMPFC(LeafSystem):
             is_convex=True
         )
 
-        # Update constraints
+        # Update initial state constraint
         x0 = BasicVector(4)
         self.calc_discrete_alip_state(context, x0)
         self.initial_state_constraint.evaluator().UpdateCoefficients(
             np.eye(4), x0.get_value()
         )
 
-        # TODO (@Brian-Acosta) get initial foot position from robot and
-        # add foothold constraints
-        self.initial_footstep_constraint.evaluator().UpdateCoefficients(
-            np.eye(2), np.zeros((2,))
-        )
+        # Update foothold/footstep constraints
+        convex_footholds = self.get_footholds_in_stance_frame(context, stance)
+        self.update_foothold_constraints(convex_footholds)
         self.update_crossover_constraints(stance)
 
         # solve the MP
         result = self.solver.Solve(self.prog)
+
+        # set the result
         u = result.GetSolution(self.pp[1])
+
         footstep_command = np.zeros((3,))
         footstep_command[:2] = u
         footstep.set_value(footstep_command)
 
-    def get_footholds_in_stance_frame(self):
-        pass
+    def get_footholds_in_stance_frame(
+        self, context: Context, stance: Stance) -> ConvexPolygonSet:
+
+        robot_state = self.EvalVectorInput(
+            context, self.input_port_indices['robot_state']
+        ).GetState()
+        self.plant.SetPositionsAndVelocities(
+            self.plant_context, robot_state
+        )
+        stance_pos = self.plant.CalcPointsPositions(
+            self.plant_context, self.contact_frames[stance], self.contact_pt,
+            self.plant.world_frame()
+        ).ravel()
+        pelvis_yaw_rotation = GetBodyYawRotation_R_WB(
+            self.plant, self.plant_context, "pelvis"
+        )
+
+        footholds = self.get_input_port_by_name('convex_footholds').Eval(
+            context
+        )
+        footholds.ReExpressInNewFrame(pelvis_yaw_rotation, stance_pos)
+
+        return footholds
 
     def make_period_two_orbit(self, stance: Stance, vdes: np.ndarray) -> \
         Tuple[np.ndarray, np.ndarray, np.ndarray]:

@@ -251,7 +251,7 @@ drake::systems::EventStatus AlipMPFC::UnrestrictedUpdate(
   Vector3d query_pt = trajopt_.GetFootstepSolution().at(1);
   if (!foothold_set.empty()) {
     auto footholds_filt = foothold_set.GetSubsetCloseToPoint(query_pt, 1.8);
-    trajopt_.UpdateFootholds(footholds_filt.footholds());
+    trajopt_.UpdateFootholds(footholds_filt.polygons());
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
   }

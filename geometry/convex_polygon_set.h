@@ -23,11 +23,13 @@ class ConvexPolygonSet {
   ConvexPolygonSet GetSubsetInForwardLookingCone(
       const Eigen::Vector3d& query_pt, double cone_angle) const;
 
-  const std::vector<ConvexPolygon>& footholds() const { return set_; }
+  const std::vector<ConvexPolygon>& polygons() const { return set_; }
   void clear() { set_.clear(); }
   bool empty() {return set_.empty(); }
   bool Feasible2d(const Eigen::Vector3d& pt, double tol = -1e-2) const;
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
+  void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF,
+                           const Eigen::Vector3d& p_OF_W);
   void append(const ConvexPolygon& f) { set_.push_back(f); }
   void CopyToLcm(lcmt_foothold_set* set) const;
   double CalcHeightOfPoint(const Eigen::Vector3d& point) const;

@@ -68,7 +68,23 @@ class ConvexPolygon {
    * Get the equality constraints Aeq*x == b as a pair {Aeq, b}
    */
   std::pair<Eigen::MatrixXd, Eigen::VectorXd> GetEqualityConstraintMatrices() const;
+
+  /*
+   * Performs an in place rotation of the constraints Ax <= b such that
+   * A (R_WF) x <= b. In other words, moves the constraint from applying to
+   * vectors in frame W, to vectors in frame F
+   */
   void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF);
+
+  /*
+   * Performs an in place rotation and translation
+   * of the constraints Ax <= b such that
+   * A (R_WF x + p_OF_W) <= b. In other words, moves the constraint from
+   * applying to vectors in frame W, to vectors in frame F
+   */
+  void ReExpressInNewFrame(const Eigen::Matrix3d& R_WF,
+                           const Eigen::Vector3d& p_OF_W);
+
   Eigen::Matrix3Xd GetVertices();
 
   static ConvexPolygon MakeFlatGround(double half_len=100.0) {

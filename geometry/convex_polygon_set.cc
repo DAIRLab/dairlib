@@ -101,6 +101,13 @@ void ConvexPolygonSet::ReExpressInNewFrame(const Matrix3d &R_WF) {
   }
 }
 
+void ConvexPolygonSet::ReExpressInNewFrame(
+    const Matrix3d &R_WF, const Vector3d & p_OF_w) {
+  for (auto& f: set_) {
+    f.ReExpressInNewFrame(R_WF, p_OF_w);
+  }
+}
+
 void ConvexPolygonSet::CopyToLcm(lcmt_foothold_set *set) const {
   set->footholds.clear();
   set->n = this->size();

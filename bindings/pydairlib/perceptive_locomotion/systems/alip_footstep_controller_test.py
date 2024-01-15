@@ -1,6 +1,7 @@
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
 from pydrake.systems.all import (
+    Value,
     Diagram,
     Context,
     Simulator,
@@ -10,6 +11,7 @@ from pydrake.systems.all import (
     InputPortIndex,
     OutputPortIndex,
     ConstantVectorSource,
+    ConstantValueSource,
     ZeroOrderHold,
 )
 
@@ -29,8 +31,18 @@ from pydairlib.perceptive_locomotion.systems. \
 )
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 import numpy as np
+
+
+def big_flat_polygon():
+    poly = ConvexPolygon()
+    poly.SetPlane(np.array([0., 0., 1.]), np.array([0., 0., 0.]))
+    for n in [np.array([1., 0., 0.]), np.array([1., 0., 0.]),
+              np.array([1., 0., 0.]), np.array([1., 0., 0.])]:
+        poly.AddFace(n, 1000 * n)
+        return ConvexPolygonSet([poly])
 
 
 def main():
@@ -52,8 +64,11 @@ def main():
     builder.AddSystem(sim_env)
 
     desired_velocity = ConstantVectorSource(np.array([0.1, 0]))
+    foothold_source = ConstantValueSource(Value(big_flat_polygon()))
+
     builder.AddSystem(controller)
     builder.AddSystem(desired_velocity)
+    builder.AddSystem(foothold_source)
 
     # controller give footstep command to sim_environment (i.e. cassie)
     builder.Connect(
@@ -83,6 +98,14 @@ def main():
     builder.Connect(
         sim_env.get_output_port_by_name("alip_state"),
         controller.get_input_port_by_name("alip_state")
+    )
+    builder.Connect(
+        sim_env.get_output_port_by_name('state'),
+        controller.get_input_port_by_name('robot_state')
+    )
+    builder.Connect(
+        foothold_source.get_output_port(),
+        controller.get_input_port_by_name('convex_footholds')
     )
 
     diagram = builder.Build()

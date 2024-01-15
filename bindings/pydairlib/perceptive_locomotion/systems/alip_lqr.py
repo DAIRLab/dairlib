@@ -113,7 +113,7 @@ class AlipFootstepLQR(LeafSystem):
             'time_until_switch': self.DeclareVectorInputPort(
                 "time_until_switch", 1
             ).get_index(),
-            'state': self.DeclareVectorInputPort(
+            'alip_state': self.DeclareVectorInputPort(
                 "alip_state", 4
             ).get_index()
         }
@@ -165,7 +165,7 @@ class AlipFootstepLQR(LeafSystem):
                                  x_disc: BasicVector) -> None:
         current_alip_state = np.copy(self.EvalVectorInput(
             context,
-            self.input_port_indices['state']
+            self.input_port_indices['alip_state']
         ).value().ravel())
 
         # mass normalized alip state

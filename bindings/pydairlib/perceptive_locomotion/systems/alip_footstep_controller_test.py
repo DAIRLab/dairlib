@@ -35,6 +35,10 @@ from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 import numpy as np
 
+# controller_type = 'mpfc'
+
+
+controller_type = 'lqr'
 
 def big_flat_polygon():
     poly = ConvexPolygon()
@@ -57,8 +61,10 @@ def main():
     )
     builder = DiagramBuilder()
 
-    # controller = AlipFootstepLQR(controller_params)
-    controller = AlipMPFC(controller_params, sim_env.controller_plant)
+    controller = AlipFootstepLQR(controller_params) if (
+        controller_type == 'lqr') else AlipMPFC(
+        controller_params, sim_env.controller_plant
+    )
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(sim_env)
@@ -99,14 +105,15 @@ def main():
         sim_env.get_output_port_by_name("alip_state"),
         controller.get_input_port_by_name("alip_state")
     )
-    builder.Connect(
-        sim_env.get_output_port_by_name('state'),
-        controller.get_input_port_by_name('robot_state')
-    )
-    builder.Connect(
-        foothold_source.get_output_port(),
-        controller.get_input_port_by_name('convex_footholds')
-    )
+    if controller_type == 'mpfc':
+        builder.Connect(
+            sim_env.get_output_port_by_name('state'),
+            controller.get_input_port_by_name('robot_state')
+        )
+        builder.Connect(
+            foothold_source.get_output_port(),
+            controller.get_input_port_by_name('convex_footholds')
+        )
 
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(diagram, '../alip_lqr')

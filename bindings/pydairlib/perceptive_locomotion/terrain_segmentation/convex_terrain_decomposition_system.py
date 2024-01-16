@@ -13,7 +13,14 @@ from pydrake.systems.all import (
 )
 
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
-from pydairlib.geometry.polygon_utils import ProcessTerrain2d
+
+try:
+    from pydairlib.geometry.polygon_utils import ProcessTerrain2d
+except ImportError:
+    print('ERROR: when built against ros, you need to source the ros environment before '
+          'importing from polygon_utils, or python may not be able to find some necessary libraries. '
+          'Please source ros and try again')
+    exit(0)
 
 import matplotlib.pyplot as plt
 

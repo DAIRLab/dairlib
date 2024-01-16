@@ -5,7 +5,20 @@ import glob
 import signal
 
 from datetime import date
-def main():
+from argparse import ArgumentParser
+
+
+def gphoto_stop_cmd(sig, _):
+    print(f'caught signal {sig}, stopping recording then sutting down.')
+    subprocess.run(['gphoto2', '--set-config', 'movie=0'])
+
+def main_external_camera():
+    signal.signal(signal.SIGINT, gphoto_stop_cmd)
+    subprocess.run(['gphoto2', '--set-config', 'movie=1'])
+    signal.pause()
+
+
+def main_webcam():
     # get devices
     dev_names = []
     cmd = 'v4l2-ctl --list-devices'.split(' ')
@@ -52,4 +65,13 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = ArgumentParser()
+    parser.add_argument("--source", default='webcam')
+
+    args = parser.parse_args()
+    source = args.source
+
+    if source == 'webcam':
+        main_webcam()
+    else:
+        main_external_camera()

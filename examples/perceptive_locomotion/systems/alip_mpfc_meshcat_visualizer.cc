@@ -38,7 +38,7 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
 
   n_footholds_idx_ = DeclareDiscreteState(1);
 
-  DeclarePerStepUnrestrictedUpdateEvent(
+  DeclarePeriodicUnrestrictedUpdateEvent(1.0/15.0, 0.,
       &AlipMPFCMeshcatVisualizer::UnrestrictedUpdate);
 }
 

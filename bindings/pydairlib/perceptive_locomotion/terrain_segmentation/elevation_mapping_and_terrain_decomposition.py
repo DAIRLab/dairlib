@@ -38,7 +38,7 @@ import numpy as np
 
 
 points_topic = "/camera/depth/color/points"
-cassie_state_channel = "CASSIE_STATE_SIMULATION"
+cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
 elevation_mapping_params = (
     "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params"
     ".yaml"

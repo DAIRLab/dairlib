@@ -13,7 +13,7 @@
 
 namespace dairlib {
 
-DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "State channel");
+DEFINE_string(channel_x, "NETWORK_CASSIE_STATE_DISPATCHER", "State channel");
 DEFINE_string(channel_mpc, "ALIP_MPFC_DEBUG", "mpc_debug_channel");
 DEFINE_string(channel_terrain, "", "lcm channel with processed footholds from "
                                    "lcm translator");

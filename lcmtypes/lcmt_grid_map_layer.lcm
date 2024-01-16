@@ -7,5 +7,6 @@ struct lcmt_grid_map_layer
     int32_t rows;
     int32_t cols;
 
-    float[rows][cols] data;
+    // data stored in row major order
+    float data[rows][cols];
 }

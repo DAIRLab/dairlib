@@ -15,6 +15,7 @@ cc_library(
     srcs = ["grid_map_lcm_systems.cc"],
     hdrs = ["grid_map_lcm_systems.h"],
     deps = [
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ]

@@ -5,8 +5,7 @@ struct lcmt_grid_map_info
     int64_t utime;
     string parent_frame;
 
-    double map_orientation[3][3];
-    double map_translation[3];
+    double position[2];
 
     double length_x;
     double length_y;

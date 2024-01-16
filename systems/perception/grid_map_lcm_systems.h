@@ -1,12 +1,18 @@
-//
-// Created by brian on 1/16/24.
-//
+#include "grid_map_core/grid_map_core.hpp"
+#include "dairlib/lcmt_grid_map.hpp"
+#include "drake/systems/framework/leaf_system.h"
 
-#ifndef DAIRLIB_SYSTEMS_PERCEPTION_GRID_MAP_LCM_SYSTEMS_H_
-#define DAIRLIB_SYSTEMS_PERCEPTION_GRID_MAP_LCM_SYSTEMS_H_
+namespace dairlib {
+namespace perception {
 
-class grid_map_lcm_systems {
+lcmt_grid_map GridMapToLcm(
+    const grid_map::GridMap& grid_map, const std::vector<std::string>& layers);
 
-};
+inline lcmt_grid_map GridMapToLcm(const grid_map::GridMap& grid_map) {
+  return GridMapToLcm(grid_map, grid_map.getLayers());
+}
 
-#endif //DAIRLIB_SYSTEMS_PERCEPTION_GRID_MAP_LCM_SYSTEMS_H_
+grid_map::GridMap LcmToGridMap(const lcmt_grid_map& grid_map_lcm);
+
+}
+}

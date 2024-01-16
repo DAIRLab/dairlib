@@ -5,6 +5,10 @@ struct lcmt_grid_map
     lcmt_grid_map_info info;
 
     int32_t num_layers;
+
+    int32_t outer_start_index;
+    int32_t inner_start_index;
+
     string layer_names[num_layers];
-    lcmt_grid_map_layer[num_layers];
+    lcmt_grid_map_layer layers[num_layers];
 }

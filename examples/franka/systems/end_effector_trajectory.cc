@@ -91,7 +91,7 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     if (trajectory_input.value(0).isZero()) {
 //      *casted_traj = GeneratePose(context);
     } else {
-      if ((context.get_time() - trajectory_input.start_time()) < 0.15){
+      if ((context.get_time() - trajectory_input.start_time()) < 0.14){
         *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
             const PiecewisePolynomial<double>*>(&trajectory_input);
       }

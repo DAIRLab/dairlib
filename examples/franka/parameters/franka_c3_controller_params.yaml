@@ -12,8 +12,8 @@ left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
-left_support_position: [0.8, 0.15, 0.455]
-right_support_position: [0.8, -0.15, 0.455]
+left_support_position: [0.8, 0.15, 0.453]
+right_support_position: [0.8, -0.15, 0.453]
 end_effector_thickness: 0.016
 
 scene_index: 1

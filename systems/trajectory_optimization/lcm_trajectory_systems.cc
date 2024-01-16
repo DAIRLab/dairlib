@@ -2,11 +2,14 @@
 
 #include <iostream>
 
+#include <dairlib/lcmt_c3_state.hpp>
+
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_c3_forces.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
+#include "drake/common/schema/rotation.h"
 #include "drake/geometry/rgba.h"
 
 namespace dairlib {
@@ -302,18 +305,21 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
-  if (discrete_state->get_value(actor_last_update_time_index_)[0] >=
-      context.get_time()) {
-    return drake::systems::EventStatus::Succeeded();
-  }
-  discrete_state->get_mutable_value(actor_last_update_time_index_)[0] =
-      context.get_time();
   const auto& lcmt_traj =
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, actor_trajectory_input_port_);
+
+  // Don't needlessly update
+  if (discrete_state->get_value(actor_last_update_time_index_)[0] ==
+      lcmt_traj->utime * 1e-6) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(actor_last_update_time_index_)[0] =
+      lcmt_traj->utime * 1e-6;
   const auto& robot_time_vec =
       this->EvalVectorInput(context, robot_time_input_port_);
   double robot_time = robot_time_vec->GetAtIndex(0);
+
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
   const auto& force_trajectory_block =
       lcm_traj.GetTrajectory(force_trajectory_name_);
@@ -374,15 +380,17 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
-  if (discrete_state->get_value(forces_last_update_time_index_)[0] >=
-      context.get_time()) {
+  const auto& c3_forces = this->EvalInputValue<dairlib::lcmt_c3_forces>(
+      context, force_trajectory_input_port_);
+
+  // Don't needlessly update
+  if (discrete_state->get_value(forces_last_update_time_index_)[0] ==
+      c3_forces->utime * 1e-6) {
     return drake::systems::EventStatus::Succeeded();
   }
   discrete_state->get_mutable_value(forces_last_update_time_index_)[0] =
-      context.get_time();
+      c3_forces->utime * 1e-6;
 
-  const auto& c3_forces = this->EvalInputValue<dairlib::lcmt_c3_forces>(
-      context, force_trajectory_input_port_);
   for (int i = 0; i < c3_forces->num_forces; ++i) {
     const VectorXd force = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         c3_forces->forces[i].contact_force, 3);
@@ -424,6 +432,138 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     } else {
       meshcat_->SetProperty(force_path_root, "visible", false);
     }
+  }
+  return drake::systems::EventStatus::Succeeded();
+}
+
+LcmC3TargetDrawer::LcmC3TargetDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat, bool draw_tray,
+    bool draw_ee)
+    : meshcat_(meshcat), draw_tray_(draw_tray), draw_ee_(draw_ee) {
+  this->set_name("LcmC3TargetDrawer");
+  c3_state_target_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: target",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
+
+  c3_state_actual_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: actual",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
+  last_update_time_index_ = this->DeclareDiscreteState(1);
+
+  meshcat_->SetProperty(c3_state_path_, "visible", true, 0);
+
+  // TODO(yangwill): Clean up all this visualization, move to separate
+  // visualization directory1
+  meshcat_->SetObject(c3_target_tray_path_ + "/x-axis", cylinder_for_tray_,
+                      {1, 0, 0, 1});
+  meshcat_->SetObject(c3_target_tray_path_ + "/y-axis", cylinder_for_tray_,
+                      {0, 1, 0, 1});
+  meshcat_->SetObject(c3_target_tray_path_ + "/z-axis", cylinder_for_tray_,
+                      {0, 0, 1, 1});
+  meshcat_->SetObject(c3_actual_tray_path_ + "/x-axis", cylinder_for_tray_,
+                      {1, 0, 0, 1});
+  meshcat_->SetObject(c3_actual_tray_path_ + "/y-axis", cylinder_for_tray_,
+                      {0, 1, 0, 1});
+  meshcat_->SetObject(c3_actual_tray_path_ + "/z-axis", cylinder_for_tray_,
+                      {0, 0, 1, 1});
+  meshcat_->SetObject(c3_target_ee_path_ + "/x-axis", cylinder_for_ee_,
+                      {1, 0, 0, 1});
+  meshcat_->SetObject(c3_target_ee_path_ + "/y-axis", cylinder_for_ee_,
+                      {0, 1, 0, 1});
+  meshcat_->SetObject(c3_target_ee_path_ + "/z-axis", cylinder_for_ee_,
+                      {0, 0, 1, 1});
+  meshcat_->SetObject(c3_actual_ee_path_ + "/x-axis", cylinder_for_ee_,
+                      {1, 0, 0, 1});
+  meshcat_->SetObject(c3_actual_ee_path_ + "/y-axis", cylinder_for_ee_,
+                      {0, 1, 0, 1});
+  meshcat_->SetObject(c3_actual_ee_path_ + "/z-axis", cylinder_for_ee_,
+                      {0, 0, 1, 1});
+  auto x_axis_transform =
+      RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitY()),
+                      Vector3d{0.075, 0.0, 0.0});
+  auto y_axis_transform =
+      RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitX()),
+                      Vector3d{0.0, 0.075, 0.0});
+  auto z_axis_transform =
+      RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
+                      Vector3d{0.0, 0.0, 0.075});
+  auto x_axis_transform_ee =
+      RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitY()),
+                      0.5 * Vector3d{0.075, 0.0, 0.0});
+  auto y_axis_transform_ee =
+      RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitX()),
+                      0.5 * Vector3d{0.0, 0.075, 0.0});
+  auto z_axis_transform_ee =
+      RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
+                      0.5 * Vector3d{0.0, 0.0, 0.075});
+  meshcat_->SetTransform(c3_target_tray_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_target_tray_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_target_tray_path_ + "/z-axis", z_axis_transform);
+  meshcat_->SetTransform(c3_actual_tray_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_actual_tray_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_actual_tray_path_ + "/z-axis", z_axis_transform);
+  meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee);
+  meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee);
+  meshcat_->SetTransform(c3_target_ee_path_ + "/z-axis", z_axis_transform_ee);
+  meshcat_->SetTransform(c3_actual_ee_path_ + "/x-axis", x_axis_transform_ee);
+  meshcat_->SetTransform(c3_actual_ee_path_ + "/y-axis", y_axis_transform_ee);
+  meshcat_->SetTransform(c3_actual_ee_path_ + "/z-axis", z_axis_transform_ee);
+
+  DeclarePerStepDiscreteUpdateEvent(&LcmC3TargetDrawer::DrawC3State);
+}
+
+drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
+                                                   c3_state_target_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  if (this->EvalInputValue<dairlib::lcmt_c3_state>(context,
+                                                   c3_state_actual_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  if (discrete_state->get_value(last_update_time_index_)[0] >=
+      context.get_time()) {
+    // no need to update if simulation has not advanced
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(last_update_time_index_)[0] =
+      context.get_time();
+  const auto& c3_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
+      context, c3_state_target_input_port_);
+  const auto& c3_actual = this->EvalInputValue<dairlib::lcmt_c3_state>(
+      context, c3_state_actual_input_port_);
+  if (draw_tray_) {
+    meshcat_->SetTransform(
+        c3_target_tray_path_,
+        RigidTransformd(
+            Eigen::Quaterniond(c3_target->state[3], c3_target->state[4],
+                               c3_target->state[5], c3_target->state[6]),
+            Vector3d{c3_target->state[7], c3_target->state[8],
+                     c3_target->state[9]}));
+    meshcat_->SetTransform(
+        c3_actual_tray_path_,
+        RigidTransformd(
+            Eigen::Quaterniond(c3_actual->state[3], c3_actual->state[4],
+                               c3_actual->state[5], c3_actual->state[6]),
+            Vector3d{c3_actual->state[7], c3_actual->state[8],
+                     c3_actual->state[9]}));
+  }
+  if (draw_ee_) {
+    meshcat_->SetTransform(
+        c3_target_ee_path_,
+        RigidTransformd(Vector3d{c3_target->state[0], c3_target->state[1],
+                                 c3_target->state[2]}));
+
+    meshcat_->SetTransform(
+        c3_actual_ee_path_,
+        RigidTransformd(Vector3d{c3_actual->state[0], c3_actual->state[1],
+                                 c3_actual->state[2]}));
   }
   return drake::systems::EventStatus::Succeeded();
 }

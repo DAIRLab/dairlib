@@ -16,7 +16,7 @@ left_support_position: [0.8, 0.15, 0.455]
 right_support_position: [0.8, -0.15, 0.455]
 end_effector_thickness: 0.016
 
-scene_index: 0
+scene_index: 1
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan

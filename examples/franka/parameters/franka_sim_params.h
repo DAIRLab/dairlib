@@ -21,7 +21,7 @@ struct FrankaSimParams {
   double visualizer_publish_rate;
 
   int scene_index;
-  bool visualize;
+  bool visualize_drake_sim;
   bool publish_efforts;
 
   Eigen::VectorXd camera_pose;
@@ -33,6 +33,11 @@ struct FrankaSimParams {
   Eigen::VectorXd tool_attachment_frame;
   Eigen::VectorXd left_support_position;
   Eigen::VectorXd right_support_position;
+
+  bool visualize_pose_trace;
+  bool visualize_center_of_mass_plan;
+  bool visualize_c3_forces;
+  bool visualize_c3_state;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -53,7 +58,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
 
     a->Visit(DRAKE_NVP(scene_index));
-    a->Visit(DRAKE_NVP(visualize));
+    a->Visit(DRAKE_NVP(visualize_drake_sim));
     a->Visit(DRAKE_NVP(publish_efforts));
 
     a->Visit(DRAKE_NVP(camera_pose));
@@ -65,5 +70,10 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
+
+    a->Visit(DRAKE_NVP(visualize_pose_trace));
+    a->Visit(DRAKE_NVP(visualize_center_of_mass_plan));
+    a->Visit(DRAKE_NVP(visualize_c3_forces));
+    a->Visit(DRAKE_NVP(visualize_c3_state));
   }
 };

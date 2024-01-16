@@ -161,7 +161,7 @@ int DoMain(int argc, char* argv[]) {
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
 
-  if (sim_params.visualize) {
+  if (sim_params.visualize_drake_sim) {
     drake::visualization::AddDefaultVisualization(&builder);
   }
 

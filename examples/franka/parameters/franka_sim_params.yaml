@@ -8,12 +8,12 @@ box_model: examples/franka/urdf/default_box.urdf
 left_support_model: examples/franka/urdf/left_support.urdf
 right_support_model: examples/franka/urdf/left_support.urdf
 franka_publish_rate: 1000
-tray_publish_rate: 1000
-visualizer_publish_rate: 15
+tray_publish_rate: 10
+visualizer_publish_rate: 30
 actuator_delay: 0.000
 
-scene_index: 0
-visualize: true
+scene_index: 1
+visualize_drake_sim: true
 publish_efforts: true
 
 camera_pose: [0.5, -1.5, 0.7]
@@ -32,3 +32,8 @@ q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
                [1, 0, 0, 0, 0.7, 0.00, 0.515]]
 #q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
+
+visualize_pose_trace: true
+visualize_center_of_mass_plan: false
+visualize_c3_forces: true
+visualize_c3_state: true

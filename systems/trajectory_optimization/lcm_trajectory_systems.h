@@ -182,5 +182,50 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   const double newtons_per_meter_ = 10;
 };
 
+/// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,
+/// and draws it through meshcat.
+class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
+ public:
+  explicit LcmC3TargetDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                          bool draw_tray = true,
+                          bool draw_ee = false);
+
+  const drake::systems::InputPort<double>& get_input_port_c3_state_target() const {
+    return this->get_input_port(c3_state_target_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_c3_state_actual() const {
+    return this->get_input_port(c3_state_actual_input_port_);
+  }
+
+ private:
+  drake::systems::EventStatus DrawC3State(
+      const drake::systems::Context<double> &context,
+      drake::systems::DiscreteValues<double> *discrete_state) const;
+
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+
+  drake::systems::InputPortIndex c3_state_target_input_port_;
+  drake::systems::InputPortIndex c3_state_actual_input_port_;
+
+  bool draw_tray_;
+  bool draw_ee_;
+
+  drake::systems::DiscreteStateIndex last_update_time_index_;
+
+  const drake::geometry::Cylinder cylinder_for_tray_ = drake::geometry::Cylinder(0.005, 0.15);
+  const drake::geometry::Cylinder cylinder_for_ee_ = drake::geometry::Cylinder(0.0025, 0.075);
+  drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
+  const std::string c3_state_path_ = "c3_state";
+  const std::string c3_target_tray_path_ = "c3_state/c3_target_tray";
+  const std::string c3_actual_tray_path_ = "c3_state/c3_actual_tray";
+  const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";
+  const std::string c3_actual_ee_path_ = "c3_state/c3_actual_ee";
+
+//  const double radius_ = 0.002;
+//  const double newtons_per_meter_ = 10;
+};
+
+
 }  // namespace systems
 }  // namespace dairlib

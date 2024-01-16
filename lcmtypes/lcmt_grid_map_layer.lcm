@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_grid_map_layer
+{
+    string name;
+
+    int32_t rows;
+    int32_t cols;
+
+    float[rows][cols] data;
+}

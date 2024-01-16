@@ -1,0 +1,10 @@
+package dairlib;
+
+struct lcmt_grid_map
+{
+    lcmt_grid_map_info info;
+
+    int32_t num_layers;
+    string layer_names[num_layers];
+    lcmt_grid_map_layer[num_layers];
+}

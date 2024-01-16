@@ -1,0 +1,12 @@
+//
+// Created by brian on 1/16/24.
+//
+
+#ifndef DAIRLIB_SYSTEMS_PERCEPTION_GRID_MAP_LCM_SYSTEMS_H_
+#define DAIRLIB_SYSTEMS_PERCEPTION_GRID_MAP_LCM_SYSTEMS_H_
+
+class grid_map_lcm_systems {
+
+};
+
+#endif //DAIRLIB_SYSTEMS_PERCEPTION_GRID_MAP_LCM_SYSTEMS_H_

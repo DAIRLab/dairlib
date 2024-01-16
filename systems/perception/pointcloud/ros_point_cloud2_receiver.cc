@@ -29,8 +29,10 @@ namespace {
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr convertPointCloud2ToPCLDirectly(
     const sensor_msgs::PointCloud2& cloud_msg){
+
   // Create a PCL PointCloud
-  typename pcl::PointCloud<PointT>::Ptr pcl_cloud(new pcl::PointCloud<PointT>);
+  typename pcl::PointCloud<PointT>::Ptr pcl_cloud =
+      std::make_shared<pcl::PointCloud<PointT>>();
 
   // Iterate through the data array in the PointCloud2 message
   for (size_t i = 0; i < cloud_msg.width * cloud_msg.height; ++i)

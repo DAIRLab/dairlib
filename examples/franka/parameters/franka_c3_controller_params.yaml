@@ -6,33 +6,28 @@ osqp_settings_file: examples/franka/parameters/franka_c3_qp_settings.yaml
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 end_effector_name: plate
-
-tool_attachment_frame: [0, 0, 0.107]
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
-#plate_model: examples/franka/urdf/plate_end_effector_floating.urdf
 tray_model: examples/franka/urdf/tray.sdf
-
-scene_index: 1
-
-#left_support_model: examples/franka/urdf/left_support.urdf
-#right_support_model: examples/franka/urdf/left_support.urdf
 left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
 
+tool_attachment_frame: [0, 0, 0.107]
 left_support_position: [0.8, 0.15, 0.455]
 right_support_position: [0.8, -0.15, 0.455]
-end_effector_thickness: 0.015
+end_effector_thickness: 0.016
+
+scene_index: 0
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
 
 near_target_threshold: 0.05
-first_target: [[0.45, 0.0, 0.45],
+first_target: [[0.45, 0.0, 0.5],
                [0.45, 0, 0.488]]
-second_target: [[0.45, 0.0, 0.45],
+second_target: [[0.45, 0.0, 0.5],
                 [0.45, 0, 0.6]]
-third_target: [[0.45, 0.0, 0.45],
+third_target: [[0.45, 0.0, 0.5],
                [0.7, 0.00, 0.488]]
 x_scale: 0.1
 y_scale: 0.1

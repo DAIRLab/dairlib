@@ -92,27 +92,27 @@ C3Controller::C3Controller(
   for (int i : vector<int>({0})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.4, 0.6, 1);
+    c3_->AddLinearConstraint(A, c3_options_.world_x_limits[0], c3_options_.world_x_limits[1], 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -0.1, 0.1, 1);
+    c3_->AddLinearConstraint(A, c3_options_.world_y_limits[0], c3_options_.world_y_limits[1], 1);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0.35, 0.7, 1);
+    c3_->AddLinearConstraint(A, c3_options_.world_z_limits[0], c3_options_.world_z_limits[1], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, -10, 10, 2);
+    c3_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0], c3_options_.u_horizontal_limits[1], 2);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, 0, 30, 2);
+    c3_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0], c3_options_.u_vertical_limits[1], 2);
   }
 
   lcs_state_input_port_ =

@@ -130,6 +130,9 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
   if (end_effector_position[0] > 0.6) {
     end_effector_position[0] = 0.6;  // keep it within the workspace
   }
+  if (end_effector_position[1] > 0.05) {
+    end_effector_position[1] = 0.05;  // keep it within the workspace
+  }
   if (radio_out->channel[13] > 0) {
     end_effector_position(0) += radio_out->channel[0] * x_scale_;
     end_effector_position(1) += radio_out->channel[1] * y_scale_;

@@ -184,12 +184,12 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
   // Force Checking of Workspace Limits
-  DRAKE_DEMAND(lcs_x->get_data()[0] > 0.35);
-  DRAKE_DEMAND(lcs_x->get_data()[0] < 0.65);
-  DRAKE_DEMAND(lcs_x->get_data()[1] > -0.1);
-  DRAKE_DEMAND(lcs_x->get_data()[1] < 0.1);
-  DRAKE_DEMAND(lcs_x->get_data()[2] > 0.35);
-  DRAKE_DEMAND(lcs_x->get_data()[2] < 0.7);
+  DRAKE_DEMAND(lcs_x->get_data()[0] > c3_options_.world_x_limits[0] - c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[0] < c3_options_.world_x_limits[1] + c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[1] > c3_options_.world_y_limits[0] - c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[1] < c3_options_.world_y_limits[1] + c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[2] > c3_options_.world_z_limits[0] - c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[2] < c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
 
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);

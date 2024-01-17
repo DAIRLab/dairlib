@@ -93,9 +93,9 @@ int DoMain(int argc, char* argv[]) {
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
         FindResourceOrThrow(sim_params.right_support_model))[0];
     RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), sim_params.left_support_position);
+        drake::math::RollPitchYaw<double>(sim_params.left_support_orientation), sim_params.left_support_position);
     RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), sim_params.right_support_position);
+        drake::math::RollPitchYaw<double>(sim_params.right_support_orientation), sim_params.right_support_position);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_S1_W);

@@ -114,16 +114,16 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::ModelInstanceIndex left_support_index;
   drake::multibody::ModelInstanceIndex right_support_index;
-  if (controller_params.scene_index == 1) {
+  if (controller_params.scene_index > 0) {
     left_support_index = parser_plate.AddModels(
         FindResourceOrThrow(controller_params.left_support_model))[0];
     right_support_index = parser_plate.AddModels(
         FindResourceOrThrow(controller_params.right_support_model))[0];
     RigidTransform<double> T_S1_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.left_support_orientation),
                                controller_params.left_support_position);
     RigidTransform<double> T_S2_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.right_support_orientation),
                                controller_params.right_support_position);
     plant_for_lcs.WeldFrames(
         plant_for_lcs.world_frame(),

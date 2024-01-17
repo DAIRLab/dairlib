@@ -104,10 +104,10 @@ int do_main(int argc, char* argv[]) {
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
         FindResourceOrThrow(sim_params.right_support_model))[0];
     RigidTransform<double> T_S1_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
                                sim_params.left_support_position);
     RigidTransform<double> T_S2_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
                                sim_params.right_support_position);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
@@ -222,7 +222,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_state){
     auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, false);
+        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),

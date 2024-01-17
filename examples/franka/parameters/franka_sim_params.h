@@ -33,6 +33,8 @@ struct FrankaSimParams {
   Eigen::VectorXd tool_attachment_frame;
   Eigen::VectorXd left_support_position;
   Eigen::VectorXd right_support_position;
+  Eigen::VectorXd left_support_orientation;
+  Eigen::VectorXd right_support_orientation;
 
   std::vector<double> world_x_limits;
   std::vector<double> world_y_limits;
@@ -75,6 +77,8 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
+    a->Visit(DRAKE_NVP(left_support_orientation));
+    a->Visit(DRAKE_NVP(right_support_orientation));
 
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));

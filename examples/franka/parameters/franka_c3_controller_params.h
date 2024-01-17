@@ -18,11 +18,12 @@ struct FrankaC3ControllerParams {
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d left_support_position;
   Eigen::Vector3d right_support_position;
+  Eigen::Vector3d left_support_orientation;
+  Eigen::Vector3d right_support_orientation;
+  double workspace_margin;
   double end_effector_thickness;
 
   int scene_index;
-
-
 
   bool include_end_effector_orientation;
   double target_frequency;
@@ -62,6 +63,8 @@ struct FrankaC3ControllerParams {
 
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
+    a->Visit(DRAKE_NVP(left_support_orientation));
+    a->Visit(DRAKE_NVP(right_support_orientation));
     a->Visit(DRAKE_NVP(end_effector_thickness));
   }
 };

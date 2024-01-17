@@ -16,6 +16,7 @@ solve_time_filter_alpha: 0.9
 world_x_limits: [0.4, 0.6]
 world_y_limits: [-0.15, 0.15]
 world_z_limits: [0.3, 0.6]
+workspace_margins: 0.05
 
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [0, 30]

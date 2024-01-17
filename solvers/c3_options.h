@@ -21,6 +21,7 @@ struct C3Options {
   std::vector<double> world_z_limits;
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
+  double workspace_margins;
 
   int N;
   double gamma;
@@ -78,6 +79,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(world_z_limits));
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
+    a->Visit(DRAKE_NVP(workspace_margins));
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));

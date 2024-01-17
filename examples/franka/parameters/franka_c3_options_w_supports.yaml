@@ -15,7 +15,10 @@ solve_time_filter_alpha: 0.9 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
 # Workspace Limits
 world_x_limits: [0.4, 0.6]
 world_y_limits: [-0.1, 0.1]
+#world_x_limits: [0.45, 0.65]
+#world_y_limits: [-0.2, 0.05]
 world_z_limits: [0.35, 0.7]
+workspace_margins: 0.05
 
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [0, 30]
@@ -38,7 +41,7 @@ w_U: 0.1
 
 # State Tracking Error, assuming diagonal
 q_vector: [150, 150, 100, 0, 1, 1, 0, 15000, 15000, 15000,
-           5, 5, 10, 1, 100, 1, 5, 5, 5]
+           5, 5, 10, 1, 1, 1, 5, 5, 5]
 # Penalty on efforts, assuming diagonal
 r_vector: [0.1, 0.1, 0.1]
 
@@ -50,7 +53,7 @@ g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 g_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 g_u: [1, 1, 1]
 
-u_x: [0.1, 0.1, 0.1, 10, 10, 10, 10, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+u_x: [0.1, 0.1, 0.1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 u_gamma: [1, 1, 1, 1, 1, 1, 1]
 u_lambda_n: [1, 1, 1, 1, 1, 1, 1]
 u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

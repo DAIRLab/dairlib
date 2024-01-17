@@ -19,7 +19,7 @@ using drake::systems::EventStatus;
 
 GridMapVisualizer::GridMapVisualizer(
     std::shared_ptr<Meshcat> meshcat, double update_rate,
-    const std::vector<std::string>& layers) : meshcat_(meshcat), layers_(layers) {
+    std::vector<std::string> layers) : meshcat_(meshcat), layers_(layers) {
 
   DeclareAbstractInputPort("grid_map", drake::Value<GridMap>());
   DeclarePeriodicUnrestrictedUpdateEvent(

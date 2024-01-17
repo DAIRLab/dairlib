@@ -9,6 +9,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_foothold_set.hpp"
+#include "dairlib/lcmt_grid_map.hpp"
 
 #include "drake/bindings/pydrake/systems/lcm_pybind.h"
 
@@ -27,6 +28,7 @@ void BindCppSerializers() {
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_robot_input>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_saved_traj>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_foothold_set>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_grid_map>("dairlib");
 }
 
 }  // namespace pydairlib

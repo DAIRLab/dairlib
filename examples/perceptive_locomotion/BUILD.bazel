@@ -15,6 +15,27 @@ cc_library(
 )
 
 cc_binary(
+    name = "cassie_perception_visualizer",
+    srcs = ["cassie_perception_visualizer.cc"],
+    deps = [
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+        "//geometry:convex_polygon_visualizer",
+        "//geometry:convex_polygon_lcm_systems",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:plant_visualizer",
+        "//systems:robot_lcm_systems",
+        "//systems/primitives",
+        "//systems/perception:grid_map_lcm_systems",
+        "//systems/perception:grid_map_visualizer",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ]
+)
+
+cc_binary(
     name = "elevation_mapping",
     srcs = ["elevation_mapping.cc"],
     local_defines = select(

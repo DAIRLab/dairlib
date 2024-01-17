@@ -64,6 +64,17 @@ cc_library(
 )
 
 cc_library(
+    name = "convex_polygon_visualizer",
+    srcs = ["convex_polygon_visualizer.cc"],
+    hdrs = ["convex_polygon_visualizer.h"],
+    deps = [
+        ":convex_polygon",
+        ":convex_polygon_set",
+        "@drake//:drake_shared_library"
+    ],
+)
+
+cc_library(
     name = "convex_polygon_set",
     srcs = ["convex_polygon_set.cc"],
     hdrs = ["convex_polygon_set.h"],

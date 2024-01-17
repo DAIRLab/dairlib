@@ -1,4 +1,5 @@
-from dairlib import lcmt_robot_output, lcmt_foothold_set
+import signal
+from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map
 
 from pydrake.systems.all import (
     Diagram,
@@ -32,6 +33,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 from pydairlib.systems.framework import LcmOutputDrivenLoop, OutputVector
+from pydairlib.systems.perception import GridMapSender
 from pydairlib.systems.robot_lcm_systems import RobotOutputReceiver
 
 import numpy as np
@@ -45,7 +47,13 @@ elevation_mapping_params = (
 )
 
 
+def stop(sig, _):
+    print(f'caught signal {sig}, shutting down')
+    quit(0)
+
+
 def main():
+    signal.signal(signal.SIGINT, stop)
     builder = DiagramBuilder()
 
     elevation_mapping = CassieElevationMappingRosDiagram(
@@ -66,12 +74,23 @@ def main():
         publish_period=0.0,
         use_cpp_serializer=True
     )
+    elevation_map_sender = GridMapSender()
+    elevation_map_publisher = LcmPublisherSystem.Make(
+        channel="CASSIE_ELEVATION_MAP",
+        lcm_type=lcmt_grid_map,
+        lcm=elevation_mapping.lcm(),
+        publish_triggers={TriggerType.kForced},
+        publish_period=0.0,
+        use_cpp_serializer=True
+    )
 
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(terrain_segmentation)
     builder.AddSystem(convex_decomposition)
     builder.AddSystem(foothold_publisher)
     builder.AddSystem(foothold_sender)
+    builder.AddSystem(elevation_map_sender)
+    builder.AddSystem(elevation_map_publisher)
 
     builder.Connect(
         elevation_mapping.get_output_port(),
@@ -89,7 +108,14 @@ def main():
         foothold_sender.get_output_port(),
         foothold_publisher.get_input_port()
     )
-
+    builder.Connect(
+        terrain_segmentation.get_output_port(),
+        elevation_map_sender.get_input_port()
+    )
+    builder.Connect(
+        elevation_map_sender.get_output_port(),
+        elevation_map_publisher.get_input_port()
+    )
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(
         diagram,

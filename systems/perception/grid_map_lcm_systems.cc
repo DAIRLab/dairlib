@@ -1,10 +1,11 @@
+#include <iostream>
 #include "grid_map_lcm_systems.h"
 
 namespace dairlib {
 namespace perception {
 
 using Eigen::Map;
-using Eigen::RowVectorXf;
+using Eigen::VectorXf;
 
 using grid_map::GridMap;
 using grid_map::Length;
@@ -40,8 +41,9 @@ lcmt_grid_map GridMapToLcm(const GridMap& grid_map,
 
     const auto& data = grid_map.get(layer_name);
     for (int i = 0; i < layer.rows; ++i) {
+      const auto& col = data.col(i);
       layer.data.push_back(std::vector<float>(
-              data.row(i).data(), data.row(i).data() + layer.cols
+              col.data(), col.data() + layer.cols
       ));
     }
     message.layers.push_back(layer);
@@ -51,6 +53,10 @@ lcmt_grid_map GridMapToLcm(const GridMap& grid_map,
   message.inner_start_index = grid_map.getStartIndex()(1);
 
   return message;
+}
+
+lcmt_grid_map GridMapToLcm(const GridMap& grid_map) {
+  return GridMapToLcm(grid_map, grid_map.getLayers());
 }
 
 GridMap LcmToGridMap(const lcmt_grid_map& message) {
@@ -70,7 +76,7 @@ GridMap LcmToGridMap(const lcmt_grid_map& message) {
   for (const auto& layer: message.layers) {
     Eigen::MatrixXf data(layer.rows, layer.cols);
     for (Eigen::Index i = 0; i < data.rows(); ++i) {
-      data.row(i) = Map<const RowVectorXf>(layer.data.at(i).data(), layer.cols);
+      data.col(i) = Map<const VectorXf>(layer.data.at(i).data(), layer.cols);
     }
     grid_map.get(layer.name) = data;
   }
@@ -79,6 +85,28 @@ GridMap LcmToGridMap(const lcmt_grid_map& message) {
       grid_map::Index(message.outer_start_index, message.inner_start_index));
 
   return grid_map;
+}
+
+GridMapSender::GridMapSender() {
+  DeclareAbstractInputPort("GridMap", drake::Value<GridMap>());
+  DeclareAbstractOutputPort("lcmt_grid_map", &GridMapSender::CopyOutput);
+}
+
+void GridMapSender::CopyOutput(const drake::systems::Context<double> &context,
+                               dairlib::lcmt_grid_map *out) const {
+  auto input = EvalAbstractInput(context, 0)->get_value<GridMap>();
+  *out = GridMapToLcm(input);
+}
+
+GridMapReceiver::GridMapReceiver() {
+  DeclareAbstractInputPort("lcmt_grid_map", drake::Value<lcmt_grid_map>());
+  DeclareAbstractOutputPort("GridMap", &GridMapReceiver::CopyOutput);
+}
+
+void GridMapReceiver::CopyOutput(const drake::systems::Context<double> &context,
+                                 GridMap *out) const {
+  auto input = EvalAbstractInput(context, 0)->get_value<lcmt_grid_map>();
+  *out = LcmToGridMap(input);
 }
 
 }

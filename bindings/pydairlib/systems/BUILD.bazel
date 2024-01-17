@@ -15,6 +15,7 @@ pybind_py_library(
     name = "perception_py",
     cc_deps = [
         "//systems/perception:camera_utils",
+        "//systems/perception:grid_map_lcm_systems",
         "//systems/perception:grid_map_visualizer",
         "@drake//:drake_shared_library",
     ],

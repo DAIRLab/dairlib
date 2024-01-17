@@ -34,10 +34,15 @@ struct FrankaSimParams {
   Eigen::VectorXd left_support_position;
   Eigen::VectorXd right_support_position;
 
+  std::vector<double> world_x_limits;
+  std::vector<double> world_y_limits;
+  std::vector<double> world_z_limits;
+
   bool visualize_pose_trace;
   bool visualize_center_of_mass_plan;
   bool visualize_c3_forces;
   bool visualize_c3_state;
+  bool visualize_workspace;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -71,9 +76,14 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
 
+    a->Visit(DRAKE_NVP(world_x_limits));
+    a->Visit(DRAKE_NVP(world_y_limits));
+    a->Visit(DRAKE_NVP(world_z_limits));
+
     a->Visit(DRAKE_NVP(visualize_pose_trace));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan));
     a->Visit(DRAKE_NVP(visualize_c3_forces));
     a->Visit(DRAKE_NVP(visualize_c3_state));
+    a->Visit(DRAKE_NVP(visualize_workspace));
   }
 };

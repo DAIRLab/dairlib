@@ -177,6 +177,18 @@ int do_main(int argc, char* argv[]) {
       &builder, scene_graph, meshcat, std::move(params));
   meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
 
+
+  if (sim_params.visualize_workspace){
+    double width = sim_params.world_x_limits[1] - sim_params.world_x_limits[0];
+    double depth = sim_params.world_y_limits[1] - sim_params.world_y_limits[0];
+    double height = sim_params.world_z_limits[1] - sim_params.world_z_limits[0];
+    Vector3d workspace_center = {0.5 * (sim_params.world_x_limits[1] + sim_params.world_x_limits[0]),
+                                 0.5 * (sim_params.world_y_limits[1] + sim_params.world_y_limits[0]),
+                                 0.5 * (sim_params.world_z_limits[1] + sim_params.world_z_limits[0])};
+    meshcat->SetObject("c3_state/workspace", drake::geometry::Box(width, depth, height),
+                       {1, 0, 0, 0.2});
+    meshcat->SetTransform("c3_state/workspace", RigidTransformd(workspace_center));
+  }
   if (sim_params.visualize_center_of_mass_plan){
     auto trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
@@ -210,7 +222,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_state){
     auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
+        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, false);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),

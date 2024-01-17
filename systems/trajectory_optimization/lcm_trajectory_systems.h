@@ -179,7 +179,7 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
   int N_ = 5;
   const double radius_ = 0.002;
-  const double newtons_per_meter_ = 10;
+  const double newtons_per_meter_ = 20;
 };
 
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,

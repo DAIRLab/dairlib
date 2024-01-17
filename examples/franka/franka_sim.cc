@@ -107,12 +107,13 @@ int DoMain(int argc, char* argv[]) {
             &plant.GetBodyByName("support", left_support_index),
             &plant.GetBodyByName("support", right_support_index),
         });
+    // we WANT to model collisions between link5 and the supports
     const drake::geometry::GeometrySet& paddle_geom_set =
         plant.CollectRegisteredGeometries(
             {&plant.GetBodyByName("panda_link2"),
              &plant.GetBodyByName("panda_link3"),
              &plant.GetBodyByName("panda_link4"),
-             &plant.GetBodyByName("panda_link5"),
+//             &plant.GetBodyByName("panda_link5"),
              &plant.GetBodyByName("panda_link6"),
              &plant.GetBodyByName("panda_link7"),
              &plant.GetBodyByName("plate"),

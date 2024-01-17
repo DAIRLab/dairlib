@@ -351,7 +351,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
     meshcat_->SetTransform(
         force_arrow_path,
         RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
-    const double height = force_norm / newtons_per_meter_ / 10;
+    const double height = force_norm / newtons_per_meter_;
     meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                           {0, 0, 0.5 * height});
     // Note: Meshcat does not fully support non-uniform scaling (see #18095).
@@ -560,10 +560,10 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
         RigidTransformd(Vector3d{c3_target->state[0], c3_target->state[1],
                                  c3_target->state[2]}));
 
-    meshcat_->SetTransform(
-        c3_actual_ee_path_,
-        RigidTransformd(Vector3d{c3_actual->state[0], c3_actual->state[1],
-                                 c3_actual->state[2]}));
+//    meshcat_->SetTransform(
+//        c3_actual_ee_path_,
+//        RigidTransformd(Vector3d{c3_actual->state[0], c3_actual->state[1],
+//                                 c3_actual->state[2]}));
   }
   return drake::systems::EventStatus::Succeeded();
 }

@@ -3,47 +3,38 @@
   <model name="tray">
     <link name="tray">
       <inertial>
-        <pose>0.05 0 0 0 0 0</pose>
-        <mass>2</mass>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.97</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-          <ixx>0.12</ixx>
+          <ixx>0.012712</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.040001</iyy>
+          <iyy>0.012712</iyy>
           <iyz>0</iyz>
-          <izz>0.16</izz>
+          <izz>0.025345</izz>
         </inertia>
       </inertial>
       <visual name="tray">
+        <pose>0 0 0.0 0 0 0</pose>
         <geometry>
-          <box>
-            <size>0.3 0.6 0.02</size>
-          </box>
+          <cylinder>
+            <radius>0.2286</radius>
+            <length>0.022</length>
+          </cylinder>
         </geometry>
+        <material>
+          <diffuse>0.1 0.1 0.1 0.8</diffuse>
+        </material>
       </visual>
-      <collision name="front_left_support">
+      <collision name="tray">
+        <pose>0 0 0.0 0 0 0</pose>
         <geometry>
-          <sphere>
-            <radius>0.001</radius>
-          </sphere>
-        </geometry>
-        <pose>-0.15 0 0 0 0 0</pose>
-      </collision>
-      <collision name="front_right_support">
-        <geometry>
-          <sphere>
-            <radius>0.001</radius>
-          </sphere>
-        </geometry>
-        <pose>0.15 -0.3 0 0 0 0</pose>
-      </collision>
-      <collision name="back_left_support">
-        <geometry>
-          <sphere>
-            <radius>0.001</radius>
-          </sphere>
+          <cylinder>
+            <radius>0.2286</radius>
+            <length>0.022</length>
+          </cylinder>
         </geometry>
         <pose>0.15 0.3 0 0 0 0</pose>
       </collision>

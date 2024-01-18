@@ -14,8 +14,10 @@ from pydrake.all import JointIndex, JointActuatorIndex
 
 
 def main():
+    # config_file = ('bindings/pydairlib/analysis/plot_configs'
+    #                '/franka_translation_plot.yaml')
     config_file = ('bindings/pydairlib/analysis/plot_configs'
-                   '/franka_translation_plot.yaml')
+                   '/franka_sim_plot_config.yaml')
     plot_config = FrankaPlotConfig(config_file)
 
     channel_x = plot_config.channel_x
@@ -99,6 +101,9 @@ def main():
     if plot_config.plot_c3_debug:
         t_c3_slice = slice(c3_output['t'].size)
         mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 0)
+
+        t_c3_slice = slice(c3_output['t'].size)
+        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 1)
 
         t_c3_slice = slice(c3_output['t'].size)
         mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 2)

@@ -12,6 +12,12 @@ load(
 )
 
 py_binary(
+    name = "copy_and_rename_experiment_videos",
+    srcs = ["copy_and_rename_experiment_videos.py"],
+    deps = ["@lcm//:lcm-python"],
+)
+
+py_binary(
     name = "process_lcm_log",
     srcs = ["process_lcm_log.py"],
     deps = ["@lcm//:lcm-python"],

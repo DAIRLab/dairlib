@@ -29,7 +29,7 @@ def mpc_debug_logging_main():
         os.mkdir(logdir)
 
     os.chdir(logdir)
-    current_logs = sorted(glob.glob('lcmlog-mpc-*'))
+    current_logs = sorted(glob.glob('lcmlog-laptop-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
         log_num = f'{last_log+1:02}'

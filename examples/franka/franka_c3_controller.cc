@@ -151,7 +151,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<drake::geometry::GeometryId> plate_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("plate"));
-  if (controller_params.scene_index == 1) {
+  if (controller_params.scene_index > 0) {
     std::vector<drake::geometry::GeometryId> left_support_contact_points =
         plant_for_lcs.GetCollisionGeometriesForBody(
             plant_for_lcs.GetBodyByName("support", left_support_index));

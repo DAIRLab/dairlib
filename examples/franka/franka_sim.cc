@@ -87,7 +87,7 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  if (sim_params.scene_index == 1) {
+  if (sim_params.scene_index > 0) {
     drake::multibody::ModelInstanceIndex left_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(

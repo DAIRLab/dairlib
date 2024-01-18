@@ -6,8 +6,8 @@ delta_option: 1
 # options are 'MIQP' or 'QP'
 projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
-contact_model: 'anitescu'
-#contact_model: 'stewart_and_trinkle'
+#contact_model: 'anitescu'
+contact_model: 'stewart_and_trinkle'
 warm_start: true
 use_predicted_x0: false
 solve_time_filter_alpha: 0.9

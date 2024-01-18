@@ -12,29 +12,29 @@ tray_publish_rate: 10
 visualizer_publish_rate: 30
 actuator_delay: 0.000
 
-scene_index: 1
+scene_index: 2
 visualize_drake_sim: true
 publish_efforts: true
 
-#camera_pose: [1.5, 0, 0.5]
-#camera_target: [0.5, 0, 0.45]
-
-camera_pose: [0.5, -1.2, 0.7]
-camera_target: [0.5, 0, 0.5]
+#camera_pose: [0.5, -1.2, 0.7]
+#camera_target: [0.5, 0, 0.5]
 
 #camera_pose: [0.5, -0.8, 0.6]
 #camera_target: [0.5, 0, 0.5]
 
-tool_attachment_frame: [0, 0, 0.107]
-left_support_position: [0.8, 0.15, 0.453]
-right_support_position: [0.8, -0.15, 0.453]
-left_support_orientation: [0.0, 0.0, 0.0]
-right_support_orientation: [0.0, 0.0, 0.0]
+camera_pose: [1.5, 0, 0.6]
+camera_target: [0.5, 0, 0.55]
 
-#left_support_position: [0.4, 0.275, 0.453]
-#right_support_position: [0.7, 0.275, 0.453]
-#left_support_orientation: [0.0, 0.0, 1.57]
-#right_support_orientation: [0.0, 0.0, 1.57]
+tool_attachment_frame: [0, 0, 0.107]
+#left_support_position: [0.8, 0.15, 0.453]
+#right_support_position: [0.8, -0.15, 0.453]
+#left_support_orientation: [0.0, 0.0, 0.0]
+#right_support_orientation: [0.0, 0.0, 0.0]
+
+left_support_position: [0.4, 0.25, 0.452]
+right_support_position: [0.7, 0.25, 0.452]
+left_support_orientation: [0.0, 0.0, 1.57]
+right_support_orientation: [0.0, 0.0, 1.57]
 
 # Workspace Limits
 #world_x_limits: [0.4, 0.6]
@@ -42,11 +42,11 @@ right_support_orientation: [0.0, 0.0, 0.0]
 #world_z_limits: [0.3, 0.6]
 
 # Workspace Limits
-world_x_limits: [0.4, 0.6]
-world_y_limits: [-0.1, 0.1]
-#world_x_limits: [0.45, 0.65]
-#world_y_limits: [-0.15, 0.05]
-world_z_limits: [0.35, 0.7]
+#world_x_limits: [0.4, 0.6]
+#world_y_limits: [-0.1, 0.1]
+world_x_limits: [0.45, 0.65]
+world_y_limits: [-0.15, 0.05]
+world_z_limits: [0.4, 0.7]
 
 dt: 0.0005
 realtime_rate: 1.0
@@ -54,13 +54,13 @@ realtime_rate: 1.0
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
 q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
-               [1, 0, 0, 0, 0.7, 0.00, 0.515]]
-#               [1, 0, 0, 0, 0.55, 0.15, 0.515]]
+               [1, 0, 0, 0, 0.7, 0.00, 0.515],
+               [1, 0, 0, 0, 0.55, 0.125, 0.515]]
 #q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
 
 visualize_workspace: true
-visualize_pose_trace: false
-visualize_center_of_mass_plan: false
-visualize_c3_forces: true
+visualize_pose_trace: true
+visualize_center_of_mass_plan: true
+visualize_c3_forces: false
 visualize_c3_state: true

@@ -68,7 +68,7 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_value(within_target_index_)[0] = 1;
     }
     if (within_target == 1 &&
-        (context.get_time() - time_entered_target) > 1.0) {
+        (context.get_time() - time_entered_target) > 0.5) {
       discrete_state->get_mutable_value(within_target_index_)[0] = 0;
       discrete_state->get_mutable_value(sequence_index_)[0] = 1;
     }
@@ -138,6 +138,9 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
     end_effector_position(1) += radio_out->channel[1] * y_scale_;
     end_effector_position(2) += radio_out->channel[2] * z_scale_;
   }
+//  end_effector_position(0) = 0.55;
+//  end_effector_position(1) = 0.1 * sin(3 * context.get_time());
+//  end_effector_position(2) = 0.45 + 0.1 * cos(1.5 *context.get_time()) - end_effector_thickness_;
   target->SetFromVector(end_effector_position);
 }
 
@@ -150,14 +153,17 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
   VectorXd tray_position = first_target_;
 
   if (context.get_discrete_state(sequence_index_)[0] == 1) {
-    tray_position = second_target_;  // raise the tray once it is close
+    tray_position = second_target_;
   } else if (context.get_discrete_state(sequence_index_)[0] == 2 ||
              context.get_discrete_state(sequence_index_)[0] == 3) {
-    tray_position = third_target_;  // raise the tray once it is close
+    tray_position = third_target_;
   }
   tray_position(0) += radio_out->channel[0] * x_scale_;
   tray_position(1) += radio_out->channel[1] * y_scale_;
   tray_position(2) += radio_out->channel[2] * z_scale_;
+//  tray_position(0) = 0.55;
+//  tray_position(1) = 0.1 * sin(3 * context.get_time());
+//  tray_position(2) = 0.45 + 0.1 * cos(1.5 *context.get_time());
   target_tray_state << 1, 0, 0, 0, tray_position;  // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }

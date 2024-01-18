@@ -98,7 +98,7 @@ int do_main(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  if (sim_params.scene_index == 1) {
+  if (sim_params.scene_index > 0) {
     drake::multibody::ModelInstanceIndex left_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
@@ -176,7 +176,6 @@ int do_main(int argc, char* argv[]) {
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
   meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
-
 
   if (sim_params.visualize_workspace){
     double width = sim_params.world_x_limits[1] - sim_params.world_x_limits[0];

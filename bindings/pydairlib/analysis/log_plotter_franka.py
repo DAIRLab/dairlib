@@ -99,14 +99,19 @@ def main():
 
     # import pdb; pdb.set_trace()
     if plot_config.plot_c3_debug:
-        t_c3_slice = slice(c3_output['t'].size)
-        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 0)
+        # t_c3_slice = slice(c3_output['t'].size)
+        # mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 0)
 
         t_c3_slice = slice(c3_output['t'].size)
-        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 1)
+        plot = mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 1)
+        plot.axes[0].axhline(y=8.06, color='r', linestyle='-')
+        plot.axes[0].axhline(y=-8.06, color='r', linestyle='-')
 
-        t_c3_slice = slice(c3_output['t'].size)
-        mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 2)
+
+
+
+        # t_c3_slice = slice(c3_output['t'].size)
+        # mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 2)
 
     if plot_config.plot_c3_tracking:
         plot = plot_styler.PlotStyler(nrows=2)

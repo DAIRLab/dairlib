@@ -172,9 +172,18 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
+
+  // TODO(yangwill): clean this up
   if (c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
-    x_lcs.head(3) = x_pred_.head(3);
-    x_lcs.segment(n_q_, 3) = x_pred_.segment(n_q_, 3);
+    x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_, x_lcs[0] + 10 * dt_ * dt_);
+    x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_, x_lcs[1] + 10 * dt_ * dt_);
+    x_lcs[2] = std::clamp(x_pred_[2], x_lcs[2] - 10 * dt_ * dt_, x_lcs[2] + 10 * dt_ * dt_);
+//    x_lcs.head(3) = x_pred_.head(3);
+    x_lcs[n_q_ + 0] = std::clamp(x_pred_[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_, x_lcs[n_q_ + 0] + 10 * dt_);
+    x_lcs[n_q_ + 1] = std::clamp(x_pred_[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_, x_lcs[n_q_ + 1] + 10 * dt_);
+    x_lcs[n_q_ + 2] = std::clamp(x_pred_[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_, x_lcs[n_q_ + 2] + 10 * dt_);
+//    x_lcs.segment(n_q_, 3) = x_pred_.segment(n_q_, 3);
+
   }
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =

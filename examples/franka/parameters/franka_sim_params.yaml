@@ -16,14 +16,12 @@ scene_index: 2
 visualize_drake_sim: true
 publish_efforts: true
 
-#camera_pose: [0.5, -1.2, 0.7]
-#camera_target: [0.5, 0, 0.5]
-
-#camera_pose: [0.5, -0.8, 0.6]
-#camera_target: [0.5, 0, 0.5]
-
-camera_pose: [1.5, 0, 0.6]
-camera_target: [0.5, 0, 0.55]
+camera_pose: [[0.5, -1.2, 0.7],
+              [0.5, -0.8, 0.6],
+              [1.5, 0, 0.6]]
+camera_target: [[0.5, 0, 0.5],
+                [0.5, 0, 0.5],
+                [0.5, 0, 0.55]]
 
 tool_attachment_frame: [0, 0, 0.107]
 #left_support_position: [0.8, 0.15, 0.453]
@@ -59,7 +57,7 @@ q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
 #q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
 
-visualize_workspace: true
+visualize_workspace: false
 visualize_pose_trace: true
 visualize_center_of_mass_plan: true
 visualize_c3_forces: false

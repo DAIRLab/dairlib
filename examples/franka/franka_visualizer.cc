@@ -19,6 +19,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
+#include "systems/visualization/lcm_visualization_systems.h"
 
 #include "drake/common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"

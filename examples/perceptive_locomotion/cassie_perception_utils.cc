@@ -23,7 +23,9 @@ MakeCassieElevationMappingPreProcessor(
            drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
       }
   };
-  processor_params.min_y = -0.27;
+  processor_params.min_y = -0.15;
+  processor_params.min_z = 0.7;
+  processor_params.max_z = 3.0;
 
   return std::make_shared<perception::PerceptiveLocomotionPreprocessor>(
       plant, plant_context, processor_params,

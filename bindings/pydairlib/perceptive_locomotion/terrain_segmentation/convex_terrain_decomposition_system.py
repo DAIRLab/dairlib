@@ -127,9 +127,7 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
         convex_polygons = ProcessTerrain2d(polygons)
         if polygons and not convex_polygons:
-            plot_polygons_with_holes(polygons)
-            import pdb; pdb.set_trace()
-
+            return
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
             polygon.SetPlane(normal, point)

@@ -5,7 +5,6 @@ import lcm
 import glob
 from datetime import datetime
 from datetime import timedelta
-import numpy as np
 
 from lxml import objectify
 from argparse import ArgumentParser
@@ -58,9 +57,8 @@ def find_path(matrix, starting_point, tol=1.0):
 
     path = []
     target_val = matrix[i][j]
-    while i < (n) and j < (m):
-
-        if np.abs(target_val - matrix[i][j]) < tol:
+    while i < n and j < m:
+        if abs(target_val - matrix[i][j]) < tol:
             path.append((i, j))
             i += 1
             j += 1
@@ -72,39 +70,45 @@ def find_path(matrix, starting_point, tol=1.0):
     return path
 
 
-def line_up(video_times, log_times):
-    min_video_idx = 0
-    max_video_idx = len(video_times) - 1
+def line_up_timestamps(times_a, times_b, tol=1.0):
+    """
+    Finds the corresponding elements of two lists of timestamps, where there
+    might be a constant offset between the two time sources, and each list may
+    have any number of extra or missing elements, at any position.
 
-    # preprocessing to narrow down the list of potential videos to the same day
-    # as the logs
-    time_mismatch_tolerance = 7200
-    while video_times[min_video_idx] + time_mismatch_tolerance < log_times[0]:
-        min_video_idx += 1
-    while video_times[max_video_idx] - time_mismatch_tolerance > log_times[-1]:
-        max_video_idx -= 1
-    valid_video_times = video_times[min_video_idx:(max_video_idx + 1)]
 
-    # build the matrix
-    m = len(log_times)
-    n = len(valid_video_times)
+    :param tol: tolerance for differences in timestamps (seconds)
+    :param times_a: first sequence of timestamps
+    :param times_b: second sequence of timestamps
+    :return: (times_a_elements, times_b_elements), the common subsequence of
+    timestamps, as elements of each original list
+    """
+
+    times_a = sorted(times_a)
+    times_b = sorted(times_b)
+
+    # Build a matrix of the difference between the two time stamp lists
+    n = len(times_a)
+    m = len(times_b)
     matrix = [
         [
-            valid_video_times[i] - log_times[j] for j in range(m)
+            times_a[i] - times_b[j] for j in range(m)
         ] for i in range(n)
     ]
 
-    paths = [find_path(matrix, (i, 0)) for i in range(n)] + \
-            [find_path(matrix, (j, 0)) for j in range(1, m)]
+    # Find the constant offset with the largest number of valid correspondences.
+    # Count smartly by making a path through the matrix
+    paths = [find_path(matrix, (i, 0), tol=tol) for i in range(n)] + \
+            [find_path(matrix, (0, j), tol=tol) for j in range(1, m)]
 
     path_ranking = sorted(paths, key=lambda a: len(a), reverse=True)
     best_path = path_ranking[0]
-    idx_video, idx_log = zip(*best_path)
+    idx_a, idx_b = zip(*best_path)
 
-    video_times = [valid_video_times[i] for i in idx_video]
-    log_times = [log_times[i] for i in idx_log]
+    times_a_elements = [times_a[i] for i in idx_a]
+    times_b_elements = [times_b[i] for i in idx_b]
 
-    return video_times, log_times
+    return times_a_elements, times_b_elements
 
 
 def main():
@@ -120,7 +124,19 @@ def main():
     video_times = sorted(video_data)
     log_times = sorted(log_data)
 
-    video_times, log_times = line_up(video_times, log_times)
+    # preprocessing to narrow down the list of potential videos to the same day
+    # as the logs
+    time_mismatch_tolerance = 7200
+    min_video_idx = 0
+    max_video_idx = len(log_times)
+
+    while video_times[min_video_idx] + time_mismatch_tolerance < log_times[0]:
+        min_video_idx += 1
+    while video_times[max_video_idx] - time_mismatch_tolerance > log_times[-1]:
+        max_video_idx -= 1
+    valid_video_times = video_times[min_video_idx:(max_video_idx + 1)]
+
+    video_times, log_times = line_up_timestamps(valid_video_times, log_times)
 
     import pdb;
     pdb.set_trace()

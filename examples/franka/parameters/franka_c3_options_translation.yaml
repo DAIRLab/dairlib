@@ -14,7 +14,7 @@ solve_time_filter_alpha: 0.9
 
 # Workspace Limits
 world_x_limits: [0.4, 0.6]
-world_y_limits: [-0.15, 0.15]
+world_y_limits: [-0.2, 0.2]
 world_z_limits: [0.3, 0.6]
 workspace_margins: 0.05
 
@@ -38,7 +38,7 @@ w_G: 1
 w_U: 0.5
 
 # State Tracking Error, assuming diagonal
-q_vector: [175, 175, 175, 10, 10, 10, 10, 15000, 15000, 15000,
+q_vector: [175, 175, 175, 10, 10, 10, 10, 5000, 5000, 5000,
            5, 5, 10, 1, 1, 1, 5, 5, 5]
 
 # Penalty on efforts, assuming diagonal

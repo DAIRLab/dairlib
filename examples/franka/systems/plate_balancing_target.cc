@@ -140,7 +140,9 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
   }
 //  end_effector_position(0) = 0.55;
 //  end_effector_position(1) = 0.1 * sin(3 * context.get_time());
-//  end_effector_position(2) = 0.45 + 0.1 * cos(1.5 *context.get_time()) - end_effector_thickness_;
+//  end_effector_position(1) = 0.1 * (int) (2 * sin(context.get_time()));
+  //  end_effector_position(2) = 0.45 + 0.1 * cos(1.5 *context.get_time()) - end_effector_thickness_;
+//  end_effector_position(2) = 0.45 - end_effector_thickness_;
   target->SetFromVector(end_effector_position);
 }
 
@@ -163,7 +165,9 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
   tray_position(2) += radio_out->channel[2] * z_scale_;
 //  tray_position(0) = 0.55;
 //  tray_position(1) = 0.1 * sin(3 * context.get_time());
-//  tray_position(2) = 0.45 + 0.1 * cos(1.5 *context.get_time());
+//  tray_position(1) = 0.1 * (int) (2 * sin(context.get_time()));
+  //  tray_position(2) = 0.45 + 0.1 * cos(1.5 *context.get_time());
+//  tray_position(2) = 0.45;
   target_tray_state << 1, 0, 0, 0, tray_position;  // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }

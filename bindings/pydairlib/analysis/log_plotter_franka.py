@@ -63,7 +63,9 @@ def main():
         c3_output, c3_tracking_target, c3_tracking_actual = get_log_data(log, default_channels, plot_config.start_time,
                                  plot_config.duration, mbp_plots.load_c3_debug,
                                  channel_c3, channel_c3_target, channel_c3_actual)
+        solve_times = np.diff(c3_output['t'], prepend=[0])
         print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output['t'])))
+
 
     # processing callback arguments
     if plot_config.plot_object_state:
@@ -106,6 +108,7 @@ def main():
         plot = mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 1)
         plot.axes[0].axhline(y=8.06, color='r', linestyle='-')
         plot.axes[0].axhline(y=-8.06, color='r', linestyle='-')
+        plot.save_fig('c3_inputs_' + filename.split('/')[-1])
 
 
 
@@ -121,6 +124,7 @@ def main():
         plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 7:10], subplot_index = 1)
         plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 7:10], subplot_index = 1)
         plot.add_legend(['tray_des_x', 'tray_des_y', 'tray_des_z', 'tray_x', 'tray_y', 'tray_z'], subplot_index = 1)
+        plot.plot(c3_tracking_target['t'], solve_times)
     # plt.plot(c3_output['t'], c3_output['x'][:, 0, :])
 
     # Plot all joint velocities

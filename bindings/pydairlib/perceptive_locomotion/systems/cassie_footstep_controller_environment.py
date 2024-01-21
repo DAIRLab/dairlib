@@ -194,7 +194,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
             if params.simulate_perception:
                 self.grid_map_visualizer = GridMapVisualizer(
-                    self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
+                    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
                 )
                 builder.AddSystem(self.grid_map_visualizer)
                 builder.Connect(

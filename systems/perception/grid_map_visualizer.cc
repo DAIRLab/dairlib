@@ -1,4 +1,5 @@
 #include <math.h>
+#include <iostream>
 #include "grid_map_visualizer.h"
 
 #include "drake/perception/point_cloud.h"
@@ -29,39 +30,35 @@ GridMapVisualizer::GridMapVisualizer(
 drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
     const Context<double> &context, State<double> *state) const {
 
-  const auto& map = EvalAbstractInput(context, 0)->get_value<GridMap>();
+  auto map = EvalAbstractInput(context, 0)->get_value<GridMap>();
 
-  const int nx = map.getSize()(0);
-  const int ny = map.getSize()(1);
-  double resolution = map.getResolution();
+  map.convertToDefaultStartIndex();
+  grid_map::Position pos;
+  auto length = map.getSize();
+  map.getPosition(grid_map::Index(0,0), pos);
+
+  double xmax = pos.x();
+  double ymax = pos.y();
+  map.getPosition(grid_map::Index(length.x() - 1, length.y() - 1), pos);
+
+  double xmin = pos.x();
+  double ymin = pos.y();
+
+
+  MatrixXd X = VectorXd::LinSpaced(length.x(), xmax, xmin).replicate(1, length.y());
+  MatrixXd Y = RowVectorXd::LinSpaced(length.y(), ymax, ymin).replicate(length.x(), 1);
 
   // For now visualize this as a point cloud since PlotSurface is being flaky
   for (const auto& layer : map.getLayers()) {
     if (layers_.empty() or
         std::find(layers_.begin(), layers_.end(), layer) != layers_.end()) {
 
-      drake::perception::PointCloud map_as_cloud(nx * ny);
-      auto points = map_as_cloud.mutable_xyzs();
-      MatrixXd Z = map.get(layer).cast<double>();
-      int n = 0;
-      for (int i = 0; i < nx; i++) {
-        for (int j = 0; j < ny; j++) {
-          Eigen::Array2i idx(i, j);
-          grid_map::Position xy;
-          map.getPosition(idx, xy);
-          double z = Z(i, j);
-          if (not isnan(z)) {
-            points.col(n) = Eigen::Vector3f(xy(0), xy(1), z);
-            ++n;
-          }
-        }
-      }
-      map_as_cloud.resize(n);
-      meshcat_->SetObject("grid_map_" + layer, map_as_cloud, resolution,
-                          {0.1, 0.1, 0.9, 1.0});
+      const MatrixXd& Z = map.get(layer).cast<double>();
+
+      meshcat_->PlotSurface("grid_map_" + layer, X, Y, Z);
     }
   }
-  meshcat_->Flush();
+//  meshcat_->Flush();
   return EventStatus::Succeeded();
 }
 

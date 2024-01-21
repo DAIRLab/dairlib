@@ -13,6 +13,8 @@ from argparse import ArgumentParser
 EASTERN_STANDARD_UTC_OFFSET = timedelta(hours=5)
 epoch = datetime.utcfromtimestamp(0)
 
+from pydairlib.analysis.file_utils import line_up_timestamps
+
 
 def read_creation_time(video_folder, video_id):
     with open(os.path.join(video_folder, f'{video_id}M01.XML'), 'rb') as f:
@@ -47,68 +49,6 @@ def get_logs(log_folder):
         log_data[timestamp_seconds] = logname
 
     return log_data
-
-
-def find_path(matrix, starting_point, tol=1.0):
-    n = len(matrix)
-    m = len(matrix[0])
-    i = starting_point[0]
-    j = starting_point[1]
-
-    path = []
-    target_val = matrix[i][j]
-    while i < n and j < m:
-        if abs(target_val - matrix[i][j]) < tol:
-            path.append((i, j))
-            i += 1
-            j += 1
-        elif matrix[i][j] < target_val:
-            i += 1
-        else:
-            j += 1
-
-    return path
-
-
-def line_up_timestamps(times_a, times_b, tol=1.0):
-    """
-    Finds the corresponding elements of two lists of timestamps, where there
-    might be a constant offset between the two time sources, and each list may
-    have any number of extra or missing elements, at any position.
-
-
-    :param tol: tolerance for differences in timestamps (seconds)
-    :param times_a: first sequence of timestamps
-    :param times_b: second sequence of timestamps
-    :return: (times_a_elements, times_b_elements), the common subsequence of
-    timestamps, as elements of each original list
-    """
-
-    times_a = sorted(times_a)
-    times_b = sorted(times_b)
-
-    # Build a matrix of the difference between the two time stamp lists
-    n = len(times_a)
-    m = len(times_b)
-    matrix = [
-        [
-            times_a[i] - times_b[j] for j in range(m)
-        ] for i in range(n)
-    ]
-
-    # Find the constant offset with the largest number of valid correspondences.
-    # Count smartly by making a path through the matrix
-    paths = [find_path(matrix, (i, 0), tol=tol) for i in range(n)] + \
-            [find_path(matrix, (0, j), tol=tol) for j in range(1, m)]
-
-    path_ranking = sorted(paths, key=lambda a: len(a), reverse=True)
-    best_path = path_ranking[0]
-    idx_a, idx_b = zip(*best_path)
-
-    times_a_elements = [times_a[i] for i in idx_a]
-    times_b_elements = [times_b[i] for i in idx_b]
-
-    return times_a_elements, times_b_elements
 
 
 def main():

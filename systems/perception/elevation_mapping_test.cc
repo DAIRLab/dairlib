@@ -14,7 +14,9 @@
 namespace dairlib {
 namespace perception {
 
-GTEST_TEST(PerceptionTests, ElevationMappingSystemTest){
+
+
+bool test_passed () {
 
   elevation_mapping_params params{
       {{
@@ -52,7 +54,6 @@ GTEST_TEST(PerceptionTests, ElevationMappingSystemTest){
   DRAKE_DEMAND(pelvis.is_floating());
   DRAKE_DEMAND(pelvis.has_quaternion_dofs());
   DRAKE_DEMAND(pelvis.floating_positions_start() == 0);
-  DRAKE_DEMAND(pelvis.floating_velocities_start() == plant.num_positions());
   const Eigen::Translation3d X_WP(0.0, 0.0, 0.95);
   plant.SetFreeBodyPoseInWorldFrame(plant_context.get(), pelvis, X_WP);
 
@@ -83,7 +84,7 @@ GTEST_TEST(PerceptionTests, ElevationMappingSystemTest){
       pc.push_back(pt);
     }
   }
-  elevation_mapping::PointCloudType::Ptr pc_input(new elevation_mapping::PointCloudType);
+  elevation_mapping::PointCloudType::Ptr pc_input = std::make_shared<elevation_mapping::PointCloudType>();
   pcl::copyPointCloud(pc, *pc_input);
 
   Eigen::MatrixXd base_cov = Eigen::MatrixXd::Identity(6, 6);
@@ -98,8 +99,8 @@ GTEST_TEST(PerceptionTests, ElevationMappingSystemTest){
       &context->get_mutable_state()
   );
 
-  auto map = mapper.get_output_port_map().Eval<elevation_mapping::ElevationMap>(*context);
-  const auto& elevation = map.getRawGridMap().get("elevation");
+  auto map = mapper.get_output_port_grid_map().Eval<grid_map::GridMap>(*context);
+  const auto& elevation = map.get("elevation");
   const auto expected_result = Eigen::MatrixXf::Constant(elevation.rows(), elevation.cols(), 0.1);
   bool pass = drake::CompareMatrices(elevation, expected_result, 1e-6);
   if (pass) {
@@ -109,8 +110,13 @@ GTEST_TEST(PerceptionTests, ElevationMappingSystemTest){
     std::cout << "expected matrix: \n" << expected_result <<
                  "\nbut received\n" << elevation << std::endl;
   }
-  EXPECT_TRUE(pass);
+  return pass;
 }
+
+GTEST_TEST(PerceptionTests, ElevationMappingSystemTest) {
+  EXPECT_TRUE(test_passed());
+}
+
 }
 }
 

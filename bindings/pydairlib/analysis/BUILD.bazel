@@ -14,7 +14,10 @@ load(
 py_binary(
     name = "copy_and_rename_experiment_videos",
     srcs = ["copy_and_rename_experiment_videos.py"],
-    deps = ["@lcm//:lcm-python"],
+    deps = [
+        ":file_utils_py",
+        "@lcm//:lcm-python",
+    ],
 )
 
 py_binary(
@@ -61,6 +64,20 @@ py_library(
         "//bindings/pydairlib/multibody:kinematic_py",
         "//bindings/pydairlib/multibody:multibody_py",
     ],
+)
+
+pybind_py_library(
+    name = "file_utils_py",
+    cc_deps = [
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+    cc_so_name = "file_utils",
+    cc_srcs = ["file_utils_py.cc"],
+    py_deps = [
+        "@lcm//:lcm-python",
+    ],
+    py_imports = ["."],
 )
 
 py_library(
@@ -205,6 +222,7 @@ py_library(
 
 PY_LIBRARIES = [
     ":osc_debug",
+    ":file_utils_py",
     ":video_tools",
     ":mbp_plotting_utils",
     ":cassie_plotting_utils",

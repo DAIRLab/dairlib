@@ -53,6 +53,7 @@ def big_flat_polygon():
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.visualize = True
+    sim_params.simulate_perception = True
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(

@@ -92,27 +92,32 @@ C3Controller::C3Controller(
   for (int i : vector<int>({0})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.world_x_limits[0], c3_options_.world_x_limits[1], 1);
+    c3_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
+                             c3_options_.world_x_limits[1], 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.world_y_limits[0], c3_options_.world_y_limits[1], 1);
+    c3_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
+                             c3_options_.world_y_limits[1], 1);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.world_z_limits[0], c3_options_.world_z_limits[1], 1);
+    c3_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
+                             c3_options_.world_z_limits[1], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0], c3_options_.u_horizontal_limits[1], 2);
+    c3_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
+                             c3_options_.u_horizontal_limits[1], 2);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0], c3_options_.u_vertical_limits[1], 2);
+    c3_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
+                             c3_options_.u_vertical_limits[1], 2);
   }
 
   lcs_state_input_port_ =
@@ -175,15 +180,20 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   // TODO(yangwill): clean this up
   if (c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
-    x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_, x_lcs[0] + 10 * dt_ * dt_);
-    x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_, x_lcs[1] + 10 * dt_ * dt_);
-    x_lcs[2] = std::clamp(x_pred_[2], x_lcs[2] - 10 * dt_ * dt_, x_lcs[2] + 10 * dt_ * dt_);
-//    x_lcs.head(3) = x_pred_.head(3);
-    x_lcs[n_q_ + 0] = std::clamp(x_pred_[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_, x_lcs[n_q_ + 0] + 10 * dt_);
-    x_lcs[n_q_ + 1] = std::clamp(x_pred_[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_, x_lcs[n_q_ + 1] + 10 * dt_);
-    x_lcs[n_q_ + 2] = std::clamp(x_pred_[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_, x_lcs[n_q_ + 2] + 10 * dt_);
-//    x_lcs.segment(n_q_, 3) = x_pred_.segment(n_q_, 3);
-
+    x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_,
+                          x_lcs[0] + 10 * dt_ * dt_);
+    x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_,
+                          x_lcs[1] + 10 * dt_ * dt_);
+    x_lcs[2] = std::clamp(x_pred_[2], x_lcs[2] - 10 * dt_ * dt_,
+                          x_lcs[2] + 10 * dt_ * dt_);
+    //    x_lcs.head(3) = x_pred_.head(3);
+    x_lcs[n_q_ + 0] = std::clamp(x_pred_[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_,
+                                 x_lcs[n_q_ + 0] + 10 * dt_);
+    x_lcs[n_q_ + 1] = std::clamp(x_pred_[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_,
+                                 x_lcs[n_q_ + 1] + 10 * dt_);
+    x_lcs[n_q_ + 2] = std::clamp(x_pred_[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_,
+                                 x_lcs[n_q_ + 2] + 10 * dt_);
+    //    x_lcs.segment(n_q_, 3) = x_pred_.segment(n_q_, 3);
   }
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
@@ -193,12 +203,18 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
   // Force Checking of Workspace Limits
-  DRAKE_DEMAND(lcs_x->get_data()[0] > c3_options_.world_x_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[0] < c3_options_.world_x_limits[1] + c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[1] > c3_options_.world_y_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[1] < c3_options_.world_y_limits[1] + c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[2] > c3_options_.world_z_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[2] < c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[0] >
+               c3_options_.world_x_limits[0] - c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[0] <
+               c3_options_.world_x_limits[1] + c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[1] >
+               c3_options_.world_y_limits[0] - c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[1] <
+               c3_options_.world_y_limits[1] + c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[2] >
+               c3_options_.world_z_limits[0] - c3_options_.workspace_margins);
+  DRAKE_DEMAND(lcs_x->get_data()[2] <
+               c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
 
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
@@ -236,10 +252,11 @@ void C3Controller::OutputC3Solution(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  if (filtered_solve_time_ < dt_) {
-    double weight = (dt_ - filtered_solve_time_) / dt_;
-    x_pred_ = weight * z_sol[0].segment(0, n_x_) +
-              (1 - weight) * z_sol[1].segment(0, n_x_);
+  if (filtered_solve_time_ < N_ * dt_) {
+    int index = filtered_solve_time_ / dt_;
+    double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
+    x_pred_ = weight * z_sol[index].segment(0, n_x_) +
+              (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
     x_pred_ = z_sol[1].segment(0, n_x_);
   }

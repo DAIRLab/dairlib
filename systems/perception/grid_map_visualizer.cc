@@ -1,4 +1,3 @@
-#include <math.h>
 #include <iostream>
 #include "grid_map_visualizer.h"
 
@@ -19,12 +18,12 @@ using drake::systems::State;
 using drake::systems::EventStatus;
 
 GridMapVisualizer::GridMapVisualizer(
-    std::shared_ptr<Meshcat> meshcat, double update_rate,
+    std::shared_ptr<Meshcat> meshcat, double update_period_sec,
     std::vector<std::string> layers) : meshcat_(meshcat), layers_(layers) {
 
   DeclareAbstractInputPort("grid_map", drake::Value<GridMap>());
   DeclarePeriodicUnrestrictedUpdateEvent(
-      1.0 / update_rate, 0, &GridMapVisualizer::UpdateVisualization);
+      update_period_sec, 0, &GridMapVisualizer::UpdateVisualization);
 }
 
 drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(

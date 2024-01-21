@@ -12,7 +12,7 @@ class GridMapVisualizer : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(GridMapVisualizer);
   GridMapVisualizer(std::shared_ptr<drake::geometry::Meshcat> meshcat,
-                    double update_rate,
+                    double update_period_sec,
                     std::vector<std::string> layers = {});
 
  private:

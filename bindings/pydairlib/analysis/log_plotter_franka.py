@@ -14,10 +14,10 @@ from pydrake.all import JointIndex, JointActuatorIndex
 
 
 def main():
-    config_file = ('bindings/pydairlib/analysis/plot_configs'
-                   '/franka_translation_plot.yaml')
     # config_file = ('bindings/pydairlib/analysis/plot_configs'
-    #                '/franka_sim_plot_config.yaml')
+    #                '/franka_hardware_plot_config.yaml')
+    config_file = ('bindings/pydairlib/analysis/plot_configs'
+                   '/franka_sim_plot_config.yaml')
     plot_config = FrankaPlotConfig(config_file)
 
     channel_x = plot_config.channel_x
@@ -161,16 +161,16 @@ def main():
     if plot_config.plot_end_effector:
         end_effector_plotter = plot_styler.PlotStyler(nrows=2)
         mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
-                                        franka_context, ['plate'],
-                                        {'plate': np.zeros(3)},
-                                        {'plate': [0, 1, 2]},
+                                        franka_context, ['end_effector'],
+                                        {'end_effector': np.zeros(3)},
+                                        {'end_effector': [0, 1, 2]},
                                         ps=end_effector_plotter,
                                         subplot_index=0)
 
         mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
-                                         franka_context, ['plate'],
-                                         {'plate': np.zeros(3)},
-                                         {'plate': [0, 1, 2]},
+                                         franka_context, ['end_effector'],
+                                         {'end_effector': np.zeros(3)},
+                                         {'end_effector': [0, 1, 2]},
                                          ps=end_effector_plotter,
                                          subplot_index=1)
 

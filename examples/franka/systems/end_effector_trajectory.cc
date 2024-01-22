@@ -45,11 +45,34 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
+  controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  DeclareForcedDiscreteUpdateEvent(
+      &EndEffectorTrajectoryGenerator::DiscreteVariableUpdate);
   PiecewisePolynomial<double> empty_pp_traj(neutral_pose_);
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("end_effector_trajectory", traj_inst,
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
 }
+
+
+EventStatus EndEffectorTrajectoryGenerator::DiscreteVariableUpdate(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  const auto& trajectory_input =
+      this->EvalAbstractInput(context, trajectory_port_)
+          ->get_value<drake::trajectories::Trajectory<double>>();
+  bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
+  if (!using_c3 && radio_out->channel[14] == 0) {
+    if (!trajectory_input.value(0).isZero() && (context.get_time() - trajectory_input.start_time()) < 0.04) {
+      discrete_state->get_mutable_value(controller_switch_index_)[0] = 1;
+    }
+  }
+  return EventStatus::Succeeded();
+}
+
 
 void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
     const Eigen::Vector3d& neutral_pose, double x_scale, double y_scale,
@@ -85,13 +108,14 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
+
   if (radio_out->channel[14]) {
     *casted_traj = GeneratePose(context);
   } else {
     if (trajectory_input.value(0).isZero()) {
 //      *casted_traj = GeneratePose(context);
     } else {
-      if ((context.get_time() - trajectory_input.start_time()) < 0.075){
+      if (context.get_discrete_state(controller_switch_index_)[0]){
         *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
             const PiecewisePolynomial<double>*>(&trajectory_input);
       }

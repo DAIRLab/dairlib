@@ -34,6 +34,8 @@ class EndEffectorForceTrajectoryGenerator
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 
+  drake::systems::DiscreteStateIndex controller_switch_index_;
+
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;

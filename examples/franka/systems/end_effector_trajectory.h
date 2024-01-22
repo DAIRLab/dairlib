@@ -43,6 +43,8 @@ class EndEffectorTrajectoryGenerator
   drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
 
+  drake::systems::DiscreteStateIndex controller_switch_index_;
+
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex trajectory_port_;
   drake::systems::InputPortIndex radio_port_;

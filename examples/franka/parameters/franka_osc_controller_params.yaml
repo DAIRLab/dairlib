@@ -23,6 +23,8 @@ end_effector_acceleration: 10
 track_end_effector_orientation: false
 cancel_gravity_compensation: false
 enforce_acceleration_constraints: false
+publish_debug_info: false
+
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]
 W_lambda_c_reg: [ 0.001, 0.001, 0.01,
@@ -31,7 +33,6 @@ W_lambda_c_reg: [ 0.001, 0.001, 0.01,
                   0.001, 0.001, 0.01 ]
 W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.001, 0.001 ]
-
 
 w_elbow: 1
 elbow_kp: 200

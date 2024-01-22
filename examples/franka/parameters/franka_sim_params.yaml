@@ -3,7 +3,7 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 table_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 table_w_supports_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
-tray_model: examples/franka/urdf/tray.sdf
+tray_model: examples/franka/urdf/tray_parameter_sweep.sdf
 box_model: examples/franka/urdf/default_box.urdf
 left_support_model: examples/franka/urdf/left_support.urdf
 right_support_model: examples/franka/urdf/left_support.urdf
@@ -13,7 +13,7 @@ visualizer_publish_rate: 30
 actuator_delay: 0.000
 
 scene_index: 2
-visualize_drake_sim: true
+visualize_drake_sim: false
 publish_efforts: true
 
 camera_pose: [[0.5, -1.2, 0.7],
@@ -58,7 +58,7 @@ q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
 
 visualize_workspace: false
-visualize_pose_trace: true
+visualize_pose_trace: false
 visualize_center_of_mass_plan: true
-visualize_c3_forces: true
+visualize_c3_forces: false
 visualize_c3_state: true

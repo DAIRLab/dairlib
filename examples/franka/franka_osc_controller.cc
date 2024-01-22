@@ -159,10 +159,14 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant, plant, plant_context.get(), plant_context.get(), false);
-  auto osc_debug_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-          lcm_channel_params.osc_debug_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+  if (controller_params.publish_debug_info){
+    auto osc_debug_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
+            lcm_channel_params.osc_debug_channel, &lcm,
+            TriggerTypeSet({TriggerType::kForced})));
+    builder.Connect(osc->get_output_port_osc_debug(),
+                    osc_debug_pub->get_input_port());
+  }
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
@@ -249,8 +253,7 @@ int DoMain(int argc, char* argv[]) {
                   osc_command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_command(),
                   osc_command_sender->get_input_port(0));
-  builder.Connect(osc->get_output_port_osc_debug(),
-                  osc_debug_pub->get_input_port());
+
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
   builder.Connect(end_effector_trajectory_sub->get_output_port(),

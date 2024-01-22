@@ -4,16 +4,16 @@
     <link name="tray">
       <inertial>
         <pose>0 0 0 0 0 0</pose>
-        <mass>0.97</mass>
+        <mass>1.25</mass>
         <!-- Inertia values were calculated to be consistent with the mass and
              geometry size, assuming a uniform density. -->
         <inertia>
-          <ixx>0.012712</ixx>
+          <ixx>0.016381</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.012712</iyy>
+          <iyy>0.016381</iyy>
           <iyz>0</iyz>
-          <izz>0.025345</izz>
+          <izz>0.032661</izz>
         </inertia>
       </inertial>
       <visual name="tray">

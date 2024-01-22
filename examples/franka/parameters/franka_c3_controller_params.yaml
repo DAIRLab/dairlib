@@ -8,7 +8,7 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 end_effector_name: plate
 plate_model: examples/franka/urdf/plate_end_effector_translation.urdf
-tray_model: examples/franka/urdf/tray.sdf
+tray_model: examples/franka/urdf/tray_lcs.sdf
 left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
 

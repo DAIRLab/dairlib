@@ -10,7 +10,7 @@ projection_type: 'MIQP'
 contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
-solve_time_filter_alpha: 0.9 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
+solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
 
 # Workspace Limits
 world_x_limits: [0.45, 0.65]

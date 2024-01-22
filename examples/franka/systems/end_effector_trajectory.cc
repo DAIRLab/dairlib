@@ -66,7 +66,7 @@ EventStatus EndEffectorTrajectoryGenerator::DiscreteVariableUpdate(
           ->get_value<drake::trajectories::Trajectory<double>>();
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
   if (!using_c3 && radio_out->channel[14] == 0) {
-    if (!trajectory_input.value(0).isZero() && (context.get_time() - trajectory_input.start_time()) < 0.04) {
+    if (!trajectory_input.value(0).isZero() && (context.get_time() - trajectory_input.start_time()) < 0.05) {
       discrete_state->get_mutable_value(controller_switch_index_)[0] = 1;
     }
   }

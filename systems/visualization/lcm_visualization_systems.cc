@@ -292,7 +292,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     auto force_norm = force.norm();
     const std::string& force_path_root =
         force_path_ + "/lcs_force_" + std::to_string(i) + "/";
-    if (force_norm >= 0.01) {
+    if (force_norm >= 0.5) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
                             {1, 0, 0, 1});
@@ -369,12 +369,12 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
                       {0, 1, 0, 1});
   meshcat_->SetObject(c3_target_ee_path_ + "/z-axis", cylinder_for_ee_,
                       {0, 0, 1, 1});
-  meshcat_->SetObject(c3_actual_ee_path_ + "/x-axis", cylinder_for_ee_,
-                      {1, 0, 0, 1});
-  meshcat_->SetObject(c3_actual_ee_path_ + "/y-axis", cylinder_for_ee_,
-                      {0, 1, 0, 1});
-  meshcat_->SetObject(c3_actual_ee_path_ + "/z-axis", cylinder_for_ee_,
-                      {0, 0, 1, 1});
+//  meshcat_->SetObject(c3_actual_ee_path_ + "/x-axis", cylinder_for_ee_,
+//                      {1, 0, 0, 1});
+//  meshcat_->SetObject(c3_actual_ee_path_ + "/y-axis", cylinder_for_ee_,
+//                      {0, 1, 0, 1});
+//  meshcat_->SetObject(c3_actual_ee_path_ + "/z-axis", cylinder_for_ee_,
+//                      {0, 0, 1, 1});
   auto x_axis_transform =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitY()),
                       Vector3d{0.075, 0.0, 0.0});
@@ -402,9 +402,9 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee);
   meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee);
   meshcat_->SetTransform(c3_target_ee_path_ + "/z-axis", z_axis_transform_ee);
-  meshcat_->SetTransform(c3_actual_ee_path_ + "/x-axis", x_axis_transform_ee);
-  meshcat_->SetTransform(c3_actual_ee_path_ + "/y-axis", y_axis_transform_ee);
-  meshcat_->SetTransform(c3_actual_ee_path_ + "/z-axis", z_axis_transform_ee);
+//  meshcat_->SetTransform(c3_actual_ee_path_ + "/x-axis", x_axis_transform_ee);
+//  meshcat_->SetTransform(c3_actual_ee_path_ + "/y-axis", y_axis_transform_ee);
+//  meshcat_->SetTransform(c3_actual_ee_path_ + "/z-axis", z_axis_transform_ee);
 
   DeclarePerStepDiscreteUpdateEvent(&LcmC3TargetDrawer::DrawC3State);
 }

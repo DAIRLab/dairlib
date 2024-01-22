@@ -287,9 +287,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
-                  c3_output_sender->get_input_port_lcs_contact_jacobian());
-  builder.Connect(lcs_factory->get_output_port_lcs_contact_points(),
-                  c3_output_sender->get_input_port_lcs_contact_points());
+                  c3_output_sender->get_input_port_lcs_contact_info());
   builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
                   actor_trajectory_sender->get_input_port());
   builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),

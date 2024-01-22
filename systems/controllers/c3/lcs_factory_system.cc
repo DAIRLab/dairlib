@@ -75,13 +75,8 @@ LCSFactorySystem::LCSFactorySystem(
                   .get_index();
 
   lcs_contact_jacobian_port_ = this->DeclareAbstractOutputPort(
-                      "J_lcs", Eigen::MatrixXd(n_x_, n_lambda_),
+                      "J_lcs, p_lcs", std::pair(Eigen::MatrixXd(n_x_, n_lambda_), std::vector<Eigen::VectorXd>()),
                       &LCSFactorySystem::OutputLCSContactJacobian)
-                  .get_index();
-
-  lcs_contact_points_port_ = this->DeclareAbstractOutputPort(
-                      "p_lcs", std::vector<Eigen::VectorXd>(),
-                      &LCSFactorySystem::OutputLCSContactPoints)
                   .get_index();
 }
 
@@ -123,7 +118,7 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
 }
 
 void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<double>& context,
-                                                Eigen::MatrixXd* output_jacobian) const {
+                                                std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* output) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -146,48 +141,11 @@ void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<do
   }
 
   std::vector<Eigen::VectorXd> contact_points;
-  std::tie(*output_jacobian, contact_points) = LCSFactory::ComputeContactJacobian(
+  *output = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);
 }
-
-void LCSFactorySystem::OutputLCSContactPoints(const drake::systems::Context<double>& context,
-                                              std::vector<Eigen::VectorXd>* contact_points) const {
-  const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
-
-  VectorXd q_v_u =
-      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
-          plant_.num_actuators());
-  // u is irrelevant in pure geometric/kinematic calculation
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
-
-  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x_));
-  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), context_);
-  solvers::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = solvers::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = solvers::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
-
-  MatrixXd contact_jacobian;
-  contact_points->clear();
-  std::tie(contact_jacobian, *contact_points) = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
-      c3_options_.N, contact_model);
-
-//  for (auto& contact_point : witness_points_){
-//    contact_points->push_back(contact_point);
-//  }
-}
-
-
 
 }  // namespace systems
 }  // namespace dairlib

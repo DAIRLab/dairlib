@@ -11,6 +11,13 @@ cc_library(
 )
 
 cc_library(
+    name = "parameters",
+    data = glob([
+        "*yaml",
+    ]),
+)
+
+cc_library(
     name = "franka_hardware",
     deps = [],
 )

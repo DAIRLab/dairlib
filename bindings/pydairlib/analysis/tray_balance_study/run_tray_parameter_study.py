@@ -28,10 +28,11 @@ def main():
 
     # parameter = 'mu_c3'
     # parameter = 'mass_real'
-    parameter = 'mu_real'
+    parameter = config['parameter'][2]
 
     nominal_mu_value = 'mu: [0.6, 0.6, 0.6, 0.1, 0.1, 0.1, 0.1]'
-    nominal_real_mu_value = '<drake:mu_dynamic>0.4</drake:mu_dynamic>'
+    # nominal_real_mu_value = '<drake:mu_dynamic>0.4</drake:mu_dynamic>'
+    nominal_real_mu_value = '<drake:mu_dynamic value="0.4"/>'
     nominal_tray_mass = '<mass>1</mass>'
 
     initial_radio_msg = dairlib.lcmt_radio_out()
@@ -43,16 +44,17 @@ def main():
     start_c3_radio_msg.channel[11] = 1
     start_c3_radio_msg.channel[14] = 0
 
-    mu_range = np.arange(0.3, 0.8, 0.01)
+    mu_range = np.arange(0.3, 0.8, 0.05)
     mass_range = np.arange(0.5, 2.0, 0.05)
 
     for i in trange(mu_range.shape[0]):
         for j in trange(num_trials):
-            log_path = config['results_folder'] + '/' + parameter +  '/simlog-' + '%02d_%1d' % (i, j)
+            log_path = config['results_folder'] + parameter +  '/simlog-' + '%02d_%1d' % (i, j)
 
             # modified_mu_value = 'mu: [%.2f, %.2f, %.2f, 0.1, 0.1, 0.1, 0.1]' % (mu_range[i], mu_range[i], mu_range[i])
             # modified_mass_value = '<mass> %.1f </mass>' % (mass_range[i])
-            modified_real_mu_value = '<drake:mu_dynamic>%.2f</drake:mu_dynamic>' % (mu_range[i])
+            # modified_real_mu_value = '<drake:mu_dynamic>%.2f</drake:mu_dynamic>' % (mu_range[i])
+            modified_real_mu_value = '<drake:mu_dynamic value="%.2f"/>' % (mu_range[i])
 
             # f = open(gains_path + gain_filename, 'r')
             f = open(config['model_path'] + config['nominal_model_filename'], 'r')
@@ -63,7 +65,7 @@ def main():
             newdata = filedata.replace(nominal_real_mu_value, modified_real_mu_value)
             # newdata = filedata.replace(nominal_tray_mass, modified_mass_value)
 
-            f = open(config['gains_path'] +  config['modified_c3_gain_filename.yaml'], 'w')
+            # f = open(config['gains_path'] +  config['modified_c3_gain_filename.yaml'], 'w')
             f = open(config['model_path'] + config['modified_model_filename'], 'w')
             f.write(newdata)
             f.close()

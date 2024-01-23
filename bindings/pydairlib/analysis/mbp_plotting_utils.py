@@ -343,9 +343,10 @@ def load_default_channels(data, plant, state_channel, input_channel,
                           osc_debug_channel):
     robot_output = process_state_channel(data[state_channel], plant)
     robot_input = process_effort_channel(data[input_channel], plant)
-    osc_debug = process_osc_channel(data[osc_debug_channel])
-    osc_debug = permute_osc_joint_ordering(
-        osc_debug, data[state_channel][0], plant)
+    # osc_debug = process_osc_channel(data[osc_debug_channel])
+    # osc_debug = permute_osc_joint_ordering(
+    #     osc_debug, data[state_channel][0], plant)
+    osc_debug = None
 
     return robot_output, robot_input, osc_debug
 
@@ -422,10 +423,10 @@ def plot_joint_positions(robot_output, q_names, fb_dim, time_slice, subplot_inde
                             title='Joint Positions', subplot_index=subplot_index)
 
 
-def plot_positions_by_name(robot_output, q_names, time_slice, pos_map):
+def plot_positions_by_name(robot_output, q_names, time_slice, pos_map, ps = None, subplot_index = 0):
     q_slice = [pos_map[name] for name in q_names]
     return plot_q_or_v_or_u(robot_output, 'q', q_names, q_slice, time_slice,
-                            ylabel='Position', title='Select Positions')
+                            ylabel='Position', title='Select Positions', ps=ps, subplot_index=subplot_index)
 
 
 def plot_floating_base_velocities(robot_output, v_names, fb_dim, time_slice):

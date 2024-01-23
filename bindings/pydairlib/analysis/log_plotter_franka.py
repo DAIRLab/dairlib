@@ -14,10 +14,10 @@ from pydrake.all import JointIndex, JointActuatorIndex
 
 
 def main():
-    # config_file = ('bindings/pydairlib/analysis/plot_configs'
-    #                '/franka_hardware_plot_config.yaml')
     config_file = ('bindings/pydairlib/analysis/plot_configs'
-                   '/franka_sim_plot_config.yaml')
+                   '/franka_hardware_plot_config.yaml')
+    # config_file = ('bindings/pydairlib/analysis/plot_configs'
+    #                '/franka_sim_plot_config.yaml')
     plot_config = FrankaPlotConfig(config_file)
 
     channel_x = plot_config.channel_x
@@ -79,9 +79,9 @@ def main():
     print('Finished processing log - making plots')
     # Define x time slice
     t_x_slice = slice(robot_output['t'].size)
-    t_osc_slice = slice(osc_debug['t_osc'].size)
+    # t_osc_slice = slice(osc_debug['t_osc'].size)
 
-    print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
+    # print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))
 
 
     (franka_joint_position_limit_range, franka_joint_velocity_limit_range,
@@ -134,15 +134,13 @@ def main():
         plot.axes[0].set_ylim([0.4, 0.7])
         plot.add_legend(['tray_des_x', 'tray_des_y', 'tray_des_z', 'tray_x', 'tray_y', 'tray_z'], subplot_index = 1)
 
-    plot = plot_styler.PlotStyler(nrows=2)
-    plot.plot(c3_tracking_target['t'], solve_times, subplot_index = 0)
-    plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 0:1], subplot_index = 0)
-    plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 7:8], subplot_index = 0)
-    plot.plot(c3_tracking_target['t'], solve_times, subplot_index = 1)
-    plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 2:3], subplot_index = 1)
-    plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 9:10], subplot_index = 1)
-    # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 7:8] - c3_tracking_actual['x'][:, 7:8], subplot_index = 1)
-    # plt.plot(c3_output['t'], c3_output['x'][:, 0, :])
+    # plot = plot_styler.PlotStyler(nrows=2)
+    # plot.plot(c3_tracking_target['t'], solve_times, subplot_index = 0)
+    # plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 0:1], subplot_index = 0)
+    # plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 7:8], subplot_index = 0)
+    # plot.plot(c3_tracking_target['t'], solve_times, subplot_index = 1)
+    # plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 2:3], subplot_index = 1)
+    # plot.plot(c3_tracking_target['t'], c3_tracking_actual['x'][:, 9:10], subplot_index = 1)
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:
@@ -161,16 +159,16 @@ def main():
     if plot_config.plot_end_effector:
         end_effector_plotter = plot_styler.PlotStyler(nrows=2)
         mbp_plots.plot_points_positions(robot_output, t_x_slice, franka_plant,
-                                        franka_context, ['end_effector'],
-                                        {'end_effector': np.zeros(3)},
-                                        {'end_effector': [0, 1, 2]},
+                                        franka_context, ['plate'],
+                                        {'plate': np.zeros(3)},
+                                        {'plate': [0, 1, 2]},
                                         ps=end_effector_plotter,
                                         subplot_index=0)
 
         mbp_plots.plot_points_velocities(robot_output, t_x_slice, franka_plant,
-                                         franka_context, ['end_effector'],
-                                         {'end_effector': np.zeros(3)},
-                                         {'end_effector': [0, 1, 2]},
+                                         franka_context, ['plate'],
+                                         {'plate': np.zeros(3)},
+                                         {'plate': [0, 1, 2]},
                                          ps=end_effector_plotter,
                                          subplot_index=1)
 
@@ -231,14 +229,14 @@ def main():
         # plot.save_fig('active_tracking_datas.png')
 
     if plot_config.plot_object_state:
-        plot = mbp_plots.plot_positions_by_name(object_state,
+        ps = plot_styler.PlotStyler(nrows=2)
+        mbp_plots.plot_positions_by_name(object_state,
                                                 tray_pos_names[4:],
-                                                t_object_slice, tray_pos_map)
-        # plot.save_fig(('/').join(filename.split('/')[-2:]) + '/object_position')
-    if plot_config.plot_object_state:
-        plot = mbp_plots.plot_positions_by_name(object_state,
+                                                t_object_slice, tray_pos_map, ps = ps, subplot_index = 0)
+        mbp_plots.plot_positions_by_name(object_state,
                                                 tray_pos_names[:4],
-                                                t_object_slice, tray_pos_map)
+                                                t_object_slice, tray_pos_map, ps = ps, subplot_index = 1)
+        # plot.save_fig(('/').join(filenme.split('/')[-2:]) + '/object_position')
 
     plt.show()
 

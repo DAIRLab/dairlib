@@ -34,7 +34,7 @@ def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
     if key in legend_entries:
       legend.extend(legend_entries[key])
 
-  ps.add_legend(legend, loc='upper right')
+  ps.add_legend(legend, loc='upper right', subplot_index=subplot_index)
 
 
 def make_mixed_data_plot(data_dictionaries, time_keys, time_slices,

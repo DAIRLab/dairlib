@@ -36,7 +36,6 @@ class PlotStyler():
 
   def __init__(self, figure=None, nrows=1, ncols=1):
 
-    plt.subplots_adjust(left=0.1, right=0.85, bottom=0.15, top=0.75)  # List is [left, bottom, width, height]
     # plt.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)  # List is [left, bottom, width, height]
     # self.cmap = plt.get_cmap('tab10')
     self.cmap = plt.get_cmap('tab20')
@@ -69,6 +68,7 @@ class PlotStyler():
       self.axes = [self.axes]
     # self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
+    plt.subplots_adjust(left=0.1, right=0.85, bottom=0.15, top=0.75)  # List is [left, bottom, width, height]
     return
 
   def attach(self):

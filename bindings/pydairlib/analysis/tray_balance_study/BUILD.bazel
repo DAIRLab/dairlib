@@ -12,14 +12,31 @@ load(
 )
 
 py_binary(
-    name = "tray_parameter_study",
-    srcs = ["tray_parameter_study.py"],
+    name = "run_tray_parameter_study",
+    srcs = ["run_tray_parameter_study.py"],
     data = [
         "@drake//manipulation/models/franka_description:models",
         "@lcm//:lcm-python",
     ],
     deps = [
         "//bindings/pydairlib/common",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "parameter_study_analysis",
+    srcs = ["parameter_study_analysis.py"],
+    data = [
+        ":parameter_study_config.yaml",
+        "//examples/franka:parameters",
+        "@drake//manipulation/models/franka_description:models",
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        "//bindings/pydairlib/analysis:mbp_plotting_utils",
+        "//bindings/pydairlib/common",
+        "//bindings/pydairlib/lcm:process_lcm_log",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )

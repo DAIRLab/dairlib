@@ -873,8 +873,9 @@ def generate_joint_limits(plant):
     return franka_joint_position_limit_range, franka_joint_velocity_limit_range, franka_joint_actuator_limit_range
 
 # Cannot plot multiple indices of the solution because the solution is already multi-dimensional (time)
-def plot_c3_inputs(c3_output, time_slice, input_index):
-    ps = plot_styler.PlotStyler()
+def plot_c3_inputs(c3_output, time_slice, input_index, ps=None):
+    if ps == None:
+        ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
         c3_output,
         't',

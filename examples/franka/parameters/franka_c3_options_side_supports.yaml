@@ -30,18 +30,18 @@ N: 5
 gamma: 1.0 # discount factor on MPC costs
 
 # matrix scaling
-w_Q: 5
-w_R: 0.5
+w_Q: 50
+w_R: 50
 # Penalty on all decision variables, assuming scalar
-w_G: 0.01
+w_G: 0.1
 # Penalty on all decision variables, assuming scalar
-w_U: 0.01
+w_U: 0.1
 
 # State Tracking Error, assuming diagonal
-q_vector: [150, 150, 100, 0, 1, 1, 0, 15000, 15000, 15000,
-           5, 5, 10, 100, 1, 1, 5, 5, 5]
+q_vector: [150, 150, 150, 0, 1, 1, 0, 15000, 15000, 15000,
+           5, 5, 15, 10, 10, 1, 5, 5, 5]
 # Penalty on efforts, assuming diagonal
-r_vector: [0.1, 0.1, 0.1]
+r_vector: [0.15, 0.15, 0.1]
 
 # Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

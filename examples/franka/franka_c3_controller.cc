@@ -280,6 +280,8 @@ int DoMain(int argc, char* argv[]) {
                   plate_balancing_target->get_input_port_tray_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_lcs_state());
+  builder.Connect(radio_sub->get_output_port(),
+                  controller->get_input_port_radio());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   lcs_factory->get_input_port_lcs_state());
   builder.Connect(radio_sub->get_output_port(),

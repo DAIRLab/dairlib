@@ -47,7 +47,7 @@ world_y_limits: [-0.15, 0.05]
 world_z_limits: [0.4, 0.7]
 
 dt: 0.0005
-realtime_rate: 1.0
+realtime_rate: 1
 #q_init_franka: [-0.85, 1.45, 1.25, -1.5, 1.70, 1.2, -0.6]
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
@@ -57,7 +57,7 @@ q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
 #q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
 
-visualize_workspace: false
+visualize_workspace: true
 visualize_pose_trace: false
 visualize_center_of_mass_plan: true
 visualize_c3_forces: false

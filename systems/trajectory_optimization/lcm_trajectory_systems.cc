@@ -57,17 +57,19 @@ void LcmTrajectoryReceiver::OutputTrajectory(
             context, trajectory_input_port_);
     auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
-
-    if (trajectory_block.datapoints.rows() == 3) {
-      *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-          trajectory_block.time_vector, trajectory_block.datapoints);
-      //      *casted_traj = PiecewisePolynomial<double>::ZeroOrderHold(
-      //          trajectory_block.time_vector, trajectory_block.datapoints);
-    } else {
-      *casted_traj = PiecewisePolynomial<double>::CubicHermite(
-          trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
-          trajectory_block.datapoints.bottomRows(3));
-    }
+    *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
+        trajectory_block.time_vector, trajectory_block.datapoints);
+//    if (trajectory_block.datapoints.rows() == 3) {
+//      *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
+//          trajectory_block.time_vector, trajectory_block.datapoints);
+//      //      *casted_traj = PiecewisePolynomial<double>::ZeroOrderHold(
+//      //          trajectory_block.time_vector, trajectory_block.datapoints);
+//    } else {
+//
+////      *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+////          trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
+////          trajectory_block.datapoints.bottomRows(3));
+//    }
   } else {
     *casted_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }

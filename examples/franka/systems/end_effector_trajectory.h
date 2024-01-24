@@ -27,7 +27,7 @@ class EndEffectorTrajectoryGenerator
   }
 
   void SetRemoteControlParameters(const Eigen::Vector3d& neutral_pose, double x_scale,
-                              double y_scale, double z_scale);
+                                  double y_scale, double z_scale);
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
@@ -42,8 +42,6 @@ class EndEffectorTrajectoryGenerator
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
   const drake::multibody::Frame<double>& world_;
-
-  drake::systems::DiscreteStateIndex controller_switch_index_;
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex trajectory_port_;

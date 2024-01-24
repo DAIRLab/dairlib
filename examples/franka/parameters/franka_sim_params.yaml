@@ -1,6 +1,6 @@
 #franka_model: examples/franka/urdf/franka_no_collision.urdf
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
-end_effector_model: examples/franka/urdf/plate_end_effector_parameter_sweep.urdf
+end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 table_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 table_w_supports_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 tray_model: examples/franka/urdf/tray.sdf
@@ -29,8 +29,8 @@ tool_attachment_frame: [0, 0, 0.107]
 #left_support_orientation: [0.0, 0.0, 0.0]
 #right_support_orientation: [0.0, 0.0, 0.0]
 
-left_support_position: [0.4, 0.25, 0.452]
-right_support_position: [0.7, 0.25, 0.452]
+left_support_position: [0.4, 0.25, 0.45]
+right_support_position: [0.7, 0.25, 0.45]
 left_support_orientation: [0.0, 0.0, 1.57]
 right_support_orientation: [0.0, 0.0, 1.57]
 

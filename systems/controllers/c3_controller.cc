@@ -179,20 +179,20 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
   // TODO(yangwill): clean this up
-  if (c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
-    x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_,
-                          x_lcs[0] + 10 * dt_ * dt_);
-    x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_,
-                          x_lcs[1] + 10 * dt_ * dt_);
-    x_lcs[2] = std::clamp(x_pred_[2], x_lcs[2] - 10 * dt_ * dt_,
-                          x_lcs[2] + 10 * dt_ * dt_);
+  if (x_lcs.segment(n_q_, 3).norm() > 0.05 && c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
+    x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 20 * dt_ * dt_,
+                          x_lcs[0] + 20 * dt_ * dt_);
+    x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 20 * dt_ * dt_,
+                          x_lcs[1] + 20 * dt_ * dt_);
+    x_lcs[2] = std::clamp(x_pred_[2], x_lcs[2] - 5 * dt_ * dt_,
+                          x_lcs[2] + 5 * dt_ * dt_);
     //    x_lcs.head(3) = x_pred_.head(3);
-    x_lcs[n_q_ + 0] = std::clamp(x_pred_[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_,
-                                 x_lcs[n_q_ + 0] + 10 * dt_);
-    x_lcs[n_q_ + 1] = std::clamp(x_pred_[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_,
-                                 x_lcs[n_q_ + 1] + 10 * dt_);
-    x_lcs[n_q_ + 2] = std::clamp(x_pred_[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_,
-                                 x_lcs[n_q_ + 2] + 10 * dt_);
+    x_lcs[n_q_ + 0] = std::clamp(x_pred_[n_q_ + 0], x_lcs[n_q_ + 0] - 20 * dt_,
+                                 x_lcs[n_q_ + 0] + 20 * dt_);
+    x_lcs[n_q_ + 1] = std::clamp(x_pred_[n_q_ + 1], x_lcs[n_q_ + 1] - 20 * dt_,
+                                 x_lcs[n_q_ + 1] + 20 * dt_);
+    x_lcs[n_q_ + 2] = std::clamp(x_pred_[n_q_ + 2], x_lcs[n_q_ + 2] - 5 * dt_,
+                                 x_lcs[n_q_ + 2] + 5 * dt_);
     //    x_lcs.segment(n_q_, 3) = x_pred_.segment(n_q_, 3);
   }
 
@@ -244,7 +244,7 @@ void C3Controller::OutputC3Solution(
 
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = t + 0.2 * filtered_solve_time_ + i * dt_;
+    c3_solution->time_vector_(i) = t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();

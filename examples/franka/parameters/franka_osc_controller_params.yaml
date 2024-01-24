@@ -21,7 +21,7 @@ impact_tau: 0.000
 mu: 1.0 # unused
 end_effector_acceleration: 10
 track_end_effector_orientation: false
-cancel_gravity_compensation: false
+cancel_gravity_compensation: true
 enforce_acceleration_constraints: false
 publish_debug_info: true
 

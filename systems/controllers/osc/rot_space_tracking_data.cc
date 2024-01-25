@@ -80,24 +80,12 @@ void RotTaskSpaceTrackingData::UpdateYdot(
 }
 
 void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
-  // Transform qdot to w
-  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
-                          ydot_des_(3));
-//  Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
   DRAKE_DEMAND(ydot_des_.size() == 3);
-  Vector3d w_des_ = ydot_des_;
-  // Because we transform the error here rather than in the parent
-  // options_tracking_data, and because J_y is already transformed in the view
-  // frame, we need to undo the transformation on J_y
   error_ydot_ =
-      w_des_ - ydot_ - view_frame_rot_T_.transpose() * GetJ() * v_proj;
+      ydot_des_ - ydot_;
   if (with_view_frame_) {
     error_ydot_ = view_frame_rot_T_ * error_ydot_;
   }
-
-  ydot_des_ =
-      w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
 }
 
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
@@ -122,12 +110,8 @@ void RotTaskSpaceTrackingData::UpdateJdotV(
 }
 
 void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
-  // Convert ddq into angular acceleration
-  // See https://physics.stackexchange.com/q/460311
-  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond yddot_quat_des(yddot_des_(0), yddot_des_(1), yddot_des_(2),
-                             yddot_des_(3));
-  yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
+  DRAKE_DEMAND(yddot_des_.size() == 3);
+  yddot_des_converted_ = yddot_des_;
   if (!idx_zero_feedforward_accel_.empty()) {
     std::cerr << "RotTaskSpaceTrackingData does not support zero feedforward "
                  "acceleration";

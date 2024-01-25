@@ -1,20 +1,20 @@
 trajectory_path: /home/yangwill/workspace/dairlib/examples/Cassie/saved_trajectories/
 gains_path: examples/franka/parameters/
 model_path: examples/franka/urdf/
-results_folder: /media/yangwill/backups/home/yangwill/Documents/research/projects/franka/logs/2024/01_23_24/parameter_study/
-processed_results_folder: /media/yangwill/backups/home/yangwill/Documents/research/projects/franka/logs/2024/01_23_24/parameter_study/data/
+results_folder: /media/yangwill/backups/home/yangwill/Documents/research/projects/franka/logs/2024/01_25_24/parameter_study/
+processed_results_folder: /media/yangwill/backups/home/yangwill/Documents/research/projects/franka/logs/2024/01_25_24/parameter_study/data/
 sim_cmd: bazel-bin/examples/franka/franka_sim
 osc_cmd: bazel-bin/examples/franka/franka_osc_controller
 c3_cmd: bazel-bin/examples/franka/franka_c3_controller
 fix_inertia_cmd: 'python3 -m pydrake.multibody.fix_inertia --in_place examples/franka/urdf/tray_parameter_sweep.sdf'
 
 nominal_c3_gain_filename: franka_c3_options_side_supports.yaml
-#nominal_model_filename: tray.sdf
-nominal_model_filename: plate_end_effector.urdf
+nominal_model_filename: tray.sdf
+#nominal_model_filename: plate_end_effector.urdf
 
 modified_c3_gain_filename: franka_c3_options_parameter_sweep.yaml
-#modified_model_filename: tray_parameter_sweep.sdf
-modified_model_filename: plate_end_effector_parameter_sweep.sdf
+modified_model_filename: tray_parameter_sweep.sdf
+#modified_model_filename: plate_end_effector_parameter_sweep.urdf
 
 parameter: ['mu_c3', 'mass_real', 'mu_real']
 

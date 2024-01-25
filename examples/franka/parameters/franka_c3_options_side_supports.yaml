@@ -8,7 +8,7 @@ projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 #contact_model: 'stewart_and_trinkle'
 contact_model: 'anitescu'
-warm_start: true
+warm_start: false
 use_predicted_x0: true
 solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
 

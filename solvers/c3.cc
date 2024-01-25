@@ -190,7 +190,7 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
                vector<VectorXd>& w) {
   vector<MatrixXd> Gv = G_;
 
-  for (int i = 0; i < N_ - 1; ++i) {
+  for (int i = 0; i < N_; ++i) {
     input_costs_[i]->UpdateCoefficients(2 * R_.at(i),
                                         -2 * R_.at(i) * u_sol_->at(i));
   }

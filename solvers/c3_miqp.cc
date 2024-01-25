@@ -7,22 +7,22 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::vector;
 
-C3MIQP::C3MIQP(const LCS &LCS, const CostMatrices &costs,
-               const vector<VectorXd> &xdesired, const C3Options &options)
+C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
+               const vector<VectorXd>& xdesired, const C3Options& options)
     : C3(LCS, costs, xdesired, options), env_(true) {
   // Create an environment
-//  env_.set("LogToConsole", "0");
+  //  env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
   env_.set("Threads", "0");
   env_.start();
 }
 
-VectorXd C3MIQP::SolveSingleProjection(const MatrixXd &U,
-                                       const VectorXd &delta_c,
-                                       const MatrixXd &E, const MatrixXd &F,
-                                       const MatrixXd &H, const VectorXd &c,
+VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
+                                       const VectorXd& delta_c,
+                                       const MatrixXd& E, const MatrixXd& F,
+                                       const MatrixXd& H, const VectorXd& c,
                                        const int admm_iteration,
-                                       const int &warm_start_index) {
+                                       const int& warm_start_index) {
   // set up linear term in cost
   VectorXd cost_lin = -2 * delta_c.transpose() * U;
 
@@ -38,12 +38,12 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd &U,
   Mcons2 << MM1, MM2, MM3;
 
   GRBModel model = GRBModel(env_);
-//  model.set(GRB_IntParam_LogToConsole, 1);
-//  model.set(GRB_StringParam_LogFile, "grb_debug");
-//  model.set("Cutoff", "0.001");
-//  model.set("FeasibilityTol", "0.00001");
-//  model.set("FeasibilityTol", "0.01");
-//  model.set("IterationLimit", "40");
+  //  model.set(GRB_IntParam_LogToConsole, 1);
+  //  model.set(GRB_StringParam_LogFile, "grb_debug");
+  //  model.set("Cutoff", "0.001");
+  //  model.set("FeasibilityTol", "0.00001");
+  //  model.set("FeasibilityTol", "0.01");
+  //  model.set("IterationLimit", "40");
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];
@@ -68,15 +68,12 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd &U,
 
   for (int i = 0; i < n_ + m_ + k_; i++) {
     obj.addTerm(cost_lin(i), delta_k[i]);
-
-    for (int j = 0; j < n_ + m_ + k_; j++) {
-      obj.addTerm(U(i, j), delta_k[i], delta_k[j]);
-    }
+    obj.addTerm(U(i, i), delta_k[i], delta_k[i]);
   }
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = 1000;  // big M variable
+  int M = 100000;  // big M variable
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
 
@@ -85,7 +82,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd &U,
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
-      coeff[j] = Mcons2.row(i)(j);
+      coeff[j] = Mcons2(i, j);
     }
 
     cexpr.addTerms(coeff, delta_k, n_ + m_ + k_);
@@ -96,7 +93,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd &U,
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
-      coeff2[j] = Mcons1.row(i)(j);
+      coeff2[j] = Mcons1(i, j);
     }
 
     cexpr2.addTerms(coeff2, delta_k, n_ + m_ + k_);

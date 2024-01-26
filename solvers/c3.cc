@@ -64,12 +64,12 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
       prog_(MathematicalProgram()),
       osqp_(OsqpSolver()) {
   if (warm_start_) {
-    warm_start_delta_.resize(options_.admm_iter);
-    warm_start_binary_.resize(options_.admm_iter);
-    warm_start_x_.resize(options_.admm_iter);
-    warm_start_lambda_.resize(options_.admm_iter);
-    warm_start_u_.resize(options_.admm_iter);
-    for (size_t iter = 0; iter < options_.admm_iter; ++iter) {
+    warm_start_delta_.resize(options_.admm_iter + 1);
+    warm_start_binary_.resize(options_.admm_iter + 1);
+    warm_start_x_.resize(options_.admm_iter + 1);
+    warm_start_lambda_.resize(options_.admm_iter + 1);
+    warm_start_u_.resize(options_.admm_iter + 1);
+    for (size_t iter = 0; iter < options_.admm_iter + 1; ++iter) {
       warm_start_delta_[iter].resize(N_);
       for (size_t i = 0; i < N_; i++) {
         warm_start_delta_[iter][i] = VectorXd::Zero(n_ + m_ + k_);
@@ -203,6 +203,8 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   for (int i = 0; i < N_; i++) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
+
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
   *z_sol_ = delta;
   z_sol_->at(0).segment(0, n_) = x0;

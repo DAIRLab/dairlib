@@ -62,8 +62,6 @@ void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
 
 PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
     const drake::systems::Context<double>& context) const {
-  const auto robot_output =
-      this->template EvalVectorInput<OutputVector>(context, state_port_);
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   VectorXd y0 = neutral_pose_;
@@ -89,7 +87,6 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
     *casted_traj = GeneratePose(context);
   } else {
     if (trajectory_input.value(0).isZero()) {
-      //      *casted_traj = GeneratePose(context);
     } else {
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);

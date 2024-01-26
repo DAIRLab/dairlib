@@ -250,7 +250,7 @@ void C3Controller::OutputC3Solution(
 
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = 0.01 + filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();

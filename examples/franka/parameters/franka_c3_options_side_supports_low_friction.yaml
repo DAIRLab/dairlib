@@ -14,7 +14,7 @@ solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
 
 # Workspace Limits
 world_x_limits: [0.45, 0.65]
-world_y_limits: [-0.15, 0.05]
+world_y_limits: [-0.2, 0.05]
 world_z_limits: [0.4, 0.7]
 workspace_margins: 0.05
 

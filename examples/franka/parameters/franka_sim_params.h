@@ -36,9 +36,9 @@ struct FrankaSimParams {
   Eigen::VectorXd left_support_orientation;
   Eigen::VectorXd right_support_orientation;
 
-  std::vector<double> world_x_limits;
-  std::vector<double> world_y_limits;
-  std::vector<double> world_z_limits;
+  std::vector<Eigen::VectorXd> world_x_limits;
+  std::vector<Eigen::VectorXd> world_y_limits;
+  std::vector<Eigen::VectorXd> world_z_limits;
 
   bool visualize_pose_trace;
   bool visualize_center_of_mass_plan;

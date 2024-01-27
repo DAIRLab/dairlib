@@ -277,7 +277,7 @@ LCSFactory::ComputeContactJacobian(
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
     auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
     // TODO(yangwill): think about if we want to push back both witness points
-    contact_points.push_back(p_WCb);
+    contact_points.push_back(p_WCa);
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,

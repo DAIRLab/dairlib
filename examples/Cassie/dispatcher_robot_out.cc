@@ -70,6 +70,7 @@ DEFINE_bool(test_with_ground_truth_state, false,
             "Get floating base from ground truth state for testing");
 DEFINE_bool(print_ekf_info, false, "Print ekf information to the terminal");
 DEFINE_bool(publish_contact, false, "publish contact info to LCM or no");
+DEFINE_bool(broadcast_contact, false, "publish contact over the network");
 
 // TODO(yminchen): delete the flag state_channel_name after finishing testing
 // cassie_state_estimator
@@ -412,6 +413,15 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(*robot_output_sender, *net_state_pub);
   }
 
+  if (FLAGS_broadcast_contact) {
+    auto net_contact_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<dairlib::lcmt_contact>(
+            "NETWORK_CASSIE_CONTACT_DISPATCHER", &lcm_network,
+            {TriggerType::kPeriodic}, FLAGS_fast_network_pub_rate));
+    builder.Connect(state_estimator->get_contact_output_port(),
+                    net_contact_pub->get_input_port());
+  }
+  
   // Create the diagram, simulator, and context.
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("dispatcher_robot_out"));

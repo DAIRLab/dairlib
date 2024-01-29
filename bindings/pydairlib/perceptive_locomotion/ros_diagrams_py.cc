@@ -25,7 +25,9 @@ PYBIND11_MODULE(ros_diagrams, m) {
           py::arg("params_yaml"), py::arg("points_topic"))
       .def("InitializeElevationMap", &CassieElevationMappingRosDiagram::InitializeElevationMap)
       .def("lcm", &CassieElevationMappingRosDiagram::lcm, py_rvp::reference_internal)
-      .def("plant", &CassieElevationMappingRosDiagram::plant, py_rvp::reference_internal);
+      .def("plant", &CassieElevationMappingRosDiagram::plant, py_rvp::reference_internal)
+      .def("get_input_port_state", &CassieElevationMappingRosDiagram::get_input_port_state, py_rvp::reference_internal)
+      .def("get_input_port_contact", &CassieElevationMappingRosDiagram::get_input_port_contact, py_rvp::reference_internal);
 
 };
 

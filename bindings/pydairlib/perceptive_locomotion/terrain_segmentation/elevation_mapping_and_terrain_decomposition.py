@@ -1,16 +1,13 @@
 import signal
-from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map
+from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
+    lcmt_contact
 
 from pydrake.systems.all import (
     Diagram,
     Context,
-    Simulator,
-    InputPort,
-    OutputPort,
     DiagramBuilder,
-    ConstantVectorSource,
-    ZeroOrderHold,
     LcmPublisherSystem,
+    LcmSubscriberSystem,
     TriggerType,
 )
 
@@ -61,10 +58,16 @@ def main():
         points_topic
     )
     plant = elevation_mapping.plant()
-
     terrain_segmentation = TerrainSegmentationSystem()
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
+
+    contact_subscriber = LcmSubscriberSystem.Make(
+        channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
+        lcm_type=lcmt_contact,
+        lcm=elevation_mapping.lcm(),
+        use_cpp_serializer=True
+    )
 
     foothold_publisher = LcmPublisherSystem.Make(
         channel="FOOTHOLDS_PROCESSED",
@@ -87,11 +90,16 @@ def main():
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(terrain_segmentation)
     builder.AddSystem(convex_decomposition)
+    builder.AddSystem(contact_subscriber)
     builder.AddSystem(foothold_publisher)
     builder.AddSystem(foothold_sender)
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher)
 
+    builder.Connect(
+        contact_subscriber.get_output_port(),
+        elevation_mapping.get_input_port_contact()
+    )
     builder.Connect(
         elevation_mapping.get_output_port(),
         terrain_segmentation.get_input_port()

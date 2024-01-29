@@ -34,20 +34,18 @@ drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
   map.convertToDefaultStartIndex();
   grid_map::Position pos;
   auto length = map.getSize();
-  map.getPosition(grid_map::Index(0,0), pos);
 
+  map.getPosition(grid_map::Index(0,0), pos);
   double xmax = pos.x();
   double ymax = pos.y();
-  map.getPosition(grid_map::Index(length.x() - 1, length.y() - 1), pos);
 
+  map.getPosition(grid_map::Index(length.x() - 1, length.y() - 1), pos);
   double xmin = pos.x();
   double ymin = pos.y();
-
 
   MatrixXd X = VectorXd::LinSpaced(length.x(), xmax, xmin).replicate(1, length.y());
   MatrixXd Y = RowVectorXd::LinSpaced(length.y(), ymax, ymin).replicate(length.x(), 1);
 
-  // For now visualize this as a point cloud since PlotSurface is being flaky
   for (const auto& layer : map.getLayers()) {
     if (layers_.empty() or
         std::find(layers_.begin(), layers_.end(), layer) != layers_.end()) {

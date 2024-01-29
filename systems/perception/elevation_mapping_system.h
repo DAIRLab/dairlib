@@ -95,7 +95,7 @@ struct elevation_mapping_params_io {
     params_out.map_length = grid_map::Length::Map(params_io.map_length.data());
     params_out.resolution = params_io.resolution;
 
-    for (const auto [k, v] : params_io.contact_frames) {
+    for (const auto& [k, v] : params_io.contact_frames) {
       DRAKE_DEMAND(params_io.contact_points.count(k) == 1);
       params_out.contacts[k] = {
           v, Eigen::Vector3d::Map(params_io.contact_points.at(k).data())
@@ -126,11 +126,18 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_covariance() const {
     return get_input_port(input_port_pose_covariance_);
   }
+  const drake::systems::InputPort<double>& get_input_port_contact() const {
+    DRAKE_DEMAND(not contacts_.empty());
+    return get_input_port(input_port_contact_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_map() const {
     return get_output_port(output_port_elevation_map_);
   }
   const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
     return get_output_port(output_port_grid_map_);
+  }
+  bool has_contacts() const {
+    return (not contacts_.empty());
   }
 
   void AddSensorPreProcessor(
@@ -157,6 +164,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::multibody::Body<double>& robot_base_;
   drake::systems::Context<double>* context_;
   std::map<std::string, sensor_pose_params> sensor_poses_;
+  std::map<std::string, std::pair<std::string, Eigen::Vector3d>> contacts_;
   const Eigen::Vector3d track_point_; // point in the base frame to pin the map
 
 
@@ -164,6 +172,8 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   std::map<std::string, drake::systems::InputPortIndex> input_ports_pcl_;
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_pose_covariance_;
+  drake::systems::InputPortIndex input_port_contact_{-1};
+
   drake::systems::OutputPortIndex output_port_elevation_map_;
   drake::systems::OutputPortIndex output_port_grid_map_;
 

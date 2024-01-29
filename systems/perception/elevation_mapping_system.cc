@@ -1,5 +1,5 @@
-
 //dairlib
+#include "dairlib/lcmt_contact.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
@@ -31,8 +31,9 @@ ElevationMappingSystem::ElevationMappingSystem(
     const MultibodyPlant<double>& plant,
     Context<double>* context,
     elevation_mapping_params params) :
-    plant_(plant), context_(context),
+    plant_(plant),
     robot_base_(plant.GetBodyByName(params.base_frame_name)),
+    context_(context),
     track_point_(params.track_point) {
 
   // configure sensors
@@ -50,6 +51,12 @@ ElevationMappingSystem::ElevationMappingSystem(
     );
   }
 
+  // configure contacts
+  for (const auto& [k, v]: params.contacts) {
+    DRAKE_DEMAND(plant_.HasBodyNamed(v.first));
+    contacts_.insert({k, v});
+  }
+
   // state input
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(
@@ -58,6 +65,12 @@ ElevationMappingSystem::ElevationMappingSystem(
 
   // covariance of the floating base pose in column major order
   input_port_pose_covariance_ = DeclareVectorInputPort("cov", 36).get_index();
+
+  if (not contacts_.empty()) {
+    input_port_contact_ = DeclareAbstractInputPort(
+        "lcmt_contact", drake::Value<lcmt_contact>()
+    ).get_index();
+  }
 
   // create the elevation map
   ElevationMap map;
@@ -174,8 +187,57 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   // 3. Apply prediction step
   motion_updater.update(map, base_pose, pose_covariance, timestamp);
 
-  // 4. cleanup the map
-  //  map.clear();
+  // 4. If contact information is provided, update the map using contact points
+  //    as a reference
+  double map_offset = 0;
+
+  if (has_contacts()) {
+    const auto& contact_msg = EvalAbstractInput(
+        context, input_port_contact_)->get_value<lcmt_contact>();
+    int n_valid_contacts = 0;
+
+    for (int i = 0; i < contact_msg.num_contacts; i++) {
+      if (contact_msg.contact[i]) {
+        const auto& grid_map = map.getRawGridMap();
+
+        const auto& contact = contacts_.at(contact_msg.contact_names[i]);
+        const Vector3d stance_pos = plant_.EvalBodyPoseInWorld(
+            *context_,
+            plant_.GetBodyByName(contact.first)
+        ) * contact.second;
+        try {
+
+          double sub_map_length = 4.0 * grid_map.getResolution();
+          grid_map::Position center_sub_map = stance_pos.head<2>();
+          grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
+          bool success;
+
+          // Getting the submap of where the foot location is
+          auto sub_map = grid_map.getSubmap(
+              center_sub_map, length_sub_map, success
+          );
+
+          if (success) {
+            // Retrieving the data and making the median of the values
+            const auto& mat = sub_map.get("elevation");
+            std::vector<double> zvals(mat.data(), mat.data() + mat.rows() * mat.cols());
+            std::sort(zvals.begin(), zvals.end());
+            int n = zvals.size() / 2;
+            double map_z = (zvals.size() % 2 == 0) ?
+                0.5 * (zvals.at(n-1) + zvals.at(n)) : zvals.at(n);
+
+            map_offset += stance_pos(2) - map_z;
+            ++n_valid_contacts;
+          }
+        } catch (std::out_of_range& ex) {
+          drake::log()->warn("{}", ex.what());
+        }
+      }
+    }
+    map_offset = (n_valid_contacts > 0) ? map_offset / n_valid_contacts : 0;
+  }
+
+
 
   // 5. add the point clouds to the map
   for (const auto& [name, cloud] : new_pointclouds) {
@@ -184,7 +246,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     PointCloudType::Ptr pc_processed(new PointCloudType);
 
     // TODO (@Brian-Acosta) does it make sense to propogate the base variance
-    //  when we add non-base parent frames?
+    //  if we add non-base parent frames?
     const auto X_WP = plant_.EvalBodyPoseInWorld(
         *context_,
         plant_.GetBodyByName(sensor_poses_.at(name).sensor_parent_body_)

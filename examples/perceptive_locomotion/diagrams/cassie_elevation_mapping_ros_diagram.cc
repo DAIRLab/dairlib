@@ -81,6 +81,12 @@ CassieElevationMappingRosDiagram::CassieElevationMappingRosDiagram(
       state_receiver->get_input_port(), "lcmt_robot_output"
   );
 
+  if (elevation_mapping_system_->has_contacts()) {
+    input_port_contact_ = builder.ExportInput(
+        elevation_mapping_system_->get_input_port_contact(), "lcmt_contact"
+    );
+  }
+
   output_port_grid_map_ = builder.ExportOutput(
       elevation_mapping_system_->get_output_port_grid_map(),
       "elevation_grid_map"

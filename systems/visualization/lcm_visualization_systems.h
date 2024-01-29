@@ -104,13 +104,6 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(force_trajectory_input_port_);
   }
 
-  void SetLineColor(drake::geometry::Rgba rgba) { rgba_ = rgba; }
-
-  void SetNumSamples(int N) {
-    DRAKE_DEMAND(N > 1);
-    N_ = N;
-  }
-
  private:
   drake::systems::EventStatus DrawForce(
       const drake::systems::Context<double>& context,
@@ -134,8 +127,8 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   const std::string actor_trajectory_name_;
   const std::string force_trajectory_name_;
   const std::string lcs_force_trajectory_name_;
-  drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
-  int N_ = 5;
+  drake::geometry::Rgba actor_force_color_ = drake::geometry::Rgba(1, 0, 1, 1.0);
+  drake::geometry::Rgba contact_force_color_ = drake::geometry::Rgba(0.949, 0.757, 0.0, 1.0);
   const double radius_ = 0.002;
   const double newtons_per_meter_ = 40;
 };
@@ -176,7 +169,6 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
       drake::geometry::Cylinder(0.005, 0.1);
   const drake::geometry::Cylinder cylinder_for_ee_ =
       drake::geometry::Cylinder(0.0025, 0.05);
-  drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
   const std::string c3_state_path_ = "c3_state";
   const std::string c3_target_tray_path_ = "c3_state/c3_target_tray";
   const std::string c3_actual_tray_path_ = "c3_state/c3_actual_tray";

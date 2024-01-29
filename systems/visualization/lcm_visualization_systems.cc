@@ -183,9 +183,9 @@ LcmForceDrawer::LcmForceDrawer(
   actor_last_update_time_index_ = this->DeclareDiscreteState(1);
   forces_last_update_time_index_ = this->DeclareDiscreteState(1);
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
-                      {0.6, 0.0, 0, 1});
+                      actor_force_color_);
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
-                      {0.6, 0.0, 0, 1});
+                      actor_force_color_);
   meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
 
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
@@ -295,9 +295,9 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     if (force_norm >= 0.5) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
-                            {0.004, 0.122, 0.357, 1});
+                            contact_force_color_);
         meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_,
-                            {0.004, 0.122, 0.357, 1});
+                            contact_force_color_);
       }
 
       const VectorXd pose = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(

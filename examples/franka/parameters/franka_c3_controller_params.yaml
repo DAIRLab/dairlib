@@ -29,7 +29,7 @@ include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
 
-near_target_threshold: 0.06
+near_target_threshold: 0.05
 first_target: [[0.45, 0.0, 0.5],
                [0.45, 0, 0.485],
                [0.55, -0.1, 0.49]]

@@ -21,7 +21,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0.0"/>
       <material name="silver">
-        <color rgba="0.75 0.75 0.75 0.99"/>
+        <color rgba="0.75 0.75 0.75 1.0"/>
       </material>
       <geometry>
         <cylinder radius="0.0725" length="0.008"/>

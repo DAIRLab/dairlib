@@ -183,9 +183,9 @@ LcmForceDrawer::LcmForceDrawer(
   actor_last_update_time_index_ = this->DeclareDiscreteState(1);
   forces_last_update_time_index_ = this->DeclareDiscreteState(1);
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
-                      {0, 1, 0, 1});
+                      {0.6, 0.0, 0, 1});
   meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
-                      {0, 1, 0, 1});
+                      {0.6, 0.0, 0, 1});
   meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
 
   DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
@@ -226,13 +226,13 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
   if (actor_trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
         actor_trajectory_block.time_vector, actor_trajectory_block.datapoints);
-    pose = trajectory.value(actor_trajectory_block.time_vector[0]);
+    pose = trajectory.value(robot_time);
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
         actor_trajectory_block.time_vector,
         actor_trajectory_block.datapoints.topRows(3),
         actor_trajectory_block.datapoints.bottomRows(3));
-    pose = trajectory.value(actor_trajectory_block.time_vector[0]);
+    pose = trajectory.value(robot_time);
   }
 
   auto force = force_trajectory.value(robot_time);
@@ -295,9 +295,9 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     if (force_norm >= 0.5) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
-                            {1, 0, 0, 1});
+                            {0.004, 0.122, 0.357, 1});
         meshcat_->SetObject(force_path_root + "arrow/head", arrowhead_,
-                            {1, 0, 0, 1});
+                            {0.004, 0.122, 0.357, 1});
       }
 
       const VectorXd pose = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
@@ -363,12 +363,12 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
                       {0, 1, 0, 1});
   meshcat_->SetObject(c3_actual_tray_path_ + "/z-axis", cylinder_for_tray_,
                       {0, 0, 1, 1});
-  meshcat_->SetObject(c3_target_ee_path_ + "/x-axis", cylinder_for_ee_,
-                      {1, 0, 0, 1});
-  meshcat_->SetObject(c3_target_ee_path_ + "/y-axis", cylinder_for_ee_,
-                      {0, 1, 0, 1});
-  meshcat_->SetObject(c3_target_ee_path_ + "/z-axis", cylinder_for_ee_,
-                      {0, 0, 1, 1});
+//  meshcat_->SetObject(c3_target_ee_path_ + "/x-axis", cylinder_for_ee_,
+//                      {1, 0, 0, 1});
+//  meshcat_->SetObject(c3_target_ee_path_ + "/y-axis", cylinder_for_ee_,
+//                      {0, 1, 0, 1});
+//  meshcat_->SetObject(c3_target_ee_path_ + "/z-axis", cylinder_for_ee_,
+//                      {0, 0, 1, 1});
 //  meshcat_->SetObject(c3_actual_ee_path_ + "/x-axis", cylinder_for_ee_,
 //                      {1, 0, 0, 1});
 //  meshcat_->SetObject(c3_actual_ee_path_ + "/y-axis", cylinder_for_ee_,
@@ -377,31 +377,31 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 //                      {0, 0, 1, 1});
   auto x_axis_transform =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitY()),
-                      Vector3d{0.075, 0.0, 0.0});
+                      Vector3d{0.05, 0.0, 0.0});
   auto y_axis_transform =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitX()),
-                      Vector3d{0.0, 0.075, 0.0});
+                      Vector3d{0.0, 0.05, 0.0});
   auto z_axis_transform =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
-                      Vector3d{0.0, 0.0, 0.075});
+                      Vector3d{0.0, 0.0, 0.05});
   auto x_axis_transform_ee =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitY()),
-                      0.5 * Vector3d{0.075, 0.0, 0.0});
+                      0.5 * Vector3d{0.05, 0.0, 0.0});
   auto y_axis_transform_ee =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitX()),
-                      0.5 * Vector3d{0.0, 0.075, 0.0});
+                      0.5 * Vector3d{0.0, 0.05, 0.0});
   auto z_axis_transform_ee =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
-                      0.5 * Vector3d{0.0, 0.0, 0.075});
+                      0.5 * Vector3d{0.0, 0.0, 0.05});
   meshcat_->SetTransform(c3_target_tray_path_ + "/x-axis", x_axis_transform);
   meshcat_->SetTransform(c3_target_tray_path_ + "/y-axis", y_axis_transform);
   meshcat_->SetTransform(c3_target_tray_path_ + "/z-axis", z_axis_transform);
   meshcat_->SetTransform(c3_actual_tray_path_ + "/x-axis", x_axis_transform);
   meshcat_->SetTransform(c3_actual_tray_path_ + "/y-axis", y_axis_transform);
   meshcat_->SetTransform(c3_actual_tray_path_ + "/z-axis", z_axis_transform);
-  meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee);
-  meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee);
-  meshcat_->SetTransform(c3_target_ee_path_ + "/z-axis", z_axis_transform_ee);
+//  meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee);
+//  meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee);
+//  meshcat_->SetTransform(c3_target_ee_path_ + "/z-axis", z_axis_transform_ee);
 //  meshcat_->SetTransform(c3_actual_ee_path_ + "/x-axis", x_axis_transform_ee);
 //  meshcat_->SetTransform(c3_actual_ee_path_ + "/y-axis", y_axis_transform_ee);
 //  meshcat_->SetTransform(c3_actual_ee_path_ + "/z-axis", z_axis_transform_ee);
@@ -450,10 +450,10 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
                      c3_actual->state[9]}));
   }
   if (draw_ee_) {
-    meshcat_->SetTransform(
-        c3_target_ee_path_,
-        RigidTransformd(Vector3d{c3_target->state[0], c3_target->state[1],
-                                 c3_target->state[2]}));
+//    meshcat_->SetTransform(
+//        c3_target_ee_path_,
+//        RigidTransformd(Vector3d{c3_target->state[0], c3_target->state[1],
+//                                 c3_target->state[2]}));
     //    meshcat_->SetTransform(
     //        c3_actual_ee_path_,
     //        RigidTransformd(Vector3d{c3_actual->state[0], c3_actual->state[1],

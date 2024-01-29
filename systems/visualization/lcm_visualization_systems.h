@@ -173,9 +173,9 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex last_update_time_index_;
 
   const drake::geometry::Cylinder cylinder_for_tray_ =
-      drake::geometry::Cylinder(0.005, 0.15);
+      drake::geometry::Cylinder(0.005, 0.1);
   const drake::geometry::Cylinder cylinder_for_ee_ =
-      drake::geometry::Cylinder(0.0025, 0.075);
+      drake::geometry::Cylinder(0.0025, 0.05);
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
   const std::string c3_state_path_ = "c3_state";
   const std::string c3_target_tray_path_ = "c3_state/c3_target_tray";

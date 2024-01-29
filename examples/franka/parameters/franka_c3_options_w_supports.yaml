@@ -8,9 +8,9 @@ projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 #contact_model: 'stewart_and_trinkle'
 contact_model: 'anitescu'
-warm_start: false
+warm_start: true
 use_predicted_x0: true
-solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
+solve_time_filter_alpha: 0.95
 
 # Workspace Limits
 world_x_limits: [0.4, 0.6]
@@ -51,9 +51,10 @@ g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 g_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 g_u: [1, 1, 1]
 
+# Penalty on matching the QP variables
 u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 u_gamma: [1, 1, 1, 1, 1, 1, 1]
 u_lambda_n: [1, 1, 1, 1, 1, 1, 1]
 u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 u_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
-u_u: [15, 15, 15]
+u_u: [30, 30, 30]

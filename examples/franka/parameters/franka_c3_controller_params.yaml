@@ -13,23 +13,23 @@ left_support_model: examples/franka/urdf/left_support_point_contact.urdf
 right_support_model: examples/franka/urdf/left_support_point_contact.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
-#left_support_position: [0.8, 0.15, 0.455]
-#right_support_position: [0.8, -0.15, 0.455]
-#left_support_orientation: [0.0, 0.0, 0.0]
-#right_support_orientation: [0.0, 0.0, 0.0]
-left_support_position: [0.4, 0.25, 0.450]
-right_support_position: [0.7, 0.25, 0.450]
-left_support_orientation: [0.0, 0.0, 1.57]
-right_support_orientation: [0.0, 0.0, 1.57]
+left_support_position: [0.8, 0.15, 0.447]
+right_support_position: [0.8, -0.15, 0.447]
+left_support_orientation: [0.0, 0.0, 0.0]
+right_support_orientation: [0.0, 0.0, 0.0]
+#left_support_position: [0.4, 0.25, 0.450]
+#right_support_position: [0.7, 0.25, 0.450]
+#left_support_orientation: [0.0, 0.0, 1.57]
+#right_support_orientation: [0.0, 0.0, 1.57]
 end_effector_thickness: 0.016
 
-scene_index: 2
+scene_index: 1
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
 
-near_target_threshold: 0.075
+near_target_threshold: 0.06
 first_target: [[0.45, 0.0, 0.5],
                [0.45, 0, 0.485],
                [0.55, -0.1, 0.49]]
@@ -37,7 +37,7 @@ second_target: [[0.45, 0.0, 0.5],
                 [0.45, 0, 0.6],
                 [0.55, -0.1, 0.6]]
 third_target: [[0.45, 0.0, 0.5],
-               [0.7, 0.00, 0.49],
+               [0.7, 0.00, 0.485],
                [0.55, 0.15, 0.49]]
 x_scale: 0.1
 y_scale: 0.1

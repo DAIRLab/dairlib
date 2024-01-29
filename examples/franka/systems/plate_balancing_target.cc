@@ -68,7 +68,7 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_value(within_target_index_)[0] = 1;
     }
     if (within_target == 1 &&
-        (context.get_time() - time_entered_target) > 0.1) {
+        (context.get_time() - time_entered_target) > 0.5) {
       discrete_state->get_mutable_value(within_target_index_)[0] = 0;
       discrete_state->get_mutable_value(sequence_index_)[0] = 1;
     }

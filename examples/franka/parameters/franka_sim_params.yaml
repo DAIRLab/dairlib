@@ -12,7 +12,7 @@ tray_publish_rate: 10
 visualizer_publish_rate: 10
 actuator_delay: 0.000
 
-scene_index: 2
+scene_index: 1
 visualize_drake_sim: false
 publish_efforts: true
 
@@ -24,15 +24,15 @@ camera_target: [[0.5, 0, 0.5],
                 [0.5, 0, 0.55]]
 
 tool_attachment_frame: [0, 0, 0.107]
-#left_support_position: [0.8, 0.15, 0.455]
-#right_support_position: [0.8, -0.15, 0.455]
-#left_support_orientation: [0.0, 0.0, 0.0]
-#right_support_orientation: [0.0, 0.0, 0.0]
+left_support_position: [0.8, 0.15, 0.447]
+right_support_position: [0.8, -0.15, 0.447]
+left_support_orientation: [0.0, 0.0, 0.0]
+right_support_orientation: [0.0, 0.0, 0.0]
 
-left_support_position: [0.4, 0.25, 0.45]
-right_support_position: [0.7, 0.25, 0.45]
-left_support_orientation: [0.0, 0.0, 1.57]
-right_support_orientation: [0.0, 0.0, 1.57]
+#left_support_position: [0.4, 0.25, 0.45]
+#right_support_position: [0.7, 0.25, 0.45]
+#left_support_orientation: [0.0, 0.0, 1.57]
+#right_support_orientation: [0.0, 0.0, 1.57]
 
 # Workspace Limits
 world_x_limits: [[0.4, 0.6],

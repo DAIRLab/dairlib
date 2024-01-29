@@ -24,6 +24,7 @@ bool test_passed () {
           "r_situational_awareness_camera_link",
           drake::math::RigidTransformd{},
       }}, // sensors
+      {}, // No contacts
       {
         drake::systems::TriggerType::kForced,
         0

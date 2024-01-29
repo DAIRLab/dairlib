@@ -13,3 +13,5 @@ track_point: [0.5, 0, 0]
 map_update_rate_hz: 30.0
 map_length: [2.0, 2.0]
 resolution: 0.025
+contact_frames: { left: "toe_left", right: "toe_right" }
+contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}

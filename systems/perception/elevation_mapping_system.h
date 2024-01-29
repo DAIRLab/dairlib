@@ -29,6 +29,7 @@ struct elevation_map_update_params {
 
 struct elevation_mapping_params {
   std::vector<sensor_pose_params> sensor_poses;
+  std::map<std::string, std::pair<std::string, Eigen::Vector3d>> contacts;
   elevation_map_update_params update_params;
   std::string base_frame_name;
   Eigen::Vector3d track_point;
@@ -38,6 +39,8 @@ struct elevation_mapping_params {
 
 struct elevation_mapping_params_io {
   std::vector<std::map<std::string, std::string>> sensor_poses;
+  std::map<std::string, std::string> contact_frames;
+  std::map<std::string, std::vector<double>> contact_points;
   std::string map_update_trigger_type;
   std::string base_frame_name;
   std::vector<double> track_point;
@@ -48,6 +51,8 @@ struct elevation_mapping_params_io {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(sensor_poses));
+    a->Visit(DRAKE_NVP(contact_frames));
+    a->Visit(DRAKE_NVP(contact_points));
     a->Visit(DRAKE_NVP(map_update_trigger_type));
     a->Visit(DRAKE_NVP(base_frame_name));
     a->Visit(DRAKE_NVP(track_point));
@@ -89,6 +94,14 @@ struct elevation_mapping_params_io {
     params_out.base_frame_name = params_io.base_frame_name;
     params_out.map_length = grid_map::Length::Map(params_io.map_length.data());
     params_out.resolution = params_io.resolution;
+
+    for (const auto [k, v] : params_io.contact_frames) {
+      DRAKE_DEMAND(params_io.contact_points.count(k) == 1);
+      params_out.contacts[k] = {
+          v, Eigen::Vector3d::Map(params_io.contact_points.at(k).data())
+      };
+    }
+
     return params_out;
   };
 };

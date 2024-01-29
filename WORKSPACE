@@ -78,7 +78,7 @@ signal_scope_repository(name = "signal_scope")
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "5e815dfc83c6fd7ab1fea7f9fa45985c60dd5030deeac5d8c03f247524f8a992"
+ELEVATION_MAPPING_CHECKSUM = "fc526a61dcf19dd6b03d3d4202cbc13103f2262a739ccdf430acf87d47fa7b8c"
 
 http_archive(
     name = "elevation_mapping",

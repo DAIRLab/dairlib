@@ -226,8 +226,10 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
             double map_z = (zvals.size() % 2 == 0) ?
                 0.5 * (zvals.at(n-1) + zvals.at(n)) : zvals.at(n);
 
-            map_offset += stance_pos(2) - map_z;
-            ++n_valid_contacts;
+            if (not std::isnan(map_z)) {
+              map_offset += stance_pos(2) - map_z;
+              ++n_valid_contacts;
+            }
           }
         } catch (std::out_of_range& ex) {
           drake::log()->warn("{}", ex.what());
@@ -235,6 +237,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
       }
     }
     map_offset = (n_valid_contacts > 0) ? map_offset / n_valid_contacts : 0;
+    map.shift_map_z(map_offset);
   }
 
 

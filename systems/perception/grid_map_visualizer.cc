@@ -31,6 +31,10 @@ drake::systems::EventStatus GridMapVisualizer::UpdateVisualization(
 
   auto map = EvalAbstractInput(context, 0)->get_value<GridMap>();
 
+  if (map.getSize()(0) <= 0 or map.getSize()(1) <= 0) {
+    return EventStatus::Succeeded();
+  }
+
   map.convertToDefaultStartIndex();
   grid_map::Position pos;
   auto length = map.getSize();

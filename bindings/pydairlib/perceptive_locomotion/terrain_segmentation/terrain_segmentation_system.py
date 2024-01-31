@@ -34,6 +34,7 @@ class TerrainSegmentationSystem(LeafSystem):
                         "raw_safety_score",
                         "safety_score",
                         "segmentation",
+                        "interpolated",
                         "segmented_elevation"
                     ]
                 )
@@ -45,12 +46,13 @@ class TerrainSegmentationSystem(LeafSystem):
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )
-        self.safety_hysteresis = 0.5
+        self.safety_hysteresis = 0.25
 
         self.kernel_size = 0.17
 
         # gaussian blur in meters
-        self.laplacian_blur = self.kernel_size / 2
+        self.variance_blur = self.kernel_size / 2
+        self.laplacian_blur = self.kernel_size / 4
         self.safe_inf_norm = 0.05  # max 5 cm difference
 
     def get_raw_safety_score(self, elevation: np.ndarray,
@@ -69,18 +71,18 @@ class TerrainSegmentationSystem(LeafSystem):
             (0, 0),
             fx=2.0 * resolution / self.kernel_size,
             fy=2.0 * resolution / self.kernel_size,
-            interpolation=cv2.INTER_CUBIC
+            interpolation=cv2.INTER_LINEAR
         )
 
         up_sampled = cv2.resize(
             down_sampled,
             elevation_inpainted.shape,
-            interpolation=cv2.INTER_CUBIC
+            interpolation=cv2.INTER_LINEAR
         )
 
         stddev = gaussian_filter(
             np.abs(elevation_inpainted - up_sampled),
-            self.laplacian_blur
+            self.variance_blur
         )
 
         dilation_kernel_size_int = int(self.kernel_size / resolution)
@@ -96,14 +98,12 @@ class TerrainSegmentationSystem(LeafSystem):
         )
 
         curvature = gaussian_laplace(
-            elevation_inpainted, sigma=int(
-                self.laplacian_blur / resolution +
-                0.5
-            )
+            elevation_inpainted,
+            sigma=int(self.laplacian_blur / resolution + 0.5)
         )
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
 
-        second_order_safety_score = np.exp((-4.0 / resolution) * below_edges)
+        second_order_safety_score = np.exp((-8.0 / resolution) * below_edges)
 
         second_order_safety_score = np.minimum(
             second_order_safety_score,
@@ -111,10 +111,10 @@ class TerrainSegmentationSystem(LeafSystem):
         )
 
         # treat safety scores like independent probabilities
-        raw_safety = var_safety_score
+        raw_safety = var_safety_score * second_order_safety_score
         raw_safety[np.isnan(elevation)] = 0
 
-        return raw_safety
+        return raw_safety, up_sampled
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
@@ -148,11 +148,12 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
-        raw_safety_score = self.get_raw_safety_score(
+        raw_safety_score, upsampled = self.get_raw_safety_score(
             elevation_map['elevation'],
             elevation_map['elevation_inpainted'],
             elevation_map.getResolution()
         )
+        segmented_map['interpolated'][:] = upsampled
 
         segmented_map["raw_safety_score"][:] = raw_safety_score
         final_safety_score = np.minimum(

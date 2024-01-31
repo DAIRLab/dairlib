@@ -1,4 +1,4 @@
-from dairlib import lcmt_foothold_set, lcmt_robot_output
+from dairlib import lcmt_foothold_set, lcmt_robot_output, lcmt_grid_map
 
 from pydrake.lcm import DrakeLcm
 
@@ -43,6 +43,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
 
 
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+from pydairlib.systems.perception import GridMapSender
 
 import numpy as np
 
@@ -53,6 +54,10 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
+
+    sim_params.elevation_mapping_params_yaml = \
+        ('bindings/pydairlib/perceptive_locomotion/params'
+         '/elevation_mapping_params_sim.yaml')
     sim_params.visualize = True
     sim_params.simulate_perception = True
 
@@ -73,6 +78,16 @@ def main():
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
     lcm = DrakeLcm()
+
+    grid_map_sender = GridMapSender()
+    grid_map_publisher = LcmPublisherSystem.Make(
+        channel="CASSIE_ELEVATION_MAP",
+        lcm_type=lcmt_grid_map,
+        lcm=lcm,
+        publish_triggers={TriggerType.kForced},
+        publish_period=0.0,
+        use_cpp_serializer=True
+    )
     foothold_publisher = LcmPublisherSystem.Make(
         channel="FOOTHOLDS_PROCESSED",
         lcm_type=lcmt_foothold_set,
@@ -98,6 +113,8 @@ def main():
     builder.AddSystem(foothold_sender)
     builder.AddSystem(foothold_publisher)
     builder.AddSystem(state_publisher)
+    builder.AddSystem(grid_map_sender)
+    builder.AddSystem(grid_map_publisher)
 
     builder.Connect(
         terrain_segmentation.get_output_port(),
@@ -146,6 +163,14 @@ def main():
     builder.Connect(
         sim_env.get_output_port_by_name("state"),
         controller.get_input_port_by_name("robot_state")
+    )
+    builder.Connect(
+        terrain_segmentation.get_output_port(),
+        grid_map_sender.get_input_port()
+    )
+    builder.Connect(
+        grid_map_sender.get_output_port(),
+        grid_map_publisher.get_input_port()
     )
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(diagram, '../full_stack_miqp_simulation')

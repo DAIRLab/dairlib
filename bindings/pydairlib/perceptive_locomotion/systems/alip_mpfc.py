@@ -243,7 +243,7 @@ class AlipMPFC(LeafSystem):
     def make_state_constraints(self):
         state_bound = np.array(
             [
-                0.5,
+                0.6,
                 0.4,
                 2.0 * self.params.height * self.params.mass,
                 1.0 * self.params.height * self.params.mass
@@ -369,7 +369,7 @@ class AlipMPFC(LeafSystem):
         # solve the MP
         result = self.solver.Solve(self.prog)
         if not result.is_success():
-            print(f'sovled failed with code {result.get_solution_result}')
+            print(f'sovled failed with code {result.get_solution_result()}')
 
         # set the result
         u = result.GetSolution(self.pp[1])

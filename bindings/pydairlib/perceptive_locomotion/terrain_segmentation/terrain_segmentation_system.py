@@ -51,6 +51,12 @@ class TerrainSegmentationSystem(LeafSystem):
         self.safety_hysteresis = 0.6
 
     def get_raw_safety_score(self, elevation: np.ndarray, resolution: float):
+        # TODO (@Brian-Acosta): Notes for improvement
+        # - use infill before applying filters, then remove nans from segmentation after
+        # - make kernels approximately foot-sized
+        # - how to capture roughness ?
+        # (maybe something like l-infinity norm between points and a quadratic fit)
+
         # only use a small amount of blur for first order safety criterion
         blurred_narrow = gaussian_filter(
             elevation / resolution, 2.0, truncate=3

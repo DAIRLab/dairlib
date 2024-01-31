@@ -131,7 +131,7 @@ def main():
         lcm_log=log,
         lcm_channels={'CASSIE_ELEVATION_MAP': lcmt_grid_map},
         start_time=0,
-        duration=10,
+        duration=-1,
         data_processing_callback=process_grid_maps
     )
 
@@ -144,7 +144,7 @@ def main():
             context.get_mutable_state()
         )
         diagram.ForcedPublish(context)
-        sleep(0.01)
+        sleep(0.04)
 
 
 if __name__ == '__main__':

@@ -8,7 +8,8 @@ from pydrake.systems.all import (
 
 from grid_map import GridMap, InpaintWithMinimumValues
 
-from scipy.ndimage import sobel, gaussian_filter
+from scipy.ndimage import (sobel, gaussian_filter, gaussian_laplace,
+                           gaussian_gradient_magnitude)
 from scipy.signal import convolve2d
 import numpy as np
 import cv2
@@ -32,7 +33,8 @@ class TerrainSegmentationSystem(LeafSystem):
                         "elevation",
                         "raw_safety_score",
                         "safety_score",
-                        "segmentation"
+                        "segmentation",
+                        "segmented_elevation"
                     ]
                 )
             )
@@ -43,37 +45,76 @@ class TerrainSegmentationSystem(LeafSystem):
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )
-        self.laplacian_kernel = np.array(
-            [[1.0, 1.0, 1.0],
-             [1.0, -8.0, 1.0],
-             [1.0, 1.0, 1.0]]
-        )
-        self.safety_hysteresis = 0.6
+        self.safety_hysteresis = 0.5
 
-    def get_raw_safety_score(self, elevation: np.ndarray, resolution: float):
+        self.kernel_size = 0.17
+
+        # gaussian blur in meters
+        self.laplacian_blur = self.kernel_size / 2
+        self.safe_inf_norm = 0.05  # max 5 cm difference
+
+    def get_raw_safety_score(self, elevation: np.ndarray,
+                             elevation_inpainted,
+                             resolution: float):
         # TODO (@Brian-Acosta): Notes for improvement
         # - use infill before applying filters, then remove nans from segmentation after
         # - make kernels approximately foot-sized
         # - how to capture roughness ?
         # (maybe something like l-infinity norm between points and a quadratic fit)
 
-        # only use a small amount of blur for first order safety criterion
-        blurred_narrow = gaussian_filter(
-            elevation / resolution, 0.1, truncate=3
-        )
-        image_gradient_magnitude = edges(blurred_narrow)
-        first_order_safety_score = np.exp(-image_gradient_magnitude)
 
-        # use a larger blur for second order safety criterion
-        blurred_wide = gaussian_filter(
-            elevation / resolution, 0.1, truncate=3
+
+        down_sampled = cv2.resize(
+            elevation_inpainted,
+            (0, 0),
+            fx=2.0 * resolution / self.kernel_size,
+            fy=2.0 * resolution / self.kernel_size,
+            interpolation=cv2.INTER_CUBIC
         )
-        curvature = convolve2d(blurred_wide, self.laplacian_kernel, mode='same')
+
+        up_sampled = cv2.resize(
+            down_sampled,
+            elevation_inpainted.shape,
+            interpolation=cv2.INTER_CUBIC
+        )
+
+        stddev = gaussian_filter(
+            np.abs(elevation_inpainted - up_sampled),
+            self.laplacian_blur
+        )
+
+        dilation_kernel_size_int = int(self.kernel_size / resolution)
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE,
+            (dilation_kernel_size_int, dilation_kernel_size_int)
+        )
+        stddev = cv2.dilate(stddev, kernel)
+
+        var_safety_score = np.minimum(
+            np.ones_like(stddev),
+            np.exp(25 * (self.safe_inf_norm - stddev))
+        )
+
+        curvature = gaussian_laplace(
+            elevation_inpainted, sigma=int(
+                self.laplacian_blur / resolution +
+                0.5
+            )
+        )
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
-        second_order_safety_score = np.exp(-3.0 * below_edges)
+
+        second_order_safety_score = np.exp((-4.0 / resolution) * below_edges)
+
+        second_order_safety_score = np.minimum(
+            second_order_safety_score,
+            np.ones_like(second_order_safety_score)
+        )
 
         # treat safety scores like independent probabilities
-        return second_order_safety_score * first_order_safety_score
+        raw_safety = var_safety_score
+        raw_safety[np.isnan(elevation)] = 0
+
+        return raw_safety
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
@@ -81,6 +122,10 @@ class TerrainSegmentationSystem(LeafSystem):
             context, self.input_port_grid_map
         ).get_value()
         elevation_map.convertToDefaultStartIndex()
+
+        InpaintWithMinimumValues(
+            elevation_map, "elevation", "elevation_inpainted"
+        )
 
         # get previous segmentation
         segmented_map = state.get_mutable_abstract_state(
@@ -104,18 +149,29 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
         raw_safety_score = self.get_raw_safety_score(
-            elevation_map['elevation'], elevation_map.getResolution()
+            elevation_map['elevation'],
+            elevation_map['elevation_inpainted'],
+            elevation_map.getResolution()
         )
 
         segmented_map["raw_safety_score"][:] = raw_safety_score
-        segmented_map['safety_score'][:] =\
+        final_safety_score = np.minimum(
+            np.ones_like(raw_safety_score),
             raw_safety_score + self.safety_hysteresis * prev_segmentation
+        )
+        segmented_map['safety_score'][:] = final_safety_score
 
-        safe = (segmented_map['safety_score'] > 0.7).astype(float)
+        safe = (segmented_map['safety_score'] > 0.8).astype(float)
+
 
         # clean up small holes in the safe regions
-        kernel = np.ones((5, 5), np.uint8)
+        kernel = np.ones((3, 3), np.uint8)
         safe = cv2.morphologyEx(safe, cv2.MORPH_CLOSE, kernel)
         safe = cv2.morphologyEx(safe, cv2.MORPH_OPEN, kernel)
 
         segmented_map['segmentation'][:] = safe
+
+        safe_elevation = elevation_map['elevation']
+        safe_elevation[~(safe > 0)] = np.nan
+
+        segmented_map['segmented_elevation'][:] = safe_elevation

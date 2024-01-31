@@ -59,14 +59,14 @@ class TerrainSegmentationSystem(LeafSystem):
 
         # only use a small amount of blur for first order safety criterion
         blurred_narrow = gaussian_filter(
-            elevation / resolution, 2.0, truncate=3
+            elevation / resolution, 0.1, truncate=3
         )
         image_gradient_magnitude = edges(blurred_narrow)
         first_order_safety_score = np.exp(-image_gradient_magnitude)
 
         # use a larger blur for second order safety criterion
         blurred_wide = gaussian_filter(
-            elevation / resolution, 3.0, truncate=3
+            elevation / resolution, 0.1, truncate=3
         )
         curvature = convolve2d(blurred_wide, self.laplacian_kernel, mode='same')
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
@@ -77,9 +77,9 @@ class TerrainSegmentationSystem(LeafSystem):
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
-        elevation_map = self.get_input_port(
-            self.input_port_grid_map
-        ).Eval(context)
+        elevation_map = self.EvalAbstractInput(
+            context, self.input_port_grid_map
+        ).get_value()
         elevation_map.convertToDefaultStartIndex()
 
         # get previous segmentation

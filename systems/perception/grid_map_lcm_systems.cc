@@ -67,22 +67,26 @@ GridMap LcmToGridMap(const lcmt_grid_map& message) {
 
   grid_map.setTimestamp(1e3 * message.info.utime);
   grid_map.setFrameId(message.info.parent_frame);
-  grid_map.setGeometry(
-      Length(message.info.length_x, message.info.length_y),
-      message.info.resolution,
-      Position(message.info.position)
-  );
 
-  for (const auto& layer: message.layers) {
-    Eigen::MatrixXf data(layer.rows, layer.cols);
-    for (Eigen::Index i = 0; i < data.rows(); ++i) {
-      data.col(i) = Map<const VectorXf>(layer.data.at(i).data(), layer.cols);
+  if (message.info.resolution > 0 and
+      message.info.length_x > 0 and message.info.length_y > 0) {
+    grid_map.setGeometry(
+        Length(message.info.length_x, message.info.length_y),
+        message.info.resolution,
+        Position(message.info.position)
+    );
+
+    for (const auto& layer: message.layers) {
+      Eigen::MatrixXf data(layer.rows, layer.cols);
+      for (Eigen::Index i = 0; i < data.rows(); ++i) {
+        data.col(i) = Map<const VectorXf>(layer.data.at(i).data(), layer.cols);
+      }
+      grid_map.get(layer.name) = data;
     }
-    grid_map.get(layer.name) = data;
-  }
 
-  grid_map.setStartIndex(
-      grid_map::Index(message.outer_start_index, message.inner_start_index));
+    grid_map.setStartIndex(
+        grid_map::Index(message.outer_start_index, message.inner_start_index));
+  }
 
   return grid_map;
 }

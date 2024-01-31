@@ -1,3 +1,5 @@
+from time import sleep
+
 import lcm
 import numpy as np
 from dairlib import lcmt_grid_map, lcmt_foothold_set
@@ -33,21 +35,24 @@ from argparse import ArgumentParser
 
 def process_grid_maps(data_dict):
     map_msgs = data_dict['CASSIE_ELEVATION_MAP']
-    grid_maps = [GridMap() for _ in range(len(map_msgs))]
+    layers = map_msgs[0].layer_names
+    grid_maps = [GridMap(layers) for _ in range(len(map_msgs))]
     for i, msg in enumerate(map_msgs):
-        grid_maps[i].setTimestamp(1e3 * msg.info.utime)
+        grid_maps[i].setTimestamp(int(1e3 * msg.info.utime))
         grid_maps[i].setFrameId(msg.info.parent_frame)
         grid_maps[i].setGeometry(
             length=np.array([msg.info.length_x, msg.info.length_y]),
-            resolution=msg.resolution,
-            position=np.array(msg.position)
+            resolution=msg.info.resolution,
+            position=np.array(msg.info.position)
+        )
+
+        grid_maps[i].setStartIndex(
+            np.array([msg.outer_start_index, msg.inner_start_index])
         )
 
         for layer in msg.layers:
             data = np.array(layer.data).transpose()  # convert to column major
             grid_maps[i][layer.name][:] = data
-        grid_maps[i].setStartIndex(msg.outer_start_index, msg.inner_start_index)
-
     return grid_maps
 
 
@@ -110,6 +115,7 @@ def build_diagram(lcm: DrakeLcm) -> Diagram:
         "grid_map"
     )
     diagram = builder.Build()
+    return diagram
 
 
 def main():
@@ -125,9 +131,20 @@ def main():
         lcm_log=log,
         lcm_channels={'CASSIE_ELEVATION_MAP': lcmt_grid_map},
         start_time=0,
-        duration=-1,
+        duration=10,
         data_processing_callback=process_grid_maps
     )
+
+    context = diagram.CreateDefaultContext()
+
+    for map in grid_maps:
+        diagram.get_input_port().FixValue(context, map)
+        diagram.CalcForcedUnrestrictedUpdate(
+            context,
+            context.get_mutable_state()
+        )
+        diagram.ForcedPublish(context)
+        sleep(0.01)
 
 
 if __name__ == '__main__':

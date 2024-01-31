@@ -20,6 +20,7 @@ DEFINE_string(channel_elevation_map, "CASSIE_ELEVATION_MAP",
               "Elevation mapping grid map channel");
 DEFINE_string(channel_convex_polygons, "FOOTHOLDS_PROCESSED",
               "lcm channel with convex terrain decomposition");
+DEFINE_string(layer_to_visualize, "elevation", "grid map layer to visualize");
 DEFINE_double(fps, 20.0, "visualizer update rate");
 
 using systems::RobotOutputReceiver;
@@ -65,7 +66,7 @@ int do_main(int argc, char* argv[]) {
   receivers["grid_map"] = builder.AddSystem<GridMapReceiver>();
   visualizers["grid_map"] = builder.AddSystem<GridMapVisualizer>(
       plant_visualizer->get_meshcat(), 1.0 / FLAGS_fps,
-      std::vector<std::string>{"elevation"}
+      std::vector<std::string>{FLAGS_layer_to_visualize}
   );
 
   // polygon receiver

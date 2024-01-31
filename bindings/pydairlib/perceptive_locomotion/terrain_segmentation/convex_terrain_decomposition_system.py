@@ -79,9 +79,9 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
 
     def calc(self, context: Context, out: Value) -> None:
         # Get the safe terrain segmentation grid map
-        grid = self.get_input_port(
-            self.input_port_safe_terrain
-        ).Eval(context)
+        grid = self.EvalAbstractInput(
+            context, self.input_port_safe_terrain
+        ).get_value()
 
         safe_terrain_image = (255 * grid['segmentation']).astype(np.uint8)
 

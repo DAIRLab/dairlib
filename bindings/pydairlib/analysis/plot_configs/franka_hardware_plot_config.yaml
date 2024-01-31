@@ -6,11 +6,11 @@ channel_c3: "C3_DEBUG"
 channel_tray: "TRAY_STATE"
 channel_c3_target: "C3_TARGET"
 channel_c3_actual: "C3_ACTUAL"
-plot_style: 'compact' # compact, paper, default
+plot_style: 'paper' # compact, paper, default
 
 start_time: 0
 #duration: 0.47
-duration: -1
+duration: 20
 # Plant properties
 
 # Desired RobotOutput plots

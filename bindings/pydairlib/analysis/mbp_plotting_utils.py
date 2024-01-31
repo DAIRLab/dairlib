@@ -343,10 +343,10 @@ def load_default_channels(data, plant, state_channel, input_channel,
                           osc_debug_channel):
     robot_output = process_state_channel(data[state_channel], plant)
     robot_input = process_effort_channel(data[input_channel], plant)
-    # osc_debug = process_osc_channel(data[osc_debug_channel])
-    # osc_debug = permute_osc_joint_ordering(
-    #     osc_debug, data[state_channel][0], plant)
-    osc_debug = None
+    osc_debug = process_osc_channel(data[osc_debug_channel])
+    osc_debug = permute_osc_joint_ordering(
+        osc_debug, data[state_channel][0], plant)
+    # osc_debug = None
 
     return robot_output, robot_input, osc_debug
 

@@ -12,7 +12,7 @@ def main():
     cooldown_time = 10.0
     start_time = 0
     realtime_rate = 1.0
-    num_trials = 10
+    num_trials = 20
     sim_run_time = sim_time / realtime_rate
     controller_startup_time = 1.0
 

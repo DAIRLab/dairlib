@@ -108,7 +108,7 @@ def main():
         plot = mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 1)
         plot.axes[0].axhline(y=8.06, color='r', linestyle='-')
         plot.axes[0].axhline(y=-8.06, color='r', linestyle='-')
-        plot.save_fig('c3_inputs_' + filename.split('/')[-1])
+        # plot.save_fig('c3_inputs_' + filename.split('/')[-1])
 
 
 
@@ -132,8 +132,10 @@ def main():
         # plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 1:2], subplot_index = 0, ylabel='y position (m)', xlabel='time (s)', grid=False)
 
         # plots y - z trajectories
-        plot.plot(c3_tracking_target['x'][:, 8:9], c3_tracking_target['x'][:, 9:10], subplot_index = 0)
-        plot.plot(c3_tracking_actual['x'][:, 8:9], c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
+        plot.plot(c3_tracking_target['x'][:, 7:8], c3_tracking_target['x'][:, 9:10], subplot_index = 0)
+        plot.plot(c3_tracking_actual['x'][:, 7:8], c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
+        plot.plot(c3_tracking_target['x'][:, 0:1], c3_tracking_target['x'][:, 2:3], subplot_index = 0)
+        plot.plot(c3_tracking_actual['x'][:, 0:1], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
 
         # plot.plot(c3_tracking_actual['t'], c3_tracking_target['x'][:, 8:9] - c3_tracking_target['x'][:, 1:2], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
         # plot.plot(c3_tracking_target['x'][:, 1:2], c3_tracking_target['x'][:, 2:3], subplot_index = 0)
@@ -142,14 +144,15 @@ def main():
         # plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 7:8], subplot_index = 1)
         # plot.plot(c3_tracking_actual['x'][:, 7:8], c3_tracking_actual['x'][:, 7:8], subplot_index = 1)
         # plot.add_legend(['robot_des_x', 'robot_des_y', 'robot_des_z', 'robot_x', 'robot_y', 'robot_z'], subplot_index = 0)
-        plot.axes[0].set_ylim([0.3, 0.6])
-        plot.axes[0].set_xlim([-0.15, 0.15])
+        plot.axes[0].set_ylim([0.4, 0.6])
+        plot.axes[0].set_xlim([0.4, 0.7])
         plot.add_legend(['tray target', 'tray actual', 'end effector target', 'end effector actual'])
         # plot.add_legend(['tray', 'end effector'])
 
 
         # plot.save_fig('figure_8_tracking_over_time')
-        plot.save_fig('figure_8_tracking')
+        # plot.save_fig('figure_8_tracking')
+        plot.save_fig('c3_actual_trajectory')
 
         # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 0:1], subplot_index = 0)
         # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 7:8], subplot_index = 1)

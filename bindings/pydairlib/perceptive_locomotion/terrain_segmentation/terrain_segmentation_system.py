@@ -54,6 +54,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.variance_blur = self.kernel_size / 2
         self.laplacian_blur = self.kernel_size / 4
         self.safe_inf_norm = 0.05  # max 5 cm difference
+        self.below_edge_factor = 6.0
 
     def get_raw_safety_score(self, elevation: np.ndarray,
                              elevation_inpainted,
@@ -103,7 +104,9 @@ class TerrainSegmentationSystem(LeafSystem):
         )
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
 
-        second_order_safety_score = np.exp((-8.0 / resolution) * below_edges)
+        second_order_safety_score = np.exp(
+            (-self.below_edge_factor / resolution) * below_edges
+        )
 
         second_order_safety_score = np.minimum(
             second_order_safety_score,

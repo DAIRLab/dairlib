@@ -144,7 +144,7 @@ def main():
             context.get_mutable_state()
         )
         diagram.ForcedPublish(context)
-        sleep(0.5)
+        sleep(0.01)
 
 
 if __name__ == '__main__':

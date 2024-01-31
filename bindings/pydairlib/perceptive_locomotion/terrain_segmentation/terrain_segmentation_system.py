@@ -46,7 +46,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )
-        self.safety_hysteresis = 0.25
+        self.safety_hysteresis = 0.3
 
         self.kernel_size = 0.17
 

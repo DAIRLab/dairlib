@@ -470,14 +470,14 @@ std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>
 
 std::vector<ConvexPolygon> ProcessTerrain2d(
     std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
-  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
+  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::StraightLineMeasurement>();
   acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
     if (is_degenerate(planar_region.first)) {
       continue;
     }
     double area = PolygonArea(planar_region.first);
-    if (area < 0.1) {
+    if (area < 0.05) {
       continue;
     }
 
@@ -492,7 +492,7 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
 
 //  std::cout << "registered " << cd.getTodoList().size() << " polys to decomp\n";
   try {
-    cd.maybe_decomposeAll(0.15, measure.get());
+    cd.maybe_decomposeAll(0.1, measure.get());
   } catch (const std::exception& e) {
     std::cout << e.what() << std::endl;
     return {};

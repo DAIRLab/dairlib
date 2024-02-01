@@ -188,7 +188,7 @@ class AlipMPFC(LeafSystem):
         ]
         self.mu = [
             self.prog.NewBinaryVariables(self.kMaxFootholds) for _ in
-            range(self.kMaxFootholds)
+            range(self.N - 1)
         ]
 
     def make_mpc_costs(self):

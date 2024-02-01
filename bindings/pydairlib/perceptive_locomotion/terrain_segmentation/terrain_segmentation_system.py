@@ -14,9 +14,6 @@ from scipy.signal import convolve2d
 import numpy as np
 import cv2
 
-from pydairlib.perceptive_locomotion.terrain_segmentation.\
-    vision_utils import edges
-
 
 class TerrainSegmentationSystem(LeafSystem):
 
@@ -59,13 +56,6 @@ class TerrainSegmentationSystem(LeafSystem):
     def get_raw_safety_score(self, elevation: np.ndarray,
                              elevation_inpainted,
                              resolution: float):
-        # TODO (@Brian-Acosta): Notes for improvement
-        # - use infill before applying filters, then remove nans from segmentation after
-        # - make kernels approximately foot-sized
-        # - how to capture roughness ?
-        # (maybe something like l-infinity norm between points and a quadratic fit)
-
-
 
         down_sampled = cv2.resize(
             elevation_inpainted,
@@ -167,7 +157,6 @@ class TerrainSegmentationSystem(LeafSystem):
 
         safe = (segmented_map['safety_score'] > 0.8).astype(float)
 
-
         # clean up small holes in the safe regions
         kernel = np.ones((3, 3), np.uint8)
         safe = cv2.morphologyEx(safe, cv2.MORPH_CLOSE, kernel)
@@ -175,7 +164,7 @@ class TerrainSegmentationSystem(LeafSystem):
 
         segmented_map['segmentation'][:] = safe
 
-        safe_elevation = elevation_map['elevation']
+        safe_elevation = np.copy(elevation_map['elevation'])
         safe_elevation[~(safe > 0)] = np.nan
 
         segmented_map['segmented_elevation'][:] = safe_elevation

@@ -53,7 +53,8 @@ import pydairlib.lcm  # needed for cpp serialization of lcm messages
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
+    sim_params.terrain = \
+        'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
 
     sim_params.elevation_mapping_params_yaml = \
         ('bindings/pydairlib/perceptive_locomotion/params'

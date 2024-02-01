@@ -30,6 +30,25 @@ void AlipS2SMPFC::MakeMPCVariables() {
   }
 }
 
+void AlipS2SMPFC::MakeMPCCosts() {
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    tracking_cost_.push_back(
+        prog_->AddQuadraticCost(
+            Matrix4d::Identity(), Vector4d::Zero(),xx_.at(i)
+        ));
+    input_cost_.push_back(
+        prog_->AddQuadraticCost(
+            Matrix4d::Identity(), Vector4d::Zero(),xx_.at(i)
+        ));
+    soft_constraint_cost_.push_back(
+        prog_->AddQuadraticCost(
+            params_.soft_constraint_cost * MatrixXd::Identity(1,1),
+            VectorXd::Zero(1),
+            ee_.at(i)
+        ));
+  }
+}
+
 void AlipS2SMPFC::MakeInputConstraints() {
   constexpr double bigM = 20.0;
 
@@ -91,6 +110,7 @@ void AlipS2SMPFC::MakeStateConstraints() {
   state_bound.tail<2>() = params_.gait_params.mass *
       params_.gait_params.height * params_.com_vel_bound;
   MatrixXd A_ws(2 * nx_, nx_ + 1);
+  A_ws.setZero();
 
   VectorXd lb = VectorXd::Constant(8, -kInfinity);
   lb.tail<4>() = -state_bound;
@@ -104,16 +124,28 @@ void AlipS2SMPFC::MakeStateConstraints() {
   A_ws.bottomRightCorner<4,1>() = Vector4d::Ones();
 
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    soft_constraint_cost_.push_back(
-        prog_->AddQuadraticCost(
-            params_.soft_constraint_cost * MatrixXd::Identity(1,1),
-            VectorXd::Zero(1),
-            ee_.at(i)
-        ));
-
     workspace_c_.push_back(
         prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
+  }
+}
+
+void AlipS2SMPFC::MakeDynamicsConstraint() {
+  const auto[A, B] = alip_utils::AlipStepToStepDynamics(
+        params_.gait_params.height,
+        params_.gait_params.mass,
+        params_.gait_params.single_stance_duration,
+        params_.gait_params.double_stance_duration,
+        params_.gait_params.reset_discretization_method
+  );
+
+  MatrixXd M(nx_ * (params_.nmodes - 1), (nx_ + np_) * params_.nmodes);
+  M.setZero();
+
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    M.block<4,4>(nx_ * i, nx_ * i) = A;
+    M.block<4,4>(nx_ * i, nx_ * (i + 1)) = -Matrix4d::Identity();
+    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = B;
   }
 }
 

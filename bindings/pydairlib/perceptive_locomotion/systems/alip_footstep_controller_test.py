@@ -39,7 +39,7 @@ import numpy as np
 
 
 controller_type = 'lqr'
-
+elevation_mapping_yaml = 'bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_sim.yaml'
 
 def big_flat_polygon():
     poly = ConvexPolygon()
@@ -54,6 +54,7 @@ def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.visualize = True
     sim_params.simulate_perception = True
+    sim_params.elevation_mapping_params_yaml = elevation_mapping_yaml
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(

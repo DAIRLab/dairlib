@@ -8,9 +8,9 @@ channel_c3_target: "C3_TARGET"
 channel_c3_actual: "C3_ACTUAL"
 plot_style: 'paper' # compact, paper, default
 
-start_time: 0
+start_time: 7.4
 #duration: 0.47
-duration: 20
+duration: 8.5
 # Plant properties
 
 # Desired RobotOutput plots

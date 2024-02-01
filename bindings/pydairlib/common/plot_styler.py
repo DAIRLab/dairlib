@@ -76,7 +76,7 @@ class PlotStyler():
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None,
            linestyle=None,
-           grid=True, xlabel=None, ylabel=None, title=None, legend=None,
+           grid=False, xlabel=None, ylabel=None, title=None, legend=None,
            data_label=None, subplot_index=0):
     self.axes[subplot_index].plot(xdata, ydata, color=color,
                                   linestyle=linestyle, label=data_label)

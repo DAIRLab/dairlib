@@ -45,14 +45,13 @@ def load_lcm_logs():
     start_time = 0
     duration = -1
 
-
     c3_channels = {lcm_channels['c3_target_state_channel']: dairlib.lcmt_c3_state,
                    lcm_channels['c3_actual_state_channel']: dairlib.lcmt_c3_state,
                    lcm_channels['c3_debug_output_channel']: dairlib.lcmt_c3_output}
     callback = load_c3_channels
     mass_range = np.arange(0.5, 2.0, 0.05)
     # mu_range = np.arange(0.3, 0.8, 0.01)
-    mu_range = np.arange(0.3, 0.8, 0.05)
+    mu_range = np.arange(0.3, 0.74, 0.05)
     print(mu_range.shape[0])
     all_successes = np.zeros((mu_range.shape[0], 3))
     for i in range(mu_range.shape[0]):
@@ -62,8 +61,9 @@ def load_lcm_logs():
         # ps = plot_styler.PlotStyler()
         successes = np.zeros(3)
 
-        for j in range(10):
-            log_filename = param_study['results_folder'] + param_study['parameter'][2] + '/simlog-' + '%02d_%1d' % (i, j)
+        for j in range(30):
+            log_filename = param_study['results_folder'] + param_study['parameter'][1] + '/simlog-' + '%02d_%02d' % (i, j)
+            print(log_filename)
             log = lcm.EventLog(log_filename, "r")
             c3_target, c3_actual, c3_output = \
                 get_log_data(log, c3_channels, start_time, duration, callback,
@@ -103,8 +103,8 @@ def plot_logs():
     plt.show()
 
 def main():
-    load_lcm_logs()
-    # plot_logs()
+    # load_lcm_logs()
+    plot_logs()
 
 
 

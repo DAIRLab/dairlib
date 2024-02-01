@@ -19,7 +19,7 @@ plot_joint_velocities: false
 plot_measured_efforts: false
 plot_commanded_efforts: false
 plot_contact_forces: false
-plot_end_effector: true
+plot_end_effector: false
 
 special_positions_to_plot: []
 special_velocities_to_plot: []
@@ -30,14 +30,14 @@ fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 
 
 # Desired osc plots
 plot_qp_costs: false
-plot_qp_solve_time: true
-plot_qp_solutions: true
+plot_qp_solve_time: false
+plot_qp_solutions: false
 plot_tracking_costs: false
 plot_active_tracking_datas: false
 tracking_datas_to_plot:
-  end_effector_target: {'dims': [0], 'derivs': ['accel']}
+#  end_effector_target: {'dims': [0], 'derivs': ['accel']}
 #  end_effector_orientation_target: {'dims': [0, 1, 2], 'derivs': ['pos']}
 #  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
 plot_c3_debug: true
 plot_c3_tracking: true
-plot_object_state: true
+plot_object_state: false

@@ -48,26 +48,18 @@ class AlipS2SMPFC {
  public:
 
   /// Constructor takes a nominal gait and cost parameters
-  AlipS2SMPFC(alip_s2s_mpfc_params params) : params_(params){
-    ValidateParams();
-    void MakeMPCVariables();
-    void MakeMPCCosts();
-    void MakeInputConstraints();
-    void MakeStateConstraints();
-    void MakeDynamicsConstraint();
-    void MakeInitialConditionsConstraints();
-    Check();
-  };
-
+  AlipS2SMPFC(alip_s2s_mpfc_params params);
   std::pair<Eigen::Vector4d, double> CalculateOptimalFootstepAndTiming(
       const Eigen::Vector4d& x,
       const Eigen::Vector3d& p,
       double t,
-      alip_utils::Stance stance
+      const Eigen::Vector2d& vdes,
+      alip_utils::Stance stance,
+      const geometry::ConvexPolygonSet& footholds
   );
 
  protected:
-  static constexpr int kMaxFootholds = 20;
+  static constexpr size_t kMaxFootholds = 20;
   void MakeMPCVariables();
   void MakeMPCCosts();
   void MakeInputConstraints();
@@ -80,8 +72,8 @@ class AlipS2SMPFC {
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
   void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateInputCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
-  void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
-  void UpdateTerminalCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
+  void UpdateTrackingCost(const Eigen::Vector2d& vdes);
+  void UpdateTerminalCost(const Eigen::Vector2d& vdes);
 
   void ValidateParams() {
     DRAKE_DEMAND(params_.nmodes >= 2); // need to take 1 footstep (2 modes)
@@ -102,6 +94,10 @@ class AlipS2SMPFC {
     DRAKE_DEMAND(terminal_cost_ != nullptr);
   };
 
+  // helper
+  vector<Eigen::Vector2d> MakeP2Orbit(
+      alip_utils::AlipGaitParams gait_params);
+
   // problem data:
   alip_s2s_mpfc_params params_;
   const int np_ = 3;
@@ -111,11 +107,14 @@ class AlipS2SMPFC {
   drake::copyable_unique_ptr<MathematicalProgram> prog_{
     std::make_unique<MathematicalProgram>()
   };
+
+  drake::solvers::GurobiSolver solver_;
+
   vector<VectorXDecisionVariable> pp_{}; // footstep sequence
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
   vector<VectorXDecisionVariable> mu_{}; // binary variables
-  VectorXDecisionVariable t0_;           // first footstep duration
+  VectorXDecisionVariable tau_;           // first footstep duration
 
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
@@ -133,14 +132,18 @@ class AlipS2SMPFC {
   vector<Binding<QuadraticCost>> input_cost_{};
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};
 
-  // some useful matrices
+  // some useful matrices and dynamics quantities
+  double w_;
+  Eigen::Matrix4d A_;
+  Eigen::Matrix<double, 4, 2> B_;
   Eigen::Matrix4d p2o_premul_;
   Eigen::Matrix4d p2o_cost_hessian_;
-  Eigen::Matrix<double, 4, 2> p2o_basis_;
   Eigen::Matrix<double, 2, 4> p2o_orthogonal_complement_;
-  Eigen::Matrix<double, 4, 2> p2o_gradient_factor_p1_;
-  Eigen::Matrix<double, 4, 2> p20_gradient_factor_p2_;
-
+  Eigen::Matrix<double, 4, 2> p2o_basis_;
+  Eigen::Matrix<double, 4, 2> p2o_cost_gradient_factor_p1_;
+  Eigen::Matrix<double, 4, 2> p2o_cost_gradient_factor_p2_;
+  Eigen::Matrix4d A_ic_stable_;
+  Eigen::Matrix4d A_ic_unstable_;
   // Bookkeeping
   bool built_ = false;
 };

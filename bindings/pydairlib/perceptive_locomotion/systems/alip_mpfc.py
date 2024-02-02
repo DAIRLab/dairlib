@@ -171,7 +171,7 @@ class AlipMPFC(LeafSystem):
             self.period_two_orbit_premul @ (self.A @ self.B - self.B)
         self.period_two_orbit_orth = null_space(self.period_two_orbit_basis.T).T
         self.period_two_orbit_subspace_cost_hessian = \
-            (2 * self.period_two_orbit_orth.T @ self.period_two_orbit_orth)
+            (self.period_two_orbit_orth.T @ self.period_two_orbit_orth)
         self.gradient_premul_period_one = \
             -2 * (self.period_two_orbit_subspace_cost_hessian @
                   self.period_two_orbit_premul @ self.B)
@@ -341,16 +341,17 @@ class AlipMPFC(LeafSystem):
                 self.gradient_premul_period_one if i % 2 == 0 else \
                     self.gradient_premul_period_two
             self.running_cost[i].evaluator().UpdateCoefficients(
-                new_Q=self.period_two_orbit_subspace_cost_hessian,
+                new_Q=2 * self.period_two_orbit_subspace_cost_hessian,
                 new_b=linear_term @ vdes,
                 is_convex=True
             )
+
 
         linear_term = self.gradient_premul_period_one if self.N % 2 else (
             self.gradient_premul_period_two)
         self.terminal_cost.evaluator().UpdateCoefficients(
             new_Q=10 * self.period_two_orbit_subspace_cost_hessian,
-            new_b=10 * linear_term @ vdes,
+            new_b=5 * linear_term @ vdes,
             is_convex=True
         )
 

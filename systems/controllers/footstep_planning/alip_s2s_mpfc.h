@@ -12,6 +12,8 @@
 #include "drake/solvers/mathematical_program_result.h"
 #include "drake/solvers/gurobi_solver.h"
 
+#include "alip_s2s_mpfc_params.h"
+
 namespace dairlib::systems::controllers {
 
 using drake::solvers::Binding;
@@ -27,21 +29,6 @@ using solvers::LinearBigMConstraint;
 using solvers::LinearBigMEqualityConstraint;
 
 using std::vector;
-
-
-struct alip_s2s_mpfc_params {
-  alip_utils::AlipGaitParams gait_params;
-  int nmodes;
-  double tmin;
-  double tmax;
-  double soft_constraint_cost;
-  Eigen::Vector2d com_pos_bound;
-  Eigen::Vector2d com_vel_bound;
-  Eigen::MatrixXd Q;
-  Eigen::MatrixXd R;
-  Eigen::MatrixXd Qf;
-  drake::solvers::SolverOptions solver_options;
-};
 
 struct alip_s2s_mpfc_solution {
   bool success;

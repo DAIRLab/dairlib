@@ -94,13 +94,17 @@ cc_library(
 cc_library(
     name = "alip_s2s_mpfc",
     srcs = ["alip_s2s_mpfc.cc"],
-    hdrs = ["alip_s2s_mpfc.h"],
+    hdrs = [
+        "alip_s2s_mpfc.h",
+        "alip_s2s_mpfc_params.h"
+    ],
     deps = [
         ":alip_utils",
         "//common:eigen_utils",
         "//geometry:convex_polygon_set",
         "//solvers:constraints",
         "//solvers:optimization_utils",
+        "//solvers:solver_options_io",
         "@drake//:drake_shared_library",
     ],
 )

@@ -33,8 +33,7 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
     std::vector<int> left_right_stance_fsm_states,
     std::vector<int> post_left_right_fsm_states,
     std::vector<PointOnFramed> left_right_foot,
-    const alip_s2s_mpfc_params& mpfc_params,
-    const drake::solvers::SolverOptions& trajopt_solver_options) :
+    const alip_s2s_mpfc_params& mpfc_params) :
     plant_(plant),
     context_(plant_context),
     trajopt_(mpfc_params),
@@ -119,7 +118,6 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   int fsm_idx =
       static_cast<int>(state->get_discrete_state(fsm_state_idx_).get_value()(0));
 
-  bool fsm_switch = false;
   Vector3d CoM_w = Vector3d::Zero();
   Vector3d p_w = Vector3d::Zero();
   Vector3d p_next_in_ds = Vector3d::Zero();
@@ -133,7 +131,6 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
 
   // Check if it's time to switch the fsm or commit to the current footstep
   if (t >= t_next_impact) {
-    fsm_switch = true;
     fsm_idx ++;
     fsm_idx = fsm_idx >= left_right_stance_fsm_states_.size() ? 0 : fsm_idx;
     t_prev_impact = t;

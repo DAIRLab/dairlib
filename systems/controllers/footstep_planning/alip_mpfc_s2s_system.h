@@ -14,6 +14,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib::systems::controllers {
+
 using alip_utils::PointOnFramed;
 
 class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
@@ -26,8 +27,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       std::vector<int> left_right_stance_fsm_states,
       std::vector<int> post_left_right_fsm_states,
       std::vector<PointOnFramed> left_right_foot,
-      const alip_s2s_mpfc_params& mpfc_params,
-      const drake::solvers::SolverOptions& trajopt_solver_options);
+      const alip_s2s_mpfc_params& mpfc_params);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);

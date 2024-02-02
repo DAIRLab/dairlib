@@ -109,6 +109,31 @@ cc_binary(
 )
 
 cc_binary(
+    name = "run_alip_s2s_mpfc_controller",
+    srcs = ["run_alip_s2s_mpfc_controller.cc"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
+        "//geometry:convex_polygon",
+        "//geometry:convex_polygon_lcm_systems",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:solver_options_io",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
+        "//systems/controllers/footstep_planning:flat_terrain_foothold_source",
+        "//systems/controllers/footstep_planning:footstep_lcm_systems",
+        "//systems/filters:floating_base_velocity_filter",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:fsm_lcm_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ]
+)
+
+cc_binary(
     name = "foothold_translator",
     srcs = ["foothold_translator.cc"],
     local_defines = ["DAIR_ROS_ON"],

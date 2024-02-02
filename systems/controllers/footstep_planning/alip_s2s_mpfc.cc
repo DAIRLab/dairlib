@@ -69,6 +69,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   double t_opt = (t < params_.tmin) ? t :
       (1.0 / w_) * log(result.GetSolution(tau_)(0));
 
+  std::cout << "result: " << result.get_solution_result() << std::endl;
   alip_s2s_mpfc_solution mpfc_solution;
 
   mpfc_solution.success = result.is_success();
@@ -285,14 +286,14 @@ void AlipS2SMPFC::UpdateInitialConditions(
     double tau = exp(w_ * t);
     double f0 = 1.0 / tau;
     double m = - f0 * f0;
-    A.leftCols<1>() = -0.5 * (A_ic_unstable_ + m * A_ic_stable_) * x;
+    A.rightCols<1>() = -0.5 * (A_ic_unstable_ + m * A_ic_stable_) * x;
     c = 0.5 * (f0 - m * tau) * A_ic_stable_ * x;
 
     initial_time_constraint_->UpdateLowerBound(
-        Eigen::VectorXd::Constant(1, params_.tmin)
+        Eigen::VectorXd::Constant(1, exp(w_ * params_.tmin))
     );
     initial_time_constraint_->UpdateUpperBound(
-        Eigen::VectorXd::Constant(1, params_.tmax)
+        Eigen::VectorXd::Constant(1, exp(w_ * params_.tmax))
     );
   } else {
     initial_time_constraint_->UpdateLowerBound(

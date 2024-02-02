@@ -316,7 +316,7 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-  DrawAndSaveDiagramGraph(*plant_diagram);
+//  DrawAndSaveDiagramGraph(*plant_diagram);
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

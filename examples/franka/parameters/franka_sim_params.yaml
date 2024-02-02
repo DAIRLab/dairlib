@@ -13,7 +13,7 @@ visualizer_publish_rate: 10
 actuator_delay: 0.000
 
 scene_index: 1
-visualize_drake_sim: false
+visualize_drake_sim: true
 publish_efforts: true
 
 camera_pose: [[1.5, 0, 0.6],

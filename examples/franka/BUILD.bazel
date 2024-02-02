@@ -23,6 +23,35 @@ cc_library(
 )
 
 cc_binary(
+    name = "full_diagram",
+    srcs = ["full_diagram.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_c3_controller_params",
+        ":franka_lcm_channels",
+        ":franka_osc_controller_params",
+        ":franka_sim_params",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers:c3_controller",
+        "//systems/controllers:lcs_factory_system",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_sim",
     srcs = ["franka_sim.cc"],
     data = [

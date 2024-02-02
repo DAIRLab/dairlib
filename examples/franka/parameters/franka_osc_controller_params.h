@@ -9,7 +9,7 @@ struct FrankaControllerParams : OSCGains {
   std::string end_effector_model;
   std::string end_effector_name;
 
-  std::vector<double> tool_attachment_frame;
+  Eigen::VectorXd tool_attachment_frame;
   double end_effector_acceleration;
   bool track_end_effector_orientation;
   bool cancel_gravity_compensation;

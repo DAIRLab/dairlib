@@ -90,14 +90,12 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    X_WI);
-  Vector3d tool_attachment_frame =
-      StdVectorToVectorXd(controller_params.tool_attachment_frame);
 
   if (!controller_params.end_effector_name.empty()) {
     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
         FindResourceOrThrow(controller_params.end_effector_model))[0];
     RigidTransform<double> T_EE_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), tool_attachment_frame);
+        drake::math::RotationMatrix<double>(), controller_params.tool_attachment_frame);
     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                      plant.GetFrameByName(controller_params.end_effector_name,
                                           end_effector_index),

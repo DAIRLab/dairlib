@@ -10,7 +10,7 @@ plot_style: 'paper' # compact, paper, default
 
 start_time: 7.4
 #duration: 0.47
-duration: 8.5
+duration: 1.5
 # Plant properties
 
 # Desired RobotOutput plots

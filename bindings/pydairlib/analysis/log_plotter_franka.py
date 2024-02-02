@@ -139,8 +139,8 @@ def main():
 
         # plots y - z trajectories
         # plot.axes[0].scatter(c3_tracking_target['x'][0, 7], c3_tracking_target['x'][0, 9], marker='s')
-        # plot.plot(c3_tracking_actual['x'][:, 7:8], c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
-        # plot.plot(c3_tracking_actual['x'][:, 0:1], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
+        plot.plot(c3_tracking_actual['x'][:, 7:8], c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='X Position (m)', ylabel='Z Position (m)', grid=False)
+        plot.plot(c3_tracking_actual['x'][:, 0:1], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='X Position (m)', ylabel='Z Position (m)', grid=False)
 
         # plot.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 8:9], subplot_index = 0, xlabel='y position (m)', ylabel='z position (m)', grid=False)
         # plot.plot(c3_tracking_target['x'][:, 1:2], c3_tracking_target['x'][:, 2:3], subplot_index = 0)
@@ -151,17 +151,18 @@ def main():
 
         # plot.add_legend(['robot_des_x', 'robot_des_y', 'robot_des_z', 'robot_x', 'robot_y', 'robot_z'], subplot_index = 0)
 
-        # plot.axes[0].set_xlim([0.4, 0.7])
-        # plot.axes[0].set_ylim([0.35, 0.65])
+        plot.axes[0].set_xlim([0.4, 0.8])
+        plot.axes[0].set_ylim([0.35, 0.65])
 
-        # plot.add_legend(['tray actual', 'end effector actual'])
-        plot.add_legend(['tray target x', 'tray target y', 'tray target z'])
+        plot.add_legend(['Tray Path', 'End Effector Path'])
+        # plot.add_legend(['tray target x', 'tray target y', 'tray target z'])
         # plot.add_legend(['tray', 'end effector'])
         # plot.save_fig('c3_actual_xz_plot')
 
 
         # plot.save_fig('figure_8_tracking_over_time')
         # plot.save_fig('figure_8_tracking')
+        plot.save_fig('c3_gaiting')
         # plot.save_fig('c3_actual_trajectory_time')
 
         # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 0:1], subplot_index = 0)
@@ -177,17 +178,17 @@ def main():
         # end_effector_x_vel[np.abs(end_effector_x_vel) < zero_vel_threshold] = 0
         # tray_x_vel_dir = np.sign(tray_x_vel)
         # end_effector_x_vel_dir = np.sign(end_effector_x_vel)
-        sticking_contacts = [slice(12, 18), slice(24, 27), slice(34, 53), slice(59, 210), slice(216, 221), slice(232, 235), slice(247, 290)]
-        sliding_contacts = [slice(17, 25), slice(26, 35), slice(52, 60), slice(209, 217), slice(220, 233), slice(234, 248)]
-        no_contacts = [slice(0, 13)]
+        sticking_contacts = [slice(12, 18), slice(25, 28), slice(34, 53), slice(59, 210), slice(216, 221), slice(232, 235), slice(247, 290)]
+        sliding_contacts = [slice(17, 20), slice(22, 26), slice(27, 35), slice(52, 60), slice(209, 217), slice(220, 233), slice(234, 248)]
+        no_contacts = [slice(0, 13), slice(19, 23)]
 
         support_sticking_contacts = [slice(0, 13), slice(18, 27), slice(35, 40), slice(259, 290)]
         support_sliding_contacts = [slice(12, 19), slice(26, 36), slice(39, 68), slice(218, 260)]
         support_no_contacts = [slice(67, 219)]
 
         plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 7:8], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
         plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 0:1], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
         plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
         ax = plotter.fig.axes[0]
         ymin, ymax = ax.get_ylim()
@@ -220,12 +221,12 @@ def main():
                       label=labels[i]))
         # legend = ax.legend(handles=['Tray x', 'Tray y', 'Tray z', 'End Effector x', 'End Effector y', 'End Effector z'], loc=1)
         # ax.add_artist(legend)
-        legend = ax.legend(handles=legend_elements, loc=4)
+        legend = ax.legend(handles=legend_elements, loc=(0.55, 0.765))
         ax.add_artist(legend)
-        plotter.add_legend(['Tray x', 'Tray z', 'End Effector x', 'End Effector z'], subplot_index = 0, loc=1)
+        plotter.add_legend(['Tray x', 'End Effector x', 'Tray z', 'End Effector z'], subplot_index = 0, loc=(0.27, 0.7))
         plotter.axes[0].set_xlim([7.4, 15.5])
 
-        plotter.save_fig('c3_actual_trajectory_time')
+        # plotter.save_fig('c3_actual_trajectory_time')
 
 
     # plot = plot_styler.PlotStyler(nrows=2)

@@ -66,10 +66,14 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
 
   auto solver_end = std::chrono::steady_clock::now();
 
-  double t_opt = (t < params_.tmin) ? t :
+  if (not result.is_success()) {
+    std::cout << "Solve failed wth code "
+              << result.get_solution_result() << std::endl;
+  }
+
+  double t_opt = (t <= params_.tmin) ? t :
       (1.0 / w_) * log(result.GetSolution(tau_)(0));
 
-  std::cout << "result: " << result.get_solution_result() << std::endl;
   alip_s2s_mpfc_solution mpfc_solution;
 
   mpfc_solution.success = result.is_success();
@@ -108,8 +112,8 @@ void AlipS2SMPFC::MakeMPCVariables() {
     xx_.push_back(prog_->NewContinuousVariables(nx_, "xx_" + mode));
     pp_.push_back(prog_->NewContinuousVariables(np_, "pp_" + mode));
   }
-  for (int i = 1; i < params_.nmodes; ++i) {
-    std::string mode = std::to_string(i);
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    std::string mode = std::to_string(i+1);
     ee_.push_back(prog_->NewContinuousVariables(1, "ee_" + mode));
     mu_.push_back(prog_->NewBinaryVariables(kMaxFootholds, "mu_" + mode));
   }
@@ -156,7 +160,7 @@ void AlipS2SMPFC::MakeInputConstraints() {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     no_crossover_c_.push_back(
         prog_->AddLinearConstraint(
-            MatrixXd::Zero(1, 2),
+            MatrixXd::Ones(1, 2),
             VectorXd::Constant(1, -kInfinity),
             VectorXd::Constant(1, kInfinity),
             {pp_.at(i).segment(1,1), pp_.at(i+1).segment(1,1)}
@@ -167,7 +171,7 @@ void AlipS2SMPFC::MakeInputConstraints() {
       tmp.push_back(
           LinearBigMConstraint(
               *prog_,
-              RowVector3d::Zero(),
+              RowVector3d::UnitX(),
               VectorXd::Zero(1),
               bigM,
               pp_.at(i+1),
@@ -176,7 +180,7 @@ void AlipS2SMPFC::MakeInputConstraints() {
       tmp_eq.push_back(
           LinearBigMEqualityConstraint(
               *prog_,
-              RowVector3d::Zero(),
+              RowVector3d::UnitZ(),
               VectorXd::Zero(1),
               bigM,
               pp_.at(i+1),
@@ -237,7 +241,8 @@ void AlipS2SMPFC::MakeDynamicsConstraint() {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     M.block<4,4>(nx_ * i, nx_ * i) = A_;
     M.block<4,4>(nx_ * i, nx_ * (i + 1)) = -Matrix4d::Identity();
-    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = B_;
+    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * (i+1)) = B_;
+    M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = - B_;
   }
   dynamics_c_ = prog_->AddLinearEqualityConstraint(
       M, VectorXd::Zero(nx_ * (params_.nmodes - 1)), {stack(xx_), stack(pp_)}
@@ -323,6 +328,14 @@ void AlipS2SMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
   const auto& polys = footholds.polygons();
   int n = std::min(kMaxFootholds, footholds.size());
 
+  RowVectorXd choice_constraint = RowVectorXd::Zero(kMaxFootholds);
+  choice_constraint.leftCols(n) = RowVectorXd::Ones(n);
+
+  footstep_choice_c_->UpdateCoefficients(
+      BlockDiagonalRepeat<double>(choice_constraint, mu_.size()),
+      VectorXd::Ones(mu_.size())
+  );
+
   for (auto& c : footstep_c_) {
     for (int i = 0; i < n; ++i) {
       const auto& [A, b] = polys.at(i).GetConstraintMatrices();
@@ -357,7 +370,7 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
   Matrix4d Q = 2 * r.transpose() * R * r;
 
   for (int i = 0; i < params_.nmodes - 1; ++i) {
-    Vector4d b = 2 * r.transpose() * R * ud[i % 2];
+    Vector4d b = - 2 * r.transpose() * R * ud[i % 2];
     input_cost_.at(i).evaluator()->UpdateCoefficients(
         Q, b, 0, true // we know it's convex
     );

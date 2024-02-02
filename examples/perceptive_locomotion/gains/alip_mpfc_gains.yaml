@@ -25,9 +25,9 @@ q:
    0, 0, 0, 0.02]
 r: [10.0]
 w_footstep_reg:
-[ 1, 0, 0,
-  0, 1, 0,
-  0, 0, 4 ]
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 4 ]
 r_foostep_const: 0.1
 reset_discretization_method: 'SPLIT'
 filter_alip_state: false

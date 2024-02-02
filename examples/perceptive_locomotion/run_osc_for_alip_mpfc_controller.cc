@@ -115,7 +115,7 @@ DEFINE_bool(is_two_phase, false,
             "true: only right/left single support"
             "false: both double and single support");
 
-DEFINE_bool(use_spring_model, false,
+DEFINE_bool(use_spring_model, true,
             "whether to use the cassie spring model in the controller");
 
 DEFINE_bool(add_camera_inertia, true,

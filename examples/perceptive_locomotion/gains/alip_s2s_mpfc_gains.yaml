@@ -1,9 +1,9 @@
 nmodes: 3
-tmin: 0.25
-tmax: 0.35
+tmin: 0.3
+tmax: 0.3
 height: 0.86
-single_stance_duration: 0.31
-double_stance_duration: 0.09
+single_stance_duration: 0.3
+double_stance_duration: 0.1
 soft_constraint_cost: 1000
 stance_width: 0.43
 reset_discretization_method: 'SPLIT'
@@ -20,6 +20,6 @@ Q: [ 2, 0, 0, 0,
      0, 2, 0, 0,
      0, 0, 0.02, 0,
      0, 0, 0, 0.02]
-R: [ 1, 0, 0,
-     0, 1, 0,
+R: [ 0, 0, 0,
+     0, 0, 0,
      0, 0, 4 ]

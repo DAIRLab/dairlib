@@ -1,5 +1,6 @@
 #include "systems/controllers/footstep_planning/alip_multiqp.h"
 #include "systems/controllers/footstep_planning/alip_miqp.h"
+#include "systems/controllers/footstep_planning/alip_s2s_mpfc.h"
 #include "common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
 #include <iostream>
@@ -47,6 +48,38 @@ std::vector<ConvexPolygon> GetRandomFootholds(int n, double r) {
 mpc_profiling_data TestRandomFootholds(int n, double r) {
   auto trajopt_miqp = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
   auto trajopt_multiqp = AlipMultiQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
+
+
+  auto test_gait = alip_utils::AlipGaitParams {
+    0.85,
+    32.0,
+    0.3,
+    0.1,
+    0.3,
+    Vector2d::UnitX(),
+    alip_utils::Stance::kLeft,
+    alip_utils::ResetDiscretization::kZOH
+  };
+
+  alip_s2s_mpfc_params params;
+  params.gait_params = test_gait;
+  params.nmodes = 3;
+  params.tmin = 0.25;
+  params.tmax = 0.35;
+  params.soft_constraint_cost = 1000;
+  params.com_pos_bound = Eigen::Vector2d::Ones();
+  params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
+  params.Q = Eigen::Matrix4d::Identity();
+  params.R = Eigen::Matrix3d::Identity();
+  params.Qf = Eigen::Matrix4d::Identity();
+  params.solver_options.SetOption(
+      drake::solvers::GurobiSolver::id(),
+      "Presolve",
+      0
+  );
+
+  auto trajopt_s2s = AlipS2SMPFC(params);
+
   std::vector<AlipMPC*> trajopts = {&trajopt_miqp, &trajopt_multiqp};
   trajopt_miqp.SetDoubleSupportTime(0.1);
   trajopt_multiqp.SetDoubleSupportTime(0.1);
@@ -54,20 +87,21 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
   auto footholds = GetRandomFootholds(n, r);
   for (const auto trajopt: trajopts) {
     trajopt->AddFootholds(footholds);
-    trajopt->AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
     trajopt->UpdateNominalStanceTime(0.3, 0.3);
+    trajopt->AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
     trajopt->SetInputLimit(1);
     trajopt->AddInputCost(10);
     trajopt->Build();
   }
   mpc_profiling_data times{0, 0, 0, 0};
   auto p0 = Vector3d::Zero();
-  trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
-  trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
-  times.miqp_runtime = trajopt_miqp.solve_time();
-  times.miqp_solve_time = trajopt_miqp.optimizer_time();
-  times.multiqp_runtime = trajopt_multiqp.solve_time();
-  times.multiqp_solve_time = trajopt_multiqp.optimizer_time();
+//  trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
+//  trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
+
+  auto sol = trajopt_s2s.Solve(xd.front().head<4>(), p0, 0.3, test_gait.desired_velocity, test_gait.initial_stance_foot, footholds);
+
+  times.miqp_runtime = sol.total_time;
+  times.miqp_solve_time = sol.optimizer_time;
   return times;
 }
 
@@ -85,13 +119,12 @@ int do_main(int argc, char* argv[]) {
   const int max_n = 10;
   for (int i = 1; i < max_n; i++) {
     profile_data[i] = TestRandomFootholds(i, 0.5, 20);
-    std::cout << "\n\nTesting " << i + 1 << " footholds\n\n";
+    std::cout << "\nTesting " << i + 1 << " footholds\n";
   }
 
   for (int i = 1; i < max_n; i++) {
     for (const auto& data : profile_data.at(i)) {
-      std::cout << i << ", " << data.multiqp_solve_time << ", "
-                << data.multiqp_runtime << ", "
+      std::cout << i << ", "
                 << data.miqp_solve_time << ", "
                 << data.miqp_runtime << std::endl;
     }

@@ -54,6 +54,7 @@ inline VectorX<Scalar> stack(const std::vector<VectorX<Scalar>>& v) {
       out.conservativeResize(start + e.rows());
     }
     out.segment(start, e.rows()) = e;
+    start += e.rows();
   }
   return out;
 }

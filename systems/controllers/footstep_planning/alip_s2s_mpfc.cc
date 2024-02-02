@@ -1,6 +1,7 @@
 #include "alip_s2s_mpfc.h"
 #include <algorithm>
 #include <iostream>
+#include <chrono>
 #include "common/eigen_utils.h"
 
 namespace dairlib::systems::controllers{
@@ -37,18 +38,21 @@ AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) : params_(params){
   );
   A_ = A;
   B_ = B;
-  void MakeMPCVariables();
-  void MakeMPCCosts();
-  void MakeInputConstraints();
-  void MakeStateConstraints();
-  void MakeDynamicsConstraint();
-  void MakeInitialConditionsConstraints();
+  MakeMPCVariables();
+  MakeMPCCosts();
+  MakeInputConstraints();
+  MakeStateConstraints();
+  MakeDynamicsConstraint();
+  MakeInitialConditionsConstraints();
   Check();
 }
 
-std::pair<Vector4d, double> AlipS2SMPFC::CalculateOptimalFootstepAndTiming(
+alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     const Vector4d &x,const Vector3d &p, double t, const Vector2d& vdes,
     Stance stance, const ConvexPolygonSet& footholds) {
+
+  auto start = std::chrono::steady_clock::now();
+
   UpdateInitialConditions(x, p, t);
   UpdateCrossoverConstraint(stance);
   UpdateFootholdConstraints(footholds);
@@ -56,12 +60,44 @@ std::pair<Vector4d, double> AlipS2SMPFC::CalculateOptimalFootstepAndTiming(
   UpdateTrackingCost(vdes);
   UpdateTerminalCost(vdes);
 
+  auto solver_start = std::chrono::steady_clock::now();
+
   auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
 
-  return {
-    result.GetSolution(xx_.front()),
-    (1.0 / w_) * log(result.GetSolution(tau_)(0))
-  };
+  auto solver_end = std::chrono::steady_clock::now();
+
+  double t_opt = (t < params_.tmin) ? t :
+      (1.0 / w_) * log(result.GetSolution(tau_)(0));
+
+  alip_s2s_mpfc_solution mpfc_solution;
+
+  mpfc_solution.success = result.is_success();
+  mpfc_solution.solution_result = result.get_solution_result();
+
+  mpfc_solution.pp.clear();
+  mpfc_solution.xx.clear();
+  mpfc_solution.ee.clear();
+  mpfc_solution.mu.clear();
+
+  for (int i = 0; i < params_.nmodes; ++i) {
+    mpfc_solution.xx.push_back(result.GetSolution(xx_.at(i)));
+    mpfc_solution.pp.push_back(result.GetSolution(pp_.at(i)));
+  }
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
+    mpfc_solution.mu.push_back(result.GetSolution(mu_.at(i)));
+  }
+  mpfc_solution.t = t_opt;
+
+  auto end = std::chrono::steady_clock::now();
+
+  std::chrono::duration<double> total_time = end - start;
+  std::chrono::duration<double> solve_time = solver_end - solver_start;
+
+  mpfc_solution.optimizer_time = solve_time.count();
+  mpfc_solution.total_time = total_time.count();
+
+  return mpfc_solution;
 }
 
 void AlipS2SMPFC::MakeMPCVariables() {
@@ -98,7 +134,7 @@ void AlipS2SMPFC::MakeMPCCosts() {
   }
 
   terminal_cost_ = prog_->AddQuadraticCost(
-      Matrix4d::Identity(), Vector4d::Zero(), xx_.back()
+      Matrix4d::Identity(), Vector4d::Zero(), 0, xx_.back()
   ).evaluator();
 
   // build cost matrices
@@ -197,18 +233,20 @@ void AlipS2SMPFC::MakeStateConstraints() {
 void AlipS2SMPFC::MakeDynamicsConstraint() {
   MatrixXd M(nx_ * (params_.nmodes - 1), (nx_ + np_) * params_.nmodes);
   M.setZero();
-
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     M.block<4,4>(nx_ * i, nx_ * i) = A_;
     M.block<4,4>(nx_ * i, nx_ * (i + 1)) = -Matrix4d::Identity();
     M.block<4,2>(nx_ * i, nx_ * params_.nmodes + np_ * i) = B_;
   }
+  dynamics_c_ = prog_->AddLinearEqualityConstraint(
+      M, VectorXd::Zero(nx_ * (params_.nmodes - 1)), {stack(xx_), stack(pp_)}
+  ).evaluator();
 }
 
 void AlipS2SMPFC::MakeInitialConditionsConstraints() {
 
   initial_foot_c_ = prog_->AddLinearEqualityConstraint(
-      Matrix3d::Identity(), Vector3d::Identity(), pp_.front()
+      Matrix3d::Identity(), Vector3d::Zero(), pp_.front()
   ).evaluator();
 
   w_ = sqrt(9.81 / params_.gait_params.height);
@@ -225,6 +263,10 @@ void AlipS2SMPFC::MakeInitialConditionsConstraints() {
 
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
       Eigen::MatrixXd::Identity(4, 5), Vector4d::Zero(), {xx_.front(), tau_}
+  ).evaluator();
+
+  initial_time_constraint_ = prog_->AddBoundingBoxConstraint(
+      params_.tmin, params_.tmax, tau_
   ).evaluator();
 
 }
@@ -245,6 +287,20 @@ void AlipS2SMPFC::UpdateInitialConditions(
     double m = - f0 * f0;
     A.leftCols<1>() = -0.5 * (A_ic_unstable_ + m * A_ic_stable_) * x;
     c = 0.5 * (f0 - m * tau) * A_ic_stable_ * x;
+
+    initial_time_constraint_->UpdateLowerBound(
+        Eigen::VectorXd::Constant(1, params_.tmin)
+    );
+    initial_time_constraint_->UpdateUpperBound(
+        Eigen::VectorXd::Constant(1, params_.tmax)
+    );
+  } else {
+    initial_time_constraint_->UpdateLowerBound(
+        Eigen::VectorXd::Constant(1, t)
+    );
+    initial_time_constraint_->UpdateUpperBound(
+        Eigen::VectorXd::Constant(1, t)
+    );
   }
 
   initial_state_c_->UpdateCoefficients(A, c);
@@ -286,24 +342,6 @@ void AlipS2SMPFC::UpdateFootholdConstraints(const ConvexPolygonSet &footholds) {
   }
 }
 
-std::vector<Eigen::Vector2d> AlipS2SMPFC::MakeP2Orbit(
-    AlipGaitParams gait_params) {
-
-  double s = gait_params.initial_stance_foot == Stance::kLeft ? -1 : 1;
-  Vector2d u0 = Vector2d::Zero();
-  u0(0) = gait_params.desired_velocity(0) * (
-      gait_params.single_stance_duration +
-      gait_params.double_stance_duration
-  );
-  u0(1) = gait_params.stance_width * s + gait_params.desired_velocity(1) * (
-      gait_params.single_stance_duration +
-      gait_params.double_stance_duration
-  );
-  Vector2d u1 = u0;
-  u1(1) = - 2 * (s * gait_params.stance_width);
-  return {u0, u1};
-}
-
 void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
   AlipGaitParams gait_params = params_.gait_params;
   gait_params.desired_velocity = vdes;
@@ -320,18 +358,18 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     Vector4d b = 2 * r.transpose() * R * ud[i % 2];
     input_cost_.at(i).evaluator()->UpdateCoefficients(
-        Q, b, true // we know it's convex
+        Q, b, 0, true // we know it's convex
     );
   }
 
 }
 
 void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes) {
-  for (int i = 0; i < params_.nmodes; ++i) {
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
     const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
         p2o_cost_gradient_factor_p1_ : p2o_cost_gradient_factor_p2_;
     tracking_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * p2o_cost_hessian_, vdes_mul * vdes, true // we know it's convex
+        2 * p2o_cost_hessian_, vdes_mul * vdes, 0, true // we know it's convex
     );
   }
 }
@@ -339,10 +377,29 @@ void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes) {
 void AlipS2SMPFC::UpdateTerminalCost(const Vector2d &vdes) {
   const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
       p2o_cost_gradient_factor_p1_ : p2o_cost_gradient_factor_p2_;
-  terminal_cost_->UpdateCoefficients(
-      200 * p2o_cost_hessian_,
-      100 *  vdes_mul * vdes
+
+  Matrix4d Qf = 200.0 * p2o_cost_hessian_;
+  Vector4d bf = 100.0 * vdes_mul * vdes;
+
+  terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
+}
+
+std::vector<Eigen::Vector2d> AlipS2SMPFC::MakeP2Orbit(
+    AlipGaitParams gait_params) {
+
+  double s = gait_params.initial_stance_foot == Stance::kLeft ? -1 : 1;
+  Vector2d u0 = Vector2d::Zero();
+  u0(0) = gait_params.desired_velocity(0) * (
+      gait_params.single_stance_duration +
+          gait_params.double_stance_duration
   );
+  u0(1) = gait_params.stance_width * s + gait_params.desired_velocity(1) * (
+      gait_params.single_stance_duration +
+          gait_params.double_stance_duration
+  );
+  Vector2d u1 = u0;
+  u1(1) = - 2 * (s * gait_params.stance_width);
+  return {u0, u1};
 }
 
 }

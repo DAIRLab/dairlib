@@ -43,13 +43,25 @@ struct alip_s2s_mpfc_params {
   drake::solvers::SolverOptions solver_options;
 };
 
+struct alip_s2s_mpfc_solution {
+  bool success;
+  double total_time;
+  double optimizer_time;
+  drake::solvers::SolutionResult solution_result;
+  vector<Eigen::Vector3d> pp{}; // footstep sequence
+  vector<Eigen::Vector4d> xx{}; // ALIP state
+  vector<Eigen::VectorXd> ee{}; // workspace soft constraint slack var
+  vector<Eigen::VectorXd> mu{}; // binary variables
+  double t;                   // first footstep duration transformed
+};
 
 class AlipS2SMPFC {
  public:
 
   /// Constructor takes a nominal gait and cost parameters
   AlipS2SMPFC(alip_s2s_mpfc_params params);
-  std::pair<Eigen::Vector4d, double> CalculateOptimalFootstepAndTiming(
+
+  alip_s2s_mpfc_solution Solve(
       const Eigen::Vector4d& x,
       const Eigen::Vector3d& p,
       double t,
@@ -57,6 +69,10 @@ class AlipS2SMPFC {
       alip_utils::Stance stance,
       const geometry::ConvexPolygonSet& footholds
   );
+
+  const alip_utils::AlipGaitParams& gait_params() const {
+    return params_.gait_params;
+  }
 
  protected:
   static constexpr size_t kMaxFootholds = 20;
@@ -75,7 +91,7 @@ class AlipS2SMPFC {
   void UpdateTrackingCost(const Eigen::Vector2d& vdes);
   void UpdateTerminalCost(const Eigen::Vector2d& vdes);
 
-  void ValidateParams() {
+  void ValidateParams() const {
     DRAKE_DEMAND(params_.nmodes >= 2); // need to take 1 footstep (2 modes)
     DRAKE_DEMAND(params_.tmin > 0);
     DRAKE_DEMAND(params_.tmax >= params_.tmin);
@@ -95,7 +111,7 @@ class AlipS2SMPFC {
   };
 
   // helper
-  vector<Eigen::Vector2d> MakeP2Orbit(
+  static vector<Eigen::Vector2d> MakeP2Orbit(
       alip_utils::AlipGaitParams gait_params);
 
   // problem data:

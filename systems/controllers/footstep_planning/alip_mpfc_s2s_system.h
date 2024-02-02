@@ -6,7 +6,6 @@
 
 #include "alip_utils.h"
 #include "alip_s2s_mpfc.h"
-#include "alip_mpfc_system.h"
 #include "geometry/convex_polygon_set.h"
 #include "systems/filters/s2s_kalman_filter.h"
 
@@ -17,19 +16,17 @@
 namespace dairlib::systems::controllers {
 using alip_utils::PointOnFramed;
 
-class AlipMPFCS2S : public drake::systems::LeafSystem<double> {
+class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
  public:
 
   // TODO (@Brian-Acosta) : Move stance durations to gains struct
-  AlipMPFCS2S(
+  Alips2sMPFCSystem(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* plant_context,
       std::vector<int> left_right_stance_fsm_states,
       std::vector<int> post_left_right_fsm_states,
-      std::vector<double> left_right_stance_durations,
-      double double_stance_duration,
       std::vector<PointOnFramed> left_right_foot,
-      const AlipMPFCGains& gains,
+      const alip_s2s_mpfc_params& mpfc_params,
       const drake::solvers::SolverOptions& trajopt_solver_options);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -107,7 +104,7 @@ class AlipMPFCS2S : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex initial_conditions_state_idx_;
 
   // abstract states
-  drake::systems::AbstractStateIndex alip_filter_idx_;
+  drake::systems::AbstractStateIndex mpc_solution_idx_;
 
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -125,8 +122,5 @@ class AlipMPFCS2S : public drake::systems::LeafSystem<double> {
   std::vector<int> post_left_right_fsm_states_;
   double double_stance_duration_;
   double single_stance_duration_;
-
-  // gains
-  AlipMPFCGains gains_;
 };
 }

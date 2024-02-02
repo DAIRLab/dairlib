@@ -212,7 +212,7 @@ def main():
             ax.fill_between(c3_tracking_actual['t'][i], ymin, halfway,
                             color=plotter.cmap(4), alpha=0.2)
         legend_elements = []
-        labels = ['No Contact', 'Sticking Contact', 'Sliding Contact']
+        labels = ['No Contact', 'Sticking', 'Sliding']
         # legend_elements.append(Patch(color='none', label=labels[0]))
         for i in range(3):
             legend_elements.append(

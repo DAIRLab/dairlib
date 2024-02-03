@@ -77,6 +77,7 @@ class AlipS2SMPFC {
   void UpdateInputCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
   void UpdateTrackingCost(const Eigen::Vector2d& vdes);
   void UpdateTerminalCost(const Eigen::Vector2d& vdes);
+  void UpdateTimeRegularization(double t);
 
   void ValidateParams() const {
     DRAKE_DEMAND(params_.nmodes >= 2); // need to take 1 footstep (2 modes)
@@ -95,6 +96,7 @@ class AlipS2SMPFC {
     DRAKE_DEMAND(dynamics_c_ != nullptr);
     DRAKE_DEMAND(footstep_choice_c_ != nullptr);
     DRAKE_DEMAND(terminal_cost_ != nullptr);
+    DRAKE_DEMAND(time_regularization_ != nullptr);
   };
 
   // helper
@@ -130,6 +132,7 @@ class AlipS2SMPFC {
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
 
+  std::shared_ptr<QuadraticCost> time_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr;
   vector<Binding<QuadraticCost>> tracking_cost_{};
   vector<Binding<QuadraticCost>> input_cost_{};

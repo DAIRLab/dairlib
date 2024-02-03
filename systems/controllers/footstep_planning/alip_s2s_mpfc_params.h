@@ -14,6 +14,7 @@ struct alip_s2s_mpfc_params {
   double tmin;
   double tmax;
   double soft_constraint_cost;
+  double time_regularization;
   Eigen::Vector2d com_pos_bound;
   Eigen::Vector2d com_vel_bound;
   Eigen::MatrixXd Q;
@@ -30,6 +31,7 @@ struct alip_s2s_mpfc_params_io {
   double single_stance_duration;
   double double_stance_duration;
   double soft_constraint_cost;
+  double time_regularization;
   double stance_width;
   std::string reset_discretization_method;
   std::vector<double> com_pos_bound;
@@ -47,6 +49,7 @@ struct alip_s2s_mpfc_params_io {
     a->Visit(DRAKE_NVP(single_stance_duration));
     a->Visit(DRAKE_NVP(double_stance_duration));
     a->Visit(DRAKE_NVP(soft_constraint_cost));
+    a->Visit(DRAKE_NVP(time_regularization));
     a->Visit(DRAKE_NVP(stance_width));
     a->Visit(DRAKE_NVP(reset_discretization_method));
     a->Visit(DRAKE_NVP(com_pos_bound));
@@ -76,6 +79,7 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
   params_out.tmin = params_io.tmin;
   params_out.tmax = params_io.tmax;
   params_out.soft_constraint_cost = params_io.soft_constraint_cost;
+  params_out.time_regularization = params_io.time_regularization;
   params_out.gait_params.height = params_io.height;
   params_out.gait_params.mass = plant.CalcTotalMass(context);
   params_out.gait_params.single_stance_duration =

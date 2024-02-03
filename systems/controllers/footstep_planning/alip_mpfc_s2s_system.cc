@@ -153,8 +153,10 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   plant_.CalcPointsPositions(
       *context_,
       stance_foot_map_.at(fsm_state).second,
-      stance_foot_map_.at(fsm_state).first, plant_.world_frame(),
-      &p_next_in_ds);
+      stance_foot_map_.at(fsm_state).first,
+      plant_.world_frame(),
+      &p_next_in_ds
+  );
 
   p_next_in_ds = ReExpressWorldVector3InBodyYawFrame<double>(
       plant_, *context_, "pelvis", p_next_in_ds);
@@ -170,8 +172,9 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   x.tail<2>() = L_b.head<2>();
 
   double time_left_in_this_mode = t_next_impact - t;
+  bool is_ds = t - t_prev_impact < double_stance_duration_;
 
-  if (t - t_prev_impact < double_stance_duration_) {
+  if (is_ds) {
     double tds = double_stance_duration_ - (t - t_prev_impact);
     x = alip_utils::CalcReset(
         trajopt_.gait_params().height,
@@ -198,11 +201,21 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       x, p_b, time_left_in_this_mode, vdes, stance, footholds_filt
   );
 
+  std::cout << "tnom: " << time_left_in_this_mode <<
+               ", t: " << mpc_solution.t << std::endl;
+
   // Update discrete states
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
-  state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
-      (t + mpc_solution.t) * VectorXd::Ones(1));
+
+  if (not is_ds) {
+    state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
+        (t + mpc_solution.t) * VectorXd::Ones(1));
+  } else {
+    state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
+        (t_next_impact) * VectorXd::Ones(1));
+  }
+
   state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
       t_prev_impact * VectorXd::Ones(1));
   state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(

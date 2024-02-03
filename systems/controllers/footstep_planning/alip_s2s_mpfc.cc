@@ -59,6 +59,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateInputCost(vdes, stance);
   UpdateTrackingCost(vdes);
   UpdateTerminalCost(vdes);
+  UpdateTimeRegularization(t);
 
   auto solver_start = std::chrono::steady_clock::now();
 
@@ -69,6 +70,8 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   if (not result.is_success()) {
     std::cout << "Solve failed wth code "
               << result.get_solution_result() << std::endl;
+    std::cout << "x: " << x.transpose() << std::endl;
+    std::cout << "t: " << t << std::endl;
   }
 
   double t_opt = (t <= params_.tmin) ? t :
@@ -140,6 +143,10 @@ void AlipS2SMPFC::MakeMPCCosts() {
 
   terminal_cost_ = prog_->AddQuadraticCost(
       Matrix4d::Identity(), Vector4d::Zero(), 0, xx_.back()
+  ).evaluator();
+
+  time_regularization_ = prog_->AddQuadraticCost(
+     MatrixXd::Identity(1,1), VectorXd::Zero(1), tau_
   ).evaluator();
 
   // build cost matrices
@@ -220,7 +227,7 @@ void AlipS2SMPFC::MakeStateConstraints() {
   VectorXd lb = VectorXd::Constant(8, -kInfinity);
   lb.tail<4>() = -state_bound;
 
-  VectorXd ub = VectorXd::Constant(8, -kInfinity);
+  VectorXd ub = VectorXd::Constant(8, kInfinity);
   ub.tail<4>() = state_bound;
 
   A_ws.topLeftCorner<4,4>() = Matrix4d::Identity();
@@ -284,7 +291,8 @@ void AlipS2SMPFC::UpdateInitialConditions(
 
   Eigen::Matrix<double, 4, 5> A = Eigen::Matrix<double, 4, 5>::Zero();
   A.leftCols<4>() = Matrix4d::Identity();
-  Vector4d c = x;
+  Vector4d c = CalcAd(
+      params_.gait_params.height, params_.gait_params.mass, t) * x;
 
   if (t > params_.tmin) {
     // linear approximation of exp(At) = A_unstable * tau + A_stable * 1 / tau
@@ -292,6 +300,7 @@ void AlipS2SMPFC::UpdateInitialConditions(
     double f0 = 1.0 / tau;
     double m = - f0 * f0;
     A.rightCols<1>() = -0.5 * (A_ic_unstable_ + m * A_ic_stable_) * x;
+    std::cout << "A:\n" << A << "\nc: " << c.transpose() << std::endl;
     c = 0.5 * (f0 - m * tau) * A_ic_stable_ * x;
 
     initial_time_constraint_->UpdateLowerBound(
@@ -398,6 +407,21 @@ void AlipS2SMPFC::UpdateTerminalCost(const Vector2d &vdes) {
   terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
 }
 
+void AlipS2SMPFC::UpdateTimeRegularization(double t) {
+  if (t < params_.tmin) {
+    time_regularization_->UpdateCoefficients(
+        MatrixXd::Zero(1,1), VectorXd::Zero(1)
+    );
+  } else {
+    time_regularization_->UpdateCoefficients(
+        2 * params_.time_regularization * MatrixXd::Identity(1,1),
+        VectorXd::Constant(
+            1, -2 * params_.time_regularization * exp(w_ * t)
+        )
+    );
+  }
+}
+
 std::vector<Eigen::Vector2d> AlipS2SMPFC::MakeP2Orbit(
     AlipGaitParams gait_params) {
 
@@ -405,11 +429,11 @@ std::vector<Eigen::Vector2d> AlipS2SMPFC::MakeP2Orbit(
   Vector2d u0 = Vector2d::Zero();
   u0(0) = gait_params.desired_velocity(0) * (
       gait_params.single_stance_duration +
-          gait_params.double_stance_duration
+      gait_params.double_stance_duration
   );
   u0(1) = gait_params.stance_width * s + gait_params.desired_velocity(1) * (
       gait_params.single_stance_duration +
-          gait_params.double_stance_duration
+      gait_params.double_stance_duration
   );
   Vector2d u1 = u0;
   u1(1) = - 2 * (s * gait_params.stance_width);

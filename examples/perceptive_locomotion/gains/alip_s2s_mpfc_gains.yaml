@@ -1,12 +1,12 @@
 nmodes: 3
-tmin: 0.29
-tmax: 0.31
+tmin: 0.26
+tmax: 0.35
 height: 0.86
 single_stance_duration: 0.3
 double_stance_duration: 0.1
-soft_constraint_cost: 10
-time_regularization: 100
-stance_width: 0.43
+soft_constraint_cost: 100
+time_regularization: 10
+stance_width: 0.35
 reset_discretization_method: 'SPLIT'
 
 com_pos_bound: [10.0, 10.0]

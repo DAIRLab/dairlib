@@ -197,8 +197,8 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   auto mpc_debug_pub = builder.AddSystem(
-      LcmPublisherSystem::Make<lcmt_mpc_debug>(
-          "ALIP_MPFC_DEBUG", &lcm_local,
+      LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_debug>(
+          "ALIP__S2S_MPFC_DEBUG", &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
   // --- Add and connect the source of the foothold information --- //

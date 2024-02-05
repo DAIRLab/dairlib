@@ -74,9 +74,6 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     std::cout << "t: " << t << std::endl;
   }
 
-  double t_opt = (t <= params_.tmin) ? t :
-      (1.0 / w_) * log(result.GetSolution(tau_)(0));
-
   alip_s2s_mpfc_solution mpfc_solution;
 
   mpfc_solution.success = result.is_success();
@@ -95,7 +92,8 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
     mpfc_solution.mu.push_back(result.GetSolution(mu_.at(i)));
   }
-  mpfc_solution.t = t_opt;
+  mpfc_solution.t_nom = t;
+  mpfc_solution.t_sol = result.GetSolution(tau_)(0);
 
   auto end = std::chrono::steady_clock::now();
 
@@ -104,12 +102,13 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
 
   mpfc_solution.optimizer_time = solve_time.count();
   mpfc_solution.total_time = total_time.count();
+  mpfc_solution.input_footholds = footholds;
 
   return mpfc_solution;
 }
 
 void AlipS2SMPFC::MakeMPCVariables() {
-  tau_ = prog_->NewContinuousVariables(1, "exp(wt0)");
+  tau_ = prog_->NewContinuousVariables(1, "t0");
   for (int i = 0; i < params_.nmodes; ++i) {
     std::string mode = std::to_string(i);
     xx_.push_back(prog_->NewContinuousVariables(nx_, "xx_" + mode));
@@ -262,18 +261,6 @@ void AlipS2SMPFC::MakeInitialConditionsConstraints() {
       Matrix3d::Identity(), Vector3d::Zero(), pp_.front()
   ).evaluator();
 
-  w_ = sqrt(9.81 / params_.gait_params.height);
-  double mg = 9.81 * params_.gait_params.height;
-
-  Matrix4d adiag = Matrix4d::Zero();
-  adiag(0,3) = w_ / (mg);
-  adiag(1,2) = -w_ / mg;
-  adiag(2,1) = -mg / w_;
-  adiag(3,0) = mg / w_;
-
-  A_ic_unstable_ = Matrix4d::Identity() + adiag;
-  A_ic_stable_ = Matrix4d::Identity() - adiag;
-
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
       Eigen::MatrixXd::Identity(4, 5), Vector4d::Zero(), {xx_.front(), tau_}
   ).evaluator();
@@ -289,25 +276,23 @@ void AlipS2SMPFC::UpdateInitialConditions(
 
   initial_foot_c_->UpdateCoefficients(Matrix3d::Identity(), p);
 
+  Matrix4d Ad = CalcAd(
+      params_.gait_params.height, params_.gait_params.mass, t);
   Eigen::Matrix<double, 4, 5> A = Eigen::Matrix<double, 4, 5>::Zero();
+
   A.leftCols<4>() = Matrix4d::Identity();
-  Vector4d c = CalcAd(
-      params_.gait_params.height, params_.gait_params.mass, t) * x;
+  Vector4d c = Ad * x;
 
   if (t > params_.tmin) {
-    // linear approximation of exp(At) = A_unstable * tau + A_stable * 1 / tau
-    double tau = exp(w_ * t);
-    double f0 = 1.0 / tau;
-    double m = - f0 * f0;
-    A.rightCols<1>() = -0.5 * (A_ic_unstable_ + m * A_ic_stable_) * x;
-    std::cout << "A:\n" << A << "\nc: " << c.transpose() << std::endl;
-    c = 0.5 * (f0 - m * tau) * A_ic_stable_ * x;
+    // linear approximation of exp(At) = exp(A t_*) + A exp(A t_*) * (t  -t*)
+    A.rightCols<1>() = - A_ * Ad * c;
+    c = (Ad - A_ * Ad * t) * x;
 
     initial_time_constraint_->UpdateLowerBound(
-        Eigen::VectorXd::Constant(1, exp(w_ * params_.tmin))
+        Eigen::VectorXd::Constant(1,  params_.tmin)
     );
     initial_time_constraint_->UpdateUpperBound(
-        Eigen::VectorXd::Constant(1, exp(w_ * params_.tmax))
+        Eigen::VectorXd::Constant(1, params_.tmax)
     );
   } else {
     initial_time_constraint_->UpdateLowerBound(
@@ -415,9 +400,7 @@ void AlipS2SMPFC::UpdateTimeRegularization(double t) {
   } else {
     time_regularization_->UpdateCoefficients(
         2 * params_.time_regularization * MatrixXd::Identity(1,1),
-        VectorXd::Constant(
-            1, -2 * params_.time_regularization * exp(w_ * t)
-        )
+        -2 * params_.time_regularization * VectorXd::Constant(1, t)
     );
   }
 }

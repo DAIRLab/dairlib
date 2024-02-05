@@ -1,0 +1,26 @@
+package dairlib;
+
+struct lcmt_alip_s2s_mpfc_debug
+{
+    int64_t utime;
+    int32_t fsm_state;
+
+    int64_t solve_time_us;
+    string  solution_result;
+
+    int32_t nx;
+    int32_t np;
+    int32_t nmodes;
+
+    double initial_state[nx];
+    double initial_stance_foot[np];
+
+    double nominal_first_stance_time;
+    double solution_first_stance_time;
+
+    double pp[nmodes][np];
+    double xx[nmodes][nx];
+
+    lcmt_foothold_set foothold_sequence;
+
+}

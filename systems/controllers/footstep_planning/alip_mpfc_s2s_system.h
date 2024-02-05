@@ -1,6 +1,6 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
-#include <dairlib/lcmt_mpc_debug.hpp>
+#include <dairlib/lcmt_alip_s2s_mpfc_debug.hpp>
 #include <dairlib/lcmt_mpc_solution.hpp>
 #include <dairlib/lcmt_alip_mpc_output.hpp>
 
@@ -66,14 +66,8 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context) const;
 
   void CopyMpcDebugToLcm(const drake::systems::Context<double>& context,
-                         lcmt_mpc_debug* mpc_debug) const;
+                         lcmt_alip_s2s_mpfc_debug* mpc_debug) const;
 
-  // Lcm helper functions
-  void CopyMpcSolutionToLcm(const std::vector<Eigen::Vector3d>& pp,
-                            const std::vector<Eigen::VectorXd>& xx,
-                            const std::vector<Eigen::VectorXd>& uu,
-                            const Eigen::VectorXd& tt,
-                            lcmt_mpc_solution* solution) const;
 
   // FSM helper functions
   int curr_fsm(int fsm_idx) const {

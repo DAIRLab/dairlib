@@ -201,16 +201,13 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       x, p_b, time_left_in_this_mode, vdes, stance, footholds_filt
   );
 
-  std::cout << "tnom: " << time_left_in_this_mode <<
-               ", t: " << mpc_solution.t << std::endl;
-
   // Update discrete states
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
 
   if (not is_ds) {
     state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
-        (t + mpc_solution.t) * VectorXd::Ones(1));
+        (t + mpc_solution.t_sol) * VectorXd::Ones(1));
   } else {
     state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
         (t_next_impact) * VectorXd::Ones(1));
@@ -256,8 +253,35 @@ void Alips2sMPFCSystem::CopyMpcOutput(
   CopyAnkleTorque(context, &(mpc_output->u_traj));
 }
 
+namespace {
+
+vector<int> get_foothold_indices(const vector<VectorXd>& binary_vars) {
+  vector<int> indices;
+  for (const auto& v : binary_vars) {
+    int i = 0;
+    while(v(i) < 1 and i < v.rows()) {
+      ++i;
+    }
+    indices.push_back(i);
+  }
+  return indices;
+}
+
+ConvexPolygonSet get_foothold_sequence(const vector<VectorXd>& binary_vars,
+                                       const ConvexPolygonSet& set) {
+  auto indices = get_foothold_indices(binary_vars);
+  const auto& foothold_list = set.polygons();
+  ConvexPolygonSet ret;
+  for (const auto& i : indices) {
+    ret.append(foothold_list.at(i));
+  }
+  return ret;
+}
+
+}
+
 void Alips2sMPFCSystem::CopyMpcDebugToLcm(
-    const Context<double> &context, lcmt_mpc_debug *mpc_debug) const {
+    const Context<double> &context, lcmt_alip_s2s_mpfc_debug *mpc_debug) const {
 
   const auto& ic =
       context.get_discrete_state(initial_conditions_state_idx_).get_value();
@@ -269,19 +293,44 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
   int fsm = curr_fsm(static_cast<int>(fsmd));
 
+  const auto& mpc_sol =
+      context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
 
-  Vector4d::Map(mpc_debug->x0) = ic.head<4>();
-  Vector3d::Map(mpc_debug->p0) = ic.tail<3>();
+  mpc_debug->utime = utime;
+  mpc_debug->fsm_state = fsm;
+  mpc_debug->solve_time_us = mpc_sol.total_time * 1e6;
+  mpc_debug->solution_result = std::to_string(mpc_sol.solution_result);
 
+  mpc_debug->nx = 4;
+  mpc_debug->np = 3;
+  mpc_debug->nmodes = mpc_sol.xx.size();
+
+  mpc_debug->initial_state.reserve(4);
+  Eigen::Map<Vector4d>(mpc_debug->initial_state.data(), 4) = ic.head<4>();
+
+  mpc_debug->initial_stance_foot.reserve(3);
+  Eigen::Map<Vector3d>(mpc_debug->initial_stance_foot.data(), 3) = ic.tail<3>();
+
+  mpc_debug->nominal_first_stance_time = mpc_sol.t_nom;
+  mpc_debug->solution_first_stance_time = mpc_sol.t_sol;
+
+  mpc_debug->pp.clear();
+  mpc_debug->xx.clear();
+
+  for (int i = 0; i < mpc_sol.xx.size() ; ++i) {
+    vector<double> x(4);
+    vector<double> p(3);
+    Vector4d::Map(x.data()) = mpc_sol.xx.at(i);
+    Vector3d::Map(p.data()) = mpc_sol.pp.at(i);
+    mpc_debug->xx.push_back(x);
+    mpc_debug->pp.push_back(p);
+  }
+
+  get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds).CopyToLcm(
+      &(mpc_debug->foothold_sequence)
+  );
 }
 
-void Alips2sMPFCSystem::CopyMpcSolutionToLcm(
-    const std::vector<Vector3d> &pp,
-    const std::vector<VectorXd> &xx,
-    const std::vector<VectorXd> &uu,
-    const Eigen::VectorXd &tt,
-    lcmt_mpc_solution *solution) const {
-}
 
 int Alips2sMPFCSystem::GetFsmForOutput(
     const Context<double> &context) const {

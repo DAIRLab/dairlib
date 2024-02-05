@@ -31,15 +31,20 @@ using solvers::LinearBigMEqualityConstraint;
 using std::vector;
 
 struct alip_s2s_mpfc_solution {
-  bool success;
-  double total_time;
-  double optimizer_time;
-  drake::solvers::SolutionResult solution_result;
+  // copy of solution info
   vector<Eigen::Vector3d> pp{}; // footstep sequence
   vector<Eigen::Vector4d> xx{}; // ALIP state
   vector<Eigen::VectorXd> ee{}; // workspace soft constraint slack var
   vector<Eigen::VectorXd> mu{}; // binary variables
-  double t;                   // first footstep duration transformed
+  double t_sol;                 // first footstep duration
+
+  // some debug info
+  bool success;
+  double t_nom;
+  double total_time;
+  double optimizer_time;
+  drake::solvers::SolutionResult solution_result;
+  geometry::ConvexPolygonSet input_footholds;
 };
 
 class AlipS2SMPFC {
@@ -139,7 +144,6 @@ class AlipS2SMPFC {
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};
 
   // some useful matrices and dynamics quantities
-  double w_;
   Eigen::Matrix4d A_;
   Eigen::Matrix<double, 4, 2> B_;
   Eigen::Matrix4d p2o_premul_;
@@ -148,9 +152,5 @@ class AlipS2SMPFC {
   Eigen::Matrix<double, 4, 2> p2o_basis_;
   Eigen::Matrix<double, 4, 2> p2o_cost_gradient_factor_p1_;
   Eigen::Matrix<double, 4, 2> p2o_cost_gradient_factor_p2_;
-  Eigen::Matrix4d A_ic_stable_;
-  Eigen::Matrix4d A_ic_unstable_;
-  // Bookkeeping
-  bool built_ = false;
 };
 }

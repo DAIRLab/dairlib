@@ -103,6 +103,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   mpfc_solution.optimizer_time = solve_time.count();
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.input_footholds = footholds;
+  mpfc_solution.desired_velocity = vdes;
 
   return mpfc_solution;
 }

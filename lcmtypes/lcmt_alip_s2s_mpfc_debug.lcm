@@ -14,6 +14,7 @@ struct lcmt_alip_s2s_mpfc_debug
 
     double initial_state[nx];
     double initial_stance_foot[np];
+    double desired_velocity[2];
 
     double nominal_first_stance_time;
     double solution_first_stance_time;

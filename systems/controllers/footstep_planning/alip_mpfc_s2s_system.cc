@@ -326,6 +326,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
     mpc_debug->pp.push_back(p);
   }
 
+  Vector2d::Map(mpc_debug->desired_velocity) = mpc_sol.desired_velocity;
   get_foothold_sequence(mpc_sol.mu, mpc_sol.input_footholds).CopyToLcm(
       &(mpc_debug->foothold_sequence)
   );

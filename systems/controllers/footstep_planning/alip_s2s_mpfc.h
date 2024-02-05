@@ -43,6 +43,7 @@ struct alip_s2s_mpfc_solution {
   double t_nom;
   double total_time;
   double optimizer_time;
+  Eigen::Vector2d desired_velocity;
   drake::solvers::SolutionResult solution_result;
   geometry::ConvexPolygonSet input_footholds;
 };

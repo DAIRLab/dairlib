@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="tray">
+    <link name="tray">
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1</mass>
+        <!-- Inertia values were calculated to be consistent with the mass and
+             geometry size, assuming a uniform density. -->
+        <inertia>
+          <ixx>0.013105</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.013105</iyy>
+          <iyz>0</iyz>
+          <izz>0.026129</izz>
+        </inertia>
+      </inertial>
+      <visual name="tray">
+        <pose>0 0 0.0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.2286</radius>
+            <length>0.022</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <diffuse>0.1 0.1 0.1 0.6</diffuse>
+        </material>
+      </visual>
+      <collision name="tray">
+        <pose>0 0 0.0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.2286</radius>
+            <length>0.022</length>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+          <drake:mu_dynamic>0.4</drake:mu_dynamic>
+        </drake:proximity_properties>
+      </collision>
+    </link>
+  </model>
+</sdf>

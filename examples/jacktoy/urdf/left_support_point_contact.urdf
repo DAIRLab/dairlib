@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="left_support">
+    <link name="support">
+        <inertial>
+            <mass value="2"/>
+            <inertia
+                    ixx="0.013"
+                    ixy="0"
+                    ixz="0"
+                    iyy="0.013"
+                    iyz="0"
+                    izz="0.013"/>
+        </inertial>
+        <collision name="point_1">
+            <origin rpy="0 0 0" xyz="-0.2 0.0 0.024"/>
+            <geometry>
+              <sphere radius="0.001"/>
+            </geometry>
+        </collision>
+        <collision name="point_2">
+            <origin rpy="0 0 0" xyz="-0.1 0.0 0.024"/>
+            <geometry>
+              <sphere radius="0.001"/>
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0.0"/>
+            <geometry>
+                <box size="0.4 0.02 0.05"/>
+            </geometry>
+        </visual>
+    </link>
+</robot>

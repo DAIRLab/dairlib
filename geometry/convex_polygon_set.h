@@ -37,6 +37,10 @@ class ConvexPolygonSet {
   static ConvexPolygonSet CopyFromLcm(const lcmt_foothold_set& set);
   size_t size() const { return set_.size(); }
 
+  static ConvexPolygonSet MakeFlatGround(double half_len=100.0) {
+    return ConvexPolygonSet({ConvexPolygon::MakeFlatGround(half_len)});
+  }
+
  private:
   std::vector<ConvexPolygon> set_;
 };

@@ -4,23 +4,23 @@ tmax: 0.33
 height: 0.86
 single_stance_duration: 0.3
 double_stance_duration: 0.1
-soft_constraint_cost: 100
+soft_constraint_cost: 10000
 time_regularization: 100
 stance_width: 0.2
 reset_discretization_method: 'SPLIT'
 
-com_pos_bound: [10.0, 10.0]
-com_vel_bound: [10.0, 10.0]
+com_pos_bound: [0.4, 0.35]
+com_vel_bound: [2.5, 1.5]
 
 Qf:
   [  100.0, 0, 0, 0,
-     0, 100.0, 0, 0,
+     0, 1.0, 0, 0,
      0, 0, 1.0, 0,
      0, 0, 0, 1.0  ]
 Q: [ 2, 0, 0, 0,
      0, 2, 0, 0,
      0, 0, 0.02, 0,
      0, 0, 0, 0.02]
-R: [ 0.1, 0, 0,
-     0, 0.05, 0,
+R: [ 0.2, 0, 0,
+     0, 0.1, 0,
      0, 0, 4 ]

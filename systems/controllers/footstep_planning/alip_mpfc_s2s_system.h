@@ -99,6 +99,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
 
   // abstract states
   drake::systems::AbstractStateIndex mpc_solution_idx_;
+  drake::systems::AbstractStateIndex footholds_idx_;
 
   // Multibody Plant Parameters
   const drake::multibody::MultibodyPlant<double>& plant_;

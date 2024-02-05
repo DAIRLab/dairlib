@@ -66,6 +66,11 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
       drake::Value<alip_s2s_mpfc_solution>()
   );
 
+  footholds_idx_ = DeclareAbstractState(
+      drake::Value<ConvexPolygonSet>(ConvexPolygonSet::MakeFlatGround())
+  );
+
+
   // State Update
   this->DeclareForcedUnrestrictedUpdateEvent(
       &Alips2sMPFCSystem::UnrestrictedUpdate);
@@ -191,10 +196,18 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   init_alip_state_and_stance_pos.tail<3>() = p_b;
 
   ConvexPolygonSet footholds_filt;
+  const auto& prev_footholds = state->get_abstract_state<ConvexPolygonSet>(
+      footholds_idx_
+  );
+
   if (!foothold_set.empty()) {
     footholds_filt = foothold_set.GetSubsetCloseToPoint(p_next_in_ds, 1.8);
   } else {
     std::cerr << "WARNING: No new footholds specified!\n";
+  }
+
+  if (footholds_filt.empty()) {
+    footholds_filt = prev_footholds;
   }
 
   const auto mpc_solution = trajopt_.Solve(
@@ -217,7 +230,10 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
       t_prev_impact * VectorXd::Ones(1));
   state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(
       init_alip_state_and_stance_pos);
-  state->get_mutable_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_) = mpc_solution;
+  if (mpc_solution.success) {
+    state->get_mutable_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_) = mpc_solution;
+  }
+  state->get_mutable_abstract_state<ConvexPolygonSet>(footholds_idx_) = footholds_filt;
 
   return drake::systems::EventStatus::Succeeded();
 }

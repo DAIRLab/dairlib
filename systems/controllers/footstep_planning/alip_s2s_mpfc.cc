@@ -92,6 +92,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
     mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
     mpfc_solution.mu.push_back(result.GetSolution(mu_.at(i)));
   }
+
   mpfc_solution.t_nom = t;
   mpfc_solution.t_sol = result.GetSolution(tau_)(0);
 
@@ -135,7 +136,7 @@ void AlipS2SMPFC::MakeMPCCosts() {
         ));
     soft_constraint_cost_.push_back(
         prog_->AddQuadraticCost(
-            params_.soft_constraint_cost * MatrixXd::Identity(1,1),
+            2 * params_.soft_constraint_cost * MatrixXd::Identity(1,1),
             VectorXd::Zero(1),
             ee_.at(i)
         ));
@@ -221,24 +222,34 @@ void AlipS2SMPFC::MakeStateConstraints() {
   state_bound.head<2>() = params_.com_pos_bound;
   state_bound.tail<2>() = params_.gait_params.mass *
       params_.gait_params.height * params_.com_vel_bound;
-  MatrixXd A_ws(2 * nx_, nx_ + 1);
+
+  Matrix4d Ad_inv = CalcAd(
+      params_.gait_params.height,
+      params_.gait_params.mass,
+      params_.gait_params.single_stance_duration
+  ).inverse();
+
+  MatrixXd A_ws(4 * nx_, nx_ + 1);
+
   A_ws.setZero();
+  A_ws.block<4,4>(0, 0) = Matrix4d::Identity();
+  A_ws.block<4,4>(4, 0) = Ad_inv;
+  A_ws.block<4,4>(8, 0) = Matrix4d::Identity();
+  A_ws.block<4,4>(12, 0) = Ad_inv;
+  A_ws.topRightCorner<8,1>() = VectorXd::Ones(8);
+  A_ws.bottomRightCorner<8,1>() = -VectorXd::Ones(8);
 
-  VectorXd lb = VectorXd::Constant(8, -kInfinity);
-  lb.tail<4>() = -state_bound;
+  VectorXd lb = VectorXd::Constant(4 * nx_, -kInfinity);
+  lb.head<8>() = stack<double>({-state_bound, -state_bound});
+  VectorXd ub = VectorXd::Constant(4 * nx_, kInfinity);
+  ub.tail<8>() = stack<double>({state_bound, state_bound});
 
-  VectorXd ub = VectorXd::Constant(8, kInfinity);
-  ub.tail<4>() = state_bound;
-
-  A_ws.topLeftCorner<4,4>() = Matrix4d::Identity();
-  A_ws.bottomLeftCorner<4,4>() = Matrix4d::Identity();
-  A_ws.topRightCorner<4,1>() = -Vector4d::Ones();
-  A_ws.bottomRightCorner<4,1>() = Vector4d::Ones();
 
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     workspace_c_.push_back(
         prog_->AddLinearConstraint(A_ws, lb, ub, {xx_.at(i+1), ee_.at(i)})
     );
+    //std::cout << workspace_c_.at(i).ToLatex() << std::endl;
   }
 }
 
@@ -387,7 +398,7 @@ void AlipS2SMPFC::UpdateTerminalCost(const Vector2d &vdes) {
   const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
       p2o_cost_gradient_factor_p1_ : p2o_cost_gradient_factor_p2_;
 
-  Matrix4d Qf = 200.0 * p2o_cost_hessian_;
+  Matrix4d Qf = params_.Qf(0,0) * p2o_cost_hessian_;
   Vector4d bf = 100.0 * vdes_mul * vdes;
 
   terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);

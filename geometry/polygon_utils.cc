@@ -469,7 +469,8 @@ std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>
 }
 
 std::vector<ConvexPolygon> ProcessTerrain2d(
-    std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>> terrain) {
+    const std::vector<std::pair<MatrixXd, std::vector<MatrixXd>>>& terrain,
+    double convexity_thresh) {
   std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::StraightLineMeasurement>();
   acd2d::cd_2d cd;
   for (const auto& planar_region : terrain) {
@@ -492,7 +493,7 @@ std::vector<ConvexPolygon> ProcessTerrain2d(
 
 //  std::cout << "registered " << cd.getTodoList().size() << " polys to decomp\n";
   try {
-    cd.maybe_decomposeAll(0.1, measure.get());
+    cd.maybe_decomposeAll(convexity_thresh, measure.get());
   } catch (const std::exception& e) {
     std::cout << e.what() << std::endl;
     return {};

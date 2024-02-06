@@ -64,7 +64,6 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         )
 
     def get_plane(self, elevation_map: GridMap, polygon: ConvexPolygon):
-        InpaintWithMinimumValues(elevation_map, "elevation", "elevation_inpainted")
         verts3d = polygon.GetVertices().squeeze().transpose()
         for v in verts3d:
             v[-1] = elevation_map.atPosition(
@@ -79,10 +78,6 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         return plane.normal, plane.point
 
     def calc(self, context: Context, out: Value) -> None:
-
-
-        start = time.time()
-
         # Get the safe terrain segmentation grid map
         grid = self.EvalAbstractInput(
             context, self.input_port_safe_terrain
@@ -130,12 +125,12 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
                     child_index = hierarchy[child_index][0]
                 polygons.append(polygon)
 
-        convex_polygons = ProcessTerrain2d(polygons)
+        convex_polygons = ProcessTerrain2d(polygons, 0.25)
+
         if polygons and not convex_polygons:
             return
+
         for polygon in convex_polygons:
             normal, point = self.get_plane(grid, polygon)
             polygon.SetPlane(normal, point)
         out.set_value(ConvexPolygonSet(convex_polygons))
-        end = time.time()
-        print(end - start)

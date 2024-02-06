@@ -30,6 +30,7 @@ class TerrainSegmentationSystem(LeafSystem):
                 GridMap(
                     [
                         "elevation",
+                        "elevation_inpainted",
                         "raw_safety_score",
                         "safety_score",
                         "segmentation",
@@ -130,6 +131,8 @@ class TerrainSegmentationSystem(LeafSystem):
         segmented_map.convertToDefaultStartIndex()
 
         segmented_map['elevation'][:] = elevation_map['elevation']
+        segmented_map['elevation_inpainted'][:] = \
+            elevation_map['elevation_inpainted']
 
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0

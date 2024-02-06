@@ -81,8 +81,8 @@ double PolygonArea(const convex_plane_decomposition_msgs::Polygon2d &poly);
  * python.
  */
 std::vector<ConvexPolygon> ProcessTerrain2d(
-    std::vector<
-        std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>> terrain);
+    const std::vector<std::pair<Eigen::MatrixXd, std::vector<Eigen::MatrixXd>>>& terrain,
+    double convexity_thresh);
 
 /*!
  * Perform approximate convex decomposition on a polygon with holes and return

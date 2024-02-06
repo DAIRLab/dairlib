@@ -142,11 +142,14 @@ def main():
     for map in grid_maps:
 
         diagram.get_input_port().FixValue(context, map)
+        start = time.time()
         diagram.CalcForcedUnrestrictedUpdate(
             context,
             context.get_mutable_state()
         )
         diagram.ForcedPublish(context)
+        end = time.time()
+        print(end - start)
         sleep(0.1)
 
 

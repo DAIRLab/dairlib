@@ -135,6 +135,7 @@ class AlipS2SMPFC {
 
   vector<Binding<LinearConstraint>> workspace_c_{};
   vector<Binding<LinearConstraint>> no_crossover_c_{};
+  vector<Binding<LinearConstraint>> reachability_c_{};
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
 

@@ -1,3 +1,5 @@
+import time
+import timeit
 from time import sleep
 
 import lcm
@@ -138,13 +140,14 @@ def main():
     context = diagram.CreateDefaultContext()
 
     for map in grid_maps:
+
         diagram.get_input_port().FixValue(context, map)
         diagram.CalcForcedUnrestrictedUpdate(
             context,
             context.get_mutable_state()
         )
         diagram.ForcedPublish(context)
-        sleep(0.01)
+        sleep(0.1)
 
 
 if __name__ == '__main__':

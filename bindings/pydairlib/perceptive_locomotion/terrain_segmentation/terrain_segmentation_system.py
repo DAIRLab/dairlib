@@ -11,8 +11,10 @@ from grid_map import GridMap, InpaintWithMinimumValues
 from scipy.ndimage import (sobel, gaussian_filter, gaussian_laplace,
                            gaussian_gradient_magnitude)
 from scipy.signal import convolve2d
+from scipy.fftpack import fft2, fftshift, ifft2, ifftshift
 import numpy as np
 import cv2
+import time
 
 
 class TerrainSegmentationSystem(LeafSystem):
@@ -50,38 +52,29 @@ class TerrainSegmentationSystem(LeafSystem):
         # gaussian blur in meters
         self.variance_blur = self.kernel_size / 2
         self.laplacian_blur = self.kernel_size / 4
-        self.safe_inf_norm = 0.05  # max 5 cm difference
+        self.var_safety_margin = self.kernel_size / 2
+        self.safe_inf_norm = 0.04  # max 5 cm difference
         self.below_edge_factor = 6.0
 
     def get_raw_safety_score(self, elevation: np.ndarray,
                              elevation_inpainted,
                              resolution: float):
+        ksize_int = int(self.kernel_size / resolution + 0.5)
 
-        down_sampled = cv2.resize(
-            elevation_inpainted,
-            (0, 0),
-            fx=2.0 * resolution / self.kernel_size,
-            fy=2.0 * resolution / self.kernel_size,
-            interpolation=cv2.INTER_LINEAR
-        )
-
-        up_sampled = cv2.resize(
-            down_sampled,
-            elevation_inpainted.shape,
-            interpolation=cv2.INTER_LINEAR
+        lowpass = cv2.boxFilter(
+            elevation_inpainted, -1, (ksize_int, ksize_int),
+            normalize=True
         )
 
         stddev = gaussian_filter(
-            np.abs(elevation_inpainted - up_sampled),
+            np.abs(elevation_inpainted - lowpass),
             self.variance_blur
         )
 
-        dilation_kernel_size_int = int(self.kernel_size / resolution)
-        kernel = cv2.getStructuringElement(
-            cv2.MORPH_ELLIPSE,
-            (dilation_kernel_size_int, dilation_kernel_size_int)
+        dilation_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (ksize_int, ksize_int)
         )
-        stddev = cv2.dilate(stddev, kernel)
+        stddev = cv2.dilate(stddev, dilation_kernel)
 
         var_safety_score = np.minimum(
             np.ones_like(stddev),
@@ -104,10 +97,10 @@ class TerrainSegmentationSystem(LeafSystem):
         )
 
         # treat safety scores like independent probabilities
-        raw_safety = var_safety_score * second_order_safety_score
+        raw_safety = np.sqrt(var_safety_score * second_order_safety_score)
         raw_safety[np.isnan(elevation)] = 0
 
-        return raw_safety, up_sampled
+        return raw_safety, lowpass
 
     def UpdateTerrainSegmentation(self, context: Context, state: State):
         # Get the elevation map and undo any wrapping before image processing
@@ -141,11 +134,14 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
+        start = time.time()
         raw_safety_score, upsampled = self.get_raw_safety_score(
             elevation_map['elevation'],
             elevation_map['elevation_inpainted'],
             elevation_map.getResolution()
         )
+        end = time.time()
+        print(end - start)
         segmented_map['interpolated'][:] = upsampled
 
         segmented_map["raw_safety_score"][:] = raw_safety_score
@@ -153,9 +149,19 @@ class TerrainSegmentationSystem(LeafSystem):
             np.ones_like(raw_safety_score),
             raw_safety_score + self.safety_hysteresis * prev_segmentation
         )
+
+        erosion_ksize_int = int(
+            self.var_safety_margin /
+            elevation_map.getResolution() + 0.5
+        )
+        erosion_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (erosion_ksize_int, erosion_ksize_int)
+        )
+        final_safety_score = cv2.erode(final_safety_score, erosion_kernel)
+
         segmented_map['safety_score'][:] = final_safety_score
 
-        safe = (segmented_map['safety_score'] > 0.8).astype(float)
+        safe = (segmented_map['safety_score'] > 0.7).astype(float)
 
         # clean up small holes in the safe regions
         kernel = np.ones((3, 3), np.uint8)

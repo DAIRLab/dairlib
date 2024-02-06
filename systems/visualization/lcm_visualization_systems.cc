@@ -260,7 +260,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
         force_arrow_path + "/head",
         RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                         Vector3d{0, 0, height + arrowhead_height}));
-    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", true);
+    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
   } else {
     meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
   }

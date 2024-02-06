@@ -51,7 +51,7 @@ def load_lcm_logs():
     callback = load_c3_channels
     mass_range = np.arange(0.5, 2.0, 0.05)
     # mu_range = np.arange(0.3, 0.8, 0.01)
-    effective_mu_range = np.arange(0.2, 0.61, 0.05)
+    effective_mu_range = np.arange(0.1, 0.71, 0.1)
 
     print(effective_mu_range.shape[0])
     all_successes = np.zeros((effective_mu_range.shape[0], 3))
@@ -62,9 +62,9 @@ def load_lcm_logs():
 
         successes = np.zeros(3)
 
-        for j in range(30):
+        for j in range(5):
             # ps = plot_styler.PlotStyler()
-            log_filename = param_study['results_folder'] + param_study['parameter'][1] + '/simlog-' + '%02d_%02d' % (i, j)
+            log_filename = param_study['results_folder'] + param_study['parameter'][1] + '/simlog-' + '%02d_%1d' % (i, j)
             print(log_filename)
             log = lcm.EventLog(log_filename, "r")
             c3_target, c3_actual, c3_output = \
@@ -76,14 +76,14 @@ def load_lcm_logs():
             # ps.plot(c3_actual['t'], c3_actual['x'][:, 9:10], subplot_index=0)
             # ps.plot(c3_actual['t'], c3_actual['x'][:, 1:2], subplot_index=0)
             # ps.plot(c3_actual['t'], c3_actual['x'][:, 2:3], subplot_index=0)
-            first_target = np.array([0.55, -0.1, 0.485])
-            second_target = np.array([0.55, -0.1, 0.6])
-            third_target = np.array([0.55, 0.15, 0.485])
+            first_target = np.array([0.45, 0, 0.485])
+            second_target = np.array([0.45, 0, 0.6])
+            third_target = np.array([0.7, 0.0, 0.485])
             reached_first_target = np.any(np.all(np.isclose(c3_target['x'][:, 7:10], second_target, atol=1e-3), axis=1))
             reached_second_target = np.any(np.all(np.isclose(c3_target['x'][:, 7:10], third_target, atol=1e-3), axis=1))
             reached_third_target = reached_second_target and np.linalg.norm(c3_target['x'][:length, 7:10] - c3_actual['x'][:length, 7:10], axis=1)[-1] < 0.1
             task_success = np.array([reached_first_target, reached_second_target, reached_third_target])
-            print('reached_targets: ', task_success)
+            # print('reached_targets: ', task_success)
             successes += task_success
             # print('reached_second_target: ', reached_second_target)
             # print('reached_third_target: ', reached_third_target)
@@ -92,7 +92,7 @@ def load_lcm_logs():
             # plt.show()
         print(successes)
         all_successes[i] = successes
-    np.save('target_successes', all_successes )
+    np.save('target_successes_23', all_successes )
 
 def plot_logs():
     all_successes = np.load('all_successes.npy')
@@ -110,12 +110,12 @@ def plot_logs():
     for i in range(n):
         # for j in range(3):
         # plt.bar(bar_positions[i], all_successes[i, 2] / 30, width=bar_width)
-        # plt.bar(mu_range[i], all_successes[i, 2] / all_successes[i, 0], width=bar_width, color='grey')
+        # plt.bar(effective_mu_range[i], all_successes[i, 2] / all_successes[i, 0], width=bar_width, color='grey')
         plt.bar(effective_mu_range[i], all_successes[i, 0] / 30, width=bar_width, color='grey')
     plt.ylabel('Target Success Rate')
     plt.xlabel('Tray/End Effector Friction Coefficient')
 
-    plt.savefig('/home/yangwill/Pictures/plot_styler/' + 'target_1_success')
+    # plt.savefig('/home/yangwill/Pictures/plot_styler/' + 'target_1_success')
     # plt.legend()
     # for i in range(3):
     #     plt.bar(bar_positions + i * (n + 1), all_successes[:, i], label=f'Task {i + 1}')
@@ -123,8 +123,8 @@ def plot_logs():
     plt.show()
 
 def main():
-    # load_lcm_logs()
-    plot_logs()
+    load_lcm_logs()
+    # plot_logs()
 
 
 

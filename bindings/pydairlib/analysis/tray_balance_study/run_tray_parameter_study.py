@@ -12,7 +12,7 @@ def main():
     cooldown_time = 10.0
     start_time = 0
     realtime_rate = 1.0
-    num_trials = 10
+    num_trials = 5
     c3_start_up_time = 4.0
     sim_run_time = sim_time / realtime_rate
     controller_startup_time = 0.1
@@ -37,7 +37,7 @@ def main():
 
     # mu_range = np.arange(0.3, 0.8, 0.05)
     # mass_range = np.arange(0.5, 2.0, 0.05)
-    effective_mu_range = np.arange(0.2, 0.71, 0.05)
+    effective_mu_range = np.arange(0.1, 0.71, 0.1)
     tray_mu = 0.4
 
     initial_radio_msg = dairlib.lcmt_radio_out()

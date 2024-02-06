@@ -25,7 +25,7 @@
           </cylinder>
         </geometry>
         <material>
-          <diffuse>0.1 0.1 0.1 0.6</diffuse>
+          <diffuse>0.1 0.1 0.1 0.8</diffuse>
         </material>
       </visual>
       <collision name="tray">

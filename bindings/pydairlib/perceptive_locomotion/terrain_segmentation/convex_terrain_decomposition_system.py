@@ -1,4 +1,5 @@
 import cv2
+import time
 import numpy as np
 from skspatial.objects import Plane
 
@@ -78,6 +79,10 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
         return plane.normal, plane.point
 
     def calc(self, context: Context, out: Value) -> None:
+
+
+        start = time.time()
+
         # Get the safe terrain segmentation grid map
         grid = self.EvalAbstractInput(
             context, self.input_port_safe_terrain
@@ -132,5 +137,5 @@ class ConvexTerrainDecompositionSystem(LeafSystem):
             normal, point = self.get_plane(grid, polygon)
             polygon.SetPlane(normal, point)
         out.set_value(ConvexPolygonSet(convex_polygons))
-
-
+        end = time.time()
+        print(end - start)

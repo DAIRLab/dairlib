@@ -134,14 +134,12 @@ class TerrainSegmentationSystem(LeafSystem):
         prev_segmentation = segmented_map['segmentation']
         prev_segmentation[np.isnan(prev_segmentation)] = 0.0
 
-        start = time.time()
         raw_safety_score, upsampled = self.get_raw_safety_score(
             elevation_map['elevation'],
             elevation_map['elevation_inpainted'],
             elevation_map.getResolution()
         )
-        end = time.time()
-        print(end - start)
+
         segmented_map['interpolated'][:] = upsampled
 
         segmented_map["raw_safety_score"][:] = raw_safety_score

@@ -275,7 +275,7 @@ vector<int> get_foothold_indices(const vector<VectorXd>& binary_vars) {
   vector<int> indices;
   for (const auto& v : binary_vars) {
     int i = 0;
-    while(v(i) < 1 and i < v.rows()) {
+    while(v(i) < 0.5 and i < v.rows()) {
       ++i;
     }
     indices.push_back(i);

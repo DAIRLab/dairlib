@@ -168,11 +168,9 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(osc_plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(
-          osc_plant, osc_plant_context.get());
+      builder.AddSystem<EndEffectorTrajectoryGenerator>();
   auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationGenerator>(
-          osc_plant, osc_plant_context.get());
+      builder.AddSystem<EndEffectorOrientationGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
@@ -510,12 +508,8 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(osc_plant);
 
   //// OSC connections
-  builder.Connect(osc_state_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_trajectory->get_input_port_radio());
-  builder.Connect(osc_state_receiver->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_orientation_trajectory->get_input_port_radio());
   builder.Connect(osc_state_receiver->get_output_port(0),

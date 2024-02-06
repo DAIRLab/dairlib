@@ -1,44 +1,19 @@
 #include "end_effector_orientation.h"
 
-#include <iostream>
-
 #include "dairlib/lcmt_radio_out.hpp"
-#include "multibody/multibody_utils.h"
 
-using Eigen::Map;
 using Eigen::MatrixXd;
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::Vector4d;
 using Eigen::VectorXd;
 using std::string;
 
-using dairlib::systems::OutputVector;
-using drake::multibody::BodyFrame;
-using drake::multibody::Frame;
-using drake::multibody::JacobianWrtVariable;
-using drake::multibody::MultibodyPlant;
-using drake::systems::BasicVector;
 using drake::systems::Context;
-using drake::systems::DiscreteUpdateEvent;
-using drake::systems::DiscreteValues;
-using drake::systems::EventStatus;
-using drake::trajectories::PiecewisePolynomial;
 using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorOrientationGenerator::EndEffectorOrientationGenerator(
-    const MultibodyPlant<double>& plant, Context<double>* context)
-    : plant_(plant), context_(context), world_(plant.world_frame()) {
-  // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        "x", OutputVector<double>(plant_.num_positions(),
-                                                  plant_.num_velocities(),
-                                                  plant_.num_actuators()))
-                    .get_index();
-  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+EndEffectorOrientationGenerator::EndEffectorOrientationGenerator() {
+  auto pp = drake::trajectories::PiecewiseQuaternionSlerp<double>();
 
   trajectory_port_ =
       this->DeclareAbstractInputPort(

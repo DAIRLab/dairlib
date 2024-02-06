@@ -90,13 +90,6 @@ int DoMain(int argc, char* argv[]) {
   plant.Finalize();
 
   /* -------------------------------------------------------------------------------------------*/
-//  auto robot_input_lcm_subscriber =
-//      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-//          lcm_channel_params.franka_input_channel, &drake_lcm));
-//  auto robot_input_lcm_echo =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-//          lcm_channel_params.franka_input_echo, &drake_lcm,
-//          {drake::systems::TriggerType::kForced}));
   auto robot_input_receiver = builder.AddSystem<RobotInputReceiver>(plant);
   auto lcm_to_ros_robot_input = builder.AddSystem<LcmToRosTimestampedVector>(7);
   auto robot_input_ros_publisher = builder.AddSystem(
@@ -104,10 +97,6 @@ int DoMain(int argc, char* argv[]) {
           ros_channel_params.franka_input_channel, &node_handle,
           {drake::systems::TriggerType::kForced}));
 
-//  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
-//                  robot_input_receiver->get_input_port());
-//  builder.Connect(robot_input_lcm_subscriber->get_output_port(),
-//                  robot_input_lcm_echo->get_input_port());
   builder.Connect(robot_input_receiver->get_output_port(),
                   lcm_to_ros_robot_input->get_input_port());
   builder.Connect(lcm_to_ros_robot_input->get_output_port(),
@@ -116,9 +105,6 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_lcm_ros_bridge"));
   const auto& diagram = *owned_diagram;
-  DrawAndSaveDiagramGraph(diagram);
-//  drake::systems::Simulator<double> simulator(std::move(owned_diagram));
-//  auto& diagram_context = simulator.get_mutable_context();
 
   // figure out what the arguments to this mean
   ros::AsyncSpinner spinner(1);

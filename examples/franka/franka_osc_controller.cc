@@ -136,8 +136,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>(plant,
-                                                        plant_context.get());
+      builder.AddSystem<EndEffectorTrajectoryGenerator>();
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
       controller_params.neutral_position.data(),
       controller_params.neutral_position.size());
@@ -145,8 +144,7 @@ int DoMain(int argc, char* argv[]) {
       neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);
   auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationGenerator>(plant,
-                                                         plant_context.get());
+      builder.AddSystem<EndEffectorOrientationGenerator>();
   end_effector_orientation_trajectory->SetTrackOrientation(
       controller_params.track_end_effector_orientation);
   auto end_effector_force_trajectory =
@@ -233,12 +231,8 @@ int DoMain(int argc, char* argv[]) {
                     franka_command_sender->get_input_port(0));
   }
 
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_trajectory->get_input_port_radio());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_orientation_trajectory->get_input_port_radio());
   builder.Connect(state_receiver->get_output_port(0),

@@ -4,13 +4,13 @@ cc_library(
     name = "franka_systems",
     srcs = [],
     deps = [
+        ":c3_state_sender",
+        ":c3_trajectory_generator",
         ":end_effector_force_trajectory",
         ":end_effector_orientation",
         ":end_effector_trajectory",
         ":franka_kinematics",
         ":plate_balancing_target",
-        ":c3_state_sender",
-        ":c3_trajectory_generator",
     ],
 )
 
@@ -107,20 +107,6 @@ cc_library(
     name = "franka_kinematics",
     srcs = ["franka_kinematics.cc"],
     hdrs = ["franka_kinematics.h"],
-    deps = [
-        ":franka_kinematics_vector",
-        "//common",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//systems/primitives",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_sim_controls",
-    srcs = ["franka_sim_controls.cc"],
-    hdrs = ["franka_sim_controls.h"],
     deps = [
         ":franka_kinematics_vector",
         "//common",

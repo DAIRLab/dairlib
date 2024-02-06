@@ -1,20 +1,13 @@
 #include "end_effector_trajectory.h"
-#include <iostream>
+
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
 using Eigen::Map;
 using Eigen::MatrixXd;
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::Vector4d;
 using Eigen::VectorXd;
 using std::string;
 
-using dairlib::systems::OutputVector;
-using drake::multibody::BodyFrame;
-using drake::multibody::Frame;
-using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -25,15 +18,8 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
-    const MultibodyPlant<double>& plant, Context<double>* context)
-    : plant_(plant), context_(context), world_(plant.world_frame()) {
+EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator() {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        "x", OutputVector<double>(plant_.num_positions(),
-                                                  plant_.num_velocities(),
-                                                  plant_.num_actuators()))
-                    .get_index();
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
   trajectory_port_ =

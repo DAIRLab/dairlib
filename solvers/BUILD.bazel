@@ -20,6 +20,64 @@ cc_library(
 )
 
 cc_library(
+    name = "c3",
+    srcs = [
+        "c3.cc",
+        "c3_miqp.cc",
+        "c3_qp.cc",
+    ],
+    hdrs = [
+        "c3.h",
+        "c3_miqp.h",
+        "c3_options.h",
+        "c3_qp.h",
+    ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
+    deps = [
+        ":lcs",
+        "//solvers:fast_osqp_solver",
+        "@drake//:drake_shared_library",
+        "@gurobi//:gurobi_cxx",
+    ],
+)
+
+cc_library(
+    name = "c3_output",
+    srcs = [
+        "c3_output.cc",
+    ],
+    hdrs = [
+        "c3_output.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lcs",
+    srcs = [
+        "lcs.cc",
+        "lcs_factory.cc",
+    ],
+    hdrs = [
+        "lcs.h",
+        "lcs_factory.h",
+    ],
+    deps = [
+        "//multibody:geom_geom_collider",
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "constraint_factory",
     srcs = [
         "constraint_factory.cc",

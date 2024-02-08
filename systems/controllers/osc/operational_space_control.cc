@@ -125,6 +125,17 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
+  VectorXd ddq_min = VectorXd::Zero(n_q_);
+  VectorXd ddq_max = VectorXd::Zero(n_q_);
+  for (JointIndex i(0); i < n_q_; ++i) {
+    if (plant_wo_spr_.get_joint(i).acceleration_lower_limits().size() != 0) {
+      ddq_min[i] = plant_wo_spr_.get_joint(i).acceleration_lower_limits()[0];
+      ddq_max[i] = plant_wo_spr_.get_joint(i).acceleration_upper_limits()[0];
+    }
+  }
+  ddq_min_ = ddq_min;
+  ddq_max_ = ddq_max;
+
   n_revolute_joints_ = 0;
   for (JointIndex i(0); i < plant_wo_spr_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_wo_spr_.get_joint(i);
@@ -240,6 +251,27 @@ void OperationalSpaceControl::AddTrackingData(
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
 }
+
+// Tracking data methods
+void OperationalSpaceControl::AddForceTrackingData(
+    std::unique_ptr<ExternalForceTrackingData> tracking_data) {
+  force_tracking_data_vec_->push_back(std::move(tracking_data));
+
+  // Construct input ports and add element to traj_name_to_port_index_map_ if
+  // the port for the traj is not created yet
+  string traj_name = force_tracking_data_vec_->back()->GetName();
+  if (traj_name_to_port_index_map_.find(traj_name) ==
+      traj_name_to_port_index_map_.end()) {
+    PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+    int port_index =
+        this->DeclareAbstractInputPort(
+                traj_name,
+                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            .get_index();
+    traj_name_to_port_index_map_[traj_name] = port_index;
+  }
+}
+
 void OperationalSpaceControl::AddConstTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
@@ -290,6 +322,12 @@ void OperationalSpaceControl::Build() {
              ? 0
              : kinematic_evaluators_->count_full();
   n_c_ = kSpaceDim * all_contacts_.size();
+
+  n_lambda_ext_ = 0;
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    n_lambda_ext_ += force_tracking_data->GetLambdaDim();
+  }
+
   n_c_active_ = 0;
   for (auto evaluator : all_contacts_) {
     n_c_active_ += evaluator->num_active();
@@ -312,12 +350,14 @@ void OperationalSpaceControl::Build() {
   u_sol_ = std::make_unique<Eigen::VectorXd>(n_u_);
   lambda_c_sol_ = std::make_unique<Eigen::VectorXd>(n_c_);
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(n_h_);
+  lambda_ext_sol_ = std::make_unique<Eigen::VectorXd>(n_lambda_ext_);
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(n_c_active_);
   u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
   dv_sol_->setZero();
   u_sol_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
+  lambda_ext_sol_->setZero();
   u_prev_->setZero();
 
   // Add decision variables
@@ -325,6 +365,7 @@ void OperationalSpaceControl::Build() {
   u_ = prog_->NewContinuousVariables(n_u_, "u");
   lambda_c_ = prog_->NewContinuousVariables(n_c_, "lambda_contact");
   lambda_h_ = prog_->NewContinuousVariables(n_h_, "lambda_holonomic");
+  lambda_ext_ = prog_->NewContinuousVariables(n_lambda_ext_, "lambda_ee");
   epsilon_ = prog_->NewContinuousVariables(n_c_active_, "epsilon");
 
   // Add constraints
@@ -332,8 +373,9 @@ void OperationalSpaceControl::Build() {
   dynamics_constraint_ =
       prog_
           ->AddLinearEqualityConstraint(
-              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_),
-              VectorXd::Zero(n_v_), {dv_, lambda_c_, lambda_h_, u_})
+              MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_ + n_lambda_ext_),
+              VectorXd::Zero(n_v_),
+              {dv_, lambda_c_, lambda_h_, u_, lambda_ext_})
           .evaluator()
           .get();
   // 2. Holonomic constraint
@@ -385,6 +427,11 @@ void OperationalSpaceControl::Build() {
     prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
                                u_);
   }
+
+  if (with_acceleration_constraints_) {
+    prog_->AddLinearConstraint(MatrixXd::Identity(n_q_, n_q_), ddq_min_,
+                               ddq_max_, dv_);
+  }
   // No joint position constraint in this implementation
 
   // Add costs
@@ -423,6 +470,15 @@ void OperationalSpaceControl::Build() {
     lambda_h_cost_ =
         prog_
             ->AddQuadraticCost(W_lambda_h_reg_, VectorXd::Zero(n_h_), lambda_h_)
+            .evaluator()
+            .get();
+  }
+  //   3. external force cost
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    lambda_ext_cost_ =
+        prog_
+            ->AddQuadraticCost(MatrixXd::Zero(n_lambda_ext_, n_lambda_ext_),
+                               VectorXd::Zero(n_lambda_ext_), lambda_ext_)
             .evaluator()
             .get();
   }
@@ -551,7 +607,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   drake::multibody::MultibodyForces<double> f_app(plant_wo_spr_);
   plant_wo_spr_.CalcForceElementsContribution(*context_wo_spr_, &f_app);
   VectorXd grav = plant_wo_spr_.CalcGravityGeneralizedForces(*context_wo_spr_);
-  bias = bias - grav;
+  if (with_gravity_compensation_) {
+    bias = bias - grav;
+  }
   // TODO (yangwill): Characterize damping in cassie model
   //  std::cout << f_app.generalized_forces().transpose() << std::endl;
   //  bias = bias - f_app.generalized_forces();
@@ -610,11 +668,19 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///    M*dv + bias == J_c^T*lambda_c + J_h^T*lambda_h + B*u
   /// -> M*dv - J_c^T*lambda_c - J_h^T*lambda_h - B*u == - bias
   /// -> [M, -J_c^T, -J_h^T, -B]*[dv, lambda_c, lambda_h, u]^T = - bias
-  MatrixXd A_dyn = MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_);
+  MatrixXd A_dyn =
+      MatrixXd::Zero(n_v_, n_v_ + n_c_ + n_h_ + n_u_ + n_lambda_ext_);
   A_dyn.block(0, 0, n_v_, n_v_) = M;
   A_dyn.block(0, n_v_, n_v_, n_c_) = -J_c.transpose();
   A_dyn.block(0, n_v_ + n_c_, n_v_, n_h_) = -J_h.transpose();
   A_dyn.block(0, n_v_ + n_c_ + n_h_, n_v_, n_u_) = -B;
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    if (!force_tracking_data->GetWeight().isZero()){
+      MatrixXd J_ee = force_tracking_data->GetJ();
+      A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_lambda_ext_) =
+          J_ee.transpose();
+    }
+  }
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
@@ -711,6 +777,22 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
+  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+    int port_index =
+        traj_name_to_port_index_map_.at(force_tracking_data->GetName());
+    const drake::AbstractValue* input_traj =
+        this->EvalAbstractInput(context, port_index);
+    DRAKE_DEMAND(input_traj != nullptr);
+    const auto& traj =
+        input_traj->get_value<drake::trajectories::Trajectory<double>>();
+    force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
+                                *context_wo_spr_, traj, t);
+    const MatrixXd W = force_tracking_data->GetWeight();
+    const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
+    lambda_ext_cost_->UpdateCoefficients(
+        2 * W, -2 * W * lambda_des, lambda_des.transpose() * W * lambda_des);
+  }
+
   // Add joint limit constraints
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
@@ -798,6 +880,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(lambda_c_);
     *lambda_h_sol_ = result.GetSolution(lambda_h_);
     *epsilon_sol_ = result.GetSolution(epsilon_);
+    *lambda_ext_sol_ = result.GetSolution(lambda_ext_);
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
   }
@@ -932,6 +1015,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   VectorXd y_input_smoothing_cost = VectorXd::Zero(1);
   VectorXd y_lambda_c_cost = VectorXd::Zero(1);
   VectorXd y_lambda_h_cost = VectorXd::Zero(1);
+  VectorXd y_lambda_ee_cost = VectorXd::Zero(1);
   VectorXd y_soft_constraint_cost = VectorXd::Zero(1);
   VectorXd y_joint_limit_cost = VectorXd::Zero(1);
   if (accel_cost_) {
@@ -945,6 +1029,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   }
   if (lambda_c_cost_) {
     lambda_c_cost_->Eval(*lambda_c_sol_, &y_lambda_c_cost);
+  }
+  if (lambda_ext_cost_) {
+    lambda_ext_cost_->Eval(*lambda_ext_sol_, &y_lambda_ee_cost);
   }
   if (lambda_h_cost_) {
     lambda_h_cost_->Eval(*lambda_h_sol_, &y_lambda_h_cost);
@@ -963,6 +1050,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       (soft_constraint_cost_ != nullptr) ? y_soft_constraint_cost[0] : 0;
   double lambda_c_cost = (lambda_c_cost_ != nullptr) ? y_lambda_c_cost[0] : 0;
   double lambda_h_cost = (lambda_h_cost_ != nullptr) ? y_lambda_h_cost[0] : 0;
+  double lambda_ee_cost =
+      (lambda_ext_cost_ != nullptr) ? y_lambda_ee_cost[0] : 0;
   //  double joint_limit_cost =
   //      (joint_limit_cost_ != nullptr) ? y_joint_limit_cost[0] : 0;
 
@@ -983,6 +1072,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->regularization_cost_names.emplace_back("lambda_c_cost");
   output->regularization_costs.push_back(lambda_h_cost);
   output->regularization_cost_names.emplace_back("lambda_h_cost");
+  output->regularization_costs.push_back(lambda_ee_cost);
+  output->regularization_cost_names.emplace_back("lambda_ee_cost");
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -991,13 +1082,16 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
   qp_output.u_dim = n_u_;
-  qp_output.lambda_c_dim = n_c_;
-  qp_output.lambda_h_dim = n_h_;
+  //  qp_output.lambda_c_dim = n_c_;
+  qp_output.lambda_c_dim = n_lambda_ext_;
+  qp_output.lambda_h_dim = n_lambda_ext_;
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
-  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+//  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+//  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdVector(force_tracking_data_vec_->at(0)->GetLambdaDes());
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;

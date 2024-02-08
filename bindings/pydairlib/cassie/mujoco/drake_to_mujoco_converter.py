@@ -31,7 +31,7 @@ class DrakeToMujocoConverter():
         self.foot_crank_plant, self.foot_crank_scene_graph = AddMultibodyPlantSceneGraph(self.foot_crank_builder,
                                                                                          drake_sim_dt)
 
-        Parser(self.foot_crank_plant).AddModelFromFile(
+        Parser(self.foot_crank_plant).AddModels(
             self.foot_crank_urdf)
         self.foot_crank_plant.Finalize()
 
@@ -39,7 +39,7 @@ class DrakeToMujocoConverter():
         self.knee_linkage_plant, self.knee_linkage_scene_graph = AddMultibodyPlantSceneGraph(self.knee_linkage_builder,
                                                                                              drake_sim_dt)
 
-        Parser(self.knee_linkage_plant).AddModelFromFile(self.knee_linkage_urdf)
+        Parser(self.knee_linkage_plant).AddModels(self.knee_linkage_urdf)
         self.knee_linkage_plant.Finalize()
 
         self.diagram = self.builder.Build()
@@ -137,7 +137,7 @@ class DrakeToMujocoConverter():
         plant = MultibodyPlant(self.drake_sim_dt)
         scene_graph = builder.AddSystem(SceneGraph())
 
-        Parser(plant).AddModelFromFile(self.left_leg_urdf)
+        Parser(plant).AddModels(self.left_leg_urdf)
         plant.Finalize()
         self.print_pos_indices(plant)
 

@@ -45,24 +45,23 @@ cc_library(
     srcs = ["pelvis_trans_traj_generator.cc"],
     hdrs = ["pelvis_trans_traj_generator.h"],
     deps = [
+        "//examples/Cassie/contact_scheduler:all",
         "//multibody:utils",
         "//systems/controllers/osc:osc_gains",
-        "//examples/Cassie/contact_scheduler:all",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],
 )
-
 
 cc_library(
     name = "foot_traj_generator",
     srcs = ["foot_traj_generator.cc"],
     hdrs = ["foot_traj_generator.h"],
     deps = [
-        "//multibody:utils",
-        "//lcmtypes:lcmt_robot",
-        "//systems/controllers/osc:osc_gains",
         "//examples/Cassie/contact_scheduler:all",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/controllers/osc:osc_gains",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

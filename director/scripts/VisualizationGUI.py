@@ -147,7 +147,7 @@ class VisualizationGui(QWidget):
         pydrake.multibody.plant.AddMultibodyPlantSceneGraph(builder, 0)
 
       file = os.getcwd() + '/' + self.modelFile
-      pydrake.multibody.parsing.Parser(self.plant).AddModelFromFile(file)
+      pydrake.multibody.parsing.Parser(self.plant).AddModels(file)
 
       # determine if there is a need to use the weld a body part
       if (self.weldBody != None):

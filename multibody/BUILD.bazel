@@ -123,3 +123,16 @@ cc_binary(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "hydroelastic_geom_collider",
+    srcs = ["hydroelastic_geom_collider.cc"],
+    hdrs = [
+        "hydroelastic_geom_collider.h",
+    ],
+    deps = [
+        ":utils",
+        "//common",
+        "@drake//:drake_shared_library",
+    ],
+)

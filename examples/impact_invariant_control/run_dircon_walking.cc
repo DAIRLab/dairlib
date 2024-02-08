@@ -278,7 +278,7 @@ int doMain(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
       "examples/impact_invariant_control/five_link_biped.urdf");
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.mutable_gravity_field().set_gravity_vector(-FLAGS_gravity *
                                                    Eigen::Vector3d::UnitZ());
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),

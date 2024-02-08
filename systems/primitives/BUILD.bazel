@@ -46,8 +46,8 @@ cc_library(
         "radio_parser.h",
     ],
     deps = [
-        "//systems/framework:vector",
         "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

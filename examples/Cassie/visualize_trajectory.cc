@@ -51,14 +51,14 @@ int DoMain() {
   Parser parser(&plant, &scene_graph);
   const std::string& fixed_spring_urdf =
       "examples/Cassie/urdf/cassie_fixed_springs.urdf";
-  parser.AddModelFromFile(fixed_spring_urdf);
+  parser.AddModels(fixed_spring_urdf);
   plant.Finalize();
 
   MultibodyPlant<double> plant_w_spr(1e-3);
   const std::string& spring_urdf = "examples/Cassie/urdf/cassie_v2_shells.urdf";
   Parser parser_w_spr(&plant_w_spr, &scene_graph_w_spr);
 
-  parser_w_spr.AddModelFromFile(spring_urdf);
+  parser_w_spr.AddModels(spring_urdf);
   plant_w_spr.Finalize();
   auto pos_spr_map =
       multibody::CreateWithSpringsToWithoutSpringsMapPos(plant_w_spr, plant);
@@ -97,9 +97,9 @@ int DoMain() {
     auto mirrored_traj =
         saved_traj.ReconstructMirrorStateTrajectory(optimal_traj.end_time());
     VectorXd x_offset = VectorXd::Zero(nx);
-    x_offset(pos_map["base_x"]) =
-        optimal_traj.value(optimal_traj.end_time())(pos_map["base_x"]) -
-        optimal_traj.value(optimal_traj.start_time())(pos_map["base_x"]);
+    x_offset(pos_map["pelvis_x"]) =
+        optimal_traj.value(optimal_traj.end_time())(pos_map["pelvis_x"]) -
+        optimal_traj.value(optimal_traj.start_time())(pos_map["pelvis_x"]);
     std::vector<MatrixXd> x_offset_rep(mirrored_traj.get_segment_times().size(),
                                        x_offset);
     PiecewisePolynomial<double> x_offset_traj =
@@ -107,9 +107,9 @@ int DoMain() {
             mirrored_traj.get_segment_times(), x_offset_rep);
     optimal_traj.ConcatenateInTime(mirrored_traj + x_offset_traj);
 
-    x_offset(pos_map["base_x"]) =
-        optimal_traj.value(optimal_traj.end_time())(pos_map["base_x"]) -
-        optimal_traj.value(optimal_traj.start_time())(pos_map["base_x"]);
+    x_offset(pos_map["pelvis_x"]) =
+        optimal_traj.value(optimal_traj.end_time())(pos_map["pelvis_x"]) -
+        optimal_traj.value(optimal_traj.start_time())(pos_map["pelvis_x"]);
     x_offset_rep = std::vector<MatrixXd>(
         optimal_traj.get_segment_times().size(), x_offset);
 

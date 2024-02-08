@@ -53,6 +53,12 @@ build --action_env=LD_LIBRARY_PATH=
 
 # build with snopt
 build --define=WITH_SNOPT=ON
+build --define=WITH_GUROBI=ON
+build --define=NO_CLARABEL=ON
+
+build:omp --copt=-DEIGEN_DONT_PARALLELIZE
+build:omp --copt=-fopenmp
+build:omp --linkopt=-fopenmp
 
 # use python3 by default
 build --python_path=python3

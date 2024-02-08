@@ -195,7 +195,7 @@ void OptionsTrackingData::SetTimerVaryingFeedForwardAccelMultiplier(
   ff_accel_multiplier_traj_ = ff_accel_multiplier_traj;
 }
 
-void OptionsTrackingData::SetCmdAccelerationBounds(Eigen::VectorXd& lb, Eigen::VectorXd& ub){
+void OptionsTrackingData::SetCmdAccelerationBounds(const Eigen::VectorXd& lb, const Eigen::VectorXd& ub){
   DRAKE_DEMAND(lb.size() == n_ydot_);
   DRAKE_DEMAND(ub.size() == n_ydot_);
   yddot_cmd_lb_ = lb;

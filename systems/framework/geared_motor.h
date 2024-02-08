@@ -39,7 +39,7 @@ class GearedMotor final : public drake::systems::LeafSystem<double> {
 
  protected:
   void CalcTorqueOutput(const drake::systems::Context<double>& context,
-                        systems::BasicVector<double>* output) const;
+                        drake::systems::BasicVector<double>* output) const;
 
  private:
   bool is_abstract() const { return false; }

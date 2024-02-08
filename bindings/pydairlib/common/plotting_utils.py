@@ -19,18 +19,18 @@ one 3 dimensional data channel named 'pos'
 
 def make_plot(data_dictionary, time_key, time_slice, keys_to_plot,
               slices_to_plot, legend_entries, plot_labels,
-              ps):
+              ps, subplot_index=0):
   legend = []
   for key in keys_to_plot:
     if key not in slices_to_plot:
       ps.plot(data_dictionary[time_key][time_slice],
               data_dictionary[key][time_slice], xlabel=plot_labels['xlabel'],
-              ylabel=plot_labels['ylabel'], title=plot_labels['title'])
+              ylabel=plot_labels['ylabel'], title=plot_labels['title'], subplot_index=subplot_index)
     else:
       ps.plot(data_dictionary[time_key][time_slice],
               data_dictionary[key][time_slice, slices_to_plot[key]],
               xlabel=plot_labels['xlabel'], ylabel=plot_labels['ylabel'],
-              title=plot_labels['title'])
+              title=plot_labels['title'], subplot_index=subplot_index)
     if key in legend_entries:
       legend.extend(legend_entries[key])
 

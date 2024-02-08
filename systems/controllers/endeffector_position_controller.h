@@ -10,17 +10,6 @@
 #include <fstream>
 #include <math.h>
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using Eigen::Quaternion;
-using Eigen::Quaterniond;
-using Eigen::AngleAxis;
-using Eigen::AngleAxisd;
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Frame;
-
 namespace dairlib{
 namespace systems{
 
@@ -30,10 +19,10 @@ namespace systems{
 // outputs appropriate velocity (twist) as 6-vector: first three indices
 // are desired angular velocity, next three are desired linear velocity.
 
-class EndEffectorPositionController : public LeafSystem<double> {
+ class EndEffectorPositionController : public drake::systems::LeafSystem<double> {
  public:
    // Constructor
-   EndEffectorPositionController(const MultibodyPlant<double>& plant,
+   EndEffectorPositionController(const drake::multibody::MultibodyPlant<double>& plant,
                                  std::string ee_frame_name,
                                  Eigen::Vector3d ee_contact_frame,
                                  double k_p, double k_omega);
@@ -55,13 +44,13 @@ class EndEffectorPositionController : public LeafSystem<double> {
  private:
    // Callback method called when declaring output port of the system.
    // Twist combines linear and angular velocities.
-   void CalcOutputTwist(const Context<double> &context,
-                        BasicVector<double>* output) const;
+   void CalcOutputTwist(const drake::systems::Context<double> &context,
+                        drake::systems::BasicVector<double>* output) const;
 
-   const MultibodyPlant<double>& plant_;
-   const Frame<double>& plant_world_frame_;
+   const drake::multibody::MultibodyPlant<double>& plant_;
+   const drake::multibody::Frame<double>& plant_world_frame_;
    Eigen::Vector3d ee_contact_frame_;
-   const Frame<double>& ee_joint_frame_;
+   const drake::multibody::Frame<double>& ee_joint_frame_;
    double k_p_;
    double k_omega_;
    int joint_position_measured_port_;

@@ -1,0 +1,5 @@
+franka_state_channel: /franka/joint_states
+tray_state_channel: /tagslam/odom/body_tray
+box_state_channel: /franka/box_object_state
+franka_input_channel: /franka/franka_input
+

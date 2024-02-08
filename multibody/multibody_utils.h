@@ -73,19 +73,32 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
 
 /// Get the ordered names from a NameTo___Map
 std::vector<std::string> ExtractOrderedNamesFromMap(
-    const std::map<std::string, int>& map);
+    const std::map<std::string, int>& map, int index_start = 0);
 
 /// Given a MultibodyPlant, builds a map from position name to position index
 template <typename T>
 std::map<std::string, int> MakeNameToPositionsMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
-/// Given a MultiBodyTree, builds a map from velocity name to velocity index
+/// Given a MultibodyPlant, builds a map from position name to position index
+template <typename T>
+std::map<std::string, int> MakeNameToPositionsMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
+
+/// Given a MultiBodyPlant, builds a map from velocity name to velocity index
 template <typename T>
 std::map<std::string, int> MakeNameToVelocitiesMap(
     const drake::multibody::MultibodyPlant<T>& plant);
 
-/// Given a MultiBodyTree, builds a map from actuator name to actuator index
+
+/// Given a MultiBodyPlant, builds a map from velocity name to velocity index
+template <typename T>
+std::map<std::string, int> MakeNameToVelocitiesMap(
+    const drake::multibody::MultibodyPlant<T>& plant,
+    drake::multibody::ModelInstanceIndex model_instance_index);
+
+/// Given a MultiBodyPlant, builds a map from actuator name to actuator index
 template <typename T>
 std::map<std::string, int> MakeNameToActuatorsMap(
     const drake::multibody::MultibodyPlant<T>& plant);

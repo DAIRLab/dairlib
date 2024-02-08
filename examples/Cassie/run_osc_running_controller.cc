@@ -193,15 +193,13 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
-  osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
-                                    osc_gains.W_input_regularization);
-  osc->SetInputCostWeights(osc_gains.w_input *
-                           osc_gains.W_input_regularization);
+  osc->SetAccelerationCostWeights(osc_gains.W_acceleration);
+  osc->SetInputSmoothingCostWeights(osc_gains.W_input_regularization);
+  osc->SetInputCostWeights(osc_gains.W_input_smoothing_regularization);
   osc->SetLambdaContactRegularizationWeight(
-      osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
+      osc_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(
-      osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
+      osc_gains.W_lambda_h_regularization);
   // Soft constraint on contacts
   osc->SetContactSoftConstraintWeight(osc_gains.w_soft_constraint);
   osc->SetJointLimitWeight(osc_gains.w_joint_limit);
@@ -234,7 +232,6 @@ int DoMain(int argc, char* argv[]) {
                                &right_heel_evaluator);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
-
 
   // Fix the springs in the dynamics
   auto pos_idx_map = multibody::MakeNameToPositionsMap(plant);

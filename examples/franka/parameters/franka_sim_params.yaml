@@ -1,0 +1,34 @@
+#franka_model: examples/franka/urdf/franka_no_collision.urdf
+franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+end_effector_model: examples/franka/urdf/plate_end_effector.urdf
+table_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
+table_w_supports_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
+tray_model: examples/franka/urdf/tray.sdf
+box_model: examples/franka/urdf/default_box.urdf
+left_support_model: examples/franka/urdf/left_support.urdf
+right_support_model: examples/franka/urdf/left_support.urdf
+franka_publish_rate: 1000
+tray_publish_rate: 10
+visualizer_publish_rate: 15
+actuator_delay: 0.000
+
+scene_index: 1
+visualize: true
+publish_efforts: true
+
+camera_pose: [0.5, -1.5, 0.7]
+camera_target: [0.5, 0, 0.5]
+
+tool_attachment_frame: [0, 0, 0.107]
+left_support_position: [0.8, 0.15, 0.455]
+right_support_position: [0.8, -0.15, 0.455]
+
+dt: 0.0005
+realtime_rate: 1.0
+#q_init_franka: [-0.85, 1.45, 1.25, -1.5, 1.70, 1.2, -0.6]
+q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
+
+q_init_plate: [[1, 0, 0, 0, 0.56, 0.04, 0.515],
+               [1, 0, 0, 0, 0.7, 0.00, 0.515]]
+#q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
+q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]

@@ -2,7 +2,6 @@
 
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
-#include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "examples/Cassie/cassie_utils.h"
@@ -26,7 +25,6 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "yaml-cpp/yaml.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/systems/framework/diagram_builder.h"

@@ -95,7 +95,7 @@ class Dircon
   ///
   /// Creates a callback using a single pose count parameter, num_poses
   /// Evenly divides the poses among the different modes, weighting by number
-  /// of frames in that mode. Since start/end poses per mode are required, must
+  /// of frames in that mode. Since start/end poses per mdoe are required, must
   /// have num_poses >= num_modes + 1
   void CreateVisualizationCallback(std::string model_file,
                                    unsigned int num_poses, double alpha,

@@ -110,7 +110,7 @@ void AddCassieMultibody(MultibodyPlant<double>* plant,
                         bool add_loop_closure, bool add_reflected_inertia) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
 
   if (!floating_base) {
     plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),

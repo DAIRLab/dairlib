@@ -8,12 +8,6 @@
 
 #include <math.h>
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-using drake::multibody::MultibodyPlant;
-using drake::multibody::Frame;
 
 namespace dairlib{
 namespace systems{
@@ -23,10 +17,10 @@ namespace systems{
 // In this case, KukaIiwaVelocityController will take in desired velocities,
 // q, q_dot, and output an appropriate torque
 // \Tau = jacobian.transpose x K x desired_accelerations
-class EndEffectorVelocityController : public LeafSystem<double> {
+ class EndEffectorVelocityController : public drake::systems::LeafSystem<double> {
   public:
     // Constructor
-    EndEffectorVelocityController(const MultibodyPlant<double>& plant,
+    EndEffectorVelocityController(const drake::multibody::MultibodyPlant<double>& plant,
                                   std::string ee_frame_name,
                                   Eigen::Vector3d ee_contact_frame,
                                   double k_d, double k_r);
@@ -49,12 +43,12 @@ class EndEffectorVelocityController : public LeafSystem<double> {
     // The callback called when declaring the output port of the system.
     // The 'output' vector is set in place and then passed out.
     // Think a simulink system.
-    void CalcOutputTorques(const Context<double>& context,
-                         BasicVector<double>* output) const;
+    void CalcOutputTorques(const drake::systems::Context<double>& context,
+                         drake::systems::BasicVector<double>* output) const;
 
-    const MultibodyPlant<double>& plant_;
+    const drake::multibody::MultibodyPlant<double>& plant_;
     int num_joints_;
-    const Frame<double>& ee_joint_frame_;
+    const drake::multibody::Frame<double>& ee_joint_frame_;
     Eigen::Vector3d ee_contact_frame_;
     int joint_position_measured_port_;
     int joint_velocity_measured_port_;

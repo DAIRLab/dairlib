@@ -7,14 +7,10 @@
 #include "drake/systems/framework/event_status.h"
 #include "drake/systems/framework/discrete_values.h"
 
-using Eigen::VectorXd;
-using drake::systems::LeafSystem;
-using drake::systems::Context;
-
 namespace dairlib{
 namespace systems{
 
-class SafeVelocityController : public LeafSystem<double> {
+ class SafeVelocityController : public drake::systems::LeafSystem<double> {
  public:
    SafeVelocityController(double max_velocity, int num_joints);
 
@@ -29,11 +25,11 @@ class SafeVelocityController : public LeafSystem<double> {
    }
 
  private:
-   void CalcOutputTorques(const Context<double> &context,
-                          BasicVector<double>* output) const;
+   void CalcOutputTorques(const drake::systems::Context<double> &context,
+                          drake::systems::BasicVector<double>* output) const;
 
    drake::systems::EventStatus CheckTerminate(
-           const Context<double> &context,
+           const drake::systems::Context<double> &context,
            drake::systems::DiscreteValues<double>* next_state) const;
 
 

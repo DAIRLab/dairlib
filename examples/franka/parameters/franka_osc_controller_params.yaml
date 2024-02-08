@@ -1,0 +1,67 @@
+controller_frequency: 1000
+
+franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+end_effector_model: examples/franka/urdf/plate_end_effector_massless.urdf
+end_effector_name: plate
+
+tool_attachment_frame: [0, 0, 0.107]
+
+neutral_position: [0.55, 0, 0.45]
+x_scale: 0.1
+y_scale: 0.1
+z_scale: 0.1
+
+w_input: 0.00
+w_input_reg: 0.0
+w_accel: 0.00001
+w_soft_constraint: 0.0
+w_lambda: 0.0
+impact_threshold: 0.000
+impact_tau: 0.000
+mu: 1.0 # unused
+end_effector_acceleration: 10
+track_end_effector_orientation: false
+cancel_gravity_compensation: false
+enforce_acceleration_constraints: false
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]
+W_lambda_c_reg: [ 0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01 ]
+W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                  0.001, 0.001, 0.001 ]
+
+
+w_elbow: 1
+elbow_kp: 200
+elbow_kd: 10
+
+EndEffectorW:
+  [0.1, 0, 0,
+   0, 0.1, 0,
+   0, 0, 0.1]
+EndEffectorKp:
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
+EndEffectorKd:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+EndEffectorRotW:
+  [ 10, 0, 0,
+    0, 10, 0,
+    0, 0, 10 ]
+EndEffectorRotKp:
+  [ 800, 0, 0,
+    0, 800, 0,
+    0, 0,  800]
+EndEffectorRotKd:
+  [ 40, 0, 0,
+    0, 40, 0,
+    0, 0, 40]
+LambdaEndEffectorW:
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 1 ]

@@ -67,7 +67,7 @@ CassieStateEstimator::CassieStateEstimator(
       print_info_to_terminal_(print_info_to_terminal),
       hardware_test_mode_(hardware_test_mode),
       contact_force_threshold_(contact_force_threshold),
-      joint_offsets_(MakeJointPositionOffsetFromMap(plant, joint_offset_map)){
+      joint_offsets_(MakeJointPositionOffsetFromMap(plant, joint_offset_map)) {
   DRAKE_DEMAND(&fourbar_evaluator->plant() == &plant);
   DRAKE_DEMAND(&left_contact_evaluator->plant() == &plant);
   DRAKE_DEMAND(&right_contact_evaluator->plant() == &plant);
@@ -416,7 +416,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   double right_heel_spring = 0;
   VectorXd q = output->GetPositions() + joint_offsets_;
   output->SetPositions(q);
-  
+
   if (is_floating_base_) {
     // Floating-base state doesn't affect the spring values
     // We assign the floating base of q in case output's floating base is
@@ -435,20 +435,30 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 
 void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
     const VectorXd& est_fb_state, OutputVector<double>* output) const {
-  output->SetPositionAtIndex(position_idx_map_.at("base_qw"), est_fb_state(0));
-  output->SetPositionAtIndex(position_idx_map_.at("base_qx"), est_fb_state(1));
-  output->SetPositionAtIndex(position_idx_map_.at("base_qy"), est_fb_state(2));
-  output->SetPositionAtIndex(position_idx_map_.at("base_qz"), est_fb_state(3));
-  output->SetPositionAtIndex(position_idx_map_.at("base_x"), est_fb_state(4));
-  output->SetPositionAtIndex(position_idx_map_.at("base_y"), est_fb_state(5));
-  output->SetPositionAtIndex(position_idx_map_.at("base_z"), est_fb_state(6));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qw"),
+                             est_fb_state(0));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qx"),
+                             est_fb_state(1));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qy"),
+                             est_fb_state(2));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qz"),
+                             est_fb_state(3));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_x"), est_fb_state(4));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_y"), est_fb_state(5));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_z"), est_fb_state(6));
 
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wx"), est_fb_state(7));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wy"), est_fb_state(8));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wz"), est_fb_state(9));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vx"), est_fb_state(10));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vy"), est_fb_state(11));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vz"), est_fb_state(12));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wx"),
+                             est_fb_state(7));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wy"),
+                             est_fb_state(8));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wz"),
+                             est_fb_state(9));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vx"),
+                             est_fb_state(10));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vy"),
+                             est_fb_state(11));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vz"),
+                             est_fb_state(12));
 }
 
 /// EstimateContactFromSprings(). Conservative estimation.
@@ -628,7 +638,7 @@ EventStatus CassieStateEstimator::Update(
     // is not triggered by CASSIE_STATE_SIMULATION message.
     // This wouldn't be an issue when you don't use ground truth state.
     if (output_gt.GetPositions().head(7).norm() == 0) {
-      output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);
+      output_gt.SetPositionAtIndex(position_idx_map_.at("pelvis_qw"), 1);
     }
 
     // Get kinematics cache for ground truth
@@ -780,9 +790,9 @@ EventStatus CassieStateEstimator::Update(
   // TODO(yangwill): Decide whether to use both contacts per foot or just one.
   // Possibly leave it as an option to the state estimator
   contacts.push_back(std::pair<int, bool>(0, left_contact));
-//  contacts.push_back(std::pair<int, bool>(1, left_contact));
+  //  contacts.push_back(std::pair<int, bool>(1, left_contact));
   contacts.push_back(std::pair<int, bool>(2, right_contact));
-//  contacts.push_back(std::pair<int, bool>(3, right_contact));
+  //  contacts.push_back(std::pair<int, bool>(3, right_contact));
   ekf.setContacts(contacts);
 
   // Step 4 - EKF (measurement step)
@@ -1020,7 +1030,6 @@ void CassieStateEstimator::setPreviousImuMeasurement(
 void CassieStateEstimator::EstimateContactForces(
     const Context<double>& context, const systems::OutputVector<double>& output,
     VectorXd& lambda, int& left_contact, int& right_contact) const {
-
   // TODO(yangwill) add a discrete time filter to the force estimate
   VectorXd v_prev =
       context.get_discrete_state(previous_velocity_idx_).get_value();
@@ -1087,14 +1096,12 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     *time = next_message_time_ - eps_;
 
     if (is_floating_base_) {
-      UnrestrictedUpdateEvent<double>::UnrestrictedUpdateCallback callback =
-          [this](const Context<double>& c,
-                 const UnrestrictedUpdateEvent<double>&,
-                 drake::systems::State<double>* s) { this->Update(c, s); };
-
-      auto& uu_events = events->get_mutable_unrestricted_update_events();
-      uu_events.AddEvent(UnrestrictedUpdateEvent<double>(
-          drake::systems::TriggerType::kTimed, callback));
+      auto callback = [](const System& system, const Context<double>& c,
+                         const UnrestrictedUpdateEvent<double>&,
+                         drake::systems::State<double>* s) {
+        const auto& self = dynamic_cast<const CassieStateEstimator&>(system);
+        return self.Update(c, s);
+      };
     } else {
       *time = INFINITY;
     }

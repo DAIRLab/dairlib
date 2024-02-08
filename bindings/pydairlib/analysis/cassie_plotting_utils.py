@@ -1,7 +1,6 @@
 # python imports
 import lcm
 import numpy as np
-import matplotlib.pyplot as plt
 
 # lcmtype imports
 import dairlib

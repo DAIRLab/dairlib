@@ -129,12 +129,7 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
 
     if (publish_triggers.find(TriggerType::kPerStep) !=
         publish_triggers.end()) {
-      this->DeclarePerStepEvent(
-      drake::systems::PublishEvent<double>([this](
-          const drake::systems::Context<double>& context,
-          const drake::systems::PublishEvent<double>&) {
-        this->PublishToRosTopic(context);
-      }));
+      this->DeclarePerStepPublishEvent(&RosPublisherSystem::PublishToRosTopic);
     }
   }
 

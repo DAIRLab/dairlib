@@ -1,21 +1,21 @@
 # -*- python -*-
 
-py_binary(
-    name = "drake_director_py",
-    srcs = ["drake_director.py"],
-    main = "drake_director.py",
-    # Python libraries to import.
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-        "@drake//tools:drake_visualizer_py",
-#        "//bindings/pydairlib/multibody:multibody_py",
-        "@pydrake_pegged",
-    ],
-)
-
-load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
-
-drake_runfiles_binary(
-    name = "drake-director",
-    target = ":drake_director_py",
-)
+#py_binary(
+#    name = "drake_director_py",
+#    srcs = ["drake_director.py"],
+#    main = "drake_director.py",
+#    # Python libraries to import.
+#    deps = [
+#        "//lcmtypes:lcmtypes_robot_py",
+#        "@drake//tools:drake_visualizer_py",
+#        #        "//bindings/pydairlib/multibody:multibody_py",
+#        "@pydrake_pegged",
+#    ],
+#)
+#
+#load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
+#
+#drake_runfiles_binary(
+#    name = "drake-director",
+#    target = ":drake_director_py",
+#)

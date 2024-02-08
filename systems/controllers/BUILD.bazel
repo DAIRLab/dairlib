@@ -2,7 +2,6 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 
 package(default_visibility = ["//visibility:public"])
 
-
 cc_library(
     name = "controllers_all",
     srcs = [],
@@ -40,6 +39,7 @@ cc_library(
         "@lcm",
     ],
 )
+
 cc_library(
     name = "cassie_out_to_radio",
     srcs = ["cassie_out_to_radio.cc"],
@@ -48,6 +48,48 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@lcm",
+    ],
+)
+
+cc_library(
+    name = "lcs_factory_system",
+    srcs = ["c3/lcs_factory_system.cc"],
+    hdrs = ["c3/lcs_factory_system.h"],
+    deps = [
+        "//multibody:utils",
+        "//solvers:c3",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_controller",
+    srcs = ["c3_controller.cc"],
+    hdrs = ["c3_controller.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "gravity_compensator",
+    srcs = [
+        "gravity_compensator.cc",
+    ],
+    hdrs = [
+        "gravity_compensator.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
     ],
 )
 
@@ -100,6 +142,7 @@ cc_library(
     deps = [
         ":affine_controller",
         ":constrained_lqr_controller",
+        ":gravity_compensator",
         ":linear_controller",
     ],
 )

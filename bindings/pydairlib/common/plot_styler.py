@@ -9,12 +9,27 @@ from matplotlib.patches import PathPatch
 
 class PlotStyler():
   @staticmethod
-  def set_default_styling():
+  def set_paper_styling():
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 4, 6
+    matplotlib.rcParams['figure.figsize'] = 8, 6
+    plt.rcParams['figure.dpi'] = 200
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 20}
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 2
+    plt.set_cmap('tab20')
+  @staticmethod
+  def set_compact_styling():
+    matplotlib.rcParams['figure.figsize'] = 20, 12
+    font_size = 6
+    plt.rc('legend', fontsize=font_size)
+    plt.rc('axes', labelsize=font_size, titlesize=font_size)
+    plt.rc('xtick', labelsize=font_size)
+    plt.rc('ytick', labelsize=font_size)
+    plt.rcParams['figure.dpi'] = 75
+    matplotlib.rcParams['figure.autolayout'] = False
+    font = {'size': font_size}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
@@ -31,9 +46,17 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     # self.directory = None
-    self.dpi = 200
+    self.dpi = plt.rcParams['figure.dpi']
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    matplotlib.rcParams['figure.figsize'] = 10, 8
+    plt.rc('legend', fontsize=14)
+    plt.rc('axes', labelsize=14, titlesize=14)
+    plt.rc('xtick', labelsize=14)
+    plt.rc('ytick', labelsize=14)
+    matplotlib.rcParams['figure.figsize'] = 12, 7
+    matplotlib.rcParams['figure.autolayout'] = True
+    matplotlib.rcParams['axes.xmargin'] = 0
+    matplotlib.rcParams['axes.ymargin'] = 0
+    # matplotlib.rcParams['toolbar'] = 'None'
     matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
 
     if figure is None:
@@ -44,14 +67,12 @@ class PlotStyler():
       self.axes = figure.get_axes()
     if not isinstance(self.axes, np.ndarray):
       self.axes = [self.axes]
-
     # self.fig.add_axes([0.1, 0.15, 0.85, 0.75])  # List is [left, bottom, width, height]
     self.fig_id = self.fig.number
     return
 
   def attach(self):
     plt.figure(self.fig_id)
-
 
   def plot(self, xdata, ydata, xlim=None, ylim=None, color=None,
            linestyle=None,
@@ -71,8 +92,8 @@ class PlotStyler():
       self.axes[subplot_index].set_title(title)
     if legend:
       self.axes[subplot_index].legend(legend)
-
     self.axes[subplot_index].grid(grid, which='major')
+    self.axes[subplot_index].autoscale()
 
   def plot_bands(self, x_low, x_high, y_low, y_high, color='C0',
                  subplot_index=0):
@@ -111,5 +132,5 @@ class PlotStyler():
       plt.setp(self.axes, sharex=sharey)
 
   def tight_layout(self):
-    self.axes[0].autoscale(enable=True, axis='y', tight=True)
+    # self.axes[0].autoscale(enable=True, axis='y', tight=True)
     self.axes[0].autoscale(enable=True, axis='x', tight=True)

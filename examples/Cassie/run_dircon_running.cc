@@ -101,8 +101,8 @@ void DoMain() {
   Parser parser(&plant);
   Parser parser_vis(&plant_vis, &scene_graph);
 
-  parser.AddModelFromFile(file_name);
-  parser_vis.AddModelFromFile(file_name);
+  parser.AddModels(file_name);
+  parser_vis.AddModels(file_name);
   plant.Finalize();
   plant_vis.Finalize();
 

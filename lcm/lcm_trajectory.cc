@@ -38,7 +38,7 @@ std::string exec(const char* cmd) {
   return result;
 }
 
-LcmTrajectory::Trajectory::Trajectory(string traj_name,
+LcmTrajectory::Trajectory::Trajectory(const string& traj_name,
                                       const lcmt_trajectory_block& traj_block) {
   int num_points = traj_block.num_points;
   int num_datatypes = traj_block.num_datatypes;
@@ -64,6 +64,7 @@ LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
   for (const string& traj_name : trajectory_names_) {
     trajectories_[traj_name] = trajectories[index++];
   }
+  metadata_.git_dirty_flag = false;
   if (get_metadata) {
     std::cout << "NOTE: Using subprocesses to get LcmTrajectory metadata\n";
     ConstructMetadataObject(name, description);

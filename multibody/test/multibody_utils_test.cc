@@ -23,7 +23,7 @@ class MultibodyUtilsTest : public ::testing::Test {
     std::string full_name = FindResourceOrThrow(
         "examples/Cassie/urdf/cassie_v2.urdf");
     Parser parser(&plant_, &scene_graph);
-    parser.AddModelFromFile(full_name);
+    parser.AddModels(full_name);
     plant_.Finalize();
   }
 

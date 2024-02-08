@@ -15,23 +15,22 @@ py_library(
     name = "cassie_gym_all",
     srcs = [],
     deps = [
+        ":cassie_env_rewards",
         ":drake_cassie_gym",
         ":mujoco_cassie_gym",
-        ":cassie_env_rewards",
     ],
 )
-
 
 py_library(
     name = "drake_cassie_gym",
     srcs = ["drake_cassie_gym.py"],
     deps = [
-        "//bindings/pydairlib/cassie:cassie",
-        "//bindings/pydairlib",
-        "//bindings/pydairlib/systems:systems",
-        "//bindings/pydairlib/multibody",
-        "//bindings/pydairlib/systems:primitives_py",
         ":cassie_env_state",
+        "//bindings/pydairlib",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+        "//bindings/pydairlib/systems:primitives_py",
     ],
 )
 
@@ -39,9 +38,9 @@ py_binary(
     name = "cassie_gym_test",
     srcs = ["cassie_gym_test.py"],
     deps = [
-        ":cassie_gym_all",
         ":cassie_env_rewards",
-        "//bindings/pydairlib/cassie:cassie",
+        ":cassie_gym_all",
+        "//bindings/pydairlib/cassie",
         "@drake//bindings/pydrake",
     ],
 )
@@ -62,24 +61,25 @@ py_library(
 
 py_library(
     name = "cassie_env_rewards",
-    srcs = ["reward_base.py",
-            "reward_osudrl.py"],
+    srcs = [
+        "reward_base.py",
+        "reward_osudrl.py",
+    ],
     deps = [
-        ":cassie_env_state"
+        ":cassie_env_state",
     ],
 )
-
 
 py_library(
     name = "mujoco_cassie_gym",
     srcs = ["mujoco_cassie_gym.py"],
     deps = [
-        "//bindings/pydairlib/cassie:cassie",
-        "//bindings/pydairlib/cassie/mujoco:cassie_mujoco_all",
-        "//bindings/pydairlib",
-        "//bindings/pydairlib/systems:systems",
-        "//bindings/pydairlib/multibody",
-        "//bindings/pydairlib/systems:primitives_py",
         ":cassie_env_state",
+        "//bindings/pydairlib",
+        "//bindings/pydairlib/cassie",
+        "//bindings/pydairlib/cassie/mujoco:cassie_mujoco_all",
+        "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/systems",
+        "//bindings/pydairlib/systems:primitives_py",
     ],
 )

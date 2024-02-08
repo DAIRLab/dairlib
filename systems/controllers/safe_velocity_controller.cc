@@ -1,5 +1,9 @@
 #include "systems/controllers/safe_velocity_controller.h"
 
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using drake::VectorX;
+
 namespace dairlib{
 namespace systems{
 

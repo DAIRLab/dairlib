@@ -1,6 +1,14 @@
 #include "systems/controllers/endeffector_velocity_controller.h"
 #include <iostream>
 
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using drake::systems::LeafSystem;
+using drake::systems::Context;
+using drake::systems::BasicVector;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Frame;
+
 namespace dairlib{
 namespace systems{
 

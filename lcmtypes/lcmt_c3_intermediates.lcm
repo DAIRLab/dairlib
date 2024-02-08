@@ -1,0 +1,11 @@
+package dairlib;
+
+struct lcmt_c3_intermediates
+{
+  int32_t num_points;
+  int32_t num_total_variables;
+
+  float time_vec[num_points];
+  float delta_sol[num_total_variables][num_points];
+  float w_sol[num_total_variables][num_points];
+}

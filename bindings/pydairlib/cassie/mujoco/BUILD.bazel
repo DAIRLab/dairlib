@@ -11,17 +11,15 @@ load(
     "pybind_py_library",
 )
 
-
 py_library(
     name = "cassie_mujoco_all",
     srcs = [],
     deps = [
-        ":mujoco_lcm_utils",
-        ":drake_to_mujoco_converter",
         ":cassie_mujoco_py",
+        ":drake_to_mujoco_converter",
+        ":mujoco_lcm_utils",
     ],
 )
-
 
 py_library(
     name = "mujoco_lcm_utils",

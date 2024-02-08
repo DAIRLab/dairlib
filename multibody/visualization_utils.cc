@@ -3,9 +3,6 @@
 #include "common/find_resource.h"
 #include "multibody/com_pose_system.h"
 #include "systems/primitives/subvector_pass_through.h"
-#include "drake/geometry/drake_visualizer.h"
-#include "drake/geometry/meshcat_visualizer.h"
-#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/primitives/trajectory_source.h"
 
@@ -28,7 +25,7 @@ std::unique_ptr<MultibodyPlant<double>> ConstructBallPlant(
   auto ball_plant = std::make_unique<MultibodyPlant<double>>(0.0);
   std::string full_name = FindResourceOrThrow("multibody/ball.urdf");
   Parser parser(ball_plant.get(), scene_graph);
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   ball_plant->Finalize();
   return ball_plant;
 }
@@ -40,7 +37,7 @@ void ConnectTrajectoryVisualizer(
     const Trajectory<double>& trajectory) {
   auto empty_plant = std::make_unique<MultibodyPlant<double>>(0.0);
   ConnectTrajectoryVisualizerWithCoM(plant, builder, scene_graph, trajectory,
-                              *empty_plant);
+                                     *empty_plant);
 }
 
 void ConnectTrajectoryVisualizerWithCoM(
@@ -82,8 +79,6 @@ void ConnectTrajectoryVisualizerWithCoM(
         ball_to_pose->get_output_port(),
         scene_graph->get_source_pose_port(ball_plant.get_source_id().value()));
   }
-
-  DrakeVisualizer<double>::AddToBuilder(builder, *scene_graph);
 
 }
 

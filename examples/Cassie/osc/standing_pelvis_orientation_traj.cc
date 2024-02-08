@@ -3,12 +3,14 @@
 #include <dairlib/lcmt_cassie_out.hpp>
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_quaternion.h"
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/math/wrap_to.h"
 
 using dairlib::systems::OutputVector;
 using drake::systems::BasicVector;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::PiecewiseQuaternionSlerp;
 using drake::trajectories::Trajectory;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -40,8 +42,8 @@ StandingPelvisOrientationTraj::StandingPelvisOrientationTraj(
   radio_port_ = this->DeclareAbstractInputPort(
                         "radio_out", drake::Value<dairlib::lcmt_radio_out>{})
                     .get_index();
-  PiecewisePolynomial<double> empty_pp_traj(Eigen::VectorXd(0));
-  Trajectory<double>& traj_inst = empty_pp_traj;
+  PiecewiseQuaternionSlerp<double> empty_slerp_traj;
+  Trajectory<double>& traj_inst = empty_slerp_traj;
   this->set_name(traj_name);
   this->DeclareAbstractOutputPort(traj_name, traj_inst,
                                   &StandingPelvisOrientationTraj::CalcTraj);
@@ -58,7 +60,7 @@ void StandingPelvisOrientationTraj::CalcTraj(
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(context_, q);
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+      (PiecewiseQuaternionSlerp<double>*)dynamic_cast<PiecewiseQuaternionSlerp<double>*>(
           traj);
   Vector3d pt_0;
   Vector3d pt_1;
@@ -87,8 +89,9 @@ void StandingPelvisOrientationTraj::CalcTraj(
   target_orientation_filter_->Update(rpy);
   auto rot_mat = drake::math::RotationMatrix<double>(drake::math::RollPitchYaw(
       static_cast<Vector3d>(target_orientation_filter_->Value())));
-
-  *casted_traj = PiecewisePolynomial<double>(rot_mat.ToQuaternionAsVector4());
+  const std::vector<double> breaks = {0, 1};
+  *casted_traj = drake::trajectories::PiecewiseQuaternionSlerp<double>(
+      breaks, {rot_mat.ToQuaternion(), rot_mat.ToQuaternion()});
 }
 
 }  // namespace dairlib::cassie::osc

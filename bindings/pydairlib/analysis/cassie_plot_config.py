@@ -14,7 +14,7 @@ class CassiePlotConfig():
         self.channel_u = data['channel_u']
         self.channel_osc = data['channel_osc']
         self.use_archived_lcmtypes = data['use_archived_lcmtypes']
-        self.use_default_styling = data['use_default_styling']
+        self.plot_style = data['plot_style']
         self.use_floating_base = data['use_floating_base']
         self.use_springs = data['use_springs']
         self.start_time = data['start_time']

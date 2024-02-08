@@ -15,14 +15,13 @@ pybind_py_library(
     name = "multibody_py",
     cc_deps = [
         "//multibody:multipose_visualizer",
-        "//multibody:visualization_utils",
         "//multibody:utils",
+        "//multibody:visualization_utils",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "multibody",
     cc_srcs = ["multibody_py.cc"],
     py_deps = [
-#        "@drake//bindings/pydrake",
         ":module_py",
     ],
     py_imports = ["."],

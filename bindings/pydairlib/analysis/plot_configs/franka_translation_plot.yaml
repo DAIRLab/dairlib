@@ -1,0 +1,44 @@
+# LCM channels to read data from
+channel_x: "FRANKA_STATE"
+channel_u: "OSC_FRANKA"
+channel_osc: "OSC_DEBUG_FRANKA"
+channel_c3: "C3_DEBUG"
+channel_tray: "TRAY_STATE"
+channel_c3_target: "C3_TARGET"
+channel_c3_actual: "C3_ACTUAL"
+plot_style: 'compact' # compact, paper, default
+
+start_time: 15
+#duration: 0.47
+duration: 10
+
+# Plant properties
+
+# Desired RobotOutput plots
+plot_joint_positions: true
+plot_joint_velocities: true
+plot_measured_efforts: true
+plot_commanded_efforts: true
+plot_contact_forces: false
+plot_end_effector: true
+
+special_positions_to_plot: []
+special_velocities_to_plot: []
+special_efforts_to_plot: []
+
+# Finite State Machine Names
+fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 'Right Flight (RF)' ]
+
+# Desired osc plots
+plot_qp_costs: false
+plot_qp_solve_time: true
+plot_qp_solutions: true
+plot_tracking_costs: false
+plot_active_tracking_datas: false
+tracking_datas_to_plot:
+  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos']}
+#  end_effector_orientation_target: {'dims': [0, 1, 2], 'derivs': ['pos']}
+#  end_effector_target: {'dims': [0, 1, 2], 'derivs': ['pos', 'vel', 'accel']}
+plot_c3_debug: true
+plot_c3_tracking: true
+plot_object_state: true

@@ -34,6 +34,7 @@
 #include "systems/controllers/osc/relative_translation_tracking_data.h"
 #include "systems/controllers/osc/rot_space_tracking_data.h"
 #include "systems/controllers/osc/trans_space_tracking_data.h"
+#include "systems/controllers/bipedal_walking_impact_info.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -79,6 +80,7 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+using systems::controllers::BipedalWalkingImpactInfo;
 
 using multibody::FixedJointEvaluator;
 using multibody::MakeNameToVelocitiesMap;
@@ -120,6 +122,8 @@ DEFINE_bool(use_spring_model, true,
 
 DEFINE_bool(add_camera_inertia, true,
             "whether to add the camera assembly to the robot model");
+
+DEFINE_bool(impact_invariant, true, "use impact invariant proj?");
 
 
 int DoMain(int argc, char* argv[]) {
@@ -511,7 +515,6 @@ int DoMain(int argc, char* argv[]) {
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local->SetTimerVaryingFeedForwardAccelMultiplier(
       swing_ft_accel_gain_multiplier_gain_multiplier);
-  osc->AddTrackingData(std::move(swing_ft_traj_local));
 
   auto center_of_mass_traj = std::make_unique<ComTrackingData>(
       "alip_com_traj", gains.K_p_com, gains.K_d_com,
@@ -520,21 +523,18 @@ int DoMain(int argc, char* argv[]) {
 
   // FiniteStatesToTrack cannot be empty
   center_of_mass_traj->AddFiniteStateToTrack(-1);
-  osc->AddTrackingData(std::move(center_of_mass_traj));
 
   // Pelvis rotation tracking (pitch and roll)
   auto pelvis_balance_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
       gains.W_pelvis_balance, plant_w_spr, plant_wo_spr);
   pelvis_balance_traj->AddFrameToTrack("pelvis");
-  osc->AddTrackingData(std::move(pelvis_balance_traj));
   // Pelvis rotation tracking (yaw)
  auto pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
       gains.W_pelvis_heading, plant_w_spr, plant_wo_spr);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
-  osc->AddTrackingData(std::move(pelvis_heading_traj),
-                       gains.period_of_no_heading_control);
+
 
   // Swing toe joint tracking
   auto swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
@@ -547,8 +547,6 @@ int DoMain(int argc, char* argv[]) {
                                                "toe_rightdot");
   swing_toe_traj_left->AddStateAndJointToTrack(right_stance_state, "toe_left",
                                               "toe_leftdot");
-  osc->AddTrackingData(std::move(swing_toe_traj_left));
-  osc->AddTrackingData(std::move(swing_toe_traj_right));
 
 
   auto hip_yaw_traj_gen =
@@ -563,12 +561,43 @@ int DoMain(int argc, char* argv[]) {
   swing_hip_yaw_traj->AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
 
+  if (FLAGS_impact_invariant) {
+    auto impact_info = builder.AddSystem<BipedalWalkingImpactInfo>(
+        plant_w_spr, single_support_states, double_support_states
+    );
+    builder.Connect(
+        state_receiver->get_output_port(), impact_info->get_input_port_state()
+    );
+    builder.Connect(
+        fsm->get_output_port_fsm(), impact_info->get_input_port_fsm()
+    );
+    builder.Connect(
+        fsm->get_output_port_next_switch_time(),
+        impact_info->get_input_port_next_switch_time()
+    );
+    builder.Connect(
+        fsm->get_output_port_prev_switch_time(),
+        impact_info->get_input_port_prev_switch_time()
+    );
+    builder.Connect(
+        impact_info->get_output_port(), osc->get_input_port_impact_info()
+    );
+    swing_ft_traj_local->SetImpactInvariantProjection(true);
+    center_of_mass_traj->SetImpactInvariantProjection(true);
+    pelvis_balance_traj->SetImpactInvariantProjection(true);
+    pelvis_heading_traj->SetImpactInvariantProjection(true);
+    swing_toe_traj_left->SetImpactInvariantProjection(true);
+    swing_toe_traj_right->SetImpactInvariantProjection(true);
+  }
 
-  builder.Connect(cassie_out_to_radio->get_output_port(),
-                    hip_yaw_traj_gen->get_radio_input_port());
-  builder.Connect(fsm->get_output_port_fsm(),
-                    hip_yaw_traj_gen->get_fsm_input_port());
+  osc->AddTrackingData(std::move(swing_toe_traj_left));
+  osc->AddTrackingData(std::move(swing_toe_traj_right));
+  osc->AddTrackingData(std::move(swing_ft_traj_local));
   osc->AddTrackingData(std::move(swing_hip_yaw_traj));
+  osc->AddTrackingData(std::move(pelvis_balance_traj));
+  osc->AddTrackingData(std::move(pelvis_heading_traj),
+                       gains.period_of_no_heading_control);
+  osc->AddTrackingData(std::move(center_of_mass_traj));
 
   // Set double support duration for force blending
   osc->SetUpDoubleSupportPhaseBlending(
@@ -604,6 +633,11 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(right_toe_angle_traj_gen->get_output_port(0),
                   osc->get_input_port_tracking_data("right_toe_angle_traj"));
 
+
+  builder.Connect(cassie_out_to_radio->get_output_port(),
+                  hip_yaw_traj_gen->get_radio_input_port());
+  builder.Connect(fsm->get_output_port_fsm(),
+                  hip_yaw_traj_gen->get_fsm_input_port());
   builder.Connect(hip_yaw_traj_gen->get_hip_yaw_output_port(),
                     osc->get_input_port_tracking_data("swing_hip_yaw_traj"));
   builder.Connect(fsm->get_output_port_fsm(),

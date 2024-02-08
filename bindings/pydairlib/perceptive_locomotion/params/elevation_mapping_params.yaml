@@ -15,3 +15,5 @@ map_length: [3, 3]
 resolution: 0.03
 contact_frames: { left: "toe_left", right: "toe_right" }
 contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}
+initializaton_offset: -0.05
+initialization_radius: 1.5

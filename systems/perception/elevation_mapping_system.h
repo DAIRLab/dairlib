@@ -35,6 +35,8 @@ struct elevation_mapping_params {
   Eigen::Vector3d track_point;
   grid_map::Length map_length;
   double resolution;
+  double initialization_offset;
+  double initialization_radius;
 };
 
 struct elevation_mapping_params_io {
@@ -47,6 +49,8 @@ struct elevation_mapping_params_io {
   std::vector<double> map_length;
   double map_update_rate_hz;
   double resolution;
+  double initialization_offset;
+  double initialization_radius;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -59,6 +63,8 @@ struct elevation_mapping_params_io {
     a->Visit(DRAKE_NVP(map_update_rate_hz));
     a->Visit(DRAKE_NVP(map_length));
     a->Visit(DRAKE_NVP(resolution));
+    a->Visit(DRAKE_NVP(initialization_offset));
+    a->Visit(DRAKE_NVP(initialization_radius));
   }
 
   static elevation_mapping_params ReadElevationMappingParamsFromYaml(
@@ -148,7 +154,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& robot_state,
       std::vector<std::pair<const Eigen::Vector3d,
                 const drake::multibody::Frame<double>&>> contacts,
-                double init_radius, drake::systems::Context<double>&) const;
+      drake::systems::Context<double>&) const;
 
  private:
 
@@ -166,6 +172,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   std::map<std::string, sensor_pose_params> sensor_poses_;
   std::map<std::string, std::pair<std::string, Eigen::Vector3d>> contacts_;
   const Eigen::Vector3d track_point_; // point in the base frame to pin the map
+  elevation_mapping_params params_;
 
 
   // ports

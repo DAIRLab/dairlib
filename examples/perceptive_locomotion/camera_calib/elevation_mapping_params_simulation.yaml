@@ -14,3 +14,5 @@ map_length: [2.0, 2.0]
 resolution: 0.025
 contact_frames: {}
 contact_points: {}
+initialization_radius: 1.0
+initialization_offset: 0.0

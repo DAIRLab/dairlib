@@ -34,7 +34,8 @@ ElevationMappingSystem::ElevationMappingSystem(
     plant_(plant),
     robot_base_(plant.GetBodyByName(params.base_frame_name)),
     context_(context),
-    track_point_(params.track_point) {
+    track_point_(params.track_point),
+    params_(params) {
 
   // configure sensors
   drake::Vector1d prev_time_model_vector{-1};
@@ -278,7 +279,7 @@ void ElevationMappingSystem::InitializeFlatTerrain(
     const VectorXd& robot_state,
     std::vector<std::pair<const Eigen::Vector3d,
                 const drake::multibody::Frame<double>&>> contacts,
-    double init_radius, Context<double>& context) const {
+    Context<double>& context) const {
 
   multibody::SetPositionsAndVelocitiesIfNew<double>(
       plant_, robot_state, context_
@@ -292,8 +293,8 @@ void ElevationMappingSystem::InitializeFlatTerrain(
   PointCloudType::Ptr init_pc = std::make_shared<PointCloudType>();
 
   double resolution = map.getRawGridMap().getResolution();
-  int npoints =  2 * std::ceil(init_radius / resolution);
-  float half_len = init_radius;
+  int npoints =  2 * std::ceil(params_.initialization_radius / resolution);
+  float half_len = params_.initialization_radius;
 
   for (const auto& contact : contacts) {
 
@@ -309,6 +310,7 @@ void ElevationMappingSystem::InitializeFlatTerrain(
             xi * resolution - half_len, yi * resolution - half_len, 0, 1.0
         );
         pt_xyzw.head<3>() += point_pos.cast<float>();
+        pt_xyzw.z() += static_cast<float>(params_.initialization_offset);
 
         pcl::PointXYZRGBConfidenceRatio pt;
         pt.getArray4fMap() = Eigen::Map<Eigen::Array4f>(pt_xyzw.data());

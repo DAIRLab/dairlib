@@ -50,8 +50,8 @@ class BipedalWalkingImpactInfo : public drake::systems::LeafSystem<double> {
   std::unordered_map<int, bool> state_begins_with_impact_{};
   std::unordered_map<int, int> post_impact_state_{};
 
-  double window_ = 50 * 1e-3; // 50 ms impact window
-  double tau_ = 5 * 1e-3; // 5 ms blending time constant
+  double window_ = 40 * 1e-3; // 50 ms impact window
+  double tau_ = 10 * 1e-3; // 5 ms blending time constant
 
 };
 

@@ -208,7 +208,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace){
     auto object_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.tray_model),
+        meshcat, FindResourceOrThrow("examples/franka/urdf/tray_transparent.sdf"),
         "object_position_target", "object_orientation_target");
     auto end_effector_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(sim_params.end_effector_model),

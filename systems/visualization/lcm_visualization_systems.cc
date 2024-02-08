@@ -89,7 +89,7 @@ LcmPoseDrawer::LcmPoseDrawer(
   this->set_name("LcmPoseDrawer: " + translation_trajectory_name);
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.4), "", meshcat);
+      model_file, N_ - 1, 1.0 * VectorXd::LinSpaced(N_ - 1, 0.1, 0.4), "", meshcat);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -111,7 +111,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, trajectory_input_port_);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
-  MatrixXd object_poses = MatrixXd::Zero(7, N_);
+  MatrixXd object_poses = MatrixXd::Zero(7, N_ - 1);
 
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
@@ -146,8 +146,8 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
       VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
                           lcm_translation_traj.time_vector.tail(1)[0]);
   for (int i = 0; i < object_poses.cols(); ++i) {
-    object_poses.col(i) << orientation_trajectory.value(translation_breaks(i)),
-        translation_trajectory.value(translation_breaks(i));
+    object_poses.col(i) << orientation_trajectory.value(translation_breaks(i + 1)),
+        translation_trajectory.value(translation_breaks(i + 1));
   }
 
   multipose_visualizer_->DrawPoses(object_poses);
@@ -260,7 +260,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
         force_arrow_path + "/head",
         RigidTransformd(RotationMatrixd::MakeXRotation(M_PI),
                         Vector3d{0, 0, height + arrowhead_height}));
-    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
+    meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", true);
   } else {
     meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
   }

@@ -9,9 +9,9 @@ sensor_poses: [
 
 map_update_trigger_type: "periodic"
 base_frame_name: "pelvis"
-track_point: [0.5, 0, 0]
+track_point: [0.4, 0, 0]
 map_update_rate_hz: 30.0
-map_length: [2.5, 2.5]
-resolution: 0.025
+map_length: [3, 3]
+resolution: 0.03
 contact_frames: { left: "toe_left", right: "toe_right" }
 contact_points: { left: [0.088, 0, 0], right: [0.088, 0, 0]}

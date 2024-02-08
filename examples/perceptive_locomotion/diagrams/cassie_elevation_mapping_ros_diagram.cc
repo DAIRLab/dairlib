@@ -108,7 +108,11 @@ void CassieElevationMappingRosDiagram::InitializeElevationMap(
   std::pair<const Vector3d, const Frame<double>&> right_heel = RightToeRear(plant_);
 
   elevation_mapping_system_->InitializeFlatTerrain(
-      robot_state, {left_heel, right_heel}, 1.0, context);
+      robot_state,
+      {left_heel, right_heel},
+      elevation_mapping_params_.map_length.x(),
+      context
+  );
 
 }
 

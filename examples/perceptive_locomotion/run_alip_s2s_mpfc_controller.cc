@@ -188,7 +188,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::CassieOutToRadio>();
 
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
-      plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.5);
+      plant_w_spr, context_w_spr.get(), 2.0, 1.5, -0.5, 0.1);
 
   auto mpc_output_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_alip_mpc_output>(

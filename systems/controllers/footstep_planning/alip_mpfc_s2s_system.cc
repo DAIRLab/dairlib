@@ -218,7 +218,7 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
 
-  if (not is_ds) {
+  if (mpc_solution.success and not is_ds) {
     state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
         (t + mpc_solution.t_sol) * VectorXd::Ones(1));
   } else {

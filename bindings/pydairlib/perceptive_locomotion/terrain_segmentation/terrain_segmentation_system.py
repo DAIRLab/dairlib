@@ -46,7 +46,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.DeclareForcedUnrestrictedUpdateEvent(
             self.UpdateTerrainSegmentation
         )
-        self.safety_hysteresis = 0.3
+        self.safety_hysteresis = 0.6
 
         self.kernel_size = 0.17
 
@@ -56,6 +56,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.var_safety_margin = self.kernel_size / 2
         self.safe_inf_norm = 0.04  # max 5 cm difference
         self.below_edge_factor = 6.0
+        self.safety_threshold = 0.7
 
     def get_raw_safety_score(self, elevation: np.ndarray,
                              elevation_inpainted,
@@ -82,8 +83,9 @@ class TerrainSegmentationSystem(LeafSystem):
             np.exp(25 * (self.safe_inf_norm - stddev))
         )
 
+        median = cv2.medianBlur(elevation_inpainted, 5)
         curvature = gaussian_laplace(
-            elevation_inpainted,
+            median,
             sigma=int(self.laplacian_blur / resolution + 0.5)
         )
         below_edges = np.maximum(curvature, np.zeros_like(curvature))
@@ -126,6 +128,8 @@ class TerrainSegmentationSystem(LeafSystem):
                 elevation_map.getResolution(),
                 elevation_map.getPosition()
             )
+            # Initialize to all safe terrain
+            segmented_map["segmentation"][:] = np.ones(segmented_map.getSize())
 
         segmented_map.move(elevation_map.getPosition())
         segmented_map.convertToDefaultStartIndex()
@@ -162,7 +166,8 @@ class TerrainSegmentationSystem(LeafSystem):
 
         segmented_map['safety_score'][:] = final_safety_score
 
-        safe = (segmented_map['safety_score'] > 0.7).astype(float)
+        safe = (segmented_map[
+                    'safety_score'] > self.safety_threshold).astype(float)
 
         # clean up small holes in the safe regions
         kernel = np.ones((3, 3), np.uint8)

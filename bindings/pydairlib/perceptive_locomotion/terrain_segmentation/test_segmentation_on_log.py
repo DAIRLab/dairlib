@@ -150,7 +150,7 @@ def main():
         diagram.ForcedPublish(context)
         end = time.time()
         print(end - start)
-        sleep(0.1)
+        sleep(0.03)
 
 
 if __name__ == '__main__':

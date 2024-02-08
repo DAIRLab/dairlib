@@ -144,7 +144,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     )->get_value<PointCloudType::Ptr>();
 
     // Only do anything if the timestamp has been updated
-    if (pointcloud->header.stamp * 1e-6 > prev_pointcloud_stamp) {
+    if (pointcloud->header.stamp * 1e-6 > prev_pointcloud_stamp and pointcloud->size() > 0) {
       new_pointclouds.insert({name, pointcloud});
 
       // update the timestamp of the previous point cloud seen from this sensor
@@ -249,9 +249,11 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     Eigen::VectorXf measurement_variances;
     PointCloudType::Ptr pc_processed(new PointCloudType);
 
+    const auto X_bias = RigidTransformd(params_.point_cloud_bias);
+
     // TODO (@Brian-Acosta) does it make sense to propogate the base variance
     //  if we add non-base parent frames?
-    const auto X_WP = plant_.EvalBodyPoseInWorld(
+    const auto X_WP = X_bias * plant_.EvalBodyPoseInWorld(
         *context_,
         plant_.GetBodyByName(sensor_poses_.at(name).sensor_parent_body_)
     );
@@ -266,7 +268,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
-    // add points to the map
+
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
 
@@ -294,7 +296,7 @@ void ElevationMappingSystem::InitializeFlatTerrain(
 
   double resolution = map.getRawGridMap().getResolution();
   int npoints =  2 * std::ceil(params_.initialization_radius / resolution);
-  float half_len = params_.initialization_radius;
+  float half_len = static_cast<float>(params_.initialization_radius);
 
   for (const auto& contact : contacts) {
 

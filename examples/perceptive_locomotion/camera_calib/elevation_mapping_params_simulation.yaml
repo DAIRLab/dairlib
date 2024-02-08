@@ -16,3 +16,4 @@ contact_frames: {}
 contact_points: {}
 initialization_radius: 1.0
 initialization_offset: 0.0
+point_cloud_bias: [0.0, 0.0, 0.0]

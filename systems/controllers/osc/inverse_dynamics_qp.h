@@ -19,8 +19,7 @@ class InverseDynamicsQp {
 
  public: InverseDynamicsQp(
      const drake::multibody::MultibodyPlant<double>& plant,
-     drake::systems::Context<double>* context
- );
+     drake::systems::Context<double>* context);
 
   void AddHolonomicConstraint(
       const std::string& name,
@@ -72,11 +71,6 @@ class InverseDynamicsQp {
       const std::string& name, const Eigen::MatrixXd& Q,
       const Eigen::VectorXd& b, const drake::solvers::VariableRefList& vars);
 
-  void UpdateDynamics(
-      const Eigen::VectorXd& q, const Eigen::VectorXd& v,
-      const std::vector<std::string>& active_contact_constraints,
-      const std::vector<std::string>& active_external_forces);
-
   void UpdateAccelerationCost(
       const std::string& name, const Eigen::MatrixXd& Q,
       const Eigen::VectorXd& b, double c);
@@ -92,6 +86,11 @@ class InverseDynamicsQp {
   void UpdateExternalForceCost(
       const std::string& name, const Eigen::MatrixXd& Q,
       const Eigen::VectorXd& b, double c);
+
+  void UpdateDynamics(
+      const Eigen::VectorXd& q, const Eigen::VectorXd& v,
+      const std::vector<std::string>& active_contact_constraints,
+      const std::vector<std::string>& active_external_forces);
 
   void MakeAllInactiveForceCostsZero(
     const std::vector<std::string>& active_contacts,

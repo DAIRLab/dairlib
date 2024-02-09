@@ -3,6 +3,16 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "inverse_dynamics_qp",
+    srcs = ["inverse_dynamics_qp.cc"],
+    hdrs = ["inverse_dynamics_qp.h"],
+    deps = [
+        "//multibody/kinematic:kinematic",
+        "@drake//:drake_shared_library"
+    ]
+)
+
+cc_library(
     name = "operational_space_control",
     srcs = [
         "operational_space_control.cc",

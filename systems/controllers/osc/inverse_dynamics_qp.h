@@ -88,7 +88,7 @@ class InverseDynamicsQp {
       const Eigen::VectorXd& b, double c);
 
   void UpdateDynamics(
-      const Eigen::VectorXd& q, const Eigen::VectorXd& v,
+      const Eigen::VectorXd& x,
       const std::vector<std::string>& active_contact_constraints,
       const std::vector<std::string>& active_external_forces);
 
@@ -114,11 +114,16 @@ class InverseDynamicsQp {
   std::string, std::unique_ptr<const multibody::WorldPointEvaluator<double>>>
       contact_constraint_evaluators_{};
 
+  std::unordered_map<std::string, int> lambda_c_start_;
+  std::unordered_map<std::string, int> Jc_active_start_;
+
   // External forces are reaction forces we want to "track," but which do not
   // constrain the robot's motion
   std::unordered_map<
       std::string, std::unique_ptr<const multibody::KinematicEvaluator<double>>>
       external_force_evaluators_{};
+
+  std::unordered_map<std::string, std::pair<int, int>> lambda_e_start_and_size_;
 
   // Size of velocity and input of the plant
   int nv_;

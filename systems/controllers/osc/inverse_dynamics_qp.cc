@@ -1,4 +1,5 @@
 #include "inverse_dynamics_qp.h"
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 namespace controllers {
@@ -13,6 +14,7 @@ using Eigen::VectorXd;
 using multibody::KinematicEvaluator;
 using multibody::KinematicEvaluatorSet;
 using multibody::WorldPointEvaluator;
+using multibody::SetPositionsAndVelocitiesIfNew;
 
 using drake::systems::Context;
 using drake::multibody::MultibodyPlant;
@@ -51,7 +53,6 @@ void InverseDynamicsQp::AddHolonomicConstraint(
   holonomic_constraints_.add_evaluator(
       holonomic_constraint_evaluators_.at(name).get()
   );
-
   nh_ += holonomic_constraint_evaluators_.at(name)->num_active();
 }
 
@@ -61,6 +62,8 @@ void InverseDynamicsQp::AddContactConstraint(
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
   contact_constraint_evaluators_.insert({name, std::move(eval)});
+  lambda_c_start_.insert({name, nc_});
+  Jc_active_start_.insert({name, nc_active_});
   nc_ += contact_constraint_evaluators_.at(name)->num_full();
   nc_active_ += contact_constraint_evaluators_.at(name)->num_active();
 }
@@ -71,6 +74,8 @@ void InverseDynamicsQp::AddExternalForce(
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
   external_force_evaluators_.insert({name, std::move(eval)});
+  lambda_e_start_and_size_.insert(
+      {name, {ne_, external_force_evaluators_.at(name)->num_full()}});
   ne_ += external_force_evaluators_.at(name)->num_full();
 }
 
@@ -99,29 +104,31 @@ void InverseDynamicsQp::Build() {
   built_ = true;
 }
 
-
-
 void InverseDynamicsQp::AddAccelerationCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VariableRefList& vars) {
+  DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, dv_costs_, prog_);
 }
 
 void InverseDynamicsQp::AddInputCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VariableRefList& vars) {
+  DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, u_costs_, prog_);
 }
 
 void InverseDynamicsQp::AddContactForceCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VariableRefList& vars) {
+  DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, lambda_c_costs_, prog_);
 }
 
 void InverseDynamicsQp::AddExternalForceCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VariableRefList& vars) {
+  DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, lambda_e_costs_, prog_);
 }
 
@@ -143,6 +150,64 @@ void InverseDynamicsQp::UpdateContactForceCost(
 void InverseDynamicsQp::UpdateExternalForceCost(
     const string &name, const MatrixXd &Q, const VectorXd &b, double c) {
   lambda_e_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
+}
+
+void InverseDynamicsQp::UpdateDynamics(
+    const VectorXd &x, const vector<string> &active_contact_constraints,
+    const vector<string> &active_external_forces) {
+
+  SetPositionsAndVelocitiesIfNew<double>(plant_, x, context_);
+
+  MatrixXd M(nv_, nv_);
+  VectorXd bias(nv_);
+  MatrixXd B = plant_.MakeActuationMatrix();
+  VectorXd grav = plant_.CalcGravityGeneralizedForces(*context_);
+
+  plant_.CalcMassMatrix(*context_, &M);
+  plant_.CalcBiasTerm(*context_, &bias);
+
+  // TODO (@Brian-Acosta) add option to turn off gravity comp
+  bias = bias - grav;
+
+  MatrixXd Jh = holonomic_constraints_.EvalFullJacobian(*context_);
+  VectorXd Jh_dot_v = holonomic_constraints_.EvalFullJacobianDotTimesV(*context_);
+  MatrixXd Jc_active = MatrixXd::Zero(nc_active_, nv_);
+  VectorXd Jc_active_dot_v = VectorXd::Zero(nc_active_);
+  MatrixXd Jc = MatrixXd::Zero(nc_, nv_);
+  MatrixXd Je = MatrixXd::Zero(ne_, nv_);
+
+  for (const auto& c : active_contact_constraints) {
+    const auto& evaluator = contact_constraint_evaluators_.at(c);
+    Jc.block(lambda_c_start_.at(c), 0, 3,  nv_) =
+        evaluator->EvalFullJacobian(*context_);
+    int start = Jc_active_start_.at(c);
+    for (int i = 0; i < evaluator->num_active(); ++i) {
+      Jc_active.row(start + i) = Jc.row(evaluator->active_inds().at(i));
+      Jc_active_dot_v.segment(start, evaluator->num_active()) =
+          evaluator->EvalActiveJacobianDotTimesV(*context_);
+    }
+  }
+  for (const auto& e: active_external_forces) {
+    const auto& [start, size] = lambda_e_start_and_size_.at(e);
+    Je.block(start, 0, size, nv_) =
+        external_force_evaluators_.at(e)->EvalFullJacobian(*context_);
+  }
+
+  MatrixXd A_dyn = MatrixXd::Zero(nv_, nv_ + nu_ + nh_ + nc_ + nv_);
+  A_dyn.block(0, 0, nv_, nv_) = M;
+  A_dyn.block(0, nv_, nv_, nu_) = -B;
+  A_dyn.block(0, nv_ + nu_, nv_, nh_) = -Jh.transpose();
+  A_dyn.block(0, nv_ + nu_ + nh_, nv_, nc_) = -Jc.transpose();
+  A_dyn.block(0, nv_ + nu_ + nh_ + nv_ + nc_, nv_, ne_) = -Je.transpose();
+
+
+  MatrixXd A_c = MatrixXd::Zero(nc_active_, nv_ + nc_active_);
+  A_c.block(0, 0, nc_active_, nv_) = Jc_active;
+  A_c.block(0, nv_, nc_active_, nc_active_) = MatrixXd::Identity(nc_active_, nc_active_);
+
+  dynamics_c_->UpdateCoefficients(A_dyn, -bias);
+  holonomic_c_->UpdateCoefficients(Jh, -Jh_dot_v);
+  contact_c_->UpdateCoefficients(A_c, -Jc_active_dot_v);
 }
 
 }

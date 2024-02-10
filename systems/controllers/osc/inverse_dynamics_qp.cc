@@ -2,6 +2,7 @@
 #include "multibody/multibody_utils.h"
 
 namespace dairlib {
+namespace systems {
 namespace controllers {
 
 using std::string;
@@ -20,14 +21,14 @@ using drake::systems::Context;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VariableRefList;
+using drake::solvers::VectorXDecisionVariable;
 
 
 // Some helpers for cost updating operations
 namespace {
-void AddIDQPCost(
-    const std::string& name, const Eigen::MatrixXd& Q,
-    const Eigen::VectorXd& b, const drake::solvers::VariableRefList& vars,
-    CostMap& cost_dest, MathematicalProgram& prog) {
+void AddIDQPCost(const string &name, const MatrixXd &Q,
+                 const VectorXd &b, const VariableRefList &vars,
+                 CostMap &cost_dest, MathematicalProgram &prog) {
   DRAKE_DEMAND(cost_dest.count(name) == 0);
   cost_dest.insert(
       {name, prog.AddQuadraticCost(Q, b, vars).evaluator()}
@@ -36,16 +37,15 @@ void AddIDQPCost(
 }
 
 InverseDynamicsQp::InverseDynamicsQp(
-    const MultibodyPlant<double>& plant, Context<double>* context) :
+    const MultibodyPlant<double> &plant, Context<double> *context) :
     plant_(plant),
     context_(context),
     holonomic_constraints_(plant),
     nv_(plant.num_velocities()),
     nu_(plant.num_actuated_dofs()) {}
 
-
 void InverseDynamicsQp::AddHolonomicConstraint(
-    const string& name, unique_ptr<const KinematicEvaluator<double>> eval) {
+    const string &name, unique_ptr<const KinematicEvaluator<double>> eval) {
   DRAKE_DEMAND(holonomic_constraint_evaluators_.count(name) == 0);
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
@@ -57,7 +57,7 @@ void InverseDynamicsQp::AddHolonomicConstraint(
 }
 
 void InverseDynamicsQp::AddContactConstraint(
-    const string& name, unique_ptr<const WorldPointEvaluator<double>> eval) {
+    const string &name, unique_ptr<const WorldPointEvaluator<double>> eval) {
   DRAKE_DEMAND(contact_constraint_evaluators_.count(name) == 0);
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
@@ -106,30 +106,58 @@ void InverseDynamicsQp::Build() {
 
 void InverseDynamicsQp::AddAccelerationCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList& vars) {
+    const VariableRefList &vars) {
   DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, dv_costs_, prog_);
 }
 
 void InverseDynamicsQp::AddInputCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList& vars) {
+    const VariableRefList &vars) {
   DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, u_costs_, prog_);
 }
 
 void InverseDynamicsQp::AddContactForceCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList& vars) {
+    const VariableRefList &vars) {
   DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, lambda_c_costs_, prog_);
 }
 
 void InverseDynamicsQp::AddExternalForceCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList& vars) {
+    const VariableRefList &vars) {
   DRAKE_DEMAND(built_);
   AddIDQPCost(name, Q, b, vars, lambda_e_costs_, prog_);
+}
+
+void InverseDynamicsQp::AddAccelerationCost(
+    const string &name, const MatrixXd &Q, const VectorXd &b,
+    const VectorXDecisionVariable &vars) {
+  DRAKE_DEMAND(built_);
+  AddIDQPCost(name, Q, b, {vars}, dv_costs_, prog_);
+}
+
+void InverseDynamicsQp::AddInputCost(
+    const string &name, const MatrixXd &Q, const VectorXd &b,
+    const VectorXDecisionVariable &vars) {
+  DRAKE_DEMAND(built_);
+  AddIDQPCost(name, Q, b, {vars}, u_costs_, prog_);
+}
+
+void InverseDynamicsQp::AddContactForceCost(
+    const string &name, const MatrixXd &Q, const VectorXd &b,
+    const VectorXDecisionVariable &vars) {
+  DRAKE_DEMAND(built_);
+  AddIDQPCost(name, Q, b, {vars}, lambda_c_costs_, prog_);
+}
+
+void InverseDynamicsQp::AddExternalForceCost(
+    const string &name, const MatrixXd &Q, const VectorXd &b,
+    const VectorXDecisionVariable &vars) {
+  DRAKE_DEMAND(built_);
+  AddIDQPCost(name, Q, b, {vars}, lambda_e_costs_, prog_);
 }
 
 void InverseDynamicsQp::UpdateAccelerationCost(
@@ -170,15 +198,16 @@ void InverseDynamicsQp::UpdateDynamics(
   bias = bias - grav;
 
   MatrixXd Jh = holonomic_constraints_.EvalFullJacobian(*context_);
-  VectorXd Jh_dot_v = holonomic_constraints_.EvalFullJacobianDotTimesV(*context_);
+  VectorXd
+      Jh_dot_v = holonomic_constraints_.EvalFullJacobianDotTimesV(*context_);
   MatrixXd Jc_active = MatrixXd::Zero(nc_active_, nv_);
   VectorXd Jc_active_dot_v = VectorXd::Zero(nc_active_);
   MatrixXd Jc = MatrixXd::Zero(nc_, nv_);
   MatrixXd Je = MatrixXd::Zero(ne_, nv_);
 
-  for (const auto& c : active_contact_constraints) {
-    const auto& evaluator = contact_constraint_evaluators_.at(c);
-    Jc.block(lambda_c_start_.at(c), 0, 3,  nv_) =
+  for (const auto &c : active_contact_constraints) {
+    const auto &evaluator = contact_constraint_evaluators_.at(c);
+    Jc.block(lambda_c_start_.at(c), 0, 3, nv_) =
         evaluator->EvalFullJacobian(*context_);
     int start = Jc_active_start_.at(c);
     for (int i = 0; i < evaluator->num_active(); ++i) {
@@ -187,8 +216,8 @@ void InverseDynamicsQp::UpdateDynamics(
           evaluator->EvalActiveJacobianDotTimesV(*context_);
     }
   }
-  for (const auto& e: active_external_forces) {
-    const auto& [start, size] = lambda_e_start_and_size_.at(e);
+  for (const auto &e : active_external_forces) {
+    const auto &[start, size] = lambda_e_start_and_size_.at(e);
     Je.block(start, 0, size, nv_) =
         external_force_evaluators_.at(e)->EvalFullJacobian(*context_);
   }
@@ -200,15 +229,37 @@ void InverseDynamicsQp::UpdateDynamics(
   A_dyn.block(0, nv_ + nu_ + nh_, nv_, nc_) = -Jc.transpose();
   A_dyn.block(0, nv_ + nu_ + nh_ + nv_ + nc_, nv_, ne_) = -Je.transpose();
 
-
   MatrixXd A_c = MatrixXd::Zero(nc_active_, nv_ + nc_active_);
   A_c.block(0, 0, nc_active_, nv_) = Jc_active;
-  A_c.block(0, nv_, nc_active_, nc_active_) = MatrixXd::Identity(nc_active_, nc_active_);
+  A_c.block(0, nv_, nc_active_, nc_active_) =
+      MatrixXd::Identity(nc_active_, nc_active_);
 
   dynamics_c_->UpdateCoefficients(A_dyn, -bias);
   holonomic_c_->UpdateCoefficients(Jh, -Jh_dot_v);
   contact_c_->UpdateCoefficients(A_c, -Jc_active_dot_v);
 }
 
+void InverseDynamicsQp::MakeAllInactiveForceCostsZero(
+    const vector<string> &active_contacts,
+    const vector<string> &active_external_forces) {
+  for (auto &[k, v] : lambda_c_costs_) {
+    if (std::find(active_contacts.begin(), active_contacts.end(), k) ==
+        active_contacts.end()) {
+      int n = v->num_vars();
+      v->UpdateCoefficients(MatrixXd::Zero(n, n), VectorXd::Zero(n), 0, true);
+    }
+  }
+  for (auto &[k, v] : lambda_e_costs_) {
+    if (std::find(active_external_forces.begin(),
+                  active_external_forces.end(),
+                  k) ==
+        active_external_forces.end()) {
+      int n = v->num_vars();
+      v->UpdateCoefficients(MatrixXd::Zero(n, n), VectorXd::Zero(n), 0, true);
+    }
+  }
+}
+
+}
 }
 }

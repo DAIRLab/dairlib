@@ -7,9 +7,9 @@ cc_library(
     srcs = ["inverse_dynamics_qp.cc"],
     hdrs = ["inverse_dynamics_qp.h"],
     deps = [
-        "//multibody/kinematic:kinematic",
-        "@drake//:drake_shared_library"
-    ]
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
 )
 
 cc_library(
@@ -21,6 +21,7 @@ cc_library(
         "operational_space_control.h",
     ],
     deps = [
+        ":inverse_dynamics_qp",
         ":osc_gains",
         ":osc_tracking_datas",
         "//common:eigen_utils",

@@ -821,9 +821,9 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,
                         (i + 0.75) / n_tracking_datas,
                         where=tracking_data.is_active.astype(bool)[
                               :fsm_time.shape[0]],
-                        color=ps.cmap(2 * i), alpha=0.7)
+                        color=ps.cmap(2 * i), alpha=1.0)
         tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
-                                                   alpha=0.7,
+                                                   alpha=1.0,
                                                    label=
                                                    tracking_data_name_dict[
                                                        tracking_data_name]))

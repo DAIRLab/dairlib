@@ -26,7 +26,7 @@ def main():
     channel_osc = plot_config.channel_osc
 
     if plot_config.plot_style == "paper":
-        plot_styler.PlotStyler.set_default_styling()
+        plot_styler.PlotStyler.set_paper_styling()
     elif plot_config.plot_style == "compact":
         plot_styler.PlotStyler.set_compact_styling()
 
@@ -60,7 +60,7 @@ def main():
 
     print('Finished processing log - making plots')
     # Define x time slice
-    t_x_slice = slice(robot_output['t_x'].size)
+    t_x_slice = slice(robot_output['t'].size)
     t_osc_slice = slice(osc_debug['t_osc'].size)
 
     print('Average OSC frequency: ', 1 / np.mean(np.diff(osc_debug['t_osc'])))

@@ -112,7 +112,6 @@ EventStatus SLIPContactScheduler::UpdateTransitionTimes(
       state->get_mutable_abstract_state<
           std::vector<std::pair<double, RunningFsmState>>>(
           upcoming_transitions_index_);
-  std::cout << "current time: " << current_time;
   auto active_state = stored_fsm_state;
   double transition_time = upcoming_transitions.at(3).first;
   RunningFsmState transition_state = upcoming_transitions.at(3).second;

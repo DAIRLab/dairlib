@@ -1088,10 +1088,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   qp_output.v_dim = n_v_;
   qp_output.epsilon_dim = n_c_active_;
   qp_output.u_sol = CopyVectorXdToStdVector(*u_sol_);
-//  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
-//  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
-  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
-  qp_output.lambda_h_sol = CopyVectorXdToStdVector(force_tracking_data_vec_->at(0)->GetLambdaDes());
+  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_c_sol_);
+  qp_output.lambda_h_sol = CopyVectorXdToStdVector(*lambda_h_sol_);
+//  qp_output.lambda_c_sol = CopyVectorXdToStdVector(*lambda_ext_sol_);
+//  qp_output.lambda_h_sol = CopyVectorXdToStdVector(force_tracking_data_vec_->at(0)->GetLambdaDes());
   qp_output.dv_sol = CopyVectorXdToStdVector(*dv_sol_);
   qp_output.epsilon_sol = CopyVectorXdToStdVector(*epsilon_sol_);
   output->qp_output = qp_output;
@@ -1140,6 +1140,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       tracking_costs_[i]->Eval(*dv_sol_, &y_tracking_cost);
       total_cost += y_tracking_cost[0];
       output->tracking_costs.push_back(y_tracking_cost[0]);
+      output->tracking_data.push_back(osc_output);
+      output->tracking_data_names.push_back(tracking_data->GetName());
+    } else {
+      output->tracking_costs.push_back(0);
       output->tracking_data.push_back(osc_output);
       output->tracking_data_names.push_back(tracking_data->GetName());
     }

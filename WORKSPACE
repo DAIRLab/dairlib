@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.22.0"
+DRAKE_COMMIT = "v1.24.0"
 
-DRAKE_CHECKSUM = "78cf62c177c41f8415ade172c1e6eb270db619f07c4b043d5148e1f35be8da09"
+DRAKE_CHECKSUM = "35874238af2c0305525a6f32c28692e3fdbed0581055b0b491669f7534cf6cae"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -71,11 +71,80 @@ load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repo
 
 signal_scope_repository(name = "signal_scope")
 
+#load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
+
+#pydrake_repository(name = "pydrake_pegged")
+
+# elevation mapping dependencies
+ELEVATION_MAPPING_COMMIT = "bazel"
+
+ELEVATION_MAPPING_CHECKSUM = "fc526a61dcf19dd6b03d3d4202cbc13103f2262a739ccdf430acf87d47fa7b8c"
+
+http_archive(
+    name = "elevation_mapping",
+    sha256 = ELEVATION_MAPPING_CHECKSUM,
+    strip_prefix = "elevation_mapping-{}".format(ELEVATION_MAPPING_COMMIT),
+    urls = [x.format(ELEVATION_MAPPING_COMMIT) for x in [
+        "https://github.com/Brian-Acosta/elevation_mapping/archive/{}.tar.gz",
+    ]],
+)
+
+load(
+    "@elevation_mapping//tools/workspace:deps.bzl",
+    "add_elevation_mapping_dependencies",
+)
+
+# we already have drake
+add_elevation_mapping_dependencies(excludes = ["drake"])
+
+# setup
+load("@grid_map//tools/workspace:deps.bzl", "add_grid_map_dependencies")
+
+add_grid_map_dependencies(excludes = ["gtest"])
+
+load("@rules_pcl//bzl:repositories.bzl", "pcl_repositories")
+
+# exclude pcl dependencies brought in by drake
+pcl_repositories(
+    excludes = [
+        "gtest",
+        "eigen",
+        "libpng",
+        "zlib",
+    ],
+)
+
+load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
+
+setup_pcl()
+
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",
     build_file = "tools/workspace/ros/ros.bazel",
     path = "tools/workspace/ros/bundle_ws/install",
+)
+
+# Locally developed and installed ROS packages
+environ_repository(
+    name = "environ_local_ros",
+    vars = ["LOCAL_ROS_INSTALL_PATH"],
+)
+
+load("@environ_local_ros//:environ.bzl", "LOCAL_ROS_INSTALL_PATH")
+
+new_local_repository(
+    name = "ros-local",
+    build_file = "tools/workspace/ros/ros-local.bazel",
+    path = LOCAL_ROS_INSTALL_PATH,
+)
+
+http_archive(
+    name = "acd2d",
+    build_file = "@//tools/workspace/acd2d:acd2d.bazel",
+    sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
+    strip_prefix = "acd2d-master",
+    urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
 )
 
 # Other catkin packages from source
@@ -105,9 +174,9 @@ http_archive(
 #  export DAIRLIB_LOCAL_INEKF_PATH=/home/user/workspace/invariant-ekf
 
 # Choose a revision of InEKF to use.
-INEKF_COMMIT = "7fde9f84dbe536ba9439a3b8c319efb51ff760dd"
+INEKF_COMMIT = "bazel-opt"
 
-INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256e4"
+INEKF_CHECKSUM = "297ac0d64fd2c9e7fe36d01bd4b34db0592872234438f9ef4e3221ac2f0f5e40"
 
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -129,9 +198,7 @@ load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
     "inekf" if DAIRLIB_LOCAL_INEKF_PATH else "inekf_ignored",
 )
 
-# Maybe download InEKF.
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
+# Maybe download InEKF
 http_archive(
     name = _http_inekf_repo_name,
     sha256 = INEKF_CHECKSUM,
@@ -148,8 +215,6 @@ local_repository(
     name = _local_inekf_repo_name,
     path = DAIRLIB_LOCAL_INEKF_PATH,
 )
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # buildifier is written in Go and hence needs rules_go to be built.
 # See https://github.com/bazelbuild/rules_go for the up to date setup instructions.

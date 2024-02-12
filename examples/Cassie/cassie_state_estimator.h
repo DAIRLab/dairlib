@@ -76,6 +76,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
     return this->get_output_port(contact_forces_output_port_);
   }
+  const drake::systems::OutputPort<double>& get_covariance_output_port() const {
+    return this->get_output_port(pose_covariance_output_port_);
+  }
 
   void solveFourbarLinkage(const Eigen::VectorXd& q_init,
                            double* left_heel_spring,
@@ -119,7 +122,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   // Copy joint state from cassie_out_t to an OutputVector
   void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+                                                systems::OutputVector<double>* output) const;
 
   // Currently, `DoCalcNextUpdateTime` seems to be the only gateway of adding
   // kTimed events
@@ -134,13 +137,19 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   // because we want the discrete update to happen before Publish
   void set_next_message_time(double t) { next_message_time_ = t; };
 
+  void MakeDrivenBySimulator(double update_rate) {
+    DeclarePeriodicUnrestrictedUpdateEvent(
+        update_rate, 0.0, &CassieStateEstimator::Update
+    );
+  };
+
  private:
   void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+                                    systems::OutputVector<double>* output) const;
   void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
-      systems::OutputVector<double>* output) const;
+                                             systems::OutputVector<double>* output) const;
   void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
-      systems::OutputVector<double>* output) const;
+                                             systems::OutputVector<double>* output) const;
 
   drake::systems::EventStatus Update(
       const drake::systems::Context<double>& context,
@@ -153,6 +162,9 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void CopyEstimatedContactForces(
       const drake::systems::Context<double>& context,
       drake::lcmt_contact_results_for_viz* contact_msg) const;
+
+  void CopyPoseCovarianceOut(const drake::systems::Context<double>& context,
+                             drake::systems::BasicVector<double>* cov) const;
 
   int n_q_;
   int n_v_;
@@ -177,11 +189,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
   // Input/output port indices
-  int cassie_out_input_port_;
-  int state_input_port_;
-  int estimated_state_output_port_;
-  int contact_output_port_;
-  int contact_forces_output_port_;
+  drake::systems::InputPortIndex cassie_out_input_port_;
+  drake::systems::InputPortIndex state_input_port_;
+  drake::systems::OutputPortIndex estimated_state_output_port_;
+  drake::systems::OutputPortIndex contact_output_port_;
+  drake::systems::OutputPortIndex contact_forces_output_port_;
+  drake::systems::OutputPortIndex pose_covariance_output_port_;
 
   // Below are indices of system states:
   // A state which stores previous timestamp
@@ -217,15 +230,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Matrix<double, 16, 16> cov_w_;
 
   // Contact Estimation Parameters
-  // The values of spring threshold are based on walking and standing values in
-  // simulation.
-  // Walking: https://drive.google.com/open?id=1vMIKAed8RHIFF1fbjTqBHtbgkPrHuzkS
-  //          https://drive.google.com/open?id=1UqiZSXhd9-4A6YwHArh-xPBMa16RyUGm
-  // Spring deflection of standing:
-  //     Knee ~-0.032
-  //     Heel ~???
-  //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
-  //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
   double knee_spring_threshold_ctrl_ = -0.015;
   double knee_spring_threshold_ekf_ = -0.015;
   double ankle_spring_threshold_ctrl_ = -0.01;

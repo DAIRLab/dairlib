@@ -116,6 +116,11 @@ CassieStateEstimator::CassieStateEstimator(
               .get_index();
     }
 
+    pose_covariance_output_port_ =
+        this->DeclareVectorOutputPort(
+                "cov", 36, &CassieStateEstimator::CopyPoseCovarianceOut)
+            .get_index();
+
     // a state which stores previous timestamp
     time_idx_ = DeclareDiscreteState(VectorXd::Zero(1));
 
@@ -638,7 +643,7 @@ EventStatus CassieStateEstimator::Update(
     // is not triggered by CASSIE_STATE_SIMULATION message.
     // This wouldn't be an issue when you don't use ground truth state.
     if (output_gt.GetPositions().head(7).norm() == 0) {
-      output_gt.SetPositionAtIndex(position_idx_map_.at("pelvis_qw"), 1);
+      output_gt.SetPositionAtIndex(position_idx_map_.at("base_qw"), 1);
     }
 
     // Get kinematics cache for ground truth
@@ -714,23 +719,25 @@ EventStatus CassieStateEstimator::Update(
   }
 
   // Estimated floating base state (pelvis)
+  const auto& ekf_state = ekf.getState();
+  const auto& R_WB = ekf_state.getRotation();
+
   VectorXd estimated_fb_state(13);
-  Vector3d r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
+  Vector3d r_imu_to_pelvis_global = R_WB * (-imu_pos_);
   // Rotational position
-  Quaterniond q(ekf.getState().getRotation());
+  Quaterniond q(R_WB);
   q.normalize();
   estimated_fb_state[0] = q.w();
   estimated_fb_state.segment<3>(1) = q.vec();
   // Translational position
   estimated_fb_state.segment<3>(4) =
-      ekf.getState().getPosition() + r_imu_to_pelvis_global;
+      ekf_state.getPosition() + r_imu_to_pelvis_global;
   // Rotational velocity
-  Vector3d omega_global =
-      ekf.getState().getRotation() * imu_measurement.head(3);
+  Vector3d omega_global = R_WB * imu_measurement.head(3);
   estimated_fb_state.segment<3>(7) = omega_global;
   // Translational velocity
   estimated_fb_state.tail(3) =
-      ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
+      ekf_state.getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
 
   // Estimated robot output
   OutputVector<double> filtered_output(n_q_, n_v_, n_u_);
@@ -760,7 +767,9 @@ EventStatus CassieStateEstimator::Update(
   // when running the PD controller with external support
   if (left_contact && right_contact && hardware_test_mode_ == 2) {
     hardware_test_mode_ = -1;
-    cout << "Switch to test_mode -1 \n";
+    if (print_info_to_terminal_) {
+      cout << "Switch to test_mode -1 \n";
+    }
   }
 
   // Test mode needed for hardware experiment
@@ -770,7 +779,7 @@ EventStatus CassieStateEstimator::Update(
     left_contact = 1;
     right_contact = 1;
 
-    if ((*counter_for_testing_) % 5000 == 0) {
+    if ((*counter_for_testing_) % 5000 == 0 and print_info_to_terminal_) {
       cout << "pos = " << ekf.getState().getPosition().transpose() << endl;
     }
     *counter_for_testing_ = *counter_for_testing_ + 1;
@@ -993,6 +1002,20 @@ void CassieStateEstimator::CopyEstimatedContactForces(
   }
 }
 
+void CassieStateEstimator::CopyPoseCovarianceOut(
+    const Context<double>& context,
+    drake::systems::BasicVector<double>* cov) const {
+  const auto& ekf = context.get_abstract_state<inekf::InEKF>(ekf_idx_);
+  Eigen::Matrix<double, 6, 6> pos_rot_cov = Eigen::Matrix<double, 6, 6>::Zero();
+  const auto& P = ekf.getState().getP();
+  pos_rot_cov.bottomRightCorner<3, 3>() = P.topRightCorner<3, 3>();
+  pos_rot_cov.topRightCorner<3, 3>() = P.block<3, 3>(0, 6).transpose();
+  pos_rot_cov.topLeftCorner<3, 3>() = P.block<3, 3>(6, 6);
+  pos_rot_cov.bottomLeftCorner<3, 3>() = P.block<3, 3>(0, 6);
+  cov->get_mutable_value() =
+      Eigen::Map<VectorXd>(pos_rot_cov.data(), pos_rot_cov.size());
+}
+
 void CassieStateEstimator::setPreviousTime(Context<double>* context,
                                            double time) const {
   context->get_mutable_discrete_state(time_idx_).get_mutable_value() << time;
@@ -1017,10 +1040,12 @@ void CassieStateEstimator::setInitialPelvisPose(Context<double>* context,
   state.setRotation(imu_rot_mat);
   state.setVelocity(imu_velocity);
   filter.setState(state);
-  cout << "Set initial IMU position to \n"
-       << filter.getState().getPosition().transpose() << endl;
-  cout << "Set initial IMU rotation to \n"
-       << filter.getState().getRotation() << endl;
+  if (print_info_to_terminal_) {
+    cout << "Set initial IMU position to \n"
+         << filter.getState().getPosition().transpose() << endl;
+    cout << "Set initial IMU rotation to \n"
+         << filter.getState().getRotation() << endl;
+  }
 }
 void CassieStateEstimator::setPreviousImuMeasurement(
     Context<double>* context, const VectorXd& imu_value) const {
@@ -1102,6 +1127,10 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
         const auto& self = dynamic_cast<const CassieStateEstimator&>(system);
         return self.Update(c, s);
       };
+
+      auto& uu_events = events->get_mutable_unrestricted_update_events();
+      uu_events.AddEvent(UnrestrictedUpdateEvent<double>(
+          drake::systems::TriggerType::kTimed, callback));
     } else {
       *time = INFINITY;
     }

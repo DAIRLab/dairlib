@@ -34,11 +34,10 @@ class PlateBalancingTargetGenerator
     return this->get_output_port(tray_target_port_);
   }
 
-  void SetRemoteControlParameters(const Eigen::Vector3d& first_target,
-                                  const Eigen::Vector3d& second_target,
-                                  const Eigen::Vector3d& third_target,
-                                  double x_scale, double y_scale,
-                                  double z_scale);
+  void SetRemoteControlParameters(const int& trajectory_type, const double& traj_radius,
+    const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
+    const double& fixed_goal_y, const double& step_size, const double& start_point_x, const double& start_point_y, 
+    const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size);
 
  private:
   void CalcEndEffectorTarget(const drake::systems::Context<double>& context,

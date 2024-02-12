@@ -8,7 +8,7 @@ struct FrankaSimParams {
   std::string end_effector_model;
   std::string table_model;
   std::string table_w_supports_model;
-  std::string tray_model;
+  std::string jack_model;
   std::string box_model;
   std::string left_support_model;
   std::string right_support_model;
@@ -52,7 +52,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(table_model));
     a->Visit(DRAKE_NVP(table_w_supports_model));
-    a->Visit(DRAKE_NVP(tray_model));
+    a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(box_model));
     a->Visit(DRAKE_NVP(left_support_model));
     a->Visit(DRAKE_NVP(right_support_model));

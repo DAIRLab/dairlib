@@ -75,11 +75,14 @@ int DoMain(int argc, char* argv[]) {
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   DiagramBuilder<double> plant_builder;
-
+  
+  // Loading the full franka model that will go into franka kinematics system
+  // This needs to load the full franka and full end effector model. Connections made around line 184 to FrankaKinematics module.   
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(
       drake::FindResourceOrThrow(controller_params.franka_model));
+  parser_franka.AddModels(drake::FindResourceOrThrow(controller_params.ground_model));
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
           FindResourceOrThrow(controller_params.end_effector_model))[0];
@@ -91,51 +94,62 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> T_EE_W =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.tool_attachment_frame);
-  plant_franka.WeldFrames(
-      plant_franka.GetFrameByName("panda_link7"),
-      plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
+  RigidTransform<double> X_F_G_franka =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             controller_params.ground_franka_frame);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"), 
+                          plant_franka.GetFrameByName("end_effector_base"), T_EE_W);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"), 
+                          plant_franka.GetFrameByName("ground"), X_F_G_franka);
 
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
-  ///
-  MultibodyPlant<double> plant_tray(0.0);
-  Parser parser_tray(&plant_tray, nullptr);
-  parser_tray.AddModels(controller_params.tray_model);
-  plant_tray.Finalize();
-  auto tray_context = plant_tray.CreateDefaultContext();
+  /// adding the jack model (TODO: Change to object instead of jack)
+  MultibodyPlant<double> plant_jack(0.0);
+  Parser parser_jack(&plant_jack, nullptr);
+  parser_jack.AddModels(controller_params.jack_model);
+  plant_jack.Finalize();
+  auto jack_context = plant_jack.CreateDefaultContext();
 
-  ///
+  /// Creating the plant for lcs which will contain only end effector and jack
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
-  Parser parser_plate(&plant_for_lcs);
-  parser_plate.SetAutoRenaming(true);
-  parser_plate.AddModels(controller_params.plate_model);
+  
+  Parser parser_for_lcs(&plant_for_lcs);
+  parser_for_lcs.SetAutoRenaming(true);
+  /// Loading simple model of end effector (just a sphere) for the lcs plant
+  parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
 
-  drake::multibody::ModelInstanceIndex left_support_index;
-  drake::multibody::ModelInstanceIndex right_support_index;
-  if (controller_params.scene_index > 0) {
-    left_support_index = parser_plate.AddModels(
-        FindResourceOrThrow(controller_params.left_support_model))[0];
-    right_support_index = parser_plate.AddModels(
-        FindResourceOrThrow(controller_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.left_support_orientation),
-                               controller_params.left_support_position);
-    RigidTransform<double> T_S2_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.right_support_orientation),
-                               controller_params.right_support_position);
-    plant_for_lcs.WeldFrames(
-        plant_for_lcs.world_frame(),
-        plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
-    plant_for_lcs.WeldFrames(
-        plant_for_lcs.world_frame(),
-        plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
-  }
-  parser_plate.AddModels(controller_params.tray_model);
+//   drake::multibody::ModelInstanceIndex left_support_index;
+//   drake::multibody::ModelInstanceIndex right_support_index;
+//   if (controller_params.scene_index > 0) {
+//     left_support_index = parser_plate.AddModels(
+//         FindResourceOrThrow(controller_params.left_support_model))[0];
+//     right_support_index = parser_plate.AddModels(
+//         FindResourceOrThrow(controller_params.right_support_model))[0];
+//     RigidTransform<double> T_S1_W =
+//         RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.left_support_orientation),
+//                                controller_params.left_support_position);
+//     RigidTransform<double> T_S2_W =
+//         RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.right_support_orientation),
+//                                controller_params.right_support_position);
+//     plant_for_lcs.WeldFrames(
+//         plant_for_lcs.world_frame(),
+//         plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
+//     plant_for_lcs.WeldFrames(
+//         plant_for_lcs.world_frame(),
+//         plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
+//   }
+  parser_for_lcs.AddModels(controller_params.jack_model);
+  parser_for_lcs.AddModels(controller_params.ground_model);
 
+// TO DO: The base link may change to the simple end effector model link name or might just be removed entirely.
+  /// TODO: @Bibit/Will Please check if the weld frames are correct
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
+  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(), 
+                           plant_for_lcs.GetFrameByName("ground"), X_F_G_franka);
   plant_for_lcs.Finalize();
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
@@ -147,50 +161,86 @@ int DoMain(int argc, char* argv[]) {
       plant_for_lcs, diagram_context.get());
   auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
-  ///
-  std::vector<drake::geometry::GeometryId> plate_contact_points =
+  /// TO DO: Maybe just this changes to the simple end effector link
+  std::vector<drake::geometry::GeometryId> ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("plate"));
-  if (controller_params.scene_index > 0) {
-    std::vector<drake::geometry::GeometryId> left_support_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("support", left_support_index));
-    std::vector<drake::geometry::GeometryId> right_support_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("support", right_support_index));
-    plate_contact_points.insert(plate_contact_points.end(),
-                                left_support_contact_points.begin(),
-                                left_support_contact_points.end());
-    plate_contact_points.insert(plate_contact_points.end(),
-                                right_support_contact_points.begin(),
-                                right_support_contact_points.end());
-  }
-  std::vector<drake::geometry::GeometryId> tray_geoms =
+          plant_for_lcs.GetBodyByName("end_effector_simple"));
+//   if (controller_params.scene_index > 0) {
+//     std::vector<drake::geometry::GeometryId> left_support_contact_points =
+//         plant_for_lcs.GetCollisionGeometriesForBody(
+//             plant_for_lcs.GetBodyByName("support", left_support_index));
+//     std::vector<drake::geometry::GeometryId> right_support_contact_points =
+//         plant_for_lcs.GetCollisionGeometriesForBody(
+//             plant_for_lcs.GetBodyByName("support", right_support_index));
+//     plate_contact_points.insert(plate_contact_points.end(),
+//                                 left_support_contact_points.begin(),
+//                                 left_support_contact_points.end());
+//     plate_contact_points.insert(plate_contact_points.end(),
+//                                 right_support_contact_points.begin(),
+//                                 right_support_contact_points.end());
+//   }
+//  TODO: This becomes jack geoms but the individual capsule code needs to be ported over
+  std::vector<drake::geometry::GeometryId> capsule1_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("tray"));
+          plant_for_lcs.GetBodyByName("capsule_1"));
+  std::vector<drake::geometry::GeometryId> capsule2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_2"));
+  std::vector<drake::geometry::GeometryId> capsule3_geoms =
+        plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_3"));
+  std::vector<drake::geometry::GeometryId> ground_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("ground"));
+
   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
       contact_geoms;
-  contact_geoms["PLATE"] = plate_contact_points;
-  contact_geoms["TRAY"] = tray_geoms;
+  contact_geoms["EE"] = ee_contact_points;
+  contact_geoms["CAPSULE_1"] = capsule1_geoms;
+  contact_geoms["CAPSULE_2"] = capsule2_geoms;
+  contact_geoms["CAPSULE_3"] = capsule3_geoms;
+  contact_geoms["GROUND"] = ground_geoms;
 
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  for (auto geom_id : contact_geoms["PLATE"]) {
-    contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
-  }
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+
+  //   Creating a list of contact pairs for the end effector and the jack to hand over to lcs factory in the controller to resolve
+  ee_contact_pairs.push_back(SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
+  //   Creating a list of contact pairs for the jack and the ground
+  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms["CAPSULE_1"], contact_geoms["GROUND"])};
+  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms["CAPSULE_2"], contact_geoms["GROUND"])};
+  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms["CAPSULE_3"], contact_geoms["GROUND"])};
+
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_contact1);
+  contact_pairs.push_back(ground_contact2);
+  contact_pairs.push_back(ground_contact3);
+
+// Removed this next block because we are not passing contact pairs to the controller. Only contact geoms.
+// TODO: Change the interface of Will’s C3_controller to take contact_geoms list instead of contact pairs.
+//   std::vector<SortedPair<GeometryId>> contact_pairs;
+//   for (auto geom_id : contact_geoms["PLATE"]) {
+//     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
+//   }
 
   DiagramBuilder<double> builder;
 
-  auto tray_state_sub =
+//   TODO @Sharanya Feb 9th: Decide how to generate object target and make changes to plate_balancing_target.h/.cc accordingly with port names and what it does. 
+
+  auto jack_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.tray_state_channel, &lcm));
+          lcm_channel_params.jack_state_channel, &lcm));
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-  auto tray_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
+  auto jack_state_receiver =
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_jack);
+  //  TODO: The end_effector_name was changes in the yaml file. Check if this next line still works fine.
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          controller_params.end_effector_name, "tray",
+          plant_franka, franka_context.get(), plant_jack, jack_context.get(),
+          controller_params.end_effector_name, "jack",                         
           controller_params.include_end_effector_orientation);
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(

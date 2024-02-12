@@ -1,0 +1,138 @@
+<?xml version="1.0" ?>
+<robot name="jack">
+    <link name="capsule_1">
+        <contact>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
+        </contact>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+        </collision>
+        <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
+
+                <!-- HYDROELASTIC CONTACT -->
+                <!-- <drake:compliant_hydroelastic/> -->
+                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+        </drake:proximity_properties>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+            <material>
+                <color rgba="1 0 0 1"/> <!-- red color for visualization -->
+                <!-- <color rgba="0.5 0.5 0.5 0.2"/> gray transparent color for visualization -->
+            </material>
+        </visual>
+    </link>
+
+    <link name="capsule_2">
+        <contact>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
+        </contact>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+        </inertial>
+        <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
+
+                <!-- HYDROELASTIC CONTACT -->
+                <!-- <drake:compliant_hydroelastic/> -->
+                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+        </drake:proximity_properties>
+        <collision>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="1.5708 0 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the x-axis -->
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+            <material>
+                <color rgba="0 1 0 1"/> <!-- green transparent color for visualization -->
+                <!-- <color rgba="0.5 0.5 0.5 0.2"/> gray transparent color for visualization -->
+            </material>
+        </visual>
+    </link>
+
+    <link name="capsule_3">
+        <!-- Third capsule (perpendicular to the first two capsules) -->
+        <contact>
+            <rolling_friction value="0.5"/>
+            <spinning_friction value="0.5"/>
+        </contact>
+        <drake:proximity_properties>
+                <!-- POINT CONTACT -->
+                <drake:mu_static value="0.3"/>
+                <drake:mu_dynamic value="0.3"/>
+
+                <!-- HYDROELASTIC CONTACT -->
+                <!-- <drake:compliant_hydroelastic/> -->
+                <!-- <drake:mesh_resolution_hint value="0.02"/> -->
+                <!-- <drake:hydroelastic_modulus value="1e7"/> -->
+                <!-- <drake:hunt_crossley_dissipation value ="1.25"/> -->
+        </drake:proximity_properties>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.000136" ixy="0" ixz="0" iyy="0.000136" iyz="0" izz="1.1e-05"/>
+        </inertial>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+        </collision>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <capsule length="0.125" radius="0.025"/> 
+            </geometry>
+            <material>
+                <color rgba="0 0 1 1"/> <!-- blue transparent color for visualization -->
+                <!-- <color rgba="0.5 0.5 0.5 0.2"/> gray transparent color for visualization -->
+            </material>
+        </visual>
+    </link>
+
+    
+
+
+    <!-- Joints to connect the capsules-->
+    <joint name="attach_joint" type="fixed">
+        <parent link="capsule_1"/>
+        <child link="capsule_2"/>
+        <origin rpy="0 1.5708 0" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the y-axis -->
+    </joint>
+
+    <joint name="attach_joint2" type="fixed">
+        <parent link="capsule_2"/>
+        <child link="capsule_3"/>
+        <origin rpy="0 0 1.5708" xyz="0 0 0"/> <!-- Rotate by 90 degrees around the z-axis -->
+    </joint>
+
+    
+</robot>

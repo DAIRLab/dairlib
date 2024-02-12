@@ -266,7 +266,7 @@ int DoMain(int argc, char* argv[]) {
   auto franka_context = plant_franka.CreateDefaultContext();
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
-  parser_tray.AddModels(c3_controller_params.tray_model);
+  parser_tray.AddModels(c3_controller_params.jack_model);
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
@@ -298,7 +298,7 @@ int DoMain(int argc, char* argv[]) {
         plant_for_lcs.world_frame(),
         plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
   }
-  parser_plate.AddModels(c3_controller_params.tray_model);
+  parser_plate.AddModels(c3_controller_params.jack_model);
 
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
@@ -424,7 +424,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::ModelInstanceIndex c3_end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
+      parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   Vector3d franka_origin = Eigen::VectorXd::Zero(3);

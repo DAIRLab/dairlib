@@ -83,8 +83,8 @@ int do_main(int argc, char* argv[]) {
 
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  drake::multibody::ModelInstanceIndex tray_index =
-      parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
+  drake::multibody::ModelInstanceIndex jack_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -96,8 +96,7 @@ int do_main(int argc, char* argv[]) {
       drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("plate", end_effector_index), T_EE_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), T_EE_W);
 
   if (sim_params.scene_index > 0) {
     drake::multibody::ModelInstanceIndex left_support_index =
@@ -135,7 +134,7 @@ int do_main(int argc, char* argv[]) {
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
-      builder.AddSystem<ObjectStateReceiver>(plant, tray_index);
+      builder.AddSystem<ObjectStateReceiver>(plant, jack_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
@@ -145,10 +144,10 @@ int do_main(int argc, char* argv[]) {
       franka_state_receiver->get_output_port(0).size() - 1, 1);
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(tray_index));
+      plant.num_positions(jack_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(tray_index)};
+                                  plant.num_positions(jack_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
@@ -208,7 +207,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace){
     auto object_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.tray_model),
+        meshcat, FindResourceOrThrow(sim_params.jack_model),
         "object_position_target", "object_orientation_target");
     auto end_effector_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(sim_params.end_effector_model),

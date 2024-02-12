@@ -16,6 +16,10 @@ using CostMap = std::unordered_map<
 using FrictionConeMap = std::unordered_map<
     std::string, std::shared_ptr<drake::solvers::LinearConstraint>>;
 
+using ContactMap = std::unordered_map<
+    std::string,
+    std::unique_ptr<const multibody::WorldPointEvaluator<double>>>;
+
 class InverseDynamicsQp {
 
  public:
@@ -24,8 +28,7 @@ class InverseDynamicsQp {
       drake::systems::Context<double> *context);
 
   void AddHolonomicConstraint(
-      const std::string &name,
-      std::unique_ptr<const multibody::KinematicEvaluator<double>> eval);
+      std::unique_ptr<const multibody::KinematicEvaluatorSet<double>> eval);
 
   void AddContactConstraint(
       const std::string &name,
@@ -52,6 +55,9 @@ class InverseDynamicsQp {
   const drake::solvers::VectorXDecisionVariable &lambda_e() const {
     return lambda_e_;
   }
+  const drake::solvers::VectorXDecisionVariable &epsilon() const {
+    return epsilon_;
+  }
 
   const drake::solvers::MathematicalProgram &get_prog() const {
     return prog_;
@@ -61,57 +67,33 @@ class InverseDynamicsQp {
     return prog_;
   }
 
-  void AddAccelerationCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
+  const std::unordered_map<std::string, int> get_contact_start_indices() const {
+    return lambda_c_start_;
+  }
 
-  void AddInputCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
+  const ContactMap& get_contact_evaluators() const {
+    return contact_constraint_evaluators_;
+  }
 
-  void AddContactForceCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
+  const multibody::KinematicEvaluatorSet<double>& get_holonomic_evaluators()
+  const {
+    return *holonomic_constraints_;
+  }
 
-  void AddExternalForceCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
-
-  void AddAccelerationCost(
+  void AddQuadraticCost(
       const std::string &name, const Eigen::MatrixXd &Q,
       const Eigen::VectorXd &b,
       const drake::solvers::VectorXDecisionVariable& vars);
 
-  void AddInputCost(
+  void AddQuadraticCost(
       const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b,
-      const drake::solvers::VectorXDecisionVariable& vars);
+      const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
 
-  void AddContactForceCost(
+  void UpdateCost(
       const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b,
-      const drake::solvers::VectorXDecisionVariable& vars);
-
-  void AddExternalForceCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, const
-      drake::solvers::VectorXDecisionVariable& vars);
-
-  void UpdateAccelerationCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, double c);
-
-  void UpdateInputCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, double c);
-
-  void UpdateContactForceCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, double c);
-
-  void UpdateExternalForceCost(
-      const std::string &name, const Eigen::MatrixXd &Q,
-      const Eigen::VectorXd &b, double c);
+      const Eigen::VectorXd &b, double c=0) {
+    all_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
+  };
 
   void UpdateDynamics(
       const Eigen::VectorXd &x,
@@ -122,6 +104,15 @@ class InverseDynamicsQp {
       const std::vector<std::string> &active_contacts,
       const std::vector<std::string> &active_external_forces);
 
+  const drake::solvers::QuadraticCost&
+  get_cost_evaluator(const std::string& name) const {
+    return *all_costs_.at(name);
+  }
+
+  bool has_cost(const std::string& name) {
+    return all_costs_.count(name) > 0;
+  }
+
  private:
 
   // Multibody Dynamics
@@ -129,17 +120,12 @@ class InverseDynamicsQp {
   drake::systems::Context<double> *context_;
 
   // Holonomic constraints are bilateral constraints that are always active
-  std::unordered_map<
-      std::string, std::unique_ptr<const multibody::KinematicEvaluator<double>>>
-      holonomic_constraint_evaluators_{};
-  multibody::KinematicEvaluatorSet<double> holonomic_constraints_;
+  std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>
+  holonomic_constraints_;
 
   // Contact constraints are unilateral constraints with an associated
   // contact force which obeys the friction cone
-  std::unordered_map<
-      std::string,
-      std::unique_ptr<const multibody::WorldPointEvaluator<double>>>
-      contact_constraint_evaluators_{};
+  ContactMap contact_constraint_evaluators_{};
 
   std::unordered_map<std::string, int> lambda_c_start_;
   std::unordered_map<std::string, int> Jc_active_start_;
@@ -174,10 +160,7 @@ class InverseDynamicsQp {
   drake::solvers::VectorXDecisionVariable epsilon_{};
 
   // Costs
-  CostMap dv_costs_;
-  CostMap u_costs_;
-  CostMap lambda_c_costs_;
-  CostMap lambda_e_costs_;
+  CostMap all_costs_;
   std::shared_ptr<drake::solvers::QuadraticCost> soft_constraint_cost_;
 
   // Friction Cone Constraints

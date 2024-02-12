@@ -40,20 +40,15 @@ InverseDynamicsQp::InverseDynamicsQp(
     const MultibodyPlant<double> &plant, Context<double> *context) :
     plant_(plant),
     context_(context),
-    holonomic_constraints_(plant),
     nv_(plant.num_velocities()),
     nu_(plant.num_actuated_dofs()) {}
 
 void InverseDynamicsQp::AddHolonomicConstraint(
-    const string &name, unique_ptr<const KinematicEvaluator<double>> eval) {
-  DRAKE_DEMAND(holonomic_constraint_evaluators_.count(name) == 0);
+    unique_ptr<const KinematicEvaluatorSet<double>> eval) {
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
-  holonomic_constraint_evaluators_.insert({name, std::move(eval)});
-  holonomic_constraints_.add_evaluator(
-      holonomic_constraint_evaluators_.at(name).get()
-  );
-  nh_ += holonomic_constraint_evaluators_.at(name)->num_active();
+  holonomic_constraints_ = std::move(eval);
+  nh_ = holonomic_constraints_->count_full();
 }
 
 void InverseDynamicsQp::AddContactConstraint(
@@ -104,80 +99,19 @@ void InverseDynamicsQp::Build() {
   built_ = true;
 }
 
-void InverseDynamicsQp::AddAccelerationCost(
+
+void InverseDynamicsQp::AddQuadraticCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VariableRefList &vars) {
   DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, vars, dv_costs_, prog_);
+  AddIDQPCost(name, Q, b, vars, all_costs_, prog_);
 }
 
-void InverseDynamicsQp::AddInputCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList &vars) {
-  DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, vars, u_costs_, prog_);
-}
-
-void InverseDynamicsQp::AddContactForceCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList &vars) {
-  DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, vars, lambda_c_costs_, prog_);
-}
-
-void InverseDynamicsQp::AddExternalForceCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VariableRefList &vars) {
-  DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, vars, lambda_e_costs_, prog_);
-}
-
-void InverseDynamicsQp::AddAccelerationCost(
+void InverseDynamicsQp::AddQuadraticCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VectorXDecisionVariable &vars) {
   DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, {vars}, dv_costs_, prog_);
-}
-
-void InverseDynamicsQp::AddInputCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VectorXDecisionVariable &vars) {
-  DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, {vars}, u_costs_, prog_);
-}
-
-void InverseDynamicsQp::AddContactForceCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VectorXDecisionVariable &vars) {
-  DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, {vars}, lambda_c_costs_, prog_);
-}
-
-void InverseDynamicsQp::AddExternalForceCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b,
-    const VectorXDecisionVariable &vars) {
-  DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, {vars}, lambda_e_costs_, prog_);
-}
-
-void InverseDynamicsQp::UpdateAccelerationCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b, double c) {
-  dv_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
-}
-
-void InverseDynamicsQp::UpdateInputCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b, double c) {
-  u_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
-}
-
-void InverseDynamicsQp::UpdateContactForceCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b, double c) {
-  lambda_c_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
-}
-
-void InverseDynamicsQp::UpdateExternalForceCost(
-    const string &name, const MatrixXd &Q, const VectorXd &b, double c) {
-  lambda_e_costs_.at(name)->UpdateCoefficients(Q, b, c, true);
+  AddIDQPCost(name, Q, b, {vars}, all_costs_, prog_);
 }
 
 void InverseDynamicsQp::UpdateDynamics(
@@ -197,9 +131,9 @@ void InverseDynamicsQp::UpdateDynamics(
   // TODO (@Brian-Acosta) add option to turn off gravity comp
   bias = bias - grav;
 
-  MatrixXd Jh = holonomic_constraints_.EvalFullJacobian(*context_);
+  MatrixXd Jh = holonomic_constraints_->EvalFullJacobian(*context_);
   VectorXd
-      Jh_dot_v = holonomic_constraints_.EvalFullJacobianDotTimesV(*context_);
+      Jh_dot_v = holonomic_constraints_->EvalFullJacobianDotTimesV(*context_);
   MatrixXd Jc_active = MatrixXd::Zero(nc_active_, nv_);
   VectorXd Jc_active_dot_v = VectorXd::Zero(nc_active_);
   MatrixXd Jc = MatrixXd::Zero(nc_, nv_);
@@ -222,12 +156,12 @@ void InverseDynamicsQp::UpdateDynamics(
         external_force_evaluators_.at(e)->EvalFullJacobian(*context_);
   }
 
-  MatrixXd A_dyn = MatrixXd::Zero(nv_, nv_ + nu_ + nh_ + nc_ + nv_);
+  MatrixXd A_dyn = MatrixXd::Zero(nv_, nv_ + nu_ + nh_ + nc_ + ne_);
   A_dyn.block(0, 0, nv_, nv_) = M;
   A_dyn.block(0, nv_, nv_, nu_) = -B;
   A_dyn.block(0, nv_ + nu_, nv_, nh_) = -Jh.transpose();
   A_dyn.block(0, nv_ + nu_ + nh_, nv_, nc_) = -Jc.transpose();
-  A_dyn.block(0, nv_ + nu_ + nh_ + nv_ + nc_, nv_, ne_) = -Je.transpose();
+  A_dyn.block(0, nv_ + nu_ + nh_ + nc_, nv_, ne_) = -Je.transpose();
 
   MatrixXd A_c = MatrixXd::Zero(nc_active_, nv_ + nc_active_);
   A_c.block(0, 0, nc_active_, nv_) = Jc_active;
@@ -237,27 +171,6 @@ void InverseDynamicsQp::UpdateDynamics(
   dynamics_c_->UpdateCoefficients(A_dyn, -bias);
   holonomic_c_->UpdateCoefficients(Jh, -Jh_dot_v);
   contact_c_->UpdateCoefficients(A_c, -Jc_active_dot_v);
-}
-
-void InverseDynamicsQp::MakeAllInactiveForceCostsZero(
-    const vector<string> &active_contacts,
-    const vector<string> &active_external_forces) {
-  for (auto &[k, v] : lambda_c_costs_) {
-    if (std::find(active_contacts.begin(), active_contacts.end(), k) ==
-        active_contacts.end()) {
-      int n = v->num_vars();
-      v->UpdateCoefficients(MatrixXd::Zero(n, n), VectorXd::Zero(n), 0, true);
-    }
-  }
-  for (auto &[k, v] : lambda_e_costs_) {
-    if (std::find(active_external_forces.begin(),
-                  active_external_forces.end(),
-                  k) ==
-        active_external_forces.end()) {
-      int n = v->num_vars();
-      v->UpdateCoefficients(MatrixXd::Zero(n, n), VectorXd::Zero(n), 0, true);
-    }
-  }
 }
 
 }

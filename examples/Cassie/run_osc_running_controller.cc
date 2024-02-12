@@ -40,6 +40,7 @@ using std::map;
 using std::pair;
 using std::string;
 using std::vector;
+using std::unique_ptr;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -172,7 +173,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_RUNNING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -224,14 +225,26 @@ int DoMain(int argc, char* argv[]) {
       plant, right_heel.first, right_heel.second, *pelvis_view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddStateAndContactPoint(RunningFsmState::kLeftStance,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(RunningFsmState::kLeftStance,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(RunningFsmState::kRightStance,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(RunningFsmState::kRightStance,
-                               &right_heel_evaluator);
+  osc->AddContactPoint(
+      "left_toe",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      {RunningFsmState::kLeftStance}
+  );
+  osc->AddContactPoint(
+      "left_heel",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      {RunningFsmState::kLeftStance}
+  );
+  osc->AddContactPoint(
+      "right_toe",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      {RunningFsmState::kLeftStance}
+  );
+  osc->AddContactPoint(
+      "right_heel",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      {RunningFsmState::kLeftStance}
+  );
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
 
@@ -261,7 +274,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      unique_ptr<const multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   /**** Tracking Data *****/
 

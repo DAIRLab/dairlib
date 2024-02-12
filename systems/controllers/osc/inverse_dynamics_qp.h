@@ -32,7 +32,8 @@ class InverseDynamicsQp {
 
   void AddContactConstraint(
       const std::string &name,
-      std::unique_ptr<const multibody::WorldPointEvaluator<double>> eval);
+      std::unique_ptr<const multibody::WorldPointEvaluator<double>> eval,
+      double friction_coefficient=1);
 
   void AddExternalForce(
       const std::string &name,
@@ -67,7 +68,7 @@ class InverseDynamicsQp {
     return prog_;
   }
 
-  const std::unordered_map<std::string, int> get_contact_start_indices() const {
+  const std::unordered_map<std::string, int>& get_contact_start_indices() const {
     return lambda_c_start_;
   }
 
@@ -126,9 +127,9 @@ class InverseDynamicsQp {
   // Contact constraints are unilateral constraints with an associated
   // contact force which obeys the friction cone
   ContactMap contact_constraint_evaluators_{};
-
   std::unordered_map<std::string, int> lambda_c_start_;
   std::unordered_map<std::string, int> Jc_active_start_;
+  std::unordered_map<std::string, double> mu_map_;
 
   // External forces are reaction forces we want to "track," but which do not
   // constrain the robot's motion

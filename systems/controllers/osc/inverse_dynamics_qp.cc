@@ -52,7 +52,10 @@ void InverseDynamicsQp::AddHolonomicConstraint(
 }
 
 void InverseDynamicsQp::AddContactConstraint(
-    const string &name, unique_ptr<const WorldPointEvaluator<double>> eval) {
+    const string &name, unique_ptr<const WorldPointEvaluator<double>> eval,
+    double friction_coefficient) {
+
+  DRAKE_DEMAND(friction_coefficient >= 0);
   DRAKE_DEMAND(contact_constraint_evaluators_.count(name) == 0);
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
@@ -61,6 +64,7 @@ void InverseDynamicsQp::AddContactConstraint(
   Jc_active_start_.insert({name, nc_active_});
   nc_ += contact_constraint_evaluators_.at(name)->num_full();
   nc_active_ += contact_constraint_evaluators_.at(name)->num_active();
+  mu_map_.insert({name, friction_coefficient});
 }
 
 void InverseDynamicsQp::AddExternalForce(
@@ -95,6 +99,19 @@ void InverseDynamicsQp::Build() {
       MatrixXd::Zero(nc_active_, nv_ + nc_active_),
       VectorXd::Zero(nc_active_), {dv_, epsilon_}
   ).evaluator();
+
+  for (const auto& [cname, eval] : contact_constraint_evaluators_) {
+    MatrixXd A = MatrixXd(5, 3);
+    double mu = mu_map_.at(cname);
+    A << -1, 0, mu, 0, -1, mu, 1, 0, mu, 0, 1, mu, 0, 0, 1;
+    lambda_c_friction_cone_.insert({
+      cname,
+      prog_.AddLinearConstraint(
+          A, VectorXd::Zero(5),
+          VectorXd::Constant(5, std::numeric_limits<double>::infinity()),
+          lambda_c_.segment(lambda_c_start_.at(cname), 3)).evaluator()
+    });
+  }
 
   built_ = true;
 }
@@ -145,7 +162,8 @@ void InverseDynamicsQp::UpdateDynamics(
         evaluator->EvalFullJacobian(*context_);
     int start = Jc_active_start_.at(c);
     for (int i = 0; i < evaluator->num_active(); ++i) {
-      Jc_active.row(start + i) = Jc.row(evaluator->active_inds().at(i));
+      Jc_active.row(start + i) =
+          Jc.row(lambda_c_start_.at(c) + evaluator->active_inds().at(i));
       Jc_active_dot_v.segment(start, evaluator->num_active()) =
           evaluator->EvalActiveJacobianDotTimesV(*context_);
     }

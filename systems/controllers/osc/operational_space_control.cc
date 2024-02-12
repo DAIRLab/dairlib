@@ -377,8 +377,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   id_qp_.UpdateDynamics(x_w_spr, contact_names_map_.at(fsm_state), {});
 
-  // TODO (@Brian-Acosta) add friction cone constraints and API to update them
-
 
   //  Invariant Impacts
   //  Only update when near an impact
@@ -673,13 +671,16 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       {"lambda_h_cost", *lambda_h_sol_}
   };
 
+  output->regularization_cost_names.clear();
+  output->regularization_costs.clear();
   for (const auto& c : regularization_costs) {
     VectorXd y = VectorXd::Zero(1);
     if (id_qp_.has_cost(c.first)) {
       id_qp_.get_cost_evaluator(c.first).Eval(c.second, &y);
     }
     output->regularization_cost_names.emplace_back(c.first);
-    output->regularization_costs.emplace_back(c.second(0));
+    output->regularization_costs.emplace_back(y(0));
+    total_cost += y(0);
   }
 
   output->tracking_data_names.clear();

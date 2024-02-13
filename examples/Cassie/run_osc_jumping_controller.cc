@@ -443,10 +443,7 @@ int DoMain(int argc, char* argv[]) {
       osc_jump::FLIGHT, "hip_yaw_right", "hip_yaw_rightdot");
   left_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
   right_hip_yaw_tracking_data->SetImpactInvariantProjection(true);
-  osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data),
-                            VectorXd::Zero(1));
-  osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
-                            VectorXd::Zero(1));
+
 
   // Flight phase toe pitch tracking
   MatrixXd W_swing_toe = osc_gains.w_swing_toe * MatrixXd::Identity(1, 1);
@@ -477,9 +474,12 @@ int DoMain(int argc, char* argv[]) {
       osc_jump::FLIGHT, "toe_left", "toe_leftdot");
   right_toe_angle_tracking_data->AddStateAndJointToTrack(
       osc_jump::FLIGHT, "toe_right", "toe_rightdot");
+  left_toe_angle_tracking_data->SetImpactInvariantProjection(true);
+  right_toe_angle_tracking_data->SetImpactInvariantProjection(true);
 
-  osc->AddTrackingData(std::move(pelvis_tracking_data));
   osc->AddTrackingData(std::move(pelvis_rot_tracking_data));
+  osc->AddTrackingData(std::move(pelvis_tracking_data));
+
   if (osc_gains.relative_feet) {
     left_foot_rel_tracking_data->SetImpactInvariantProjection(true);
     right_foot_rel_tracking_data->SetImpactInvariantProjection(true);
@@ -491,10 +491,12 @@ int DoMain(int argc, char* argv[]) {
     osc->AddTrackingData(std::move(left_foot_tracking_data));
     osc->AddTrackingData(std::move(right_foot_tracking_data));
   }
-  left_toe_angle_tracking_data->SetImpactInvariantProjection(true);
-  right_toe_angle_tracking_data->SetImpactInvariantProjection(true);
   osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
   osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
+  osc->AddConstTrackingData(std::move(left_hip_yaw_tracking_data),
+                            VectorXd::Zero(1));
+  osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
+                            VectorXd::Zero(1));
 
   osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem

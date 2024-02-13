@@ -208,9 +208,6 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
     std::string name = body.name();
-    if (body.name() == "pelvis"){
-      name = "base";
-    }
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -274,9 +271,6 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant,
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
     std::string name = body.name();
-    if (body.name() == "pelvis"){
-      name = "base";
-    }
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -337,9 +331,6 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
     const auto& body = plant.get_body(body_index);
     int start = body.floating_velocities_start() - plant.num_positions();
     std::string name = body.name();
-    if (body.name() == "pelvis"){
-      name = "base";
-    }
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;
     name_to_index_map[name + "_wz"] = start + 2;
@@ -406,9 +397,6 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant,
     const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance);
     int start = body.floating_velocities_start() - plant.num_positions();
     std::string name = body.name();
-    if (body.name() == "pelvis"){
-      name = "base";
-    }
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;
     name_to_index_map[name + "_wz"] = start + 2;

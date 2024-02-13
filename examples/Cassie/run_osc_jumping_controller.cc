@@ -5,12 +5,14 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
+#include <drake/common/trajectories/piecewise_quaternion.h>
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc_jump/basic_trajectory_passthrough.h"
+#include "examples/Cassie/osc_jump/piecewise_quaternion_passthrough.h"
 #include "examples/Cassie/osc_jump/flight_foot_traj_generator.h"
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 #include "examples/Cassie/osc_jump/osc_jumping_gains.h"
@@ -52,7 +54,9 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::PiecewiseQuaternionSlerp;
 using examples::osc_jump::BasicTrajectoryPassthrough;
+using examples::osc_jump::QuaternionTrajectoryPassthrough;
 using examples::osc_jump::FlightFootTrajGenerator;
 using examples::osc_jump::JumpingEventFsm;
 using examples::osc_jump::PelvisTransTrajGenerator;
@@ -139,9 +143,6 @@ int DoMain(int argc, char* argv[]) {
   const LcmTrajectory& output_trajs =
       LcmTrajectory(FindResourceOrThrow(output_traj_path));
 
-  PiecewisePolynomial<double> state_traj =
-      dircon_trajectory.ReconstructStateTrajectory();
-
   PiecewisePolynomial<double> pelvis_trans_traj;
   PiecewisePolynomial<double> l_foot_trajectory;
   PiecewisePolynomial<double> r_foot_trajectory;
@@ -212,10 +213,26 @@ int DoMain(int argc, char* argv[]) {
             lcm_right_toe_traj.datapoints.topRows(1),
             lcm_right_toe_traj.datapoints.bottomRows(1)));
     pelvis_rot_trajectory.ConcatenateInTime(
-        PiecewisePolynomial<double>::FirstOrderHold(
+        PiecewisePolynomial<double>::ZeroOrderHold(
             lcm_pelvis_rot_traj.time_vector,
             lcm_pelvis_rot_traj.datapoints.topRows(4)));
   }
+
+  std::vector<Eigen::Quaterniond> pelvis_rot_traj_samples;
+  std::vector<double> pelvis_rot_traj_breaks;
+  for (int i = 0; i < pelvis_rot_trajectory.get_number_of_segments(); ++i){
+    pelvis_rot_traj_breaks.push_back(pelvis_rot_trajectory.get_segment_times()[i] + FLAGS_delay_time);
+    auto value = pelvis_rot_trajectory.value(pelvis_rot_trajectory.get_segment_times()[i]);
+    std::cout << value << std::endl;
+    std::cout << value.rows() << std::endl;
+    std::cout << value.cols() << std::endl;
+    pelvis_rot_traj_samples.push_back(Eigen::Quaterniond(value(0, 0), value(1, 0), value(2, 0), value(3, 0)));
+//    pelvis_rot_traj_samples.push_back(Eigen::Quaterniond(1, 0, 0, 0));
+  }
+
+  PiecewiseQuaternionSlerp<double> pelvis_quat_trajectory = PiecewiseQuaternionSlerp<double>(pelvis_rot_traj_breaks,
+                                                                                            pelvis_rot_traj_samples);
+
 
   // For the time-based FSM (squatting by default)
   double flight_time =
@@ -254,8 +271,8 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, context_w_spr.get(), "hip_right", false, r_foot_trajectory,
       r_hip_trajectory, FLAGS_delay_time);
   auto pelvis_rot_traj_generator =
-      builder.AddSystem<BasicTrajectoryPassthrough>(
-          pelvis_rot_trajectory, "pelvis_rot_traj", FLAGS_delay_time);
+      builder.AddSystem<QuaternionTrajectoryPassthrough>(
+          pelvis_quat_trajectory, "pelvis_rot_traj", FLAGS_delay_time);
   auto fsm = builder.AddSystem<JumpingEventFsm>(
       plant_w_spr, transition_times, FLAGS_contact_based_fsm,
       gains.impact_threshold,

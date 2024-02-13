@@ -20,11 +20,6 @@
 namespace dairlib {
 
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
-DEFINE_bool(com, true, "Visualize the COM as a sphere");
-DEFINE_bool(
-    com_ground, true,
-    "If com=true, sets whether the COM should be shown on the ground (z=0)"
-    " or at the correct height.");
 DEFINE_string(channel, "CASSIE_STATE_DISPATCHER",
               "LCM channel for receiving state. "
               "Use CASSIE_STATE_SIMULATION to get state from simulator, and "
@@ -88,31 +83,6 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
-
-  // *******Add COM visualization**********
-  auto ball_plant = multibody::ConstructBallPlant(&scene_graph);
-  if (FLAGS_com) {
-    // connect
-    auto q_passthrough = builder.AddSystem<SubvectorPassThrough>(
-        state_receiver->get_output_port(0).size(), 0, plant.num_positions());
-    builder.Connect(state_receiver->get_output_port(0),
-                    q_passthrough->get_input_port());
-    auto rbt_passthrough = builder.AddSystem<multibody::ComPoseSystem>(plant);
-
-    auto ball_to_pose =
-        builder.AddSystem<MultibodyPositionToGeometryPose<double>>(*ball_plant);
-    builder.Connect(*q_passthrough, *rbt_passthrough);
-    if (FLAGS_com_ground) {
-      builder.Connect(rbt_passthrough->get_xy_com_output_port(),
-                      ball_to_pose->get_input_port());
-    } else {
-      builder.Connect(rbt_passthrough->get_com_output_port(),
-                      ball_to_pose->get_input_port());
-    }
-    builder.Connect(
-        ball_to_pose->get_output_port(),
-        scene_graph.get_source_pose_port(ball_plant->get_source_id().value()));
-  }
 
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 

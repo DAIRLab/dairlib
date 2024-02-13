@@ -5,11 +5,12 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "osc_jump",
     deps = [
+        "//examples/Cassie/osc_jump:basic_trajectory_passthrough",
         "//examples/Cassie/osc_jump:flight_foot_traj_generator",
         "//examples/Cassie/osc_jump:jumping_event_based_fsm",
         "//examples/Cassie/osc_jump:osc_jumping_gains",
-        "//examples/Cassie/osc_jump:pelvis_orientation_traj_generator",
         "//examples/Cassie/osc_jump:pelvis_trans_traj_generator",
+        "//examples/Cassie/osc_jump:piecewise_quaternion_passthrough",
         "//examples/Cassie/osc_jump:toe_angle_traj_generator",
         "//systems/controllers/osc:operational_space_control",
         "//systems/controllers/osc:osc_tracking_datas",
@@ -53,9 +54,21 @@ cc_library(
 )
 
 cc_library(
-    name = "pelvis_orientation_traj_generator",
+    name = "basic_trajectory_passthrough",
     srcs = ["basic_trajectory_passthrough.cc"],
     hdrs = ["basic_trajectory_passthrough.h"],
+    deps = [
+        ":jumping_event_based_fsm",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "piecewise_quaternion_passthrough",
+    srcs = ["piecewise_quaternion_passthrough.cc"],
+    hdrs = ["piecewise_quaternion_passthrough.h"],
     deps = [
         ":jumping_event_based_fsm",
         "//multibody:utils",

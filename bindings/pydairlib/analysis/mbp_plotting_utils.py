@@ -806,12 +806,23 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,
     tracking_data_name_dict = {'pelvis_trans_traj': 'Pelvis Position',
                                'left_ft_traj': 'Left Foot Position',
                                'right_ft_traj': 'Right Foot Position',
-                               'pelvis_rot_tracking_data': 'Pelvis Orientation',
+                               'pelvis_rot_traj': 'Pelvis Orientation',
                                'left_toe_angle_traj': 'Left Toe Joint Angle',
                                'right_toe_angle_traj': 'Right Toe Joint Angle',
-                               'swing_hip_yaw_left_traj': 'Left Hip Yaw Angle',
-                               'swing_hip_yaw_right_traj': 'Right Hip Yaw Angle',
+                               'hip_yaw_left_traj': 'Left Hip Yaw Angle',
+                               'hip_yaw_right_traj': 'Right Hip Yaw Angle',
                                }
+
+
+    # uses default color map
+    legend_elements = []
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i),
+                        facecolor=ps.cmap(2 * i), alpha=0.3)
+        if fsm_state_names:
+            legend_elements.append(
+                Patch(facecolor=ps.cmap(2 * i), alpha=0.5,
+                      label=fsm_state_names[i]))
 
     for i, tracking_data_name in enumerate(tracking_data_names):
         # tracking_data_name = tracking_data_names[i]
@@ -821,28 +832,19 @@ def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,
                         (i + 0.75) / n_tracking_datas,
                         where=tracking_data.is_active.astype(bool)[
                               :fsm_time.shape[0]],
-                        color=ps.cmap(2 * i), alpha=1.0)
+                        facecolor=ps.cmap(2 * i), alpha=1.0)
         tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
                                                    alpha=1.0,
                                                    label=
                                                    tracking_data_name_dict[
                                                        tracking_data_name]))
 
-    # uses default color map
-    legend_elements = []
-    for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i),
-                        color=ps.cmap(2 * i), alpha=0.2)
-        if fsm_state_names:
-            legend_elements.append(
-                Patch(facecolor=ps.cmap(2 * i), alpha=0.3,
-                      label=fsm_state_names[i]))
     ps.tight_layout()
 
     if len(legend_elements) > 0:
-        legend = ax.legend(handles=legend_elements, loc=4)
+        legend = ax.legend(handles=tracking_data_legend_elements, loc="lower left", bbox_to_anchor=(0.0, -0.37), ncol=2)
         ax.add_artist(legend)
-        legend = ax.legend(handles=tracking_data_legend_elements, loc=1)
+        legend = ax.legend(handles=legend_elements, loc="lower right", bbox_to_anchor=(1.0, -0.37))
         ax.add_artist(legend)
         ax.relim()
     ax.set_yticklabels([])

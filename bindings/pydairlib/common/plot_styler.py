@@ -12,10 +12,10 @@ class PlotStyler():
   def set_paper_styling():
     # matplotlib.rcParams['figure.figsize'] = 20, 12
     # matplotlib.rcParams['figure.figsize'] = 20, 6
-    matplotlib.rcParams['figure.figsize'] = 8, 6
+    matplotlib.rcParams['figure.figsize'] = 9, 6
     plt.rcParams['figure.dpi'] = 200
     matplotlib.rcParams['figure.autolayout'] = True
-    font = {'size': 20}
+    font = {'size': 24}
     matplotlib.rc('font', **font)
     matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
@@ -46,13 +46,13 @@ class PlotStyler():
     self.grey = '#909090'
     self.orange = '#FE7F0E'
     # self.directory = None
-    self.dpi = plt.rcParams['figure.dpi']
+    self.dpi = matplotlib.rcParams['figure.dpi']
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    plt.rc('legend', fontsize=14)
+    plt.rc('legend', fontsize=12)
     plt.rc('axes', labelsize=14, titlesize=14)
     plt.rc('xtick', labelsize=14)
     plt.rc('ytick', labelsize=14)
-    matplotlib.rcParams['figure.figsize'] = 12, 7
+    matplotlib.rcParams['figure.figsize'] = matplotlib.rcParams['figure.figsize']
     matplotlib.rcParams['figure.autolayout'] = True
     matplotlib.rcParams['axes.xmargin'] = 0
     matplotlib.rcParams['axes.ymargin'] = 0
@@ -111,7 +111,8 @@ class PlotStyler():
     return
 
   def save_fig(self, filename):
-    self.fig.savefig(self.directory + filename, dpi=self.dpi, bbox_inches='tight')
+    # self.fig.savefig(self.directory + filename, dpi=self.dpi, bbox_inches='tight')
+    self.fig.savefig(self.directory + filename, dpi=200, bbox_inches='tight')
     return
 
   def add_legend(self, labels, loc=0, subplot_index=0):

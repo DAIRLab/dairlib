@@ -29,7 +29,6 @@
 namespace dairlib {
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::SceneGraph;
-using drake::multibody::ContactResultsToLcmSystem;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
@@ -124,15 +123,6 @@ DEFINE_string(contact_solver, "SAP",
   auto state_sender = builder.AddSystem<systems::RobotOutputSender>(
       plant, FLAGS_publish_efforts);
 
-  // Contact Information
-  ContactResultsToLcmSystem<double>& contact_viz =
-      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(plant);
-  contact_viz.set_name("contact_visualization");
-  auto& contact_results_publisher = *builder.AddSystem(
-      LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-          "CASSIE_CONTACT_DRAKE", lcm, 1.0 / FLAGS_publish_rate));
-  contact_results_publisher.set_name("contact_results_publisher");
-
   // Sensor aggregator and publisher of lcmt_cassie_out
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
@@ -169,10 +159,6 @@ DEFINE_string(contact_solver, "SAP",
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
-  builder.Connect(plant.get_contact_results_output_port(),
-                  contact_viz.get_input_port(0));
-  builder.Connect(contact_viz.get_output_port(0),
-                  contact_results_publisher.get_input_port());
   builder.Connect(radio_sub->get_output_port(),
                   sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),

@@ -374,7 +374,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   SetVelocitiesIfNew<double>(
       plant_, x_w_spr.tail(plant_.num_velocities()), context_);
 
-
   id_qp_.UpdateDynamics(x_w_spr, contact_names_map_.at(fsm_state), {});
 
 
@@ -383,10 +382,10 @@ VectorXd OperationalSpaceControl::SolveQp(
   bool near_impact = alpha != 0;
   VectorXd v_proj = VectorXd::Zero(n_v_);
 
-  // TODO (@Brian-Acosta) propogate necessary changes to impact invariant code
-  MatrixXd M(n_v_, n_v_);
-  plant_.CalcMassMatrix(*context_, &M);
   if (near_impact) {
+    MatrixXd M(n_v_, n_v_);
+    plant_.CalcMassMatrix(*context_, &M);
+
     UpdateImpactInvariantProjection(
         x_w_spr, x_wo_spr, context, t, t_since_last_state_switch,
         fsm_state, next_fsm_state, M);
@@ -396,7 +395,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Update costs
   // 4. Tracking cost
-  // TODO (@Brian-Acosta) update tracking data to take one plant
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i).get();
 
@@ -552,8 +550,6 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   }
 
   std::vector<std::string> next_contact_set = map_iterator->second;
-  const auto& all_contacts_map = id_qp_.get_contact_evaluators();
-  const auto& contact_start_idx_map = id_qp_.get_contact_start_indices();
 
   int active_constraint_dim = kSpaceDim * next_contact_set.size() + id_qp_.nh();
 
@@ -561,7 +557,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   int row_start = 0;
   for (const auto& cname : next_contact_set) {
     J_next.block(row_start, 0, kSpaceDim, n_v_) =
-        all_contacts_map.at(cname)->EvalFullJacobian(*context_);
+        id_qp_.get_contact_evaluator(cname).EvalFullJacobian(*context_);
     row_start += kSpaceDim;
   }
   // Holonomic constraints
@@ -673,12 +669,12 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->regularization_cost_names.clear();
   output->regularization_costs.clear();
-  for (const auto& c : regularization_costs) {
+  for (const auto& [name, sol] : regularization_costs) {
     VectorXd y = VectorXd::Zero(1);
-    if (id_qp_.has_cost(c.first)) {
-      id_qp_.get_cost_evaluator(c.first).Eval(c.second, &y);
+    if (id_qp_.has_cost_named(name)) {
+      id_qp_.get_cost_evaluator(name).Eval(sol, &y);
     }
-    output->regularization_cost_names.emplace_back(c.first);
+    output->regularization_cost_names.emplace_back(name);
     output->regularization_costs.emplace_back(y(0));
     total_cost += y(0);
   }
@@ -813,7 +809,7 @@ void OperationalSpaceControl::CheckTracking(
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   VectorXd y_soft_constraint_cost = VectorXd::Zero(1);
-  if (id_qp_.has_cost("soft_constraint_cost")) {
+  if (id_qp_.has_cost_named("soft_constraint_cost")) {
     id_qp_.get_cost_evaluator("soft_constraint_cost").Eval(
         *epsilon_sol_, &y_soft_constraint_cost);
   }

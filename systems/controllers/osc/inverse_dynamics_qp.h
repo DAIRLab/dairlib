@@ -39,48 +39,6 @@ class InverseDynamicsQp {
       const std::string &name,
       std::unique_ptr<const multibody::KinematicEvaluator<double>> eval);
 
-  void Build();
-
-  int nc() const {return nc_;}
-  int nh() const {return nh_;}
-  int nc_active() const {return nc_active_;}
-
-  const drake::solvers::VectorXDecisionVariable &dv() const { return dv_; }
-  const drake::solvers::VectorXDecisionVariable &u() const { return u_; }
-  const drake::solvers::VectorXDecisionVariable &lambda_h() const {
-    return lambda_h_;
-  }
-  const drake::solvers::VectorXDecisionVariable &lambda_c() const {
-    return lambda_c_;
-  }
-  const drake::solvers::VectorXDecisionVariable &lambda_e() const {
-    return lambda_e_;
-  }
-  const drake::solvers::VectorXDecisionVariable &epsilon() const {
-    return epsilon_;
-  }
-
-  const drake::solvers::MathematicalProgram &get_prog() const {
-    return prog_;
-  }
-
-  drake::solvers::MathematicalProgram &get_mutable_prog() {
-    return prog_;
-  }
-
-  const std::unordered_map<std::string, int>& get_contact_start_indices() const {
-    return lambda_c_start_;
-  }
-
-  const ContactMap& get_contact_evaluators() const {
-    return contact_constraint_evaluators_;
-  }
-
-  const multibody::KinematicEvaluatorSet<double>& get_holonomic_evaluators()
-  const {
-    return *holonomic_constraints_;
-  }
-
   void AddQuadraticCost(
       const std::string &name, const Eigen::MatrixXd &Q,
       const Eigen::VectorXd &b,
@@ -89,6 +47,53 @@ class InverseDynamicsQp {
   void AddQuadraticCost(
       const std::string &name, const Eigen::MatrixXd &Q,
       const Eigen::VectorXd &b, const drake::solvers::VariableRefList &vars);
+
+  void Build();
+
+  [[nodiscard]] int nc() const {return nc_;}
+  [[nodiscard]] int nh() const {return nh_;}
+  [[nodiscard]] int nc_active() const {return nc_active_;}
+
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &dv() const {
+    return dv_;
+  }
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &u() const {
+    return u_;
+  }
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &lambda_h()
+  const {
+    return lambda_h_;
+  }
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &lambda_c()
+  const {
+    return lambda_c_;
+  }
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &lambda_e()
+  const {
+    return lambda_e_;
+  }
+  [[nodiscard]] const drake::solvers::VectorXDecisionVariable &epsilon() const {
+    return epsilon_;
+  }
+
+  [[nodiscard]] const drake::solvers::MathematicalProgram &get_prog() const {
+    return prog_;
+  }
+
+  [[nodiscard]] drake::solvers::MathematicalProgram &get_mutable_prog() {
+    return prog_;
+  }
+
+  [[nodiscard]] const multibody::WorldPointEvaluator<double>&
+  get_contact_evaluator(const std::string& name) const {
+    return *contact_constraint_evaluators_.at(name);
+  }
+
+  [[nodiscard]] const multibody::KinematicEvaluatorSet<double>&
+  get_holonomic_evaluators()
+  const {
+    return *holonomic_constraints_;
+  }
 
   void UpdateCost(
       const std::string &name, const Eigen::MatrixXd &Q,
@@ -101,16 +106,12 @@ class InverseDynamicsQp {
       const std::vector<std::string> &active_contact_constraints,
       const std::vector<std::string> &active_external_forces);
 
-  void MakeAllInactiveForceCostsZero(
-      const std::vector<std::string> &active_contacts,
-      const std::vector<std::string> &active_external_forces);
-
-  const drake::solvers::QuadraticCost&
+  [[nodiscard]] const drake::solvers::QuadraticCost&
   get_cost_evaluator(const std::string& name) const {
     return *all_costs_.at(name);
   }
 
-  bool has_cost(const std::string& name) {
+  bool has_cost_named(const std::string& name) {
     return all_costs_.count(name) > 0;
   }
 
@@ -122,7 +123,7 @@ class InverseDynamicsQp {
 
   // Holonomic constraints are bilateral constraints that are always active
   std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>
-  holonomic_constraints_;
+  holonomic_constraints_ = nullptr;
 
   // Contact constraints are unilateral constraints with an associated
   // contact force which obeys the friction cone
@@ -153,8 +154,8 @@ class InverseDynamicsQp {
   drake::solvers::MathematicalProgram prog_;
 
   // Decision Variables
-  drake::solvers::VectorXDecisionVariable dv_{};
   drake::solvers::VectorXDecisionVariable u_{};
+  drake::solvers::VectorXDecisionVariable dv_{};
   drake::solvers::VectorXDecisionVariable lambda_h_{};
   drake::solvers::VectorXDecisionVariable lambda_c_{};
   drake::solvers::VectorXDecisionVariable lambda_e_{};

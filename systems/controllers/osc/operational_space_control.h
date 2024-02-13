@@ -364,9 +364,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
-  // floating base model flag
-  bool is_quaternion_;
-
   // Solver
   std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
@@ -384,7 +381,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
-  mutable double solve_time_;
+  mutable double solve_time_{};
 
   mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;
@@ -428,13 +425,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
 
   // Optional feature -- contact force blend
   double ds_duration_ = -1;
-  int left_support_state_;
-  int right_support_state_;
-  std::vector<int> ds_states_;
+  int left_support_state_{};
+  int right_support_state_{};
+  std::vector<int> ds_states_{};
   double w_blend_constraint_ = 0.1;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
-  drake::solvers::LinearEqualityConstraint* blend_constraint_;
-  drake::solvers::VectorXDecisionVariable epsilon_blend_;
+  drake::solvers::LinearEqualityConstraint* blend_constraint_ = nullptr;
+  drake::solvers::VectorXDecisionVariable epsilon_blend_{};
 };
 
 }  // namespace dairlib::systems::controllers

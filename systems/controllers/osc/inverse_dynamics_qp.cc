@@ -13,28 +13,15 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 using multibody::KinematicEvaluator;
-using multibody::KinematicEvaluatorSet;
 using multibody::WorldPointEvaluator;
+using multibody::KinematicEvaluatorSet;
 using multibody::SetPositionsAndVelocitiesIfNew;
 
 using drake::systems::Context;
 using drake::multibody::MultibodyPlant;
-using drake::solvers::MathematicalProgram;
 using drake::solvers::VariableRefList;
+using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
-
-
-// Some helpers for cost updating operations
-namespace {
-void AddIDQPCost(const string &name, const MatrixXd &Q,
-                 const VectorXd &b, const VariableRefList &vars,
-                 CostMap &cost_dest, MathematicalProgram &prog) {
-  DRAKE_DEMAND(cost_dest.count(name) == 0);
-  cost_dest.insert(
-      {name, prog.AddQuadraticCost(Q, b, vars).evaluator()}
-  );
-}
-}
 
 InverseDynamicsQp::InverseDynamicsQp(
     const MultibodyPlant<double> &plant, Context<double> *context) :
@@ -46,6 +33,9 @@ InverseDynamicsQp::InverseDynamicsQp(
 void InverseDynamicsQp::AddHolonomicConstraint(
     unique_ptr<const KinematicEvaluatorSet<double>> eval) {
   DRAKE_DEMAND(&eval->plant() == &plant_);
+  DRAKE_DEMAND(not built_);
+  DRAKE_DEMAND(holonomic_constraints_ == nullptr);
+  DRAKE_DEMAND(nh_ == 0);
 
   holonomic_constraints_ = std::move(eval);
   nh_ = holonomic_constraints_->count_full();
@@ -55,22 +45,25 @@ void InverseDynamicsQp::AddContactConstraint(
     const string &name, unique_ptr<const WorldPointEvaluator<double>> eval,
     double friction_coefficient) {
 
+  DRAKE_DEMAND(not built_);
   DRAKE_DEMAND(friction_coefficient >= 0);
   DRAKE_DEMAND(contact_constraint_evaluators_.count(name) == 0);
   DRAKE_DEMAND(&eval->plant() == &plant_);
 
-  contact_constraint_evaluators_.insert({name, std::move(eval)});
+  mu_map_.insert({name, friction_coefficient});
   lambda_c_start_.insert({name, nc_});
   Jc_active_start_.insert({name, nc_active_});
+  contact_constraint_evaluators_.insert({name, std::move(eval)});
+
   nc_ += contact_constraint_evaluators_.at(name)->num_full();
   nc_active_ += contact_constraint_evaluators_.at(name)->num_active();
-  mu_map_.insert({name, friction_coefficient});
 }
 
 void InverseDynamicsQp::AddExternalForce(
     const string &name, unique_ptr<const KinematicEvaluator<double>> eval) {
-  DRAKE_DEMAND(external_force_evaluators_.count(name) == 0);
+  DRAKE_DEMAND(not built_);
   DRAKE_DEMAND(&eval->plant() == &plant_);
+  DRAKE_DEMAND(external_force_evaluators_.count(name) == 0);
 
   external_force_evaluators_.insert({name, std::move(eval)});
   lambda_e_start_and_size_.insert(
@@ -79,6 +72,8 @@ void InverseDynamicsQp::AddExternalForce(
 }
 
 void InverseDynamicsQp::Build() {
+  DRAKE_DEMAND(not built_);
+
   dv_ = prog_.NewContinuousVariables(nv_, "dv");
   u_ = prog_.NewContinuousVariables(nu_, "u");
   lambda_h_ = prog_.NewContinuousVariables(nh_, "lambda_holonomic");
@@ -101,8 +96,8 @@ void InverseDynamicsQp::Build() {
   ).evaluator();
 
   for (const auto& [cname, eval] : contact_constraint_evaluators_) {
-    MatrixXd A = MatrixXd(5, 3);
     double mu = mu_map_.at(cname);
+    MatrixXd A = MatrixXd(5, 3);
     A << -1, 0, mu, 0, -1, mu, 1, 0, mu, 0, 1, mu, 0, 0, 1;
     lambda_c_friction_cone_.insert({
       cname,
@@ -121,14 +116,20 @@ void InverseDynamicsQp::AddQuadraticCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VariableRefList &vars) {
   DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, vars, all_costs_, prog_);
+  DRAKE_DEMAND(all_costs_.count(name) == 0);
+  all_costs_.insert(
+      {name, prog_.AddQuadraticCost(Q, b, vars).evaluator()}
+  );
 }
 
 void InverseDynamicsQp::AddQuadraticCost(
     const string &name, const MatrixXd &Q, const VectorXd &b,
     const VectorXDecisionVariable &vars) {
   DRAKE_DEMAND(built_);
-  AddIDQPCost(name, Q, b, {vars}, all_costs_, prog_);
+  DRAKE_DEMAND(all_costs_.count(name) == 0);
+  all_costs_.insert(
+      {name, prog_.AddQuadraticCost(Q, b, vars).evaluator()}
+  );
 }
 
 void InverseDynamicsQp::UpdateDynamics(

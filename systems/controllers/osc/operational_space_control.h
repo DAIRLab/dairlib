@@ -417,12 +417,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;
 
-  // Set a period during which we apply control (Unit: seconds)
-  // Let t be the elapsed time since fsm switched to a new state.
-  // We only apply the control when t_s <= t <= t_e
-  std::vector<double> t_s_vec_;
-  std::vector<double> t_e_vec_;
-
   // Optional feature -- contact force blend
   double ds_duration_ = -1;
   int left_support_state_{};

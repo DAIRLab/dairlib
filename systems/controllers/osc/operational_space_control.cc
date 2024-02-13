@@ -191,8 +191,6 @@ void OperationalSpaceControl::AddTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, double t_lb, double t_ub) {
   tracking_data_vec_->push_back(std::move(tracking_data));
   fixed_position_vec_.emplace_back(VectorXd::Zero(0));
-  t_s_vec_.push_back(t_lb);
-  t_e_vec_.push_back(t_ub);
 
   // Construct input ports and add element to traj_name_to_port_index_map_ if
   // the port for the traj is not created yet
@@ -213,8 +211,6 @@ void OperationalSpaceControl::AddConstTrackingData(
     double t_lb, double t_ub) {
   tracking_data_vec_->push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(v);
-  t_s_vec_.push_back(t_lb);
-  t_e_vec_.push_back(t_ub);
 }
 
 // Osc checkers and constructor
@@ -398,9 +394,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i).get();
 
-    if (tracking_data->IsActive(fsm_state) &&
-        t_since_last_state_switch >= t_s_vec_.at(i) &&
-        t_since_last_state_switch <= t_e_vec_.at(i)) {
+    if (tracking_data->IsActive(fsm_state)) {
       // Check whether or not it is a constant trajectory, and update
       // TrackingData
       if (fixed_position_vec_.at(i).size() != 0) {
@@ -678,6 +672,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     output->regularization_costs.emplace_back(y(0));
     total_cost += y(0);
   }
+  output->num_regularization_costs = output->regularization_costs.size();
 
   output->tracking_data_names.clear();
   output->tracking_data.clear();
@@ -719,9 +714,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     osc_output.yddot_command = std::vector<double>(osc_output.ydot_dim);
     osc_output.yddot_command_sol = std::vector<double>(osc_output.ydot_dim);
 
-    if (tracking_data->IsActive(fsm_state) &&
-        time_since_last_state_switch >= t_s_vec_.at(i) &&
-        time_since_last_state_switch <= t_e_vec_.at(i)) {
+    if (tracking_data->IsActive(fsm_state)) {
       osc_output.y = CopyVectorXdToStdVector(tracking_data->GetY());
       osc_output.y_des = CopyVectorXdToStdVector(tracking_data->GetYDes());
       osc_output.error_y = CopyVectorXdToStdVector(tracking_data->GetErrorY());

@@ -8,7 +8,7 @@ cc_library(
         ":end_effector_orientation",
         ":end_effector_trajectory",
         ":franka_kinematics",
-        ":plate_balancing_target",
+        ":control_target_generator",
         ":c3_state_sender",
         ":c3_trajectory_generator",
     ],
@@ -54,9 +54,9 @@ cc_library(
 )
 
 cc_library(
-    name = "plate_balancing_target",
-    srcs = ["plate_balancing_target.cc"],
-    hdrs = ["plate_balancing_target.h"],
+    name = "control_target_generator",
+    srcs = ["control_target_generator.cc"],
+    hdrs = ["control_target_generator.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",

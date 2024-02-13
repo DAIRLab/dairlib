@@ -1,0 +1,22 @@
+# Trajectory generation parameters
+trajectory_type: 0       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
+# Adaptive circular path parameters
+traj_radius: 0.2
+x_c: 0.35
+y_c: 0
+lead_angle: 40
+# fixed path specific parameters
+fixed_goal_x: 0.55
+fixed_goal_y: -0.25
+step_size: 0.10
+# adaptive straight line path specific parameters
+start_point_x: 0.45           # x coordinate of start point of straight line.           
+start_point_y: 0.35           # y coordinate of start point of straight line.
+end_point_x: 0.45             # x coordinate of end point of straight line.
+end_point_y: -0.35            # y coordinate of end point of straight line.
+lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
+max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
+
+# Sampling parameters
+ee_goal_height: 0.08          # height of the end effector above the jack TODO: @bibit what do you think about this name?
+object_half_width: 0.0625     # half width of the object. Make sure to match with urdf of object.

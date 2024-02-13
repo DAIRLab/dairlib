@@ -23,6 +23,7 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
+#include "examples/jacktoy/parameters/sampling_based_c3_controller_params.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/parameters/franka_osc_controller_params.h"
 #include "examples/jacktoy/parameters/franka_sim_params.h"
@@ -32,7 +33,7 @@
 #include "examples/jacktoy/systems/end_effector_orientation.h"
 #include "examples/jacktoy/systems/end_effector_trajectory.h"
 #include "examples/jacktoy/systems/franka_kinematics.h"
-#include "examples/jacktoy/systems/plate_balancing_target.h"
+#include "examples/jacktoy/systems/control_target_generator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
@@ -95,6 +96,10 @@ DEFINE_string(controller_settings,
               "examples/jacktoy/parameters/franka_c3_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
+DEFINE_string(sampling_controller_settings,
+              "examples/jacktoy/parameters/sampling_based_c3_controller_params.yaml",
+              "Sampling controller settings such as number of samples and trajectory type. Attempting to minimize"
+              "number of gflags");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -121,9 +126,13 @@ int DoMain(int argc, char* argv[]) {
       FindResourceOrThrow(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml"),
       {}, {}, yaml_options);
+    //   TODO: Is the first controller parameters file still required?
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml");
+  SamplingC3ControllerParams sampling_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          FLAGS_sampling_controller_settings);
 
   DiagramBuilder<double> builder;
 
@@ -248,6 +257,8 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(
       drake::FindResourceOrThrow(controller_params.franka_model));
+// TODO: Find out if we need ground model here?
+//   parser_franka.AddModels(drake::FindResourceOrThrow(c3_controller_params.ground_model));
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
           FindResourceOrThrow(controller_params.end_effector_model))[0];
@@ -258,47 +269,53 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> T_EE_W =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.tool_attachment_frame);
+//   RigidTransform<double> X_F_G_franka =
+//       RigidTransform<double>(drake::math::RotationMatrix<double>(),
+//                              c3_controller_params.ground_franka_frame);
   plant_franka.WeldFrames(
       plant_franka.GetFrameByName("panda_link7"),
-      plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
+      plant_franka.GetFrameByName("end_effector_base", end_effector_index), T_EE_W);
+//   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"), 
+//                           plant_franka.GetFrameByName("ground"), X_F_G_franka);
 
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
-  MultibodyPlant<double> plant_tray(0.0);
-  Parser parser_tray(&plant_tray, nullptr);
-  parser_tray.AddModels(c3_controller_params.jack_model);
-  plant_tray.Finalize();
-  auto tray_context = plant_tray.CreateDefaultContext();
+  MultibodyPlant<double> plant_jack(0.0);
+  Parser parser_jack(&plant_jack, nullptr);
+  parser_jack.AddModels(c3_controller_params.jack_model);
+  plant_jack.Finalize();
+  auto jack_context = plant_jack.CreateDefaultContext();
 
   auto [plant_for_lcs, lcs_scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
-  Parser parser_plate(&plant_for_lcs);
-  parser_plate.SetAutoRenaming(true);
-  parser_plate.AddModels(c3_controller_params.plate_model);
+  Parser parser_for_lcs(&plant_for_lcs);
+  parser_for_lcs.SetAutoRenaming(true);
+  parser_for_lcs.AddModels(c3_controller_params.end_effector_simple_model);
 
-  drake::multibody::ModelInstanceIndex left_support_index;
-  drake::multibody::ModelInstanceIndex right_support_index;
-  if (c3_controller_params.scene_index > 0) {
-    left_support_index = parser_plate.AddModels(
-        FindResourceOrThrow(c3_controller_params.left_support_model))[0];
-    right_support_index = parser_plate.AddModels(
-        FindResourceOrThrow(c3_controller_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(
-            c3_controller_params.left_support_orientation),
-        c3_controller_params.left_support_position);
-    RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(
-            c3_controller_params.right_support_orientation),
-        c3_controller_params.right_support_position);
-    plant_for_lcs.WeldFrames(
-        plant_for_lcs.world_frame(),
-        plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
-    plant_for_lcs.WeldFrames(
-        plant_for_lcs.world_frame(),
-        plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
-  }
-  parser_plate.AddModels(c3_controller_params.jack_model);
+//   drake::multibody::ModelInstanceIndex left_support_index;
+//   drake::multibody::ModelInstanceIndex right_support_index;
+//   if (c3_controller_params.scene_index > 0) {
+//     left_support_index = parser_plate.AddModels(
+//         FindResourceOrThrow(c3_controller_params.left_support_model))[0];
+//     right_support_index = parser_plate.AddModels(
+//         FindResourceOrThrow(c3_controller_params.right_support_model))[0];
+//     RigidTransform<double> T_S1_W = RigidTransform<double>(
+//         drake::math::RollPitchYaw<double>(
+//             c3_controller_params.left_support_orientation),
+//         c3_controller_params.left_support_position);
+//     RigidTransform<double> T_S2_W = RigidTransform<double>(
+//         drake::math::RollPitchYaw<double>(
+//             c3_controller_params.right_support_orientation),
+//         c3_controller_params.right_support_position);
+//     plant_for_lcs.WeldFrames(
+//         plant_for_lcs.world_frame(),
+//         plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
+//     plant_for_lcs.WeldFrames(
+//         plant_for_lcs.world_frame(),
+//         plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
+//   }
+  parser_for_lcs.AddModels(c3_controller_params.jack_model);
+  parser_for_lcs.AddModels(c3_controller_params.ground_model);
 
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
@@ -314,70 +331,107 @@ int DoMain(int argc, char* argv[]) {
   auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
   std::vector<drake::geometry::GeometryId> plate_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("plate"));
-  if (c3_controller_params.scene_index > 0) {
-    std::vector<drake::geometry::GeometryId> left_support_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("support", left_support_index));
-    std::vector<drake::geometry::GeometryId> right_support_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("support", right_support_index));
-    plate_contact_points.insert(plate_contact_points.end(),
-                                left_support_contact_points.begin(),
-                                left_support_contact_points.end());
-    plate_contact_points.insert(plate_contact_points.end(),
-                                right_support_contact_points.begin(),
-                                right_support_contact_points.end());
-  }
-  std::vector<drake::geometry::GeometryId> tray_geoms =
+          plant_for_lcs.GetBodyByName("end_effector_simple"));
+//   if (c3_controller_params.scene_index > 0) {
+//     std::vector<drake::geometry::GeometryId> left_support_contact_points =
+//         plant_for_lcs.GetCollisionGeometriesForBody(
+//             plant_for_lcs.GetBodyByName("support", left_support_index));
+//     std::vector<drake::geometry::GeometryId> right_support_contact_points =
+//         plant_for_lcs.GetCollisionGeometriesForBody(
+//             plant_for_lcs.GetBodyByName("support", right_support_index));
+//     plate_contact_points.insert(plate_contact_points.end(),
+//                                 left_support_contact_points.begin(),
+//                                 left_support_contact_points.end());
+//     plate_contact_points.insert(plate_contact_points.end(),
+//                                 right_support_contact_points.begin(),
+//                                 right_support_contact_points.end());
+//   }
+//   std::vector<drake::geometry::GeometryId> tray_geoms =
+//       plant_for_lcs.GetCollisionGeometriesForBody(
+//           plant_for_lcs.GetBodyByName("tray"));
+//   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
+//       contact_geoms;
+//   contact_geoms["PLATE"] = plate_contact_points;
+//   contact_geoms["TRAY"] = tray_geoms;
+
+//   std::vector<SortedPair<GeometryId>> contact_pairs;
+//   for (auto geom_id : contact_geoms["PLATE"]) {
+//     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
+//   }
+
+  std::vector<drake::geometry::GeometryId> capsule1_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("tray"));
+          plant_for_lcs.GetBodyByName("capsule_1"));
+  std::vector<drake::geometry::GeometryId> capsule2_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_2"));
+  std::vector<drake::geometry::GeometryId> capsule3_geoms =
+        plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("capsule_3"));
+  std::vector<drake::geometry::GeometryId> ground_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("ground"));
+
   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
       contact_geoms;
-  contact_geoms["PLATE"] = plate_contact_points;
-  contact_geoms["TRAY"] = tray_geoms;
+  contact_geoms["EE"] = ee_contact_points;
+  contact_geoms["CAPSULE_1"] = capsule1_geoms;
+  contact_geoms["CAPSULE_2"] = capsule2_geoms;
+  contact_geoms["CAPSULE_3"] = capsule3_geoms;
+  contact_geoms["GROUND"] = ground_geoms;
 
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  for (auto geom_id : contact_geoms["PLATE"]) {
-    contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
-  }
+  std::vector<SortedPair<GeometryId>> ee_contact_pairs;
+
+  //   Creating a list of contact pairs for the end effector and the jack to hand over to lcs factory in the controller to resolve
+  ee_contact_pairs.push_back(SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_1"]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_2"]));
+  ee_contact_pairs.push_back(SortedPair(contact_geoms["EE"], contact_geoms["CAPSULE_3"]));
+  //   Creating a list of contact pairs for the jack and the ground
+  std::vector<SortedPair<GeometryId>> ground_contact1 {SortedPair(contact_geoms["CAPSULE_1"], contact_geoms["GROUND"])};
+  std::vector<SortedPair<GeometryId>> ground_contact2 {SortedPair(contact_geoms["CAPSULE_2"], contact_geoms["GROUND"])};
+  std::vector<SortedPair<GeometryId>> ground_contact3 {SortedPair(contact_geoms["CAPSULE_3"], contact_geoms["GROUND"])};
+
+  std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)], [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_contact1);
+  contact_pairs.push_back(ground_contact2);
+  contact_pairs.push_back(ground_contact3);
 
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-  auto tray_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
+  auto object_state_receiver =
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_jack);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          controller_params.end_effector_name, "tray",
+          plant_franka, franka_context.get(), plant_jack, jack_context.get(),
+          controller_params.end_effector_name, "jack",
           c3_controller_params.include_end_effector_orientation);
 
-  auto plate_balancing_target =
-      builder.AddSystem<systems::PlateBalancingTargetGenerator>(
-          plant_tray, c3_controller_params.end_effector_thickness,
-          c3_controller_params.near_target_threshold);
-  plate_balancing_target->SetRemoteControlParameters(
-      c3_controller_params.first_target[c3_controller_params.scene_index],
-      c3_controller_params.second_target[c3_controller_params.scene_index],
-      c3_controller_params.third_target[c3_controller_params.scene_index],
-      c3_controller_params.x_scale, c3_controller_params.y_scale,
-      c3_controller_params.z_scale);
+//   TODO: When coming back to fix this file, make sure to change names to object/jack wherever necessary
+  auto control_target =
+      builder.AddSystem<systems::TargetGenerator>(
+          plant_jack);
+  control_target->SetRemoteControlParameters(
+      sampling_params.trajectory_type, sampling_params.traj_radius, sampling_params.x_c, sampling_params.y_c, sampling_params.lead_angle, 
+      sampling_params.fixed_goal_x, sampling_params.fixed_goal_y, sampling_params.step_size, 
+      sampling_params.start_point_x, sampling_params.start_point_y, sampling_params.end_point_x, sampling_params.end_point_y, 
+      sampling_params.lookahead_step_size, sampling_params.max_step_size, sampling_params.ee_goal_height, sampling_params.object_half_width);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
-  auto tray_zero_velocity_source =
+  auto object_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
-  builder.Connect(plate_balancing_target->get_output_port_end_effector_target(),
+  builder.Connect(control_target->get_output_port_end_effector_target(),
                   target_state_mux->get_input_port(0));
-  builder.Connect(plate_balancing_target->get_output_port_tray_target(),
+  builder.Connect(control_target->get_output_port_object_target(),
                   target_state_mux->get_input_port(1));
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
-  builder.Connect(tray_zero_velocity_source->get_output_port(),
+  builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
@@ -423,7 +477,7 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
   drake::multibody::ModelInstanceIndex c3_end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
-  drake::multibody::ModelInstanceIndex tray_index =
+  drake::multibody::ModelInstanceIndex jack_index =
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
@@ -438,55 +492,55 @@ int DoMain(int argc, char* argv[]) {
                    plant.GetFrameByName("plate", c3_end_effector_index),
                    T_EE_W);
 
-  if (sim_params.scene_index > 0) {
-    drake::multibody::ModelInstanceIndex left_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
-        sim_params.left_support_position);
-    RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-        sim_params.right_support_position);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", left_support_index),
-                     T_S1_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", right_support_index),
-                     T_S2_W);
-    const drake::geometry::GeometrySet& support_geom_set =
-        plant.CollectRegisteredGeometries({
-            &plant.GetBodyByName("support", left_support_index),
-            &plant.GetBodyByName("support", right_support_index),
-        });
-    // we WANT to model collisions between link5 and the supports
-    const drake::geometry::GeometrySet& paddle_geom_set =
-        plant.CollectRegisteredGeometries(
-            {&plant.GetBodyByName("panda_link2"),
-             &plant.GetBodyByName("panda_link3"),
-             &plant.GetBodyByName("panda_link4"),
-             &plant.GetBodyByName("panda_link6"),
-             &plant.GetBodyByName("panda_link7"), &plant.GetBodyByName("plate"),
-             &plant.GetBodyByName("panda_link8")});
+//   if (sim_params.scene_index > 0) {
+//     drake::multibody::ModelInstanceIndex left_support_index =
+//         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
+//     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
+//         FindResourceOrThrow(sim_params.right_support_model))[0];
+//     RigidTransform<double> T_S1_W = RigidTransform<double>(
+//         drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
+//         sim_params.left_support_position);
+//     RigidTransform<double> T_S2_W = RigidTransform<double>(
+//         drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
+//         sim_params.right_support_position);
+//     plant.WeldFrames(plant.world_frame(),
+//                      plant.GetFrameByName("support", left_support_index),
+//                      T_S1_W);
+//     plant.WeldFrames(plant.world_frame(),
+//                      plant.GetFrameByName("support", right_support_index),
+//                      T_S2_W);
+//     const drake::geometry::GeometrySet& support_geom_set =
+//         plant.CollectRegisteredGeometries({
+//             &plant.GetBodyByName("support", left_support_index),
+//             &plant.GetBodyByName("support", right_support_index),
+//         });
+//     // we WANT to model collisions between link5 and the supports
+//     const drake::geometry::GeometrySet& paddle_geom_set =
+//         plant.CollectRegisteredGeometries(
+//             {&plant.GetBodyByName("panda_link2"),
+//              &plant.GetBodyByName("panda_link3"),
+//              &plant.GetBodyByName("panda_link4"),
+//              &plant.GetBodyByName("panda_link6"),
+//              &plant.GetBodyByName("panda_link7"), &plant.GetBodyByName("plate"),
+//              &plant.GetBodyByName("panda_link8")});
 
-    plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-        {"paddle", support_geom_set}, {"tray", paddle_geom_set});
-  }
+//     plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+//         {"paddle", support_geom_set}, {"tray", paddle_geom_set});
+//   }
 
-  const drake::geometry::GeometrySet& paddle_geom_set =
-      plant.CollectRegisteredGeometries({
-          &plant.GetBodyByName("panda_link2"),
-          &plant.GetBodyByName("panda_link3"),
-          &plant.GetBodyByName("panda_link4"),
-          &plant.GetBodyByName("panda_link5"),
-          &plant.GetBodyByName("panda_link6"),
-          &plant.GetBodyByName("panda_link8"),
-      });
-  auto tray_collision_set = GeometrySet(
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
-  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-      {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
+//   const drake::geometry::GeometrySet& paddle_geom_set =
+//       plant.CollectRegisteredGeometries({
+//           &plant.GetBodyByName("panda_link2"),
+//           &plant.GetBodyByName("panda_link3"),
+//           &plant.GetBodyByName("panda_link4"),
+//           &plant.GetBodyByName("panda_link5"),
+//           &plant.GetBodyByName("panda_link6"),
+//           &plant.GetBodyByName("panda_link8"),
+//       });
+//   auto tray_collision_set = GeometrySet(
+//       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
+//   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+//       {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
@@ -495,8 +549,8 @@ int DoMain(int argc, char* argv[]) {
       input_receiver->get_output_port(0).size(), 0,
       plant.get_actuation_input_port().size());
   builder.Connect(*input_receiver, *passthrough);
-  auto tray_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, tray_index);
+  auto object_state_sender =
+      builder.AddSystem<systems::ObjectStateSender>(plant, jack_index);
   auto franka_state_sender =
       builder.AddSystem<RobotOutputSender>(plant, franka_index, false);
   auto state_pub =
@@ -543,8 +597,8 @@ int DoMain(int argc, char* argv[]) {
                   osc->get_input_port_tracking_data("end_effector_force"));
   builder.Connect(osc_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());
-  builder.Connect(plant.get_state_output_port(tray_index),
-                  tray_state_sender->get_input_port_state());
+  builder.Connect(plant.get_state_output_port(jack_index),
+                  object_state_sender->get_input_port_state());
   c3_controller->SetOsqpSolverOptions(solver_options);
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -552,18 +606,18 @@ int DoMain(int argc, char* argv[]) {
                   c3_controller->get_input_port_target());
   builder.Connect(lcs_factory->get_output_port_lcs(),
                   c3_controller->get_input_port_lcs());
-  builder.Connect(tray_state_receiver->get_output_port(),
+  builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
-  builder.Connect(tray_state_receiver->get_output_port(),
-                  plate_balancing_target->get_input_port_tray_state());
+  builder.Connect(object_state_receiver->get_output_port(),
+                  control_target->get_input_port_object_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   c3_controller->get_input_port_lcs_state());
   builder.Connect(radio_sub->get_output_port(),
                   c3_controller->get_input_port_radio());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   lcs_factory->get_input_port_lcs_state());
-  builder.Connect(radio_sub->get_output_port(),
-                  plate_balancing_target->get_input_port_radio());
+//   builder.Connect(radio_sub->get_output_port(),
+//                   control_target->get_input_port_radio());
   builder.Connect(c3_controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
@@ -584,7 +638,7 @@ int DoMain(int argc, char* argv[]) {
                   c3_output_sender->get_input_port_c3_intermediates());
 
   // Diagram Connections
-  builder.Connect(*tray_state_sender, *tray_state_receiver);
+  builder.Connect(*object_state_sender, *object_state_receiver);
   builder.Connect(*osc_command_sender, *input_receiver);
   builder.Connect(passthrough->get_output_port(),
                   plant.get_actuation_input_port());
@@ -626,7 +680,7 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  q.tail(plant.num_positions(tray_index)) =
+  q.tail(plant.num_positions(jack_index)) =
       sim_params.q_init_plate[sim_params.scene_index];
 
   plant.SetPositions(&plant_context, q);

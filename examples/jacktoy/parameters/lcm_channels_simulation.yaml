@@ -1,5 +1,5 @@
 franka_state_channel: FRANKA_STATE_SIMULATION # lcmt_robot_output
-tray_state_channel: TRAY_STATE_SIMULATION # lcmt_object_state
+object_state_channel: OBJECT_STATE_SIMULATION # lcmt_object_state
 box_state_channel: BOX_STATE_SIMULATION # lcmt_object_state
 franka_input_channel: FRANKA_INPUT # lcmt_robot_input
 franka_input_echo: FRANKA_INPUT_ECHO

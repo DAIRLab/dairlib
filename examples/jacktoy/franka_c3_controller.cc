@@ -12,11 +12,12 @@
 
 #include "common/eigen_utils.h"
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
+#include "examples/jacktoy/parameters/sampling_based_c3_controller_params.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/systems/c3_state_sender.h"
 #include "examples/jacktoy/systems/c3_trajectory_generator.h"
 #include "examples/jacktoy/systems/franka_kinematics.h"
-#include "examples/jacktoy/systems/plate_balancing_target.h"
+#include "examples/jacktoy/systems/control_target_generator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
@@ -51,6 +52,10 @@ DEFINE_string(controller_settings,
               "examples/jacktoy/parameters/franka_c3_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
+DEFINE_string(sampling_controller_settings,
+              "examples/jacktoy/parameters/sampling_based_c3_controller_params.yaml",
+              "Sampling controller settings such as number of samples and trajectory type. Attempting to minimize"
+              "number of gflags");
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
@@ -65,6 +70,9 @@ int DoMain(int argc, char* argv[]) {
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
           FLAGS_controller_settings);
+  SamplingC3ControllerParams sampling_params =
+      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+          FLAGS_sampling_controller_settings);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
@@ -229,19 +237,20 @@ int DoMain(int argc, char* argv[]) {
 
 //   TODO @Sharanya Feb 9th: Decide how to generate object target and make changes to plate_balancing_target.h/.cc accordingly with port names and what it does. 
 
-  auto jack_state_sub =
+  auto object_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.jack_state_channel, &lcm));
+          lcm_channel_params.object_state_channel, &lcm));
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
-  auto jack_state_receiver =
+  auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_jack);
-  //  TODO: The end_effector_name was changes in the yaml file. Check if this next line still works fine.
+  //  TODO: The end_effector_name was changed in the yaml file. Check if this next line still works fine.
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_jack, jack_context.get(),
           controller_params.end_effector_name, "jack",                         
           controller_params.include_end_effector_orientation);
+
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
@@ -272,28 +281,29 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
 
-  auto plate_balancing_target =
-      builder.AddSystem<systems::PlateBalancingTargetGenerator>(plant_tray, controller_params.end_effector_thickness, controller_params.near_target_threshold);
-  plate_balancing_target->SetRemoteControlParameters(
-      controller_params.first_target[controller_params.scene_index], controller_params.second_target[controller_params.scene_index],
-      controller_params.third_target[controller_params.scene_index], controller_params.x_scale,
-      controller_params.y_scale, controller_params.z_scale);
+  auto control_target =
+      builder.AddSystem<systems::TargetGenerator>(plant_jack);                                   // This system generates the target for the end effector and the object.
+  control_target->SetRemoteControlParameters(
+      sampling_params.trajectory_type, sampling_params.traj_radius, sampling_params.x_c, sampling_params.y_c, sampling_params.lead_angle, 
+      sampling_params.fixed_goal_x, sampling_params.fixed_goal_y, sampling_params.step_size, 
+      sampling_params.start_point_x, sampling_params.start_point_y, sampling_params.end_point_x, sampling_params.end_point_y, 
+      sampling_params.lookahead_step_size, sampling_params.max_step_size, sampling_params.ee_goal_height, sampling_params.object_half_width);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
-  auto tray_zero_velocity_source =
+  auto object_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(6));
-  builder.Connect(plate_balancing_target->get_output_port_end_effector_target(),
+  builder.Connect(control_target->get_output_port_end_effector_target(),
                   target_state_mux->get_input_port(0));
-  builder.Connect(plate_balancing_target->get_output_port_tray_target(),
+  builder.Connect(control_target->get_output_port_object_target(),
                   target_state_mux->get_input_port(1));
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
-  builder.Connect(tray_zero_velocity_source->get_output_port(),
+  builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
@@ -304,11 +314,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
                                                         c3_options);
   std::vector<std::string> state_names = {
-      "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
-      "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
-      "tray_y",          "tray_z",         "end_effector_vx", "end_effector_vy",
-      "end_effector_vz", "tray_wx",        "tray_wy",         "tray_wz",
-      "tray_vz",         "tray_vz",        "tray_vz",
+      "end_effector_x",  "end_effector_y", "end_effector_z",  "object_qw",
+      "object_qx",         "object_qy",        "object_qz",         "object_x",
+      "object_y",          "object_z",         "end_effector_vx", "end_effector_vy",
+      "end_effector_vz", "object_wx",        "object_wy",         "object_wz",
+      "object_vz",         "object_vz",        "object_vz",
   };
   auto c3_state_sender =
       builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
@@ -322,20 +332,20 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_target());
   builder.Connect(lcs_factory->get_output_port_lcs(),
                   controller->get_input_port_lcs());
-  builder.Connect(tray_state_sub->get_output_port(),
-                  tray_state_receiver->get_input_port());
-  builder.Connect(tray_state_receiver->get_output_port(),
+  builder.Connect(object_state_sub->get_output_port(),
+                  object_state_receiver->get_input_port());
+  builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
-  builder.Connect(tray_state_receiver->get_output_port(),
-                  plate_balancing_target->get_input_port_tray_state());
+  builder.Connect(object_state_receiver->get_output_port(),
+                  control_target->get_input_port_object_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_lcs_state());
   builder.Connect(radio_sub->get_output_port(),
                   controller->get_input_port_radio());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   lcs_factory->get_input_port_lcs_state());
-  builder.Connect(radio_sub->get_output_port(),
-                  plate_balancing_target->get_input_port_radio());
+//   builder.Connect(radio_sub->get_output_port(),
+//                   control_target->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
@@ -377,7 +387,7 @@ int DoMain(int argc, char* argv[]) {
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return tray_state_sub->GetInternalMessageCount() > 1; });
+      &lcm, [&]() { return object_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

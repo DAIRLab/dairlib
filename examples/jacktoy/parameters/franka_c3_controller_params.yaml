@@ -9,7 +9,7 @@ end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
 end_effector_name: ee_full
 end_effector_simple_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 end_effector_simple_name: ee_simple
-plate_model: examples/jacktoy/urdf/plate_end_effector_translation.urdf
+# plate_model: examples/jacktoy/urdf/plate_end_effector_translation.urdf
 jack_model: examples/jacktoy/urdf/jack.urdf
 ground_model: examples/jacktoy/urdf/ground.urdf
 left_support_model: examples/jacktoy/urdf/left_support_point_contact.urdf
@@ -32,26 +32,6 @@ scene_index: 1
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
-
-
-# Trajectory generation parameters
-trajectory_type: 0       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
-# Adaptive circular path parameters
-traj_radius: 0.2
-x_c: 0.35
-y_c: 0
-lead_angle: 40
-# fixed path specific parameters
-fixed_goal_x: 0.55
-fixed_goal_y: -0.25
-step_size: 0.10
-# adaptive straight line path specific parameters
-start_point_x: 0.45           # x coordinate of start point of straight line.           
-start_point_y: 0.35           # y coordinate of start point of straight line.
-end_point_x: 0.45             # x coordinate of end point of straight line.
-end_point_y: -0.35            # y coordinate of end point of straight line.
-lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
-max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # near_target_threshold: 0.05
 # first_target: [[0.45, 0.0, 0.5],

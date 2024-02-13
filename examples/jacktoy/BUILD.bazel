@@ -31,6 +31,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
+        ":sampling_based_c3_controller_params",
         ":franka_lcm_channels",
         ":franka_osc_controller_params",
         ":franka_sim_params",
@@ -104,6 +105,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
+        ":sampling_based_c3_controller_params",
         ":franka_lcm_channels",
         "//common",
         "//examples/jacktoy/systems:franka_systems",
@@ -237,6 +239,17 @@ cc_library(
     ],
     deps = [
         "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sampling_based_c3_controller_params",
+    hdrs = ["parameters/sampling_based_c3_controller_params.h"],
+    data = [
+        "parameters/sampling_based_c3_controller_params.yaml",
+    ],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

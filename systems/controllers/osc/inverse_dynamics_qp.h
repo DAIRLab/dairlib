@@ -119,7 +119,8 @@ class InverseDynamicsQp {
   [[nodiscard]] int nc() const {return nc_;}
 
   /*!
-   * @return the total dimension of the (stacked) contact forces
+   * @return the total dimension of the holonomic constraint forces.
+   * Equal to the number of rows in the holonomic constraint.
    */
   [[nodiscard]] int nh() const {return nh_;}
 

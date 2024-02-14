@@ -16,3 +16,20 @@ Eigen::VectorXd eigen_clamp(
   }
   return clamped_value;
 }
+
+std::vector<std::vector<double>> CopyMatrixXdToVectorOfVectors(
+    const Eigen::MatrixXd& eigen_mat) {
+  const int m = eigen_mat.rows();
+  const int n = eigen_mat.cols();
+
+  auto out = std::vector<std::vector<double>>(m, std::vector<double>(n));
+
+  for (int i = 0; i < m; ++i) {
+    // Temporary copy due to underlying data of Eigen::Matrix
+    // being column major
+    Eigen::VectorXd tempRow = eigen_mat.row(i);
+    memcpy(out.at(i).data(), tempRow.data(), sizeof(double) * n);
+  }
+
+  return out;
+}

@@ -1,0 +1,29 @@
+package dairlib;
+
+struct lcmt_id_qp {
+    // Dimension of dynamics terms
+    int32_t nv;
+    int32_t nu;
+    int32_t nh;
+    int32_t nc;
+    int32_t ne;
+    int32_t nc_active;
+    int32_t n_total_var;
+
+    // Costs matrices
+    double Q[n_total_var][n_total_var];
+    double b[n_total_var];
+    double c;
+
+    // Constraint matrices
+    double M[nv][nv];
+    double B[nu][nu];
+    double Jh[nh][nv];
+    double Jc[nc][nv];
+    double Je[ne][nv];
+    double Jc_active[nc_active][nv];
+    double bias[nv];
+
+    double JdotV_h[nh];
+    double JdotV_c[nc_active];
+}

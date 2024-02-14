@@ -1,5 +1,6 @@
 #include "inverse_dynamics_qp.h"
 #include "multibody/multibody_utils.h"
+#include "common/eigen_utils.h"
 
 namespace dairlib {
 namespace systems {
@@ -79,6 +80,9 @@ void InverseDynamicsQp::Build() {
   lambda_h_ = prog_.NewContinuousVariables(nh_, "lambda_holonomic");
   lambda_c_ = prog_.NewContinuousVariables(nc_, "lambda_contact");
   lambda_e_ = prog_.NewContinuousVariables(ne_, "lambda_external");
+
+  // N.B. Since epsilon is not included in the serialized version of the QP,
+  // it must be declared last for Serialize() to work correctly
   epsilon_ = prog_.NewContinuousVariables(nc_active_, "soft_constraint_slack");
 
   dynamics_c_ = prog_.AddLinearEqualityConstraint(
@@ -191,6 +195,72 @@ void InverseDynamicsQp::UpdateDynamics(
   holonomic_c_->UpdateCoefficients(Jh, -Jh_dot_v);
   contact_c_->UpdateCoefficients(A_c, -Jc_active_dot_v);
 }
+
+
+lcmt_id_qp InverseDynamicsQp::SerializeToLcm() const {
+  lcmt_id_qp data;
+  data.nv = nv_;
+  data.nu = nu_;
+  data.nh = nh_;
+  data.nc = nc_;
+  data.ne = ne_;
+  data.nc_active = nc_active_;
+  data.n_total_var = nv_ + nu_ + nh_ + nc_ + ne_ + nc_active_;
+  data.c = 0;
+
+  MatrixXd Q = MatrixXd::Zero(data.n_total_var, data.n_total_var);
+  VectorXd b = VectorXd::Zero(data.n_total_var);
+
+  // parse quadratic costs
+  for (const auto& binding: prog_.quadratic_costs()) {
+    const auto& x = binding.variables();
+
+    // don't include soft constraint cost in serialization
+    if (x.rows() == epsilon_.rows()) {
+      if (x(0).equal_to(epsilon_(0))) {
+        continue;
+      }
+    }
+
+    const auto indices = prog_.FindDecisionVariableIndices(x);
+    const auto& H = binding.evaluator()->Q();
+    const auto& g  = binding.evaluator()->b();
+    for (int r = 0; r < H.rows(); ++r) {
+      const int x_row = indices[r];
+      b(x_row) += g(r);
+      for (int c = 0; c < H.cols(); ++c) {
+        const double value = Q(r, c);
+        const int x_col = indices[c];
+        Q(x_row, x_col) += value;
+      }
+    }
+    data.c += binding.evaluator()->c();
+  }
+
+  data.Q = CopyMatrixXdToVectorOfVectors(Q);
+  data.b = CopyVectorXdToStdVector(b);
+
+  // Constraints
+  const MatrixXd& A_dyn = dynamics_c_->GetDenseA();
+  const MatrixXd& A_c = contact_c_->GetDenseA();
+
+  data.M = CopyMatrixXdToVectorOfVectors(A_dyn.block(0, 0, nv_, nv_));
+  data.B = CopyMatrixXdToVectorOfVectors(-A_dyn.block(0, nv_, nv_, nu_));
+  data.Jh = CopyMatrixXdToVectorOfVectors(
+      -A_dyn.block(0, nv_ + nu_, nv_, nh_).transpose());
+  data.Jc = CopyMatrixXdToVectorOfVectors(
+      -A_dyn.block(0, nv_ + nu_ + nh_, nv_, nc_).transpose());
+  data.Je = CopyMatrixXdToVectorOfVectors(
+      -A_dyn.block(0, nv_ + nu_ + nh_ + nc_, nv_, ne_).transpose());
+  data.Jc_active = CopyMatrixXdToVectorOfVectors(
+      A_c.block(0, 0, nc_active_, nv_));
+  data.bias = CopyVectorXdToStdVector(-dynamics_c_->lower_bound());
+  data.JdotV_h = CopyVectorXdToStdVector(-holonomic_c_->lower_bound());
+  data.JdotV_c = CopyVectorXdToStdVector(-contact_c_->lower_bound());
+
+  return data;
+}
+
 
 }
 }

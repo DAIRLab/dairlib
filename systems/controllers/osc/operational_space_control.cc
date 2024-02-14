@@ -8,6 +8,7 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
+#include <lcm/lcm-cpp.hpp>
 
 using std::cout;
 using std::endl;
@@ -509,6 +510,10 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   MathematicalProgramResult result;
+  lcm::LCM lcm;
+  lcmt_id_qp msg = id_qp_.SerializeToLcm();
+  lcm.publish("ID_QP_LOG", &msg);
+
   result = solver_->Solve(id_qp_.get_prog());
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
 

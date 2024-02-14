@@ -7,6 +7,8 @@ cc_library(
     srcs = ["inverse_dynamics_qp.cc"],
     hdrs = ["inverse_dynamics_qp.h"],
     deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
         "//multibody/kinematic",
         "@drake//:drake_shared_library",
     ],

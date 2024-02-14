@@ -370,7 +370,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   SetVelocitiesIfNew<double>(
       plant_, x_w_spr.tail(plant_.num_velocities()), context_);
 
-  id_qp_.UpdateDynamics(x_w_spr, contact_names_map_.at(fsm_state), {});
+  const auto active_contact_names = contact_names_map_.count(fsm_state) > 0 ?
+      contact_names_map_.at(fsm_state) : std::vector<std::string>();
+  id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {});
 
 
   //  Invariant Impacts

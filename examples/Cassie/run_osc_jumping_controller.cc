@@ -266,7 +266,7 @@ int DoMain(int argc, char* argv[]) {
   auto command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant_w_spr);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
+      plant_w_spr, context_w_spr.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_JUMPING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -325,13 +325,21 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
-  vector<osc_jump::JUMPING_FSM_STATE> stance_modes = {
+  vector<int> stance_modes = {
       osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
-  for (auto mode : stance_modes) {
-    osc->AddStateAndContactPoint(mode, &left_toe_evaluator);
-    osc->AddStateAndContactPoint(mode, &left_heel_evaluator);
-    osc->AddStateAndContactPoint(mode, &right_toe_evaluator);
-    osc->AddStateAndContactPoint(mode, &right_heel_evaluator);
+
+  const std::vector<std::pair<const std::string, const multibody::WorldPointEvaluator<double>*>>
+  contact_evaluators{
+      {"left_heel", &left_heel_evaluator}, {"right_heel", &right_heel_evaluator},
+      {"left_toe", &left_toe_evaluator}, {"right_toe", &right_toe_evaluator}
+  };
+
+  for (const auto& [name, eval_ptr] : contact_evaluators) {
+    osc->AddContactPoint(
+        name,
+        std::unique_ptr<const multibody::WorldPointEvaluator<double>>(eval_ptr),
+        stance_modes
+    );
   }
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -361,7 +369,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   /**** Tracking Data for OSC *****/
   auto pelvis_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(

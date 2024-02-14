@@ -238,12 +238,12 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint(
       "right_toe",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
-      {RunningFsmState::kLeftStance}
+      {RunningFsmState::kRightStance}
   );
   osc->AddContactPoint(
       "right_heel",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
-      {RunningFsmState::kLeftStance}
+      {RunningFsmState::kRightStance}
   );
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);

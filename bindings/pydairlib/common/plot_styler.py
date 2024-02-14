@@ -48,7 +48,7 @@ class PlotStyler():
     # self.directory = None
     self.dpi = matplotlib.rcParams['figure.dpi']
     self.directory = '/home/yangwill/Pictures/plot_styler/'
-    plt.rc('legend', fontsize=12)
+    plt.rc('legend', fontsize=13)
     plt.rc('axes', labelsize=14, titlesize=14)
     plt.rc('xtick', labelsize=14)
     plt.rc('ytick', labelsize=14)

@@ -8,7 +8,7 @@ use_default_styling: true
 plot_style: 'paper' # compact, paper, default
 
 # Log time to stop at (seconds, -1 for whole log)
-start_time: 10
+start_time: 10.001
 duration: 1.5
 
 # Plant properties

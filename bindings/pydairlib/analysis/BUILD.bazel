@@ -61,6 +61,17 @@ py_library(
 )
 
 py_binary(
+    name = "admm_idqp_solver_test",
+    srcs = ["admm_idqp_solver_test.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+        ":process_lcm_log",
+        "//bindings/pydairlib/lcm",
+        "//lcmtypes:lcmtypes_robot_py",
+    ]
+)
+
+py_binary(
     name = "log_plotter_cassie",
     srcs = ["log_plotter_cassie.py"],
     data = [

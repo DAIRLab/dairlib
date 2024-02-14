@@ -229,7 +229,7 @@ lcmt_id_qp InverseDynamicsQp::SerializeToLcm() const {
       const int x_row = indices[r];
       b(x_row) += g(r);
       for (int c = 0; c < H.cols(); ++c) {
-        const double value = Q(r, c);
+        const double value = H(r, c);
         const int x_col = indices[c];
         Q(x_row, x_col) += value;
       }

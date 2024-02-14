@@ -32,7 +32,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
-    const vector<SortedPair<GeometryId>>& contact_geoms,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
     int N, ContactModel contact_model) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
@@ -257,7 +257,7 @@ LCSFactory::ComputeContactJacobian(
     const drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     const drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
     int N, dairlib::solvers::ContactModel contact_model) {

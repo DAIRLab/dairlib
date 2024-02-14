@@ -17,7 +17,7 @@ struct FrankaSimParams {
   double realtime_rate;
   double actuator_delay;
   double franka_publish_rate;
-  double tray_publish_rate;
+  double object_publish_rate;
   double visualizer_publish_rate;
 
   int scene_index;
@@ -61,7 +61,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(realtime_rate));
     a->Visit(DRAKE_NVP(actuator_delay));
     a->Visit(DRAKE_NVP(franka_publish_rate));
-    a->Visit(DRAKE_NVP(tray_publish_rate));
+    a->Visit(DRAKE_NVP(object_publish_rate));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
 
     a->Visit(DRAKE_NVP(scene_index));

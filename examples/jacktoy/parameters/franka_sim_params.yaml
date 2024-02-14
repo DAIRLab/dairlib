@@ -8,7 +8,7 @@ box_model: examples/jacktoy/urdf/default_box.urdf
 left_support_model: examples/jacktoy/urdf/left_support.urdf
 right_support_model: examples/jacktoy/urdf/left_support.urdf
 franka_publish_rate: 1000
-tray_publish_rate: 10
+object_publish_rate: 10
 visualizer_publish_rate: 10
 actuator_delay: 0.000
 

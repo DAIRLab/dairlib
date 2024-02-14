@@ -328,8 +328,8 @@ int DoMain(int argc, char* argv[]) {
       plant_diagram->CreateDefaultContext();
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
-  auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
-  std::vector<drake::geometry::GeometryId> plate_contact_points =
+  auto end_effector_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+  std::vector<drake::geometry::GeometryId> ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("end_effector_simple"));
 //   if (c3_controller_params.scene_index > 0) {
@@ -435,7 +435,7 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(3));
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plate_context_ad.get(), contact_pairs, c3_options);
+      end_effector_context_ad.get(), contact_pairs, c3_options);
   auto c3_controller = builder.AddSystem<systems::C3Controller>(
       plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =
@@ -489,7 +489,7 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    T_X_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                   plant.GetFrameByName("plate", c3_end_effector_index),
+                   plant.GetFrameByName("end_effector_base", c3_end_effector_index),
                    T_EE_W);
 
 //   if (sim_params.scene_index > 0) {

@@ -147,17 +147,17 @@ int DoMain(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
-  auto tray_state_sender =
+  auto object_state_sender =
       builder.AddSystem<systems::ObjectStateSender>(plant, jack_index);
-  auto tray_state_pub =
+  auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.tray_state_channel, lcm,
-          1.0 / sim_params.tray_publish_rate));
+          lcm_channel_params.object_state_channel, lcm,
+          1.0 / sim_params.object_publish_rate));
 
   builder.Connect(plant.get_state_output_port(jack_index),
-                  tray_state_sender->get_input_port_state());
-  builder.Connect(tray_state_sender->get_output_port(),
-                  tray_state_pub->get_input_port());
+                  object_state_sender->get_input_port_state());
+  builder.Connect(object_state_sender->get_output_port(),
+                  object_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();

@@ -127,7 +127,7 @@ int do_main(int argc, char* argv[]) {
           lcm_channel_params.franka_state_channel, lcm));
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.tray_state_channel, lcm));
+          lcm_channel_params.object_state_channel, lcm));
   auto box_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.box_state_channel, lcm));

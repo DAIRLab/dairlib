@@ -205,7 +205,7 @@ lcmt_id_qp InverseDynamicsQp::SerializeToLcm() const {
   data.nc = nc_;
   data.ne = ne_;
   data.nc_active = nc_active_;
-  data.n_total_var = nv_ + nu_ + nh_ + nc_ + ne_ + nc_active_;
+  data.n_total_var = nv_ + nu_ + nh_ + nc_ + ne_;
   data.c = 0;
 
   MatrixXd Q = MatrixXd::Zero(data.n_total_var, data.n_total_var);

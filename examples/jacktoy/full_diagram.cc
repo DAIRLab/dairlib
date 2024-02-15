@@ -329,9 +329,9 @@ int DoMain(int argc, char* argv[]) {
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
   auto end_effector_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
-  std::vector<drake::geometry::GeometryId> ee_contact_points =
+  drake::geometry::GeometryId ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("end_effector_simple"));
+          plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
 //   if (c3_controller_params.scene_index > 0) {
 //     std::vector<drake::geometry::GeometryId> left_support_contact_points =
 //         plant_for_lcs.GetCollisionGeometriesForBody(
@@ -359,20 +359,20 @@ int DoMain(int argc, char* argv[]) {
 //     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
 //   }
 
-  std::vector<drake::geometry::GeometryId> capsule1_geoms =
+  drake::geometry::GeometryId capsule1_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("capsule_1"));
-  std::vector<drake::geometry::GeometryId> capsule2_geoms =
+          plant_for_lcs.GetBodyByName("capsule_1"))[0];
+  drake::geometry::GeometryId capsule2_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("capsule_2"));
-  std::vector<drake::geometry::GeometryId> capsule3_geoms =
+          plant_for_lcs.GetBodyByName("capsule_2"))[0];
+  drake::geometry::GeometryId capsule3_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("capsule_3"));
-  std::vector<drake::geometry::GeometryId> ground_geoms =
+          plant_for_lcs.GetBodyByName("capsule_3"))[0];
+  drake::geometry::GeometryId ground_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("ground"));
+          plant_for_lcs.GetBodyByName("ground"))[0];
 
-  std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
+  std::unordered_map<std::string, drake::geometry::GeometryId>
       contact_geoms;
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["CAPSULE_1"] = capsule1_geoms;

@@ -170,9 +170,9 @@ int DoMain(int argc, char* argv[]) {
   auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
   /// TO DO: Maybe just this changes to the simple end effector link
-  std::vector<drake::geometry::GeometryId> ee_contact_points =
+  drake::geometry::GeometryId ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("end_effector_simple"));
+          plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
 //   if (controller_params.scene_index > 0) {
 //     std::vector<drake::geometry::GeometryId> left_support_contact_points =
 //         plant_for_lcs.GetCollisionGeometriesForBody(
@@ -188,20 +188,20 @@ int DoMain(int argc, char* argv[]) {
 //                                 right_support_contact_points.end());
 //   }
 //  TODO: This becomes jack geoms but the individual capsule code needs to be ported over
-  std::vector<drake::geometry::GeometryId> capsule1_geoms =
+  drake::geometry::GeometryId capsule1_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("capsule_1"));
-  std::vector<drake::geometry::GeometryId> capsule2_geoms =
+          plant_for_lcs.GetBodyByName("capsule_1"))[0];
+  drake::geometry::GeometryId capsule2_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("capsule_2"));
-  std::vector<drake::geometry::GeometryId> capsule3_geoms =
+          plant_for_lcs.GetBodyByName("capsule_2"))[0];
+  drake::geometry::GeometryId capsule3_geoms =
         plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("capsule_3"));
-  std::vector<drake::geometry::GeometryId> ground_geoms =
+          plant_for_lcs.GetBodyByName("capsule_3"))[0];
+  drake::geometry::GeometryId ground_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("ground"));
+          plant_for_lcs.GetBodyByName("ground"))[0];
 
-  std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
+  std::unordered_map<std::string, drake::geometry::GeometryId>
       contact_geoms;
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["CAPSULE_1"] = capsule1_geoms;

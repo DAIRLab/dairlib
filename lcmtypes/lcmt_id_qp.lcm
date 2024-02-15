@@ -17,7 +17,7 @@ struct lcmt_id_qp {
 
     // Constraint matrices
     double M[nv][nv];
-    double B[nu][nu];
+    double B[nv][nu];
     double Jh[nh][nv];
     double Jc[nc][nv];
     double Je[ne][nv];

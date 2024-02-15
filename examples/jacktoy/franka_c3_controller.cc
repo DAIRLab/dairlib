@@ -344,8 +344,8 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_radio());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   lcs_factory->get_input_port_lcs_state());
-//   builder.Connect(radio_sub->get_output_port(),
-//                   control_target->get_input_port_radio());
+  builder.Connect(radio_sub->get_output_port(),
+                  control_target->get_input_port_radio());
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),

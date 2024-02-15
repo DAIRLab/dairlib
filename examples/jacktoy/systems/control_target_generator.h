@@ -16,6 +16,10 @@ class TargetGenerator
   TargetGenerator(
       const drake::multibody::MultibodyPlant<double>& object_plant);
 
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_object_state() const {
     return this->get_input_port(object_state_port_);
   }
@@ -44,6 +48,7 @@ class TargetGenerator
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex object_target_port_;

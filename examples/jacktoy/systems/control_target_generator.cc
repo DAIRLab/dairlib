@@ -16,6 +16,11 @@ namespace systems {
 TargetGenerator::TargetGenerator(
     const MultibodyPlant<double>& object_plant) {
   // INPUT PORTS
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
+
   object_state_port_ =
       this->DeclareVectorInputPort(
               "x_object", StateVector<double>(object_plant.num_positions(),

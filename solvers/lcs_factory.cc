@@ -32,7 +32,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
-    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+    const vector<SortedPair<GeometryId>>& contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
     int N, ContactModel contact_model) {
   int n_x = plant_ad.num_positions() + plant_ad.num_velocities();
@@ -94,28 +94,16 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
 
   for (int i = 0; i < n_contacts; i++) {
-    std::vector<double> distances;
-    std::vector<drake::MatrixX<double>> J_vec;
-
-    for(int j = 0; j < contact_geoms[i].size(); j++){
-        SortedPair<GeometryId> pair {(contact_geoms.at(i)).at(j)};
-        multibody::GeomGeomCollider collider(plant, pair);  // deleted num_fricton_directions (check with
-                                   // Michael about changes in geomgeom)
+    multibody::GeomGeomCollider collider(
+        plant,
+        contact_geoms[i]);  // deleted num_friction_directions (check with
+    // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
- 
-        distances.push_back(phi_i);
-        J_vec.push_back(J_i);
-    }
-    // Pick minimum distance contact pair and corresponding jacobian
-    auto min_distance_it = std::min_element(distances.begin(), distances.end());
-    int min_distance_index = std::distance(distances.begin(), min_distance_it);
-    J_n.row(i) = (J_vec.at(min_distance_index)).row(0);
-    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-              n_v) =
-        (J_vec.at(min_distance_index)).block(1, 0, 2 * num_friction_directions, n_v);
 
-    phi(i) = *min_distance_it; //distance between contact pair
-    // std::cout<<"distance of contact pair "<<i<<" = "<<phi(i)<<std::endl;
+    phi(i) = phi_i;
+    J_n.row(i) = J_i.row(0);
+    J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
+              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
   }
 
   auto M_ldlt = ExtractValue(M).ldlt();
@@ -269,7 +257,7 @@ LCSFactory::ComputeContactJacobian(
     const drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     const drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
         contact_geoms,
     int num_friction_directions, const std::vector<double>& mu, double dt,
     int N, dairlib::solvers::ContactModel contact_model) {
@@ -282,32 +270,18 @@ LCSFactory::ComputeContactJacobian(
   MatrixXd J_t(2 * n_contacts * num_friction_directions, n_v);
   std::vector<VectorXd> contact_points;
   for (int i = 0; i < n_contacts; i++) {
-    std::vector<double> distances;
-    std::vector<drake::MatrixX<double>> J_vec;
-    // std::vector<VectorX<double>> witness_points;  // This is a vector of vector of two 
-    std::vector<std::pair<VectorX<double>, VectorX<double>>> witness_points;
-
-    for(int j = 0; j < contact_geoms[i].size(); j++){
-        SortedPair<GeometryId> pair {(contact_geoms.at(i)).at(j)};
-        multibody::GeomGeomCollider collider(plant, pair);  // deleted num_fricton_directions (check with
-                                   // Michael about changes in geomgeom)
-        auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
-        auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
-        distances.push_back(phi_i);
-        J_vec.push_back(J_i);
-        witness_points.push_back(std::make_pair(p_WCa, p_WCb));
-    }
-    // Pick minimum distance and corresponding witness points
-    auto min_distance_it = std::min_element(distances.begin(), distances.end());
-    int min_distance_index = std::distance(distances.begin(), min_distance_it);
-    // SortedPair<GeometryId> closest_contact_pair = contact_geoms[i][min_distance_index]; //(contact_geoms.at(i)).at(min_distance_index);
-    J_n.row(i) = (J_vec.at(min_distance_index)).row(0); //J_i.row(0);
+    multibody::GeomGeomCollider collider(
+        plant,
+        contact_geoms[i]);  // deleted num_friction_directions (check with
+    // Michael about changes in geomgeom)
+    auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+    auto [p_WCa, p_WCb] = collider.CalcWitnessPoints(context);
+    // TODO(yangwill): think about if we want to push back both witness points
+    contact_points.push_back(p_WCa);
+    phi(i) = phi_i;
+    J_n.row(i) = J_i.row(0);
     J_t.block(2 * i * num_friction_directions, 0, 2 * num_friction_directions,
-              n_v) =
-        (J_vec.at(min_distance_index)).block(1, 0, 2 * num_friction_directions, n_v);
-
-    phi(i) = *min_distance_it; //distance between contact pair
-    contact_points.push_back(witness_points.at(min_distance_index).first);
+              n_v) = J_i.block(1, 0, 2 * num_friction_directions, n_v);
   }
 
   if (contact_model == ContactModel::kStewartAndTrinkle) {

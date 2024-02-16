@@ -21,7 +21,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
-      const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
       C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
@@ -58,7 +58,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
+  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
       contact_pairs_;
 
   C3Options c3_options_;

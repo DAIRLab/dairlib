@@ -36,6 +36,7 @@
 #include "examples/jacktoy/systems/control_target_generator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_preprocessor.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/c3_controller.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
@@ -89,6 +90,7 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using dairlib::solvers::LCSFactory;
+using dairlib::solvers::LCSFactoryPreProcessor;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 
@@ -433,9 +435,14 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(2));
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
+  // Preprocessing the contact pairs to resolve the contact pairs   
+  std::vector<drake::SortedPair<drake::geometry::GeometryId>> resolved_contact_pairs = 
+                                                            LCSFactoryPreProcessor::PreProcessor(plant_for_lcs, plant_for_lcs_context, 
+                                                            contact_pairs, c3_options.num_friction_directions);
+  
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      end_effector_context_ad.get(), contact_pairs, c3_options);
+      end_effector_context_ad.get(), resolved_contact_pairs, c3_options);
   auto c3_controller = builder.AddSystem<systems::C3Controller>(
       plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =

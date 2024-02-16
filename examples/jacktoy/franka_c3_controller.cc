@@ -20,6 +20,7 @@
 #include "examples/jacktoy/systems/control_target_generator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_preprocessor.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -30,6 +31,7 @@
 namespace dairlib {
 
 using dairlib::solvers::LCSFactory;
+using dairlib::solvers::LCSFactoryPreProcessor;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
@@ -201,8 +203,8 @@ int DoMain(int argc, char* argv[]) {
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("ground"))[0];
 
-  std::unordered_map<std::string, drake::geometry::GeometryId>
-      contact_geoms;
+  //   Creating a map of contact geoms
+  std::unordered_map<std::string, drake::geometry::GeometryId> contact_geoms;
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["CAPSULE_1"] = capsule1_geoms;
   contact_geoms["CAPSULE_2"] = capsule2_geoms;
@@ -305,9 +307,14 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(2));
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
+  // Preprocessing the contact pairs to resolve the contact pairs   
+  std::vector<drake::SortedPair<drake::geometry::GeometryId>> resolved_contact_pairs = 
+                                                            LCSFactoryPreProcessor::PreProcessor(plant_for_lcs, plant_for_lcs_context, 
+                                                            contact_pairs, c3_options.num_friction_directions);
+  
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plate_context_ad.get(), contact_pairs, c3_options);
+      plate_context_ad.get(), resolved_contact_pairs, c3_options);
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =

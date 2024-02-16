@@ -65,10 +65,12 @@ cc_library(
     srcs = [
         "lcs.cc",
         "lcs_factory.cc",
+        "lcs_factory_preprocessor.cc",
     ],
     hdrs = [
         "lcs.h",
         "lcs_factory.h",
+        "lcs_factory_preprocessor.h",
     ],
     deps = [
         "//multibody:geom_geom_collider",

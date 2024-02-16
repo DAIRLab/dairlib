@@ -31,7 +31,7 @@
 build -c opt
 
 # Default build options.
-build --force_pic
+build:linux --force_pic
 build --strip=never
 
 # Default test options.

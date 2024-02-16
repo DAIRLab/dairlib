@@ -87,6 +87,17 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
+  // we WANT to model collisions between link5 and the supports
+  const drake::geometry::GeometrySet& franka_geom_set =
+      plant.CollectRegisteredGeometries(
+          {&plant.GetBodyByName("panda_link2"),
+           &plant.GetBodyByName("panda_link3"),
+           &plant.GetBodyByName("panda_link4"),
+//             &plant.GetBodyByName("panda_link5"),
+           &plant.GetBodyByName("panda_link6"),
+           &plant.GetBodyByName("panda_link7"),
+           &plant.GetBodyByName("plate"),
+           &plant.GetBodyByName("panda_link8")});
   if (sim_params.scene_index > 0) {
     drake::multibody::ModelInstanceIndex left_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
@@ -107,35 +118,14 @@ int DoMain(int argc, char* argv[]) {
             &plant.GetBodyByName("support", left_support_index),
             &plant.GetBodyByName("support", right_support_index),
         });
-    // we WANT to model collisions between link5 and the supports
-    const drake::geometry::GeometrySet& paddle_geom_set =
-        plant.CollectRegisteredGeometries(
-            {&plant.GetBodyByName("panda_link2"),
-             &plant.GetBodyByName("panda_link3"),
-             &plant.GetBodyByName("panda_link4"),
-//             &plant.GetBodyByName("panda_link5"),
-             &plant.GetBodyByName("panda_link6"),
-             &plant.GetBodyByName("panda_link7"),
-             &plant.GetBodyByName("plate"),
-             &plant.GetBodyByName("panda_link8")});
-
     plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-        {"paddle", support_geom_set}, {"tray", paddle_geom_set});
+        {"supports", support_geom_set}, {"franka", franka_geom_set});
   }
 
-  const drake::geometry::GeometrySet& paddle_geom_set =
-      plant.CollectRegisteredGeometries({
-          &plant.GetBodyByName("panda_link2"),
-          &plant.GetBodyByName("panda_link3"),
-          &plant.GetBodyByName("panda_link4"),
-          &plant.GetBodyByName("panda_link5"),
-          &plant.GetBodyByName("panda_link6"),
-          &plant.GetBodyByName("panda_link8"),
-      });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-      {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
+      {"franka", franka_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/

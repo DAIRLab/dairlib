@@ -148,7 +148,7 @@ int DoMain(int argc, char* argv[]) {
   auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
   ///
-  std::vector<drake::geometry::GeometryId> plate_contact_points =
+  std::vector<drake::geometry::GeometryId> end_effector_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("plate"));
   if (controller_params.scene_index > 0) {
@@ -158,19 +158,19 @@ int DoMain(int argc, char* argv[]) {
     std::vector<drake::geometry::GeometryId> right_support_contact_points =
         plant_for_lcs.GetCollisionGeometriesForBody(
             plant_for_lcs.GetBodyByName("support", right_support_index));
-    plate_contact_points.insert(plate_contact_points.end(),
-                                left_support_contact_points.begin(),
-                                left_support_contact_points.end());
-    plate_contact_points.insert(plate_contact_points.end(),
-                                right_support_contact_points.begin(),
-                                right_support_contact_points.end());
+    end_effector_contact_points.insert(end_effector_contact_points.end(),
+                                       left_support_contact_points.begin(),
+                                       left_support_contact_points.end());
+    end_effector_contact_points.insert(end_effector_contact_points.end(),
+                                       right_support_contact_points.begin(),
+                                       right_support_contact_points.end());
   }
   std::vector<drake::geometry::GeometryId> tray_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("tray"));
   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
       contact_geoms;
-  contact_geoms["PLATE"] = plate_contact_points;
+  contact_geoms["PLATE"] = end_effector_contact_points;
   contact_geoms["TRAY"] = tray_geoms;
 
   std::vector<SortedPair<GeometryId>> contact_pairs;

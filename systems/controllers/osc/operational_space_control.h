@@ -14,7 +14,7 @@
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
-#include "solvers/fast_osqp_solver.h"
+#include "solvers/fcc_qp_solver.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
@@ -365,11 +365,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool used_with_finite_state_machine_;
 
   // Solver
-  std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
+  std::unique_ptr<dairlib::solvers::FCCQPSolver> solver_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow("solvers/osqp_options_default.yaml"))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+          FindResourceOrThrow("solvers/fcc_qp_options_default.yaml"))
+          .GetAsSolverOptions(dairlib::solvers::FCCQPSolver::id());
 
   // MathematicalProgram
   mutable InverseDynamicsQp id_qp_;

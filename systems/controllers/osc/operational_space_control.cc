@@ -8,7 +8,6 @@
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/text_logging.h"
-#include <lcm/lcm-cpp.hpp>
 
 using std::cout;
 using std::endl;
@@ -21,7 +20,8 @@ using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::VectorXd;
 
-using dairlib::multibody::CreateContext;
+
+
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
@@ -34,14 +34,12 @@ using drake::systems::Context;
 using drake::trajectories::ExponentialPlusPiecewisePolynomial;
 using drake::trajectories::PiecewisePolynomial;
 
-using drake::solvers::OsqpSolver;
-using drake::solvers::OsqpSolverDetails;
 using drake::solvers::Solve;
 
 namespace dairlib::systems::controllers {
 
-using multibody::CreateWithSpringsToWithoutSpringsMapPos;
-using multibody::CreateWithSpringsToWithoutSpringsMapVel;
+using solvers::FCCQPSolver;
+
 using multibody::MakeNameToActuatorsMap;
 using multibody::MakeNameToVelocitiesMap;
 using multibody::SetPositionsIfNew;
@@ -321,20 +319,20 @@ void OperationalSpaceControl::Build() {
   }
 
   // (Testing) 6. contact force blending
-//  if (ds_duration_ > 0) {
-//    int nc = id_qp_.nc();
-//    const auto& lambda = id_qp_.lambda_c();
-//    blend_constraint_ = id_qp_.get_mutable_prog().AddLinearEqualityConstraint(
-//                MatrixXd::Zero(1, nc / kSpaceDim), VectorXd::Zero(1),
-//                {lambda.segment(kSpaceDim * 0 + 2, 1),
-//                 lambda.segment(kSpaceDim * 1 + 2, 1),
-//                 lambda.segment(kSpaceDim * 2 + 2, 1),
-//                 lambda.segment(kSpaceDim * 3 + 2, 1)})
-//            .evaluator()
-//            .get();
-//  }
+  if (ds_duration_ > 0) {
+    int nc = id_qp_.nc();
+    const auto& lambda = id_qp_.lambda_c();
+    blend_constraint_ = id_qp_.get_mutable_prog().AddLinearEqualityConstraint(
+                MatrixXd::Zero(1, nc / kSpaceDim), VectorXd::Zero(1),
+                {lambda.segment(kSpaceDim * 0 + 2, 1),
+                 lambda.segment(kSpaceDim * 1 + 2, 1),
+                 lambda.segment(kSpaceDim * 2 + 2, 1),
+                 lambda.segment(kSpaceDim * 3 + 2, 1)})
+            .evaluator()
+            .get();
+  }
 
-  solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
+  solver_ = std::make_unique<dairlib::solvers::FCCQPSolver>();
   id_qp_.get_mutable_prog().SetSolverOptions(solver_options_);
 }
 
@@ -474,7 +472,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 2) = alpha_right / 2;
       A(0, 3) = alpha_right / 2;
     }
-    // blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 
   // test joint-level input cost by fsm state
@@ -504,14 +502,19 @@ VectorXd OperationalSpaceControl::SolveQp(
   if (W_lambda_h_reg_.size() > 0) {
     // TODO (@Brian-Acosta) does anyone use lambda_h_ regularization?
   }
-  if (!solver_->IsInitialized()) {
-    solver_->InitializeSolver(id_qp_.get_prog(), solver_options_);
+
+  if (!solver_->is_initialized()) {
+    int contact_start_idx = id_qp_.get_prog().FindDecisionVariableIndex(
+        id_qp_.lambda_c()(0));
+    solver_->InitializeSolver(
+        id_qp_.get_prog(), solver_options_, id_qp_.nc(), contact_start_idx,
+        id_qp_.get_ordered_friction_coeffs());
   }
 
   // Solve the QP
   MathematicalProgramResult result;
-  result = id_qp_.Solve();
-  solve_time_ = result.get_solver_details<fcc_qp::FCCQPSolver>().solve_time;
+  result = solver_->Solve(id_qp_.get_prog());
+  solve_time_ = result.get_solver_details<FCCQPSolver>().solve_time;
 
   if (result.is_success()) {
     // Extract solutions

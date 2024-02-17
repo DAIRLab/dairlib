@@ -4,8 +4,6 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 
-#include "fcc_qp_solver.hpp"
-
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/mathematical_program_result.h"
@@ -16,9 +14,6 @@ namespace controllers {
 
 using CostMap = std::unordered_map<
     std::string, std::shared_ptr<drake::solvers::QuadraticCost>>;
-
-using FrictionConeMap = std::unordered_map<
-    std::string, std::shared_ptr<drake::solvers::LinearConstraint>>;
 
 using ContactMap = std::unordered_map<
     std::string,
@@ -160,6 +155,9 @@ class InverseDynamicsQp {
   [[nodiscard]] const drake::solvers::VectorXDecisionVariable &epsilon() const {
     return epsilon_;
   }
+  [[nodiscard]] const std::vector<double> get_ordered_friction_coeffs() const {
+    return ordered_friction_coeffs_;
+  };
 
   /*!
    * @return a const-reference to the underlying MathematicalProgram
@@ -234,8 +232,6 @@ class InverseDynamicsQp {
     return all_costs_.count(name) > 0;
   }
 
-  drake::solvers::MathematicalProgramResult Solve() const;
-
  private:
 
   // Multibody Dynamics
@@ -252,6 +248,7 @@ class InverseDynamicsQp {
   std::unordered_map<std::string, int> lambda_c_start_;
   std::unordered_map<std::string, int> Jc_active_start_;
   std::unordered_map<std::string, double> mu_map_;
+  std::vector<double> ordered_friction_coeffs_;
 
   // External forces are reaction forces we want to "track," but which do not
   // constrain the robot's motion
@@ -286,17 +283,10 @@ class InverseDynamicsQp {
   CostMap all_costs_;
   std::shared_ptr<drake::solvers::QuadraticCost> soft_constraint_cost_;
 
-  // Friction Cone Constraints
-  FrictionConeMap lambda_c_friction_cone_;
-  FrictionConeMap lambda_e_friction_cone_;
-
   // Dynamics
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> dynamics_c_;
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> holonomic_c_;
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> contact_c_;
-
-  // Solver - must be a pointer since there's no default solver constructor
-  mutable std::unique_ptr<fcc_qp::FCCQPSolver> solver_;
 
   // Bookkeeping
   bool built_ = false;

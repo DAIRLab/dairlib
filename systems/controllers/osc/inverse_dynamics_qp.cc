@@ -23,7 +23,6 @@ using drake::systems::Context;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::VariableRefList;
 using drake::solvers::MathematicalProgram;
-using drake::solvers::MathematicalProgramResult;
 using drake::solvers::VectorXDecisionVariable;
 using drake::solvers::LinearEqualityConstraint;
 
@@ -102,27 +101,15 @@ void InverseDynamicsQp::Build() {
       VectorXd::Zero(nc_active_), {dv_, epsilon_}
   ).evaluator();
 
-  for (const auto& [cname, eval] : contact_constraint_evaluators_) {
-    double mu = mu_map_.at(cname);
-    MatrixXd A = MatrixXd(5, 3);
-    A << -1, 0, mu, 0, -1, mu, 1, 0, mu, 0, 1, mu, 0, 0, 1;
-    lambda_c_friction_cone_.insert({
-      cname,
-      prog_.AddLinearConstraint(
-          A, VectorXd::Zero(5),
-          VectorXd::Constant(5, std::numeric_limits<double>::infinity()),
-          lambda_c_.segment(lambda_c_start_.at(cname), 3)).evaluator()
-    });
+  ordered_friction_coeffs_ = vector<double>(lambda_c_start_.size(), 0);
+  for (const auto& [n , s] : lambda_c_start_) {
+    int i = s / 3;
+    ordered_friction_coeffs_.at(i) = mu_map_.at(n);
   }
 
   int n_vars = prog_.num_vars();
   int n_constraints = dynamics_c_->num_outputs() + holonomic_c_->num_outputs() +
       contact_c_->num_outputs();
-
-  solver_ = std::make_unique<fcc_qp::FCCQPSolver>(
-      n_vars, n_constraints, nc_,
-      prog_.FindDecisionVariableIndex(lambda_c_(0))
-  );
 
   built_ = true;
 }
@@ -206,114 +193,6 @@ void InverseDynamicsQp::UpdateDynamics(
   dynamics_c_->UpdateCoefficients(A_dyn, -bias);
   holonomic_c_->UpdateCoefficients(Jh, -Jh_dot_v);
   contact_c_->UpdateCoefficients(A_c, -Jc_active_dot_v);
-}
-
-namespace {
-
-std::tuple<MatrixXd, VectorXd, double> ParseQuadraticCosts (
-    const MathematicalProgram& prog) {
-  int n = prog.num_vars();
-  MatrixXd Q = MatrixXd::Zero(n,n);
-  VectorXd b = VectorXd::Zero(n);
-  double d = 0;
-  for (const auto& binding: prog.quadratic_costs()) {
-    const auto &x = binding.variables();
-    const auto indices = prog.FindDecisionVariableIndices(x);
-    const auto &H = binding.evaluator()->Q();
-    const auto &g = binding.evaluator()->b();
-    for (int r = 0; r < H.rows(); ++r) {
-      const int x_row = indices[r];
-      b(x_row) += g(r);
-      for (int c = 0; c < H.cols(); ++c) {
-        const double value = H(r, c);
-        const int x_col = indices[c];
-        Q(x_row, x_col) += value;
-      }
-    }
-    d += binding.evaluator()->c();
-  }
-  return std::tie(Q, b, d);
-}
-
-// Mostly copied from Drake equality_constrained_qp_solver
-std::pair<MatrixXd, VectorXd> ParseLinearEqualityConstraints(
-    const MathematicalProgram& prog) {
-
-  // figure out how many constraint rows there are
-  int rows = 0;
-  for (auto const& binding : prog.linear_equality_constraints()) {
-    rows += binding.evaluator()->get_sparse_A().rows();
-  }
-  int num_vars = prog.num_vars();
-  MatrixXd A = MatrixXd::Zero(rows, num_vars);
-  VectorXd b = VectorXd::Zero(rows);
-  int constraint_index = 0;
-
-  for (auto const& binding : prog.linear_equality_constraints()) {
-    auto const& bc = binding.evaluator();
-    size_t n = bc->get_sparse_A().rows();
-    const auto& v = binding.variables();
-    int num_var = v.rows();
-    for (int i = 0; i < num_var; ++i) {
-      const int variable_index = prog.FindDecisionVariableIndex(v(i));
-      for (SparseMatrix<double>::InnerIterator it(bc->get_sparse_A(), i); it;
-           ++it) {
-        A(constraint_index + it.row(), variable_index) = it.value();
-      }
-    }
-    b.segment(constraint_index, n) =bc->lower_bound().segment(0, n);
-    constraint_index += n;
-  }
-  return {A, b};
-}
-
-std::pair<VectorXd, VectorXd> ParseBoundingBoxConstraints(
-    const MathematicalProgram& prog) {
-  VectorXd lb = VectorXd::Constant(prog.num_vars(),
-                                   -std::numeric_limits<double>::infinity());
-  VectorXd ub = VectorXd::Constant(prog.num_vars(),
-                                   std::numeric_limits<double>::infinity());
-
-  for (const auto& binding : prog.bounding_box_constraints()) {
-    const auto& v = binding.variables();
-    const auto& lb_v = binding.evaluator()->lower_bound();
-    const auto& ub_v = binding.evaluator()->upper_bound();
-    for (int i = 0; i < v.rows(); ++i) {
-      int idx = prog.FindDecisionVariableIndex(v(i));
-      lb(idx) = std::max(lb_v(i), lb(idx));
-      ub(idx) = std::min(ub_v(i), ub(idx));
-    }
-  }
-  return {lb, ub};
-}
-
-}
-
-MathematicalProgramResult InverseDynamicsQp::Solve() const {
-
-  const auto& [Q, b, c] = ParseQuadraticCosts(prog_);
-  const auto& [Aeq, beq] = ParseLinearEqualityConstraints(prog_);
-  const auto& [lb, ub] = ParseBoundingBoxConstraints(prog_);
-
-  std::vector<double> ordered_friction_coeffs(lambda_c_start_.size(), 0);
-
-  for (const auto& [n , s] : lambda_c_start_) {
-    int i = s / 3;
-    ordered_friction_coeffs.at(i) = mu_map_.at(n);
-  }
-
-  solver_->Solve(Q, b, Aeq, beq, ordered_friction_coeffs, lb, ub);
-  const auto& sol = solver_->GetSolution();
-
-  MathematicalProgramResult result;
-  result.set_decision_variable_index(prog_.decision_variable_index());
-  auto& details_out = result.SetSolverDetailsType<fcc_qp::FCCQPSolverDetails>();
-  details_out = sol.details;
-
-  result.set_solution_result(drake::solvers::SolutionResult::kSolutionFound);
-  result.set_x_val(sol.z);
-
-  return result;
 }
 
 lcmt_id_qp InverseDynamicsQp::SerializeToLcm() const {

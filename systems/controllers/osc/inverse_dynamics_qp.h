@@ -4,9 +4,11 @@
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 
+#include "fcc_qp_solver.hpp"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
-
+#include "drake/solvers/mathematical_program_result.h"
 
 namespace dairlib {
 namespace systems {
@@ -232,6 +234,8 @@ class InverseDynamicsQp {
     return all_costs_.count(name) > 0;
   }
 
+  drake::solvers::MathematicalProgramResult Solve() const;
+
  private:
 
   // Multibody Dynamics
@@ -290,6 +294,9 @@ class InverseDynamicsQp {
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> dynamics_c_;
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> holonomic_c_;
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> contact_c_;
+
+  // Solver - must be a pointer since there's no default solver constructor
+  mutable std::unique_ptr<fcc_qp::FCCQPSolver> solver_;
 
   // Bookkeeping
   bool built_ = false;

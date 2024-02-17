@@ -210,3 +210,16 @@ http_archive(
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
     ],
 )
+
+environ_repository(
+    name = "environ_home",
+    vars = ["HOME"],
+)
+
+load("@environ_home//:environ.bzl", "HOME")
+
+new_local_repository(
+    name = "fcc_qp",
+    build_file = "tools/workspace/fcc_qp/BUILD.bazel",
+    path = "{}/workspace/sandbox/fcc_qp/".format(HOME),
+)

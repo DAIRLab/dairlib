@@ -321,18 +321,18 @@ void OperationalSpaceControl::Build() {
   }
 
   // (Testing) 6. contact force blending
-  if (ds_duration_ > 0) {
-    int nc = id_qp_.nc();
-    const auto& lambda = id_qp_.lambda_c();
-    blend_constraint_ = id_qp_.get_mutable_prog().AddLinearEqualityConstraint(
-                MatrixXd::Zero(1, nc / kSpaceDim), VectorXd::Zero(1),
-                {lambda.segment(kSpaceDim * 0 + 2, 1),
-                 lambda.segment(kSpaceDim * 1 + 2, 1),
-                 lambda.segment(kSpaceDim * 2 + 2, 1),
-                 lambda.segment(kSpaceDim * 3 + 2, 1)})
-            .evaluator()
-            .get();
-  }
+//  if (ds_duration_ > 0) {
+//    int nc = id_qp_.nc();
+//    const auto& lambda = id_qp_.lambda_c();
+//    blend_constraint_ = id_qp_.get_mutable_prog().AddLinearEqualityConstraint(
+//                MatrixXd::Zero(1, nc / kSpaceDim), VectorXd::Zero(1),
+//                {lambda.segment(kSpaceDim * 0 + 2, 1),
+//                 lambda.segment(kSpaceDim * 1 + 2, 1),
+//                 lambda.segment(kSpaceDim * 2 + 2, 1),
+//                 lambda.segment(kSpaceDim * 3 + 2, 1)})
+//            .evaluator()
+//            .get();
+//  }
 
   solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
   id_qp_.get_mutable_prog().SetSolverOptions(solver_options_);
@@ -474,7 +474,7 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 2) = alpha_right / 2;
       A(0, 3) = alpha_right / 2;
     }
-    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+    // blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
   }
 
   // test joint-level input cost by fsm state
@@ -510,12 +510,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // Solve the QP
   MathematicalProgramResult result;
-  lcm::LCM lcm;
-  lcmt_id_qp msg = id_qp_.SerializeToLcm();
-  lcm.publish("ID_QP_LOG", &msg);
-
-  result = solver_->Solve(id_qp_.get_prog());
-  solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+  result = id_qp_.Solve();
+  solve_time_ = result.get_solver_details<fcc_qp::FCCQPSolver>().solve_time;
 
   if (result.is_success()) {
     // Extract solutions

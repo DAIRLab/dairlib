@@ -11,6 +11,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody/kinematic",
         "@drake//:drake_shared_library",
+        "@fcc_qp",
     ],
 )
 

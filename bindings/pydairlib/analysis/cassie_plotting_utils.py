@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 
 # lcmtype imports
 import dairlib
-import archive.dairlib
 import drake
 
 # dairlib python binding imports
@@ -31,20 +30,6 @@ cassie_default_channels = \
      'OSC_DEBUG_JUMPING': dairlib.lcmt_osc_output,
      'OSC_DEBUG_RUNNING': dairlib.lcmt_osc_output}
 
-cassie_default_channels_archive = \
-    {'CASSIE_STATE_SIMULATION': dairlib.lcmt_robot_output,
-     'CASSIE_STATE_DISPATCHER': dairlib.lcmt_robot_output,
-     'CASSIE_INPUT': dairlib.lcmt_robot_input,
-     'OSC_WALKING': dairlib.lcmt_robot_input,
-     'OSC_STANDING': dairlib.lcmt_robot_input,
-     'OSC_JUMPING': dairlib.lcmt_robot_input,
-     'OSC_RUNNING': dairlib.lcmt_robot_input,
-     'CASSIE_OUTPUT': dairlib.lcmt_cassie_out,
-     'OSC_DEBUG_STANDING': archive.dairlib.lcmt_osc_output,
-     'OSC_DEBUG_WALKING': archive.dairlib.lcmt_osc_output,
-     'OSC_DEBUG_JUMPING': archive.dairlib.lcmt_osc_output,
-     'OSC_DEBUG_RUNNING': archive.dairlib.lcmt_osc_output}
-
 cassie_contact_channels = \
     {'CASSIE_CONTACT_DRAKE': drake.lcmt_contact_results_for_viz,
      'CASSIE_GM_CONTACT_DISPATCHER': drake.lcmt_contact_results_for_viz}
@@ -55,10 +40,10 @@ def make_plant_and_context(floating_base=True, springs=True):
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, 0.0)
     if springs:
         AddCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf, True, True)
+                           floating_base, cassie_urdf, True, True, True)
     else:
         AddCassieMultibody(plant, scene_graph,
-                           floating_base, cassie_urdf_no_springs, False, True)
+                           floating_base, cassie_urdf_no_springs, False, True, True)
 
     plant.Finalize()
     return plant, plant.CreateDefaultContext()

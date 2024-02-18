@@ -107,9 +107,14 @@ void InverseDynamicsQp::Build() {
     ordered_friction_coeffs_.at(i) = mu_map_.at(n);
   }
 
-  int n_vars = prog_.num_vars();
-  int n_constraints = dynamics_c_->num_outputs() + holonomic_c_->num_outputs() +
-      contact_c_->num_outputs();
+  VectorXd u_min(nu_);
+  VectorXd u_max(nu_);
+  for (drake::multibody::JointActuatorIndex i(0); i < nu_; ++i) {
+    u_min[i] = -plant_.get_joint_actuator(i).effort_limit();
+    u_max[i] = plant_.get_joint_actuator(i).effort_limit();
+  }
+
+  input_limit_c_ = prog_.AddBoundingBoxConstraint(u_min, u_max, u_).evaluator();
 
   built_ = true;
 }

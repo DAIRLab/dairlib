@@ -261,7 +261,7 @@ int do_main(int argc, char* argv[]) {
   auto robot_output_sender =
       builder.AddSystem<systems::RobotOutputSender>(plant, true, true);
 
-  if (FLAGS_floating_base) {
+  if (false) {
     // Create and connect contact estimation publisher.
     auto contact_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_contact>(

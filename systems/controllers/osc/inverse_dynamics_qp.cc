@@ -108,6 +108,15 @@ void InverseDynamicsQp::Build() {
     });
   }
 
+  VectorXd u_min(nu_);
+  VectorXd u_max(nu_);
+  for (drake::multibody::JointActuatorIndex i(0); i < nu_; ++i) {
+    u_min[i] = -plant_.get_joint_actuator(i).effort_limit();
+    u_max[i] = plant_.get_joint_actuator(i).effort_limit();
+  }
+
+  input_limit_c_ = prog_.AddBoundingBoxConstraint(u_min, u_max, u_).evaluator();
+
   built_ = true;
 }
 

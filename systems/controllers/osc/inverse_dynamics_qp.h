@@ -276,7 +276,6 @@ class InverseDynamicsQp {
 
   // Costs
   CostMap all_costs_;
-  std::shared_ptr<drake::solvers::QuadraticCost> soft_constraint_cost_;
 
   // Friction Cone Constraints
   FrictionConeMap lambda_c_friction_cone_;
@@ -286,6 +285,9 @@ class InverseDynamicsQp {
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> dynamics_c_;
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> holonomic_c_;
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> contact_c_;
+
+  // input limits
+  std::shared_ptr<drake::solvers::BoundingBoxConstraint> input_limit_c_;
 
   // Bookkeeping
   bool built_ = false;

@@ -90,7 +90,7 @@ int DoMain(int argc, char* argv[]) {
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  drake::lcm::DrakeLcm lcm_local;
+  drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(

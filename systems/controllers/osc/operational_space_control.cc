@@ -320,16 +320,13 @@ void OperationalSpaceControl::Build() {
 
   // (Testing) 6. contact force blending
   if (ds_duration_ > 0) {
-    int nc = id_qp_.nc();
     const auto& lambda = id_qp_.lambda_c();
-    blend_constraint_ = id_qp_.get_mutable_prog().AddLinearEqualityConstraint(
-                MatrixXd::Zero(1, nc / kSpaceDim), VectorXd::Zero(1),
-                {lambda.segment(kSpaceDim * 0 + 2, 1),
-                 lambda.segment(kSpaceDim * 1 + 2, 1),
-                 lambda.segment(kSpaceDim * 2 + 2, 1),
-                 lambda.segment(kSpaceDim * 3 + 2, 1)})
-            .evaluator()
-            .get();
+    id_qp_.AddQuadraticCost(
+        "ds_blending", MatrixXd::Zero(4, 4), VectorXd::Zero(4),
+        {lambda.segment(kSpaceDim * 0 + 2, 1),
+         lambda.segment(kSpaceDim * 1 + 2, 1),
+         lambda.segment(kSpaceDim * 2 + 2, 1),
+         lambda.segment(kSpaceDim * 3 + 2, 1)});
   }
 
   solver_ = std::make_unique<dairlib::solvers::FCCQPSolver>();
@@ -472,7 +469,9 @@ VectorXd OperationalSpaceControl::SolveQp(
       A(0, 2) = alpha_right / 2;
       A(0, 3) = alpha_right / 2;
     }
-    blend_constraint_->UpdateCoefficients(A, VectorXd::Zero(1));
+    id_qp_.UpdateCost(
+        "ds_blending",
+        w_blend_constraint_ * A.transpose() * A, VectorXd::Zero(4), 0);
   }
 
   // test joint-level input cost by fsm state
@@ -647,12 +646,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
         (BasicVector<double>*)this->EvalVectorInput(context, fsm_port_);
     fsm_state = fsm_output->get_value()(0);
   }
-
-  double time_since_last_state_switch =
-      used_with_finite_state_machine_
-          ? state->get_timestamp() -
-                context.get_discrete_state(prev_event_time_idx_).get_value()(0)
-          : state->get_timestamp();
 
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;

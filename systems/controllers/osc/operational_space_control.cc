@@ -12,6 +12,7 @@
 using std::cout;
 using std::endl;
 
+using std::isnan;
 using std::numeric_limits;
 using std::string;
 using std::vector;

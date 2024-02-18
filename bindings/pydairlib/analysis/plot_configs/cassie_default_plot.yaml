@@ -7,7 +7,7 @@ use_archived_lcmtypes: true
 # Approximate log time to start at relative to the first timestamp in the log
 start_time: 0
 # Duration of time to plot (seconds, -1 for whole log)
-duration: 2
+duration: -1
 
 # Plant properties
 use_springs: true

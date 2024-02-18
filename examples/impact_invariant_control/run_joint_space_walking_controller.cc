@@ -75,7 +75,7 @@ int DoMain(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   std::string full_name = FindResourceOrThrow(
       "examples/impact_invariant_control/five_link_biped.urdf");
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                    drake::math::RigidTransform<double>());
   plant.Finalize();
@@ -95,6 +95,11 @@ int DoMain(int argc, char* argv[]) {
   /**** Convert the gains from the yaml struct to Eigen Matrices ****/
   JointSpaceWalkingGains gains =
       drake::yaml::LoadYamlFile<JointSpaceWalkingGains>(FLAGS_gains_filename);
+
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   /**** Get trajectory from optimization ****/
   const DirconTrajectory& dircon_trajectory = DirconTrajectory(
@@ -185,8 +190,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
-  osc->SetOsqpSolverOptionsFromYaml(
-      FLAGS_osqp_settings);
+  osc->SetSolverOptions(solver_options);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

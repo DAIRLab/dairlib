@@ -6,6 +6,7 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::SparseMatrix;
 
+using drake::solvers::OsqpSolver;
 using drake::solvers::SolverOptions;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::MathematicalProgramResult;
@@ -118,6 +119,15 @@ void FCCQPSolver::InitializeSolver(
 
   const auto& double_opts = options.GetOptionsDouble(id());
   const auto& int_opts = options.GetOptionsInt(id());
+
+  if (double_opts.empty() and int_opts.empty()) {
+    if (not options.GetOptionsDouble(OsqpSolver::id()).empty() or
+        not options.GetOptionsInt(OsqpSolver::id()).empty()) {
+      std::cout << "Warning: Initializing FCCQP with solver options "
+                   "containing only OSQP solver options. FCCQP will use "
+                   "defaults\n";
+    }
+  }
 
   if (has_option(double_opts, "rho")) {
     fcc_qp_->set_rho(double_opts.at("rho"));

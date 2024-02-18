@@ -256,16 +256,18 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int left_support_state,
                                        int right_support_state,
                                        const std::vector<int>& ds_states);
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
   }
-  void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
-    SetOsqpSolverOptions(
+  void SetSolverOptionsFromYaml(const std::string& yaml_string) {
+    SetSolverOptions(
         drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
             FindResourceOrThrow(yaml_string))
-            .GetAsSolverOptions(drake::solvers::OsqpSolver::id())
+            .GetAsSolverOptions(solvers::FCCQPSolver::id())
     );
   };
+
+
   // OSC LeafSystem builder
   void Build();
 

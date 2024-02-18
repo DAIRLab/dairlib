@@ -112,6 +112,11 @@ int DoMain(int argc, char* argv[]) {
   auto right_toe = RightToeFront(plant_w_spr);
   auto right_heel = RightToeRear(plant_w_spr);
 
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(FLAGS_osqp_settings))
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
   // Create maps for joints
   map<string, int> pos_map = multibody::MakeNameToPositionsMap(plant_w_spr);
   map<string, int> vel_map = multibody::MakeNameToVelocitiesMap(plant_w_spr);
@@ -488,7 +493,8 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
   osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
 
-  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
+  osc->SetSolverOptions(solver_options);
+
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

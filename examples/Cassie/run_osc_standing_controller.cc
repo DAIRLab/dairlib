@@ -191,8 +191,12 @@ int DoMain(int argc, char* argv[]) {
   // error to be important
   double w_contact_relax = gains.w_soft_constraint;
   osc->SetContactSoftConstraintWeight(w_contact_relax);
+
+  osc->SetInputSmoothingCostWeights(gains.w_input_reg *
+                                    gains.W_input_regularization);
+
   // Friction coefficient
-  double mu = 0.8;
+  double mu = gains.mu;
   osc->SetContactFriction(mu);
   // Add contact points
   auto left_toe_evaluator = multibody::WorldPointEvaluator(

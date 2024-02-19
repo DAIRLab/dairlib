@@ -4,7 +4,8 @@ end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
 table_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 table_w_supports_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 jack_model: examples/jacktoy/urdf/jack.urdf
-box_model: examples/jacktoy/urdf/default_box.urdf
+box_model: examples/jacktoy/urdf/default_box.urdf  # TODO delete?
+# TODO: supports should go away
 left_support_model: examples/jacktoy/urdf/left_support.urdf
 right_support_model: examples/jacktoy/urdf/left_support.urdf
 franka_publish_rate: 1000
@@ -12,7 +13,7 @@ object_publish_rate: 10
 visualizer_publish_rate: 10
 actuator_delay: 0.000
 
-scene_index: 1
+scene_index: 1  # TODO delete
 visualize_drake_sim: true
 publish_efforts: true
 
@@ -24,17 +25,14 @@ camera_target: [[0.5, 0, 0.5],
                 [0.5, 0, 0.55]]
 
 tool_attachment_frame: [0, 0, 0.107]
+# TODO: all of this should go away
 left_support_position: [0.8, 0.15, 0.447]
 right_support_position: [0.8, -0.15, 0.447]
 left_support_orientation: [0.0, 0.0, 0.0]
 right_support_orientation: [0.0, 0.0, 0.0]
 
-#left_support_position: [0.4, 0.25, 0.45]
-#right_support_position: [0.7, 0.25, 0.45]
-#left_support_orientation: [0.0, 0.0, 1.57]
-#right_support_orientation: [0.0, 0.0, 1.57]
-
 # Workspace Limits
+# TODO: get rid of the scene indexing
 world_x_limits: [[0.4, 0.6],
                  [0.4, 0.6],
                  [0.45, 0.65]]
@@ -47,15 +45,17 @@ world_z_limits: [[0.35, 0.7],
 
 dt: 0.0005
 realtime_rate: 1
-#q_init_franka: [-0.85, 1.45, 1.25, -1.5, 1.70, 1.2, -0.6]
-q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
-q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
-               [1, 0, 0, 0, 0.7, 0.00, 0.515],
-               [1, 0, 0, 0, 0.55, 0.15, 0.515]]
-#q_init_plate: [1, 0, 0, 0, 0.7, 0.00, 0.50]
+# TODO: Set the initial locations to something sensical
+q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
+# TODO: get rid of the scene indexing
+q_init_object: [[0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515],
+                [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515],
+                [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515]]
+# TODO: box should go away
 q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
 
+# TODO: maybe there needs to be some more of these for visualizing other samples
 visualize_workspace: false
 visualize_pose_trace: false
 visualize_center_of_mass_plan: false

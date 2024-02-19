@@ -170,6 +170,12 @@ void TargetGenerator::CalcObjectTarget(
     target_obj_position(2) = next_target[2];
   }
 
+  else {
+    // Throw an error.
+    std::cerr << ("Unknown path type") << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
+
   target_obj_state << 1, 0, 0, 0, target_obj_position;  // The first four used to be the quaternion for a flat tray. Does this need to change @Bibit?
   target->SetFromVector(target_obj_state);
 }

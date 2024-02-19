@@ -8,7 +8,9 @@ struct C3Options {
   int admm_iter;     // total number of ADMM iterations
   float rho;         // initial value of the rho parameter
   float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
-  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
+  int num_threads;   // for inner C3 loop.
+                     // 0 is dynamic, greater than 0 for a fixed count
+  int num_outer_threads;  // for outer sampling loop.
   int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
@@ -50,7 +52,7 @@ struct C3Options {
 
   std::vector<double> mu;
   double dt;
-  double solve_dt;
+  double planning_dt;
   int num_friction_directions;
   int num_contacts;
   Eigen::MatrixXd Q;
@@ -83,7 +85,7 @@ struct C3Options {
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));
-    a->Visit(DRAKE_NVP(solve_dt));
+    a->Visit(DRAKE_NVP(planning_dt));
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts));
 

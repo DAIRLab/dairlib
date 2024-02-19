@@ -80,6 +80,23 @@ cc_library(
 )
 
 cc_library(
+    name = "sampling_c3_controller",
+    srcs = ["sampling_based_c3_controller.cc"],
+    hdrs = ["sampling_based_c3_controller.h"],
+    deps = [
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//examples/jacktoy:generate_samples"
+    ],
+)
+
+cc_library(
     name = "gravity_compensator",
     srcs = [
         "gravity_compensator.cc",

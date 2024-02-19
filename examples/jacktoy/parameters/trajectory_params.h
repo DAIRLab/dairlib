@@ -4,7 +4,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct SamplingC3ControllerParams {
+struct SamplingC3TrajectoryParams {
   int trajectory_type;
   double traj_radius;
   double x_c;
@@ -19,14 +19,11 @@ struct SamplingC3ControllerParams {
   double end_point_y;
   double lookahead_step_size;
   double max_step_size;
-  
-  // Sampling parameters
   double ee_goal_height;
   double object_half_width;
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    // Trajectory parameters
     a->Visit(DRAKE_NVP(trajectory_type));
     a->Visit(DRAKE_NVP(traj_radius));
     a->Visit(DRAKE_NVP(x_c));
@@ -41,8 +38,6 @@ struct SamplingC3ControllerParams {
     a->Visit(DRAKE_NVP(end_point_y));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(max_step_size));
-
-    // Sampling parameters
     a->Visit(DRAKE_NVP(ee_goal_height));
     a->Visit(DRAKE_NVP(object_half_width));
   }

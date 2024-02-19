@@ -39,9 +39,16 @@ class C3 {
   /// @param x0 The initial state of the system
   /// @param delta A pointer to the copy variable solution
   /// @param w A pointer to the scaled dual variable solution
-  /// @return The first control action to take, u[0]
   void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
              std::vector<Eigen::VectorXd>& w);
+
+  /// Compute the MPC cost, using previously solved MPC solution
+  /// @param x0 The initial state of the system
+  /// @param use_full_cost If true, use the full cost, otherwise only compute
+  ///   cost based on object state errors
+  /// @return The cost and the full state trajectory
+  std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
+    const Eigen::VectorXd& x0, bool use_full_cost) const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -121,6 +128,7 @@ class C3 {
   const int k_;
 
  private:
+  LCS lcs_;
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
   std::vector<Eigen::MatrixXd> D_;
@@ -153,6 +161,8 @@ class C3 {
       user_constraints_;
 
   // Solutions
+
+  mutable std::vector<Eigen::VectorXd> zfin_;
 
   std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;

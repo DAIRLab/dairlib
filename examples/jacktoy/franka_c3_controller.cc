@@ -12,7 +12,8 @@
 
 #include "common/eigen_utils.h"
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
-#include "examples/jacktoy/parameters/sampling_based_c3_controller_params.h"
+#include "examples/jacktoy/parameters/trajectory_params.h"
+#include "examples/jacktoy/parameters/sampling_params.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/systems/c3_state_sender.h"
 #include "examples/jacktoy/systems/c3_trajectory_generator.h"
@@ -50,14 +51,19 @@ using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
+// TODO: what does gflags mean?
 DEFINE_string(controller_settings,
               "examples/jacktoy/parameters/franka_c3_controller_params.yaml",
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
-DEFINE_string(sampling_controller_settings,
-              "examples/jacktoy/parameters/sampling_based_c3_controller_params.yaml",
-              "Sampling controller settings such as number of samples and trajectory type. Attempting to minimize"
-              "number of gflags");
+DEFINE_string(trajectory_settings,
+              "examples/jacktoy/parameters/trajectory_params.yaml",
+              "Trajectory settings such as trajectory type, size/shape, and "
+              "goal location.");
+DEFINE_string(sampling_settings,
+              "examples/jacktoy/parameters/sampling_params.yaml",
+              "Sampling settings such as sampling strategy, geometric "
+              "parameters, number of samples.");
 DEFINE_string(lcm_channels,
               "examples/jacktoy/parameters/lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
@@ -72,9 +78,12 @@ int DoMain(int argc, char* argv[]) {
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
           FLAGS_controller_settings);
-  SamplingC3ControllerParams sampling_params =
-      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
-          FLAGS_sampling_controller_settings);
+  SamplingC3TrajectoryParams trajectory_params =
+      drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
+          FLAGS_trajectory_settings);
+  SamplingC3SamplingParams sampling_params =
+      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+          FLAGS_sampling_settings);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
@@ -87,7 +96,8 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> plant_builder;
   
   // Loading the full franka model that will go into franka kinematics system
-  // This needs to load the full franka and full end effector model. Connections made around line 184 to FrankaKinematics module.   
+  // This needs to load the full franka and full end effector model. Connections
+  // made around line 184 to FrankaKinematics module.   
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(
@@ -286,10 +296,10 @@ int DoMain(int argc, char* argv[]) {
   auto control_target =
       builder.AddSystem<systems::TargetGenerator>(plant_jack);                                   // This system generates the target for the end effector and the object.
   control_target->SetRemoteControlParameters(
-      sampling_params.trajectory_type, sampling_params.traj_radius, sampling_params.x_c, sampling_params.y_c, sampling_params.lead_angle, 
-      sampling_params.fixed_goal_x, sampling_params.fixed_goal_y, sampling_params.step_size, 
-      sampling_params.start_point_x, sampling_params.start_point_y, sampling_params.end_point_x, sampling_params.end_point_y, 
-      sampling_params.lookahead_step_size, sampling_params.max_step_size, sampling_params.ee_goal_height, sampling_params.object_half_width);
+      trajectory_params.trajectory_type, trajectory_params.traj_radius, trajectory_params.x_c, trajectory_params.y_c, trajectory_params.lead_angle, 
+      trajectory_params.fixed_goal_x, trajectory_params.fixed_goal_y, trajectory_params.step_size, 
+      trajectory_params.start_point_x, trajectory_params.start_point_y, trajectory_params.end_point_x, trajectory_params.end_point_y, 
+      trajectory_params.lookahead_step_size, trajectory_params.max_step_size, trajectory_params.ee_goal_height, trajectory_params.object_half_width);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -315,7 +325,7 @@ int DoMain(int argc, char* argv[]) {
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
       plate_context_ad.get(), resolved_contact_pairs, c3_options);
-  auto controller = builder.AddSystem<systems::C3Controller>(
+  auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,

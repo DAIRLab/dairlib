@@ -155,6 +155,9 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
 }
 
 void C3::UpdateLCS(const LCS& lcs) {
+  // Update the stored LCS object.
+  lcs_ = lcs;
+
   // first 4 lines are unnecessary
   A_ = lcs.A_;
   B_ = lcs.B_;
@@ -204,7 +207,7 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+  zfin_ = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
   *z_sol_ = delta;
   z_sol_->at(0).segment(0, n_) = x0;
@@ -213,6 +216,60 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
         A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
         D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
   }
+}
+
+// This function relies on the previously computed zfin_ from the Solve function.
+// Calculate the C3 cost and feasible trajectory associated with applying a 
+// provided control input sequence to a system at a provided initial state.
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
+  const VectorXd& x0, bool use_full_cost
+) const{
+  // Extract the locally stored state and control sequences.
+  vector<VectorXd> UU(N_, VectorXd::Zero(k_));
+  std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
+  XX[0] = x0;
+  
+  for (int i = 0; i < N_ ; i++){
+    UU[i] = zfin_[i].segment(n_ + m_, k_);
+    XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+  }
+
+  // Declare Q_eff and R_eff as the Q and R to use for cost computation.
+  std::vector<Eigen::MatrixXd> Q_eff = Q_;
+  std::vector<Eigen::MatrixXd> R_eff = R_;
+
+  // If not calculating the full cost, calculate just the object position error
+  // cost.
+  if (use_full_cost == false) {
+    for (int i = 0; i < N_; i++){
+      // Make R all zeros since not penalizing input effort.
+      R_eff[i] = R_eff[i] * 0;
+
+      // Use all zeros for Q and R except for portion of Q that corresponds to
+      // object xyz errors.
+      // TODO: These have hard-coded numbers 0, 7, 10, 16 but should be replaced
+      for(int j = 0; j < 7; j++) {Q_eff.at(i)(j,j) = 0;}
+      for(int j = 10; j < 16; j++) {Q_eff.at(i)(j,j) = 0;}
+    }
+
+    // Do Nth step for Q.
+    for(int j = 0; j < 7; j++) {Q_eff.at(N_)(j,j) = 0;}
+    for(int j = 10; j < 16; j++) {Q_eff.at(N_)(j,j) = 0;}
+  }
+
+  // Calculate the cost over the N+1 time steps.
+  double cost = 0;
+  for (int i = 0; i < N_; i++){
+    cost = cost + 
+      (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
+      UU[i].transpose()*R_eff.at(i)*UU[i];
+  }
+  cost = cost + 
+    (XX[N_] - x_desired_[N_]).transpose()*Q_eff.at(N_)*(XX[N_] - x_desired_[N_]);
+
+  // Return the cost and the rolled out state trajectory.
+  std::pair <double, std::vector<VectorXd>> ret (cost, XX);
+  return ret;
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,

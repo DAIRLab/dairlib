@@ -194,6 +194,11 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "generate_samples",
+    srcs = ["generate_samples.cc"],
+)
+
 cc_library(
     name = "franka_lcm_channels",
     hdrs = ["parameters/franka_lcm_channels.h"],
@@ -236,20 +241,11 @@ cc_library(
         "parameters/franka_c3_options_floating.yaml",
         "parameters/franka_c3_options_translation.yaml",
         "parameters/franka_qp_options.yaml",
+        "parameters/trajectory_params.yaml",
+        "parameters/sampling_params.yaml",
     ],
     deps = [
         "//solvers:c3",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "sampling_based_c3_controller_params",
-    hdrs = ["parameters/sampling_based_c3_controller_params.h"],
-    data = [
-        "parameters/sampling_based_c3_controller_params.yaml",
-    ],
-    deps = [
         "@drake//:drake_shared_library",
     ],
 )

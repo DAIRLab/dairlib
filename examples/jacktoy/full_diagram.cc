@@ -132,8 +132,8 @@ int DoMain(int argc, char* argv[]) {
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml");
-  SamplingC3ControllerParams sampling_params =
-      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
+  SamplingC3TrajectoryParams trajectory_params =
+      drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
           FLAGS_sampling_controller_settings);
 
   DiagramBuilder<double> builder;
@@ -414,10 +414,10 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::TargetGenerator>(
           plant_jack);
   control_target->SetRemoteControlParameters(
-      sampling_params.trajectory_type, sampling_params.traj_radius, sampling_params.x_c, sampling_params.y_c, sampling_params.lead_angle, 
-      sampling_params.fixed_goal_x, sampling_params.fixed_goal_y, sampling_params.step_size, 
-      sampling_params.start_point_x, sampling_params.start_point_y, sampling_params.end_point_x, sampling_params.end_point_y, 
-      sampling_params.lookahead_step_size, sampling_params.max_step_size, sampling_params.ee_goal_height, sampling_params.object_half_width);
+      trajectory_params.trajectory_type, trajectory_params.traj_radius, trajectory_params.x_c, trajectory_params.y_c, trajectory_params.lead_angle, 
+      trajectory_params.fixed_goal_x, trajectory_params.fixed_goal_y, trajectory_params.step_size, 
+      trajectory_params.start_point_x, trajectory_params.start_point_y, trajectory_params.end_point_x, trajectory_params.end_point_y, 
+      trajectory_params.lookahead_step_size, trajectory_params.max_step_size, trajectory_params.ee_goal_height, trajectory_params.object_half_width);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -443,7 +443,7 @@ int DoMain(int argc, char* argv[]) {
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
       end_effector_context_ad.get(), resolved_contact_pairs, c3_options);
-  auto c3_controller = builder.AddSystem<systems::C3Controller>(
+  auto c3_controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, c3_options);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,

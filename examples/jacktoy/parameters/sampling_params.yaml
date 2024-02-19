@@ -1,0 +1,27 @@
+# Sampling strategy.  These should match the names in sampling_params.h.
+# 0 means radially symmetric sampling on a circle.
+# 1 means random sampling on a 2D circle.
+# 2 means random sampling on a 3D sphere.
+sampling_strategy: 2
+
+# Size of sampling circle; used for both circle perimeter (0, 1) and spherical
+# surface sampling (2).
+sampling_radius: 0.12
+
+# Height of sampling circle; used for circle perimeter (0, 1).
+sampling_height: 0.04
+
+# Radians minimum and maximum angles from vertical (i.e. closest to top of
+# sphere) used for spherical surface sampling (2).
+min_angle_from_vertical: 0  #0.785
+max_angle_from_vertical: 1.822
+
+# Number of additional samples to consider in each mode (repositioning or C3).
+num_additional_samples_repos: 2
+num_additional_samples_c3: 1
+
+# Cost associated with traveling.
+travel_cost_per_meter: 100
+reposition_fixed_cost: 100
+finished_reposition_cost: 1000000
+switching_hysteresis: 250

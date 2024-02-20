@@ -1,10 +1,8 @@
 
 #include <vector>
+
 #include <Eigen/Dense>
-
-#include "examples/franka/diagrams/franka_c3_controller_diagram.h"
-#include "examples/franka/diagrams/franka_osc_controller_diagram.h"
-
+#include <dairlib/lcmt_radio_out.hpp>
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/drake_visualizer.h>
@@ -20,33 +18,33 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <drake/visualization/visualization_config_functions.h>
 #include <gflags/gflags.h>
-#include <dairlib/lcmt_radio_out.hpp>
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
+#include "examples/franka/diagrams/franka_c3_controller_diagram.h"
+#include "examples/franka/diagrams/franka_osc_controller_diagram.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
 namespace dairlib {
 
-using examples::controllers::FrankaOSCControllerDiagram;
-using examples::controllers::FrankaC3ControllerDiagram;
-using drake::systems::DiagramBuilder;
+using drake::geometry::GeometrySet;
+using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
-using drake::math::RigidTransform;
-using drake::geometry::GeometrySet;
+using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using systems::RobotInputReceiver;
-using systems::SubvectorPassThrough;
-using systems::RobotOutputSender;
 using Eigen::VectorXd;
-
+using examples::controllers::FrankaC3ControllerDiagram;
+using examples::controllers::FrankaOSCControllerDiagram;
+using systems::RobotInputReceiver;
+using systems::RobotOutputSender;
+using systems::SubvectorPassThrough;
 
 int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
@@ -63,14 +61,14 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
 
   /// OSC
-  auto osc_controller = builder.AddSystem<FrankaOSCControllerDiagram>("examples/franka/parameters/franka_osc_controller_params.yaml",
-                                                   "examples/franka/parameters/lcm_channels_simulation.yaml",
-                                                   &lcm);
+  auto osc_controller = builder.AddSystem<FrankaOSCControllerDiagram>(
+      "examples/franka/parameters/franka_osc_controller_params.yaml",
+      "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
 
   /// C3 plant
-  auto c3_controller = builder.AddSystem<FrankaC3ControllerDiagram>("examples/franka/parameters/franka_c3_controller_params.yaml",
-                                                   "examples/franka/parameters/lcm_channels_simulation.yaml",
-                                                   &lcm);
+  auto c3_controller = builder.AddSystem<FrankaC3ControllerDiagram>(
+      "examples/franka/parameters/franka_c3_controller_params.yaml",
+      "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
 
   /// Sim Start
   double sim_dt = sim_params.dt;
@@ -157,7 +155,12 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<RobotOutputSender>(plant, franka_index, false);
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, &lcm, 1.0 / sim_params.franka_publish_rate));
+          lcm_channel_params.franka_state_channel, &lcm,
+          1.0 / sim_params.franka_publish_rate));
+  auto tray_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.tray_state_channel, &lcm,
+          1.0 / sim_params.tray_publish_rate));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
@@ -168,21 +171,33 @@ int DoMain(int argc, char* argv[]) {
                   tray_state_sender->get_input_port_state());
 
   // Diagram Connections
-  builder.Connect(osc_controller->get_output_port_robot_input(), passthrough->get_input_port());
-  builder.Connect(c3_controller->get_output_port_mpc_plan(), osc_controller->get_input_port_end_effector_position());
-  builder.Connect(c3_controller->get_output_port_mpc_plan(), osc_controller->get_input_port_end_effector_orientation());
-  builder.Connect(c3_controller->get_output_port_mpc_plan(), osc_controller->get_input_port_end_effector_force());
+  builder.Connect(osc_controller->get_output_port_robot_input(),
+                  passthrough->get_input_port());
+  builder.Connect(c3_controller->get_output_port_mpc_plan(),
+                  osc_controller->get_input_port_end_effector_position());
+  builder.Connect(c3_controller->get_output_port_mpc_plan(),
+                  osc_controller->get_input_port_end_effector_orientation());
+  builder.Connect(c3_controller->get_output_port_mpc_plan(),
+                  osc_controller->get_input_port_end_effector_force());
 
-
-  builder.Connect(franka_state_sender->get_output_port(), osc_controller->get_input_port_robot_state());
-  builder.Connect(franka_state_sender->get_output_port(), c3_controller->get_input_port_robot_state());
-  builder.Connect(tray_state_sender->get_output_port(), c3_controller->get_input_port_object_state());
-  builder.Connect(radio_sub->get_output_port(), c3_controller->get_input_port_radio());
-  builder.Connect(radio_sub->get_output_port(), osc_controller->get_input_port_radio());
+  builder.Connect(franka_state_sender->get_output_port(),
+                  osc_controller->get_input_port_robot_state());
+  builder.Connect(franka_state_sender->get_output_port(),
+                  c3_controller->get_input_port_robot_state());
+  builder.Connect(tray_state_sender->get_output_port(),
+                  c3_controller->get_input_port_object_state());
+  builder.Connect(radio_sub->get_output_port(),
+                  c3_controller->get_input_port_radio());
+  builder.Connect(radio_sub->get_output_port(),
+                  osc_controller->get_input_port_radio());
 
   builder.Connect(*franka_state_sender, *state_pub);
+  builder.Connect(tray_state_sender->get_output_port(),
+                  tray_state_pub->get_input_port());
   builder.Connect(plant.get_state_output_port(franka_index),
-                   franka_state_sender->get_input_port_state());
+                  franka_state_sender->get_input_port_state());
+  builder.Connect(passthrough->get_output_port(),
+                  plant.get_actuation_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();

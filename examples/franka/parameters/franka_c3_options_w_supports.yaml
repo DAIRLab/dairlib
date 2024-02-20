@@ -11,6 +11,8 @@ contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
 solve_time_filter_alpha: 0.95
+# set to 0 to publish as fast as possible
+publish_frequency: 30
 
 # Workspace Limits
 world_x_limits: [0.4, 0.6]

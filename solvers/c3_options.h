@@ -15,6 +15,7 @@ struct C3Options {
   bool warm_start;
   bool use_predicted_x0;
   double solve_time_filter_alpha;
+  double publish_frequency;
 
   std::vector<double> world_x_limits;
   std::vector<double> world_y_limits;
@@ -73,6 +74,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
+    a->Visit(DRAKE_NVP(publish_frequency));
 
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));

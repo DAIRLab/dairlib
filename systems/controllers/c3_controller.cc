@@ -2,7 +2,6 @@
 
 #include <utility>
 
-#include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
@@ -29,8 +28,7 @@ using systems::TimestampedVector;
 namespace systems {
 
 C3Controller::C3Controller(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    C3Options c3_options)
+    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
     : plant_(plant),
       c3_options_(std::move(c3_options)),
       G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
@@ -153,7 +151,12 @@ C3Controller::C3Controller(
           .get_index();
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_ = VectorXd::Zero(n_x_);
-  DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
+  if (c3_options_.publish_frequency > 0) {
+    DeclarePeriodicDiscreteUpdateEvent(1 / c3_options_.publish_frequency, 0.0,
+                                       &C3Controller::ComputePlan);
+  } else {
+    DeclareForcedDiscreteUpdateEvent(&C3Controller::ComputePlan);
+  }
 }
 
 LCS C3Controller::CreatePlaceholderLCS() const {
@@ -182,10 +185,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
-  // TODO(yangwill): clean this up
-  //  if (x_lcs.segment(n_q_, 3).norm() > 0.05 && c3_options_.use_predicted_x0
-  //  && !x_pred_.isZero()) {
-  if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
+  if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
+      !x_pred_.isZero()) {
     x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_,
                           x_lcs[0] + 10 * dt_ * dt_);
     x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_,
@@ -245,7 +246,6 @@ void C3Controller::OutputC3Solution(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
-
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;

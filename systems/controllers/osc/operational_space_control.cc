@@ -501,7 +501,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   if (W_lambda_h_reg_.size() > 0) {
-    // TODO (@Brian-Acosta) does anyone use lambda_h_ regularization?
+    id_qp_.UpdateCost(
+        "lambda_h_reg",
+        (1 + alpha) * W_lambda_h_reg_,VectorXd::Zero(id_qp_.nh()));
   }
   if (!solver_->IsInitialized()) {
     solver_->InitializeSolver(id_qp_.get_prog(), solver_options_);
@@ -532,6 +534,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   return *u_sol_;
 }
 
+// TODO (@Yangwill) test that this is equivalent to the previous impact
+//  invariant implementation
 void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const Context<double>& context, double t, double t_since_last_state_switch,
@@ -644,17 +648,11 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     fsm_state = fsm_output->get_value()(0);
   }
 
-  double time_since_last_state_switch =
-      used_with_finite_state_machine_
-          ? state->get_timestamp() -
-                context.get_discrete_state(prev_event_time_idx_).get_value()(0)
-          : state->get_timestamp();
-
   output->utime = state->get_timestamp() * 1e6;
   output->fsm_state = fsm_state;
 
   const std::vector<std::pair<std::string, const Eigen::VectorXd&>>
-  regularization_costs {
+  potential_regularization_cost_names_and_vars {
       {"input_cost", *u_sol_},
       {"acceleration_cost", *dv_sol_},
       {"soft_constraint_cost", *epsilon_sol_},
@@ -665,7 +663,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
 
   output->regularization_cost_names.clear();
   output->regularization_costs.clear();
-  for (const auto& [name, sol] : regularization_costs) {
+  for (const auto& [name, sol] : potential_regularization_cost_names_and_vars) {
     VectorXd y = VectorXd::Zero(1);
     if (id_qp_.has_cost_named(name)) {
       id_qp_.get_cost_evaluator(name).Eval(sol, &y);

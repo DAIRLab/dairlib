@@ -75,7 +75,13 @@ class InverseDynamicsQp {
       double friction_coefficient=1);
 
   /*!
-   * Adds an external force to the dynamics
+   * Adds an external force to the dynamics.
+   *
+   * Note: By default, no constraints are imposed on the external forces. If
+   * external forces are declared without corresponding constraints/costs
+   * from the upstream controller, then unexpected behavior may occur.
+   * (i.e. Unconstrained forces effectively act as input variables.)
+   *
    * @param name name of the external force
    * @param eval kinematic evaluator for the associated jacobian
    */
@@ -114,7 +120,7 @@ class InverseDynamicsQp {
   /*!
    * @return the total dimension of the (stacked) contact forces.
    * This is greater than or equal to the number of active rows in the
-   * contact constraint.
+   * contact constraint (see kinematic_evaluator.h).
    */
   [[nodiscard]] int nc() const {return nc_;}
 
@@ -126,7 +132,8 @@ class InverseDynamicsQp {
 
 
   /*!
-   * @return the total number of rows in the contact constraint for all contacts
+   * @return the total number of active rows in the contact constraint for all
+   * contacts. Potentially less than nc() to avoid redundant constraints.
    */
   [[nodiscard]] int nc_active() const {return nc_active_;}
 

@@ -167,6 +167,7 @@ void InverseDynamicsQp::UpdateDynamics(
   MatrixXd Je = MatrixXd::Zero(ne_, nv_);
 
   for (const auto &c : active_contact_constraints) {
+    DRAKE_DEMAND(contact_constraint_evaluators_.count(c) > 0);
     const auto &evaluator = contact_constraint_evaluators_.at(c);
     Jc.block(lambda_c_start_.at(c), 0, 3, nv_) =
         evaluator->EvalFullJacobian(*context_);

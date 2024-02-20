@@ -250,7 +250,7 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(3));
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plate_context_ad.get(), contact_pairs, c3_options);
+      *plate_context_ad, contact_pairs, c3_options);
   auto controller = builder.AddSystem<systems::C3Controller>(
       plant_for_lcs, c3_options);
   auto c3_trajectory_generator =

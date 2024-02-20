@@ -20,7 +20,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::systems::Context<drake::AutoDiffXd>* context_ad,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
       C3Options c3_options);
 
@@ -54,7 +54,7 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
   const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
       contact_pairs_;
 

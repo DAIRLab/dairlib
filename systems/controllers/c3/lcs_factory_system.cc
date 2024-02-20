@@ -26,7 +26,7 @@ LCSFactorySystem::LCSFactorySystem(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>& context,
     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    drake::systems::Context<drake::AutoDiffXd>& context_ad,
     const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
         contact_geoms,
     C3Options c3_options)
@@ -100,7 +100,7 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   plant_.SetPositionsAndVelocities(&context_, q_v_u.head(n_x_));
   multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
   multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
-                                               context_ad_);
+                                               &context_ad_);
   solvers::ContactModel contact_model;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model = solvers::ContactModel::kStewartAndTrinkle;
@@ -112,7 +112,7 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
 
   double scale;
   std::tie(*output_lcs, scale) = LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, *context_ad_, contact_pairs_,
+      plant_, context_, plant_ad_, context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);
 }
@@ -142,7 +142,7 @@ void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<do
 
   std::vector<Eigen::VectorXd> contact_points;
   *output = LCSFactory::ComputeContactJacobian(
-      plant_, context_, plant_ad_, *context_ad_, contact_pairs_,
+      plant_, context_, plant_ad_, context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);
 }

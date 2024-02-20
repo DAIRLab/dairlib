@@ -236,7 +236,7 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
       robot_diagram_for_lcs_->plant(),
       robot_diagram_for_lcs_->mutable_plant_context(
           robot_diagram_root_context_.get()),
-      *plant_for_lcs_autodiff_, plant_for_lcs_autodiff_context_.get(),
+      *plant_for_lcs_autodiff_, *plant_for_lcs_autodiff_context_,
       contact_pairs, c3_options);
   auto controller = builder.AddSystem<systems::C3Controller>(
       robot_diagram_for_lcs_->plant(), c3_options);

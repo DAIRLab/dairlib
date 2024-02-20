@@ -222,7 +222,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
   // Constraint methods
-  void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
 
   void AddContactPoint(
@@ -351,10 +350,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int n_u_;
   int n_revolute_joints_;
 
-  // robot input limits
-  Eigen::VectorXd u_min_;
-  Eigen::VectorXd u_max_;
-
   // robot joint limits
   Eigen::VectorXd q_min_;
   Eigen::VectorXd q_max_;
@@ -402,8 +397,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::pair<int, double>>
       fsm_to_w_input_map_;  // each pair is (joint index, weight)
 
-  // OSC constraint members
-  bool with_input_constraints_ = true;
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;

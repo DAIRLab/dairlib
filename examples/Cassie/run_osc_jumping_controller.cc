@@ -36,6 +36,7 @@ using std::map;
 using std::pair;
 using std::string;
 using std::vector;
+using std::unique_ptr;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -333,19 +334,26 @@ int DoMain(int argc, char* argv[]) {
   vector<int> stance_modes = {
       osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
 
-  const std::vector<std::pair<const std::string, const multibody::WorldPointEvaluator<double>*>>
-  contact_evaluators{
-      {"left_heel", &left_heel_evaluator}, {"right_heel", &right_heel_evaluator},
-      {"left_toe", &left_toe_evaluator}, {"right_toe", &right_toe_evaluator}
-  };
-
-  for (const auto& [name, eval_ptr] : contact_evaluators) {
-    osc->AddContactPoint(
-        name,
-        std::unique_ptr<const multibody::WorldPointEvaluator<double>>(eval_ptr),
-        stance_modes
-    );
-  }
+  osc->AddContactPoint(
+      "left_toe",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      stance_modes
+  );
+  osc->AddContactPoint(
+      "left_heel",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      stance_modes
+  );
+  osc->AddContactPoint(
+      "right_toe",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      stance_modes
+  );
+  osc->AddContactPoint(
+      "right_heel",
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      stance_modes
+  );
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
 

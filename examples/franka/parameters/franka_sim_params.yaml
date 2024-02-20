@@ -1,11 +1,11 @@
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
-end_effector_model: examples/franka/urdf/plate_end_effector_parameter_sweep.urdf
+end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 tray_model: examples/franka/urdf/tray.sdf
 left_support_model: examples/franka/urdf/support.urdf
 right_support_model: examples/franka/urdf/support.urdf
 franka_publish_rate: 1000
-tray_publish_rate: 10
-visualizer_publish_rate: 60
+tray_publish_rate: 1000
+visualizer_publish_rate: 30
 actuator_delay: 0.000
 
 scene_index: 1

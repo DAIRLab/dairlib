@@ -18,10 +18,10 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
  public:
   explicit LCSFactorySystem(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
+      drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
       C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
@@ -41,9 +41,6 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  drake::systems::EventStatus UpdateLCS(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
   void OutputLCS(const drake::systems::Context<double>& context,
                  solvers::LCS* output_traj) const;
   void OutputLCSContactJacobian(const drake::systems::Context<double>& context,
@@ -55,10 +52,10 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
+  drake::systems::Context<double>& context_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
       contact_pairs_;
 
   C3Options c3_options_;

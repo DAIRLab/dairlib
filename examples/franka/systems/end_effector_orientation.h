@@ -5,7 +5,8 @@
 
 namespace dairlib {
 
-class EndEffectorOrientationGenerator : public drake::systems::LeafSystem<double> {
+class EndEffectorOrientationGenerator
+    : public drake::systems::LeafSystem<double> {
  public:
   EndEffectorOrientationGenerator();
 
@@ -16,7 +17,7 @@ class EndEffectorOrientationGenerator : public drake::systems::LeafSystem<double
     return this->get_input_port(radio_port_);
   }
 
-  void SetTrackOrientation(bool track_orientation){
+  void SetTrackOrientation(bool track_orientation) {
     track_orientation_ = track_orientation;
   }
 
@@ -24,8 +25,6 @@ class EndEffectorOrientationGenerator : public drake::systems::LeafSystem<double
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
-  drake::trajectories::PiecewiseQuaternionSlerp<double> GeneratePose(
-      const drake::systems::Context<double>& context) const;
 
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
@@ -34,7 +33,6 @@ class EndEffectorOrientationGenerator : public drake::systems::LeafSystem<double
 
   drake::systems::InputPortIndex trajectory_port_;
   drake::systems::InputPortIndex radio_port_;
-
 };
 
-}  // namespace dairlib::examples::osc_run
+}  // namespace dairlib

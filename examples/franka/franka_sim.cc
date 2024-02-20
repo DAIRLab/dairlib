@@ -122,10 +122,19 @@ int DoMain(int argc, char* argv[]) {
         {"supports", support_geom_set}, {"franka", franka_geom_set});
   }
 
+  const drake::geometry::GeometrySet& franka_only_geom_set =
+      plant.CollectRegisteredGeometries({
+                                            &plant.GetBodyByName("panda_link2"),
+                                            &plant.GetBodyByName("panda_link3"),
+                                            &plant.GetBodyByName("panda_link4"),
+                                            &plant.GetBodyByName("panda_link5"),
+                                            &plant.GetBodyByName("panda_link6"),
+                                            &plant.GetBodyByName("panda_link8"),
+                                        });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-      {"franka", franka_geom_set}, {"tray", tray_collision_set});
+      {"franka", franka_only_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/

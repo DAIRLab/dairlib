@@ -12,13 +12,8 @@ namespace dairlib {
 class EndEffectorForceTrajectoryGenerator
     : public drake::systems::LeafSystem<double> {
  public:
-  EndEffectorForceTrajectoryGenerator(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context);
+  EndEffectorForceTrajectoryGenerator();
 
-  const drake::systems::InputPort<double>& get_input_port_state() const {
-    return this->get_input_port(state_port_);
-  }
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_port_);
   }
@@ -36,14 +31,8 @@ class EndEffectorForceTrajectoryGenerator
 
   drake::systems::DiscreteStateIndex controller_switch_index_;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
-  const drake::multibody::Frame<double>& world_;
-
-  drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex trajectory_port_;
   drake::systems::InputPortIndex radio_port_;
-
 };
 
 }  // namespace dairlib

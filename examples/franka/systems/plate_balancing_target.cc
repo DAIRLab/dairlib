@@ -20,8 +20,7 @@ PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
       target_threshold_(target_threshold) {
   // Input/Output Setup
   radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_radio_out",
-                                     drake::Value<dairlib::lcmt_radio_out>{})
+      this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
   tray_state_port_ =
       this->DeclareVectorInputPort(
@@ -49,8 +48,7 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const StateVector<double>* tray_state =
       (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
   // Ugly FSM
   int current_sequence = context.get_discrete_state(sequence_index_)[0];
@@ -93,7 +91,7 @@ EventStatus PlateBalancingTargetGenerator::DiscreteVariableUpdate(
       discrete_state->get_mutable_value(sequence_index_)[0] = 3;
     }
   }
-  if (current_sequence == 3 && radio_out->channel[15] < 0) {
+  if (current_sequence == 3 && radio_out->value()[15] < 0) {
     discrete_state->get_mutable_value(sequence_index_)[0] = 0;
   }
   return EventStatus::Succeeded();
@@ -114,8 +112,7 @@ void PlateBalancingTargetGenerator::SetRemoteControlParameters(
 void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* target) const {
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  const auto& radio_out = this->EvalVectorInput(context, radio_port_);
 
   VectorXd end_effector_position = first_target_;
   // Update target if remote trigger is active
@@ -133,24 +130,24 @@ void PlateBalancingTargetGenerator::CalcEndEffectorTarget(
   if (end_effector_position[1] > 0.05) {
     end_effector_position[1] = 0.05;  // keep it within the workspace
   }
-  if (radio_out->channel[13] > 0) {
-    end_effector_position(0) += radio_out->channel[0] * x_scale_;
-    end_effector_position(1) += radio_out->channel[1] * y_scale_;
-    end_effector_position(2) += radio_out->channel[2] * z_scale_;
+  if (radio_out->value()[13] > 0) {
+    end_effector_position(0) += radio_out->value()[0] * x_scale_;
+    end_effector_position(1) += radio_out->value()[1] * y_scale_;
+    end_effector_position(2) += radio_out->value()[2] * z_scale_;
   }
-//  end_effector_position(0) = 0.55;
-//  end_effector_position(1) = 0.1 * sin(4 * context.get_time());
-//  end_effector_position(2) = 0.45 + 0.1 * cos(2 *context.get_time()) - end_effector_thickness_;
-//  end_effector_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
-//  end_effector_position(2) = 0.45 - end_effector_thickness_;
+  //  end_effector_position(0) = 0.55;
+  //  end_effector_position(1) = 0.1 * sin(4 * context.get_time());
+  //  end_effector_position(2) = 0.45 + 0.1 * cos(2 *context.get_time()) -
+  //  end_effector_thickness_; end_effector_position(1) = 0.1 * (int) (2 *
+  //  sin(0.5 * context.get_time())); end_effector_position(2) = 0.45 -
+  //  end_effector_thickness_;
   target->SetFromVector(end_effector_position);
 }
 
 void PlateBalancingTargetGenerator::CalcTrayTarget(
     const drake::systems::Context<double>& context,
     BasicVector<double>* target) const {
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  const auto& radio_out = this->EvalVectorInput(context, radio_port_);
   VectorXd target_tray_state = VectorXd::Zero(7);
   VectorXd tray_position = first_target_;
 
@@ -160,14 +157,14 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
              context.get_discrete_state(sequence_index_)[0] == 3) {
     tray_position = third_target_;
   }
-  tray_position(0) += radio_out->channel[0] * x_scale_;
-  tray_position(1) += radio_out->channel[1] * y_scale_;
-  tray_position(2) += radio_out->channel[2] * z_scale_;
-//  tray_position(0) = 0.55;
-//  tray_position(1) = 0.1 * sin(4 * context.get_time());
-//  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
-//  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
-//  tray_position(2) = 0.45;
+  tray_position(0) += radio_out->value()[0] * x_scale_;
+  tray_position(1) += radio_out->value()[1] * y_scale_;
+  tray_position(2) += radio_out->value()[2] * z_scale_;
+  //  tray_position(0) = 0.55;
+  //  tray_position(1) = 0.1 * sin(4 * context.get_time());
+  //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
+  //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
+  //  tray_position(2) = 0.45;
   target_tray_state << 1, 0, 0, 0, tray_position;  // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }

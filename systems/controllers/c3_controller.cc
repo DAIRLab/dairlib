@@ -1,6 +1,7 @@
 #include "c3_controller.h"
 
 #include <utility>
+
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 #include "solvers/c3_miqp.h"
@@ -29,9 +30,8 @@ namespace systems {
 
 C3Controller::C3Controller(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context, C3Options c3_options)
+    C3Options c3_options)
     : plant_(plant),
-      context_(context),
       c3_options_(std::move(c3_options)),
       G_(std::vector<MatrixXd>(c3_options_.N, c3_options_.G)),
       U_(std::vector<MatrixXd>(c3_options_.N, c3_options_.U)),
@@ -48,6 +48,7 @@ C3Controller::C3Controller(
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
+  filtered_solve_time_ = 0.0;
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
@@ -62,6 +63,9 @@ C3Controller::C3Controller(
     n_lambda_ =
         2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
   }
+  VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
+  w_ = std::vector<VectorXd>(N_, zeros);
+  delta_ = std::vector<VectorXd>(N_, zeros);
 
   n_u_ = plant_.num_actuators();
 
@@ -120,10 +124,6 @@ C3Controller::C3Controller(
                              c3_options_.u_vertical_limits[1], 2);
   }
 
-  radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_radio_out",
-                                     drake::Value<dairlib::lcmt_radio_out>{})
-          .get_index();
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
@@ -173,8 +173,6 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
 
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const TimestampedVector<double>* lcs_x =
@@ -187,7 +185,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   // TODO(yangwill): clean this up
   //  if (x_lcs.segment(n_q_, 3).norm() > 0.05 && c3_options_.use_predicted_x0
   //  && !x_pred_.isZero()) {
-  if (!radio_out->channel[14] && c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
+  if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 && !x_pred_.isZero()) {
     x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_,
                           x_lcs[0] + 10 * dt_ * dt_);
     x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_,

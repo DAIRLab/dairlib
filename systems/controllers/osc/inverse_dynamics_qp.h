@@ -72,7 +72,7 @@ class InverseDynamicsQp {
   void AddContactConstraint(
       const std::string &name,
       std::unique_ptr<const multibody::WorldPointEvaluator<double>> eval,
-      double friction_coefficient=1);
+      double friction_coefficient);
 
   /*!
    * Adds an external force to the dynamics.

@@ -100,16 +100,6 @@ OperationalSpaceControl::OperationalSpaceControl(
   const std::map<string, int>& vel_map =
       multibody::MakeNameToVelocitiesMap(plant);
 
-  // Get input limits
-  VectorXd u_min(n_u_);
-  VectorXd u_max(n_u_);
-  for (JointActuatorIndex i(0); i < n_u_; ++i) {
-    u_min[i] = -plant_.get_joint_actuator(i).effort_limit();
-    u_max[i] = plant_.get_joint_actuator(i).effort_limit();
-  }
-  u_min_ = u_min;
-  u_max_ = u_max;
-
   n_revolute_joints_ = 0;
   for (JointIndex i(0); i < plant_.num_joints(); ++i) {
     const drake::multibody::Joint<double>& joint = plant_.get_joint(i);
@@ -178,7 +168,9 @@ void OperationalSpaceControl::AddContactPoint(
       contact_names_map_.insert({i, {name}});
     }
   }
-  id_qp_.AddContactConstraint(name, std::move(evaluator));
+
+  DRAKE_DEMAND(mu_ > 0);
+  id_qp_.AddContactConstraint(name, std::move(evaluator), mu_);
 }
 
 void OperationalSpaceControl::AddKinematicConstraint(
@@ -258,10 +250,6 @@ void OperationalSpaceControl::Build() {
   lambda_h_sol_->setZero();
   u_prev_->setZero();
 
-  // 5. Input constraint
-  if (with_input_constraints_) {
-    // TODO (@Brian-Acosta) add input limits to id_qp
-  }
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {

@@ -7,10 +7,19 @@ franka_input_echo: FRANKA_INPUT_ECHO
 osc_channel: OSC_FRANKA
 osc_debug_channel: OSC_DEBUG_FRANKA
 
-c3_actor_channel: C3_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
-c3_object_channel: C3_TRAJECTORY_TRAY # lcmt_timestamped_saved_traj
-c3_force_channel: C3_FORCES
-c3_debug_output_channel: C3_DEBUG
+c3_actor_curr_plan_channel: C3_TRAJECTORY_ACTOR_CURR_PLAN # lcmt_timestamped_saved_traj
+c3_object_curr_plan_channel: C3_TRAJECTORY_OBJECT_CURR_PLAN # lcmt_timestamped_saved_traj
+c3_force_curr_channel: C3_FORCES_CURR
+c3_debug_output_curr_channel: C3_DEBUG_CURR
+
+c3_actor_best_plan_channel: C3_TRAJECTORY_ACTOR_BEST_PLAN # lcmt_timestamped_saved_traj
+c3_object_best_plan_channel: C3_TRAJECTORY_OBJECT_BEST_PLAN # lcmt_timestamped_saved_traj
+c3_force_best_channel: C3_FORCES_BEST
+c3_debug_output_best_channel: C3_DEBUG_BEST
+
+tracking_trajectory_actor_channel: TRACKING_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
+tracking_trajectory_object_channel: TRACKING_TRAJECTORY_OBJECT # lcmt_timestamped_saved_traj
+
 c3_target_state_channel: C3_TARGET # lcmt_c3_state
 c3_actual_state_channel: C3_ACTUAL # lcmt_c3_state
 

@@ -19,6 +19,8 @@
 
 #include "drake/systems/framework/leaf_system.h"
 
+using systems::TimestampedVector;
+
 namespace dairlib {
 namespace systems {
 
@@ -45,32 +47,46 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return this->get_input_port(lcs_state_input_port_);
   }
 
-  // Current sample output ports
-  const drake::systems::OutputPort<double>& get_output_port_c3_solution_curr()
+  // Current location plan output ports
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution_curr_plan()
       const {
-    return this->get_output_port(c3_solution_curr_port_);
+    return this->get_output_port(c3_solution_curr_plan_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates_curr()
+  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates_curr_plan()
       const {
-    return this->get_output_port(c3_intermediates_curr_port_);
+    return this->get_output_port(c3_intermediates_curr_plan_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_jacobian_curr() 
+  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_jacobian_curr_plan() 
       const {
-    return this->get_output_port(lcs_contact_jacobian_curr_port_);
+    return this->get_output_port(lcs_contact_jacobian_curr_plan_port_);
   }
 
-  // Best sample output ports
-  const drake::systems::OutputPort<double>& get_output_port_c3_solution_best()
+  // Best sample plan output ports
+  const drake::systems::OutputPort<double>& get_output_port_c3_solution_best_plan()
       const {
-    return this->get_output_port(c3_solution_best_port_);
+    return this->get_output_port(c3_solution_best_plan_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates_best()
+  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates_best_plan()
       const {
-    return this->get_output_port(c3_intermediates_best_port_);
+    return this->get_output_port(c3_intermediates_best_plan_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_jacobian_best() 
+  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_jacobian_best_plan() 
       const {
-    return this->get_output_port(lcs_contact_jacobian_best_port_);
+    return this->get_output_port(lcs_contact_jacobian_best_plan_port_);
+  }
+
+  // Execution trajectory output ports
+  const drake::systems::OutputPort<double>& get_output_port_c3_traj_execute() 
+      const {
+    return this->get_output_port(c3_traj_execute_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_repos_traj_execute() 
+      const {
+    return this->get_output_port(repos_traj_execute_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_is_c3_mode() 
+      const {
+    return this->get_output_port(is_c3_mode_port_);
   }
 
   // Sample related output ports
@@ -97,27 +113,31 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void UpdateContext(Eigen::VectorXd lcs_state);
 
-  void OutputC3SolutionCurr(
+  void UpdateC3ExecutionTrajectory(const BasicVector<double>& x_lcs);
+
+  void UpdateRepositioningExecutionTrajectory(const BasicVector<double>& x_lcs);
+
+  void OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const;
 
-  void OutputC3IntermediatesCurr(
+  void OutputC3IntermediatesCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const;
 
-  void OutputLCSContactJacobianCurr(
+  void OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian) const;
 
-  void OutputC3SolutionBest(
+  void OutputC3SolutionBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const;
 
-  void OutputC3IntermediatesBest(
+  void OutputC3IntermediatesBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const;
 
-  void OutputLCSContactJacobianBest(
+  void OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian) const;
 
@@ -129,17 +149,33 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     std::vector<double>* all_sample_costs) const;
 
+  void OutputC3TrajExecute(
+    const drake::systems::Context<double>& context,
+    std::vector<TimestampedVector<double>>* c3_traj_execute) const;
+
+  void OutputReposTrajExecute(
+    const drake::systems::Context<double>& context,
+    std::vector<TimestampedVector<double>>* repos_traj_execute) const;
+
+  void OutputIsC3Mode(
+    const drake::systems::Context<double>& context,
+    bool* is_c3_mode) const;
+
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   // Current sample output port indices
-  drake::systems::OutputPortIndex c3_solution_curr_port_;
-  drake::systems::OutputPortIndex c3_intermediates_curr_port_;
-  drake::systems::OutputPortIndex lcs_contact_jacobian_curr_port_;
+  drake::systems::OutputPortIndex c3_solution_curr_plan_port_;
+  drake::systems::OutputPortIndex c3_intermediates_curr_plan_port_;
+  drake::systems::OutputPortIndex lcs_contact_jacobian_curr_plan_port_;
   // Best sample output port indices
-  drake::systems::OutputPortIndex c3_solution_best_port_;
-  drake::systems::OutputPortIndex c3_intermediates_best_port_;
-  drake::systems::OutputPortIndex lcs_contact_jacobian_best_port_;
+  drake::systems::OutputPortIndex c3_solution_best_plan_port_;
+  drake::systems::OutputPortIndex c3_intermediates_best_plan_port_;
+  drake::systems::OutputPortIndex lcs_contact_jacobian_best_plan_port_;
+  // Execution trajectory output port indices
+  drake::systems::OutputPortIndex c3_traj_execute_port_;
+  drake::systems::OutputPortIndex repos_traj_execute_port_;
+  drake::systems::OutputPortIndex is_c3_mode_port_;
   // Sample related output port indices
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;
@@ -174,21 +210,25 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int N_;
 
 
-  mutable double filtered_solve_time_;
+  mutable double filtered_solve_time_ = 0;
 
   // C3 solutions for current location.
   // TODO: to be updated in ComputePlan
-  mutable std::unique_ptr<solvers::C3> c3_curr_;
-  mutable std::vector<Eigen::VectorXd> delta_;
-  mutable std::vector<Eigen::VectorXd> w_;
-  mutable Eigen::VectorXd x_pred_curr_;
+  mutable std::unique_ptr<solvers::C3> c3_curr_plan_;
+  mutable std::vector<Eigen::VectorXd> delta_plan_;
+  mutable std::vector<Eigen::VectorXd> w_plan_;
+  mutable Eigen::VectorXd x_pred_curr_plan_;
   
   // C3 solutions for best sample location.
   // TODO: to be updated in ComputePlan
-  mutable std::unique_ptr<solvers::C3> c3_best_;
-  mutable std::vector<Eigen::VectorXd> delta_best_;
-  mutable std::vector<Eigen::VectorXd> w_best_;
-  mutable Eigen::VectorXd x_pred_best_;
+  mutable std::unique_ptr<solvers::C3> c3_best_plan_;
+  mutable std::vector<Eigen::VectorXd> delta_best_plan_;
+  mutable std::vector<Eigen::VectorXd> w_best_plan_;
+  mutable Eigen::VectorXd x_pred_best_plan_;
+
+  // LCS trajectories for C3 or repositioning modes.
+  mutable std::vector<TimestampedVector<double>> c3_traj_execute_;
+  mutable std::vector<TimestampedVector<double>> repos_traj_execute_;
 
   // Samples and associated costs.
   // TODO: to be updated in ComputePlan
@@ -206,6 +246,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                      SAMPLE_INDEX_7, SAMPLE_INDEX_8, SAMPLE_INDEX_9,
                      SAMPLE_INDEX_10, SAMPLE_INDEX_11, SAMPLE_INDEX_12 };
   const int CURRENT_REPOSITION_INDEX = SAMPLE_INDEX_1;
+
+  mutable SampleIndex best_sample_index_ = CURRENT_LOCATION_INDEX;
 
 };
 

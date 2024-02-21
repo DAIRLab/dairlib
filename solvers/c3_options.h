@@ -51,8 +51,10 @@ struct C3Options {
   std::vector<double> u_u;
 
   std::vector<double> mu;
-  double dt;
-  double planning_dt;
+  double dt;                    // dt for everything if not using sampling-based
+                                // C3 controller.
+  double planning_dt;           // dt for planning when comparing samples.
+  double execution_dt;          // dt for execution after comparing samples.
   int num_friction_directions;
   int num_contacts;
   Eigen::MatrixXd Q;
@@ -86,6 +88,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(planning_dt));
+    a->Visit(DRAKE_NVP(execution_dt));
     a->Visit(DRAKE_NVP(num_friction_directions));
     a->Visit(DRAKE_NVP(num_contacts));
 

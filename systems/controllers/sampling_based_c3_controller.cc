@@ -20,6 +20,7 @@ using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using solvers::C3;
 using solvers::C3MIQP;
 using solvers::C3QP;
@@ -86,18 +87,18 @@ SamplingC3Controller::SamplingC3Controller(
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
   if (c3_options_.projection_type == "MIQP") {
-    c3_curr_ = std::make_unique<C3MIQP>(lcs_placeholder,
+    c3_curr_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
                                         x_desired_placeholder, c3_options_);
-    c3_best_ = std::make_unique<C3MIQP>(lcs_placeholder,
+    c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                         C3::CostMatrices(Q_, R_, G_, U_),
                                         x_desired_placeholder, c3_options_);
 
   } else if (c3_options_.projection_type == "QP") {
-    c3_curr_ = std::make_unique<C3QP>(lcs_placeholder,
+    c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
-    c3_best_ = std::make_unique<C3QP>(lcs_placeholder,
+    c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
 
@@ -106,48 +107,48 @@ SamplingC3Controller::SamplingC3Controller(
     DRAKE_THROW_UNLESS(false);
   }
 
-  c3_curr_->SetOsqpSolverOptions(solver_options_);
-  c3_best_->SetOsqpSolverOptions(solver_options_);
+  c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
+  c3_best_plan_->SetOsqpSolverOptions(solver_options_);
 
   // Set actor bounds
   for (int i : vector<int>({0})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_curr_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
+    c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
                                   c3_options_.world_x_limits[1], 1);
-    c3_best_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
+    c3_best_plan_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
                                   c3_options_.world_x_limits[1], 1);
   }
   for (int i : vector<int>({1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_curr_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
+    c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
                                   c3_options_.world_y_limits[1], 1);
-    c3_best_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
+    c3_best_plan_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
                                   c3_options_.world_y_limits[1], 1);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
-    c3_curr_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
+    c3_curr_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
                                   c3_options_.world_z_limits[1], 1);
-    c3_best_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
+    c3_best_plan_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
                                   c3_options_.world_z_limits[1], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
+    c3_curr_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
                                   c3_options_.u_horizontal_limits[1], 2);
-    c3_best_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
+    c3_best_plan_->AddLinearConstraint(A, c3_options_.u_horizontal_limits[0],
                                   c3_options_.u_horizontal_limits[1], 2);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
+    c3_curr_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
                                   c3_options_.u_vertical_limits[1], 2);
-    c3_best_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
+    c3_best_plan_->AddLinearConstraint(A, c3_options_.u_vertical_limits[0],
                                   c3_options_.u_vertical_limits[1], 2);
   }
 
@@ -174,53 +175,73 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
                                         std::vector<Eigen::VectorXd>());
-  auto all_sample_locations_ = std::vector<Eigen::Vector3d>();
-  auto all_sample_costs_ = std::vector<double>();
+  int num_samples = std::max(sampling_params_.num_additional_samples_repos,
+                             sampling_params_.num_additional_samples_c3);
+  all_sample_locations_ = vector<Vector3d>(num_samples + 1, Vector3d::Zero());
+  all_sample_costs_ = std::vector<double>(num_samples + 1, -1);
+  c3_traj_execute_ = vector<TimestampedVector<double>>(N_ + 1);
+  repos_traj_execute_ = vector<TimestampedVector<double>>(N_ + 1);
+  for (int i=0; i < N_+1; i++) {
+    c3_traj_execute_[i]->SetDataVector(VectorXd::Zero(n_x_));
+    repos_traj_execute_[i]->SetDataVector(VectorXd::Zero(n_x_));
+  }
 
-  // Current sample output ports.
-  c3_solution_curr_port_ =
-      this->DeclareAbstractOutputPort("c3_solution_curr", c3_solution,
-                                      &SamplingC3Controller::OutputC3SolutionCurr)
-          .get_index();
-  c3_intermediates_curr_port_ =
-      this->DeclareAbstractOutputPort("c3_intermediates_curr", c3_intermediates,
-                                      &SamplingC3Controller::OutputC3IntermediatesCurr)
-          .get_index();
+  // Current location plan output ports.
+  c3_solution_curr_plan_port_ = this->DeclareAbstractOutputPort(
+    "c3_solution_curr_plan", c3_solution,
+    &SamplingC3Controller::OutputC3SolutionCurrPlan
+  ).get_index();
+  c3_intermediates_curr_plan_port_ = this->DeclareAbstractOutputPort(
+    "c3_intermediates_curr_plan", c3_intermediates,
+    &SamplingC3Controller::OutputC3IntermediatesCurrPlan
+  ).get_index();
+  lcs_contact_jacobian_curr_plan_port_ = this->DeclareAbstractOutputPort(
+    "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_jacobian,
+    &SamplingC3Controller::OutputLCSContactJacobianCurrPlan
+  ).get_index();
+
+  // Best sample plan output ports.
+  c3_solution_best_plan_port_ = this->DeclareAbstractOutputPort(
+    "c3_solution_best_plan", c3_solution,
+    &SamplingC3Controller::OutputC3SolutionBestPlan
+  ).get_index();
+  c3_intermediates_best_plan_port_ = this->DeclareAbstractOutputPort(
+    "c3_intermediates_best_plan", c3_intermediates,
+    &SamplingC3Controller::OutputC3IntermediatesBestPlan
+  ).get_index();
+  lcs_contact_jacobian_best_plan_port_ = this->DeclareAbstractOutputPort(
+    "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_jacobian,
+    &SamplingC3Controller::OutputLCSContactJacobianBestPlan
+  ).get_index();
+
+  // Execution trajectory output ports.
+  c3_traj_execute_port_ = this->DeclareAbstractOutputPort(
+    "c3_traj_execute", c3_traj_execute_,
+    &SamplingC3Controller::OutputC3TrajExecute
+  ).get_index();
+  repos_traj_execute_port_ = this->DeclareAbstractOutputPort(
+    "repos_traj_execute", repos_traj_execute_,
+    &SamplingC3Controller::OutputReposTrajExecute
+  ).get_index();
+  is_c3_mode_port_ = this->DeclareAbstractOutputPort(
+    "is_c3_mode", is_doing_c3_,
+    &SamplingC3Controller::OutputIsC3Mode
+  ).get_index();
   
-  lcs_contact_jacobian_curr_port_ = 
-      this->DeclareAbstractOutputPort("J_lcs_curr, p_lcs_curr", lcs_contact_jacobian,
-                                      &SamplingC3Controller::OutputLCSContactJacobianCurr)
-          .get_index();
-
-  // Best sample output ports.
-  c3_solution_best_port_ =
-      this->DeclareAbstractOutputPort("c3_solution_best", c3_solution,
-                                      &SamplingC3Controller::OutputC3SolutionBest)
-          .get_index();
-  c3_intermediates_best_port_ =
-      this->DeclareAbstractOutputPort("c3_intermediates_best", c3_intermediates,
-                                      &SamplingC3Controller::OutputC3IntermediatesBest)
-          .get_index();
-  
-  lcs_contact_jacobian_best_port_ = 
-      this->DeclareAbstractOutputPort("J_lcs_best, p_lcs_best", lcs_contact_jacobian,
-                                      &SamplingC3Controller::OutputLCSContactJacobianBest)
-          .get_index();
-
   // Sample location related output ports.
-  all_sample_locations_port_ = 
-      this->DeclareAbstractOutputPort("all_sample_locations", all_sample_locations_,
-                                      &SamplingC3Controller::OutputAllSampleLocations)
-          .get_index();
-
-  all_sample_costs_port_ = 
-      this->DeclareAbstractOutputPort("all_sample_costs", all_sample_costs_,
-                                      &SamplingC3Controller::OutputAllSampleCosts)
-          .get_index();
+  all_sample_locations_port_ = this->DeclareAbstractOutputPort(
+    "all_sample_locations", all_sample_locations_,
+    &SamplingC3Controller::OutputAllSampleLocations
+  ).get_index();
+  all_sample_costs_port_ = this->DeclareAbstractOutputPort(
+    "all_sample_costs", all_sample_costs_,
+    &SamplingC3Controller::OutputAllSampleCosts
+  ).get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
-  x_pred_curr_ = VectorXd::Zero(n_x_);
-  x_pred_best_ = VectorXd::Zero(n_x_);
+  x_pred_curr_plan_ = VectorXd::Zero(n_x_);
+  x_pred_best_plan_ = VectorXd::Zero(n_x_);
+
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
   // Set parallelization settings.
@@ -256,8 +277,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Evaluate input ports.
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-  // TODO: Figure out why x_lcs_des and lcs_x_curr seem to be of different types and are
-  // treated differently.
+  // Not sure why x_lcs_des is a vector while lcs_x_curr is a timestamped
+  // vector.
   const BasicVector<double>& x_lcs_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const TimestampedVector<double>* lcs_x_curr =
@@ -268,29 +289,29 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
 
   // Allow the x-box controller to set the state of the system.
-  if (!radio_out->channel[14] && c3_options_.use_predicted_x0 && !x_pred_curr_.isZero()) {
+  if (!radio_out->channel[14] && c3_options_.use_predicted_x0 && !x_pred_curr_plan_.isZero()) {
     x_lcs_curr[0] = std::clamp(
-      x_pred_curr_[0], x_lcs_curr[0] - 10 * dt_ * dt_,
+      x_pred_curr_plan_[0], x_lcs_curr[0] - 10 * dt_ * dt_,
       x_lcs_curr[0] + 10 * dt_ * dt_
     );
     x_lcs_curr[1] = std::clamp(
-      x_pred_curr_[1], x_lcs_curr[1] - 10 * dt_ * dt_,
+      x_pred_curr_plan_[1], x_lcs_curr[1] - 10 * dt_ * dt_,
       x_lcs_curr[1] + 10 * dt_ * dt_
     );
     x_lcs_curr[2] = std::clamp(
-      x_pred_curr_[2], x_lcs_curr[2] - 10 * dt_ * dt_,
+      x_pred_curr_plan_[2], x_lcs_curr[2] - 10 * dt_ * dt_,
       x_lcs_curr[2] + 10 * dt_ * dt_
     );
     x_lcs_curr[n_q_ + 0] = std::clamp(
-      x_pred_curr_[n_q_ + 0], x_lcs_curr[n_q_ + 0] - 10 * dt_,
+      x_pred_curr_plan_[n_q_ + 0], x_lcs_curr[n_q_ + 0] - 10 * dt_,
       x_lcs_curr[n_q_ + 0] + 10 * dt_
     );
     x_lcs_curr[n_q_ + 1] = std::clamp(
-      x_pred_curr_[n_q_ + 1], x_lcs_curr[n_q_ + 1] - 10 * dt_,
+      x_pred_curr_plan_[n_q_ + 1], x_lcs_curr[n_q_ + 1] - 10 * dt_,
       x_lcs_curr[n_q_ + 1] + 10 * dt_
     );
     x_lcs_curr[n_q_ + 2] = std::clamp(
-      x_pred_curr_[n_q_ + 2], x_lcs_curr[n_q_ + 2] - 10 * dt_,
+      x_pred_curr_plan_[n_q_ + 2], x_lcs_curr[n_q_ + 2] - 10 * dt_,
       x_lcs_curr[n_q_ + 2] + 10 * dt_
     );
   }
@@ -320,6 +341,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
+
+  // Update the set of sample locations under consideration.
+  for (int i = 0; i < num_total_samples; i++) {
+    all_sample_locations_[i] = candidate_states[i].head(3);
+  }
+  for (int i = num_total_samples; i < all_sample_locations_.size(); i++) {
+    all_sample_locations_[i] = Vector3d::Zero();
+  }
 
   // Make LCS objects for each sample.
   std::vector<solvers::LCS> candidate_lcs_objects;
@@ -380,7 +409,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // End of parallelization
 
   // Review the cost results to determine the best sample.
-  SampleIndex best_sample_index = CURRENT_LOCATION_INDEX;
   double best_additional_sample_cost;
   if (num_total_samples > 1) {
     std::vector<double> additional_sample_cost_vector = 
@@ -391,20 +419,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::vector<double>::iterator it = 
       std::min_element(std::begin(additional_sample_cost_vector),
                        std::end(additional_sample_cost_vector));
-    best_sample_index = (SampleIndex)(
+    best_sample_index_ = (SampleIndex)(
       std::distance(std::begin(additional_sample_cost_vector), it) + 1);
   }
 
   // Update C3 objects and intermediates for current and best samples.
-  c3_curr_ = c3_objects.at(CURRENT_LOCATION_INDEX);
-  c3_best_ = c3_objects.at(best_sample_index);
-  delta_curr_ = deltas.at(CURRENT_LOCATION_INDEX);
-  delta_best_ = deltas.at(best_sample_index);
-  w_curr_ = ws.at(CURRENT_LOCATION_INDEX);
-  w_best_ = ws.at(best_sample_index);
-  
-  // Update context of a plant with current state.
-  UpdateContext(x_lcs_curr);
+  c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
+  c3_best_plan_ = c3_objects.at(best_sample_index_);
+  delta_curr_plan_ = deltas.at(CURRENT_LOCATION_INDEX);
+  delta_best_plan_ = deltas.at(best_sample_index_);
+  w_curr_plan_ = ws.at(CURRENT_LOCATION_INDEX);
+  w_best_plan_ = ws.at(best_sample_index_);
 
   // Determine whether to do C3 or reposition.
   if (is_doing_c3_ == true) { // Currently doing C3.
@@ -426,31 +451,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
-  // TODO: choose next action based on state.
-
-  // TODO: set all_sample_locations_ somewhere.  Use default of (0,0,0)
-
-  // TODO: get lcs somewhere
-  // auto& lcs =
-  //     this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
-  auto curr_system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
-    plant_, context_, plant_ad_, context_ad_, contact_pairs_,
-    c3_options_.num_friction_directions, c3_options_.mu, 
-    c3_options_.planning_dt, N_, c3_options_.contact_model);
-  solvers::LCS lcs_object_curr = curr_system_scaling_pair.first;
-
-  // c3_->UpdateLCS(lcs);
-  // c3_->UpdateTarget(x_desired);
-
-  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-  delta_init.head(n_x_) = x_lcs_curr;
-  std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-
-  // TODO: Repeat this for current and best sample locations.
-  c3_->Solve(x_lcs_curr, delta, w);
-  delta_ = delta;
-  w_ = w;
+  // Update the execution trajectories.  Both C3 and repositioning trajectories
+  // are updated, but the is_doing_c3_ flag determines which one is used via the
+  // downstream selector system.
+  UpdateContext(x_lcs_curr);
+  UpdateC3ExecutionTrajectory(x_lcs_curr);
+  UpdateRepositioningExecutionTrajectory(x_lcs_curr);
 
   // End of control loop cleanup.
   auto finish = std::chrono::high_resolution_clock::now();
@@ -491,13 +497,93 @@ void UpdateContext(Eigen::VectorXd lcs_state){
     multibody::SetInputsIfNew<double>(plant_, test_u, &context_);
 }
 
+// Perform one step of C3.
+void UpdateC3ExecutionTrajectory(const BasicVector<double>& x_lcs) {
+  // Get the input from the plan.
+  vector<VectorXd> u_sol = c3_curr_plan_.GetInputSolution();
+
+  // Evaluate the time from the context for setting timestamps.
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  // Create an LCS object.
+  auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
+    plant_, context_, plant_ad_, context_ad_, contact_pairs_,
+    c3_options_.num_friction_directions, c3_options_.mu, 
+    c3_options_.execution_dt, N_, c3_options_.contact_model);
+  solvers::LCS lcs_object = system_scaling_pair.first;
+
+  // Roll out the execution LCS with the planned inputs.
+  c3_traj_execute_[0]->SetDataVector(x_lcs);
+  c3_traj_execute_[0]->set_timestamp(t + filtered_solve_time_);
+  for (int i = 0; i < N_; i++) {
+    c3_traj_execute_[i+1]->SetDataVector(
+      lcs_object.Simulate(c3_traj_execute_[i], u_sol[i]));
+    c3_traj_execute_[i+1]->set_timestamp(
+      t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt);
+  }
+}
+
+// Perform one step of repositioning.
+void UpdateRepositioningExecutionTrajectory(const BasicVector<double>& x_lcs) {
+  // Get the best sample location.
+  Eigen::Vector3d best_sample_location =
+    all_sample_locations_[best_sample_index_];
+
+  // Get the current end effector location.
+  Vector3d current_ee_location = x_lcs.head(3);
+  Vector3d current_object_location = x_lcs.segment(7, 3);
+
+  Vector3d curr_to_goal_vec = best_sample_location - current_ee_location;
+
+  // Compute spline waypoints.
+  Vector3d p0 = current_ee_location;
+  Vector3d p3 = best_sample_location;
+  Vector3d p1 = current_ee_location + 0.25*curr_to_goal_vec - 
+                current_object_location;
+  p1 = current_object_location + sampling_params_.spline_width*p1/p1.norm();
+  Vector3d p2 = current_ee_location + 0.75*curr_to_goal_vec - 
+                current_object_location;
+  p2 = current_object_location + sampling_params_.spline_width*p2/p2.norm();
+
+  // Compute total estimated travel time for spline.
+  double travel_distance = curr_to_goal_vec.norm();
+  double total_travel_time = travel_distance/sampling_params_.reposition_speed;
+
+  // Evaluate the time from the context for setting timestamps.
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+
+  // Roll out the execution LCS with the planned inputs.
+  repos_traj_execute_[0]->SetDataVector(x_lcs);
+  repos_traj_execute_[0]->set_timestamp(t + filtered_solve_time_);
+
+  for (int i = 0; i < N_; i++) {
+    double t_spline = (i+1)*c3_options_.execution_dt/total_travel_time;
+    // Don't overshoot the end of the spline.
+    t_spline = std::min(1.0, t_spline);
+
+    Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) + 
+                           std::pow(t_spline,2) * (3*p0 - 6*p1 + 3*p2) +
+                           std::pow(t_spline,3) * (-p0 + 3*p1 - 3*p2 + p3);
+
+    // Set the next LCS state as the current state with updated end effector
+    // location and zero end effector velocity.     
+    VectorXd next_lcs_state = x_lcs;
+    next_lcs_state.head(3) = next_ee_loc;
+    next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
+
+    repos_traj_execute_[i+1]->SetDataVector(next_lcs_state);
+    repos_traj_execute_[i+1]->set_timestamp(
+      t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt);
+  }
+}
+
 // Output port handlers for current location
-void SamplingC3Controller::OutputC3SolutionCurr(
+void SamplingC3Controller::OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
-  auto z_sol = c3_curr_->GetFullSolution();
+  auto z_sol = c3_curr_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
@@ -510,14 +596,14 @@ void SamplingC3Controller::OutputC3SolutionCurr(
   if (filtered_solve_time_ < N_ * dt_) {
     int index = filtered_solve_time_ / dt_;
     double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
-    x_pred_curr_ = weight * z_sol[index].segment(0, n_x_) +
+    x_pred_curr_plan_ = weight * z_sol[index].segment(0, n_x_) +
               (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
-    x_pred_curr_ = z_sol[1].segment(0, n_x_);
+    x_pred_curr_plan_ = z_sol[1].segment(0, n_x_);
   }
 }
 
-void SamplingC3Controller::OutputC3IntermediatesCurr(
+void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0] +
@@ -525,29 +611,21 @@ void SamplingC3Controller::OutputC3IntermediatesCurr(
 
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
-    c3_intermediates->w_.col(i) = w_curr_[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta_curr_[i].cast<float>();
+    c3_intermediates->w_.col(i) = w_curr_plan_[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_curr_plan_[i].cast<float>();
   }
 }
 
-// TODO: This gets lcs_x from input port, but sample location will change lcs_x.  This
-// function could actually stay the same but OutputLCSContactJacobianBest needs to build
-// lcs_x differently.
-void SamplingC3Controller::OutputLCSContactJacobianCurr(
+void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian) const {
+    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian
+) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
 
-  VectorXd q_v_u =
-      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
-          plant_.num_actuators());
-  // u is irrelevant in pure geometric/kinematic calculation
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
-
-  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x_));
-  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), context_);
+  UpdateContext(lcs_x->get_data());
+  
   solvers::ContactModel contact_model;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model = solvers::ContactModel::kStewartAndTrinkle;
@@ -565,12 +643,12 @@ void SamplingC3Controller::OutputLCSContactJacobianCurr(
 }
 
 // Output port handlers for best sample location
-void SamplingC3Controller::OutputC3SolutionBest(
+void SamplingC3Controller::OutputC3SolutionBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
-  auto z_sol = c3_best_->GetFullSolution();
+  auto z_sol = c3_best_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
@@ -583,14 +661,14 @@ void SamplingC3Controller::OutputC3SolutionBest(
   if (filtered_solve_time_ < N_ * dt_) {
     int index = filtered_solve_time_ / dt_;
     double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
-    x_pred_best_ = weight * z_sol[index].segment(0, n_x_) +
+    x_pred_best_plan_ = weight * z_sol[index].segment(0, n_x_) +
               (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
-    x_pred_best_ = z_sol[1].segment(0, n_x_);
+    x_pred_best_plan_ = z_sol[1].segment(0, n_x_);
   }
 }
 
-void SamplingC3Controller::OutputC3IntermediatesBest(
+void SamplingC3Controller::OutputC3IntermediatesBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0] +
@@ -598,33 +676,25 @@ void SamplingC3Controller::OutputC3IntermediatesBest(
 
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
-    c3_intermediates->w_.col(i) = w_best_[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta_best_[i].cast<float>();
+    c3_intermediates->w_.col(i) = w_best_plan_[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_best_plan_[i].cast<float>();
   }
 }
 
-// TODO: This gets lcs_x from input port, but sample location will change lcs_x.
-// OutputLCSContactJacobianCurr can stay the same but this one will need to update lcs_x
-// based on the best sample location.
-void SamplingC3Controller::OutputLCSContactJacobianBest(
+void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian) const {
-  
-  // TODO: Fix the lcs_x state.
-  DRAKE_THROW_UNLESS(false);
+    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>* lcs_contact_jacobian
+) const {
 
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
 
-  VectorXd q_v_u =
-      VectorXd::Zero(plant_.num_positions() + plant_.num_velocities() +
-          plant_.num_actuators());
-  // u is irrelevant in pure geometric/kinematic calculation
-  q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+  // Linearize about state with end effector in sample location.
+  VectorXd x_sample = lcs_x->get_data();
+  x_sample.head(3) = all_sample_locations_[best_sample_index_];
+  UpdateContext(x_sample);
 
-  plant_.SetPositionsAndVelocities(context_, q_v_u.head(n_x_));
-  multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), context_);
   solvers::ContactModel contact_model;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     contact_model = solvers::ContactModel::kStewartAndTrinkle;
@@ -639,6 +709,32 @@ void SamplingC3Controller::OutputLCSContactJacobianBest(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, c3_options_.contact_model);
+
+  // Revert the context.
+  UpdateContext(lcs_x->get_data());
+}
+
+// Output port handlers for executing C3 and repositioning ports
+void OutputC3TrajExecute(
+    const drake::systems::Context<double>& context,
+    std::vector<TimestampedVector<double>>* c3_traj_execute) {
+  // TODO: The below assignment may not work; may need to iterate over length of
+  // the vector of timestamped vectors and use SetData / set_timestamp.
+  *c3_traj_execute = c3_traj_execute_;
+}
+
+void OutputReposTrajExecute(
+    const drake::systems::Context<double>& context,
+    std::vector<TimestampedVector<double>>* repos_traj_execute) {
+  // TODO: The below assignment may not work; may need to iterate over length of
+  // the vector of timestamped vectors and use SetData / set_timestamp.
+  *repos_traj_execute = repos_traj_execute_;
+}
+
+void OutputIsC3Mode(
+    const drake::systems::Context<double>& context,
+    bool* is_c3_mode) {
+  *is_c3_mode = is_doing_c3_;
 }
 
 // Output port handlers for sample-related ports

@@ -20,6 +20,10 @@ max_angle_from_vertical: 1.822
 num_additional_samples_repos: 2
 num_additional_samples_c3: 1
 
+# Repositioning parameters.
+spline_width: 0.13
+reposition_speed: 0.75    # m/s
+
 # Cost associated with traveling.
 travel_cost_per_meter: 100
 reposition_fixed_cost: 100

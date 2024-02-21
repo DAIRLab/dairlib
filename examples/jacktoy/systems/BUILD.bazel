@@ -67,6 +67,17 @@ cc_library(
 )
 
 cc_library(
+    name = "mode_selector",
+    srcs = ["mode_selector.cc"],
+    hdrs = ["mode_selector.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "c3_trajectory_generator",
     srcs = [
         "c3_trajectory_generator.cc",
@@ -83,6 +94,63 @@ cc_library(
         "//solvers:c3",
         "//solvers:c3_output",
         "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "tracking_trajectory_generator",
+    srcs = [
+        "tracking_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "tracking_trajectory_generator.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sample_location_sender",
+    srcs = [
+        "sample_location_sender.cc",
+    ],
+    hdrs = [
+        "sample_location_sender.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sample_cost_sender",
+    srcs = [
+        "sample_cost_sender.cc",
+    ],
+    hdrs = [
+        "sample_cost_sender.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

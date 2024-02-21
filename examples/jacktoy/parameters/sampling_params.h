@@ -18,6 +18,8 @@ struct SamplingC3SamplingParams {
   double sampling_height;
   int num_additional_samples_repos;
   int num_additional_samples_c3;
+  double spline_width;
+  double reposition_speed;
   double travel_cost_per_meter;
   double reposition_fixed_cost;
   double finished_reposition_cost;
@@ -33,6 +35,8 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(sampling_height));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
+    a->Visit(DRAKE_NVP(spline_width));
+    a->Visit(DRAKE_NVP(reposition_speed));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(reposition_fixed_cost));
     a->Visit(DRAKE_NVP(finished_reposition_cost));

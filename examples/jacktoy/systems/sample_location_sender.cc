@@ -36,8 +36,8 @@ void SampleLocationSender::OutputSampleLocations(
                                 ).value();
 
   // Create a matrix of sample locations
-	Eigen::MatrixXd sample_datapoints = MatrixXd::Zero(3, sample_locations.size());
-	Eigen::VectorXf timestamps = VectorXd::Zero(sample_locations.size());
+	Eigen::MatrixXd sample_datapoints = Eigen::MatrixXd::Zero(3, sample_locations.size());
+	Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(sample_locations.size());
 
 	for (int i; i < sample_locations.size(); i++) {
 		sample_datapoints.col(i) = sample_locations[i];

@@ -25,7 +25,7 @@ class IsC3ModeSender: public drake::systems::LeafSystem<double> {
  private:
   void OutputIsC3Mode(
         const drake::systems::Context<double>& context,
-        TimestampedVector<bool>* is_c3_mode_output) const;
+        dairlib::lcmt_timestamped_saved_traj* output_is_c3_mode) const;
 
   drake::systems::InputPortIndex is_c3_mode_input_port_;
   drake::systems::OutputPortIndex is_c3_mode_output_port_;

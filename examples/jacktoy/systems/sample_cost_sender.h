@@ -25,7 +25,7 @@ class SampleCostSender: public drake::systems::LeafSystem<double> {
  private:
   void OutputSampleCosts(
         const drake::systems::Context<double>& context,
-        TimestampedVector<double>* output_costs) const;
+        dairlib::lcmt_timestamped_saved_traj* output_costs) const;
 
   drake::systems::InputPortIndex sample_costs_input_port_;
   drake::systems::OutputPortIndex sample_costs_output_port_;

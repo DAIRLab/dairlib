@@ -81,7 +81,7 @@ InputSupervisor::InputSupervisor(
   /// controller messages
   /// soft_estop: (operator_triggered) triggers when the soft-estop is engaged
   /// by the operator.
-  /// is_nan: triggers whenever a NaN is received by the dispatcher to prevent
+  /// is_nan_or_inf: triggers whenever a NaN is received by the dispatcher to prevent
   /// sending bad motor commands.
   /// consecutive_failures: triggers whenever the velocity or actuator limits
   /// are reached.
@@ -89,7 +89,7 @@ InputSupervisor::InputSupervisor(
   /// controller channel sends a failure message.
   error_indices_["controller_delay"] = 0;
   error_indices_["soft_estop"] = 1;
-  error_indices_["is_nan"] = 2;
+  error_indices_["is_nan_or_inf"] = 2;
   error_indices_["consecutive_failures"] = 3;
   error_indices_["controller_failure_flag"] = 4;
 
@@ -239,9 +239,10 @@ drake::systems::EventStatus InputSupervisor::UpdateErrorFlag(
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("controller_delay")] = 1;
   }
-  if (command->get_data().array().isNaN().any()) {
+  if (command->get_data().array().isNaN().any() or
+      command->get_data().array().isInf().any()) {
     discrete_state->get_mutable_value(
-        error_indices_index_)[error_indices_.at("is_nan")] = 1;
+        error_indices_index_)[error_indices_.at("is_nan_or_inf")] = 1;
   }
   if (context.get_discrete_state(n_fails_index_)[0] >=
       min_consecutive_failures_) {

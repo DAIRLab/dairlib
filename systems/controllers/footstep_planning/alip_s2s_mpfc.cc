@@ -155,11 +155,20 @@ void AlipS2SMPFC::MakeMPCCosts() {
   p2o_basis_ = p2o_premul_ * (A_* B_ - B_);
   p2o_orthogonal_complement_ = Eigen::FullPivLU<Eigen::Matrix<double, 2, 4>>(
           p2o_basis_.transpose()
-  ).kernel().transpose();
-  p2o_cost_hessian_ =
-      p2o_orthogonal_complement_.transpose() * p2o_orthogonal_complement_;
-  p2o_cost_gradient_factor_p1_ = -2 * p2o_cost_hessian_ * p2o_premul_ * B_;
-  p2o_cost_gradient_factor_p2_ = -2 * p2o_cost_hessian_ * A_ * p2o_premul_ * B_;
+  ).kernel();
+
+  Matrix4d projection_in_basis_coords = Matrix4d::Zero();
+  projection_in_basis_coords.topLeftCorner<2,2>() = Matrix2d::Identity();
+
+  Matrix4d bases_in_R4 = Matrix4d::Zero();
+  bases_in_R4.leftCols<2>() = p2o_orthogonal_complement_;
+  bases_in_R4.rightCols<2>() = p2o_basis_;
+
+  projection_to_p2o_complement_ = bases_in_R4 * projection_in_basis_coords * bases_in_R4.inverse();
+  Q_proj_ = projection_to_p2o_complement_.transpose() * params_.Q * projection_to_p2o_complement_;
+  Q_proj_f_ = projection_to_p2o_complement_.transpose() * params_.Qf * projection_to_p2o_complement_;
+  g_proj_p1_ = p2o_premul_ * B_;
+  g_proj_p2_ = A_ * p2o_premul_ * B_;
 }
 
 void AlipS2SMPFC::MakeInputConstraints() {
@@ -397,19 +406,20 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
 void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes) {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
-        p2o_cost_gradient_factor_p1_ : p2o_cost_gradient_factor_p2_;
+        -2 * Q_proj_ * g_proj_p1_ : -2 * Q_proj_ * g_proj_p2_;
     tracking_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * p2o_cost_hessian_, vdes_mul * vdes, 0, true // we know it's convex
+        2 * Q_proj_, vdes_mul * vdes, 0, true // we know it's convex
     );
   }
 }
 
 void AlipS2SMPFC::UpdateTerminalCost(const Vector2d &vdes) {
-  const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
-      p2o_cost_gradient_factor_p1_ : p2o_cost_gradient_factor_p2_;
 
-  Matrix4d Qf = params_.Qf(0,0) * p2o_cost_hessian_;
-  Vector4d bf = 100.0 * vdes_mul * vdes;
+  const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
+      -2 * Q_proj_f_ * g_proj_p1_ : -2 * Q_proj_f_ * g_proj_p2_;
+
+  Matrix4d Qf = 2 * Q_proj_f_;
+  Vector4d bf = vdes_mul * vdes;
 
   terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
 }

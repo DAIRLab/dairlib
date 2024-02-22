@@ -148,11 +148,14 @@ class AlipS2SMPFC {
   // some useful matrices and dynamics quantities
   Eigen::Matrix4d A_;
   Eigen::Matrix<double, 4, 2> B_;
+  Eigen::Matrix4d Q_proj_;
+  Eigen::Matrix4d Q_proj_f_;
+  Eigen::Matrix<double, 4, 2> g_proj_p1_;
+  Eigen::Matrix<double, 4, 2> g_proj_p2_;
   Eigen::Matrix4d p2o_premul_;
-  Eigen::Matrix4d p2o_cost_hessian_;
-  Eigen::Matrix<double, 2, 4> p2o_orthogonal_complement_;
+  Eigen::Matrix4d projection_to_p2o_complement_;
+  Eigen::Matrix<double, 4, 2> p2o_orthogonal_complement_;
   Eigen::Matrix<double, 4, 2> p2o_basis_;
-  Eigen::Matrix<double, 4, 2> p2o_cost_gradient_factor_p1_;
-  Eigen::Matrix<double, 4, 2> p2o_cost_gradient_factor_p2_;
+
 };
 }

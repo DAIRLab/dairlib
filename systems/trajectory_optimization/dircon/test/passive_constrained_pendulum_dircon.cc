@@ -199,4 +199,5 @@ int main(int argc, char* argv[]) {
   } else {
     dairlib::runDircon<double>();
   }
+  return 0;
 }

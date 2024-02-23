@@ -1,3 +1,5 @@
+shard_sync: false
+derive_targets_from_directories: true
 directories:
   .
 

@@ -1,0 +1,4 @@
+trifinger_state_channel: TRIFINGER_STATE_SIMULATION # lcmt_robot_output
+cube_state_channel: CUBE_STATE_SIMULATION #lcmt_object_output
+trifinger_input_channel: TRIFINGER_INPUT_SIMULATION # lcmt_robot_input
+

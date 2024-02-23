@@ -1,17 +1,17 @@
 #pragma once
 
-#include <iostream>
-
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
-#include "multibody/visualization_utils.h"
+#include "parameters/trifinger_lcm_channels.h"
+#include "parameters/trifinger_sim_params.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
@@ -22,27 +22,32 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
-DEFINE_string(channel_s, "TRIFINGER_STATE_SIMULATION",
-              "LCM channel to publish the trifinger states");
+DEFINE_string(sim_parameters,
+              "examples/trifinger/parameters/trifinger_sim_params.yaml",
+              "Filepath to simulation configs");
+
+DEFINE_string(lcm_channels,
+              "examples/trifinger/parameters/lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
 
 namespace dairlib {
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
-using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-using drake::multibody::RigidBody;
-using drake::multibody::SpatialInertia;
-using drake::multibody::UnitInertia;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  auto sim_params =
+      drake::yaml::LoadYamlFile<TrifingerSimParams>(FLAGS_sim_parameters);
+  auto lcm_channels =
+      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(FLAGS_lcm_channels);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -53,14 +58,11 @@ int DoMain(int argc, char* argv[]) {
   multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, false);
 
   // Adds the URDF model to the trifinger plant.
-  std::string trifinger_urdf =
-      "examples/trifinger/robot_properties_fingers/urdf/"
-      "trifinger_minimal_collision.urdf";
-  std::string cube_urdf =
-      "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf";
+  std::string trifinger_urdf = sim_params.trifinger_model;
+  std::string cube_urdf = sim_params.cube_model;
   Parser parser(&plant, &scene_graph);
-  parser.AddModelFromFile(FindResourceOrThrow(trifinger_urdf));
-  parser.AddModelFromFile(FindResourceOrThrow(cube_urdf));
+  parser.AddModels(FindResourceOrThrow(trifinger_urdf));
+  parser.AddModels(FindResourceOrThrow(cube_urdf));
 
   // Fixes the trifinger base to the world frame.
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
@@ -75,7 +77,7 @@ int DoMain(int argc, char* argv[]) {
   // Create state receiver.
   auto state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          FLAGS_channel_s, lcm));
+          lcm_channels.trifinger_state_channel, lcm));
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
   builder.Connect(*state_sub, *state_receiver);
 
@@ -93,7 +95,7 @@ int DoMain(int argc, char* argv[]) {
   DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 
   drake::geometry::MeshcatVisualizerParams params;
-  params.publish_period = 1.0 / 60.0;
+  params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));

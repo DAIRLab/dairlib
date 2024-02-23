@@ -21,13 +21,15 @@ cc_binary(
     name = "trifinger_simulation",
     srcs = ["trifinger_simulation.cc"],
     deps = [
-        "@gflags",
-        "@drake//:drake_shared_library",
         "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
+        "//examples/trifinger/parameters:trifinger_sim_params",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/primitives",
-        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )
 
@@ -35,17 +37,38 @@ cc_binary(
     name = "trifinger_visualizer",
     srcs = ["trifinger_visualizer.cc"],
     deps = [
-        "@gflags",
-        "@drake//:drake_shared_library",
         "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
+        "//examples/trifinger/parameters:trifinger_sim_params",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/primitives",
-        "//multibody:utils",
-        "//multibody:visualization_utils"
-    ]
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )
 
+cc_binary(
+    name = "trifinger_osc_controller",
+    srcs = ["trifinger_osc_controller.cc"],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_osc_controller_params",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
 
 py_binary(
     name = "simulate_trifinger",

@@ -13,9 +13,11 @@ namespace systems {
 SampleLocationSender::SampleLocationSender() {
   this->set_name("sample_location_sender");
 
+  std::vector<Eigen::Vector3d> sample_locations;
+
   sample_locations_input_port_ = this->DeclareAbstractInputPort(
           "sample_locations_input",
-          std::vector<Eigen::Vector3d>())
+          drake::Value<std::vector<Eigen::Vector3d>>{sample_locations})
       .get_index();
 
   sample_locations_output_port_ = this->DeclareAbstractOutputPort(
@@ -30,16 +32,16 @@ void SampleLocationSender::OutputSampleLocations(
         dairlib::lcmt_timestamped_saved_traj* output_traj) const {
   
 	// Evaluate input port to get the sample locations
-  const std::vector<Eigen::Vector3d>& sample_locations =
-      this->EvalInputValue<std::vector<Eigen::Vector3d>>(
+  const auto sample_locations =
+      *this->EvalInputValue<std::vector<Eigen::Vector3d>>(
                                 context, sample_locations_input_port_
-                                ).value();
+                                );
 
   // Create a matrix of sample locations
 	Eigen::MatrixXd sample_datapoints = Eigen::MatrixXd::Zero(3, sample_locations.size());
 	Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(sample_locations.size());
 
-	for (int i; i < sample_locations.size(); i++) {
+	for (int i = 0; i < sample_locations.size(); i++) {
 		sample_datapoints.col(i) = sample_locations[i];
 		timestamps(i) = context.get_time();
 	}

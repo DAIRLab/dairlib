@@ -19,9 +19,12 @@
 
 #include "drake/systems/framework/leaf_system.h"
 
-using systems::TimestampedVector;
+
 
 namespace dairlib {
+using systems::TimestampedVector;
+using drake::systems::BasicVector;
+
 namespace systems {
 
 /// Outputs a lcmt_timestamped_saved_traj
@@ -99,11 +102,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(all_sample_costs_port_);
   }
 
+  // The solver options need not be done twice i.e. one for each c3 solution 
+  // object.
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
-    c3_->SetOsqpSolverOptions(solver_options_);
+    c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
   }
-
+  
  private:
   solvers::LCS CreatePlaceholderLCS() const;
 
@@ -113,9 +118,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void UpdateContext(Eigen::VectorXd lcs_state);
 
-  void UpdateC3ExecutionTrajectory(const BasicVector<double>& x_lcs);
+  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs);
 
-  void UpdateRepositioningExecutionTrajectory(const BasicVector<double>& x_lcs);
+  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs);
 
   void OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
@@ -227,8 +232,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd x_pred_best_plan_;
 
   // LCS trajectories for C3 or repositioning modes.
-  mutable std::vector<TimestampedVector<double>> c3_traj_execute_;
-  mutable std::vector<TimestampedVector<double>> repos_traj_execute_;
+  // mutable std::vector<TimestampedVector<double>> c3_traj_execute_;
+  // mutable std::vector<TimestampedVector<double>> repos_traj_execute_;
+  mutable LcmTrajectory c3_execution_lcm_traj_;
+  mutable LcmTrajectory repos_execution_lcm_traj_;
+ 
 
   // Samples and associated costs.
   // TODO: to be updated in ComputePlan

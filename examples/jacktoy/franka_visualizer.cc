@@ -153,13 +153,13 @@ int do_main(int argc, char* argv[]) {
 
   auto trajectory_sub_actor = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_channel, lcm));
+          lcm_channel_params.c3_actor_curr_plan_channel, lcm));
   auto trajectory_sub_object = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_object_channel, lcm));
+          lcm_channel_params.c3_object_curr_plan_channel, lcm));
   auto trajectory_sub_force =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
-          lcm_channel_params.c3_force_channel, lcm));
+          lcm_channel_params.c3_force_curr_channel, lcm));
 
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(

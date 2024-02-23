@@ -80,6 +80,21 @@ cc_library(
 )
 
 cc_library(
+    name = "sampling_params",
+    hdrs = ["sampling_params.h"],
+)
+
+cc_library(
+    name = "generate_samples",
+    srcs = ["generate_samples.cc"],
+    hdrs = ["generate_samples.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        ":sampling_params",
+    ],
+)
+
+cc_library(
     name = "sampling_c3_controller",
     srcs = ["sampling_based_c3_controller.cc"],
     hdrs = ["sampling_based_c3_controller.h"],
@@ -92,7 +107,8 @@ cc_library(
         "//solvers:solver_options_io",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-        "//examples/jacktoy:generate_samples"
+        ":generate_samples",
+        ":sampling_params",
     ],
 )
 

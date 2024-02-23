@@ -42,6 +42,7 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
 C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
        const vector<VectorXd>& x_desired, const C3Options& options)
     : warm_start_(options.warm_start),
+      lcs_(LCS),
       N_((LCS.A_).size()),
       n_((LCS.A_)[0].cols()),
       m_((LCS.D_)[0].cols()),
@@ -157,6 +158,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
 void C3::UpdateLCS(const LCS& lcs) {
   // Update the stored LCS object.
   lcs_ = lcs;
+  // lcs_(lcs);
 
   // first 4 lines are unnecessary
   A_ = lcs.A_;

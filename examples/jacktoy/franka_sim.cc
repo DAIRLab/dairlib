@@ -182,7 +182,8 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  q.tail(plant.num_positions(jack_index)) = sim_params.q_init_object[sim_params.scene_index];
+  // TODO: Figure out what this line really needs to be
+  q.tail(plant.num_positions(jack_index)) = sim_params.q_init_plate[sim_params.scene_index];
 
   plant.SetPositions(&plant_context, q);
 

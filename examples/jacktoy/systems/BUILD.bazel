@@ -11,6 +11,9 @@ cc_library(
         ":control_target_generator",
         ":c3_state_sender",
         ":c3_trajectory_generator",
+        ":is_c3_mode_sender",
+        ":mode_selector",
+        ":tracking_trajectory_generator",
     ],
 )
 
@@ -72,6 +75,19 @@ cc_library(
     hdrs = ["mode_selector.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "is_c3_mode_sender",
+    srcs = ["is_c3_mode_sender.cc"],
+    hdrs = ["is_c3_mode_sender.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
         "@lcm",
     ],
@@ -115,6 +131,7 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "//solvers:c3",
     ],
 )
 

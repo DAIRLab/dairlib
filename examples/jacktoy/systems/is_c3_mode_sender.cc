@@ -13,8 +13,8 @@ namespace systems {
 IsC3ModeSender::IsC3ModeSender() {
   this->set_name("is_c3_mode_sender");
 
-  is_c3_mode_input_port_ = this->DeclareAbstractInputPort(
-    "is_c3_mode_input", drake::systems::BasicVector<bool>).get_index();
+  is_c3_mode_input_port_ = this->DeclareVectorInputPort(
+    "is_c3_mode_input", drake::systems::BasicVector<double>()).get_index();
 
   is_c3_mode_output_port_ = this->DeclareAbstractOutputPort(
     "is_c3_mode_output",
@@ -28,10 +28,10 @@ void IsC3ModeSender::OutputIsC3Mode(
         dairlib::lcmt_timestamped_saved_traj* output_is_c3_mode) const {
   
 	// Evaluate input port to get the sample locations
-  const auto& is_c3_mode =
-      this->EvalInputValue<drake::systems::BasicVector<bool>>(
+  const auto is_c3_mode =
+      this->EvalInputValue<drake::systems::BasicVector<double>>(
                                 context, is_c3_mode_input_port_
-                                ).value();
+                                )->value();
   
   // NOTE: This is a placeholder for the boolean value so we can output 
   // it as an existing lcm message type. It is unconventional to be 
@@ -40,7 +40,7 @@ void IsC3ModeSender::OutputIsC3Mode(
   Eigen::VectorXd timestamp = Eigen::VectorXd::Zero(1);
 
   // Reading the boolean value into the matrix.
-  c3_mode_data(0, 0) = is_c3_mode; 
+  c3_mode_data(0, 0) = is_c3_mode(0); 
   // This timestamp corresponds to the trajectory object.
   timestamp(0) = context.get_time();
 

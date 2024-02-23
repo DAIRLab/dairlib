@@ -15,7 +15,7 @@ SampleCostSender::SampleCostSender() {
 
   sample_costs_input_port_ = this->DeclareAbstractInputPort(
           "sample_costs_input",
-          std::vector<double>())
+          drake::Value<std::vector<double>>{})
       .get_index();
 
   sample_costs_output_port_ = this->DeclareAbstractOutputPort(
@@ -30,18 +30,18 @@ void SampleCostSender::OutputSampleCosts(
         dairlib::lcmt_timestamped_saved_traj* output_costs) const {
   
 	// Evaluate input port to get the sample locations
-  const std::vector<double>& sample_costs =
-      this->EvalInputValue<std::vector<double>>(
+  const std::vector<double>& sample_cost_vector =
+      *this->EvalInputValue<std::vector<double>>(
                                 context, sample_costs_input_port_
-                                ).value();
+                                );
 
   // Create a matrix of sample costs
   Eigen::MatrixXd cost_datapoints = 
-      Eigen::MatrixXd::Zero(1, sample_costs.size());
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(sample_costs.size());
+      Eigen::MatrixXd::Zero(1, sample_cost_vector.size());
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(sample_cost_vector.size());
 
-  for (int i; i < sample_costs.size(); i++) {
-    cost_datapoints.col(i) = sample_costs[i];
+  for (int i; i < sample_cost_vector.size(); i++) {
+    cost_datapoints(0, i) = sample_cost_vector[i];
     timestamps(i) = context.get_time();
   }
 

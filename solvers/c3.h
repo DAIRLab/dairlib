@@ -128,7 +128,7 @@ class C3 {
   const int k_;
 
  private:
-  LCS lcs_;
+  mutable LCS lcs_;
   std::vector<Eigen::MatrixXd> A_;
   std::vector<Eigen::MatrixXd> B_;
   std::vector<Eigen::MatrixXd> D_;

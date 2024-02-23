@@ -41,7 +41,7 @@ TrackingTrajectoryGenerator::TrackingTrajectoryGenerator(
   tracking_trajectory_input_port_ = 
   this->DeclareAbstractInputPort(
     "tracking_trajectory_input",
-    std::vector<TimestampedVector<double>>(N_ + 1, TimestampedVector<double>(n_x_)))
+    drake::Value<LcmTrajectory>())
     .get_index();
 
   actor_trajectory_port_ =
@@ -62,18 +62,27 @@ void TrackingTrajectoryGenerator::OutputActorTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
 
-  const std::vector<TimestampedVector<double>>& tracking_trajectory =
-      this->EvalInputValue<std::vector<TimestampedVector<double>>(
-        context, tracking_trajectory_input_port_);
-  DRAKE_DEMAND((tracking_trajectory[0]->get_data()).size() == n_x_);
+  const auto& tracking_trajectory =
+      *(this->EvalInputValue<LcmTrajectory>(
+        context, tracking_trajectory_input_port_));
 
+  // Copying the trajectory manually since there is no copy constructor.
+  std::string traj_name = (tracking_trajectory.GetTrajectoryNames())[0];
+  LcmTrajectory::Trajectory full_traj;
+  full_traj.traj_name = traj_name;
+  full_traj.datatypes = std::vector<std::string>(full_traj.datapoints.rows(), "double");
+  full_traj.datapoints = (tracking_trajectory.GetTrajectory(traj_name)).datapoints;
+  full_traj.time_vector = (tracking_trajectory.GetTrajectory(traj_name)).time_vector;
+  DRAKE_DEMAND(full_traj.datapoints.rows() == n_x_);
+
+  // Code to extract the end effector position and orientation from the full trajectory.
   MatrixXd knots = MatrixXd::Zero(6, N_);
   VectorXd timestamps = VectorXd::Zero(N_);
   for (int i = 0; i < N_; i++) {
-    TimestampedVector<double> state = tracking_trajectory[i].get_data();
+    drake::VectorX<double> state = full_traj.datapoints.col(i);
     knots.col(i).head(3) = state.head(3);
     knots.col(i).tail(3) = state.segment(n_q_, 3);
-    timestamps(i) = tracking_trajectory[i].get_timestamp();
+    timestamps(i) = full_traj.time_vector[i];
   }
   
   LcmTrajectory::Trajectory end_effector_traj;
@@ -125,20 +134,29 @@ void TrackingTrajectoryGenerator::OutputObjectTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
 
-  const std::vector<TimestampedVector<double>>& tracking_trajectory =
-      this->EvalInputValue<std::vector<TimestampedVector<double>>(
-        context, tracking_trajectory_input_port_);
-  DRAKE_DEMAND((tracking_trajectory[0]->get_data()).size() == n_x_);
+  const auto& tracking_trajectory =
+      *(this->EvalInputValue<LcmTrajectory>(
+        context, tracking_trajectory_input_port_));
 
+  // Copying the trajectory manually since there is no copy constructor.
+  std::string traj_name = (tracking_trajectory.GetTrajectoryNames())[0];
+  LcmTrajectory::Trajectory full_traj;
+  full_traj.traj_name = traj_name;
+  full_traj.datatypes = std::vector<std::string>(full_traj.datapoints.rows(), "double");
+  full_traj.datapoints = (tracking_trajectory.GetTrajectory(traj_name)).datapoints;
+  full_traj.time_vector = (tracking_trajectory.GetTrajectory(traj_name)).time_vector;
+  DRAKE_DEMAND(full_traj.datapoints.rows() == n_x_);
+
+  // Code to extract the object position and orientation from the full trajectory.
   MatrixXd knots = MatrixXd::Zero(6, N_);
   MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
   VectorXd timestamps = VectorXd::Zero(N_);
   for (int i = 0; i < N_; i++) {
-    TimestampedVector<double> state = tracking_trajectory[i].get_data();
+    drake::VectorX<double> state = full_traj.datapoints.col(i);
     knots.col(i).head(3) = state.head(n_q_).tail(3);
     knots.col(i).tail(3) = state.tail(3);
     orientation_samples.col(i) = state.segment(n_q_ - 7, 4);
-    timestamps(i) = tracking_trajectory[i].get_timestamp();
+    timestamps(i) = full_traj.time_vector[i];
   }
   
   LcmTrajectory::Trajectory object_traj;

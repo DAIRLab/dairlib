@@ -8,30 +8,30 @@ ModeSelector::ModeSelector() {
   this->set_name("mode_selector");
 
   // Boolean select line
-  is_c3_mode_ = this->DeclareInputPort(
-        "is_c3_mode", bool())
+  is_c3_mode_input_port_ = this->DeclareVectorInputPort(
+        "is_c3_mode", drake::systems::BasicVector<double>(1))
         .get_index();
 
   c3_actor_trajectory_port_ =
       this->DeclareAbstractInputPort(
               "c3_actor_trajectory_input",
-              dairlib::lcmt_timestamped_saved_traj())
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
   c3_object_trajectory_port_ =
       this->DeclareAbstractInputPort(
               "c3_object_trajectory_input",
-              dairlib::lcmt_timestamped_saved_traj())
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
   repositioning_actor_trajectory_port_ =
       this->DeclareAbstractInputPort(
               "repositioning_actor_trajectory_input",
-              dairlib::lcmt_timestamped_saved_traj())
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
   repositioning_object_trajectory_port_ =
       this->DeclareAbstractInputPort(
               "repositioning_object_trajectory_input",
-              dairlib::lcmt_timestamped_saved_traj())
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
   tracking_actor_trajectory_port_ =
@@ -55,17 +55,17 @@ void ModeSelector::OutputActorTrackingTrajectory(
         dairlib::lcmt_timestamped_saved_traj* output_traj) const {
   // Get the select line
   const bool c3_select = 
-        this->EvalInputValue<bool>(context, is_c3_mode_).value();
+        this->EvalInputValue<bool>(context, is_c3_mode_input_port_);
 
   // Get the c3 trajectories
   const dairlib::lcmt_timestamped_saved_traj& c3_actor_traj = 
         this->EvalAbstractInput(context, c3_actor_trajectory_port_)
-            .get_value();
+            ->get_value<dairlib::lcmt_timestamped_saved_traj>();
 
   // Get the repositioning trajectories
   const dairlib::lcmt_timestamped_saved_traj& repositioning_actor_traj = 
         this->EvalAbstractInput(context, repositioning_actor_trajectory_port_)
-            .get_value();
+            ->get_value<dairlib::lcmt_timestamped_saved_traj>();
 
   // If select line is true, output the c3 trajectories
   if (c3_select) {
@@ -80,17 +80,17 @@ void ModeSelector::OutputObjectTrackingTrajectory(
         dairlib::lcmt_timestamped_saved_traj* output_traj) const {
   // Get the select line
   const bool c3_select = 
-        this->EvalInputValue<bool>(context, is_c3_mode_).value();
+        this->EvalInputValue<bool>(context, is_c3_mode_input_port_);
 
   // Get the c3 trajectories
   const dairlib::lcmt_timestamped_saved_traj& c3_object_traj = 
         this->EvalAbstractInput(context, c3_object_trajectory_port_)
-            .get_value();
+            ->get_value<dairlib::lcmt_timestamped_saved_traj>();
 
   // Get the repositioning trajectories
   const dairlib::lcmt_timestamped_saved_traj& repositioning_object_traj = 
         this->EvalAbstractInput(context, repositioning_object_trajectory_port_)
-            .get_value();
+            ->get_value<dairlib::lcmt_timestamped_saved_traj>();
 
   // If select line is true, output the c3 trajectories
   if (c3_select) {

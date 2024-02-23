@@ -2,17 +2,18 @@
 // with the mode_selection binary input based on which it selects one of the 
 // two trajectories to output. 
 #include "drake/systems/framework/leaf_system.h"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
 namespace dairlib {
 namespace systems {
 
-class is_c3_mode_ModeSelector: public drake::systems::LeafSystem<double> {
+class ModeSelector: public drake::systems::LeafSystem<double> {
  public:
-  ModeSelector();
+ explicit ModeSelector();
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_is_c3_mode() const {
-    return this->get_input_port(is_c3_mode_);
+    return this->get_input_port(is_c3_mode_input_port_);
   }
 
   const drake::systems::InputPort<double>& get_input_port_c3_actor_trajectory() 
@@ -43,7 +44,7 @@ class is_c3_mode_ModeSelector: public drake::systems::LeafSystem<double> {
         const drake::systems::Context<double>& context,
         dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
-  drake::systems::InputPortIndex is_c3_mode_;
+  drake::systems::InputPortIndex is_c3_mode_input_port_;
   drake::systems::InputPortIndex c3_actor_trajectory_port_;
   drake::systems::InputPortIndex c3_object_trajectory_port_;
   drake::systems::InputPortIndex repositioning_actor_trajectory_port_;

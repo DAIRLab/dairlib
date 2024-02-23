@@ -12,7 +12,6 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
 struct SamplingC3SamplingParams {
   int sampling_strategy;
   double sampling_radius;
-  double sampling_height;
   double min_angle_from_vertical;
   double max_angle_from_vertical;
   double sampling_height;
@@ -29,7 +28,6 @@ struct SamplingC3SamplingParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(sampling_radius));
-    a->Visit(DRAKE_NVP(sampling_height));
     a->Visit(DRAKE_NVP(min_angle_from_vertical));
     a->Visit(DRAKE_NVP(max_angle_from_vertical));
     a->Visit(DRAKE_NVP(sampling_height));

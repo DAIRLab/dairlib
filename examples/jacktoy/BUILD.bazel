@@ -31,7 +31,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
-        ":sampling_params",
+        "//systems/controllers:sampling_params",
         ":trajectory_params",
         ":franka_lcm_channels",
         ":franka_osc_controller_params",
@@ -42,7 +42,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
-        "//systems/controllers:c3_controller",
+        "//systems/controllers:sampling_c3_controller",
         "//systems/controllers:lcs_factory_system",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
@@ -106,7 +106,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
-        ":sampling_params",
+        "//systems/controllers:sampling_params",
         ":trajectory_params",
         ":franka_lcm_channels",
         "//common",
@@ -115,7 +115,7 @@ cc_binary(
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
-        "//systems/controllers:c3_controller",
+        "//systems/controllers:sampling_c3_controller",
         "//systems/controllers:lcs_factory_system",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
@@ -196,11 +196,6 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "generate_samples",
-    srcs = ["generate_samples.cc"],
-)
-
 cc_library(
     name = "franka_lcm_channels",
     hdrs = ["parameters/franka_lcm_channels.h"],
@@ -209,6 +204,7 @@ cc_library(
         "parameters/lcm_channels_simulation.yaml",
     ],
     deps = [
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )
@@ -243,18 +239,6 @@ cc_library(
         "parameters/franka_c3_options_floating.yaml",
         "parameters/franka_c3_options_translation.yaml",
         "parameters/franka_qp_options.yaml",
-    ],
-    deps = [
-        "//solvers:c3",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "sampling_params",
-    hdrs = ["parameters/sampling_params.h"],
-    data = [
-        "parameters/sampling_params.yaml",
     ],
     deps = [
         "//solvers:c3",

@@ -23,7 +23,7 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
-#include "examples/jacktoy/parameters/sampling_based_c3_controller_params.h"
+#include "systems/controllers/sampling_params.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/parameters/franka_osc_controller_params.h"
 #include "examples/jacktoy/parameters/franka_sim_params.h"
@@ -38,7 +38,7 @@
 #include "solvers/lcs_factory.h"
 #include "solvers/lcs_factory_preprocessor.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
-#include "systems/controllers/c3_controller.h"
+#include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
@@ -99,7 +99,7 @@ DEFINE_string(controller_settings,
               "Controller settings such as channels. Attempting to minimize "
               "number of gflags");
 DEFINE_string(sampling_controller_settings,
-              "examples/jacktoy/parameters/sampling_based_c3_controller_params.yaml",
+              "systems/controllers/sampling_params.yaml",
               "Sampling controller settings such as number of samples and trajectory type. Attempting to minimize"
               "number of gflags");
 

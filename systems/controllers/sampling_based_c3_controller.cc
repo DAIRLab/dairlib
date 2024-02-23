@@ -9,7 +9,7 @@
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"
 #include "solvers/lcs_factory.h"
-#include "examples/jacktoy/generate_samples.cc"
+#include "generate_samples.h"
 
 namespace dairlib {
 
@@ -28,7 +28,7 @@ using solvers::LCS;
 using solvers::LCSFactory;
 using std::vector;
 using systems::TimestampedVector;
-using drake::multibody;
+using drake::multibody::MultibodyPlant;
 
 namespace systems {
 
@@ -358,7 +358,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Create an LCS object.
     auto sample_system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_, context_, plant_ad_, context_ad_, contact_pairs_,
+      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, 
       c3_options_.planning_dt, N_, c3_options_.contact_model);
     solvers::LCS lcs_object_sample = sample_system_scaling_pair.first;
@@ -454,7 +454,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the execution trajectories.  Both C3 and repositioning trajectories
   // are updated, but the is_doing_c3_ flag determines which one is used via the
   // downstream selector system.
-  UpdateContext(x_lcs_curr);
+  SamplingC3Controller::UpdateContext(x_lcs_curr);
   UpdateC3ExecutionTrajectory(x_lcs_curr);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr);
 
@@ -470,7 +470,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 }
 
 // Helper function to update context of a plant with a given state.
-void UpdateContext(Eigen::VectorXd lcs_state){
+void SamplingC3Controller::UpdateContext(Eigen::VectorXd lcs_state){
     // Update autodiff.
     VectorXd xu_test(n_q_ + n_v_ + n_u_);
     
@@ -498,7 +498,7 @@ void UpdateContext(Eigen::VectorXd lcs_state){
 }
 
 // Perform one step of C3.
-void UpdateC3ExecutionTrajectory(const BasicVector<double>& x_lcs) {
+void UpdateC3ExecutionTrajectory(const VectorXd& x_lcs) {
   // Get the input from the plan.
   vector<VectorXd> u_sol = c3_curr_plan_.GetInputSolution();
 
@@ -507,10 +507,14 @@ void UpdateC3ExecutionTrajectory(const BasicVector<double>& x_lcs) {
 
   // Create an LCS object.
   auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
-    plant_, context_, plant_ad_, context_ad_, contact_pairs_,
+    plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
     c3_options_.num_friction_directions, c3_options_.mu, 
     c3_options_.execution_dt, N_, c3_options_.contact_model);
   solvers::LCS lcs_object = system_scaling_pair.first;
+
+  // Setting up matrices to set up LCMTrajectory object.
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
   // Roll out the execution LCS with the planned inputs.
   c3_traj_execute_[0]->SetDataVector(x_lcs);
@@ -520,11 +524,25 @@ void UpdateC3ExecutionTrajectory(const BasicVector<double>& x_lcs) {
       lcs_object.Simulate(c3_traj_execute_[i], u_sol[i]));
     c3_traj_execute_[i+1]->set_timestamp(
       t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt);
+    // Set up matrices for LCMTrajectory object.
+    knots.col(i)= c3_traj_execute_[i].get_data();
+    timestamps(i) = c3_traj_execute_[i].get_timestamp();
   }
+  
+  LcmTrajectory::Trajectory c3_execution_traj;
+  c3_execution_traj.traj_name = "c3_execution_trajectory";
+  c3_execution_traj.datatypes =
+      std::vector<std::string>(knots.rows(), "double");
+  c3_execution_traj.datapoints = knots;
+  c3_execution_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory c3_execution_lcm_traj_({c3_execution_traj}, {"c3_execution_trajectory"},
+                         "c3_execution_trajectory",
+                         "c3_execution_trajectory", false);
+
 }
 
 // Perform one step of repositioning.
-void UpdateRepositioningExecutionTrajectory(const BasicVector<double>& x_lcs) {
+void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(const VectorXd& x_lcs) {
   // Get the best sample location.
   Eigen::Vector3d best_sample_location =
     all_sample_locations_[best_sample_index_];
@@ -552,6 +570,10 @@ void UpdateRepositioningExecutionTrajectory(const BasicVector<double>& x_lcs) {
   // Evaluate the time from the context for setting timestamps.
   double t = context.get_discrete_state(plan_start_time_index_)[0];
 
+  // Setting up matrices to set up LCMTrajectory object.
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
+
   // Roll out the execution LCS with the planned inputs.
   repos_traj_execute_[0]->SetDataVector(x_lcs);
   repos_traj_execute_[0]->set_timestamp(t + filtered_solve_time_);
@@ -574,7 +596,21 @@ void UpdateRepositioningExecutionTrajectory(const BasicVector<double>& x_lcs) {
     repos_traj_execute_[i+1]->SetDataVector(next_lcs_state);
     repos_traj_execute_[i+1]->set_timestamp(
       t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt);
+
+    // Set up matrices for LCMTrajectory object.
+    knots.col(i)= repos_traj_execute_[i].get_data();
+    timestamps(i) = repos_traj_execute_[i].get_timestamp();
   }
+
+  LcmTrajectory::Trajectory repos_execution_traj;
+  repos_execution_traj.traj_name = "repos_execution_trajectory";
+  repos_execution_traj.datatypes =
+      std::vector<std::string>(knots.rows(), "double");
+  repos_execution_traj.datapoints = knots;
+  repos_execution_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory repos_execution_lcm_traj_({repos_execution_traj}, 
+    {"repos_execution_trajectory"}, "repos_execution_trajectory",
+    "repos_execution_trajectory", false);
 }
 
 // Output port handlers for current location
@@ -715,23 +751,23 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 }
 
 // Output port handlers for executing C3 and repositioning ports
-void OutputC3TrajExecute(
+void SamplingC3Controller::OutputC3TrajExecute(
     const drake::systems::Context<double>& context,
-    std::vector<TimestampedVector<double>>* c3_traj_execute) {
+    LcmTrajectory* c3_traj_execute) {
   // TODO: The below assignment may not work; may need to iterate over length of
   // the vector of timestamped vectors and use SetData / set_timestamp.
-  *c3_traj_execute = c3_traj_execute_;
+  *c3_traj_execute = c3_execution_lcm_traj_;
 }
 
-void OutputReposTrajExecute(
+void SamplingC3Controller::OutputReposTrajExecute(
     const drake::systems::Context<double>& context,
-    std::vector<TimestampedVector<double>>* repos_traj_execute) {
+    LcmTrajectory* repos_traj_execute) {
   // TODO: The below assignment may not work; may need to iterate over length of
   // the vector of timestamped vectors and use SetData / set_timestamp.
-  *repos_traj_execute = repos_traj_execute_;
+  *repos_traj_execute = repos_execution_lcm_traj_;
 }
 
-void OutputIsC3Mode(
+void SamplingC3Controller::OutputIsC3Mode(
     const drake::systems::Context<double>& context,
     bool* is_c3_mode) {
   *is_c3_mode = is_doing_c3_;

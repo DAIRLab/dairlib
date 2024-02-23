@@ -48,12 +48,15 @@ realtime_rate: 1
 
 # TODO: Set the initial locations to something sensical
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
-# TODO: get rid of the scene indexing
-q_init_object: [[0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515],
+# TODO: get rid of the scene indexing and this must be ee pose?
+q_init_plate: [[0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515],
                 [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515],
                 [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 0.515]]
 # TODO: box should go away
-q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]
+q_init_box: [1, 0, 0, 0, 0.9, -0.2, 0.5]  
+# This next line is a dummy line created on Feb 23rd to make the code build. 
+# Check the dependencies and clear/clean this line up.
+q_init_object: [0, 0, 0, 0, 0, 0, 0]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualize_workspace: false

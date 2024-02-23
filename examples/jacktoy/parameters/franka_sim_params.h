@@ -29,7 +29,8 @@ struct FrankaSimParams {
 
   Eigen::VectorXd q_init_franka;
   std::vector<Eigen::VectorXd> q_init_plate;
-  Eigen::VectorXd q_init_box;
+  Eigen::VectorXd q_init_object;
+  Eigen::VectorXd q_init_box;              // TODO Remove this line
   Eigen::VectorXd tool_attachment_frame;
   Eigen::VectorXd left_support_position;
   Eigen::VectorXd right_support_position;
@@ -73,7 +74,8 @@ struct FrankaSimParams {
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));
-    a->Visit(DRAKE_NVP(q_init_box));
+    a->Visit(DRAKE_NVP(q_init_object));
+    a->Visit(DRAKE_NVP(q_init_box));              // TODO: Remove this line
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));

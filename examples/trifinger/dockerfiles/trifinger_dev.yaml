@@ -1,0 +1,15 @@
+services:
+  trifinger-env:
+    init: true
+    image: trifinger_dev:1.0
+    container_name: trifinger_dev
+    stop_signal: SIGINT
+    command: ['sleep', 'infinity']
+    # disable this option to make ROS2 work
+    # network_mode: host
+    working_dir: /home
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ~/git/Trifinger/workspace:/home
+    environment:
+      - DISPLAY=${DISPLAY}

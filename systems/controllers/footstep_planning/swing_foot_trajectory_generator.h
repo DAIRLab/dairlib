@@ -90,6 +90,8 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
   drake::systems::OutputPortIndex swing_foot_traj_output_port_;
 
+  drake::systems::AbstractStateIndex prev_spline_idx_;
+  drake::systems::DiscreteStateIndex prev_time_idx_;
   drake::systems::DiscreteStateIndex liftoff_swing_foot_pos_idx_;
   drake::systems::DiscreteStateIndex prev_fsm_state_idx_;
 

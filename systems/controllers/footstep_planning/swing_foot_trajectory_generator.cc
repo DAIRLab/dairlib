@@ -77,6 +77,7 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
           &SwingFootTrajectoryGenerator::CalcSwingTraj
   ).get_index();
 
+
   DeclarePerStepDiscreteUpdateEvent(
       &SwingFootTrajectoryGenerator::DiscreteVariableUpdate);
 
@@ -86,6 +87,13 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
   // The last state of FSM
   prev_fsm_state_idx_ = this->DeclareDiscreteState(
       -std::numeric_limits<double>::infinity() * VectorXd::Ones(1));
+
+  // previous time
+  prev_time_idx_ = this->DeclareDiscreteState(1);
+
+  // previous spline solution
+  prev_spline_idx_ = this->DeclareAbstractState(
+      drake::Value<PiecewisePolynomial<double>>());
 
   // Construct maps
   stance_foot_map_.insert(

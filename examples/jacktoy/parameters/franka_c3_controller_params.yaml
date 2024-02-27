@@ -10,22 +10,13 @@ end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
 end_effector_name: ee_full
 end_effector_simple_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 end_effector_simple_name: ee_simple
-# plate_model: examples/jacktoy/urdf/plate_end_effector_translation.urdf
-jack_model: examples/jacktoy/urdf/jack.urdf
+jack_model: examples/jacktoy/urdf/jack.sdf
+# jack_model: examples/jacktoy/urdf/jack.urdf
 ground_model: examples/jacktoy/urdf/ground.urdf
-left_support_model: examples/jacktoy/urdf/left_support_point_contact.urdf
-right_support_model: examples/jacktoy/urdf/left_support_point_contact.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
 ground_franka_frame: [0, 0, -0.0745]
-left_support_position: [0.8, 0.15, 0.447]
-right_support_position: [0.8, -0.15, 0.447]
-left_support_orientation: [0.0, 0.0, 0.0]
-right_support_orientation: [0.0, 0.0, 0.0]
-#left_support_position: [0.4, 0.25, 0.450]
-#right_support_position: [0.7, 0.25, 0.450]
-#left_support_orientation: [0.0, 0.0, 1.57]
-#right_support_orientation: [0.0, 0.0, 1.57]
+
 end_effector_thickness: 0.016
 
 scene_index: 1
@@ -34,16 +25,3 @@ include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused
 
-# near_target_threshold: 0.05
-# first_target: [[0.45, 0.0, 0.5],
-#                [0.45, 0, 0.485],
-#                [0.55, -0.1, 0.49]]
-# second_target: [[0.45, 0.0, 0.5],
-#                 [0.45, 0, 0.6],
-#                 [0.55, -0.1, 0.6]]
-# third_target: [[0.45, 0.0, 0.5],
-#                [0.7, 0.00, 0.485],
-#                [0.55, 0.15, 0.49]]
-# x_scale: 0.1
-# y_scale: 0.1
-# z_scale: 0.1

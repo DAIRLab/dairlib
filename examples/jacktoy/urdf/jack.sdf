@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<!-- TODO: Fix this sdf to match values from the urdf for capsule orientations. -->
+<sdf version="1.7">
+  <model name="jack">
+    <link name="capsule_1">
+        <inertial>
+            <pose>0 0 0 0 0 0</pose>
+            <mass>0.1</mass>
+            <!-- Inertia values were calculated to be consistent with the mass and
+                geometry size, assuming a uniform density. -->
+            <inertia>
+            <ixx>0.000136</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.000136</iyy>
+            <iyz>0</iyz>
+            <izz>1.1e-05</izz>
+            </inertia>
+        </inertial>
+        <collision name="capsule_1">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <drake:proximity_properties>
+            <!-- <drake:compliant_hydroelastic/>
+            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+            <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
+            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            </drake:proximity_properties>
+        </collision>
+        <visual name="capsule_1">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <material>
+            <diffuse>1 0 0 1</diffuse>
+            </material>
+        </visual>
+    </link>
+    <link name="capsule_2">
+        <inertial>
+            <pose>0 0 0 0 0 0</pose>
+            <mass>0.1</mass>
+            <!-- Inertia values were calculated to be consistent with the mass and
+                geometry size, assuming a uniform density. -->
+            <inertia>
+            <ixx>0.000136</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.000136</iyy>
+            <iyz>0</iyz>
+            <izz>1.1e-05</izz>
+            </inertia>
+        </inertial>
+        <collision name="capsule_2">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <drake:proximity_properties>
+            <!-- <drake:compliant_hydroelastic/>
+            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+            <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
+            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            </drake:proximity_properties>
+        </collision>
+        <visual name="capsule_2">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <material>
+            <diffuse>0 1 0 1</diffuse>
+            </material>
+        </visual>
+    </link>
+    <link name="capsule_3">
+        <inertial>
+            <pose>0 0 0 0 0 0</pose>
+            <mass>0.1</mass>
+            <!-- Inertia values were calculated to be consistent with the mass and
+                geometry size, assuming a uniform density. -->
+            <inertia>
+            <ixx>0.000136</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.000136</iyy>
+            <iyz>0</iyz>
+            <izz>1.1e-05</izz>
+            </inertia>
+        </inertial>
+        <collision name="capsule_3">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <drake:proximity_properties>
+            <!-- <drake:compliant_hydroelastic/>
+            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+            <drake:mesh_resolution_hint> 0.18 </drake:mesh_resolution_hint>
+            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation> -->
+            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            </drake:proximity_properties>
+        </collision>
+        <visual name="capsule_3">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <material>
+            <diffuse>0 0 1 1</diffuse>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Joints to connect the capsules-->
+    <joint name="attach_joint" type="fixed">
+        <parent>capsule_1</parent>
+        <child>capsule_2</child>
+        <pose>0 0 0 0 1.5708 0</pose> <!-- Rotate by 90 degrees around the y-axis -->
+    </joint>
+
+    <joint name="attach_joint2" type="fixed">
+        <parent>capsule_2</parent>
+        <child>capsule_3</child>
+        <pose>0 0 0 0 0 1.5708</pose> <!-- Rotate by 90 degrees around the z-axis -->
+    </joint>
+
+  </model>
+</sdf>
+
+    

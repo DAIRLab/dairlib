@@ -7,6 +7,7 @@ struct FrankaSimParams {
   std::string franka_model;
   std::string end_effector_model;
   std::string table_model;
+  std::string ground_model;
   std::string table_w_supports_model;
   std::string jack_model;
   std::string box_model;
@@ -30,8 +31,8 @@ struct FrankaSimParams {
   Eigen::VectorXd q_init_franka;
   std::vector<Eigen::VectorXd> q_init_plate;
   Eigen::VectorXd q_init_object;
-  Eigen::VectorXd q_init_box;              // TODO Remove this line
   Eigen::VectorXd tool_attachment_frame;
+  Eigen::Vector3d ground_franka_frame;
   Eigen::VectorXd left_support_position;
   Eigen::VectorXd right_support_position;
   Eigen::VectorXd left_support_orientation;
@@ -52,6 +53,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(table_model));
+    a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(table_w_supports_model));
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(box_model));
@@ -75,8 +77,8 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));
     a->Visit(DRAKE_NVP(q_init_object));
-    a->Visit(DRAKE_NVP(q_init_box));              // TODO: Remove this line
     a->Visit(DRAKE_NVP(tool_attachment_frame));
+    a->Visit(DRAKE_NVP(ground_franka_frame));
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
     a->Visit(DRAKE_NVP(left_support_orientation));

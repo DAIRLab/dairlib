@@ -14,15 +14,10 @@ struct FrankaC3ControllerParams {
   std::string end_effector_simple_name;
   std::string jack_model;
   std::string ground_model;
-  std::string left_support_model;
-  std::string right_support_model;
 
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d ground_franka_frame;
-  Eigen::Vector3d left_support_position;
-  Eigen::Vector3d right_support_position;
-  Eigen::Vector3d left_support_orientation;
-  Eigen::Vector3d right_support_orientation;
+ 
   double workspace_margin;
   double end_effector_thickness;
 
@@ -31,13 +26,6 @@ struct FrankaC3ControllerParams {
   bool include_end_effector_orientation;
   double target_frequency;
 
-  // std::vector<Eigen::Vector3d> first_target;
-  // std::vector<Eigen::Vector3d> second_target;
-  // std::vector<Eigen::Vector3d> third_target;
-  // double x_scale;
-  // double y_scale;
-  // double z_scale;
-  // double near_target_threshold;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -50,8 +38,8 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(end_effector_simple_name));
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(ground_model));
-    a->Visit(DRAKE_NVP(left_support_model));
-    a->Visit(DRAKE_NVP(right_support_model));
+    // a->Visit(DRAKE_NVP(left_support_model));
+    // a->Visit(DRAKE_NVP(right_support_model));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(target_frequency));
     
@@ -59,19 +47,6 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(ground_franka_frame));
     a->Visit(DRAKE_NVP(scene_index));
 
-
-    // a->Visit(DRAKE_NVP(first_target));
-    // a->Visit(DRAKE_NVP(second_target));
-    // a->Visit(DRAKE_NVP(third_target));
-    // a->Visit(DRAKE_NVP(x_scale));
-    // a->Visit(DRAKE_NVP(y_scale));
-    // a->Visit(DRAKE_NVP(z_scale));
-    // a->Visit(DRAKE_NVP(near_target_threshold));
-
-    a->Visit(DRAKE_NVP(left_support_position));
-    a->Visit(DRAKE_NVP(right_support_position));
-    a->Visit(DRAKE_NVP(left_support_orientation));
-    a->Visit(DRAKE_NVP(right_support_orientation));
     a->Visit(DRAKE_NVP(end_effector_thickness));
   }
 };

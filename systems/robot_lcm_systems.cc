@@ -1,3 +1,4 @@
+#include <iostream>
 #include "robot_lcm_systems.h"
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -455,24 +456,34 @@ ObjectStateSender::ObjectStateSender(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  positions_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .position_start();
-  velocities_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .velocity_start();
+  for (const auto& entry : plant.GetJointIndices(model_instance)){
+    // If joint.num_positions() == 0, then it is a fixed joint. 
+    // Skip it and fix positions_start_idx_ to be the non fixed joint.
+    if (plant.get_joint(entry).num_positions() != 0){
+      positions_start_idx_ = plant.get_joint(entry).position_start();
+      velocities_start_idx_ = plant.get_joint(entry).velocity_start();
+      break;
+    }
+  }
 
+  // positions_start_idx_ =
+  //     plant.get_joint(plant.GetJointIndices(model_instance).front())
+  //         .position_start();
+  // velocities_start_idx_ =
+  //     plant.get_joint(plant.GetJointIndices(model_instance).front())
+  //         .velocity_start();
+  // std::cout<<"positions_start_idx_"<<positions_start_idx_<<std::endl;
+  // std::cout<<"position_index_map_ size = "<<position_index_map_.size()<<std::endl;
   ordered_position_names_ =
       multibody::ExtractOrderedNamesFromMap(position_index_map_, positions_start_idx_);
+  
   ordered_velocity_names_ =
       multibody::ExtractOrderedNamesFromMap(velocity_index_map_, velocities_start_idx_);
-
 
   state_input_port_ =
       this->DeclareVectorInputPort(
               "x", BasicVector<double>(num_positions_ + num_velocities_))
           .get_index();
-
   this->DeclareAbstractOutputPort("lcmt_object_state",
                                   &ObjectStateSender::Output);
 }

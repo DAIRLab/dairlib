@@ -1,4 +1,5 @@
 #include <math.h>
+#include <iostream>
 
 #include <vector>
 
@@ -69,73 +70,32 @@ int DoMain(int argc, char* argv[]) {
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  drake::multibody::ModelInstanceIndex ground_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex jack_index =
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
-  multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
+//   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
+
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Vector3d franka_origin = Eigen::VectorXd::Zero(3);
+  Eigen::VectorXd franka_origin = Eigen::VectorXd::Zero(3);
 
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
+  RigidTransform<double> X_F_G_franka =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.ground_franka_frame);
 
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   T_X_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), T_EE_W);
-
-//   if (sim_params.scene_index > 0) {
-//     drake::multibody::ModelInstanceIndex left_support_index =
-//         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-//     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-//         FindResourceOrThrow(sim_params.right_support_model))[0];
-//     RigidTransform<double> T_S1_W = RigidTransform<double>(
-//         drake::math::RollPitchYaw<double>(sim_params.left_support_orientation), sim_params.left_support_position);
-//     RigidTransform<double> T_S2_W = RigidTransform<double>(
-//         drake::math::RollPitchYaw<double>(sim_params.right_support_orientation), sim_params.right_support_position);
-//     plant.WeldFrames(plant.world_frame(),
-//                      plant.GetFrameByName("support", left_support_index),
-//                      T_S1_W);
-//     plant.WeldFrames(plant.world_frame(),
-//                      plant.GetFrameByName("support", right_support_index),
-//                      T_S2_W);
-//     const drake::geometry::GeometrySet& support_geom_set =
-//         plant.CollectRegisteredGeometries({
-//             &plant.GetBodyByName("support", left_support_index),
-//             &plant.GetBodyByName("support", right_support_index),
-//         });
-//     // we WANT to model collisions between link5 and the supports
-//     const drake::geometry::GeometrySet& paddle_geom_set =
-//         plant.CollectRegisteredGeometries(
-//             {&plant.GetBodyByName("panda_link2"),
-//              &plant.GetBodyByName("panda_link3"),
-//              &plant.GetBodyByName("panda_link4"),
-// //             &plant.GetBodyByName("panda_link5"),
-//              &plant.GetBodyByName("panda_link6"),
-//              &plant.GetBodyByName("panda_link7"),
-//              &plant.GetBodyByName("plate"),
-//              &plant.GetBodyByName("panda_link8")});
-
-//     plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-//         {"paddle", support_geom_set}, {"tray", paddle_geom_set});
-//   }
-
-//   const drake::geometry::GeometrySet& paddle_geom_set =
-//       plant.CollectRegisteredGeometries({
-//           &plant.GetBodyByName("panda_link2"),
-//           &plant.GetBodyByName("panda_link3"),
-//           &plant.GetBodyByName("panda_link4"),
-//           &plant.GetBodyByName("panda_link5"),
-//           &plant.GetBodyByName("panda_link6"),
-//           &plant.GetBodyByName("panda_link8"),
-//       });
-//   auto tray_collision_set = GeometrySet(
-//       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
-//   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-//       {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
+  plant.WeldFrames(plant.world_frame(), 
+                   plant.GetFrameByName("panda_link0"), T_X_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"), 
+                   plant.GetFrameByName("end_effector_base"), T_EE_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
+                   plant.GetFrameByName("ground"), X_F_G_franka);
 
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/

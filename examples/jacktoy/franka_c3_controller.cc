@@ -86,7 +86,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_trajectory_settings);
   SamplingC3SamplingParams sampling_params =
       drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
-          FLAGS_sampling_settings);
+          "examples/jacktoy/parameters/sampling_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
@@ -105,8 +105,7 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(
       drake::FindResourceOrThrow(controller_params.franka_model));
-  parser_franka.AddModels(
-      drake::FindResourceOrThrow(controller_params.ground_model));
+  parser_franka.AddModels(controller_params.ground_model);
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
           FindResourceOrThrow(controller_params.end_effector_model))[0];
@@ -188,7 +187,7 @@ int DoMain(int argc, char* argv[]) {
       plant_diagram->CreateDefaultContext();
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
-  auto plate_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+  auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
   /// TO DO: Maybe just this changes to the simple end effector link
   drake::geometry::GeometryId ee_contact_points =
@@ -331,7 +330,7 @@ int DoMain(int argc, char* argv[]) {
   // Instantiating the sampling based c3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plate_context_ad.get(), resolved_contact_pairs, c3_options,
+      plant_for_lcs_context_ad.get(), resolved_contact_pairs, c3_options,
       sampling_params);
 
   // The following systems consume the planned trajectories and output it to an
@@ -532,7 +531,7 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-  //  DrawAndSaveDiagramGraph(*plant_diagram);
+  DrawAndSaveDiagramGraph(*plant_diagram, "examples/jacktoy");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

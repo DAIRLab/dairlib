@@ -1,7 +1,8 @@
 
-c3_options_file: [examples/jacktoy/parameters/franka_c3_options_translation.yaml,
-                  examples/jacktoy/parameters/franka_c3_options_w_supports.yaml,
-                  examples/jacktoy/parameters/franka_c3_options_side_supports.yaml]
+# TODO: Remove this scene indexing
+c3_options_file: [examples/jacktoy/parameters/franka_c3_options_floating.yaml,
+                  examples/jacktoy/parameters/franka_c3_options_floating.yaml,
+                  examples/jacktoy/parameters/franka_c3_options_floating.yaml]
 osqp_settings_file: examples/jacktoy/parameters/franka_c3_qp_settings.yaml
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf

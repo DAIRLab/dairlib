@@ -85,7 +85,7 @@ LCS& LCS::operator=(const LCS& lcs) {
   }
 }
 
-const VectorXd LCS::Simulate(VectorXd& x_init, VectorXd& input) {
+const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input) {
   VectorXd x_final;
   // calculate force
   drake::solvers::MobyLCPSolver<double> LCPSolver;

@@ -12,7 +12,6 @@ struct FrankaC3ControllerParams {
   std::string end_effector_name;
   std::string end_effector_simple_model;
   std::string end_effector_simple_name;
-  std::string plate_model;
   std::string jack_model;
   std::string ground_model;
   std::string left_support_model;
@@ -49,7 +48,6 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(end_effector_simple_model));
     a->Visit(DRAKE_NVP(end_effector_simple_name));
-    a->Visit(DRAKE_NVP(plate_model));
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(left_support_model));

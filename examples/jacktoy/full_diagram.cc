@@ -24,6 +24,7 @@
 #include "common/find_resource.h"
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
 #include "systems/controllers/sampling_params.h"
+#include "examples/jacktoy/parameters/trajectory_params.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/parameters/franka_osc_controller_params.h"
 #include "examples/jacktoy/parameters/franka_sim_params.h"
@@ -132,9 +133,12 @@ int DoMain(int argc, char* argv[]) {
   FrankaControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaControllerParams>(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml");
+  SamplingC3SamplingParams sampling_params =
+      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+          "examples/jacktoy/parameters/sampling_params.yaml");
   SamplingC3TrajectoryParams trajectory_params =
       drake::yaml::LoadYamlFile<SamplingC3TrajectoryParams>(
-          FLAGS_sampling_controller_settings);
+          "examples/jacktoy/parameters/trajectory_params.yaml");
 
   DiagramBuilder<double> builder;
 
@@ -330,7 +334,7 @@ int DoMain(int argc, char* argv[]) {
       plant_diagram->CreateDefaultContext();
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
-  auto end_effector_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+  auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
   drake::geometry::GeometryId ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
@@ -440,11 +444,13 @@ int DoMain(int argc, char* argv[]) {
                                                             LCSFactoryPreProcessor::PreProcessor(plant_for_lcs, plant_for_lcs_context, 
                                                             contact_pairs, c3_options.num_friction_directions);
   
-  auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
-      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      end_effector_context_ad.get(), resolved_contact_pairs, c3_options);
+//   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
+//       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
+//       end_effector_context_ad.get(), resolved_contact_pairs, c3_options);
   auto c3_controller = builder.AddSystem<systems::SamplingC3Controller>(
-      plant_for_lcs, &plant_for_lcs_context, c3_options);
+      plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
+      plant_for_lcs_context_ad.get(), resolved_contact_pairs, c3_options,
+      sampling_params);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
                                                         c3_options);
@@ -611,8 +617,8 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_controller->get_input_port_target());
-  builder.Connect(lcs_factory->get_output_port_lcs(),
-                  c3_controller->get_input_port_lcs());
+//   builder.Connect(lcs_factory->get_output_port_lcs(),
+//                   c3_controller->get_input_port_lcs());
   builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
   builder.Connect(object_state_receiver->get_output_port(),
@@ -621,14 +627,14 @@ int DoMain(int argc, char* argv[]) {
                   c3_controller->get_input_port_lcs_state());
   builder.Connect(radio_sub->get_output_port(),
                   c3_controller->get_input_port_radio());
-  builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  lcs_factory->get_input_port_lcs_state());
+//   builder.Connect(reduced_order_model_receiver->get_output_port(),
+//                   lcs_factory->get_input_port_lcs_state());
   builder.Connect(radio_sub->get_output_port(),
                   control_target->get_input_port_radio());
-  builder.Connect(c3_controller->get_output_port_c3_solution(),
+  builder.Connect(c3_controller->get_output_port_c3_solution_curr_plan(),
                   c3_trajectory_generator->get_input_port_c3_solution());
-  builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
-                  c3_output_sender->get_input_port_lcs_contact_info());
+//   builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
+//                   c3_output_sender->get_input_port_lcs_contact_info());
   builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
                   c3_target_state_publisher->get_input_port());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
@@ -639,9 +645,9 @@ int DoMain(int argc, char* argv[]) {
                   c3_state_sender->get_input_port_actual_state());
 //  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
 //                  c3_output_publisher->get_input_port());
-  builder.Connect(c3_controller->get_output_port_c3_solution(),
+  builder.Connect(c3_controller->get_output_port_c3_solution_curr_plan(),
                   c3_output_sender->get_input_port_c3_solution());
-  builder.Connect(c3_controller->get_output_port_c3_intermediates(),
+  builder.Connect(c3_controller->get_output_port_c3_intermediates_curr_plan(),
                   c3_output_sender->get_input_port_c3_intermediates());
 
   // Diagram Connections

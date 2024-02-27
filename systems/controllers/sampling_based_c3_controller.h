@@ -12,6 +12,7 @@
 #include "solvers/c3.h"
 
 #include "solvers/c3_options.h"
+#include "sampling_params.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"
 #include "solvers/solver_options_io.h"
@@ -21,9 +22,20 @@
 
 
 
+
 namespace dairlib {
 using systems::TimestampedVector;
 using drake::systems::BasicVector;
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
+using drake::MatrixX;
+using drake::SortedPair;
+using drake::VectorX;
+using drake::geometry::GeometryId;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
 
 namespace systems {
 
@@ -31,12 +43,13 @@ namespace systems {
 class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  public:
   explicit SamplingC3Controller(
-      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
-      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
-      C3Options c3_options);
+      C3Options c3_options,
+      SamplingC3SamplingParams sampling_params);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -116,11 +129,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  void UpdateContext(Eigen::VectorXd lcs_state);
+  void UpdateContext(Eigen::VectorXd lcs_state) const;
 
-  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs);
+  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs, const double& t_context) const;
 
-  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs);
+  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs, const double& t_context) const;
 
   void OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
@@ -156,11 +169,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputC3TrajExecute(
     const drake::systems::Context<double>& context,
-    std::vector<TimestampedVector<double>>* c3_traj_execute) const;
+    LcmTrajectory* c3_execution_lcm_traj_) const;
 
   void OutputReposTrajExecute(
     const drake::systems::Context<double>& context,
-    std::vector<TimestampedVector<double>>* repos_traj_execute) const;
+    LcmTrajectory* repos_execution_lcm_traj_) const;
 
   void OutputIsC3Mode(
     const drake::systems::Context<double>& context,
@@ -185,14 +198,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;
 
-  const drake::multibody::MultibodyPlant<double>& plant_;
+  // This plant_ has been made 'not const' so that the context can be updated.
+  drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
   const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
       contact_pairs_;
 
   C3Options c3_options_;
+  SamplingC3SamplingParams sampling_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           "solvers/osqp_options_default.yaml")
@@ -219,14 +234,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   // C3 solutions for current location.
   // TODO: to be updated in ComputePlan
-  mutable std::unique_ptr<solvers::C3> c3_curr_plan_;
-  mutable std::vector<Eigen::VectorXd> delta_plan_;
-  mutable std::vector<Eigen::VectorXd> w_plan_;
+  mutable std::shared_ptr<solvers::C3> c3_curr_plan_;
+  mutable std::vector<Eigen::VectorXd> delta_curr_plan_;
+  mutable std::vector<Eigen::VectorXd> w_curr_plan_;
   mutable Eigen::VectorXd x_pred_curr_plan_;
   
   // C3 solutions for best sample location.
   // TODO: to be updated in ComputePlan
-  mutable std::unique_ptr<solvers::C3> c3_best_plan_;
+  mutable std::shared_ptr<solvers::C3> c3_best_plan_;
   mutable std::vector<Eigen::VectorXd> delta_best_plan_;
   mutable std::vector<Eigen::VectorXd> w_best_plan_;
   mutable Eigen::VectorXd x_pred_best_plan_;
@@ -246,7 +261,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;
   mutable bool finished_reposition_flag_ = false;
-  const int num_threads_to_use_;
+  mutable int num_threads_to_use_;
 
   enum SampleIndex { CURRENT_LOCATION_INDEX,
                      SAMPLE_INDEX_1, SAMPLE_INDEX_2, SAMPLE_INDEX_3,

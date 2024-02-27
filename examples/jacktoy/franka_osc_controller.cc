@@ -109,11 +109,12 @@ int DoMain(int argc, char* argv[]) {
   auto plant_context = plant.CreateDefaultContext();
 
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
-
+  
+  // TODO: Figure out which channels to subscribe to.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_channel, &lcm));
+          lcm_channel_params.c3_actor_curr_plan_channel, &lcm));
   auto end_effector_position_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "end_effector_position_target");

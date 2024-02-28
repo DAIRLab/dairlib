@@ -37,18 +37,19 @@ def plot_space_traj(traj, npoints):
     return ax
 
 
-def test_traj(p, t, h):
+def test_traj(p0, p1, t, h):
     assert(h > 0)
 
     start_time = 3.0
 
-    pp = PiecewisePolynomial(np.zeros((3,)))
+    pp = PiecewisePolynomial(p0)
 
     prev_traj = PathParameterizedTrajectory(pp, PiecewisePolynomial.FirstOrderHold(
         [0., 5.], [np.array([[0.]]), np.array([[5.]])]
     ))
     s = time.time()
 
+    # print(f'offset: {co}')
     # print(prev_traj.EvalDerivative(0.01, 2))
     traj = AdaptSwingFootTraj(
         prev_traj=prev_traj,
@@ -59,19 +60,21 @@ def test_traj(p, t, h):
         swing_foot_clearance=h,
         z_vel_final=0,
         z_pos_final_offset=0,
-        footstep_target=p.ravel()
+        initial_pos=p0,
+        footstep_target=p1,
     )
 
     traj2 = AdaptSwingFootTraj(
         prev_traj=traj,
-        prev_time=start_time + 0.1,
+        prev_time=start_time + 0.2,
         curr_time=start_time + .015,
         t_start=start_time,
         t_end=start_time + t,
         swing_foot_clearance=h,
         z_vel_final=0,
         z_pos_final_offset=0,
-        footstep_target=p.ravel() + np.array([0.1, 0.05, 0])
+        initial_pos=p0,
+        footstep_target=p1 + np.array([0.01, 0.03, 0]),
     )
 
     e = time.time()
@@ -83,7 +86,9 @@ def test_traj(p, t, h):
 
 
 def test():
-    test_traj(np.array([[-0.1], [-0.05], [0]]), 0.3, 0.18)
+    p0 = np.array([-0.1, -0.3, 0])
+    p1 = p0 + np.array([0.2, 0.02, 0])
+    test_traj(p0, p1, 0.3, 0.1)
 
 
 if __name__ == "__main__":

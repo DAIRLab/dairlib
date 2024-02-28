@@ -30,7 +30,7 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
     const PathParameterizedTrajectory<double>& prev_traj,
     double prev_time, double curr_time, double t_start, double t_end,
     double swing_foot_clearance, double z_vel_final, double z_pos_final_offset,
-    const Vector3d& footstep_target) {
+    const Vector3d& initial_pos, const Vector3d& footstep_target) {
 
   MathematicalProgram prog;
   auto cx = prog.NewContinuousVariables(kSwingPolyDeg, "cx");
@@ -56,7 +56,7 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
       3, std::vector<RowVectorkSwingPolyDegd>(3, RowVectorkSwingPolyDegd::Zero()));
 
 
-  double conditioning_offset = 0.5;
+  double conditioning_offset = 0.25;
 
   std::vector<double> knots = {
       conditioning_offset,
@@ -76,28 +76,33 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
     }
   }
 
-
   auto knot_deriv_rhs = std::vector<std::vector<Vector3d>>(
           3, std::vector<Vector3d>(3, Vector3d::Zero()));
 
   for (int i = 0; i < 3; ++i) {
     knot_deriv_rhs.at(1).at(i) = prev_traj.EvalDerivative(prev_time, i);
   }
+  knot_deriv_rhs.front().front() = initial_pos;
   knot_deriv_rhs.at(2).at(0) =
       footstep_target + Vector3d(0, 0, z_pos_final_offset);
   knot_deriv_rhs.at(2).at(1) = Vector3d(0, 0, z_vel_final);
 
-  Vector3d pos_T = knot_deriv_rhs.back().front();
+  Vector3d pos_T = footstep_target - initial_pos;
   double disp_yaw = atan2(pos_T(1), pos_T(0));
   Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0);
   Vector3d n = n_planar.cross(pos_T).normalized();
-  Vector3d des_mid_point = 0.5 * pos_T + swing_foot_clearance * n;
+  Vector3d des_mid_point = initial_pos + 0.5 * pos_T + swing_foot_clearance * n;
 
   for (int dim = 0; dim < 3; ++dim) {
     for (int knot = 0; knot < 3; ++ knot) {
       for (int deriv = 0; deriv < 3; ++deriv) {
         // TODO (@Brian-Acosta) We probably don't need to add the initial
         //  position constraints on x-y, can instead regularize another term
+
+//        if (dim < 2 and knot == 0) {
+//          continue;
+//        }
+
         auto binding = prog.AddLinearEqualityConstraint(
             knot_deriv_multipliers.at(knot).at(deriv),
             knot_deriv_rhs.at(knot).at(deriv).segment<1>(dim),
@@ -110,14 +115,11 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
   MatrixXd Q = mid_mult_broad.transpose() * mid_mult_broad;
   VectorXd b = mid_mult_broad.transpose() * des_mid_point;
 
-  prog.AddQuadraticCost(2 * Q, -2 * b, {cx, cy, cz});
+  prog.AddQuadraticCost(2 * Q, -2 * b, {cx, cy, cz}, true);
 
   auto solver = solvers::FCCQPSolver();
   solver.InitializeSolver(prog, drake::solvers::SolverOptions(), 0, 0, {});
   auto result = solver.Solve(prog);
-
-  std::cout << "solution result: " << result.get_solution_result() << std::endl;
-  std::cout << "optimal cost: " << result.get_optimal_cost() << std::endl;
 
   drake::Vector3<Polynomial<double>> polymat;
   for ( int i = 0; i < 3; ++i) {

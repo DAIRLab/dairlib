@@ -30,6 +30,7 @@ cc_library(
     hdrs = ["polynomial_utils.h"],
     deps = [
         ":eigen_utils",
+        "//solvers:fcc_qp_solver",
         "@drake//:drake_shared_library",
     ],
 )

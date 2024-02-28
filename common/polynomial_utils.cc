@@ -1,7 +1,14 @@
 #include "polynomial_utils.h"
 
 #include "eigen_utils.h"
+#include "drake/solvers/osqp_solver.h"
+#include "drake/solvers/gurobi_solver.h"
 #include "drake/solvers/equality_constrained_qp_solver.h"
+#include "drake/solvers/clarabel_solver.h"
+
+#include "solvers/fcc_qp_solver.h"
+
+#include <iostream>
 
 namespace dairlib::polynomials {
 
@@ -15,7 +22,9 @@ using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 
-using RowVector10d = Eigen::RowVector<double, 10>;
+static constexpr int kSwingPolyDeg = 10;
+
+using RowVectorkSwingPolyDegd = drake::RowVector<double, kSwingPolyDeg>;
 
 PathParameterizedTrajectory<double> AdaptSwingFootTraj(
     const PathParameterizedTrajectory<double>& prev_traj,
@@ -24,9 +33,9 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
     const Vector3d& footstep_target) {
 
   MathematicalProgram prog;
-  auto cx = prog.NewContinuousVariables(10, "cx");
-  auto cy = prog.NewContinuousVariables(10, "cy");
-  auto cz = prog.NewContinuousVariables(10, "cz");
+  auto cx = prog.NewContinuousVariables(kSwingPolyDeg, "cx");
+  auto cy = prog.NewContinuousVariables(kSwingPolyDeg, "cy");
+  auto cz = prog.NewContinuousVariables(kSwingPolyDeg, "cz");
 
   std::unordered_map<int, const VectorXDecisionVariable&> dim_var_map = {
       {0, cx}, {1, cy}, {2, cz}
@@ -43,21 +52,30 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
   //
   // coeff order from t^0 to t^9
 
-  auto knot_deriv_multipliers = std::vector<std::vector<RowVector10d>>(
-      3, std::vector<RowVector10d>(3, RowVector10d::Zero()));
+  auto knot_deriv_multipliers = std::vector<std::vector<RowVectorkSwingPolyDegd>>(
+      3, std::vector<RowVectorkSwingPolyDegd>(3, RowVectorkSwingPolyDegd::Zero()));
 
-  std::vector<double> knots = {1, 1+tk, 1+T};
 
-  double tmid = 1 + t_start + (t_end - t_start) / 2;
-  RowVector10d mid_mult;
+  double conditioning_offset = 0.5;
+
+  std::vector<double> knots = {
+      conditioning_offset,
+      conditioning_offset + tk,
+      conditioning_offset + T
+  };
+
+  double tmid = conditioning_offset + T / 2;
+
+  RowVectorkSwingPolyDegd mid_mult;
   for (int k = 0; k < 3; ++k) {
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < kSwingPolyDeg; ++i) {
       mid_mult(i) = pow(tmid, i);
       knot_deriv_multipliers.at(k).at(0)(i) = pow(knots.at(k), i);
       knot_deriv_multipliers.at(k).at(1)(i) = i * pow(knots.at(k), i - 1);
       knot_deriv_multipliers.at(k).at(2)(i) = i * (i - 1) * pow(knots.at(k), i - 2);
     }
   }
+
 
   auto knot_deriv_rhs = std::vector<std::vector<Vector3d>>(
           3, std::vector<Vector3d>(3, Vector3d::Zero()));
@@ -75,16 +93,12 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
   Vector3d n = n_planar.cross(pos_T).normalized();
   Vector3d des_mid_point = 0.5 * pos_T + swing_foot_clearance * n;
 
-  for (int knot = 0; knot < 3; ++knot) {
-    for (int deriv = 0; deriv < 3; ++ deriv) {
-      for (int dim = 0; dim < 3; ++dim) {
+  for (int dim = 0; dim < 3; ++dim) {
+    for (int knot = 0; knot < 3; ++ knot) {
+      for (int deriv = 0; deriv < 3; ++deriv) {
         // TODO (@Brian-Acosta) We probably don't need to add the initial
         //  position constraints on x-y, can instead regularize another term
-
-        if (dim < 2 and knot == 0) {
-          continue;
-        }
-        prog.AddLinearEqualityConstraint(
+        auto binding = prog.AddLinearEqualityConstraint(
             knot_deriv_multipliers.at(knot).at(deriv),
             knot_deriv_rhs.at(knot).at(deriv).segment<1>(dim),
             dim_var_map.at(dim)
@@ -92,22 +106,33 @@ PathParameterizedTrajectory<double> AdaptSwingFootTraj(
       }
     }
   }
-
   MatrixXd mid_mult_broad = BlockDiagonalRepeat<double>(mid_mult, 3);
   MatrixXd Q = mid_mult_broad.transpose() * mid_mult_broad;
   VectorXd b = mid_mult_broad.transpose() * des_mid_point;
-  prog.AddQuadraticCost(2 * Q, -2 * b, {cx, cy, cz}, true);
 
-  auto result = drake::solvers::EqualityConstrainedQPSolver().Solve(prog);
+  prog.AddQuadraticCost(2 * Q, -2 * b, {cx, cy, cz});
 
-  auto polymat = drake::Vector<Polynomial<double>, 3>();
+  auto solver = solvers::FCCQPSolver();
+  solver.InitializeSolver(prog, drake::solvers::SolverOptions(), 0, 0, {});
+  auto result = solver.Solve(prog);
+
+  std::cout << "solution result: " << result.get_solution_result() << std::endl;
+  std::cout << "optimal cost: " << result.get_optimal_cost() << std::endl;
+
+  drake::Vector3<Polynomial<double>> polymat;
   for ( int i = 0; i < 3; ++i) {
-    polymat(i) = Polynomial<double>(result.GetSolution(dim_var_map.at(i)));
+    Eigen::VectorXd coeffs = result.GetSolution(dim_var_map.at(i));
+    polymat(i) = Polynomial<double>(coeffs);
   }
 
-  PiecewisePolynomial<double> pp({polymat}, {0, T});
+  std::vector<drake::MatrixX<Polynomial<double>>> polys = {polymat};
+  std::vector<double> breaks = {0, knots.back()};
+  PiecewisePolynomial<double> pp(polys, breaks);
+
   auto time_scaling = PiecewisePolynomial<double>::FirstOrderHold(
-      Eigen::Vector2d(t_start, t_end), Eigen::RowVector2d(1, 1+T));
+      Eigen::Vector2d(t_start, t_end),
+      Eigen::RowVector2d(knots.front(), knots.back())
+  );
 
   PathParameterizedTrajectory<double> path(pp, time_scaling);
 

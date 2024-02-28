@@ -42,6 +42,16 @@ cc_library(
 )
 
 cc_library(
+    name = "fcc_qp_solver",
+    srcs = ["fcc_qp_solver.cc"],
+    hdrs = ["fcc_qp_solver.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@fcc_qp",
+    ],
+)
+
+cc_library(
     name = "fast_osqp_solver",
     srcs = [
         "fast_osqp_solver.cc",

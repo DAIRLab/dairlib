@@ -31,6 +31,7 @@ pybind_py_library(
 pybind_py_library(
     name = "footstep_planning_py",
     cc_deps = [
+        "//common:polynomial_utils",
         "//systems/controllers/footstep_planning:alip_miqp",
         "//systems/controllers/footstep_planning:alip_mpfc_system",
         "//systems/controllers/footstep_planning:alip_multiqp",
@@ -110,9 +111,9 @@ pybind_py_library(
     name = "framework_py",
     cc_deps = [
         "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
-        "//multibody:utils",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "framework",

@@ -32,11 +32,20 @@ py_binary(
 )
 
 py_binary(
+    name = "test_swing_traj",
+    srcs = ["test_swing_traj.py"],
+    deps = [
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/systems",
+    ],
+)
+
+py_binary(
     name = "full_stack_simulation_test",
     srcs = ["full_stack_simulation_test.py"],
     deps = [
-        "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/lcm",
         "//bindings/pydairlib/perceptive_locomotion/systems",
         "//bindings/pydairlib/perceptive_locomotion/terrain_segmentation",
     ],

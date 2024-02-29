@@ -171,6 +171,7 @@ cc_library(
     hdrs = ["swing_foot_trajectory_generator.h"],
     deps = [
         ":alip_utils",
+        ":swing_foot_traj_solver",
         "//common:polynomial_utils",
         "//multibody:utils",
         "//systems/controllers:minimum_snap_trajectory_generation",

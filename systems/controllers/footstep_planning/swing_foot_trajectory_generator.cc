@@ -69,17 +69,19 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
   footstep_target_port_ =
       this->DeclareVectorInputPort("footstep_target_in_stance_frame", 3).get_index();
 
-  // Provide an instance to allocate the memory first (for the output)
-  PiecewisePolynomial<double> pp(Vector1d::Zero());
-  Trajectory<double> &traj_instance = pp;
+  PathParameterizedTrajectory<double> pp(
+      PiecewisePolynomial<double>(VectorXd::Zero(3)),
+      PiecewisePolynomial<double>(VectorXd::Zero(1))
+  );
+  drake::trajectories::Trajectory<double>& traj_instance = pp;
   swing_foot_traj_output_port_ = this->DeclareAbstractOutputPort(
           "swing_foot_xyz_in_stance_frame", traj_instance,
           &SwingFootTrajectoryGenerator::CalcSwingTraj
   ).get_index();
 
 
-  DeclarePerStepDiscreteUpdateEvent(
-      &SwingFootTrajectoryGenerator::DiscreteVariableUpdate);
+  DeclareForcedUnrestrictedUpdateEvent(
+      &SwingFootTrajectoryGenerator::UnrestrictedUpdate);
 
   // The swing foot position in the beginning of the swing phase
   liftoff_swing_foot_pos_idx_ = this->DeclareDiscreteState(3);
@@ -93,7 +95,7 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
 
   // previous spline solution
   prev_spline_idx_ = this->DeclareAbstractState(
-      drake::Value<PiecewisePolynomial<double>>());
+      drake::Value<PathParameterizedTrajectory<double>>(pp));
 
   // Construct maps
   stance_foot_map_.insert(
@@ -110,23 +112,54 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
       {params.left_right_support_fsm_states.at(1), params.left_right_foot.at(0)});
 }
 
-EventStatus SwingFootTrajectoryGenerator::DiscreteVariableUpdate(
-    const Context<double> &context,
-    DiscreteValues<double> *discrete_state) const {
-  // Read from ports
+EventStatus SwingFootTrajectoryGenerator::UnrestrictedUpdate(
+    const Context<double> &context, State<double> *state) const {
+
+  // Get FSM
   int fsm_state = EvalVectorInput(context, fsm_port_)->get_value()(0);
+
+  // If we're in double support, no need to do anything
+  if (not is_single_support(fsm_state)) {
+    auto pp_traj =
+        state->get_mutable_abstract_state<PathParameterizedTrajectory<double>>(
+            prev_spline_idx_);
+    pp_traj = PathParameterizedTrajectory<double>(
+        PiecewisePolynomial<double>(Vector3d::Zero()),
+        PiecewisePolynomial<double>(Vector1d::Ones()));
+    return EventStatus::Succeeded();
+  }
+
+  // Read the rest of the ports
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, state_port_));
+  double liftoff_time =
+      EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
+  double touchdown_time =
+      EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
+  Vector3d footstep_target_in_stance_frame =
+      EvalVectorInput(context, footstep_target_port_)->get_value();
 
-  auto prev_fsm_state = discrete_state->get_mutable_value(prev_fsm_state_idx_);
+  // get relevant discrete states
+  auto swing_foot_pos_at_liftoff =
+      context.get_discrete_state(liftoff_swing_foot_pos_idx_).CopyToVector();
+  auto prev_fsm_state =
+      state->get_discrete_state(prev_fsm_state_idx_).CopyToVector();
+  auto prev_time =
+      state->get_discrete_state(prev_time_idx_).CopyToVector();
+  auto prev_spline =
+      state->get_abstract_state<PathParameterizedTrajectory<double>>(
+          prev_spline_idx_);
 
   // when entering a new state which is in left_right_support_fsm_states
   if (fsm_state != prev_fsm_state(0) && is_single_support(fsm_state)) {
+
+    // update prev fsm state
     prev_fsm_state(0) = fsm_state;
 
+    // calculate swing foot pos at liftoff
     VectorXd q = robot_output->GetPositions();
     multibody::SetPositionsIfNew<double>(plant_, q, plant_context_);
-    auto swing_foot_pos_at_liftoff = discrete_state->get_mutable_vector(
+    swing_foot_pos_at_liftoff = state->get_mutable_discrete_state(
         liftoff_swing_foot_pos_idx_).get_mutable_value();
     Vector3d stance_pos;
 
@@ -140,63 +173,28 @@ EventStatus SwingFootTrajectoryGenerator::DiscreteVariableUpdate(
         multibody::ReExpressWorldVector3InBodyYawFrame(
             plant_, *plant_context_, "pelvis",
             swing_foot_pos_at_liftoff - stance_pos);
+
+    prev_spline = PathParameterizedTrajectory<double>(
+        PiecewisePolynomial<double>(swing_foot_pos_at_liftoff),
+        PiecewisePolynomial<double>(VectorXd::Zero(1))
+    );
+
+    state->get_mutable_discrete_state(
+        liftoff_swing_foot_pos_idx_).SetFromVector(swing_foot_pos_at_liftoff);
+    prev_time(0) = liftoff_time;
   }
+
+  prev_spline = foot_traj_solver_.AdaptSwingFootTraj(
+      prev_spline, prev_time(0), liftoff_time, touchdown_time, mid_foot_height_,
+      -desired_final_vertical_foot_velocity_, desired_final_foot_height_,
+      swing_foot_pos_at_liftoff, footstep_target_in_stance_frame);
+
+  // update prev_fsm_state, prev_time, and prev_spline
+  state->get_mutable_discrete_state(prev_fsm_state_idx_).set_value(prev_fsm_state);
+  state->get_mutable_discrete_state(prev_time_idx_).set_value(prev_time);
+  state->get_mutable_abstract_state<PathParameterizedTrajectory<double>>(
+      prev_spline_idx_) = prev_spline;
   return EventStatus::Succeeded();
-}
-
-drake::trajectories::PiecewisePolynomial<double>
-SwingFootTrajectoryGenerator::CreateSplineForSwingFoot(
-    double start_time, double end_time, const Vector3d &init_pos,
-    const Vector3d &final_pos) const {
-
-  Vector3d final = final_pos;
-  final(2) += desired_final_foot_height_;
-
-  const Vector3d time_breaks(start_time, (start_time + end_time) / 2, end_time);
-
-  Eigen::Matrix3d control_points = Matrix3d::Zero();
-  control_points.col(0) = init_pos;
-  control_points.col(2) = final;
-
-  enum StepType { kFlat, kUp, kDown };
-  StepType step_type = kFlat;
-
-  Vector3d swing_foot_disp = final - init_pos;
-  if (abs(swing_foot_disp(2)) < 0.025){
-    swing_foot_disp(2) = 0;
-  } else if (swing_foot_disp(2) > 0) {
-    step_type = kUp;
-  } else {
-    step_type = kDown;
-  }
-
-  // set midpoint similarly to https://arxiv.org/pdf/2206.14049.pdf
-  // (Section V/E)
-  double disp_yaw = atan2(swing_foot_disp(1), swing_foot_disp(0));
-  Vector3d n_planar(cos(disp_yaw - M_PI_2), sin(disp_yaw - M_PI_2), 0);
-  Vector3d n = n_planar.cross(swing_foot_disp).normalized();
-  control_points.col(1) = 0.5 * (init_pos + final) + mid_foot_height_ * n;
-
-  Vector3d final_vel = -desired_final_vertical_foot_velocity_ * (end_time - start_time) * Vector3d::UnitZ();
-
-  // Swing foot retraction heuristic to overshoot the predicted momentum when
-  // stepping up or down
-  if (step_type != kFlat) {
-    control_points.col(1) += step_type == kUp ?
-                             0.4 * mid_foot_height_ * n : 0.2 * mid_foot_height_ * n;
-    Vector3d retract_vel = -swing_foot_disp;
-    retract_vel(2) = 0;
-    retract_vel = 0.25 * (end_time - start_time) * retract_vel.normalized();
-    final_vel += retract_vel;
-    Vector3d retract_delta = retraction_dist_ * retract_vel.normalized();
-    control_points.col(2) += retract_delta;
-  }
-
-  auto swing_foot_spline =
-      PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
-          time_breaks, control_points, Vector3d::Zero(), final_vel);
-
-  return swing_foot_spline;
 }
 
 bool SwingFootTrajectoryGenerator::is_single_support(int fsm_state) const {
@@ -212,44 +210,9 @@ bool SwingFootTrajectoryGenerator::is_single_support(int fsm_state) const {
 void SwingFootTrajectoryGenerator::CalcSwingTraj(
     const Context<double> &context,
     drake::trajectories::Trajectory<double> *traj) const {
-
-  int fsm_state = EvalVectorInput(context, fsm_port_)->get_value()(0);
-
-  if (not is_single_support(fsm_state)) {
-    auto pp_traj = dynamic_cast<PathParameterizedTrajectory<double> *>(traj);
-    *pp_traj = PathParameterizedTrajectory<double>(
-        PiecewisePolynomial<double>(Vector3d::Zero()),
-        PiecewisePolynomial<double>(Vector1d::Ones()));
-    return;
-  }
-
-  auto robot_output = dynamic_cast<const OutputVector<double>*>(
-      EvalVectorInput(context, state_port_));
-
-  multibody::SetPositionsAndVelocitiesIfNew<double>(
-      plant_, robot_output->GetState(), plant_context_);
-
-  auto swing_foot_pos_at_liftoff =
-      context.get_discrete_state(liftoff_swing_foot_pos_idx_).CopyToVector();
-  double liftoff_time =
-      EvalVectorInput(context, liftoff_time_port_)->get_value()(0);
-  double touchdown_time =
-      EvalVectorInput(context, touchdown_time_port_)->get_value()(0);
-  Vector3d footstep_target_in_stance_frame =
-      EvalVectorInput(context, footstep_target_port_)->get_value();
-
-  double start_time_of_this_interval = std::clamp(
-      liftoff_time, -std::numeric_limits<double>::infinity(),
-      touchdown_time - 0.001);
-
-  // Assign traj
-  auto pp_traj = dynamic_cast<PiecewisePolynomial<double> *>(traj);
-  *pp_traj = CreateSplineForSwingFoot(
-      start_time_of_this_interval,
-      touchdown_time,
-      swing_foot_pos_at_liftoff,
-      footstep_target_in_stance_frame
-  );
+  auto pp = dynamic_cast<PathParameterizedTrajectory<double>*>(traj);
+  *pp = context.get_abstract_state<PathParameterizedTrajectory<double>>(
+      prev_spline_idx_);
 }
 
 }  // namespace controllers

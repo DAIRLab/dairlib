@@ -20,7 +20,7 @@ class SwingFootTrajSolver {
   // position to accommodate stepping up/down
   drake::trajectories::PathParameterizedTrajectory<double> AdaptSwingFootTraj(
       const drake::trajectories::PathParameterizedTrajectory<double>& prev_traj,
-      double prev_time, double curr_time, double t_start, double t_end,
+      double prev_time, double t_start, double t_end,
       double swing_foot_clearance, double z_vel_final, double z_pos_final_offset,
       const Eigen::Vector3d& initial_pos, const Eigen::Vector3d& footstep_target);
 

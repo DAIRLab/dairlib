@@ -56,7 +56,6 @@ def test_traj(p0, p1, t, h):
     traj = solver.AdaptSwingFootTraj(
         prev_traj=prev_traj,
         prev_time=start_time + 0.0,
-        curr_time=start_time + .015,
         t_start=start_time,
         t_end=start_time + t,
         swing_foot_clearance=h,
@@ -69,7 +68,6 @@ def test_traj(p0, p1, t, h):
     traj2 = solver.AdaptSwingFootTraj(
         prev_traj=traj,
         prev_time=start_time + 0.2,
-        curr_time=start_time + .015,
         t_start=start_time,
         t_end=start_time + t,
         swing_foot_clearance=h,

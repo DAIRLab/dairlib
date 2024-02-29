@@ -3,6 +3,7 @@
 #include "alip_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
+#include "systems/controllers/footstep_planning/swing_foot_traj_solver.h"
 
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/parsing/parser.h"
@@ -69,15 +70,10 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
   bool is_single_support(int fsm_state) const;
 
-  drake::systems::EventStatus DiscreteVariableUpdate(
+  drake::systems::EventStatus UnrestrictedUpdate(
       const drake::systems::Context<double> &context,
-      drake::systems::DiscreteValues<double> *discrete_state) const;
+      drake::systems::State<double> *state) const;
 
-  drake::trajectories::PiecewisePolynomial<double>
-  CreateSplineForSwingFoot(
-      double start_time, double end_time,
-      const Eigen::Vector3d &init_pos,
-      const Eigen::Vector3d &final_pos) const;
 
   void CalcSwingTraj(const drake::systems::Context<double> &context,
                      drake::trajectories::Trajectory<double> *traj) const;
@@ -110,6 +106,9 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   // Maps
   std::map<int, alip_utils::PointOnFramed> stance_foot_map_;
   std::map<int, alip_utils::PointOnFramed> swing_foot_map_;
+
+  // Solver
+  mutable SwingFootTrajSolver foot_traj_solver_{};
 };
 
 

@@ -150,8 +150,8 @@ PYBIND11_MODULE(footstep_planning, m) {
   py::class_<SwingFootTrajSolver>(m, "SwingFootTrajSolver")
       .def(py::init<>())
       .def("AdaptSwingFootTraj", &SwingFootTrajSolver::AdaptSwingFootTraj,
-           py::arg("prev_traj"), py::arg("prev_time"), py::arg("curr_time"),
-           py::arg("t_start"), py::arg("t_end"), py::arg("swing_foot_clearance"),
+           py::arg("prev_traj"), py::arg("prev_time"), py::arg("t_start"),
+           py::arg("t_end"), py::arg("swing_foot_clearance"),
            py::arg("z_vel_final"), py::arg("z_pos_final_offset"),
            py::arg("initial_pos"), py::arg("footstep_target"));
 

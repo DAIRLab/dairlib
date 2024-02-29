@@ -56,7 +56,8 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
 
 }
 
-drake::trajectories::PathParameterizedTrajectory<double> SwingFootTrajSolver::AdaptSwingFootTraj(
+drake::trajectories::PathParameterizedTrajectory<double>
+SwingFootTrajSolver::AdaptSwingFootTraj(
     const drake::trajectories::PathParameterizedTrajectory<double> &prev_traj,
     double prev_time,
     double t_start,

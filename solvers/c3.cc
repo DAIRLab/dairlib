@@ -101,11 +101,15 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   x_sol_ = std::make_unique<std::vector<VectorXd>>();
   lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
   u_sol_ = std::make_unique<std::vector<VectorXd>>();
+  w_sol_ = std::make_unique<std::vector<VectorXd>>();
+  delta_sol_ = std::make_unique<std::vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
     x_sol_->push_back(Eigen::VectorXd::Zero(n_));
     lambda_sol_->push_back(Eigen::VectorXd::Zero(m_));
     u_sol_->push_back(Eigen::VectorXd::Zero(k_));
+    w_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
+    delta_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
   }
 
   for (int i = 0; i < N_ + 1; i++) {
@@ -186,8 +190,11 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
-void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
-               vector<VectorXd>& w) {
+void C3::Solve(const VectorXd& x0) {
+  VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
+  delta_init.head(n_) = x0;
+  std::vector<VectorXd> delta(N_, delta_init);
+  std::vector<VectorXd> w(N_, VectorXd::Zero(n_ + m_ + k_));
   vector<MatrixXd> Gv = G_;
 
   for (int i = 0; i < N_; ++i) {
@@ -213,6 +220,8 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
         A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
         D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
   }
+  *w_sol_ = w;
+  *delta_sol_ = delta;
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,

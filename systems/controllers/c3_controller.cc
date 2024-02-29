@@ -46,7 +46,6 @@ C3Controller::C3Controller(
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
-  filtered_solve_time_ = 0.0;
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
@@ -62,8 +61,6 @@ C3Controller::C3Controller(
         2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
   }
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-  w_ = std::vector<VectorXd>(N_, zeros);
-  delta_ = std::vector<VectorXd>(N_, zeros);
 
   n_u_ = plant_.num_actuators();
 
@@ -149,8 +146,11 @@ C3Controller::C3Controller(
       this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
                                       &C3Controller::OutputC3Intermediates)
           .get_index();
+
   plan_start_time_index_ = DeclareDiscreteState(1);
-  x_pred_ = VectorXd::Zero(n_x_);
+  x_pred_index_ = DeclareDiscreteState(n_x_);
+  filtered_solve_time_index_ = DeclareDiscreteState(1);
+
   if (c3_options_.publish_frequency > 0) {
     DeclarePeriodicDiscreteUpdateEvent(1 / c3_options_.publish_frequency, 0.0,
                                        &C3Controller::ComputePlan);
@@ -184,20 +184,23 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
+  auto& x_pred = context.get_discrete_state(x_pred_index_).value();
+  auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
+  auto mutable_solve_time = discrete_state->get_mutable_value(filtered_solve_time_index_);
 
   if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
-      !x_pred_.isZero()) {
-    x_lcs[0] = std::clamp(x_pred_[0], x_lcs[0] - 10 * dt_ * dt_,
+      !x_pred.isZero()) {
+    x_lcs[0] = std::clamp(x_pred[0], x_lcs[0] - 10 * dt_ * dt_,
                           x_lcs[0] + 10 * dt_ * dt_);
-    x_lcs[1] = std::clamp(x_pred_[1], x_lcs[1] - 10 * dt_ * dt_,
+    x_lcs[1] = std::clamp(x_pred[1], x_lcs[1] - 10 * dt_ * dt_,
                           x_lcs[1] + 10 * dt_ * dt_);
-    x_lcs[2] = std::clamp(x_pred_[2], x_lcs[2] - 10 * dt_ * dt_,
+    x_lcs[2] = std::clamp(x_pred[2], x_lcs[2] - 10 * dt_ * dt_,
                           x_lcs[2] + 10 * dt_ * dt_);
-    x_lcs[n_q_ + 0] = std::clamp(x_pred_[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_,
+    x_lcs[n_q_ + 0] = std::clamp(x_pred[n_q_ + 0], x_lcs[n_q_ + 0] - 10 * dt_,
                                  x_lcs[n_q_ + 0] + 10 * dt_);
-    x_lcs[n_q_ + 1] = std::clamp(x_pred_[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_,
+    x_lcs[n_q_ + 1] = std::clamp(x_pred[n_q_ + 1], x_lcs[n_q_ + 1] - 10 * dt_,
                                  x_lcs[n_q_ + 1] + 10 * dt_);
-    x_lcs[n_q_ + 2] = std::clamp(x_pred_[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_,
+    x_lcs[n_q_ + 2] = std::clamp(x_pred[n_q_ + 2], x_lcs[n_q_ + 2] - 10 * dt_,
                                  x_lcs[n_q_ + 2] + 10 * dt_);
   }
 
@@ -224,21 +227,30 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
 
-  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-  delta_init.head(n_x_) = x_lcs;
-  std::vector<VectorXd> delta(N_, delta_init);
-  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
+//  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
+//  delta_init.head(n_x_) = x_lcs;
+//  std::vector<VectorXd> delta(N_, delta_init);
+//  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
 
-  c3_->Solve(x_lcs, delta, w);
+  c3_->Solve(x_lcs);
   auto finish = std::chrono::high_resolution_clock::now();
-  delta_ = delta;
-  w_ = w;
   auto elapsed = finish - start;
   double solve_time =
       std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
       1e6;
-  filtered_solve_time_ = (1 - solve_time_filter_constant_) * solve_time +
-                         (solve_time_filter_constant_)*filtered_solve_time_;
+  mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
+                         solve_time_filter_constant_ * mutable_solve_time[0];
+
+  auto z_sol = c3_->GetFullSolution();
+  if (mutable_solve_time[0] < N_ * dt_) {
+    int index = mutable_solve_time[0] / dt_;
+    double weight = ((index + 1) * dt_ - mutable_solve_time[0]) / dt_;
+    mutable_x_pred = weight * z_sol[index].segment(0, n_x_) +
+                     (1 - weight) * z_sol[index + 1].segment(0, n_x_);
+  } else {
+    mutable_x_pred = z_sol[1].segment(0, n_x_);
+  }
+
   return drake::systems::EventStatus::Succeeded();
 }
 
@@ -246,36 +258,32 @@ void C3Controller::OutputC3Solution(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
+  double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
+
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = solve_time + t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
     c3_solution->u_sol_.col(i) =
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
-
-  if (filtered_solve_time_ < N_ * dt_) {
-    int index = filtered_solve_time_ / dt_;
-    double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
-    x_pred_ = weight * z_sol[index].segment(0, n_x_) +
-              (1 - weight) * z_sol[index + 1].segment(0, n_x_);
-  } else {
-    x_pred_ = z_sol[1].segment(0, n_x_);
-  }
 }
 
 void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
+  double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
   double t = context.get_discrete_state(plan_start_time_index_)[0] +
-             filtered_solve_time_;
+      solve_time;
+  auto delta = c3_->GetDualDeltaSolution();
+  auto w = c3_->GetDualWSolution();
 
   for (int i = 0; i < N_; i++) {
-    c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
-    c3_intermediates->w_.col(i) = w_[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta_[i].cast<float>();
+    c3_intermediates->time_vector_(i) = solve_time + t + i * dt_;
+    c3_intermediates->w_.col(i) = delta[i].cast<float>();
+    c3_intermediates->delta_.col(i) = w[i].cast<float>();
   }
 }
 

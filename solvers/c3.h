@@ -40,8 +40,7 @@ class C3 {
   /// @param delta A pointer to the copy variable solution
   /// @param w A pointer to the scaled dual variable solution
   /// @return The first control action to take, u[0]
-  void Solve(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>& delta,
-             std::vector<Eigen::VectorXd>& w);
+  void Solve(const Eigen::VectorXd& x0);
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system
@@ -103,6 +102,8 @@ class C3 {
   std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
   std::vector<Eigen::VectorXd> GetForceSolution() { return *lambda_sol_; }
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
+  std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
+  std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
 
  public:
   void UpdateLCS(const LCS& lcs);
@@ -158,6 +159,8 @@ class C3 {
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
 };
 
 }  // namespace solvers

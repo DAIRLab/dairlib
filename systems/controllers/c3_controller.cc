@@ -87,7 +87,7 @@ C3Controller::C3Controller(
 
   c3_->SetOsqpSolverOptions(solver_options_);
 
-  // Set actor bounds
+  // Set actor bounds, TODO(yangwill): move this out of here because it is task specific
   for (int i : vector<int>({0})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
@@ -226,13 +226,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
-
-//  VectorXd delta_init = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-//  delta_init.head(n_x_) = x_lcs;
-//  std::vector<VectorXd> delta(N_, delta_init);
-//  std::vector<VectorXd> w(N_, VectorXd::Zero(n_x_ + n_lambda_ + n_u_));
-
   c3_->Solve(x_lcs);
+
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   double solve_time =

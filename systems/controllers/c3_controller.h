@@ -22,7 +22,6 @@
 namespace dairlib {
 namespace systems {
 
-/// Outputs a lcmt_timestamped_saved_traj
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
   explicit C3Controller(

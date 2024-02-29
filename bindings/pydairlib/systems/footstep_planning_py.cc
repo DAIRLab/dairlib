@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "common/polynomial_utils.h"
+#include "systems/controllers/footstep_planning/swing_foot_traj_solver.h"
 #include "systems/controllers/footstep_planning/alip_miqp.h"
 #include "systems/controllers/footstep_planning/alip_multiqp.h"
 #include "systems/controllers/footstep_planning/alip_utils.h"
@@ -25,7 +25,7 @@ using systems::controllers::alip_utils::CalcMassNormalizedAd;
 using systems::controllers::alip_utils::MakePeriodicAlipGait;
 using systems::controllers::alip_utils::AlipStepToStepDynamics;
 using systems::controllers::alip_utils::MassNormalizedAlipStepToStepDynamics;
-using polynomials::AdaptSwingFootTraj;
+using systems::controllers::SwingFootTrajSolver;
 
 
 PYBIND11_MODULE(footstep_planning, m) {
@@ -147,6 +147,14 @@ PYBIND11_MODULE(footstep_planning, m) {
       .def("nmodes", &AlipMIQP::nmodes)
       .def("nknots", &AlipMIQP::nknots);
 
+  py::class_<SwingFootTrajSolver>(m, "SwingFootTrajSolver")
+      .def(py::init<>())
+      .def("AdaptSwingFootTraj", &SwingFootTrajSolver::AdaptSwingFootTraj,
+           py::arg("prev_traj"), py::arg("prev_time"), py::arg("curr_time"),
+           py::arg("t_start"), py::arg("t_end"), py::arg("swing_foot_clearance"),
+           py::arg("z_vel_final"), py::arg("z_pos_final_offset"),
+           py::arg("initial_pos"), py::arg("footstep_target"));
+
   m.def("AlipStepToStepDynamics", &AlipStepToStepDynamics, py::arg("com_z"),
         py::arg("m"), py::arg("Tss"), py::arg("Tds"),
         py::arg("discretization"))
@@ -160,11 +168,7 @@ PYBIND11_MODULE(footstep_planning, m) {
          py::arg("com_z"), py::arg("t"))
     .def("CalcMassNormalizedA", &CalcMassNormalizedA, py::arg("com_z"));
 
-  m.def("AdaptSwingFootTraj", &AdaptSwingFootTraj,
-        py::arg("prev_traj"), py::arg("prev_time"), py::arg("curr_time"),
-        py::arg("t_start"), py::arg("t_end"), py::arg("swing_foot_clearance"),
-        py::arg("z_vel_final"), py::arg("z_pos_final_offset"),
-        py::arg("initial_pos"), py::arg("footstep_target"));
+
 }
 
 

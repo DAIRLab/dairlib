@@ -9,8 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from pydairlib.common.plot_styler import PlotStyler
-from pydairlib.systems.footstep_planning import \
-    AdaptSwingFootTraj
+from pydairlib.systems.footstep_planning import SwingFootTrajSolver
 
 from pydrake.all import PiecewisePolynomial, PathParameterizedTrajectory
 
@@ -47,11 +46,14 @@ def test_traj(p0, p1, t, h):
     prev_traj = PathParameterizedTrajectory(pp, PiecewisePolynomial.FirstOrderHold(
         [0., 5.], [np.array([[0.]]), np.array([[5.]])]
     ))
+
+    solver = SwingFootTrajSolver()
+
     s = time.time()
 
     # print(f'offset: {co}')
     # print(prev_traj.EvalDerivative(0.01, 2))
-    traj = AdaptSwingFootTraj(
+    traj = solver.AdaptSwingFootTraj(
         prev_traj=prev_traj,
         prev_time=start_time + 0.0,
         curr_time=start_time + .015,
@@ -64,7 +66,7 @@ def test_traj(p0, p1, t, h):
         footstep_target=p1,
     )
 
-    traj2 = AdaptSwingFootTraj(
+    traj2 = solver.AdaptSwingFootTraj(
         prev_traj=traj,
         prev_time=start_time + 0.2,
         curr_time=start_time + .015,

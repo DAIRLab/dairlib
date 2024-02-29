@@ -31,7 +31,7 @@ pybind_py_library(
 pybind_py_library(
     name = "footstep_planning_py",
     cc_deps = [
-        "//common:polynomial_utils",
+        "//systems/controllers/footstep_planning:swing_foot_traj_solver",
         "//systems/controllers/footstep_planning:alip_miqp",
         "//systems/controllers/footstep_planning:alip_mpfc_system",
         "//systems/controllers/footstep_planning:alip_multiqp",

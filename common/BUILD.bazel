@@ -26,13 +26,8 @@ cc_library(
 
 cc_library(
     name = "polynomial_utils",
-    srcs = ["polynomial_utils.cc"],
     hdrs = ["polynomial_utils.h"],
-    deps = [
-        ":eigen_utils",
-        "//solvers:fcc_qp_solver",
-        "@drake//:drake_shared_library",
-    ],
+    deps = [],
 )
 
 cc_library(

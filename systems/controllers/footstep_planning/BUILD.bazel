@@ -155,6 +155,17 @@ cc_library(
 )
 
 cc_library(
+    name = "swing_foot_traj_solver",
+    srcs = ["swing_foot_traj_solver.cc"],
+    hdrs = ["swing_foot_traj_solver.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//solvers:fcc_qp_solver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "swing_foot_trajectory_generator",
     srcs = ["swing_foot_trajectory_generator.cc"],
     hdrs = ["swing_foot_trajectory_generator.h"],

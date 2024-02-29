@@ -150,12 +150,12 @@ class KinematicEvaluatorSet {
     return *evaluators_.at(index);
   };
 
-  const std::vector<KinematicEvaluator<T>*>& get_evaluators() const {
+  const std::vector<const KinematicEvaluator<T>*>& get_evaluators() const {
     return evaluators_;
   };
 
   /// Adds an evaluator to the end of the list, returning the associated index
-  int add_evaluator(KinematicEvaluator<T>* e);
+  int add_evaluator(const KinematicEvaluator<T>* e);
 
   /// Count the total number of active rows
   int count_active() const;
@@ -174,7 +174,7 @@ class KinematicEvaluatorSet {
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
-  std::vector<KinematicEvaluator<T>*> evaluators_;
+  std::vector<const KinematicEvaluator<T>*> evaluators_;
 };
 
 }  // namespace multibody

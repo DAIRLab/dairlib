@@ -51,6 +51,6 @@ q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.515],
 
 visualize_workspace: false
 visualize_pose_trace: true
-visualize_center_of_mass_plan: false
-visualize_c3_forces: true
-visualize_c3_state: true
+visualize_center_of_mass_plan: true
+visualize_c3_forces: false
+visualize_c3_state: false

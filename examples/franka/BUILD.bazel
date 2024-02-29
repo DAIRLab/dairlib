@@ -115,6 +115,33 @@ cc_binary(
 )
 
 cc_binary(
+    name = "forward_kinematics_for_lcs",
+    srcs = ["forward_kinematics_for_lcs.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_c3_controller_params",
+        ":franka_lcm_channels",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers:c3_controller",
+        "//systems/controllers:lcs_factory_system",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_visualizer",
     srcs = ["franka_visualizer.cc"],
     data = [

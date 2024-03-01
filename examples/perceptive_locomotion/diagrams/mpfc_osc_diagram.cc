@@ -282,7 +282,7 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true);
 
   // Cost
   int n_v = plant.num_velocities();
@@ -302,30 +302,28 @@ MpfcOscDiagram::MpfcOscDiagram(
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   osc->SetContactFriction(gains.mu);
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &right_heel_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &right_heel_evaluator);
+
+  osc->AddContactPoint(
+      "left_toe",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "left_heel",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_toe",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_heel",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
 
   osc->SetOsqpSolverOptionsFromYaml(osqp_settings_filename);
 

@@ -113,17 +113,11 @@ DEFINE_string(channel_mpc, "ALIP_MPC", "alip mpc output lcm channel");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 
-DEFINE_bool(is_two_phase, false,
-            "true: only right/left single support"
-            "false: both double and single support");
-
 DEFINE_bool(use_spring_model, true,
             "whether to use the cassie spring model in the controller");
 
 DEFINE_bool(add_camera_inertia, true,
             "whether to add the camera assembly to the robot model");
-
-DEFINE_bool(impact_invariant, true, "use impact invariant proj?");
 
 
 int DoMain(int argc, char* argv[]) {
@@ -139,21 +133,13 @@ int DoMain(int argc, char* argv[]) {
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
-  drake::multibody::MultibodyPlant<double> plant_wo_spr(0.0);
   plant_w_spr.set_name("plant_w_spr");
-  plant_wo_spr.set_name("plant_wo_spr");
 
   auto instance_w_spr =
       AddCassieMultibody(&plant_w_spr, nullptr, true, urdf_w_spr, true, false);
 
   drake::multibody::ModelInstanceIndex instance_wo_spr;
-  if (FLAGS_use_spring_model) {
-    instance_wo_spr = AddCassieMultibody(
-        &plant_wo_spr, nullptr, true, urdf_w_spr, true, false);
-  } else {
-    instance_wo_spr = AddCassieMultibody(
-        &plant_wo_spr, nullptr, true, urdf_wo_spr, false, false);
-  }
+
   if (FLAGS_add_camera_inertia) {
     auto camera_inertia_about_com =
         RotationalInertia<double>::MakeFromMomentsAndProductsOfInertia(
@@ -161,21 +147,14 @@ int DoMain(int argc, char* argv[]) {
     auto camera_inertia = SpatialInertia<double>::MakeFromCentralInertia(
         1.06, Vector3d(0.07, 0.0, 0.17), camera_inertia_about_com);
     plant_w_spr.AddRigidBody("camera_inertia", instance_w_spr, camera_inertia);
-    plant_wo_spr.AddRigidBody("camera_inertia", instance_wo_spr, camera_inertia);
     plant_w_spr.WeldFrames(
         plant_w_spr.GetBodyByName("pelvis").body_frame(),
         plant_w_spr.GetBodyByName("camera_inertia").body_frame()
     );
-    plant_wo_spr.WeldFrames(
-        plant_wo_spr.GetBodyByName("pelvis").body_frame(),
-        plant_wo_spr.GetBodyByName("camera_inertia").body_frame()
-    );
   }
   plant_w_spr.Finalize();
-  plant_wo_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
-  auto context_wo_spr = plant_wo_spr.CreateDefaultContext();
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -183,10 +162,10 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
 
   // Get contact frames and position
-  auto left_toe = LeftToeFront(plant_wo_spr);
-  auto left_heel = LeftToeRear(plant_wo_spr);
-  auto right_toe = RightToeFront(plant_wo_spr);
-  auto right_heel = RightToeRear(plant_wo_spr);
+  auto left_toe = LeftToeFront(plant_w_spr);
+  auto left_heel = LeftToeRear(plant_w_spr);
+  auto right_toe = RightToeFront(plant_w_spr);
+  auto right_heel = RightToeRear(plant_w_spr);
 
   // Get body frames and points
   Vector3d center_of_pressure = left_heel.first +
@@ -281,19 +260,15 @@ int DoMain(int argc, char* argv[]) {
   // Create swing leg trajectory generator
   vector<int> unordered_fsm_states;
   vector<std::pair<const Vector3d, const Frame<double>&>> contact_points_in_each_state;
-  if (FLAGS_is_two_phase) {
-    unordered_fsm_states = {left_stance_state, right_stance_state};
-    contact_points_in_each_state.push_back({left_toe_mid});
-    contact_points_in_each_state.push_back({right_toe_mid});
-  } else {
-    unordered_fsm_states = {left_stance_state, right_stance_state,
-                            post_left_double_support_state,
-                            post_right_double_support_state};
-    contact_points_in_each_state.push_back(left_toe_mid);
-    contact_points_in_each_state.push_back(right_toe_mid);
-    contact_points_in_each_state.push_back(left_toe_mid);
-    contact_points_in_each_state.push_back(right_toe_mid);
-  }
+
+  unordered_fsm_states = {left_stance_state, right_stance_state,
+                          post_left_double_support_state,
+                          post_right_double_support_state};
+  contact_points_in_each_state.push_back(left_toe_mid);
+  contact_points_in_each_state.push_back(right_toe_mid);
+  contact_points_in_each_state.push_back(left_toe_mid);
+  contact_points_in_each_state.push_back(right_toe_mid);
+
 
 
   vector<int> left_right_support_fsm_states = {left_stance_state,
@@ -366,22 +341,22 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_wo_spr, context_w_spr.get(), context_wo_spr.get(), true);
+      plant_w_spr, context_w_spr.get(), true);
 
   // Cost
-  int n_v = plant_wo_spr.num_velocities();
-  int n_u = plant_wo_spr.num_actuators();
+  int n_v = plant_w_spr.num_velocities();
+  int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
   osc->SetInputSmoothingCostWeights(
       gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
-  multibody::KinematicEvaluatorSet<double> evaluators(plant_wo_spr);
+  multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
 
   // 1. fourbar constraint
-  auto left_loop = LeftLoopClosureEvaluator(plant_wo_spr);
-  auto right_loop = RightLoopClosureEvaluator(plant_wo_spr);
+  auto left_loop = LeftLoopClosureEvaluator(plant_w_spr);
+  auto right_loop = RightLoopClosureEvaluator(plant_w_spr);
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
@@ -395,23 +370,24 @@ int DoMain(int argc, char* argv[]) {
 
   if (FLAGS_use_spring_model) {
     left_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_wo_spr, pos_idx_map.at("knee_joint_left"),
+        plant_w_spr, pos_idx_map.at("knee_joint_left"),
         vel_idx_map.at("knee_joint_leftdot"), 0);
     right_fixed_knee_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_wo_spr, pos_idx_map.at("knee_joint_right"),
+        plant_w_spr, pos_idx_map.at("knee_joint_right"),
         vel_idx_map.at("knee_joint_rightdot"), 0);
     left_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_wo_spr, pos_idx_map.at("ankle_spring_joint_left"),
+        plant_w_spr, pos_idx_map.at("ankle_spring_joint_left"),
         vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
     right_fixed_ankle_spring = std::make_unique<FixedJointEvaluator<double>>(
-        plant_wo_spr, pos_idx_map.at("ankle_spring_joint_right"),
+        plant_w_spr, pos_idx_map.at("ankle_spring_joint_right"),
         vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
     evaluators.add_evaluator(left_fixed_knee_spring.get());
     evaluators.add_evaluator(right_fixed_knee_spring.get());
     evaluators.add_evaluator(left_fixed_ankle_spring.get());
     evaluators.add_evaluator(right_fixed_ankle_spring.get());
   }
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   // Soft constraint
   // w_contact_relax shouldn't be too big, cause we want tracking error to be
@@ -420,42 +396,36 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
   // Add contact points (The position doesn't matter. It's not used in OSC)
-  const auto& pelvis = plant_wo_spr.GetBodyByName("pelvis");
+  const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, left_toe.first, left_toe.second, view_frame,
+      plant_w_spr, left_toe.first, left_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, left_heel.first, left_heel.second, view_frame,
+      plant_w_spr, left_heel.first, left_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
   auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, right_toe.first, right_toe.second, view_frame,
+      plant_w_spr, right_toe.first, right_toe.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {1, 2});
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant_wo_spr, right_heel.first, right_heel.second, view_frame,
+      plant_w_spr, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-  if (!FLAGS_is_two_phase) {
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &left_toe_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &left_heel_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &right_toe_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &right_heel_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &left_toe_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &left_heel_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &right_toe_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &right_heel_evaluator);
-  }
+  osc->AddContactPoint(
+      "left_toe",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "left_heel",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_toe",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_heel",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
 
   osc->SetOsqpSolverOptionsFromYaml(
       "examples/perceptive_locomotion/gains/osqp_options_osc.yaml");
@@ -490,20 +460,20 @@ int DoMain(int argc, char* argv[]) {
 
   auto swing_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_wo_spr);
+      gains.W_swing_foot, plant_w_spr, plant_w_spr);
   swing_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_right");
   swing_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_left");
 
   auto stance_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "stance_foot_data", gains.K_p_swing_foot,
       gains.K_d_swing_foot, gains.W_swing_foot,
-      plant_w_spr, plant_wo_spr);
+      plant_w_spr, plant_w_spr);
   stance_foot_data->AddStateAndPointToTrack(left_stance_state, "toe_left");
   stance_foot_data->AddStateAndPointToTrack(right_stance_state, "toe_right");
 
   auto swing_ft_traj_local = std::make_unique<RelativeTranslationTrackingData>(
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
-      gains.W_swing_foot, plant_w_spr, plant_wo_spr, swing_foot_data.get(),
+      gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data.get(),
       stance_foot_data.get());
   swing_ft_traj_local->SetSpringsInKinematicCalculation(FLAGS_use_spring_model);
 
@@ -518,7 +488,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto center_of_mass_traj = std::make_unique<ComTrackingData>(
       "alip_com_traj", gains.K_p_com, gains.K_d_com,
-      gains.W_com, plant_w_spr, plant_wo_spr);
+      gains.W_com, plant_w_spr, plant_w_spr);
   center_of_mass_traj->SetViewFrame(pelvis_view_frame);
 
   // FiniteStatesToTrack cannot be empty
@@ -527,22 +497,22 @@ int DoMain(int argc, char* argv[]) {
   // Pelvis rotation tracking (pitch and roll)
   auto pelvis_balance_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_balance_traj", gains.K_p_pelvis_balance, gains.K_d_pelvis_balance,
-      gains.W_pelvis_balance, plant_w_spr, plant_wo_spr);
+      gains.W_pelvis_balance, plant_w_spr, plant_w_spr);
   pelvis_balance_traj->AddFrameToTrack("pelvis");
   // Pelvis rotation tracking (yaw)
  auto pelvis_heading_traj = std::make_unique<RotTaskSpaceTrackingData>(
       "pelvis_heading_traj", gains.K_p_pelvis_heading, gains.K_d_pelvis_heading,
-      gains.W_pelvis_heading, plant_w_spr, plant_wo_spr);
+      gains.W_pelvis_heading, plant_w_spr, plant_w_spr);
   pelvis_heading_traj->AddFrameToTrack("pelvis");
 
 
   // Swing toe joint tracking
   auto swing_toe_traj_left = std::make_unique<JointSpaceTrackingData>(
       "left_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-      gains.W_swing_toe, plant_w_spr, plant_wo_spr);
+      gains.W_swing_toe, plant_w_spr, plant_w_spr);
   auto swing_toe_traj_right = std::make_unique<JointSpaceTrackingData>(
       "right_toe_angle_traj", gains.K_p_swing_toe, gains.K_d_swing_toe,
-      gains.W_swing_toe, plant_w_spr, plant_wo_spr);
+      gains.W_swing_toe, plant_w_spr, plant_w_spr);
   swing_toe_traj_right->AddStateAndJointToTrack(left_stance_state, "toe_right",
                                                "toe_rightdot");
   swing_toe_traj_left->AddStateAndJointToTrack(right_stance_state, "toe_left",
@@ -555,40 +525,12 @@ int DoMain(int argc, char* argv[]) {
   // Swing hip yaw joint tracking
   auto swing_hip_yaw_traj = std::make_unique<JointSpaceTrackingData>(
       "swing_hip_yaw_traj", gains.K_p_hip_yaw, gains.K_d_hip_yaw,
-      gains.W_hip_yaw, plant_w_spr, plant_wo_spr);
+      gains.W_hip_yaw, plant_w_spr, plant_w_spr);
   swing_hip_yaw_traj->AddStateAndJointToTrack(left_stance_state, "hip_yaw_right",
                                              "hip_yaw_rightdot");
   swing_hip_yaw_traj->AddStateAndJointToTrack(right_stance_state, "hip_yaw_left",
                                              "hip_yaw_leftdot");
 
-  if (FLAGS_impact_invariant) {
-    auto impact_info = builder.AddSystem<BipedalWalkingImpactInfo>(
-        plant_w_spr, single_support_states, double_support_states
-    );
-    builder.Connect(
-        state_receiver->get_output_port(), impact_info->get_input_port_state()
-    );
-    builder.Connect(
-        fsm->get_output_port_fsm(), impact_info->get_input_port_fsm()
-    );
-    builder.Connect(
-        fsm->get_output_port_next_switch_time(),
-        impact_info->get_input_port_next_switch_time()
-    );
-    builder.Connect(
-        fsm->get_output_port_prev_switch_time(),
-        impact_info->get_input_port_prev_switch_time()
-    );
-    builder.Connect(
-        impact_info->get_output_port(), osc->get_input_port_impact_info()
-    );
-    swing_ft_traj_local->SetImpactInvariantProjection(true);
-    center_of_mass_traj->SetImpactInvariantProjection(true);
-    pelvis_balance_traj->SetImpactInvariantProjection(true);
-    pelvis_heading_traj->SetImpactInvariantProjection(true);
-    swing_toe_traj_left->SetImpactInvariantProjection(true);
-    swing_toe_traj_right->SetImpactInvariantProjection(true);
-  }
 
   osc->AddTrackingData(std::move(swing_toe_traj_left));
   osc->AddTrackingData(std::move(swing_toe_traj_right));

@@ -50,10 +50,12 @@ using multibody::WorldPointEvaluator;
 OperationalSpaceControl::OperationalSpaceControl(
     const MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
-    bool used_with_finite_state_machine)
+    bool used_with_finite_state_machine,
+    OscSolverChoice solver_choice)
     : plant_(plant),
       context_(context),
       used_with_finite_state_machine_(used_with_finite_state_machine),
+      solver_choice_(solver_choice),
       id_qp_(plant_, context_) {
   this->set_name("OSC");
 
@@ -318,8 +320,10 @@ void OperationalSpaceControl::Build() {
          lambda.segment(kSpaceDim * 3 + 2, 1)});
   }
 
-  solver_ = std::make_unique<dairlib::solvers::FCCQPSolver>();
-  id_qp_.get_mutable_prog().SetSolverOptions(solver_options_);
+  fccqp_solver_ = std::make_unique<solvers::FCCQPSolver>();
+  osqp_solver_ = std::make_unique<solvers::FastOsqpSolver>();
+  id_qp_.get_mutable_prog().SetSolverOptions(fcc_qp_solver_options_);
+  id_qp_.get_mutable_prog().SetSolverOptions(osqp_solver_options_);
 }
 
 drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
@@ -340,6 +344,12 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
         << timestamp;
+    if (fccqp_solver_->is_initialized()) {
+      fccqp_solver_->set_warm_start(false);
+    }
+    if (osqp_solver_->IsInitialized()) {
+      osqp_solver_->DisableWarmStart();
+    }
   }
   return drake::systems::EventStatus::Succeeded();
 }
@@ -493,18 +503,30 @@ VectorXd OperationalSpaceControl::SolveQp(
         (1 + alpha) * W_lambda_h_reg_,VectorXd::Zero(id_qp_.nh()));
   }
 
-  if (!solver_->is_initialized()) {
+  if (!fccqp_solver_->is_initialized()) {
     int contact_start_idx = id_qp_.get_prog().FindDecisionVariableIndex(
         id_qp_.lambda_c()(0));
-    solver_->InitializeSolver(
-        id_qp_.get_prog(), solver_options_, id_qp_.nc(), contact_start_idx,
+    fccqp_solver_->InitializeSolver(
+        id_qp_.get_prog(), fcc_qp_solver_options_, id_qp_.nc(), contact_start_idx,
         id_qp_.get_ordered_friction_coeffs());
+  }
+
+  if (!osqp_solver_->IsInitialized()) {
+    osqp_solver_->InitializeSolver(id_qp_.get_prog(), osqp_solver_options_);
   }
 
   // Solve the QP
   MathematicalProgramResult result;
-  result = solver_->Solve(id_qp_.get_prog());
-  solve_time_ = result.get_solver_details<FCCQPSolver>().solve_time;
+
+  switch (solver_choice_) {
+    case kFCCQP:
+      result = fccqp_solver_->Solve(id_qp_.get_prog());
+      solve_time_ = result.get_solver_details<FCCQPSolver>().solve_time;
+      break;
+    case kFastOSQP:
+      result = osqp_solver_->Solve(id_qp_.get_prog());
+      solve_time_ = result.get_solver_details<drake::solvers::OsqpSolver>().run_time;
+  }
 
   if (result.is_success()) {
     // Extract solutions
@@ -513,8 +535,12 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_c_sol_ = result.GetSolution(id_qp_.lambda_c());
     *lambda_h_sol_ = result.GetSolution(id_qp_.lambda_h());
     *epsilon_sol_ = result.GetSolution(id_qp_.epsilon());
+    fccqp_solver_->set_warm_start(true);
+    osqp_solver_->EnableWarmStart();
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
+    fccqp_solver_->set_warm_start(false);
+    osqp_solver_->DisableWarmStart();
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

@@ -1,10 +1,10 @@
 print_to_console: 0
 log_file_name: ""
 int_options:
-  max_iter: 200
+  max_iter: 10
 
 double_options:
-  rho: 1e-1
-  eps: 1e-10
+  rho: 1e-8
+  eps: 1e-6
 
 string_options: {}

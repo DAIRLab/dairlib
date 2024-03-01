@@ -20,7 +20,7 @@ plot_floating_base_velocity_body_frame: false
 plot_joint_positions: false
 plot_joint_velocities: false
 plot_measured_efforts: false
-plot_commanded_efforts: false
+plot_commanded_efforts: true
 plot_contact_forces: false
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
@@ -36,7 +36,7 @@ pt_on_foot_to_plot: 'mid'  # takes value 'front', 'mid', or 'rear'
 
 # Desired osc plots
 plot_qp_costs: true
-plot_tracking_costs: false
+plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
   []

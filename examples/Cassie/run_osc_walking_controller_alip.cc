@@ -88,6 +88,8 @@ DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 DEFINE_bool(publish_filtered_state, false,
             "whether to publish the low pass filtered state");
 
+DEFINE_int32(solver_choice, 0, "0 for FCCQP, 1 for OSQP");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -336,8 +338,9 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_input_port_state());
 
   // Create Operational space control
+  auto osc_solver_choice = static_cast<systems::controllers::OscSolverChoice>(FLAGS_solver_choice);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, context_w_spr.get(), true);
+      plant_w_spr, context_w_spr.get(), true, osc_solver_choice);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
@@ -538,8 +541,8 @@ int DoMain(int argc, char* argv[]) {
       double_support_duration, left_stance_state, right_stance_state,
       {post_left_double_support_state, post_right_double_support_state});
 
-  osc->SetSolverOptionsFromYaml(
-      "examples/Cassie/osc/solver_settings/fcc_qp_options_walking.yaml");
+//  osc->SetSolverOptionsFromYaml(
+//      "examples/Cassie/osc/solver_settings/fcc_qp_options_walking.yaml");
 
   if (gains.W_com(0,0) == 0){
     osc->SetInputCostForJointAndFsmStateWeight(

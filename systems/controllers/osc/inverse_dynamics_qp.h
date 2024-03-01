@@ -15,6 +15,9 @@ namespace controllers {
 using CostMap = std::unordered_map<
     std::string, std::shared_ptr<drake::solvers::QuadraticCost>>;
 
+using FrictionConeMap = std::unordered_map<
+    std::string, std::shared_ptr<drake::solvers::LinearConstraint>>;
+
 using ContactMap = std::unordered_map<
     std::string,
     std::unique_ptr<const multibody::WorldPointEvaluator<double>>>;
@@ -114,7 +117,7 @@ class InverseDynamicsQp {
   /*!
    * Builds the underlying QP
    */
-  void Build();
+  void Build(bool add_pyramidal_friction_cones=true);
 
   /*!
    * @return the total dimension of the (stacked) contact forces.
@@ -288,6 +291,9 @@ class InverseDynamicsQp {
 
   // Costs
   CostMap all_costs_;
+
+  // Friction Cone Constraints
+  FrictionConeMap lambda_c_friction_cone_;
 
   // Dynamics
   std::shared_ptr<drake::solvers::LinearEqualityConstraint> dynamics_c_;

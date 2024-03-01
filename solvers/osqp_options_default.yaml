@@ -1,7 +1,7 @@
 print_to_console: 0
 log_file_name: ""
 int_options:
-  max_iter: 10
+  max_iter: 100
   linsys_solver: 0
   verbose: 0
   warm_start: 1
@@ -15,8 +15,8 @@ int_options:
 double_options:
   rho: 1e-8
   sigma: 1e-6
-  eps_abs: 1e-7
-  eps_rel: 1e-7
+  eps_abs: 1e-6
+  eps_rel: 1e-6
   eps_prim_inf: 1e-5
   eps_dual_inf: 1e-5
   alpha: 1.6

@@ -237,7 +237,7 @@ void OperationalSpaceControl::Build() {
   }
 
   // Construct QP
-  id_qp_.Build();
+  id_qp_.Build(solver_choice_ == OscSolverChoice::kFastOSQP);
 
   // Initialize solution
   dv_sol_ = std::make_unique<Eigen::VectorXd>(n_v_);
@@ -463,10 +463,10 @@ VectorXd OperationalSpaceControl::SolveQp(
         alpha_left = -s;
         alpha_right = std::clamp(1.0 - s, 0.0, 1.0);
       }
-      A(0, 0) = alpha_left / 2;
-      A(0, 1) = alpha_left / 2;
-      A(0, 2) = alpha_right / 2;
-      A(0, 3) = alpha_right / 2;
+      A(0, 0) = alpha_left;
+      A(0, 1) = alpha_left;
+      A(0, 2) = alpha_right;
+      A(0, 3) = alpha_right;
     }
     id_qp_.UpdateCost(
         "ds_blending",

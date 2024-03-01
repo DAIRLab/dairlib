@@ -14,6 +14,7 @@
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "solvers/fcc_qp_solver.h"
 #include "solvers/fast_osqp_solver.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
@@ -32,6 +33,11 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib::systems::controllers {
+
+enum OscSolverChoice {
+  kFCCQP = 0,
+  kFastOSQP = 1,
+};
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and
 /// outputs torque command of the motors.
@@ -100,7 +106,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   OperationalSpaceControl(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
-      bool used_with_finite_state_machine = true);
+      bool used_with_finite_state_machine = true,
+      OscSolverChoice = kFastOSQP);
 
   /***** Input/output ports *****/
 
@@ -269,16 +276,27 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int left_support_state,
                                        int right_support_state,
                                        const std::vector<int>& ds_states);
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
-    solver_options_ = options;
+
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
+    if (std::find(options.GetSolverIds().begin(), options.GetSolverIds().end(),
+                  solvers::FCCQPSolver::id()) != options.GetSolverIds().end()) {
+      fcc_qp_solver_options_ = options;
+    }
+    if (std::find(options.GetSolverIds().begin(), options.GetSolverIds().end(),
+                  drake::solvers::OsqpSolver::id()) != options.GetSolverIds().end()) {
+      osqp_solver_options_ = options;
+    }
   }
-  void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
-    SetOsqpSolverOptions(
+
+  void SetSolverOptionsFromYaml(const std::string& yaml_string) {
+    auto id = (solver_choice_ == kFCCQP) ?
+        solvers::FCCQPSolver::id() : drake::solvers::OsqpSolver::id();
+    SetSolverOptions(
         drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-            FindResourceOrThrow(yaml_string))
-            .GetAsSolverOptions(drake::solvers::OsqpSolver::id())
-    );
+            FindResourceOrThrow(yaml_string)).GetAsSolverOptions(id));
   };
+
+
   // OSC LeafSystem builder
   void Build();
 
@@ -376,11 +394,19 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   bool used_with_finite_state_machine_;
 
   // Solver
-  std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
-  drake::solvers::SolverOptions solver_options_ =
+  std::unique_ptr<solvers::FCCQPSolver> fccqp_solver_;
+  drake::solvers::SolverOptions fcc_qp_solver_options_ =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow("solvers/fcc_qp_options_default.yaml"))
+          .GetAsSolverOptions(dairlib::solvers::FCCQPSolver::id());
+
+  std::unique_ptr<solvers::FastOsqpSolver> osqp_solver_;
+  drake::solvers::SolverOptions osqp_solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+          .GetAsSolverOptions(solvers::FastOsqpSolver::id());
+
+  const OscSolverChoice solver_choice_;
 
   // MathematicalProgram
   mutable InverseDynamicsQp id_qp_;
@@ -431,10 +457,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int left_support_state_{};
   int right_support_state_{};
   std::vector<int> ds_states_{};
-  double w_blend_constraint_ = 0.1;  // for soft constraint
+  double w_blend_constraint_ = 10;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
-  drake::solvers::LinearEqualityConstraint* blend_constraint_ = nullptr;
-  drake::solvers::VectorXDecisionVariable epsilon_blend_{};
 };
 
 }  // namespace dairlib::systems::controllers

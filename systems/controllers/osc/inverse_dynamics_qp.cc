@@ -22,6 +22,7 @@ using drake::multibody::MultibodyPlant;
 using drake::solvers::VariableRefList;
 using drake::solvers::MathematicalProgram;
 using drake::solvers::VectorXDecisionVariable;
+using drake::solvers::LinearEqualityConstraint;
 
 InverseDynamicsQp::InverseDynamicsQp(
     const MultibodyPlant<double> &plant, Context<double> *context) :
@@ -71,7 +72,7 @@ void InverseDynamicsQp::AddExternalForce(
   ne_ += external_force_evaluators_.at(name)->num_full();
 }
 
-void InverseDynamicsQp::Build() {
+void InverseDynamicsQp::Build(bool add_pyramidal_friction_cones) {
   DRAKE_DEMAND(not built_);
 
   dv_ = prog_.NewContinuousVariables(nv_, "dv");
@@ -95,17 +96,10 @@ void InverseDynamicsQp::Build() {
       VectorXd::Zero(nc_active_), {dv_, epsilon_}
   ).evaluator();
 
-  for (const auto& [cname, eval] : contact_constraint_evaluators_) {
-    double mu = mu_map_.at(cname);
-    MatrixXd A = MatrixXd(5, 3);
-    A << -1, 0, mu, 0, -1, mu, 1, 0, mu, 0, 1, mu, 0, 0, 1;
-    lambda_c_friction_cone_.insert({
-      cname,
-      prog_.AddLinearConstraint(
-          A, VectorXd::Zero(5),
-          VectorXd::Constant(5, std::numeric_limits<double>::infinity()),
-          lambda_c_.segment(lambda_c_start_.at(cname), 3)).evaluator()
-    });
+  ordered_friction_coeffs_ = vector<double>(lambda_c_start_.size(), 0);
+  for (const auto& [n , s] : lambda_c_start_) {
+    int i = s / 3;
+    ordered_friction_coeffs_.at(i) = mu_map_.at(n);
   }
 
   VectorXd u_min(nu_);
@@ -116,6 +110,21 @@ void InverseDynamicsQp::Build() {
   }
 
   input_limit_c_ = prog_.AddBoundingBoxConstraint(u_min, u_max, u_).evaluator();
+
+  if (add_pyramidal_friction_cones) {
+    for (const auto& [cname, eval] : contact_constraint_evaluators_) {
+      double mu = mu_map_.at(cname);
+      MatrixXd A = MatrixXd(5, 3);
+      A << -1, 0, mu, 0, -1, mu, 1, 0, mu, 0, 1, mu, 0, 0, 1;
+      lambda_c_friction_cone_.insert({
+         cname,
+         prog_.AddLinearConstraint(
+             A, VectorXd::Zero(5),
+             VectorXd::Constant(5, std::numeric_limits<double>::infinity()),
+             lambda_c_.segment(lambda_c_start_.at(cname), 3)).evaluator()
+     });
+    }
+  }
 
   built_ = true;
 }

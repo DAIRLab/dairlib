@@ -30,6 +30,7 @@ cc_library(
         "//multibody:utils",
         "//multibody/kinematic",
         "//solvers:fast_osqp_solver",
+        "//solvers:fcc_qp_solver",
         "//solvers:solver_options_io",
         "//systems/controllers:control_utils",
         "//systems/controllers:controller_failure_aggregator",

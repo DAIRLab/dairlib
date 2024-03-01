@@ -58,6 +58,11 @@ class FCCQPSolver final : public drake::solvers::SolverBase {
 
   [[nodiscard]] bool is_initialized() const {return fcc_qp_ != nullptr;}
 
+  void set_warm_start(bool warm_start) {
+    DRAKE_DEMAND(is_initialized());
+    fcc_qp_->set_warm_start(warm_start);
+  }
+
  private:
   void DoSolve(const drake::solvers::MathematicalProgram&,
                const Eigen::VectorXd&, const drake::solvers::SolverOptions&,

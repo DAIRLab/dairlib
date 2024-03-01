@@ -4,7 +4,7 @@
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
-
+#include "drake/solvers/mathematical_program_result.h"
 
 namespace dairlib {
 namespace systems {
@@ -115,7 +115,7 @@ class InverseDynamicsQp {
   /*!
    * Builds the underlying QP
    */
-  void Build();
+  void Build(bool add_pyramidal_friction_cones=true);
 
   /*!
    * @return the total dimension of the (stacked) contact forces.
@@ -163,6 +163,9 @@ class InverseDynamicsQp {
   [[nodiscard]] const drake::solvers::VectorXDecisionVariable &epsilon() const {
     return epsilon_;
   }
+  [[nodiscard]] const std::vector<double> get_ordered_friction_coeffs() const {
+    return ordered_friction_coeffs_;
+  };
 
   /*!
    * @return a const-reference to the underlying MathematicalProgram
@@ -251,6 +254,7 @@ class InverseDynamicsQp {
   std::unordered_map<std::string, int> lambda_c_start_;
   std::unordered_map<std::string, int> Jc_active_start_;
   std::unordered_map<std::string, double> mu_map_;
+  std::vector<double> ordered_friction_coeffs_;
 
   // External forces are reaction forces we want to "track," but which do not
   // constrain the robot's motion

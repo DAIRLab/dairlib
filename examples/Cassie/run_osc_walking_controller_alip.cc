@@ -87,6 +87,8 @@ DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
 
+DEFINE_int32(solver_choice, 1, "0 for FCCQP, 1 for OSQP");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -268,8 +270,9 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_input_port_state());
 
   // Create Operational space control
+  auto osc_solver_choice = static_cast<systems::controllers::OscSolverChoice>(FLAGS_solver_choice);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, context_w_spr.get(), true);
+      plant_w_spr, context_w_spr.get(), true, osc_solver_choice);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();

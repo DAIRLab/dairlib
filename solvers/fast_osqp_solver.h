@@ -68,6 +68,7 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
   void DisableWarmStart() const {
     osqp_settings_->warm_start = false;
     warm_start_ = false;
+    is_init_ = false;
   }
   /// Solver will automatically reenable warm starting after a successful solve
   void EnableWarmStart() const {

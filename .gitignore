@@ -11,5 +11,4 @@ attic/multibody/solver_log/
 .vscode
 *.csv
 /examples/Cassie/saved_trajectories/
-
 /venv/

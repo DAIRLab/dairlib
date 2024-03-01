@@ -269,14 +269,15 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_spr, plant_w_spr, context_w_spr.get(), context_w_spr.get(), true);
+      plant_w_spr, context_w_spr.get(), true);
 
   // Cost
   int n_v = plant_w_spr.num_velocities();
   int n_u = plant_w_spr.num_actuators();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);
   osc->SetAccelerationCostWeights(Q_accel);
-  osc->SetInputSmoothingCostWeights(gains.w_input_reg * MatrixXd::Identity(n_u, n_u));
+  osc->SetInputSmoothingCostWeights(gains.w_input_reg *
+                                    MatrixXd::Identity(n_u, n_u));
 
   // Constraints in OSC
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
@@ -312,7 +313,8 @@ int DoMain(int argc, char* argv[]) {
   evaluators.add_evaluator(right_fixed_knee_spring.get());
   evaluators.add_evaluator(left_fixed_ankle_spring.get());
   evaluators.add_evaluator(right_fixed_ankle_spring.get());
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   // Soft constraint
   osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
@@ -333,27 +335,23 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &right_heel_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &right_heel_evaluator);
 
+  osc->AddContactPoint(
+      "left_toe",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "left_heel",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_toe",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_heel",
+      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_multiplier_breaks{

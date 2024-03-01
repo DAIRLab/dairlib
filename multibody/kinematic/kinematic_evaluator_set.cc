@@ -149,7 +149,7 @@ VectorX<T> KinematicEvaluatorSet<T>::EvalFullJacobianDotTimesV(
 }
 
 template <typename T>
-int KinematicEvaluatorSet<T>::add_evaluator(KinematicEvaluator<T>* e) {
+int KinematicEvaluatorSet<T>::add_evaluator(const KinematicEvaluator<T>* e) {
   // Compare plants for equality by reference
   DRAKE_DEMAND(&plant_ == &e->plant());
 

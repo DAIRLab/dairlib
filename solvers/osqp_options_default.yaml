@@ -13,7 +13,7 @@ int_options:
   adaptive_rho: 1
 
 double_options:
-  rho: 1e-8
+  rho: 1e-4
   sigma: 1e-6
   eps_abs: 1e-7
   eps_rel: 1e-7

@@ -325,7 +325,7 @@ MpfcOscDiagram::MpfcOscDiagram(
       std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
       {right_stance_state, post_left_double_support_state, post_right_double_support_state});
 
-  osc->SetOsqpSolverOptionsFromYaml(osqp_settings_filename);
+  osc->SetSolverOptionsFromYaml(osqp_settings_filename);
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_schedule_breaks =

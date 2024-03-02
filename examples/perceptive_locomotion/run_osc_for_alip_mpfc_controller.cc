@@ -427,9 +427,6 @@ int DoMain(int argc, char* argv[]) {
       std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
       {right_stance_state, post_left_double_support_state, post_right_double_support_state});
 
-  osc->SetOsqpSolverOptionsFromYaml(
-      "examples/perceptive_locomotion/gains/osqp_options_osc.yaml");
-
   // Swing foot tracking
   std::vector<double> swing_ft_gain_schedule_breaks =
       {0, left_support_duration / 2, left_support_duration};

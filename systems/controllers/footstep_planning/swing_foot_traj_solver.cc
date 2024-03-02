@@ -21,7 +21,7 @@ SwingFootTrajSolver::SwingFootTrajSolver() {
   cy_ = prog_.NewContinuousVariables(kSwingPolyDeg, "cy");
   cz_ = prog_.NewContinuousVariables(kSwingPolyDeg, "cz");
 
-  dim_var_map_ = {{0, cx_}, {1, cy_}, {2, cz_}};
+  dim_var_map_ = {cx_, cy_, cz_};
   knot_deriv_multipliers_ = std::vector<std::vector<RowVectorkSwingPolyDegd>>(
       3,
       std::vector<RowVectorkSwingPolyDegd>(3, RowVectorkSwingPolyDegd::Zero()));

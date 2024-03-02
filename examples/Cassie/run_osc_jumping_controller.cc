@@ -496,7 +496,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(left_toe_angle_tracking_data));
   osc->AddTrackingData(std::move(right_toe_angle_tracking_data));
 
-  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
+  osc->SetSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

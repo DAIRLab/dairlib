@@ -185,8 +185,10 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
-  osc->SetOsqpSolverOptionsFromYaml(
+
+  osc->SetSolverOptionsFromYaml(
       FLAGS_osqp_settings);
+
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

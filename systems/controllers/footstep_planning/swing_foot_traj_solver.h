@@ -35,8 +35,7 @@ class SwingFootTrajSolver {
 
   solvers::FCCQPSolver solver_;
 
-  std::unordered_map<int, const drake::solvers::VectorXDecisionVariable&>
-      dim_var_map_;
+  std::vector<drake::solvers::VectorXDecisionVariable> dim_var_map_;
   std::vector<std::vector<RowVectorkSwingPolyDegd>> knot_deriv_multipliers_;
   std::vector<std::vector<Eigen::Vector3d>> knot_deriv_rhs_;
   std::vector<std::vector<std::vector<drake::solvers::LinearEqualityConstraint*>>> knot_constraints_;

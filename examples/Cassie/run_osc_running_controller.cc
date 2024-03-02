@@ -525,7 +525,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(right_hip_yaw_tracking_data),
                             VectorXd::Zero(1));
 
-  osc->SetOsqpSolverOptions(solver_options);
+  osc->SetSolverOptions(solver_options);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;

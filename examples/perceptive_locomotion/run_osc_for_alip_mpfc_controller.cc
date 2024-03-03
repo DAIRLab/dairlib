@@ -395,6 +395,10 @@ int DoMain(int argc, char* argv[]) {
   osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   // Friction coefficient
   osc->SetContactFriction(gains.mu);
+
+  osc->SetLambdaContactRegularizationWeight(
+      gains.w_lambda * gains.W_lambda_c_regularization);
+
   // Add contact points (The position doesn't matter. It's not used in OSC)
   const auto& pelvis = plant_w_spr.GetBodyByName("pelvis");
   multibody::WorldYawViewFrame view_frame(pelvis);

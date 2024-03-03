@@ -13,14 +13,14 @@ class PlotStyler():
     def set_default_styling():
         if sys.platform == 'darwin':
             matplotlib.use('macosx')
-        matplotlib.rcParams['figure.figsize'] = 10,10
+            matplotlib.rcParams['figure.figsize'] = 5,5
         matplotlib.rcParams['figure.autolayout'] = True
         font = {'size': 10, 'family': 'serif', 'serif': ['Computer Modern']}
         matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
         matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
         matplotlib.rc('text', usetex=True)
         matplotlib.rc('font', **font)
-        matplotlib.rcParams['lines.linewidth'] = 2
+        matplotlib.rcParams['lines.linewidth'] = 1
         matplotlib.rcParams['axes.titlesize'] = 20
         matplotlib.rcParams['xtick.major.size'] = 15
         matplotlib.rcParams['xtick.major.width'] = 1

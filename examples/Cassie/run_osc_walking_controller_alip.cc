@@ -270,7 +270,11 @@ int DoMain(int argc, char* argv[]) {
                   right_toe_angle_traj_gen->get_input_port_state());
 
   // Create Operational space control
-  auto osc_solver_choice = static_cast<systems::controllers::OscSolverChoice>(FLAGS_solver_choice);
+  auto osc_solver_choice =
+      FLAGS_solver_choice == 0 ?
+      systems::controllers::OscSolverChoice::kFCCQP :
+      systems::controllers::OscSolverChoice::kFastOSQP;
+
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, context_w_spr.get(), true, osc_solver_choice);
 

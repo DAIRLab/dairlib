@@ -4,7 +4,7 @@ controller_frequency: 1000
 w_input: 0.0000
 w_input_reg: 0.0001
 w_accel: 0.00001
-w_lambda: 0.00001
+w_lambda: 0.0001
 w_soft_constraint: 80
 impact_threshold: 0.025
 impact_tau: 0.005
@@ -19,7 +19,7 @@ W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
 W_lambda_c_reg: [1, 1, 1,
                  1, 1, 1,
                  1, 1, 1,
-                 1, 1, 1,]
+                 1, 1, 1]
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 

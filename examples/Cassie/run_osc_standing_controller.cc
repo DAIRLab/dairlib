@@ -193,6 +193,9 @@ int DoMain(int argc, char* argv[]) {
   // Friction coefficient
   double mu = 0.8;
   osc->SetContactFriction(mu);
+
+  osc->SetLambdaContactRegularizationWeight(0.00001 * MatrixXd::Identity(12, 12));
+
   // Add contact points
   auto left_toe_evaluator = multibody::WorldPointEvaluator(
       plant_w_springs, left_toe.first, left_toe.second, Matrix3d::Identity(),

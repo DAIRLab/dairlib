@@ -276,7 +276,7 @@ void OperationalSpaceControl::Build() {
     int nc = id_qp_.lambda_c().rows();
     DRAKE_DEMAND(W_lambda_c_reg_.rows() == nc);
     id_qp_.AddQuadraticCost(
-        "lambda_c_cost", W_lambda_c_reg_, VectorXd::Zero(nc), id_qp_.lambda_c());
+        "lambda_c_reg", W_lambda_c_reg_, VectorXd::Zero(nc), id_qp_.lambda_c());
   }
   // 3. constraint force cost
   if (W_lambda_h_reg_.size() > 0) {
@@ -505,9 +505,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   if (W_lambda_c_reg_.size() > 0) {
-    id_qp_.UpdateCost(
-        "lambda_c_cost",
-        (1 + alpha) * W_lambda_c_reg_,VectorXd::Zero(id_qp_.nc()));
+    UpdateContactForceRegularization(active_contact_names);
   }
 
   if (W_lambda_h_reg_.size() > 0) {
@@ -563,6 +561,27 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   return *u_sol_;
+}
+
+void OperationalSpaceControl::UpdateContactForceRegularization(
+    const vector<std::string> &contacts_currently_active) const {
+  if (id_qp_.has_cost_named("lambda_c_reg")) {
+    int n = contacts_currently_active.size();
+    double lambda_z_des = n > 0 ? 9.81 * plant_.CalcTotalMass(*context_) / n : 0;
+    Eigen::Vector3d lambda_des(0.0, 0.0, lambda_z_des);
+
+    Eigen::VectorXd lambda_des_stacked = VectorXd::Zero(id_qp_.nc());
+
+    for (const auto & cname: contacts_currently_active) {
+      int i = id_qp_.get_contact_variable_start(cname);
+      lambda_des_stacked.segment<3>(i) = lambda_des;
+    }
+    id_qp_.UpdateCost(
+        "lambda_c_reg",
+        2 *  W_lambda_c_reg_,
+        -2 * W_lambda_c_reg_ * lambda_des_stacked,
+        lambda_des_stacked.squaredNorm());
+  }
 }
 
 // TODO (@Yangwill) test that this is equivalent to the previous impact
@@ -688,7 +707,7 @@ void OperationalSpaceControl::AssignOscLcmOutput(
       {"acceleration_cost", *dv_sol_},
       {"soft_constraint_cost", *epsilon_sol_},
       {"input_smoothing_cost", *u_sol_},
-      {"lambda_c_cost", *lambda_c_sol_},
+      {"lambda_c_reg", *lambda_c_sol_},
       {"lambda_h_cost", *lambda_h_sol_}
   };
 

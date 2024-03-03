@@ -191,6 +191,15 @@ class InverseDynamicsQp {
   }
 
   /*!
+   * Get the starting index of the contact force decision variable associated
+   * with the contact point name, relative to the contact force variable start
+   * @param name
+   */
+  [[nodiscard]] int get_contact_variable_start(const std::string& name) const {
+    return lambda_c_start_.at(name);
+  }
+
+  /*!
    * @brief gets a const reference to the KinematicEvaluatorSet associated
    * with the holonomic constraints
    */

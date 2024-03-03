@@ -313,6 +313,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           double t_since_last_state_switch, double alpha,
                           int next_fsm_state) const;
 
+  // Updates the contact force regularization to a desired contact force of
+  // supporting the robot's weight evenly across each contact point
+  // TODO (@Brian-Acosta) we should support having an input port for this kind
+  //  of thing instead
+  void UpdateContactForceRegularization(
+      const std::vector<std::string>& contacts_currently_active) const;
+
+
   // Solves the optimization problem:
   // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
   // s.t. constraints

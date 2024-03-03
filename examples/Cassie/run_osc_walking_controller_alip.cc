@@ -489,6 +489,10 @@ int DoMain(int argc, char* argv[]) {
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_right_motor", post_left_double_support_state, 1.0);
   }
+
+  osc->SetLambdaContactRegularizationWeight(
+      gains.w_lambda * gains.W_lambda_c_regularization);
+
   osc->Build();
 
   // Connect ports

@@ -13,3 +13,5 @@ attic/multibody/solver_log/
 /examples/Cassie/saved_trajectories/
 logs/
 a.out
+venv/
+*.svg

@@ -88,14 +88,14 @@ void CassieFixedPointSolver(
   program.AddJointLimitConstraints(q);
 
   // Fix floating base
-  program.AddConstraint(q(positions_map.at("pelvis_qw")) == 1);
-  program.AddConstraint(q(positions_map.at("pelvis_qx")) == 0);
-  program.AddConstraint(q(positions_map.at("pelvis_qy")) == 0);
-  program.AddConstraint(q(positions_map.at("pelvis_qz")) == 0);
+  program.AddConstraint(q(positions_map.at("base_qw")) == 1);
+  program.AddConstraint(q(positions_map.at("base_qx")) == 0);
+  program.AddConstraint(q(positions_map.at("base_qy")) == 0);
+  program.AddConstraint(q(positions_map.at("base_qz")) == 0);
 
-  program.AddConstraint(q(positions_map.at("pelvis_x")) == 0);
-  program.AddConstraint(q(positions_map.at("pelvis_y")) == 0);
-  program.AddConstraint(q(positions_map.at("pelvis_z")) == height);
+  program.AddConstraint(q(positions_map.at("base_x")) == 0);
+  program.AddConstraint(q(positions_map.at("base_y")) == 0);
+  program.AddConstraint(q(positions_map.at("base_z")) == height);
 
   // Add symmetry constraints, and zero roll/pitch on the hip
   program.AddConstraint(q(positions_map.at("knee_left")) ==
@@ -143,7 +143,7 @@ void CassieFixedPointSolver(
   // Set initial guess/cost for q using a vaguely neutral position
   Eigen::VectorXd q_guess = Eigen::VectorXd::Zero(plant.num_positions());
   q_guess(0) = 1;  // quaternion
-  q_guess(positions_map.at("pelvis_z")) = height;
+  q_guess(positions_map.at("base_z")) = height;
   q_guess(positions_map.at("hip_pitch_left")) = 1;
   q_guess(positions_map.at("knee_left")) = -2;
   q_guess(positions_map.at("ankle_joint_left")) = 2;
@@ -271,7 +271,7 @@ void CassieFixedBaseFixedPointSolver(
 
 void CassieInitStateSolver(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const VectorXd& pelvis_xy_vel, double height, double mu,
+    const VectorXd& base_xy_vel, double height, double mu,
     double min_normal_force, bool linear_friction_cone, double toe_spread,
     double ground_incline, const VectorXd& q_desired, const VectorXd& u_desired,
     const VectorXd& lambda_desired, VectorXd* q_result, VectorXd* v_result,
@@ -334,27 +334,27 @@ void CassieInitStateSolver(
   int n_v = plant.num_velocities();
 
   // Fix floating base
-  program.AddBoundingBoxConstraint(1, 1, q(positions_map.at("pelvis_qw")));
-  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("pelvis_qx")));
-  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("pelvis_qy")));
-  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("pelvis_qz")));
+  program.AddBoundingBoxConstraint(1, 1, q(positions_map.at("base_qw")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qx")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qy")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_qz")));
 
-  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("pelvis_x")));
-  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("pelvis_y")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_x")));
+  program.AddBoundingBoxConstraint(0, 0, q(positions_map.at("base_y")));
   program.AddBoundingBoxConstraint(height, height,
-                                   q(positions_map.at("pelvis_z")));
+                                   q(positions_map.at("base_z")));
 
   program.AddBoundingBoxConstraint(-10, 10, v);
 
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("pelvis_wx")));
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("pelvis_wy")));
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("pelvis_wz")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wx")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wy")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_wz")));
 
-  program.AddBoundingBoxConstraint(pelvis_xy_vel(0), pelvis_xy_vel(0),
-                                   v(vel_map.at("pelvis_vx")));
-  program.AddBoundingBoxConstraint(pelvis_xy_vel(1), pelvis_xy_vel(1),
-                                   v(vel_map.at("pelvis_vy")));
-  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("pelvis_vz")));
+  program.AddBoundingBoxConstraint(base_xy_vel(0), base_xy_vel(0),
+                                   v(vel_map.at("base_vx")));
+  program.AddBoundingBoxConstraint(base_xy_vel(1), base_xy_vel(1),
+                                   v(vel_map.at("base_vy")));
+  program.AddBoundingBoxConstraint(0, 0, v(vel_map.at("base_vz")));
 
   // Add symmetry constraints, and zero roll/pitch on the hip
   program.AddConstraint(q(positions_map.at("knee_left")) ==

@@ -51,7 +51,7 @@ int do_main(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant(0.0);
 
-  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, "examples/Cassie/urdf/cassie_v2_shells.urdf");
+  AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, "examples/Cassie/urdf/cassie_v2.urdf");
   if (FLAGS_floating_base) {
     // Ground direction
     Eigen::Vector3d ground_normal(sin(FLAGS_ground_incline), 0,
@@ -91,6 +91,17 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
+  auto ortho_camera = drake::geometry::Meshcat::OrthographicCamera();
+  ortho_camera.top = 2;
+  ortho_camera.bottom = -0.1;
+  ortho_camera.left = -1;
+  ortho_camera.right = 4;
+  ortho_camera.near = -10;
+  ortho_camera.far = 500;
+  ortho_camera.zoom = 1;
+  meshcat->SetCamera(ortho_camera);
+//  auto camera_transform = RigidTransformd(drake::math::RollPitchYaw<double>(0, 0, 1.57), {1.0, 0, 0.2});
+//  meshcat->SetTransform("/Cameras/default/rotated", camera_transform);
 
   auto diagram = builder.Build();
 

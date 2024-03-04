@@ -1,6 +1,9 @@
 import sys
 import lcm
 import matplotlib.pyplot as plt
+
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import numpy as np
 
 from scipy.linalg import null_space
@@ -11,7 +14,6 @@ from bindings.pydairlib.lcm import lcm_trajectory
 from bindings.pydairlib.multibody import MakeNameToPositionsMap, \
   MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
   CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
-from bindings.pydairlib.common import FindResourceOrThrow
 from bindings.pydairlib.common import plot_styler, plotting_utils
 from bindings.pydairlib.cassie.cassie_utils import *
 from bindings.pydairlib.lcm.process_lcm_log import get_log_data
@@ -56,7 +58,7 @@ def load_logs(plant, t_impact, window):
 def main():
   builder = DiagramBuilder()
   plant, _ = AddMultibodyPlantSceneGraph(builder, 0.0)
-  Parser(plant).AddModelFromFile(
+  Parser(plant).AddModels(
     "examples/impact_invariant_control/five_link_biped.urdf")
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"))
   plant.Finalize()
@@ -71,7 +73,17 @@ def main():
   act_map = MakeNameToActuatorsMap(plant)
 
   state_names = CreateStateNameVectorFromMap(plant)
-  state_legend = [s[:-4].replace('_', ' ').title() for s in state_names]
+  # state_legend = [s[:-4].replace('_', ' ').title() for s in state_names]
+  # state_legend = [s[:].replace('_', ' ').title() for s in state_names]
+  state_legend = ['Pelvis X',
+                  'Pelvis Z',
+                  'Torso Angle',
+                  'Left Hip',
+                  'Left Knee',
+                  'Right Hip',
+                  'Right Knee']
+
+
 
   nq = plant.num_positions()
   nv = plant.num_velocities()
@@ -87,7 +99,14 @@ def main():
   window_length = 0.05
   tau = 0.002
   joint_vel_indices = slice(3, 7)
-  selected_joint_indices = slice(3, 7)
+  selected_joint_indices = slice(0, 7)
+
+  # manually construct state legend
+  empty_ps = plot_styler.PlotStyler()
+  legend_handles = []
+  for i in range(selected_joint_indices.start, selected_joint_indices.stop):
+    legend_handles.append(Line2D([0], [0], color=empty_ps.cmap(2 * i),
+                                label=state_legend[i]))
 
   # Map to 2d
   TXZ = np.array([[1, 0, 0], [0, 0, 1]])
@@ -125,11 +144,11 @@ def main():
   vel_correction = np.zeros((t.shape[0], nv))
   vel_corrected_blend = np.zeros((t.shape[0], nv))
   alphas = np.zeros((t.shape[0], 1))
-  start_idx = np.argwhere(np.abs(robot_output['t_x'] - start_time) < 1e-3)[0][0]
-  end_idx = np.argwhere(np.abs(robot_output['t_x'] - end_time) < 1e-3)[0][0]
+  start_idx = np.argwhere(np.abs(robot_output['t'] - start_time) < 1e-3)[0][0]
+  end_idx = np.argwhere(np.abs(robot_output['t'] - end_time) < 1e-3)[0][0]
 
   for i in range(t.shape[0]):
-    x_des = state_traj.value(robot_output['t_x'][i + start_idx])[:, 0]
+    x_des = state_traj.value(robot_output['t'][i + start_idx])[:, 0]
     plant.SetPositions(context, x_des[:nq])
     M = plant.CalcMassMatrixViaInverseDynamics(context)
     M_inv = np.linalg.inv(M)
@@ -160,44 +179,58 @@ def main():
         alpha = blend_function(transition_time - t[i], tau,
                               window_length, blend_type)
     alphas[i] = alpha
-
     vel_desired[i] = x_des[-nv:]
+    vel_actual[i] = robot_output['v'][i]
     if not use_blending_window:
       alpha = 1
+
     vel_proj_desired[i] = alpha * TV_proj @ vel_desired[i] + (1 - alpha) * vel_desired[i]
+    vel_proj_actual[i] = alpha * TV_proj @ vel_actual[i] + (1 - alpha) * vel_actual[i]
+
 
 
   joint_vel_plot = plot_styler.PlotStyler()
   joint_vel_plot.plot(t, vel_desired[:, selected_joint_indices], xlabel='Time (s)', ylabel='Velocity (rad/s)')
-  joint_vel_plot.add_legend(state_legend[selected_joint_indices])
-  joint_vel_plot.tight_layout()
+  joint_vel_plot.add_legend(state_legend[selected_joint_indices], loc='lower right')
   joint_vel_plot.save_fig('rabbit_gen_vel.png')
 
   proj_vel_plot = plot_styler.PlotStyler()
   ylim = joint_vel_plot.fig.gca().get_ylim()
   proj_vel_plot.plot(t, vel_proj_desired[:, selected_joint_indices],
                      xlabel='Time (s)', ylabel='Velocity (rad/s)', ylim=ylim)
-  proj_vel_plot.add_legend(state_legend[selected_joint_indices])
-  proj_vel_plot.tight_layout()
+  proj_vel_plot.axes[0].set_ylim(ylim)
+  proj_vel_plot.add_legend(state_legend[selected_joint_indices], loc='lower right')
+  proj_vel_plot.save_fig('rabbit_proj_vel.png')
 
-  # ax = proj_vel_plot.fig.axes[0]
-  # ax.fill_between(t_proj, joint_vel_plot.fig.axes[0].get_ylim()[0], joint_vel_plot.fig.axes[0].get_ylim()[1],
-  #                 color=proj_vel_plot.grey, alpha=0.2)
-  proj_vel_plot.save_fig('proj_vel_plot.png')
-
-  gen_vel_plot = plot_styler.PlotStyler()
-  gen_vel_plot.plot(t, vel_desired[:, selected_joint_indices],
-                    xlabel='Time (s)', ylabel='Velocity (rad/s)')
-  gen_vel_plot.plot(t, vel_actual[:, selected_joint_indices],
-                    xlabel='Time (s)', ylabel='Velocity (rad/s)')
-  # gen_vel_plot.plot(t, vel_desired[:, selected_joint_indices] - vel_actual[:, selected_joint_indices],
-  #                   xlabel='time (s)', ylabel='velocity (m/s)', grid=False)
-  # gen_vel_plot.add_legend(['Desired Velocity', 'Measured Velocity'])
-  ylim = gen_vel_plot.fig.gca().get_ylim()
-  gen_vel_plot.save_fig('gen_vel_plot.png')
-  # ps.save_fig('generalized_velocities_around_impact.png')
+  tracking_gen_vel_plot = plot_styler.PlotStyler()
+  for i in range(0, 7):
+    tracking_gen_vel_plot.plot(t, vel_desired[:, i],
+                        xlabel='Time (s)', ylabel='Velocity (rad/s)', color=tracking_gen_vel_plot.cmap(2*i))
+    tracking_gen_vel_plot.plot(t, vel_actual[:, i],
+                        xlabel='Time (s)', ylabel='Velocity (rad/s)', color=tracking_gen_vel_plot.cmap(2*i + 1))
+  tracking_gen_vel_plot.axes[0].set_ylim(ylim)
+  tracking_gen_vel_plot.axes[0].legend(handles=legend_handles, loc='lower right')
+  tracking_gen_vel_plot.save_fig('rabbit_gen_vel_tracking.png')
 
 
+  tracking_proj_vel_plot = plot_styler.PlotStyler()
+  for i in range(0, 7):
+    tracking_proj_vel_plot.plot(t, vel_proj_desired[:, i],
+                        xlabel='Time (s)', ylabel='Velocity (rad/s)', color=tracking_proj_vel_plot.cmap(2*i))
+    tracking_proj_vel_plot.plot(t, vel_proj_actual[:, i],
+                        xlabel='Time (s)', ylabel='Velocity (rad/s)', color=tracking_proj_vel_plot.cmap(2*i + 1))
+  tracking_proj_vel_plot.axes[0].set_ylim(ylim)
+  tracking_proj_vel_plot.axes[0].legend(handles=legend_handles, loc='lower right')
+  tracking_proj_vel_plot.save_fig('rabbit_proj_vel_tracking.png')
+
+  tracking_error_plot = plot_styler.PlotStyler()
+  tracking_error_plot.plot(t, np.linalg.norm(vel_desired[:, selected_joint_indices] - vel_actual[:, selected_joint_indices], axis=-1),
+                    xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(0))
+  tracking_error_plot.plot(t, np.linalg.norm(vel_proj_desired[:, selected_joint_indices] - vel_proj_actual[:, selected_joint_indices], axis=-1),
+                    xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(2))
+  tracking_error_plot.axes[0].legend(['Velocity Error', 'Projected Velocity Error'])
+  # tracking_proj_vel_plot.axes[0].set_ylim(ylim)
+  tracking_error_plot.save_fig('rabbit_tracking_errors.png')
 
   corrected_vel_plot = plot_styler.PlotStyler()
   corrected_vel_plot.plot(t, vel_corrected,
@@ -270,8 +303,8 @@ def main():
 
   blending_function_plot = plot_styler.PlotStyler()
   ax = blending_function_plot.fig.axes[0]
-  blending_function_plot.plot(t, alphas, title="Blending Function")
-  ax.fill_between(t_proj, ax.get_ylim()[0], ax.get_ylim()[1],
+  blending_function_plot.plot(t - t_impact, alphas, ylabel="Blending Function", xlabel="Time from Impact (s)")
+  ax.fill_between(t_proj - t_impact, ax.get_ylim()[0], ax.get_ylim()[1],
                   color=blending_function_plot.grey, alpha=0.2)
   blending_function_plot.save_fig('blending_function_plot.png')
 

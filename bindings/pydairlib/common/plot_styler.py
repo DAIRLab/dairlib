@@ -112,7 +112,8 @@ class PlotStyler():
 
   def save_fig(self, filename):
     # self.fig.savefig(self.directory + filename, dpi=self.dpi, bbox_inches='tight')
-    self.fig.savefig(self.directory + filename, dpi=200, bbox_inches='tight')
+    # self.fig.savefig(self.directory + filename, dpi=200, bbox_inches='tight')
+    self.fig.savefig(self.directory + filename, dpi=200)
     return
 
   def add_legend(self, labels, loc=0, subplot_index=0):

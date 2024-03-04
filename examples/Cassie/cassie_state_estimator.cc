@@ -440,29 +440,29 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 
 void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
     const VectorXd& est_fb_state, OutputVector<double>* output) const {
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qw"),
+  output->SetPositionAtIndex(position_idx_map_.at("base_qw"),
                              est_fb_state(0));
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qx"),
+  output->SetPositionAtIndex(position_idx_map_.at("base_qx"),
                              est_fb_state(1));
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qy"),
+  output->SetPositionAtIndex(position_idx_map_.at("base_qy"),
                              est_fb_state(2));
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qz"),
+  output->SetPositionAtIndex(position_idx_map_.at("base_qz"),
                              est_fb_state(3));
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_x"), est_fb_state(4));
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_y"), est_fb_state(5));
-  output->SetPositionAtIndex(position_idx_map_.at("pelvis_z"), est_fb_state(6));
+  output->SetPositionAtIndex(position_idx_map_.at("base_x"), est_fb_state(4));
+  output->SetPositionAtIndex(position_idx_map_.at("base_y"), est_fb_state(5));
+  output->SetPositionAtIndex(position_idx_map_.at("base_z"), est_fb_state(6));
 
-  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wx"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wx"),
                              est_fb_state(7));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wy"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wy"),
                              est_fb_state(8));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wz"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wz"),
                              est_fb_state(9));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vx"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vx"),
                              est_fb_state(10));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vy"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vy"),
                              est_fb_state(11));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vz"),
+  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vz"),
                              est_fb_state(12));
 }
 

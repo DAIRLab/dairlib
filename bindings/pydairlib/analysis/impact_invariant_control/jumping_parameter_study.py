@@ -233,9 +233,9 @@ def convert_logs_to_costs():
                    'CASSIE_STATE_SIMULATION', 'OSC_JUMPING',
                    'OSC_DEBUG_JUMPING')
 
-    t_matrix[land_idx, impact_idx, :] = robot_output['t_x'][:t_samples]
+    t_matrix[land_idx, impact_idx, :] = robot_output['t'][:t_samples]
     # x_matrix[land_idx, impact_idx, :, :] = robot_output['q'][:t_samples]
-    t_u_matrix[land_idx, impact_idx, :] = robot_input['t_u'][:u_samples]
+    t_u_matrix[land_idx, impact_idx, :] = robot_input['t'][:u_samples]
     u_matrix[land_idx, impact_idx, :, :] = robot_input['u'][:u_samples]
     t_osc_matrix[land_idx, impact_idx, :] = osc_debug['t_osc'][:u_samples]
     tracking_cost[land_idx, impact_idx, :] = osc_debug['tracking_cost'][osc_traj0][:u_samples]
@@ -296,6 +296,7 @@ def plot_success():
   landing_times -= 0.025
   impact_thresholds = np.linspace(0.000, 0.100, 11)
   # success = np.load('long_jump_0_success.npy')
+  print(trial_name + '0_success.npy')
   success = np.load(trial_name + '0_success.npy')
   total_success = np.zeros(success.shape)
   total_success += success
@@ -361,10 +362,8 @@ def plot_costs():
     # u_cost_exp[u_cost_exp > 20000] = 20000
     # u_cost_exp[fail_bool] = 25000 * np.ones(u_cost.shape)[fail_bool]
     u_cost += u_cost_exp
-  # u_cost[u_cost > 3] = 3
-  # u_cost[u_cost < 2.7] = 2.7
 
-  u_cost *= 8e-6 / .5801
+  u_cost *= 8e-6 / .5801 / 1.54172
   # u_cost[u_cost > 1] = 1
   u_cost[fails >= 2] = -1
   u_cost_masked = np.ma.masked_where(u_cost == -1, u_cost)
@@ -393,5 +392,6 @@ if __name__ == "__main__":
   # main()
   # construct_success_plot()
   # convert_logs_to_costs()
+
   # plot_success()
   plot_costs()

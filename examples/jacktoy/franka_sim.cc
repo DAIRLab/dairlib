@@ -85,7 +85,9 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> T_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
+      drake::math::RotationMatrix<double>(
+        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+        sim_params.tool_attachment_frame);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              sim_params.ground_franka_frame);
@@ -141,9 +143,7 @@ int DoMain(int argc, char* argv[]) {
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
-
-  // TODO: Figure out what this line really needs to be
-  q.tail(plant.num_positions(jack_index)) = sim_params.q_init_plate[sim_params.scene_index];
+  q.tail(plant.num_positions(jack_index)) = sim_params.q_init_object;
 
   plant.SetPositions(&plant_context, q);
 

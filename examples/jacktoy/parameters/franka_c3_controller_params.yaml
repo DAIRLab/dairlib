@@ -7,21 +7,25 @@ osqp_settings_file: examples/jacktoy/parameters/franka_c3_qp_settings.yaml
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
-end_effector_name: ee_full
+end_effector_name: end_effector_tip
 end_effector_simple_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
-end_effector_simple_name: ee_simple
+end_effector_simple_name: end_effector_simple
 jack_model: examples/jacktoy/urdf/jack.sdf
 # jack_model: examples/jacktoy/urdf/jack.urdf
 ground_model: examples/jacktoy/urdf/ground.urdf
 
+# Note:  Use capsule_1 body name as representative of the pose of the entire
+# jack model.  This works because capsule_1's origin is the same as the jack's.
+object_body_name: capsule_1
+
 tool_attachment_frame: [0, 0, 0.107]
 ground_franka_frame: [0, 0, -0.0745]
 
-end_effector_thickness: 0.016
+end_effector_thickness: 0.016    # TODO delete?
 
-scene_index: 1
+scene_index: 1   # TODO delete?
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
-target_frequency: 0 #unused
+target_frequency: 0 #unused  # TODO delete
 

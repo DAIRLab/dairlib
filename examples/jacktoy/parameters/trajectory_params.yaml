@@ -1,5 +1,5 @@
 # Trajectory generation parameters
-trajectory_type: 0       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
+trajectory_type: 1       # 0 to use time-based path, 1 to use adaptive path, 2 to use fixed goal, 3 to use an adaptive straight line path
 # Adaptive circular path parameters
 traj_radius: 0.2
 x_c: 0.35

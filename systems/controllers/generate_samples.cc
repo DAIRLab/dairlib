@@ -1,5 +1,6 @@
 // #include <Eigen/Dense>
 #include "generate_samples.h"
+#include <iostream>
 // #include <random>
 // #include <iostream>
 // #include <vector>
@@ -21,8 +22,6 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const bool& is_doing_c3,
     const SamplingC3SamplingParams sampling_params){
 
-  std::vector<Eigen::VectorXd> candidate_states;
-
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3){
@@ -31,6 +30,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   else{
     num_samples = sampling_params.num_additional_samples_repos;
   }
+  std::vector<Eigen::VectorXd> candidate_states(num_samples);
 
   // Determine which sampling strategy to use.
   if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
@@ -39,7 +39,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
         n_q, n_v, x_lcs, num_samples, i,
         sampling_params.sampling_radius, sampling_params.sampling_height
       );
-    }
+    }    
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_CIRCLE_SAMPLING){
     for (int i = 0; i < num_samples; i++){
@@ -184,7 +184,6 @@ static Eigen::VectorXd generate_random_sample_location_on_sphere(
   std::uniform_real_distribution<> dis_height(min_angle_from_vertical,
                                               max_angle_from_vertical);
   double elevation_theta = dis_height(gen_height);
-
   // Update the hypothetical state's end effector location to the tested sample
   // location.
   test_q[0] = x_samplec + sampling_radius * cos(theta) * sin(elevation_theta);
@@ -198,11 +197,9 @@ static Eigen::VectorXd generate_random_sample_location_on_sphere(
   // the rest of the hypothetical state comparisons drive the actual cost
   // differences.
   // test_v.head(3) << VectorXd::Zero(3);
-  
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   candidate_state << test_q.head(3), x_lcs.segment(3, n_q - 3), test_v;
-
   return candidate_state;
 }
 } // namespace systems

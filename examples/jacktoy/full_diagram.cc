@@ -1,3 +1,6 @@
+// UPDATE Mar 1st, 2024: This might be out of date with the franka_sim, 
+// franka_c3 controller and osc controller changes.
+// Update required before using this file.
 #include <math.h>
 
 #include <vector>
@@ -37,7 +40,6 @@
 #include "examples/jacktoy/systems/control_target_generator.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
-#include "solvers/lcs_factory_preprocessor.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/controllers/osc/external_force_tracking_data.h"
@@ -91,7 +93,6 @@ using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
 using dairlib::solvers::LCSFactory;
-using dairlib::solvers::LCSFactoryPreProcessor;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 
@@ -156,9 +157,10 @@ int DoMain(int argc, char* argv[]) {
     drake::multibody::ModelInstanceIndex end_effector_index =
         osc_parser.AddModels(
             FindResourceOrThrow(controller_params.end_effector_model))[0];
-    RigidTransform<double> T_EE_W =
-        RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                               controller_params.tool_attachment_frame);
+    RigidTransform<double> T_EE_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(
+            drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+            controller_params.tool_attachment_frame);
     osc_plant.WeldFrames(
         osc_plant.GetFrameByName("panda_link7"),
         osc_plant.GetFrameByName(controller_params.end_effector_name,
@@ -272,9 +274,10 @@ int DoMain(int argc, char* argv[]) {
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
 
-  RigidTransform<double> T_EE_W =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.tool_attachment_frame);
+    RigidTransform<double> T_EE_W = RigidTransform<double>(
+        drake::math::RotationMatrix<double>(
+            drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+            controller_params.tool_attachment_frame);
 //   RigidTransform<double> X_F_G_franka =
 //       RigidTransform<double>(drake::math::RotationMatrix<double>(),
 //                              c3_controller_params.ground_franka_frame);
@@ -335,36 +338,10 @@ int DoMain(int argc, char* argv[]) {
   auto& plant_for_lcs_context = plant_diagram->GetMutableSubsystemContext(
       plant_for_lcs, diagram_context.get());
   auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
+  
   drake::geometry::GeometryId ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-//   if (c3_controller_params.scene_index > 0) {
-//     std::vector<drake::geometry::GeometryId> left_support_contact_points =
-//         plant_for_lcs.GetCollisionGeometriesForBody(
-//             plant_for_lcs.GetBodyByName("support", left_support_index));
-//     std::vector<drake::geometry::GeometryId> right_support_contact_points =
-//         plant_for_lcs.GetCollisionGeometriesForBody(
-//             plant_for_lcs.GetBodyByName("support", right_support_index));
-//     plate_contact_points.insert(plate_contact_points.end(),
-//                                 left_support_contact_points.begin(),
-//                                 left_support_contact_points.end());
-//     plate_contact_points.insert(plate_contact_points.end(),
-//                                 right_support_contact_points.begin(),
-//                                 right_support_contact_points.end());
-//   }
-//   std::vector<drake::geometry::GeometryId> tray_geoms =
-//       plant_for_lcs.GetCollisionGeometriesForBody(
-//           plant_for_lcs.GetBodyByName("tray"));
-//   std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
-//       contact_geoms;
-//   contact_geoms["PLATE"] = plate_contact_points;
-//   contact_geoms["TRAY"] = tray_geoms;
-
-//   std::vector<SortedPair<GeometryId>> contact_pairs;
-//   for (auto geom_id : contact_geoms["PLATE"]) {
-//     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
-//   }
-
   drake::geometry::GeometryId capsule1_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("capsule_1"))[0];
@@ -439,21 +416,14 @@ int DoMain(int argc, char* argv[]) {
                   target_state_mux->get_input_port(2));
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
-  // Preprocessing the contact pairs to resolve the contact pairs   
-  std::vector<drake::SortedPair<drake::geometry::GeometryId>> resolved_contact_pairs = 
-                                                            LCSFactoryPreProcessor::PreProcessor(plant_for_lcs, plant_for_lcs_context, 
-                                                            contact_pairs, c3_options.num_friction_directions);
   
-//   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
-//       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-//       end_effector_context_ad.get(), resolved_contact_pairs, c3_options);
   auto c3_controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plant_for_lcs_context_ad.get(), resolved_contact_pairs, c3_options,
+      plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
       sampling_params);
   auto c3_trajectory_generator =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
-                                                        c3_options);
+      builder.AddSystem<systems::C3TrajectoryGenerator>(
+        plant_for_lcs, c3_options, "c3_trajectory_generator");
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -693,8 +663,7 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  q.tail(plant.num_positions(jack_index)) =
-      sim_params.q_init_plate[sim_params.scene_index];
+  q.tail(plant.num_positions(jack_index)) = sim_params.q_init_object;
 
   plant.SetPositions(&plant_context, q);
 

@@ -1,4 +1,5 @@
 #include "sampling_based_c3_controller.h"
+#include <iostream>
 
 #include <omp.h>
 #include <utility>
@@ -9,6 +10,7 @@
 #include "solvers/c3_qp.h"
 #include "solvers/lcs.h"
 #include "solvers/lcs_factory.h"
+#include "solvers/lcs_factory_preprocessor.h"
 #include "generate_samples.h"
 
 namespace dairlib {
@@ -27,6 +29,7 @@ using solvers::C3MIQP;
 using solvers::C3QP;
 using solvers::LCS;
 using solvers::LCSFactory;
+using solvers::LCSFactoryPreProcessor;
 using std::vector;
 using systems::TimestampedVector;
 using drake::multibody::MultibodyPlant;
@@ -40,7 +43,7 @@ SamplingC3Controller::SamplingC3Controller(
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
     C3Options c3_options,
     SamplingC3SamplingParams sampling_params)
     : plant_(plant),
@@ -68,6 +71,7 @@ SamplingC3Controller::SamplingC3Controller(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
+
   n_x_ = n_q_ + n_v_;
   dt_ = c3_options_.dt;
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
@@ -182,6 +186,7 @@ SamplingC3Controller::SamplingC3Controller(
                              sampling_params_.num_additional_samples_c3);
   all_sample_locations_ = vector<Vector3d>(num_samples + 1, Vector3d::Zero());
   all_sample_costs_ = std::vector<double>(num_samples + 1, -1);
+  LcmTrajectory lcm_traj = LcmTrajectory();
 
   // Current location plan output ports.
   c3_solution_curr_plan_port_ = this->DeclareAbstractOutputPort(
@@ -213,25 +218,30 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Execution trajectory output ports.
   c3_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "c3_traj_execute", c3_execution_lcm_traj_,
+    "c3_traj_execute", lcm_traj, // TODO don't use class vars for port types
     &SamplingC3Controller::OutputC3TrajExecute
   ).get_index();
   repos_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "repos_traj_execute", repos_execution_lcm_traj_,
+    "repos_traj_execute", lcm_traj, // TODO don't use class vars for port types
     &SamplingC3Controller::OutputReposTrajExecute
   ).get_index();
-  is_c3_mode_port_ = this->DeclareAbstractOutputPort(
-    "is_c3_mode", is_doing_c3_,
+  // NOTE: We reuse c3_execution_lcm_traj_ to set the right type for the port.
+  traj_execute_port_ = this->DeclareAbstractOutputPort(
+    "traj_execute", lcm_traj, // TODO don't use class vars for port types
+    &SamplingC3Controller::OutputTrajExecute
+  ).get_index();
+  is_c3_mode_port_ = this->DeclareVectorOutputPort(
+    "is_c3_mode", drake::systems::BasicVector<double>(1),
     &SamplingC3Controller::OutputIsC3Mode
   ).get_index();
   
   // Sample location related output ports.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_locations", all_sample_locations_,
+    "all_sample_locations", vector<Vector3d>(num_samples + 1, Vector3d::Zero()), // TODO don't use class vars for port types
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
   all_sample_costs_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_costs", all_sample_costs_,
+    "all_sample_costs", std::vector<double>(num_samples + 1, -1), // TODO don't use class vars for port types
     &SamplingC3Controller::OutputAllSampleCosts
   ).get_index();
 
@@ -353,21 +363,24 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Context needs to be updated to create the LCS objects.
     UpdateContext(candidate_states[i]);
 
-  // TODO: Make the ContactModel contact_model accessiible everywhere from 
-  // constructor.
-  // Resolving contact model param to ContactModel type to pass to LCSFactory.
-  solvers::ContactModel contact_model;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model = solvers::ContactModel::kStewartAndTrinkle;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model = solvers::ContactModel::kAnitescu;
-  } else {
-    throw std::runtime_error("unknown or unsupported contact model");
-  }
-
+    // TODO: Make the ContactModel contact_model accessiible everywhere from 
+    // constructor.
+    // Resolving contact model param to ContactModel type to pass to LCSFactory.
+    solvers::ContactModel contact_model;
+    if (c3_options_.contact_model == "stewart_and_trinkle") {
+      contact_model = solvers::ContactModel::kStewartAndTrinkle;
+    } else if (c3_options_.contact_model == "anitescu") {
+      contact_model = solvers::ContactModel::kAnitescu;
+    } else {
+      throw std::runtime_error("unknown or unsupported contact model");
+    }
     // Create an LCS object.
+    // Preprocessing the contact pairs to resolve the contact pairs
+    vector<SortedPair<GeometryId>> resolved_contact_pairs =
+      LCSFactoryPreProcessor::PreProcessor(
+        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
     auto sample_system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
-      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, c3_options_.mu, 
       c3_options_.planning_dt, N_, contact_model);
     solvers::LCS lcs_object_sample = sample_system_scaling_pair.first;
@@ -378,7 +391,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Preparation for parallelization.
   all_sample_costs_ = std::vector<double>(num_total_samples, -1);
-  std::vector<std::shared_ptr<solvers::C3>> c3_objects;
+  std::vector<std::shared_ptr<solvers::C3>> c3_objects(num_total_samples, nullptr);
   std::vector<std::vector<Eigen::VectorXd>> deltas(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
   std::vector<std::vector<Eigen::VectorXd>> ws(num_total_samples, 
@@ -422,7 +435,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                    x_lcs_curr.head(2)).norm();
       all_sample_costs_[i] = c3_cost + 
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
-
       // Add additional costs based on repositioning progress.
       if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
@@ -530,12 +542,15 @@ void SamplingC3Controller::UpdateContext(Eigen::VectorXd lcs_state) const {
 }
 
 // Perform one step of C3.
-void SamplingC3Controller::UpdateC3ExecutionTrajectory(const VectorXd& x_lcs, const double& t_context) const {
-  // Get the input from the plan.
-  vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
+void SamplingC3Controller::UpdateC3ExecutionTrajectory(
+  const VectorXd& x_lcs, const double& t_context) const {
 
   // Read the time from the t_context i/p for setting timestamps.
   double t = t_context;
+
+  // Get the input from the plan.
+  vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
+
 
   // Resolving contact model param to ContactModel type to pass to LCSFactory.
   solvers::ContactModel contact_model;
@@ -548,8 +563,11 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(const VectorXd& x_lcs, co
   }
 
   // Create an LCS object.
+  vector<SortedPair<GeometryId>> resolved_contact_pairs =
+    LCSFactoryPreProcessor::PreProcessor(
+      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
   auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
-    plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+    plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
     c3_options_.num_friction_directions, c3_options_.mu, 
     c3_options_.execution_dt, N_, contact_model);
   solvers::LCS lcs_object = system_scaling_pair.first;
@@ -570,19 +588,53 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(const VectorXd& x_lcs, co
   }
   
   LcmTrajectory::Trajectory c3_execution_traj;
-  c3_execution_traj.traj_name = "c3_execution_trajectory";
+  c3_execution_traj.traj_name = "end_effector_position_target";
   c3_execution_traj.datatypes =
       std::vector<std::string>(knots.rows(), "double");
-  c3_execution_traj.datapoints = knots;
+  c3_execution_traj.datapoints = 
+    knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_+1));
   c3_execution_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory c3_execution_lcm_traj_({c3_execution_traj}, {"c3_execution_trajectory"},
-                         "c3_execution_trajectory",
-                         "c3_execution_trajectory", false);
+  c3_execution_lcm_traj_.ClearTrajectories();
+  c3_execution_lcm_traj_.AddTrajectory("end_effector_position_target", 
+                                      c3_execution_traj);
+
+  // In c3 mode, the end effector forces should match the solved c3 inputs.
+  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(u_sol.size(), u_sol[0].size()); //u_sol;
+  for (int i = 0; i < u_sol.size(); i++) {
+    force_samples.col(i) = u_sol[i];
+  }
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes =
+      std::vector<std::string>(force_samples.rows(), "double");
+  force_traj.datapoints = force_samples;
+  force_traj.time_vector = timestamps.cast<double>();
+  c3_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
+
+  LcmTrajectory::Trajectory object_traj;
+  object_traj.traj_name = "object_position_target";
+  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  object_traj.datapoints = knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_+1));
+  object_traj.time_vector = timestamps.cast<double>();
+  c3_execution_lcm_traj_.AddTrajectory(object_traj.traj_name, object_traj);
+
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // first 3 rows are rpy, last 3 rows are angular velocity
+  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
+  orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_+1));
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector = timestamps.cast<double>();
+  c3_execution_lcm_traj_.AddTrajectory(object_orientation_traj.traj_name,
+                         object_orientation_traj);
+
 }
 
-// Perform one step of repositioning.
-void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(const VectorXd& x_lcs, const double& t_context) 
-  const {
+// Compute repositioning trajectory.
+void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
+    const VectorXd& x_lcs, const double& t_context) const {
   // Get the best sample location.
   Eigen::Vector3d best_sample_location =
     all_sample_locations_[best_sample_index_];
@@ -611,14 +663,14 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(const VectorXd
   double t = t_context;
 
   // Setting up matrices to set up LCMTrajectory object.
-  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_+1);
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_+1);
 
   // Roll out the execution LCS with the planned inputs.
   knots.col(0) = x_lcs;
   timestamps[0] = t + filtered_solve_time_;
 
-  for (int i = 0; i < N_; i++) {
+  for (int i = 0; i < N_+1; i++) {
     double t_spline = (i+1)*c3_options_.execution_dt/total_travel_time;
     // Don't overshoot the end of the spline.
     t_spline = std::min(1.0, t_spline);
@@ -628,25 +680,58 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(const VectorXd
                            std::pow(t_spline,3) * (-p0 + 3*p1 - 3*p2 + p3);
 
     // Set the next LCS state as the current state with updated end effector
-    // location and zero end effector velocity.     
+    // location and zero end effector velocity. Note that this means that the
+    // object does not move in the planned trajectory. An alternative is that we
+    // could simulate the object's motion with 0 input.
     VectorXd next_lcs_state = x_lcs;
     next_lcs_state.head(3) = next_ee_loc;
     next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
 
-    // Set up matrices for LCMTrajectory object.
     knots.col(i)= next_lcs_state;
     timestamps[i] = t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt;
   }
 
   LcmTrajectory::Trajectory repos_execution_traj;
-  repos_execution_traj.traj_name = "repos_execution_trajectory";
+  repos_execution_traj.traj_name = "end_effector_position_target";
   repos_execution_traj.datatypes =
       std::vector<std::string>(knots.rows(), "double");
-  repos_execution_traj.datapoints = knots;
+  repos_execution_traj.datapoints = 
+    knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_+1));
   repos_execution_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory repos_execution_lcm_traj_({repos_execution_traj}, 
-    {"repos_execution_trajectory"}, "repos_execution_trajectory",
-    "repos_execution_trajectory", false);
+  repos_execution_lcm_traj_.ClearTrajectories();
+  repos_execution_lcm_traj_.AddTrajectory("end_effector_position_target", 
+                                          repos_execution_traj);
+  
+  // In repositioning mode, the end effector should not exert forces.
+  MatrixXd force_samples = MatrixXd::Zero(3, N_);
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes =
+      std::vector<std::string>(force_samples.rows(), "double");
+  force_traj.datapoints = force_samples;
+  force_traj.time_vector = timestamps.cast<double>();
+  repos_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
+
+
+  LcmTrajectory::Trajectory object_traj;
+  object_traj.traj_name = "object_position_target";
+  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  object_traj.datapoints = 
+    knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_+1));
+  object_traj.time_vector = timestamps.cast<double>();
+  repos_execution_lcm_traj_.AddTrajectory(object_traj.traj_name, object_traj);
+
+  LcmTrajectory::Trajectory object_orientation_traj;
+  // first 3 rows are rpy, last 3 rows are angular velocity
+  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
+  orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_+1));
+  object_orientation_traj.traj_name = "object_orientation_target";
+  object_orientation_traj.datatypes =
+      std::vector<std::string>(orientation_samples.rows(), "double");
+  object_orientation_traj.datapoints = orientation_samples;
+  object_orientation_traj.time_vector = timestamps.cast<double>();
+  repos_execution_lcm_traj_.AddTrajectory(object_orientation_traj.traj_name,
+                         object_orientation_traj);
 }
 
 // Output port handlers for current location
@@ -665,13 +750,15 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  if (filtered_solve_time_ < N_ * dt_) {
+  // Interpolate the z_sol according to the time it takes to perform a control 
+  // loop. If control loop is longer than the plan horizon, use the last z.
+  if (filtered_solve_time_ < (N_ - 1) * dt_) {
     int index = filtered_solve_time_ / dt_;
     double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
     x_pred_curr_plan_ = weight * z_sol[index].segment(0, n_x_) +
               (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
-    x_pred_curr_plan_ = z_sol[1].segment(0, n_x_);
+    x_pred_curr_plan_ = z_sol[N_ - 1].segment(0, n_x_);
   }
 }
 
@@ -707,9 +794,11 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     throw std::runtime_error("unknown or unsupported contact model");
   }
 
-  std::vector<Eigen::VectorXd> contact_points;
+  vector<SortedPair<GeometryId>> resolved_contact_pairs =
+    LCSFactoryPreProcessor::PreProcessor(
+      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);
 }
@@ -730,13 +819,15 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
   }
 
-  if (filtered_solve_time_ < N_ * dt_) {
+  // Interpolate the z_sol according to the time it takes to perform a control 
+  // loop. If control loop is longer than the plan horizon, use the last z.
+  if (filtered_solve_time_ < (N_ - 1) * dt_) {
     int index = filtered_solve_time_ / dt_;
     double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
     x_pred_best_plan_ = weight * z_sol[index].segment(0, n_x_) +
               (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
-    x_pred_best_plan_ = z_sol[1].segment(0, n_x_);
+    x_pred_best_plan_ = z_sol[N_-1].segment(0, n_x_);
   }
 }
 
@@ -776,9 +867,11 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     throw std::runtime_error("unknown or unsupported contact model");
   }
 
-  std::vector<Eigen::VectorXd> contact_points;
+  vector<SortedPair<GeometryId>> resolved_contact_pairs =
+    LCSFactoryPreProcessor::PreProcessor(
+      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
+      plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);
 
@@ -803,10 +896,21 @@ void SamplingC3Controller::OutputReposTrajExecute(
   *output_repos_execution_lcm_traj = repos_execution_lcm_traj_;
 }
 
+void SamplingC3Controller::OutputTrajExecute(
+    const drake::systems::Context<double>& context,
+    LcmTrajectory* output_execution_lcm_traj) const {
+  if(is_doing_c3_){
+    *output_execution_lcm_traj = c3_execution_lcm_traj_;
+  } else {
+    *output_execution_lcm_traj = repos_execution_lcm_traj_;
+  }
+}
+
 void SamplingC3Controller::OutputIsC3Mode(
     const drake::systems::Context<double>& context,
-    bool* is_c3_mode) const {
-  *is_c3_mode = is_doing_c3_;
+    drake::systems::BasicVector<double>* is_c3_mode) const {
+  Eigen::VectorXd vec = VectorXd::Constant(1, is_doing_c3_);
+  is_c3_mode->SetFromVector(vec);
 }
 
 // Output port handlers for sample-related ports

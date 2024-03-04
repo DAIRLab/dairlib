@@ -93,29 +93,12 @@ int do_main(int argc, char* argv[]) {
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
   RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), sim_params.tool_attachment_frame);
+      drake::math::RotationMatrix<double>(
+        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+        sim_params.tool_attachment_frame);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
                    R_X_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), T_EE_W);
-
-  if (sim_params.scene_index > 0) {
-    drake::multibody::ModelInstanceIndex left_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
-                               sim_params.left_support_position);
-    RigidTransform<double> T_S2_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               sim_params.right_support_position);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", left_support_index),
-                     T_S1_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", right_support_index),
-                     T_S2_W);
-  }
 
   plant.Finalize();
 
@@ -151,15 +134,25 @@ int do_main(int argc, char* argv[]) {
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
-  auto trajectory_sub_actor = builder.AddSystem(
+  auto trajectory_sub_actor_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_curr_plan_channel, lcm));
-  auto trajectory_sub_object = builder.AddSystem(
+  auto trajectory_sub_object_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_curr_plan_channel, lcm));
-  auto trajectory_sub_force =
+  auto trajectory_sub_force_curr =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_curr_channel, lcm));
+
+  auto trajectory_sub_actor_best = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_actor_best_plan_channel, lcm));
+  auto trajectory_sub_object_best = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_object_best_plan_channel, lcm));
+  auto trajectory_sub_force_best =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
+          lcm_channel_params.c3_force_best_channel, lcm));
 
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
@@ -188,35 +181,68 @@ int do_main(int argc, char* argv[]) {
                        {1, 0, 0, 0.2});
     meshcat->SetTransform("c3_state/workspace", RigidTransformd(workspace_center));
   }
-  if (sim_params.visualize_center_of_mass_plan){
-    auto trajectory_drawer_actor =
+  if (sim_params.visualize_center_of_mass_plan_curr){
+    auto trajectory_drawer_actor_curr =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
             meshcat, "end_effector_position_target");
-    auto trajectory_drawer_object =
+    auto trajectory_drawer_object_curr =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
                                                         "object_position_target");
-    trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
-    trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
-    trajectory_drawer_actor->SetNumSamples(5);
-    trajectory_drawer_object->SetNumSamples(5);
-    builder.Connect(trajectory_sub_actor->get_output_port(),
-                    trajectory_drawer_actor->get_input_port_trajectory());
-    builder.Connect(trajectory_sub_object->get_output_port(),
-                    trajectory_drawer_object->get_input_port_trajectory());
+    trajectory_drawer_actor_curr->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
+    trajectory_drawer_object_curr->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+    trajectory_drawer_actor_curr->SetNumSamples(5);
+    trajectory_drawer_object_curr->SetNumSamples(5);
+    builder.Connect(trajectory_sub_actor_curr->get_output_port(),
+                    trajectory_drawer_actor_curr->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_object_curr->get_output_port(),
+                    trajectory_drawer_object_curr->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_pose_trace){
-    auto object_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+  if (sim_params.visualize_center_of_mass_plan_best){
+    auto trajectory_drawer_actor_best =
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(
+            meshcat, "end_effector_position_target");
+    auto trajectory_drawer_object_best =
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
+                                                        "object_position_target");
+    trajectory_drawer_actor_best->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
+    trajectory_drawer_object_best->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+    trajectory_drawer_actor_best->SetNumSamples(5);
+    trajectory_drawer_object_best->SetNumSamples(5);
+    builder.Connect(trajectory_sub_actor_best->get_output_port(),
+                    trajectory_drawer_actor_best->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_object_best->get_output_port(),
+                    trajectory_drawer_object_best->get_input_port_trajectory());
+  }
+
+  if (sim_params.visualize_pose_trace_curr){
+    auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(sim_params.jack_model),
         "object_position_target", "object_orientation_target");
-    auto end_effector_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+    // TODO: We might want this to be end_effector_simple_model
+    auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(sim_params.end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
-    builder.Connect(trajectory_sub_object->get_output_port(),
-                    object_pose_drawer->get_input_port_trajectory());
-    builder.Connect(trajectory_sub_actor->get_output_port(),
-                    end_effector_pose_drawer->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_object_curr->get_output_port(),
+                    object_pose_drawer_curr->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_actor_curr->get_output_port(),
+                    end_effector_pose_drawer_curr->get_input_port_trajectory());
+  }
+
+  if (sim_params.visualize_pose_trace_best){
+    auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, FindResourceOrThrow(sim_params.jack_model),
+        "object_position_target", "object_orientation_target");
+    // TODO: We might want this to be end_effector_simple_model
+    auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, FindResourceOrThrow(sim_params.end_effector_model),
+        "end_effector_position_target", "end_effector_orientation_target");
+
+    builder.Connect(trajectory_sub_object_best->get_output_port(),
+                    object_pose_drawer_best->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_actor_best->get_output_port(),
+                    end_effector_pose_drawer_best->get_input_port_trajectory());
   }
 
   if (sim_params.visualize_c3_state){
@@ -228,16 +254,28 @@ int do_main(int argc, char* argv[]) {
                     c3_target_drawer->get_input_port_c3_state_target());
   }
 
-  if (sim_params.visualize_c3_forces){
-    auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
+  if (sim_params.visualize_c3_forces_curr){
+    auto end_effector_force_drawer_curr = builder.AddSystem<systems::LcmForceDrawer>(
         meshcat, "end_effector_position_target", "end_effector_force_target",
         "lcs_force_trajectory");
-    builder.Connect(trajectory_sub_actor->get_output_port(),
-                    end_effector_force_drawer->get_input_port_actor_trajectory());
-    builder.Connect(trajectory_sub_force->get_output_port(),
-                    end_effector_force_drawer->get_input_port_force_trajectory());
+    builder.Connect(trajectory_sub_actor_curr->get_output_port(),
+                    end_effector_force_drawer_curr->get_input_port_actor_trajectory());
+    builder.Connect(trajectory_sub_force_curr->get_output_port(),
+                    end_effector_force_drawer_curr->get_input_port_force_trajectory());
     builder.Connect(robot_time_passthrough->get_output_port(),
-                    end_effector_force_drawer->get_input_port_robot_time());
+                    end_effector_force_drawer_curr->get_input_port_robot_time());
+  }
+
+  if (sim_params.visualize_c3_forces_best){
+    auto end_effector_force_drawer_best = builder.AddSystem<systems::LcmForceDrawer>(
+        meshcat, "end_effector_position_target", "end_effector_force_target",
+        "lcs_force_trajectory");
+    builder.Connect(trajectory_sub_actor_best->get_output_port(),
+                    end_effector_force_drawer_best->get_input_port_actor_trajectory());
+    builder.Connect(trajectory_sub_force_best->get_output_port(),
+                    end_effector_force_drawer_best->get_input_port_force_trajectory());
+    builder.Connect(robot_time_passthrough->get_output_port(),
+                    end_effector_force_drawer_best->get_input_port_robot_time());
   }
 
   builder.Connect(franka_passthrough->get_output_port(),

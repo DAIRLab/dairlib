@@ -6,9 +6,7 @@
 struct FrankaSimParams {
   std::string franka_model;
   std::string end_effector_model;
-  std::string table_model;
   std::string ground_model;
-  std::string table_w_supports_model;
   std::string jack_model;
   std::string box_model;
   std::string left_support_model;
@@ -29,22 +27,22 @@ struct FrankaSimParams {
   std::vector<Eigen::VectorXd> camera_target;
 
   Eigen::VectorXd q_init_franka;
-  std::vector<Eigen::VectorXd> q_init_plate;
   Eigen::VectorXd q_init_object;
   Eigen::VectorXd tool_attachment_frame;
   Eigen::Vector3d ground_franka_frame;
-  Eigen::VectorXd left_support_position;
-  Eigen::VectorXd right_support_position;
-  Eigen::VectorXd left_support_orientation;
-  Eigen::VectorXd right_support_orientation;
 
   std::vector<Eigen::VectorXd> world_x_limits;
   std::vector<Eigen::VectorXd> world_y_limits;
   std::vector<Eigen::VectorXd> world_z_limits;
 
-  bool visualize_pose_trace;
-  bool visualize_center_of_mass_plan;
-  bool visualize_c3_forces;
+  bool visualize_pose_trace_curr;
+  bool visualize_center_of_mass_plan_curr;
+  bool visualize_c3_forces_curr;
+
+  bool visualize_pose_trace_best;
+  bool visualize_center_of_mass_plan_best;
+  bool visualize_c3_forces_best;
+
   bool visualize_c3_state;
   bool visualize_workspace;
 
@@ -52,9 +50,7 @@ struct FrankaSimParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
-    a->Visit(DRAKE_NVP(table_model));
     a->Visit(DRAKE_NVP(ground_model));
-    a->Visit(DRAKE_NVP(table_w_supports_model));
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(box_model));
     a->Visit(DRAKE_NVP(left_support_model));
@@ -75,22 +71,22 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(camera_target));
 
     a->Visit(DRAKE_NVP(q_init_franka));
-    a->Visit(DRAKE_NVP(q_init_plate));
     a->Visit(DRAKE_NVP(q_init_object));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ground_franka_frame));
-    a->Visit(DRAKE_NVP(left_support_position));
-    a->Visit(DRAKE_NVP(right_support_position));
-    a->Visit(DRAKE_NVP(left_support_orientation));
-    a->Visit(DRAKE_NVP(right_support_orientation));
 
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));
     a->Visit(DRAKE_NVP(world_z_limits));
 
-    a->Visit(DRAKE_NVP(visualize_pose_trace));
-    a->Visit(DRAKE_NVP(visualize_center_of_mass_plan));
-    a->Visit(DRAKE_NVP(visualize_c3_forces));
+    a->Visit(DRAKE_NVP(visualize_pose_trace_curr));
+    a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_curr));
+    a->Visit(DRAKE_NVP(visualize_c3_forces_curr));
+
+    a->Visit(DRAKE_NVP(visualize_pose_trace_best));
+    a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_best));
+    a->Visit(DRAKE_NVP(visualize_c3_forces_best));
+
     a->Visit(DRAKE_NVP(visualize_c3_state));
     a->Visit(DRAKE_NVP(visualize_workspace));
   }

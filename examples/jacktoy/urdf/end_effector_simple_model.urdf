@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 
-<robot name="finger">
+<robot name="end_effector_simple">
   <!--
     Frames are defined such that they all align with the base frame when all
     joints are at position zero.

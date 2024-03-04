@@ -106,7 +106,7 @@ void TargetGenerator::CalcObjectTarget(
 
     target_obj_position(0) = x_c_ + traj_radius_ * sin(theta);
     target_obj_position(1) = y_c_ + traj_radius_ * cos(theta);
-    target_obj_position(2) = object_half_width_;      // TODO: @bibti Should this be the same as the current position z or some fixed half width?
+    target_obj_position(2) = object_half_width_;      // TODO: @bibit Should this be the same as the current position z or some fixed half width?
   }
   // Use a fixed goal if trajectory_type is 2.
   else if (trajectory_type_ == 2){
@@ -170,7 +170,12 @@ void TargetGenerator::CalcObjectTarget(
     target_obj_position(2) = next_target[2];
   }
 
-  else {
+  else if(trajectory_type_ == 0){
+        // Throw an error.
+    std::cerr << ("Trajectory type 0 - Time Based Path : Currently unimplemented") << std::endl;
+    DRAKE_THROW_UNLESS(false);
+  }
+  else{
     // Throw an error.
     std::cerr << ("Unknown path type") << std::endl;
     DRAKE_THROW_UNLESS(false);

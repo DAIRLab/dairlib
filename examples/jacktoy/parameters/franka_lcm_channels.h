@@ -29,6 +29,10 @@ struct FrankaLcmChannels {
   std::string c3_actual_state_channel;
   std::string radio_channel;
 
+  std::string sample_locations_channel;
+  std::string sample_costs_channel;
+  std::string is_c3_mode_channel;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_state_channel));
@@ -55,5 +59,9 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(c3_target_state_channel));
     a->Visit(DRAKE_NVP(c3_actual_state_channel));
     a->Visit(DRAKE_NVP(radio_channel));
+
+    a->Visit(DRAKE_NVP(sample_locations_channel));
+    a->Visit(DRAKE_NVP(sample_costs_channel));
+    a->Visit(DRAKE_NVP(is_c3_mode_channel));
   }
 };

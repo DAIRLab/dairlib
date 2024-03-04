@@ -14,7 +14,7 @@ IsC3ModeSender::IsC3ModeSender() {
   this->set_name("is_c3_mode_sender");
 
   is_c3_mode_input_port_ = this->DeclareVectorInputPort(
-    "is_c3_mode_input", drake::systems::BasicVector<double>()).get_index();
+    "is_c3_mode_input", drake::systems::BasicVector<double>(1)).get_index();
 
   is_c3_mode_output_port_ = this->DeclareAbstractOutputPort(
     "is_c3_mode_output",

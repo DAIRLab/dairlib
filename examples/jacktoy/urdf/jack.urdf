@@ -122,6 +122,10 @@
 
 
     <!-- Joints to connect the capsules-->
+    <!-- TODO: these joint definitions don't do what we were expecting them to
+    do, we needed to change the poses of the individual capsules instead of
+    define offsets here in the joint definitions.  Update to match the SDF
+    definitions later. -->
     <joint name="attach_joint" type="fixed">
         <parent link="capsule_1"/>
         <child link="capsule_2"/>

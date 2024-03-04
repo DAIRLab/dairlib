@@ -14,9 +14,11 @@ public:
 
     /// @param contact_geoms A vector of vector of SortedPair<GeometryId>
 
-static std::vector<drake::SortedPair<drake::geometry::GeometryId>> PreProcessor(const drake::multibody::MultibodyPlant<double>& plant,
-        const drake::systems::Context<double>& context, const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_pairs, 
-        int num_friction_directions);
+static std::vector<drake::SortedPair<drake::geometry::GeometryId>> PreProcessor(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& context, 
+    const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_pairs, 
+    int num_friction_directions);
 };
 
 }   // namespace solvers

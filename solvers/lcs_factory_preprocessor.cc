@@ -13,8 +13,9 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 
 
-vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(const MultibodyPlant<double>& plant,
-    const Context<double>& context, const vector<vector<SortedPair<GeometryId>>>& contact_geoms, 
+vector<SortedPair<GeometryId>> LCSFactoryPreProcessor::PreProcessor(
+    const MultibodyPlant<double>& plant, const Context<double>& context,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms, 
     int num_friction_directions) {
     
     int n_contacts = contact_geoms.size();

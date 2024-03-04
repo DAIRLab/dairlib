@@ -1,5 +1,4 @@
 <?xml version="1.0"?>
-<!-- TODO: Fix this sdf to match values from the urdf for capsule orientations. -->
 <sdf version="1.7">
   <model name="jack">
     <link name="capsule_1">
@@ -48,7 +47,7 @@
     </link>
     <link name="capsule_2">
         <inertial>
-            <pose>0 0 0 0 0 0</pose>
+            <pose>0 0 0 0 1.5708 0</pose>
             <mass>0.1</mass>
             <!-- Inertia values were calculated to be consistent with the mass and
                 geometry size, assuming a uniform density. -->
@@ -62,7 +61,7 @@
             </inertia>
         </inertial>
         <collision name="capsule_2">
-            <pose>0 0 0.0 0 0 0</pose>
+            <pose>0 0 0 0 1.5708 0</pose>
             <geometry>
             <capsule>
                 <radius>0.025</radius>
@@ -78,7 +77,7 @@
             </drake:proximity_properties>
         </collision>
         <visual name="capsule_2">
-            <pose>0 0 0.0 0 0 0</pose>
+            <pose>0 0 0 0 1.5708 0</pose>
             <geometry>
             <capsule>
                 <radius>0.025</radius>
@@ -92,7 +91,7 @@
     </link>
     <link name="capsule_3">
         <inertial>
-            <pose>0 0 0 0 0 0</pose>
+            <pose>0 0 0 1.5708 0 0</pose>
             <mass>0.1</mass>
             <!-- Inertia values were calculated to be consistent with the mass and
                 geometry size, assuming a uniform density. -->
@@ -106,7 +105,7 @@
             </inertia>
         </inertial>
         <collision name="capsule_3">
-            <pose>0 0 0.0 0 0 0</pose>
+            <pose>0 0 0 1.5708 0 0</pose>
             <geometry>
             <capsule>
                 <radius>0.025</radius>
@@ -122,7 +121,7 @@
             </drake:proximity_properties>
         </collision>
         <visual name="capsule_3">
-            <pose>0 0 0.0 0 0 0</pose>
+            <pose>0 0 0 1.5708 0 0</pose>
             <geometry>
             <capsule>
                 <radius>0.025</radius>
@@ -139,16 +138,14 @@
     <joint name="attach_joint" type="fixed">
         <parent>capsule_1</parent>
         <child>capsule_2</child>
-        <pose>0 0 0 0 1.5708 0</pose> <!-- Rotate by 90 degrees around the y-axis -->
+        <pose>0 0 0 0 0 0</pose>
     </joint>
 
     <joint name="attach_joint2" type="fixed">
         <parent>capsule_2</parent>
         <child>capsule_3</child>
-        <pose>0 0 0 0 0 1.5708</pose> <!-- Rotate by 90 degrees around the z-axis -->
+        <pose>0 0 0 0 0 0</pose>
     </joint>
 
   </model>
 </sdf>
-
-    

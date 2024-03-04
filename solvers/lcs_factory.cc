@@ -42,6 +42,7 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
 
   DRAKE_DEMAND(plant_ad.num_velocities() == plant.num_velocities());
   DRAKE_DEMAND(plant_ad.num_positions() == plant.num_positions());
+  DRAKE_DEMAND(mu.size() == n_contacts);
   int n_v = plant.num_velocities();
   int n_q = plant.num_positions();
 
@@ -110,9 +111,9 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   MatrixXd MinvJ_n_T = M_ldlt.solve(J_n.transpose());
   MatrixXd MinvJ_t_T = M_ldlt.solve(J_t.transpose());
 
-  MatrixXd A(n_x, n_x);
-  MatrixXd B(n_x, n_u);
-  VectorXd d(n_x);
+  MatrixXd A = MatrixXd::Zero(n_x, n_x);
+  MatrixXd B = MatrixXd::Zero(n_x, n_u);
+  VectorXd d = VectorXd::Zero(n_x);
 
   MatrixXd AB_v_q = AB_v.block(0, 0, n_v, n_q);
   MatrixXd AB_v_v = AB_v.block(0, n_q, n_v, n_v);

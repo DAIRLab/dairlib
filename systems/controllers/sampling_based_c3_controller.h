@@ -47,7 +47,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context,
       drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
+      const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>& contact_geoms,
       C3Options c3_options,
       SamplingC3SamplingParams sampling_params);
 
@@ -99,6 +99,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_repos_traj_execute() 
       const {
     return this->get_output_port(repos_traj_execute_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_traj_execute() 
+      const {
+    return this->get_output_port(traj_execute_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_is_c3_mode() 
       const {
@@ -169,15 +173,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void OutputC3TrajExecute(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* c3_execution_lcm_traj_) const;
+    LcmTrajectory* c3_execution_lcm_traj) const;
 
   void OutputReposTrajExecute(
     const drake::systems::Context<double>& context,
-    LcmTrajectory* repos_execution_lcm_traj_) const;
+    LcmTrajectory* repos_execution_lcm_traj) const;
+
+  void OutputTrajExecute(
+    const drake::systems::Context<double>& context,
+    LcmTrajectory* execution_lcm_traj) const;
 
   void OutputIsC3Mode(
     const drake::systems::Context<double>& context,
-    bool* is_c3_mode) const;
+    drake::systems::BasicVector<double>* is_c3_mode) const;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex target_input_port_;
@@ -193,6 +201,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Execution trajectory output port indices
   drake::systems::OutputPortIndex c3_traj_execute_port_;
   drake::systems::OutputPortIndex repos_traj_execute_port_;
+  drake::systems::OutputPortIndex traj_execute_port_;
   drake::systems::OutputPortIndex is_c3_mode_port_;
   // Sample related output port indices
   drake::systems::OutputPortIndex all_sample_locations_port_;
@@ -203,7 +212,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+  const std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
       contact_pairs_;
 
   C3Options c3_options_;

@@ -12,8 +12,9 @@ cc_library(
         ":c3_state_sender",
         ":c3_trajectory_generator",
         ":is_c3_mode_sender",
-        ":mode_selector",
         ":tracking_trajectory_generator",
+        ":sample_cost_sender",
+        ":sample_location_sender",
     ],
 )
 
@@ -64,18 +65,6 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
-    ],
-)
-
-cc_library(
-    name = "mode_selector",
-    srcs = ["mode_selector.cc"],
-    hdrs = ["mode_selector.h"],
-    deps = [
-        "//lcmtypes:lcmt_robot",
-        "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
         "@lcm",
     ],

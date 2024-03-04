@@ -21,9 +21,10 @@ using systems::TimestampedVector;
 namespace systems {
 
 TrackingTrajectoryGenerator::TrackingTrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
+    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options,
+    std::string name)
     : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
-  this->set_name("c3_trajectory_generator");
+  this->set_name(name);
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -63,19 +64,22 @@ void TrackingTrajectoryGenerator::OutputActorTrajectory(
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
 
   const auto& tracking_trajectory =
-      *(this->EvalInputValue<LcmTrajectory>(
-        context, tracking_trajectory_input_port_));
+      this->EvalInputValue<LcmTrajectory>(
+        context, tracking_trajectory_input_port_);
 
   // Copying the trajectory manually since there is no copy constructor.
-  std::string traj_name = (tracking_trajectory.GetTrajectoryNames())[0];
+  std::string traj_name = tracking_trajectory->GetTrajectoryNames()[0];
   LcmTrajectory::Trajectory full_traj;
   full_traj.traj_name = traj_name;
-  full_traj.datatypes = std::vector<std::string>(full_traj.datapoints.rows(), "double");
-  full_traj.datapoints = (tracking_trajectory.GetTrajectory(traj_name)).datapoints;
-  full_traj.time_vector = (tracking_trajectory.GetTrajectory(traj_name)).time_vector;
+  full_traj.datatypes = std::vector<std::string>(full_traj.datapoints.rows(),
+                                                 "double");
+  full_traj.datapoints = tracking_trajectory->GetTrajectory(traj_name).datapoints;
+  full_traj.time_vector = tracking_trajectory->GetTrajectory(traj_name).time_vector;
+  
   DRAKE_DEMAND(full_traj.datapoints.rows() == n_x_);
 
-  // Code to extract the end effector position and orientation from the full trajectory.
+  // Code to extract the end effector position and velocity from the full
+  // trajectory.
   MatrixXd knots = MatrixXd::Zero(6, N_);
   VectorXd timestamps = VectorXd::Zero(N_);
   for (int i = 0; i < N_; i++) {
@@ -95,16 +99,16 @@ void TrackingTrajectoryGenerator::OutputActorTrajectory(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  // TODO: Might need to add a force trajectory, or might not if we edit the
-  // downstream OSC to not look for one.
-  // MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
-  // LcmTrajectory::Trajectory force_traj;
-  // force_traj.traj_name = "end_effector_force_target";
-  // force_traj.datatypes =
-  //     std::vector<std::string>(force_samples.rows(), "double");
-  // force_traj.datapoints = force_samples;
-  // force_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  // lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
+  // TODO: Might need to add a force trajectory that is non-zero for the 
+  // downstream osc to track.
+  MatrixXd force_samples = MatrixXd::Zero(3, N_);
+  LcmTrajectory::Trajectory force_traj;
+  force_traj.traj_name = "end_effector_force_target";
+  force_traj.datatypes =
+      std::vector<std::string>(force_samples.rows(), "double");
+  force_traj.datapoints = force_samples;
+  force_traj.time_vector = timestamps.cast<double>();
+  lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
   // if (publish_end_effector_orientation_) {
   //   LcmTrajectory::Trajectory end_effector_orientation_traj;

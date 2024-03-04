@@ -21,7 +21,7 @@ class TrackingTrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit TrackingTrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      C3Options c3_options);
+      C3Options c3_options, std::string name);
 
   const drake::systems::InputPort<double>& get_input_port_tracking_trajectory()
       const {

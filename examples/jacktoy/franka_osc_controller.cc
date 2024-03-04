@@ -95,9 +95,11 @@ int DoMain(int argc, char* argv[]) {
     drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(
         FindResourceOrThrow(controller_params.end_effector_model))[0];
     RigidTransform<double> T_EE_W = RigidTransform<double>(
-        drake::math::RotationMatrix<double>(), controller_params.tool_attachment_frame);
+      drake::math::RotationMatrix<double>(
+        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+        controller_params.tool_attachment_frame);
     plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                     plant.GetFrameByName(controller_params.end_effector_name,
+                     plant.GetFrameByName("end_effector_base",
                                           end_effector_index),
                      T_EE_W);
   } else {
@@ -114,7 +116,7 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_curr_plan_channel, &lcm));
+          lcm_channel_params.tracking_trajectory_actor_channel, &lcm));
   auto end_effector_position_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "end_effector_position_target");

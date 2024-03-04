@@ -23,4 +23,8 @@ tracking_trajectory_object_channel: TRACKING_TRAJECTORY_OBJECT # lcmt_timestampe
 c3_target_state_channel: C3_TARGET # lcmt_c3_state
 c3_actual_state_channel: C3_ACTUAL # lcmt_c3_state
 
+sample_locations_channel: SAMPLE_LOCATIONS  # lcmt_timestamped_saved_traj
+sample_costs_channel: SAMPLE_COSTS          # lcmt_timestamped_saved_traj
+is_c3_mode_channel: IS_C3_MODE              # lcmt_timestamped_saved_traj
+
 radio_channel: RADIO

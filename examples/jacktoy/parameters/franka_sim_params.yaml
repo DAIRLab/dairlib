@@ -1,9 +1,7 @@
 #franka_model: examples/jacktoy/urdf/franka_no_collision.urdf
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf    #This franka model is the one from drake. It contains the latest version with the little button as link 8.
 end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
-table_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 ground_model: examples/jacktoy/urdf/ground.urdf
-table_w_supports_model: drake/examples/kuka_iiwa_arm/models/table/extra_heavy_duty_table_surface_only_collision.sdf
 # jack_model: examples/jacktoy/urdf/jack.urdf
 jack_model: examples/jacktoy/urdf/jack.sdf
 box_model: examples/jacktoy/urdf/default_box.urdf  # TODO delete?
@@ -19,7 +17,7 @@ scene_index: 1  # TODO delete
 visualize_drake_sim: true
 publish_efforts: true
 
-camera_pose: [[1.5, 0, 0.6],
+camera_pose: [[1.5, 0, 0.6],  # TODO get rid of scene indexing
               [0.5, -0.6, 0.65],
               [1.5, 0, 0.6]]
 camera_target: [[0.5, 0, 0.5],
@@ -29,40 +27,48 @@ camera_target: [[0.5, 0, 0.5],
 tool_attachment_frame: [0, 0, 0.107]
 ground_franka_frame: [0, 0, -0.0745]
 
-# TODO: all of this should go away
-left_support_position: [0.8, 0.15, 0.447]
-right_support_position: [0.8, -0.15, 0.447]
-left_support_orientation: [0.0, 0.0, 0.0]
-right_support_orientation: [0.0, 0.0, 0.0]
+# # TODO: all of this should go away
+# left_support_position: [0.8, 0.15, 0.447]
+# right_support_position: [0.8, -0.15, 0.447]
+# left_support_orientation: [0.0, 0.0, 0.0]
+# right_support_orientation: [0.0, 0.0, 0.0]
 
 # Workspace Limits
 # TODO: get rid of the scene indexing
-world_x_limits: [[0.4, 0.6],
-                 [0.4, 0.6],
-                 [0.45, 0.65]]
-world_y_limits: [[-0.15, 0.15],
-                 [-0.1, 0.1],
-                 [-0.15, 0.05]]
-world_z_limits: [[0.35, 0.7],
-                 [0.35, 0.7],
-                 [0.35, 0.7]]
+world_x_limits: [[-2, 2],
+                 [-2, 2],
+                 [-2, 2]]
+world_y_limits: [[-2, 2],
+                 [-2, 2],
+                 [-2, 2]]
+world_z_limits: [[-2, 2],
+                 [-2, 2],
+                 [-2, 2]]
 
 dt: 0.0001
 realtime_rate: 1
 
 # TODO: Set the initial locations to something sensical
-q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
-# TODO: get rid of the scene indexing and this must be ee pose?
-q_init_plate: [[0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 1],
-                [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 1],
-                [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 1]]
+# q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
+q_init_franka: [0, 0, 0, 0, 0, 0, 0]
+# # TODO: get rid of the scene indexing and this must be ee pose?
+# q_init_plate: [[0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 1],
+#                 [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 1],
+#                 [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.55, 0.0, 1]]
 # This next line is a dummy line created on Feb 23rd to make the code build. 
 # Check the dependencies and clear/clean this line up.
-q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.05, 0.05, 1]
+# q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.05, 0.05, 1]
+q_init_object: [1, 0, 0, 0, 2, 2, 1]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualize_workspace: false
-visualize_pose_trace: false
-visualize_center_of_mass_plan: false
-visualize_c3_forces: true
 visualize_c3_state: true
+
+visualize_pose_trace_curr: true
+visualize_center_of_mass_plan_curr: true
+visualize_c3_forces_curr: true
+
+
+visualize_pose_trace_best: false
+visualize_center_of_mass_plan_best: false
+visualize_c3_forces_best: true

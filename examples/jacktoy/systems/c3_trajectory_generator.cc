@@ -24,9 +24,10 @@ using systems::TimestampedVector;
 namespace systems {
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options)
+    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options,
+    std::string name)
     : plant_(plant), c3_options_(std::move(c3_options)), N_(c3_options_.N) {
-  this->set_name("c3_trajectory_generator");
+  this->set_name(name);
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();

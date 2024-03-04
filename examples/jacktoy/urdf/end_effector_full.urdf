@@ -6,18 +6,18 @@
   </material>
   <link name="end_effector_base">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0.0048"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0048"/>
       <mass value="0.0779312"/>
       <interia ixx="0.0000193318083" iyy="0.0000193318083" izz="0.0000386636166" ixy="0" ixz="0" iyz="0"/>
     </inertial>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.0048"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0048"/>
       <geometry>
           <cylinder radius="0.0315" length="0.0096"/>
       </geometry>
     </collision>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.0048"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0048"/>
       <geometry>
         <cylinder radius="0.0315" length="0.0096"/>
       </geometry>
@@ -25,44 +25,44 @@
   </link>
   <link name="end_effector_link">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0.0508"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0508"/>
       <mass value="0.1340688"/>
       <interia ixx="0.000005405989188" iyy="0.000005405989188" izz="0.000010811978376" ixy="0" ixz="0" iyz="0"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.0508"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0508"/>
       <geometry>
         <cylinder radius="0.0127" length="0.1016"/>
       </geometry>
     </visual>
   </link>
   <joint name="fix_link_base" type="fixed">
-     <origin rpy="0 0 0" xyz="0 0 0.0096"/>
+     <origin rpy="0 0 0" xyz="0 0 -0.0096"/>
      <parent link="end_effector_base"/>
      <child link="end_effector_link"/>
   </joint>
   <link name="end_effector_tip">
    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0153"/>
       <mass value="0.057"/>
       <interia ixx="0.0" iyy="0.0" izz="0.0" ixy="0" ixz="0" iyz="0"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0153"/>
       <geometry>
         <sphere radius="0.0195"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0 0 0.0153"/>
+      <origin rpy="0 0 0" xyz="0 0 -0.0153"/>
       <geometry>
         <sphere radius="0.0195"/>
       </geometry>
     </collision>
   </link>
   <joint name="fix_tip_link" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0.1016"/>
+    <origin rpy="0 0 0" xyz="0 0 -0.1016"/>
     <parent link="end_effector_link"/>
     <child link="end_effector_tip"/>
   </joint>

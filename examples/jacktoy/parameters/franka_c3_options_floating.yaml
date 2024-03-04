@@ -6,10 +6,10 @@ delta_option: 1
 # options are 'MIQP' or 'QP'
 projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
-contact_model: 'stewart_and_trinkle'
+contact_model: 'anitescu'
 
-mu: 0.4
-mu_plate: 0.4
+mu: [0.6, 0.6, 0.6, 0.1] #0.4
+# mu_plate: 0.4
 dt: 0.05
 planning_dt: 0.1
 execution_dt: 0.03
@@ -17,6 +17,35 @@ solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 4
 N: 5
+
+use_predicted_x0: false
+solve_time_filter_alpha: 0.95
+# Workspace Limits
+world_x_limits: [-2, 2]
+world_y_limits: [-2, 2]
+world_z_limits: [-2, 2]
+workspace_margins: 0.05
+u_horizontal_limits: [-10, 10]
+u_vertical_limits: [0, 30]
+gamma: 1.0
+# Penalty on matching projected variables
+g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_gamma: [1, 1, 1, 1]
+g_lambda_n: [1, 1, 1, 1]
+g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+g_u: [1, 1, 1]
+
+# Penalty on matching the QP variables
+u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+u_gamma: [1, 1, 1, 1]
+u_lambda_n: [1, 1, 1, 1]
+u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+u_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+u_u: [30, 30, 30]
+
+
+warm_start: false     # TODO: Check if we use this. Delete otherwise.
 
 # matrix scaling
 w_Q: 20
@@ -29,23 +58,32 @@ w_U: 0.5
 # n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
 # size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
 # size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3 * 2) + n_u (3) = 34 for anitescu
-g_size: 49
-u_size: 49
+# g_size: 49
+# u_size: 49
 #g_size: 34
 #u_size: 34
+
 # State Tracking Error, assuming diagonal
-q_vector: [100, 100, 500, 0, 0, 0, 0, 0, 0, 0, 10000, 10000, 10000,
-           0, 0, 0, 5, 5, 10, 1, 1, 1, 5, 5, 5]
+# state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
+#                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
+q_vector: [1000, 1000, 1000,        # end effector position
+           0, 0, 0, 0,              # object orientation
+           100000, 100000, 1000,    # object position
+           10, 10, 10,              # end effector linear velocity
+           0, 0, 0,                 # object angular velocity
+           0.1, 0.1, 0.1]           # object linear velocity
+
 # Penalty on all decision variables
-g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+# g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+#            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 #g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 #           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 # Penalty on all decision variables
-u_vector: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1,
-           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+# u_vector: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1,
+          #  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 #u_vector: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1,
 #           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-# Penalty on efforts, assuming diagonal
-r_vector: [1, 1, 1, 0.1, 0.1, 0.1]
+
+# Penalty on end effector (x,y,z) force efforts, assuming diagonal
+r_vector: [500, 500, 500]
 

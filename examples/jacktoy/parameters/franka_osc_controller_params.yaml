@@ -1,8 +1,9 @@
 controller_frequency: 1000
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
-end_effector_model: examples/jacktoy/urdf/plate_end_effector_massless.urdf
-end_effector_name: plate
+end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
+# TODO maybe this should stay as end_effector_base?
+end_effector_name: end_effector_tip 
 
 tool_attachment_frame: [0, 0, 0.107]
 

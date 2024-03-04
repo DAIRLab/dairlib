@@ -21,7 +21,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   explicit C3TrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      C3Options c3_options);
+      C3Options c3_options, std::string name);
 
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
     return this->get_input_port(c3_solution_port_);

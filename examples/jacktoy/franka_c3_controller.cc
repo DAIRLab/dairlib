@@ -19,11 +19,12 @@
 #include "examples/jacktoy/systems/c3_trajectory_generator.h"
 #include "examples/jacktoy/systems/control_target_generator.h"
 #include "examples/jacktoy/systems/franka_kinematics.h"
-#include "examples/jacktoy/systems/mode_selector.h"
 #include "examples/jacktoy/systems/tracking_trajectory_generator.h"
+#include "examples/jacktoy/systems/sample_location_sender.h"
+#include "examples/jacktoy/systems/sample_cost_sender.h"
+#include "examples/jacktoy/systems/is_c3_mode_sender.h"
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
-#include "solvers/lcs_factory_preprocessor.h"
 // #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -34,7 +35,6 @@
 namespace dairlib {
 
 using dairlib::solvers::LCSFactory;
-using dairlib::solvers::LCSFactoryPreProcessor;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
@@ -113,10 +113,10 @@ int DoMain(int argc, char* argv[]) {
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
                           plant_franka.GetFrameByName("panda_link0"), X_WI);
-
-  RigidTransform<double> T_EE_W =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.tool_attachment_frame);
+  RigidTransform<double> T_EE_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(
+        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+        controller_params.tool_attachment_frame);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              controller_params.ground_franka_frame);
@@ -189,26 +189,9 @@ int DoMain(int argc, char* argv[]) {
       plant_for_lcs, diagram_context.get());
   auto plant_for_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
-  /// TO DO: Maybe just this changes to the simple end effector link
   drake::geometry::GeometryId ee_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("end_effector_simple"))[0];
-  //   if (controller_params.scene_index > 0) {
-  //     std::vector<drake::geometry::GeometryId> left_support_contact_points =
-  //         plant_for_lcs.GetCollisionGeometriesForBody(
-  //             plant_for_lcs.GetBodyByName("support", left_support_index));
-  //     std::vector<drake::geometry::GeometryId> right_support_contact_points =
-  //         plant_for_lcs.GetCollisionGeometriesForBody(
-  //             plant_for_lcs.GetBodyByName("support", right_support_index));
-  //     plate_contact_points.insert(plate_contact_points.end(),
-  //                                 left_support_contact_points.begin(),
-  //                                 left_support_contact_points.end());
-  //     plate_contact_points.insert(plate_contact_points.end(),
-  //                                 right_support_contact_points.begin(),
-  //                                 right_support_contact_points.end());
-  //   }
-  //  TODO: This becomes jack geoms but the individual capsule code needs to be
-  //  ported over
   drake::geometry::GeometryId capsule1_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("capsule_1"))[0];
@@ -267,10 +250,6 @@ int DoMain(int argc, char* argv[]) {
 
   DiagramBuilder<double> builder;
 
-  //   TODO @Sharanya Feb 9th: Decide how to generate object target and make
-  //   changes to plate_balancing_target.h/.cc accordingly with port names and
-  //   what it does.
-
   auto object_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, &lcm));
@@ -287,7 +266,8 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_jack, jack_context.get(),
-          controller_params.end_effector_name, "jack",
+          controller_params.end_effector_name, 
+          controller_params.object_body_name,
           controller_params.include_end_effector_orientation);
 
   // Systems involved in setting up the target for the end effector and the
@@ -322,28 +302,24 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(object_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(3));
 
-  // Preprocessing the contact pairs to resolve the contact pairs
-  vector<SortedPair<GeometryId>> resolved_contact_pairs =
-      LCSFactoryPreProcessor::PreProcessor(plant_for_lcs, plant_for_lcs_context,
-                                           contact_pairs,
-                                           c3_options.num_friction_directions);
+
   // Instantiating the sampling based c3 controller.
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_for_lcs, &plant_for_lcs_context, *plant_for_lcs_autodiff,
-      plant_for_lcs_context_ad.get(), resolved_contact_pairs, c3_options,
+      plant_for_lcs_context_ad.get(), contact_pairs, c3_options,
       sampling_params);
 
   // The following systems consume the planned trajectories and output it to an
   // LCM publisher to go to the visualizer.
   auto c3_trajectory_generator_curr_plan =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
-                                                        c3_options);
+      builder.AddSystem<systems::C3TrajectoryGenerator>(
+        plant_for_lcs, c3_options, "c3_trajectory_generator_curr_plan");
   // Setting orientation tracking to False.
   c3_trajectory_generator_curr_plan->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
   auto c3_trajectory_generator_best_plan =
-      builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
-                                                        c3_options);
+      builder.AddSystem<systems::C3TrajectoryGenerator>(
+        plant_for_lcs, c3_options, "c3_trajectory_generator_best_plan");
   c3_trajectory_generator_best_plan->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
 
@@ -365,10 +341,11 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_object_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  // The following systems consume the planned trajectories and output it to an
+  // The following systems consume the planned trajectories and output it to an 
   // LCM publisher for debugging.
   auto c3_output_sender_curr_plan =
-      builder.AddSystem<systems::C3OutputSender>();
+      builder.AddNamedSystem("c3_output_sender_curr_plan", 
+                             std::make_unique<systems::C3OutputSender>());
   auto c3_output_publisher_curr_plan =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_curr_channel, &lcm,
@@ -379,7 +356,8 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));
 
   auto c3_output_sender_best_plan =
-      builder.AddSystem<systems::C3OutputSender>();
+      builder.AddNamedSystem("c3_output_sender_best_plan", 
+                             std::make_unique<systems::C3OutputSender>());
   auto c3_output_publisher_best_plan =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
           lcm_channel_params.c3_debug_output_best_channel, &lcm,
@@ -392,18 +370,24 @@ int DoMain(int argc, char* argv[]) {
   // These systems consume the both tracking trajectories, convert them to lcm
   // types, and select one of them based on the mode.
   auto c3_tracking_trajectory_generator =
-      builder.AddSystem<systems::TrackingTrajectoryGenerator>(plant_for_lcs,
-                                                              c3_options);
+      builder.AddSystem<systems::TrackingTrajectoryGenerator>(
+        plant_for_lcs, c3_options, "c3_tracking_trajectory_generator");
   c3_tracking_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
   auto repos_tracking_trajectory_generator =
-      builder.AddSystem<systems::TrackingTrajectoryGenerator>(plant_for_lcs,
-                                                              c3_options);
+      builder.AddSystem<systems::TrackingTrajectoryGenerator>(
+        plant_for_lcs, c3_options, "repos_tracking_trajectory_generator");
   repos_tracking_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
-  auto mode_selector = builder.AddSystem<systems::ModeSelector>();
+  auto exec_trajectory_generator =
+      builder.AddSystem<systems::TrackingTrajectoryGenerator>(
+        plant_for_lcs, c3_options, "execution_trajectory_generator");
+  exec_trajectory_generator->SetPublishEndEffectorOrientation(
+      controller_params.include_end_effector_orientation);
+//   auto mode_selector = builder.AddSystem<systems::ModeSelector>();
 
   // These systems publish the tracking output.
+  // TODO: Add c3 and repos trajectory publisher systems to publish over lcm.
   auto actor_tracking_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
@@ -411,6 +395,28 @@ int DoMain(int argc, char* argv[]) {
   auto object_tracking_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_object_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+  // These systems send the sample locations and sample costs.
+  auto sample_locations_sender = 
+    builder.AddSystem<systems::SampleLocationSender>();
+  auto sample_costs_sender = 
+    builder.AddSystem<systems::SampleCostSender>();
+  auto is_c3_mode_sender = 
+    builder.AddSystem<systems::IsC3ModeSender>();
+
+  // These systems publish the sample locations and sample costs over LCM.
+  auto sample_locations_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.sample_locations_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto sample_costs_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.sample_costs_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto is_c3_mode_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.is_c3_mode_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
   std::vector<std::string> state_names = {
@@ -466,7 +472,7 @@ int DoMain(int argc, char* argv[]) {
       object_trajectory_sender_curr_plan->get_input_port());
 
   builder.Connect(
-      controller->get_output_port_c3_solution_curr_plan(),
+      controller->get_output_port_c3_solution_best_plan(),
       c3_trajectory_generator_best_plan->get_input_port_c3_solution());
   builder.Connect(
       c3_trajectory_generator_best_plan->get_output_port_actor_trajectory(),
@@ -478,12 +484,20 @@ int DoMain(int argc, char* argv[]) {
   // DEBUGGING OUTPUT CONNECTIONS
   builder.Connect(controller->get_output_port_c3_solution_curr_plan(),
                   c3_output_sender_curr_plan->get_input_port_c3_solution());
+  builder.Connect(controller->get_output_port_c3_intermediates_curr_plan(),
+                  c3_output_sender_curr_plan->get_input_port_c3_intermediates());
+  builder.Connect(controller->get_output_port_lcs_contact_jacobian_curr_plan(),
+                  c3_output_sender_curr_plan->get_input_port_lcs_contact_info());
   builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_debug(),
                   c3_output_publisher_curr_plan->get_input_port());
   builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_force(),
                   c3_forces_publisher_curr_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_best_plan(),
                   c3_output_sender_best_plan->get_input_port_c3_solution());
+  builder.Connect(controller->get_output_port_c3_intermediates_best_plan(),
+                  c3_output_sender_best_plan->get_input_port_c3_intermediates());
+  builder.Connect(controller->get_output_port_lcs_contact_jacobian_best_plan(),
+                  c3_output_sender_best_plan->get_input_port_lcs_contact_info());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_debug(),
                   c3_output_publisher_best_plan->get_input_port());
   builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
@@ -503,41 +517,57 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(
       controller->get_output_port_c3_traj_execute(),
       c3_tracking_trajectory_generator->get_input_port_tracking_trajectory());
-  builder.Connect(
-      c3_tracking_trajectory_generator->get_output_port_actor_trajectory(),
-      mode_selector->get_input_port_c3_actor_trajectory());
-  builder.Connect(
-      c3_tracking_trajectory_generator->get_output_port_object_trajectory(),
-      mode_selector->get_input_port_c3_object_trajectory());
+//   builder.Connect(
+//       c3_tracking_trajectory_generator->get_output_port_actor_trajectory(),
+//       mode_selector->get_input_port_c3_actor_trajectory());
+//   builder.Connect(
+//       c3_tracking_trajectory_generator->get_output_port_object_trajectory(),
+//       mode_selector->get_input_port_c3_object_trajectory());
   builder.Connect(controller->get_output_port_repos_traj_execute(),
                   repos_tracking_trajectory_generator
                       ->get_input_port_tracking_trajectory());
+//   builder.Connect(
+//       repos_tracking_trajectory_generator->get_output_port_actor_trajectory(),
+//       mode_selector->get_input_port_repositioning_actor_trajectory());
+//   builder.Connect(
+//       repos_tracking_trajectory_generator->get_output_port_object_trajectory(),
+//       mode_selector->get_input_port_repositioning_object_trajectory());
+//   builder.Connect(controller->get_output_port_is_c3_mode(),
+//                   mode_selector->get_input_port_is_c3_mode());
   builder.Connect(
-      repos_tracking_trajectory_generator->get_output_port_actor_trajectory(),
-      mode_selector->get_input_port_repositioning_actor_trajectory());
-  builder.Connect(
-      repos_tracking_trajectory_generator->get_output_port_object_trajectory(),
-      mode_selector->get_input_port_repositioning_object_trajectory());
-  builder.Connect(controller->get_output_port_is_c3_mode(),
-                  mode_selector->get_input_port_is_c3_mode());
-  builder.Connect(mode_selector->get_output_port(),
+      controller->get_output_port_traj_execute(),
+      exec_trajectory_generator->get_input_port_tracking_trajectory());
+  builder.Connect(exec_trajectory_generator->get_output_port_actor_trajectory(),
                   actor_tracking_trajectory_sender->get_input_port());
-  builder.Connect(mode_selector->get_output_port(),
+  builder.Connect(exec_trajectory_generator->get_output_port_object_trajectory(),
                   object_tracking_trajectory_sender->get_input_port());
 
-  // TODO: Add connections to sample location sender system, cost sender system
+  // Add connections to sample location sender system, cost sender system
   // and c3_mode_sender system.
+  builder.Connect(controller->get_output_port_all_sample_locations(),
+                  sample_locations_sender->get_input_port());
+  builder.Connect(controller->get_output_port_all_sample_costs(),
+                  sample_costs_sender->get_input_port());
+  builder.Connect(controller->get_output_port_is_c3_mode(),
+                  is_c3_mode_sender->get_input_port());
+  builder.Connect(sample_locations_sender->get_output_port(),
+                  sample_locations_publisher->get_input_port());
+  builder.Connect(sample_costs_sender->get_output_port(),
+                  sample_costs_publisher->get_input_port());
+  builder.Connect(is_c3_mode_sender->get_output_port(),
+                  is_c3_mode_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-  DrawAndSaveDiagramGraph(*plant_diagram, "examples/jacktoy");
+  DrawAndSaveDiagramGraph(*owned_diagram, "examples/jacktoy/franka_c3_controller");
+  DrawAndSaveDiagramGraph(*plant_diagram, "examples/jacktoy/franka_c3_plant");
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(owned_diagram), franka_state_receiver,
       lcm_channel_params.franka_state_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
+  DrawAndSaveDiagramGraph(*loop.get_diagram(), "examples/jacktoy/loop");
   //  auto& controller_context = loop.get_diagram()->GetMutableSubsystemContext(
   //      *controller, &loop.get_diagram_mutable_context());
   //  controller->get_input_port_target().FixValue(&controller_context, x_des);

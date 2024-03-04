@@ -237,7 +237,6 @@ cc_library(
     data = [
         "parameters/franka_c3_controller_params.yaml",
         "parameters/franka_c3_options_floating.yaml",
-        "parameters/franka_c3_options_translation.yaml",
         "parameters/franka_qp_options.yaml",
     ],
     deps = [

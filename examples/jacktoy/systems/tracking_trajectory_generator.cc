@@ -67,34 +67,11 @@ void TrackingTrajectoryGenerator::OutputActorTrajectory(
       this->EvalInputValue<LcmTrajectory>(
         context, tracking_trajectory_input_port_);
 
-  // Copying the trajectory manually since there is no copy constructor.
-  std::string traj_name = tracking_trajectory->GetTrajectoryNames()[0];
-  LcmTrajectory::Trajectory full_traj;
-  full_traj.traj_name = traj_name;
-  full_traj.datatypes = std::vector<std::string>(full_traj.datapoints.rows(),
-                                                 "double");
-  full_traj.datapoints = tracking_trajectory->GetTrajectory(traj_name).datapoints;
-  full_traj.time_vector = tracking_trajectory->GetTrajectory(traj_name).time_vector;
-  
-  DRAKE_DEMAND(full_traj.datapoints.rows() == n_x_);
+  // DRAKE_DEMAND(tracking_trajectory.rows() == n_q_ + n_v_);
 
-  // Code to extract the end effector position and velocity from the full
-  // trajectory.
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  VectorXd timestamps = VectorXd::Zero(N_);
-  for (int i = 0; i < N_; i++) {
-    drake::VectorX<double> state = full_traj.datapoints.col(i);
-    knots.col(i).head(3) = state.head(3);
-    knots.col(i).tail(3) = state.segment(n_q_, 3);
-    timestamps(i) = full_traj.time_vector[i];
-  }
-  
-  LcmTrajectory::Trajectory end_effector_traj;
-  end_effector_traj.traj_name = "end_effector_position_target";
-  end_effector_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
-  end_effector_traj.datapoints = knots;
-  end_effector_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory::Trajectory end_effector_traj = 
+    tracking_trajectory->GetTrajectory("end_effector_position_target");
+  DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
@@ -102,33 +79,16 @@ void TrackingTrajectoryGenerator::OutputActorTrajectory(
   // TODO: Might need to add a force trajectory that is non-zero for the 
   // downstream osc to track.
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
-  LcmTrajectory::Trajectory force_traj;
-  force_traj.traj_name = "end_effector_force_target";
-  force_traj.datatypes =
-      std::vector<std::string>(force_samples.rows(), "double");
-  force_traj.datapoints = force_samples;
-  force_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory::Trajectory force_traj = 
+    tracking_trajectory->GetTrajectory("end_effector_force_target");
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
-  // if (publish_end_effector_orientation_) {
-  //   LcmTrajectory::Trajectory end_effector_orientation_traj;
-  //   // first 3 rows are rpy, last 3 rows are angular velocity
-  //   MatrixXd orientation_samples = MatrixXd::Zero(6, N_);
-  //   orientation_samples.topRows(3) =
-  //       c3_solution->x_sol_.topRows(6).bottomRows(3).cast<double>();
-  //   orientation_samples.bottomRows(3) = c3_solution->x_sol_.bottomRows(n_v_)
-  //                                           .topRows(6)
-  //                                           .bottomRows(3)
-  //                                           .cast<double>();
-  //   end_effector_orientation_traj.traj_name = "end_effector_orientation_target";
-  //   end_effector_orientation_traj.datatypes =
-  //       std::vector<std::string>(orientation_samples.rows(), "double");
-  //   end_effector_orientation_traj.datapoints = orientation_samples;
-  //   end_effector_orientation_traj.time_vector =
-  //       c3_solution->time_vector_.cast<double>();
-  //   lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
-  //                          end_effector_orientation_traj);
-  // }
+  if (publish_end_effector_orientation_) {
+    LcmTrajectory::Trajectory end_effector_orientation_traj = 
+      tracking_trajectory->GetTrajectory("end_effector_orientation_target");
+    lcm_traj.AddTrajectory(end_effector_orientation_traj.traj_name,
+                           end_effector_orientation_traj);
+  }
 
   output_traj->saved_traj = lcm_traj.GenerateLcmObject();
   output_traj->utime = context.get_time() * 1e6;
@@ -139,47 +99,16 @@ void TrackingTrajectoryGenerator::OutputObjectTrajectory(
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
 
   const auto& tracking_trajectory =
-      *(this->EvalInputValue<LcmTrajectory>(
-        context, tracking_trajectory_input_port_));
-
-  // Copying the trajectory manually since there is no copy constructor.
-  std::string traj_name = (tracking_trajectory.GetTrajectoryNames())[0];
-  LcmTrajectory::Trajectory full_traj;
-  full_traj.traj_name = traj_name;
-  full_traj.datatypes = std::vector<std::string>(full_traj.datapoints.rows(), "double");
-  full_traj.datapoints = (tracking_trajectory.GetTrajectory(traj_name)).datapoints;
-  full_traj.time_vector = (tracking_trajectory.GetTrajectory(traj_name)).time_vector;
-  DRAKE_DEMAND(full_traj.datapoints.rows() == n_x_);
-
-  // Code to extract the object position and orientation from the full trajectory.
-  MatrixXd knots = MatrixXd::Zero(6, N_);
-  MatrixXd orientation_samples = MatrixXd::Zero(4, N_);
-  VectorXd timestamps = VectorXd::Zero(N_);
-  for (int i = 0; i < N_; i++) {
-    drake::VectorX<double> state = full_traj.datapoints.col(i);
-    knots.col(i).head(3) = state.head(n_q_).tail(3);
-    knots.col(i).tail(3) = state.tail(3);
-    orientation_samples.col(i) = state.segment(n_q_ - 7, 4);
-    timestamps(i) = full_traj.time_vector[i];
-  }
+      this->EvalInputValue<LcmTrajectory>(
+        context, tracking_trajectory_input_port_);
   
-  LcmTrajectory::Trajectory object_traj;
-  object_traj.traj_name = "object_position_target";
-  object_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
-  object_traj.datapoints = knots;
-  object_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory::Trajectory object_traj = 
+    tracking_trajectory->GetTrajectory("object_position_target");
   LcmTrajectory lcm_traj({object_traj}, {"object_position_target"},
                          "object_target", "object_target", false);
 
-  LcmTrajectory::Trajectory object_orientation_traj;
-  // Just 4 rows for quaternion.
-  orientation_samples = orientation_samples.cast<double>();
-  object_orientation_traj.traj_name = "object_orientation_target";
-  object_orientation_traj.datatypes =
-      std::vector<std::string>(orientation_samples.rows(), "double");
-  object_orientation_traj.datapoints = orientation_samples;
-  object_orientation_traj.time_vector = timestamps.cast<double>();
+  LcmTrajectory::Trajectory object_orientation_traj = 
+    tracking_trajectory->GetTrajectory("object_orientation_target");
   lcm_traj.AddTrajectory(object_orientation_traj.traj_name,
                          object_orientation_traj);
 

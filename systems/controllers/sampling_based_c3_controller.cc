@@ -590,7 +590,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   LcmTrajectory::Trajectory c3_execution_traj;
   c3_execution_traj.traj_name = "end_effector_position_target";
   c3_execution_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
+      std::vector<std::string>(3, "double");
   c3_execution_traj.datapoints = 
     knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_+1));
   c3_execution_traj.time_vector = timestamps.cast<double>();
@@ -599,8 +599,9 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
                                       c3_execution_traj);
 
   // In c3 mode, the end effector forces should match the solved c3 inputs.
-  Eigen::MatrixXd force_samples = Eigen::MatrixXd::Zero(u_sol.size(), u_sol[0].size()); //u_sol;
-  for (int i = 0; i < u_sol.size(); i++) {
+  Eigen::MatrixXd force_samples = 
+    Eigen::MatrixXd::Zero(3, N_); //u_sol;
+  for (int i = 0; i < N_; i++) {
     force_samples.col(i) = u_sol[i];
   }
   LcmTrajectory::Trajectory force_traj;
@@ -613,7 +614,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  object_traj.datatypes = std::vector<std::string>(3, "double");
   object_traj.datapoints = knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_+1));
   object_traj.time_vector = timestamps.cast<double>();
   c3_execution_lcm_traj_.AddTrajectory(object_traj.traj_name, object_traj);
@@ -694,7 +695,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   LcmTrajectory::Trajectory repos_execution_traj;
   repos_execution_traj.traj_name = "end_effector_position_target";
   repos_execution_traj.datatypes =
-      std::vector<std::string>(knots.rows(), "double");
+      std::vector<std::string>(3, "double");
   repos_execution_traj.datapoints = 
     knots(Eigen::seqN(0, 3),Eigen::seqN(0, N_+1));
   repos_execution_traj.time_vector = timestamps.cast<double>();
@@ -715,7 +716,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 
   LcmTrajectory::Trajectory object_traj;
   object_traj.traj_name = "object_position_target";
-  object_traj.datatypes = std::vector<std::string>(knots.rows(), "double");
+  object_traj.datatypes = std::vector<std::string>(3, "double");
   object_traj.datapoints = 
     knots(Eigen::seqN(n_q_ - 3, 3),Eigen::seqN(0, N_+1));
   object_traj.time_vector = timestamps.cast<double>();
@@ -727,7 +728,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   orientation_samples = knots(Eigen::seqN(n_q_ - 7, 4),Eigen::seqN(0, N_+1));
   object_orientation_traj.traj_name = "object_orientation_target";
   object_orientation_traj.datatypes =
-      std::vector<std::string>(orientation_samples.rows(), "double");
+      std::vector<std::string>(4, "double");
   object_orientation_traj.datapoints = orientation_samples;
   object_orientation_traj.time_vector = timestamps.cast<double>();
   repos_execution_lcm_traj_.AddTrajectory(object_orientation_traj.traj_name,

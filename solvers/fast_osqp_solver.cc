@@ -450,6 +450,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   osqp_update_bounds(workspace_, l_.data(), u_.data());
   osqp_update_P_A(workspace_, P_csc_->x, OSQP_NULL, P_csc_->nzmax, A_csc_->x,
                   OSQP_NULL, A_csc_->nzmax);
+  osqp_update_warm_start(workspace_, osqp_settings_->warm_start);
 
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
@@ -458,6 +459,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
     const c_int osqp_solve_err = osqp_solve(workspace_);
+    DisableWarmStart(); // will only be re-enabled if the solve was successful
     if (osqp_solve_err != 0) {
       solution_result = SolutionResult::kInvalidInput;
     }

@@ -61,7 +61,9 @@ bool CheckAttributes(const MathematicalProgram& prog,
   }
   const drake::solvers::Binding<drake::solvers::QuadraticCost>*
       nonconvex_quadratic_cost =
-          FindNonconvexQuadraticCost(prog.quadratic_costs());
+          drake::solvers::internal::FindNonconvexQuadraticCost(
+              prog.quadratic_costs()
+      );
   if (nonconvex_quadratic_cost != nullptr) {
     if (explanation) {
       *explanation =

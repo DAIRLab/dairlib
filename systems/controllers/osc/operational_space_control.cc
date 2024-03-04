@@ -343,6 +343,10 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
         << timestamp;
+
+    if (solver_->IsInitialized()) {
+      solver_->DisableWarmStart();
+    }
   }
   return drake::systems::EventStatus::Succeeded();
 }
@@ -511,6 +515,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     *epsilon_sol_ = result.GetSolution(id_qp_.epsilon());
   } else {
     *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
+    solver_->DisableWarmStart();
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

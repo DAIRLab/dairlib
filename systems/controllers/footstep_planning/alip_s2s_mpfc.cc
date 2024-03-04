@@ -174,16 +174,17 @@ void AlipS2SMPFC::MakeMPCCosts() {
 void AlipS2SMPFC::MakeInputConstraints() {
   constexpr double bigM = 20.0;
 
-  Matrix<double, 2, 4> A_reach = Matrix<double, 2, 4>::Zero();
-  A_reach.leftCols<2>() = Matrix2d ::Identity();
-  A_reach.rightCols<2>() = -Matrix2d::Identity();
+  Matrix<double, 2, 6> A_reach = Matrix<double, 2, 6>::Zero();
+  A_reach.leftCols<2>() = -Matrix2d ::Identity();
+  A_reach.block<2, 2>(0, 2) = -Matrix2d::Identity();
+  A_reach.rightCols<2>() = Matrix2d::Identity();
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     reachability_c_.push_back(
         prog_->AddLinearConstraint(
             A_reach,
             -params_.com_pos_bound,
             params_.com_pos_bound,
-            {xx_.at(i).head<2>(), pp_.at(i+1).head<2>()}
+            {xx_.at(i).head<2>(), pp_.at(i).head<2>(), pp_.at(i+1).head<2>()}
         ));
     no_crossover_c_.push_back(
         prog_->AddLinearConstraint(

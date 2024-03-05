@@ -35,6 +35,7 @@ cc_library(
         "//systems/controllers:control_utils",
         "//systems/controllers:controller_failure_aggregator",
         "//systems/framework:vector",
+        "//systems/filters:sos_filter",
         "@drake//:drake_shared_library",
     ],
 )

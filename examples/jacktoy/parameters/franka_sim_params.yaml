@@ -65,9 +65,9 @@ visualize_c3_state: true
 
 visualize_pose_trace_curr: true
 visualize_center_of_mass_plan_curr: true
-visualize_c3_forces_curr: true
+visualize_c3_forces_curr: false
 
 
-visualize_pose_trace_best: false
-visualize_center_of_mass_plan_best: false
-visualize_c3_forces_best: true
+visualize_pose_trace_best: true
+visualize_center_of_mass_plan_best: true
+visualize_c3_forces_best: false

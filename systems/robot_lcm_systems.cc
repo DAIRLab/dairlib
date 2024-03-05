@@ -332,12 +332,15 @@ ObjectStateReceiver::ObjectStateReceiver(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  positions_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .position_start();
-  velocities_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .velocity_start();
+  for (const auto& entry : plant.GetJointIndices(model_instance)){
+    // If joint.num_positions() == 0, then it is a fixed joint. 
+    // Skip it and fix positions_start_idx_ to be the non fixed joint.
+    if (plant.get_joint(entry).num_positions() != 0){
+      positions_start_idx_ = plant.get_joint(entry).position_start();
+      velocities_start_idx_ = plant.get_joint(entry).velocity_start();
+      break;
+    }
+  }
   this->DeclareAbstractInputPort("lcmt_object_state",
                                  drake::Value<dairlib::lcmt_object_state>{});
   this->DeclareVectorOutputPort(
@@ -466,14 +469,6 @@ ObjectStateSender::ObjectStateSender(
     }
   }
 
-  // positions_start_idx_ =
-  //     plant.get_joint(plant.GetJointIndices(model_instance).front())
-  //         .position_start();
-  // velocities_start_idx_ =
-  //     plant.get_joint(plant.GetJointIndices(model_instance).front())
-  //         .velocity_start();
-  // std::cout<<"positions_start_idx_"<<positions_start_idx_<<std::endl;
-  // std::cout<<"position_index_map_ size = "<<position_index_map_.size()<<std::endl;
   ordered_position_names_ =
       multibody::ExtractOrderedNamesFromMap(position_index_map_, positions_start_idx_);
   

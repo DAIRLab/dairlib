@@ -184,9 +184,9 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_center_of_mass_plan_curr){
     auto trajectory_drawer_actor_curr =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat, "end_effector_position_target");
+            meshcat,"curr", "end_effector_position_target");
     auto trajectory_drawer_object_curr =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"curr",
                                                         "object_position_target");
     trajectory_drawer_actor_curr->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object_curr->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
@@ -201,9 +201,9 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_center_of_mass_plan_best){
     auto trajectory_drawer_actor_best =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat, "end_effector_position_target");
+            meshcat,"best", "end_effector_position_target");
     auto trajectory_drawer_object_best =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"best",
                                                         "object_position_target");
     trajectory_drawer_actor_best->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object_best->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
@@ -217,11 +217,11 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.jack_model),
+        meshcat, "curr", FindResourceOrThrow(sim_params.jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.end_effector_model),
+        meshcat, "curr", FindResourceOrThrow(sim_params.end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
@@ -232,11 +232,11 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_best){
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.jack_model),
+        meshcat, "best", FindResourceOrThrow(sim_params.jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(sim_params.end_effector_model),
+        meshcat, "best", FindResourceOrThrow(sim_params.end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),
@@ -256,8 +256,8 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_forces_curr){
     auto end_effector_force_drawer_curr = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "end_effector_position_target", "end_effector_force_target",
-        "lcs_force_trajectory");
+        meshcat, "curr", "end_effector_position_target", "end_effector_force_target",
+        "lcs_force_trajectory_curr");
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     end_effector_force_drawer_curr->get_input_port_actor_trajectory());
     builder.Connect(trajectory_sub_force_curr->get_output_port(),
@@ -268,8 +268,8 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_forces_best){
     auto end_effector_force_drawer_best = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "end_effector_position_target", "end_effector_force_target",
-        "lcs_force_trajectory");
+        meshcat, "best", "end_effector_position_target", "end_effector_force_target",
+        "lcs_force_trajectory_best");
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_force_drawer_best->get_input_port_actor_trajectory());
     builder.Connect(trajectory_sub_force_best->get_output_port(),

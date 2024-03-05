@@ -49,7 +49,8 @@ class MultiposeVisualizer {
   MultiposeVisualizer(std::string model_file, int num_poses,
                       const Eigen::VectorXd& alpha_scale,
                       std::string weld_frame_to_world = "",
-                      std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr);
+                      std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr,
+                      const std::string& pose_trace_name = "");
 
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be

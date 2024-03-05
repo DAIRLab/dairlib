@@ -38,6 +38,21 @@ LcmTrajectoryDrawer::LcmTrajectoryDrawer(
 
   DeclarePerStepDiscreteUpdateEvent(&LcmTrajectoryDrawer::DrawTrajectory);
 }
+// Constructor for when system name is provided.
+LcmTrajectoryDrawer::LcmTrajectoryDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string system_name,
+    std::string trajectory_name)
+    : meshcat_(meshcat), trajectory_name_(std::move(trajectory_name)) {
+  this->set_name("LcmTrajectoryDrawer: " + system_name + trajectory_name_);
+  trajectory_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_timestamped_saved_traj",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
+          .get_index();
+
+  DeclarePerStepDiscreteUpdateEvent(&LcmTrajectoryDrawer::DrawTrajectory);
+}
 
 drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
     const Context<double>& context,
@@ -90,6 +105,30 @@ LcmPoseDrawer::LcmPoseDrawer(
 
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
       model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.4), "", meshcat);
+  trajectory_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_timestamped_saved_traj",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
+          .get_index();
+
+  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
+}
+// Constructor for when system name is provided.
+LcmPoseDrawer::LcmPoseDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string& system_name,
+    const std::string& model_file,
+    const std::string& translation_trajectory_name,
+    const std::string& orientation_trajectory_name, int num_poses)
+    : meshcat_(meshcat),
+      translation_trajectory_name_(translation_trajectory_name),
+      orientation_trajectory_name_(orientation_trajectory_name),
+      N_(num_poses) {
+  this->set_name("LcmPoseDrawer: " + system_name + translation_trajectory_name);
+
+  multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
+      model_file, N_, 1.0 * VectorXd::LinSpaced(N_, 0, 0.4), "", meshcat,
+      system_name);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -164,6 +203,44 @@ LcmForceDrawer::LcmForceDrawer(
       force_trajectory_name_(std::move(force_trajectory_name)),
       lcs_force_trajectory_name_(std::move(lcs_force_trajectory_name)) {
   this->set_name("LcmForceDrawer: " + force_trajectory_name_);
+  actor_trajectory_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_timestamped_saved_traj: actor",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
+          .get_index();
+
+  robot_time_input_port_ =
+      this->DeclareVectorInputPort("t_robot", 1).get_index();
+
+  force_trajectory_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_forces",
+                                     drake::Value<dairlib::lcmt_c3_forces>{})
+          .get_index();
+
+  meshcat_->SetProperty(force_path_, "visible", true, 0);
+
+  actor_last_update_time_index_ = this->DeclareDiscreteState(1);
+  forces_last_update_time_index_ = this->DeclareDiscreteState(1);
+  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/cylinder", cylinder_,
+                      actor_force_color_);
+  meshcat_->SetObject(force_path_ + "/u_lcs/arrow/head", arrowhead_,
+                      actor_force_color_);
+  meshcat_->SetProperty(force_path_ + "/u_lcs", "visible", false);
+
+  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForce);
+  DeclarePerStepDiscreteUpdateEvent(&LcmForceDrawer::DrawForces);
+}
+// Constructor for when system name is provided.
+LcmForceDrawer::LcmForceDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string system_name,
+    std::string actor_trajectory_name, std::string force_trajectory_name,
+    std::string lcs_force_trajectory_name)
+    : meshcat_(meshcat),
+      actor_trajectory_name_(std::move(actor_trajectory_name)),
+      force_trajectory_name_(std::move(force_trajectory_name)),
+      lcs_force_trajectory_name_(std::move(lcs_force_trajectory_name)) {
+  this->set_name("LcmForceDrawer: " + system_name + force_trajectory_name_);
   actor_trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj: actor",

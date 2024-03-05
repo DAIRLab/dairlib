@@ -9,8 +9,6 @@ struct FrankaSimParams {
   std::string ground_model;
   std::string jack_model;
   std::string box_model;
-  std::string left_support_model;
-  std::string right_support_model;
 
   double dt;
   double realtime_rate;
@@ -19,21 +17,20 @@ struct FrankaSimParams {
   double object_publish_rate;
   double visualizer_publish_rate;
 
-  int scene_index;
   bool visualize_drake_sim;
   bool publish_efforts;
 
-  std::vector<Eigen::VectorXd> camera_pose;
-  std::vector<Eigen::VectorXd> camera_target;
+  Eigen::VectorXd camera_pose;
+  Eigen::VectorXd camera_target;
 
   Eigen::VectorXd q_init_franka;
   Eigen::VectorXd q_init_object;
   Eigen::VectorXd tool_attachment_frame;
   Eigen::Vector3d ground_franka_frame;
 
-  std::vector<Eigen::VectorXd> world_x_limits;
-  std::vector<Eigen::VectorXd> world_y_limits;
-  std::vector<Eigen::VectorXd> world_z_limits;
+  Eigen::VectorXd world_x_limits;
+  Eigen::VectorXd world_y_limits;
+  Eigen::VectorXd world_z_limits;
 
   // Visualizer settings
   std::string visualizer_end_effector_model;
@@ -60,8 +57,6 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(box_model));
-    a->Visit(DRAKE_NVP(left_support_model));
-    a->Visit(DRAKE_NVP(right_support_model));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
@@ -70,7 +65,6 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(object_publish_rate));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
 
-    a->Visit(DRAKE_NVP(scene_index));
     a->Visit(DRAKE_NVP(visualize_drake_sim));
     a->Visit(DRAKE_NVP(publish_efforts));
 

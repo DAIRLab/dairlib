@@ -125,7 +125,7 @@ int DoMain(int argc, char* argv[]) {
           FindResourceOrThrow(c3_controller_params.osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      c3_controller_params.c3_options_file[c3_controller_params.scene_index]);
+      c3_controller_params.c3_options_file);
   OSCGains gains = drake::yaml::LoadYamlFile<OSCGains>(
       FindResourceOrThrow(
           "examples/jacktoy/parameters/franka_osc_controller_params.yaml"),
@@ -300,29 +300,6 @@ int DoMain(int argc, char* argv[]) {
   Parser parser_for_lcs(&plant_for_lcs);
   parser_for_lcs.SetAutoRenaming(true);
   parser_for_lcs.AddModels(c3_controller_params.end_effector_simple_model);
-
-//   drake::multibody::ModelInstanceIndex left_support_index;
-//   drake::multibody::ModelInstanceIndex right_support_index;
-//   if (c3_controller_params.scene_index > 0) {
-//     left_support_index = parser_plate.AddModels(
-//         FindResourceOrThrow(c3_controller_params.left_support_model))[0];
-//     right_support_index = parser_plate.AddModels(
-//         FindResourceOrThrow(c3_controller_params.right_support_model))[0];
-//     RigidTransform<double> T_S1_W = RigidTransform<double>(
-//         drake::math::RollPitchYaw<double>(
-//             c3_controller_params.left_support_orientation),
-//         c3_controller_params.left_support_position);
-//     RigidTransform<double> T_S2_W = RigidTransform<double>(
-//         drake::math::RollPitchYaw<double>(
-//             c3_controller_params.right_support_orientation),
-//         c3_controller_params.right_support_position);
-//     plant_for_lcs.WeldFrames(
-//         plant_for_lcs.world_frame(),
-//         plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
-//     plant_for_lcs.WeldFrames(
-//         plant_for_lcs.world_frame(),
-//         plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
-//   }
   parser_for_lcs.AddModels(c3_controller_params.jack_model);
   parser_for_lcs.AddModels(c3_controller_params.ground_model);
 
@@ -474,57 +451,6 @@ int DoMain(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("end_effector_base", c3_end_effector_index),
                    T_EE_W);
-
-//   if (sim_params.scene_index > 0) {
-//     drake::multibody::ModelInstanceIndex left_support_index =
-//         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-//     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-//         FindResourceOrThrow(sim_params.right_support_model))[0];
-//     RigidTransform<double> T_S1_W = RigidTransform<double>(
-//         drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
-//         sim_params.left_support_position);
-//     RigidTransform<double> T_S2_W = RigidTransform<double>(
-//         drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-//         sim_params.right_support_position);
-//     plant.WeldFrames(plant.world_frame(),
-//                      plant.GetFrameByName("support", left_support_index),
-//                      T_S1_W);
-//     plant.WeldFrames(plant.world_frame(),
-//                      plant.GetFrameByName("support", right_support_index),
-//                      T_S2_W);
-//     const drake::geometry::GeometrySet& support_geom_set =
-//         plant.CollectRegisteredGeometries({
-//             &plant.GetBodyByName("support", left_support_index),
-//             &plant.GetBodyByName("support", right_support_index),
-//         });
-//     // we WANT to model collisions between link5 and the supports
-//     const drake::geometry::GeometrySet& paddle_geom_set =
-//         plant.CollectRegisteredGeometries(
-//             {&plant.GetBodyByName("panda_link2"),
-//              &plant.GetBodyByName("panda_link3"),
-//              &plant.GetBodyByName("panda_link4"),
-//              &plant.GetBodyByName("panda_link6"),
-//              &plant.GetBodyByName("panda_link7"), &plant.GetBodyByName("plate"),
-//              &plant.GetBodyByName("panda_link8")});
-
-//     plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-//         {"paddle", support_geom_set}, {"tray", paddle_geom_set});
-//   }
-
-//   const drake::geometry::GeometrySet& paddle_geom_set =
-//       plant.CollectRegisteredGeometries({
-//           &plant.GetBodyByName("panda_link2"),
-//           &plant.GetBodyByName("panda_link3"),
-//           &plant.GetBodyByName("panda_link4"),
-//           &plant.GetBodyByName("panda_link5"),
-//           &plant.GetBodyByName("panda_link6"),
-//           &plant.GetBodyByName("panda_link8"),
-//       });
-//   auto tray_collision_set = GeometrySet(
-//       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
-//   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-//       {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
-
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
   auto input_receiver = builder.AddSystem<RobotInputReceiver>(plant);

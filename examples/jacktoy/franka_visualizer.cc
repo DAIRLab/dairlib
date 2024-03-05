@@ -178,15 +178,15 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  meshcat->SetCameraPose(sim_params.camera_pose[sim_params.scene_index], sim_params.camera_target[sim_params.scene_index]);
+  meshcat->SetCameraPose(sim_params.camera_pose, sim_params.camera_target);
 
   if (sim_params.visualize_workspace){
-    double width = sim_params.world_x_limits[sim_params.scene_index][1] - sim_params.world_x_limits[sim_params.scene_index][0];
-    double depth = sim_params.world_y_limits[sim_params.scene_index][1] - sim_params.world_y_limits[sim_params.scene_index][0];
-    double height = sim_params.world_z_limits[sim_params.scene_index][1] - sim_params.world_z_limits[sim_params.scene_index][0];
-    Vector3d workspace_center = {0.5 * (sim_params.world_x_limits[sim_params.scene_index][1] + sim_params.world_x_limits[sim_params.scene_index][0]),
-                                 0.5 * (sim_params.world_y_limits[sim_params.scene_index][1] + sim_params.world_y_limits[sim_params.scene_index][0]),
-                                 0.5 * (sim_params.world_z_limits[sim_params.scene_index][1] + sim_params.world_z_limits[sim_params.scene_index][0])};
+    double width = sim_params.world_x_limits[1] - sim_params.world_x_limits[0];
+    double depth = sim_params.world_y_limits[1] - sim_params.world_y_limits[0];
+    double height = sim_params.world_z_limits[1] - sim_params.world_z_limits[0];
+    Vector3d workspace_center = {0.5 * (sim_params.world_x_limits[1] + sim_params.world_x_limits[0]),
+                                 0.5 * (sim_params.world_y_limits[1] + sim_params.world_y_limits[0]),
+                                 0.5 * (sim_params.world_z_limits[1] + sim_params.world_z_limits[0])};
     meshcat->SetObject("c3_state/workspace", drake::geometry::Box(width, depth, height),
                        {1, 0, 0, 0.2});
     meshcat->SetTransform("c3_state/workspace", RigidTransformd(workspace_center));

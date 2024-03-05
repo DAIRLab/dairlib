@@ -5,7 +5,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct FrankaC3ControllerParams {
-  std::vector<std::string> c3_options_file;
+  std::string c3_options_file;
   std::string osqp_settings_file;
   std::string franka_model;
   std::string end_effector_model;
@@ -21,8 +21,6 @@ struct FrankaC3ControllerParams {
  
   double workspace_margin;
   double end_effector_thickness;
-
-  int scene_index;
 
   bool include_end_effector_orientation;
   double target_frequency;
@@ -47,7 +45,6 @@ struct FrankaC3ControllerParams {
     
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ground_franka_frame));
-    a->Visit(DRAKE_NVP(scene_index));
 
     a->Visit(DRAKE_NVP(end_effector_thickness));
   }

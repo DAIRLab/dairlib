@@ -90,7 +90,7 @@ int DoMain(int argc, char* argv[]) {
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      controller_params.c3_options_file[controller_params.scene_index]);
+      controller_params.c3_options_file);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
@@ -144,29 +144,6 @@ int DoMain(int argc, char* argv[]) {
   parser_for_lcs.SetAutoRenaming(true);
   /// Loading simple model of end effector (just a sphere) for the lcs plant
   parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
-
-  //   drake::multibody::ModelInstanceIndex left_support_index;
-  //   drake::multibody::ModelInstanceIndex right_support_index;
-  //   if (controller_params.scene_index > 0) {
-  //     left_support_index = parser_plate.AddModels(
-  //         FindResourceOrThrow(controller_params.left_support_model))[0];
-  //     right_support_index = parser_plate.AddModels(
-  //         FindResourceOrThrow(controller_params.right_support_model))[0];
-  //     RigidTransform<double> T_S1_W =
-  //         RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.left_support_orientation),
-  //                                controller_params.left_support_position);
-  //     RigidTransform<double> T_S2_W =
-  //         RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.right_support_orientation),
-  //                                controller_params.right_support_position);
-  //     plant_for_lcs.WeldFrames(
-  //         plant_for_lcs.world_frame(),
-  //         plant_for_lcs.GetFrameByName("support", left_support_index),
-  //         T_S1_W);
-  //     plant_for_lcs.WeldFrames(
-  //         plant_for_lcs.world_frame(),
-  //         plant_for_lcs.GetFrameByName("support", right_support_index),
-  //         T_S2_W);
-  //   }
   parser_for_lcs.AddModels(controller_params.jack_model);
   parser_for_lcs.AddModels(controller_params.ground_model);
 

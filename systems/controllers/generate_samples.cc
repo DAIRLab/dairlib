@@ -30,13 +30,11 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   else{
     num_samples = sampling_params.num_additional_samples_repos;
   }
-  std::cout << "num_samples: " << num_samples << std::endl;
   std::vector<Eigen::VectorXd> candidate_states(num_samples);
 
   // Determine which sampling strategy to use.
   if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
     for (int i = 0; i < num_samples; i++){
-      std::cout<<"\tgenerating radially symmetric sample location "<<i<<std::endl;
       candidate_states[i] = generate_radially_symmetric_sample_location(
         n_q, n_v, x_lcs, num_samples, i,
         sampling_params.sampling_radius, sampling_params.sampling_height
@@ -60,9 +58,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       );
     }
   }
-  std::cout << "candidate_states: " << candidate_states.size() << std::endl;
   for (int i = 0; i < candidate_states.size(); i++){
-    std::cout << "candidate_states[" << i << "]: " << candidate_states[i] << std::endl;
   }
   return candidate_states;
 }

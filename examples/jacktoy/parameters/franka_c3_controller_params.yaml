@@ -1,8 +1,4 @@
-
-# TODO: Remove this scene indexing
-c3_options_file: [examples/jacktoy/parameters/franka_c3_options_floating.yaml,
-                  examples/jacktoy/parameters/franka_c3_options_floating.yaml,
-                  examples/jacktoy/parameters/franka_c3_options_floating.yaml]
+c3_options_file: examples/jacktoy/parameters/franka_c3_options_floating.yaml
 osqp_settings_file: examples/jacktoy/parameters/franka_c3_qp_settings.yaml
 
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
@@ -21,8 +17,6 @@ tool_attachment_frame: [0, 0, 0.107]
 ground_franka_frame: [0, 0, -0.0745]
 
 end_effector_thickness: 0.016    # TODO delete?
-
-scene_index: 1   # TODO delete?
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan

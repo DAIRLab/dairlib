@@ -178,8 +178,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
-  osc->SetOsqpSolverOptionsFromYaml(
-      FLAGS_osqp_settings);
+  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -201,7 +200,8 @@ int DoMain(int argc, char* argv[]) {
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(),
+                  osc_debug_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

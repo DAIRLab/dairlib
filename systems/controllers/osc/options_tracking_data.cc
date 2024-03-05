@@ -91,7 +91,7 @@ void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   error_ydot_ = ydot_des_ - ydot_;
   if (impact_invariant_projection_) {
     error_ydot_ -= GetJ() * v_proj;
-  } else if (no_derivative_feedback_ && !v_proj.isZero()) {
+  } else if (no_derivative_feedback_ && !v_proj.isZero(1e-14)) {
     error_ydot_ = VectorXd::Zero(n_ydot_);
   }
 }

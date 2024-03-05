@@ -184,12 +184,12 @@ VectorXd calcStateOffset(MultibodyPlant<double>& plant,
   foot_vel_offset(1) = FLAGS_error;
   MatrixXd J_rfoot_angles = MatrixXd(2, 2);
   // Taking only the Jacobian wrt right leg angles
-  J_rfoot_angles << (TXZ * J_foot_3d).col(4), (TXZ * J_foot_3d).col(6);
+  J_rfoot_angles << (TXZ * J_foot_3d).col(5), (TXZ * J_foot_3d).col(6);
   VectorXd joint_rate_offsets =
       J_rfoot_angles.colPivHouseholderQr().solve(foot_vel_offset);
   // Remove floating base offsets
   VectorXd v_offset = VectorXd::Zero(plant.num_velocities());
-  v_offset(4) = joint_rate_offsets(0);
+  v_offset(5) = joint_rate_offsets(0);
   v_offset(6) = joint_rate_offsets(1);
   return v_offset;
 }

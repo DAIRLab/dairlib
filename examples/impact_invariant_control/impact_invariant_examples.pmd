@@ -1,8 +1,4 @@
 group "0.operator" {
-    cmd "drake-director" {
-        exec = "bazel-bin/director/drake-director --use_builtin_scripts=point_pair_contact --script=examples/Cassie/director_scripts/show_time.py";
-        host = "localhost";
-    }
     cmd "cassie-visualizer" {
         exec = "bazel-bin/examples/Cassie/visualizer --channel=CASSIE_STATE_SIMULATION";
         host = "localhost";
@@ -30,15 +26,11 @@ group "5.trajectory-optimization" {
 
 group "1.simulated-robot" {
     cmd "dispatcher-robot-in" {
-        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --floating_base=true --max_joint_velocity=60 --control_channel_name_1=\"CASSIE_INPUT\" --control_channel_name_2=\"PD_CONTROL\"";
+        exec = "bazel-bin/examples/Cassie/dispatcher_robot_in --port 25000 --floating_base=true --max_joint_velocity=60 --control_channel_name_initial=OSC_STANDING  --sim=1";
         host = "localhost";
     }
     cmd "cassie_sim" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim --time_stepping=true --publish_rate=2000 --end_time=30.0 --init_height=0.9 --target_realtime_rate=0.5";
-        host = "localhost";
-    }
-    cmd "cassie_sim (initial state)" {
-        exec = "bazel-bin/examples/Cassie/multibody_sim_init --traj_name=\"jumping_0.15h_0.3d\" --end_time=5.0 --start_time=0.000 --target_realtime_rate=0.5 --terrain_height=0.000";
+        exec = "bazel-bin/examples/Cassie/multibody_sim --publish_rate=2000 --end_time=30.0 --init_height=0.9 --target_realtime_rate=0.5";
         host = "localhost";
     }
     cmd "dispatcher-robot-out" {
@@ -54,6 +46,10 @@ group "1.simulated-robot" {
 group "3.lcm-tools" {
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+    cmd "start_logging" {
+        exec = "python3 start_logging.py sim";
         host = "localhost";
     }
 }

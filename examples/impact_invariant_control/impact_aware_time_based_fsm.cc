@@ -59,10 +59,10 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
   for (int i = 0; i < states.size(); ++i) {
     sum += state_durations[i];
     accu_state_durations_.push_back(sum);
-    if (states[i] >= 2) {
-      impact_times_.push_back(sum);
-      impact_states_.push_back(states[i + 1]);
-    }
+//    if (states[i] >= 2) {
+    impact_times_.push_back(sum);
+    impact_states_.push_back(states[i + 1]);
+//    }
   }
 
   period_ = sum;
@@ -86,18 +86,20 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   near_impact->SetAlpha(0);
   // Get current finite state
   if (current_time >= t0_) {
-    for (int i = 0; i < impact_states_.size(); ++i) {
+    for (int i = 1; i < impact_states_.size(); ++i) {
       double blend_window = blend_func_ == kSigmoid
                             ? 1.5 * near_impact_threshold_
                             : near_impact_threshold_;
+      blend_window = near_impact_threshold_;
       if (abs(remainder - impact_times_[i]) < blend_window) {
-        if (remainder < impact_times_[i]) {
-          near_impact->SetAlpha(alpha_func(remainder - impact_times_[i], tau_,
-                                           near_impact_threshold_));
-        } else {
-          near_impact->SetAlpha(alpha_func(impact_times_[i] - remainder, tau_,
-                                           near_impact_threshold_));
-        }
+//        if (remainder < impact_times_[i]) {
+//          near_impact->SetAlpha(alpha_func(remainder - impact_times_[i], tau_,
+//                                           near_impact_threshold_));
+//        } else {
+//          near_impact->SetAlpha(alpha_func(impact_times_[i] - remainder, tau_,
+//                                           near_impact_threshold_));
+//        }
+        near_impact->SetAlpha(1.0);
         near_impact->SetCurrentContactMode(impact_states_[i]);
         break;
       }

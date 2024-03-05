@@ -65,6 +65,17 @@ py_library(
         "//bindings/pydairlib/multibody:multibody_py",
     ],
 )
+py_library(
+    name = "mpfc_plotting_utils",
+    srcs = ["mpfc_plotting_utils.py"],
+    data = ["@lcm//:lcm-python"],
+    deps = [
+        ":mbp_plotting_utils",
+        "//bindings/pydairlib/common:plot_styler",
+        "//bindings/pydairlib/common:plotting_utils",
+        "//bindings/pydairlib/lcm",
+    ],
+)
 
 pybind_py_library(
     name = "file_utils_py",
@@ -169,8 +180,9 @@ py_binary(
         "@lcm//:lcm-python",
     ],
     deps = [
-        ":mpc_plot_config",
-        ":mpc_plotting_utils",
+        ":mpfc_plotting_utils",
+        ":process_lcm_log",
+        ":log_plotter_cassie",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/common:plot_styler",

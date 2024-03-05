@@ -97,13 +97,23 @@ def plotter_main(plot_config, log):
 
     # Plot all joint velocities
     if plot_config.plot_joint_positions:
-        mbp_plots.plot_joint_velocities(robot_output, vel_names,
-            6 if use_floating_base else 0,
+        plot = mbp_plots.plot_joint_velocities(
+            robot_output, vel_names, 6 if use_floating_base else 0,
             t_x_slice)
+        mbp_plots.add_fsm_to_plot(
+            plot, osc_debug['t_osc'], osc_debug['fsm'],
+            plot_config.fsm_state_names
+        )
+
     # Plot specific velocities
     if plot_config.vel_names:
-        mbp_plots.plot_velocities_by_name(robot_output, plot_config.vel_names,
-            t_x_slice, vel_map)
+        plot = mbp_plots.plot_velocities_by_name(
+            robot_output, plot_config.vel_names, t_x_slice, vel_map
+        )
+        mbp_plots.add_fsm_to_plot(
+            plot, osc_debug['t_osc'], osc_debug['fsm'],
+            plot_config.fsm_state_names
+        )
 
     ''' Plot Efforts '''
     if plot_config.plot_measured_efforts:
@@ -164,7 +174,8 @@ def plotter_main(plot_config, log):
             plot_config.fsm_state_names)
 
     ''' Plot IMU acceleration '''
-    if True:
+    plot_imu = True
+    if plot_imu:
         ps = mbp_plots.plot_imu_accel(imu_accel)
         mbp_plots.add_fsm_to_plot(ps, osc_debug['t_osc'],
             osc_debug['fsm'], plot_config.fsm_state_names)

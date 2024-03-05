@@ -3,20 +3,18 @@ import lcm
 import numpy as np
 from matplotlib import pyplot as plt
 
-from process_lcm_log import get_log_data
-from mpc_plot_config import MpcPlotConfig
-from log_plotter_cassie import plotter_main
+from pydairlib.analysis.process_lcm_log import get_log_data
+from pydairlib.analysis.log_plotter_cassie import plotter_main
 
-import mpc_plotting_utils as mpc_plots
+import pydairlib.analysis.mpfc_plotting_utils as mpfc_plots
 
 from pydairlib.common.plot_styler import PlotStyler
 
 # lcmtypes
 import dairlib
 
-mpc_channels = {
-    "ALIP_MINLP_DEBUG": dairlib.lcmt_mpc_debug,
-    "FOOTSTEP_TARGET": dairlib.lcmt_footstep_target
+mpfc_channels = {
+    "ALIP__S2S_MPFC_DEBUG": dairlib.lcmt_alip_s2s_mpfc_debug,
 }
 
 
@@ -27,42 +25,16 @@ def init_ps():
 
 def main():
     # init_ps()
-
-    plot_config = MpcPlotConfig(
-            'bindings/pydairlib/analysis/plot_configs/mpc_plot_config.yaml')
-
-    filename = sys.argv[1]
-    filenum = filename.split('/')[-1].split('-')[-1]
-    if sys.argv[2] == 'hardware':
-        filename_mpc = filename.replace(f'lcmlog-{filenum}', f'lcmlog-mpc-{filenum}')
-    else:
-        filename_mpc = filename
-    log = lcm.EventLog(filename, "r")
+    filename_mpc = sys.argv[1]
     log_mpc = lcm.EventLog(filename_mpc, "r")
-    plotter_main(plot_config.cassie_plot_config, log)
 
-    mpc_debug, footstep_targets = get_log_data(
-        log_mpc,
-        mpc_channels,
-        plot_config.start_time,
-        plot_config.end_time,
-        mpc_plots.mpc_processing_callback,
-        "ALIP_MINLP_DEBUG", "FOOTSTEP_TARGET", "FSM"
+    mpfc_debug_data = get_log_data(
+        log_mpc, mpfc_channels, 0, -1, mpfc_plots.mpfc_debug_callback,
+        "ALIP__S2S_MPFC_DEBUG"
     )
 
-    if plot_config.make_animation:
-        mpc_plots.make_solution_animation(mpc_debug)
-        quit()
-
-    _ = mpc_plots.plot_mpc_timing(mpc_debug)
-    
-    ps = mpc_plots.plot_mpc_state_traj(
-        mpc_debug.mpc_trajs["solution"].xxs[mpc_debug.t_mpc[5]])
-
-    _ = mpc_plots.plot_mpc_state_prediction(mpc_debug)
-
-    _ = mpc_plots.plot_foot_targets(mpc_debug, 1)
-
+    _ = mpfc_plots.plot_footstep_sol_in_stance_frame(mpfc_debug_data)
+    _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
     plt.show()
 
 

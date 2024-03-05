@@ -35,18 +35,23 @@ struct FrankaSimParams {
   std::vector<Eigen::VectorXd> world_y_limits;
   std::vector<Eigen::VectorXd> world_z_limits;
 
-
+  // Visualizer settings
   std::string visualizer_end_effector_model;
+  std::string visualizer_sample_locations_model;
+  bool visualize_workspace;
+  bool visualize_c3_state;
+  bool visualize_sample_locations;
+
+  std::string visualizer_curr_sample_traj_jack_model;
   bool visualize_pose_trace_curr;
   bool visualize_center_of_mass_plan_curr;
   bool visualize_c3_forces_curr;
 
+  std::string visualizer_best_sample_traj_jack_model;
   bool visualize_pose_trace_best;
   bool visualize_center_of_mass_plan_best;
   bool visualize_c3_forces_best;
 
-  bool visualize_c3_state;
-  bool visualize_workspace;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -82,15 +87,19 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(world_z_limits));
 
     a->Visit(DRAKE_NVP(visualizer_end_effector_model));
+    a->Visit(DRAKE_NVP(visualizer_sample_locations_model));
+    a->Visit(DRAKE_NVP(visualize_workspace));
+    a->Visit(DRAKE_NVP(visualize_c3_state));
+    a->Visit(DRAKE_NVP(visualize_sample_locations));
+
+    a->Visit(DRAKE_NVP(visualizer_curr_sample_traj_jack_model));
     a->Visit(DRAKE_NVP(visualize_pose_trace_curr));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_curr));
     a->Visit(DRAKE_NVP(visualize_c3_forces_curr));
 
+    a->Visit(DRAKE_NVP(visualizer_best_sample_traj_jack_model));
     a->Visit(DRAKE_NVP(visualize_pose_trace_best));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_best));
     a->Visit(DRAKE_NVP(visualize_c3_forces_best));
-
-    a->Visit(DRAKE_NVP(visualize_c3_state));
-    a->Visit(DRAKE_NVP(visualize_workspace));
   }
 };

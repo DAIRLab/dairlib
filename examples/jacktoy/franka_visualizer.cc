@@ -12,6 +12,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
 #include "examples/jacktoy/parameters/franka_sim_params.h"
+#include "systems/controllers/sampling_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -66,6 +67,9 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/jacktoy/parameters/franka_sim_params.yaml");
+	SamplingC3SamplingParams sampling_params =
+      drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
+          "examples/jacktoy/parameters/sampling_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
 
@@ -154,6 +158,12 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
           lcm_channel_params.c3_force_best_channel, lcm));
 
+	// This system subscribes to the lcmt_saved_traj message containing sample 
+	// locations. 
+  auto sample_location_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.sample_locations_channel, lcm));
+
   auto c3_state_actual_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
           lcm_channel_params.c3_actual_state_channel, lcm));
@@ -217,7 +227,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr", FindResourceOrThrow(sim_params.jack_model),
+        meshcat, "curr", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
@@ -232,7 +242,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_best){
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best", FindResourceOrThrow(sim_params.jack_model),
+        meshcat, "best", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
@@ -243,6 +253,21 @@ int do_main(int argc, char* argv[]) {
                     object_pose_drawer_best->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_pose_drawer_best->get_input_port_trajectory());
+  }
+
+  if (sim_params.visualize_sample_locations){
+		// This drawer object is used to visualize the sample locations.
+		// This isn't designed to be used for visualizing sample locations but we 
+		// use it for that purpose since the sample_location_sender sends out an 
+		// lcmt_timestamped_traj with a trajectory by the name sample_locations.
+		// The last argument "end_effector_orientation_target" is a dummy argument 
+		// here that is not used.
+    auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, "samples", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
+        "sample_locations", "end_effector_orientation_target", 1 + std::max(sampling_params.num_additional_samples_c3, sampling_params.num_additional_samples_repos));
+
+    builder.Connect(sample_location_sub->get_output_port(),
+                    sample_locations_drawer->get_input_port_trajectory());
   }
 
   if (sim_params.visualize_c3_state){

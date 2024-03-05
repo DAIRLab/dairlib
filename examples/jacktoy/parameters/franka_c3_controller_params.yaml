@@ -11,7 +11,6 @@ end_effector_name: end_effector_tip
 end_effector_simple_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 end_effector_simple_name: end_effector_simple
 jack_model: examples/jacktoy/urdf/jack.sdf
-# jack_model: examples/jacktoy/urdf/jack.urdf
 ground_model: examples/jacktoy/urdf/ground.urdf
 
 # Note:  Use capsule_1 body name as representative of the pose of the entire

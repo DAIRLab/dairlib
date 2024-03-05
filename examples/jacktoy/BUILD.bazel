@@ -135,6 +135,7 @@ cc_binary(
     deps = [
         ":franka_lcm_channels",
         ":franka_sim_params",
+        "//systems/controllers:sampling_params",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",

@@ -30,11 +30,13 @@ std::vector<Eigen::VectorXd> generate_sample_states(
   else{
     num_samples = sampling_params.num_additional_samples_repos;
   }
+  std::cout << "num_samples: " << num_samples << std::endl;
   std::vector<Eigen::VectorXd> candidate_states(num_samples);
 
   // Determine which sampling strategy to use.
   if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
     for (int i = 0; i < num_samples; i++){
+      std::cout<<"\tgenerating radially symmetric sample location "<<i<<std::endl;
       candidate_states[i] = generate_radially_symmetric_sample_location(
         n_q, n_v, x_lcs, num_samples, i,
         sampling_params.sampling_radius, sampling_params.sampling_height
@@ -58,12 +60,16 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       );
     }
   }
+  std::cout << "candidate_states: " << candidate_states.size() << std::endl;
+  for (int i = 0; i < candidate_states.size(); i++){
+    std::cout << "candidate_states[" << i << "]: " << candidate_states[i] << std::endl;
+  }
   return candidate_states;
 }
 
 
 // Sampling strategy 0:  Equally spaced on perimeter of circle of fixed radius
-// and height.
+// and height. This generates angle offsets from world frame. 
 static Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& n_q,
     const int& n_v,
@@ -82,12 +88,12 @@ static Eigen::VectorXd generate_radially_symmetric_sample_location(
   Vector3d object_xyz = test_q.tail(3);
   double x_samplec = object_xyz[0];
   double y_samplec = object_xyz[1];
-  double theta = (360 / (num_samples-1)) * (PI / 180);
+  double theta = (360 / num_samples) * (PI / 180);
 
   // Update the hypothetical state's end effector location to the tested sample
   // location and set ee velocity to 0.
-  test_q[0] = x_samplec + sampling_radius * cos(i*theta);
-  test_q[1] = y_samplec + sampling_radius * sin(i*theta);
+  test_q[0] = x_samplec + sampling_radius * cos((double)i*theta);
+  test_q[1] = y_samplec + sampling_radius * sin((double)i*theta);
   test_q[2] = sampling_height;
   // NOTE:  Commented out the below because could introduce ways that any other
   // sample looks better than current location if EE velocity is penalized a

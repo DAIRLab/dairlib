@@ -181,6 +181,11 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   }
 
   // ASSUMING orientation and translation trajectories have the same breaks
+  // This recreates the trajectory using the knot points and then evaluates the
+  // trajectory at equal intervals based on the parameters. If the num_poses is
+  // equal to the number of knot points, then the poses will be the same as the
+  // knot points. This is what is happening for the sampling based controller as
+  // of now.
   VectorXd translation_breaks =
       VectorXd::LinSpaced(N_, lcm_translation_traj.time_vector[0],
                           lcm_translation_traj.time_vector.tail(1)[0]);

@@ -43,7 +43,7 @@ void SampleLocationSender::OutputSampleLocations(
 
 	for (int i = 0; i < sample_locations.size(); i++) {
 		sample_datapoints.col(i) = sample_locations[i];
-		timestamps(i) = context.get_time();
+		timestamps(i) = i;
 	}
 	
 	LcmTrajectory::Trajectory sample_positions;

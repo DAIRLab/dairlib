@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="jack">
+    <link name="capsule_1">
+        <visual name="capsule_1">
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <material>
+            <diffuse>1 1 1 1</diffuse>
+            </material>
+        </visual>
+    </link>
+    <link name="capsule_2">
+        <visual name="capsule_2">
+            <pose>0 0 0 0 1.5708 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <material>
+            <diffuse>1 1 1 1</diffuse>
+            </material>
+        </visual>
+    </link>
+    <link name="capsule_3">
+        <visual name="capsule_3">
+            <pose>0 0 0 1.5708 0 0</pose>
+            <geometry>
+            <capsule>
+                <radius>0.025</radius>
+                <length>0.125</length>
+            </capsule>
+            </geometry>
+            <material>
+            <diffuse>1 1 1 1</diffuse>
+            </material>
+        </visual>
+    </link>
+
+    <!-- Joints to connect the capsules-->
+    <joint name="attach_joint" type="fixed">
+        <parent>capsule_1</parent>
+        <child>capsule_2</child>
+        <pose>0 0 0 0 0 0</pose>
+    </joint>
+
+    <joint name="attach_joint2" type="fixed">
+        <parent>capsule_2</parent>
+        <child>capsule_3</child>
+        <pose>0 0 0 0 0 0</pose>
+    </joint>
+
+  </model>
+</sdf>

@@ -1,9 +1,13 @@
 #franka_model: examples/jacktoy/urdf/franka_no_collision.urdf
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf    #This franka model is the one from drake. It contains the latest version with the little button as link 8.
 end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
+end_effector_name: end_effector_tip
 ground_model: examples/jacktoy/urdf/ground.urdf
 # jack_model: examples/jacktoy/urdf/jack.urdf
 jack_model: examples/jacktoy/urdf/jack.sdf
+# Note:  Use capsule_1 body name as representative of the pose of the entire
+# jack model.  This works because capsule_1's origin is the same as the jack's.
+object_body_name: capsule_1
 box_model: examples/jacktoy/urdf/default_box.urdf  # TODO delete?
 
 franka_publish_rate: 1000

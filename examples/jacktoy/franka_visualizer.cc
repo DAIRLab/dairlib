@@ -78,6 +78,9 @@ int do_main(int argc, char* argv[]) {
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
+	// This plant is for visualizing the full franka on the meshcat visualizer.
+	// This is not used for the simulation or for FK calculations for c3/repos 
+	// mode switching visualization.
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant, &scene_graph);
@@ -105,6 +108,44 @@ int do_main(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), T_EE_W);
 
   plant.Finalize();
+
+
+  // Loading the full franka model that will go into franka kinematics system
+  // This needs to load the full franka and full end effector model.
+  MultibodyPlant<double> plant_franka(0.0);
+  Parser parser_franka(&plant_franka, nullptr);
+  parser_franka.AddModels(
+      drake::FindResourceOrThrow(sim_params.franka_model));
+  parser_franka.AddModels(sim_params.ground_model);
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser_franka.AddModels(
+          FindResourceOrThrow(sim_params.end_effector_model))[0];
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant_franka.WeldFrames(plant_franka.world_frame(),
+                          plant_franka.GetFrameByName("panda_link0"), X_WI);
+  RigidTransform<double> T_EE_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(
+        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+        sim_params.tool_attachment_frame);
+  RigidTransform<double> X_F_G_franka =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.ground_franka_frame);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
+                          plant_franka.GetFrameByName("end_effector_base"),
+                          T_EE_W);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
+                          plant_franka.GetFrameByName("ground"), X_F_G_franka);
+
+  plant_franka.Finalize();
+  auto franka_context = plant_franka.CreateDefaultContext();
+
+  /// adding the jack model (TODO: Change to object instead of jack)
+  MultibodyPlant<double> plant_jack(0.0);
+  Parser parser_jack(&plant_jack, nullptr);
+  parser_jack.AddModels(sim_params.jack_model);
+  plant_jack.Finalize();
+  auto jack_context = plant_jack.CreateDefaultContext();
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
 
@@ -137,6 +178,15 @@ int do_main(int argc, char* argv[]) {
                                   plant.num_positions(jack_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
+
+  // System that takes in the state of the franka and jack and outputs a
+  // reduced order lcs state vector.
+  auto reduced_order_model_receiver =
+      builder.AddSystem<systems::FrankaKinematics>(
+          plant_franka, franka_context.get(), plant_jack, jack_context.get(),
+          sim_params.end_effector_name, 
+          sim_params.object_body_name,
+					false);
 
   auto trajectory_sub_actor_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -303,6 +353,22 @@ int do_main(int argc, char* argv[]) {
                     end_effector_force_drawer_best->get_input_port_robot_time());
   }
 
+	if(sim_params.visualize_c3_mode){
+		// TODO: Create a system that will read either the lcmt_timestamped_saved_traj
+		// message containing the boolean value of whether the robot is in c3 mode
+		// (if that doesn't work, then use a subscriber system to read the boolean).
+		// This system will also take in the x_lcs output from the FK system and 
+		// output an LcmTrajectory which will contain one knot point - either at the 
+		// current end_effector location (if c3 mode) or at the base of the robot 
+		// (if repos mode).
+    auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, "samples", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
+        "sample_locations", "end_effector_orientation_target", 1);
+
+    builder.Connect(sample_location_sub->get_output_port(),
+                    sample_locations_drawer->get_input_port_trajectory());
+	}
+
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
@@ -317,6 +383,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*tray_state_sub, *tray_state_receiver);
 
   auto diagram = builder.Build();
+  DrawAndSaveDiagramGraph(*diagram, "examples/jacktoy/visualizer_diagram");
   auto context = diagram->CreateDefaultContext();
 
   auto& franka_state_sub_context =

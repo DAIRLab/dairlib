@@ -60,6 +60,7 @@ q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
 q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.35, 0.15, 0.5]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
+visualizer_end_effector_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 visualize_workspace: false
 visualize_c3_state: true
 

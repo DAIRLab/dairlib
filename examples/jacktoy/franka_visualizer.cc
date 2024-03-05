@@ -221,7 +221,7 @@ int do_main(int argc, char* argv[]) {
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr", FindResourceOrThrow(sim_params.end_effector_model),
+        meshcat, "curr", FindResourceOrThrow(sim_params.visualizer_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
@@ -236,7 +236,7 @@ int do_main(int argc, char* argv[]) {
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best", FindResourceOrThrow(sim_params.end_effector_model),
+        meshcat, "best", FindResourceOrThrow(sim_params.visualizer_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),

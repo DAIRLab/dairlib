@@ -172,12 +172,10 @@ def main():
 
     alpha = 0
     if (np.abs(t[i] - transition_time) < 1.5 * window_length):
-      if (t[i] < transition_time):
-        alpha = blend_function(t[i] - transition_time, tau,
-                              window_length, blend_type)
-      else:
-        alpha = blend_function(transition_time - t[i], tau,
-                              window_length, blend_type)
+      sign = (t[i] < transition_time).astype(np.float32) - (transition_time <  t[i]).astype(np.float32)
+      # if (t[i] < transition_time):
+      alpha = blend_function(sign * (t[i] - transition_time), tau,
+                            window_length, blend_type)
     alphas[i] = alpha
     vel_desired[i] = x_des[-nv:]
     vel_actual[i] = robot_output['v'][i]

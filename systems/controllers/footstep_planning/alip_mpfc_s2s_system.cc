@@ -142,18 +142,21 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
     t_next_impact = t + double_stance_duration_ + single_stance_duration_;
   }
 
+  double t_elapsed_this_mode = t - t_prev_impact;
+  double tmax_remaining = trajopt_.params().tmax + double_stance_duration_ - t_elapsed_this_mode;
+  double tmin_remaining = trajopt_.params().tmin + double_stance_duration_ - t_elapsed_this_mode;
+  double tnom_remaining = single_stance_duration_ + double_stance_duration_ - t_elapsed_this_mode;
+
+  tmin_remaining = std::max(tmin_remaining, 0.0);
+  tnom_remaining = std::max(tnom_remaining, 0.0);
+
   const int fsm_state = curr_fsm(fsm_idx);
   Stance stance = left_right_stance_fsm_states_.at(fsm_idx) == 0? Stance::kLeft : Stance::kRight;
-
-  double ds_fraction = std::clamp(
-      (t - t_prev_impact) / double_stance_duration_, 0.0, 1.0);
-  std::vector<double> CoP_fractions = {ds_fraction, 1.0 - ds_fraction};
 
   // get the alip state
   alip_utils::CalcAlipState(
       plant_, context_, robot_state,
-      {stance_foot_map_.at(fsm_state), stance_foot_map_.at(next_fsm(fsm_idx))},
-      CoP_fractions, &CoM_w, &L, &p_w);
+      {stance_foot_map_.at(fsm_state)}, {1} , &CoM_w, &L, &p_w);
 
   plant_.CalcPointsPositions(
       *context_,
@@ -176,20 +179,6 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   x.head<2>() = CoM_b.head<2>() - p_b.head<2>();
   x.tail<2>() = L_b.head<2>();
 
-  double time_left_in_this_mode = t_next_impact - t;
-  bool is_ds = t - t_prev_impact < double_stance_duration_;
-
-  if (is_ds) {
-    double tds = double_stance_duration_ - (t - t_prev_impact);
-    x = alip_utils::CalcReset(
-        trajopt_.gait_params().height,
-        trajopt_.gait_params().mass,
-        tds, x, p_b, p_next_in_ds,
-        trajopt_.gait_params().reset_discretization_method
-    );
-    p_b = p_next_in_ds;
-    time_left_in_this_mode = single_stance_duration_;
-  }
 
   VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
   init_alip_state_and_stance_pos.head<4>() = x;
@@ -211,14 +200,15 @@ drake::systems::EventStatus Alips2sMPFCSystem::UnrestrictedUpdate(
   }
 
   const auto mpc_solution = trajopt_.Solve(
-      x, p_b, time_left_in_this_mode, vdes, stance, footholds_filt
+      x, p_b, tnom_remaining, tmin_remaining,
+      tmax_remaining, vdes, stance, footholds_filt
   );
 
   // Update discrete states
   state->get_mutable_discrete_state(fsm_state_idx_).set_value(
       fsm_idx*VectorXd::Ones(1));
 
-  if (mpc_solution.success and not is_ds) {
+  if (mpc_solution.success) {
     state->get_mutable_discrete_state(next_impact_time_state_idx_).set_value(
         (t + mpc_solution.t_sol) * VectorXd::Ones(1));
   } else {

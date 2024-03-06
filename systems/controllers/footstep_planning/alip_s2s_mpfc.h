@@ -57,7 +57,7 @@ class AlipS2SMPFC {
   alip_s2s_mpfc_solution Solve(
       const Eigen::Vector4d& x,
       const Eigen::Vector3d& p,
-      double t,
+      double t, double tmin, double tmax,
       const Eigen::Vector2d& vdes,
       alip_utils::Stance stance,
       const geometry::ConvexPolygonSet& footholds
@@ -65,6 +65,10 @@ class AlipS2SMPFC {
 
   const alip_utils::AlipGaitParams& gait_params() const {
     return params_.gait_params;
+  }
+
+  const alip_s2s_mpfc_params& params() const  {
+    return params_;
   }
 
  protected:
@@ -77,7 +81,8 @@ class AlipS2SMPFC {
   void MakeInitialConditionsConstraints();
 
   void UpdateInitialConditions(
-      const Eigen::Vector4d& x, const Eigen::Vector3d& p, double t);
+      const Eigen::Vector4d& x, const Eigen::Vector3d& p,
+      double t, double tmin, double tmax);
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
   void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateInputCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);

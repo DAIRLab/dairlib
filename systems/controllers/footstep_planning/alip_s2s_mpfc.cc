@@ -19,6 +19,7 @@ using Eigen::RowVectorXd;
 using Eigen::RowVector3d;
 
 using alip_utils::Stance;
+using alip_utils::CalcA;
 using alip_utils::CalcAd;
 using alip_utils::AlipGaitParams;
 using alip_utils::AlipStepToStepDynamics;
@@ -48,12 +49,12 @@ AlipS2SMPFC::AlipS2SMPFC(alip_s2s_mpfc_params params) : params_(params){
 }
 
 alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
-    const Vector4d &x,const Vector3d &p, double t, const Vector2d& vdes,
-    Stance stance, const ConvexPolygonSet& footholds) {
+    const Vector4d &x,const Vector3d &p, double t, double tmin, double tmax,
+    const Vector2d& vdes, Stance stance, const ConvexPolygonSet& footholds) {
 
   auto start = std::chrono::steady_clock::now();
 
-  UpdateInitialConditions(x, p, t);
+  UpdateInitialConditions(x, p, t, tmin, tmax);
   UpdateCrossoverConstraint(stance);
   UpdateFootholdConstraints(footholds);
   UpdateInputCost(vdes, stance);
@@ -304,38 +305,28 @@ void AlipS2SMPFC::MakeInitialConditionsConstraints() {
 }
 
 void AlipS2SMPFC::UpdateInitialConditions(
-    const Eigen::Vector4d &x, const Eigen::Vector3d &p, double t) {
+    const Eigen::Vector4d &x, const Eigen::Vector3d &p,
+    double t, double tmin, double tmax) {
 
   initial_foot_c_->UpdateCoefficients(Matrix3d::Identity(), p);
 
+  Matrix4d A = CalcA(params_.gait_params.height, params_.gait_params.mass);
   Matrix4d Ad = CalcAd(
       params_.gait_params.height, params_.gait_params.mass, t);
-  Eigen::Matrix<double, 4, 5> A = Eigen::Matrix<double, 4, 5>::Zero();
+  Eigen::Matrix<double, 4, 5> A_t = Eigen::Matrix<double, 4, 5>::Zero();
 
-  A.leftCols<4>() = Matrix4d::Identity();
-  Vector4d c = Ad * x;
+  // linear approximation of exp(At) = exp(A t_*) + A exp(A t_*) * (t  -t*)
+  Vector4d c = (Ad - A * Ad * t) * x;
+  A_t.leftCols<4>() = Matrix4d::Identity();
+  A_t.rightCols<1>() = - A * Ad * x;
+  initial_state_c_->UpdateCoefficients(A_t, c);
 
-  if (t > params_.tmin) {
-    // linear approximation of exp(At) = exp(A t_*) + A exp(A t_*) * (t  -t*)
-    A.rightCols<1>() = - A_ * Ad * c;
-    c = (Ad - A_ * Ad * t) * x;
-
-    initial_time_constraint_->UpdateLowerBound(
-        Eigen::VectorXd::Constant(1,  params_.tmin)
-    );
-    initial_time_constraint_->UpdateUpperBound(
-        Eigen::VectorXd::Constant(1, params_.tmax)
-    );
-  } else {
-    initial_time_constraint_->UpdateLowerBound(
-        Eigen::VectorXd::Constant(1, t)
-    );
-    initial_time_constraint_->UpdateUpperBound(
-        Eigen::VectorXd::Constant(1, t)
-    );
-  }
-
-  initial_state_c_->UpdateCoefficients(A, c);
+  initial_time_constraint_->UpdateLowerBound(
+      Eigen::VectorXd::Constant(1,  tmin)
+  );
+  initial_time_constraint_->UpdateUpperBound(
+      Eigen::VectorXd::Constant(1, tmax)
+  );
 }
 
 void AlipS2SMPFC::UpdateCrossoverConstraint(Stance stance) {
@@ -426,16 +417,10 @@ void AlipS2SMPFC::UpdateTerminalCost(const Vector2d &vdes) {
 }
 
 void AlipS2SMPFC::UpdateTimeRegularization(double t) {
-  if (t < params_.tmin) {
-    time_regularization_->UpdateCoefficients(
-        MatrixXd::Zero(1,1), VectorXd::Zero(1)
-    );
-  } else {
-    time_regularization_->UpdateCoefficients(
-        2 * params_.time_regularization * MatrixXd::Identity(1,1),
-        -2 * params_.time_regularization * VectorXd::Constant(1, t)
-    );
-  }
+  time_regularization_->UpdateCoefficients(
+      2 * params_.time_regularization * MatrixXd::Identity(1,1),
+      -2 * params_.time_regularization * VectorXd::Constant(1, t)
+  );
 }
 
 std::vector<Eigen::Vector2d> AlipS2SMPFC::MakeP2Orbit(

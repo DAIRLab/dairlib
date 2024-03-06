@@ -35,6 +35,7 @@ def main():
 
     _ = mpfc_plots.plot_footstep_sol_in_stance_frame(mpfc_debug_data)
     _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
+    _ = mpfc_plots.plot_timing_solution(mpfc_debug_data)
     plt.show()
 
 

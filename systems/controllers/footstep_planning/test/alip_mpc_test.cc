@@ -98,7 +98,9 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
 //  trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
 //  trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
 
-  auto sol = trajopt_s2s.Solve(xd.front().head<4>(), p0, 0.3, test_gait.desired_velocity, test_gait.initial_stance_foot, footholds);
+  auto sol = trajopt_s2s.Solve(
+      xd.front().head<4>(), p0, 0.3, 0.3, 0.3,
+      test_gait.desired_velocity, test_gait.initial_stance_foot, footholds);
 
   times.miqp_runtime = sol.total_time;
   times.miqp_solve_time = sol.optimizer_time;

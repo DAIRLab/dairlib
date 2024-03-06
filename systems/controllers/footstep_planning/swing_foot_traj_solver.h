@@ -8,8 +8,8 @@
 namespace dairlib::systems::controllers {
 
 class SwingFootTrajSolver {
-  static constexpr int kSwingPolyDeg = 10;
-  using RowVectorkSwingPolyDegd = drake::RowVector<double, kSwingPolyDeg>;
+  static constexpr int kPolyDegZ = 10;
+  static constexpr int kPolyDegXY = 7;
 
  public:
   explicit SwingFootTrajSolver();
@@ -29,18 +29,31 @@ class SwingFootTrajSolver {
 
   drake::solvers::MathematicalProgram prog_{};
 
+  Eigen::MatrixXd min_accel_Q_;
+
   drake::solvers::VectorXDecisionVariable cx_;
   drake::solvers::VectorXDecisionVariable cy_;
   drake::solvers::VectorXDecisionVariable cz_;
 
   solvers::FCCQPSolver solver_;
 
+  std::vector<int> dim_degree_map_;
   std::vector<drake::solvers::VectorXDecisionVariable> dim_var_map_;
-  std::vector<std::vector<RowVectorkSwingPolyDegd>> knot_deriv_multipliers_;
+  std::vector<std::vector<Eigen::RowVectorXd>> knot_deriv_multipliers_;
   std::vector<std::vector<Eigen::Vector3d>> knot_deriv_rhs_;
-  std::vector<std::vector<std::vector<drake::solvers::LinearEqualityConstraint*>>> knot_constraints_;
+
+  std::vector<std::vector<
+  drake::solvers::LinearEqualityConstraint*>> x_knot_constraints_;
+  std::vector<std::vector<
+      drake::solvers::LinearEqualityConstraint*>> y_knot_constraints_;
+  std::vector<std::vector<
+      drake::solvers::LinearEqualityConstraint*>> z_knot_constraints_;
 
   std::shared_ptr<drake::solvers::QuadraticCost> midpoint_target_cost_;
+  std::shared_ptr<drake::solvers::QuadraticCost> x_min_accel_cost;
+  std::shared_ptr<drake::solvers::QuadraticCost> y_min_accel_cost;
+
+
 };
 
 }

@@ -16,6 +16,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
+#include "examples/Cassie/systems/meshcat_dynamic_lighting.h"
 
 namespace dairlib {
 
@@ -60,6 +61,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   plant.Finalize();
+  auto plant_context = plant.CreateDefaultContext();
 
   /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw
   /// messages to Cassie
@@ -84,13 +86,17 @@ int do_main(int argc, char* argv[]) {
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
 
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
+//  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0/60.0;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
+  auto meshcat_dynamic_lighting = builder.AddSystem<MeshcatDynamicLighting>(plant,
+                                                                            plant_context.get(),
+                                                                            meshcat,
+                                                                            plant.GetBodyByName("pelvis").body_frame());
 //  auto ortho_camera = drake::geometry::Meshcat::OrthographicCamera();
 //  ortho_camera.top = 2;
 //  ortho_camera.bottom = -0.1;
@@ -102,7 +108,7 @@ int do_main(int argc, char* argv[]) {
 //  meshcat->SetCamera(ortho_camera);
 //  auto camera_transform = RigidTransformd(drake::math::RollPitchYaw<double>(0, 0, 1.57), {1.0, 0, 0.2});
 //  meshcat->SetTransform("/Cameras/default/rotated", camera_transform);
-
+  builder.Connect(state_receiver->get_output_port(), meshcat_dynamic_lighting->get_input_port_state());
   auto diagram = builder.Build();
 
   auto context = diagram->CreateDefaultContext();

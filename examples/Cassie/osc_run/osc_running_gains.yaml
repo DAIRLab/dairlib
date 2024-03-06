@@ -26,12 +26,12 @@ W_lambda_h_reg: [ 0.001, 0.001, 0.001,
                   0.001, 0.001, 0.001 ]
 #w_soft_constraint: 1000000
 
-no_derivative_feedback: true
+no_derivative_feedback: false
 rot_filter_tau: 0.005
 ekf_filter_tau: [ 0.05, 0.01, 0.001 ]
 
 # High level command gains (with radio)
-vel_scale_rot: -4
+vel_scale_rot: -10
 vel_scale_trans_sagital: 15
 vel_scale_trans_lateral: -0.5
 target_vel_filter_alpha: 0.01

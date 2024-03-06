@@ -166,6 +166,7 @@ cc_binary(
     deps = [
         ":cassie_urdf",
         ":cassie_utils",
+        "//examples/Cassie/systems:meshcat_dynamic_lighting",
         "//multibody:utils",
         "//multibody:visualization_utils",
         "//systems:robot_lcm_systems",

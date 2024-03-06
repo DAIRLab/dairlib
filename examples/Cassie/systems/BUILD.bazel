@@ -39,6 +39,17 @@ cc_library(
 )
 
 cc_library(
+    name = "meshcat_dynamic_lighting",
+    srcs = ["meshcat_dynamic_lighting.cc"],
+    hdrs = ["meshcat_dynamic_lighting.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "input_supervisor",
     srcs = ["input_supervisor.cc"],
     hdrs = ["input_supervisor.h"],

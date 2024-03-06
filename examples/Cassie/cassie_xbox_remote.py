@@ -43,11 +43,10 @@ def main():
 
     pygame.init()
     screen_size = 500
-    screen = pygame.display.set_mode((screen_size, screen_size))
 
     # Used to manage how fast the screen updates
     clock = pygame.time.Clock()
-    textPrint = TextPrint()
+    # textPrint = TextPrint()
 
     # radio spoof variables
     radio_channel_6_pos = 0
@@ -76,13 +75,9 @@ def main():
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
         # above this, or they will be erased with this command.
-        screen.fill(cassie_blue)
-        textPrint.reset()
 
         # Get the name from the OS for the controller/joystick
         name = joystick.get_name()
-        textPrint.print(screen, "Welcome! remember to make this the active \nwindow when you wish to use the remote")
-        textPrint.print(screen, "Controller detected: {}".format(name) )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # If user clicked close
@@ -100,19 +95,18 @@ def main():
                 #     print(i)
                 #     print(joystick.get_button(i))
 
-        textPrint.print(screen, "Left Knob position: {:.2f}".format(radio_channel_4_pos))
-        textPrint.print(screen, "Right Knob position: {:.2f}".format(radio_channel_5_pos))
-        textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
+        # textPrint.print(screen, "Left Knob position: {:.2f}".format(radio_channel_4_pos))
+        # textPrint.print(screen, "Right Knob position: {:.2f}".format(radio_channel_5_pos))
+        # textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
 
         # Go ahead and update the screen with what we've drawn.
-        pygame.display.flip()
 
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
-        radio_msg.channel[0] = speeds[i]
+        radio_msg.channel[0] = -joystick.get_axis(1)
         radio_msg.channel[1] = joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)

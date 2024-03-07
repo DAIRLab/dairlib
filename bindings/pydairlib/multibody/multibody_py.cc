@@ -25,9 +25,10 @@ PYBIND11_MODULE(multibody, m) {
       .def("DrawPoses", &MultiposeVisualizer::DrawPoses, py::arg("poses"));
 
   m.def("MakeNameToPositionsMap",
-        &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
+        py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToPositionsMap<double>),
+        py::arg("plant"))
       .def("MakeNameToVelocitiesMap",
-           &dairlib::multibody::MakeNameToVelocitiesMap<double>,
+           py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToVelocitiesMap<double>),
            py::arg("plant"))
       .def("MakeNameToActuatorsMap",
            &dairlib::multibody::MakeNameToActuatorsMap<double>,
@@ -38,10 +39,17 @@ PYBIND11_MODULE(multibody, m) {
       .def("CreateActuatorNameVectorFromMap",
            &dairlib::multibody::CreateActuatorNameVectorFromMap<double>,
            py::arg("plant"))
+      .def("CreateWithSpringsToWithoutSpringsMapPos",
+           &dairlib::multibody::CreateWithSpringsToWithoutSpringsMapPos<double>,
+           py::arg("plant_w_spr"), py::arg("plant_wo_spr"))
+      .def("CreateWithSpringsToWithoutSpringsMapVel",
+           &dairlib::multibody::CreateWithSpringsToWithoutSpringsMapVel<double>,
+           py::arg("plant_w_spr"), py::arg("plant_wo_spr"))
       .def("AddFlatTerrain", &dairlib::multibody::AddFlatTerrain<double>,
            py::arg("plant"), py::arg("scene_graph"), py::arg("mu_static"),
            py::arg("mu_kinetic"),
            py::arg("normal_W") = Eigen::Vector3d(0, 0, 1),
+           py::arg("stiffness") = 0, py::arg("dissipation_rate") = 0,
            py::arg("show_ground") = 1);
 }
 

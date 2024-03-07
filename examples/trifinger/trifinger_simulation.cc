@@ -17,6 +17,7 @@
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 
 DEFINE_string(sim_parameters,
               "examples/trifinger/parameters/trifinger_sim_params.yaml",
@@ -35,6 +36,7 @@ using drake::multibody::Parser;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
+using drake::systems::lcm::LcmPublisherSystem;
 
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
@@ -60,11 +62,12 @@ int SimulateTrifinger(int argc, char* argv[]) {
 
   // Adds the URDF model to the trifinger plant.
   multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, false);
-  std::string trifinger_urdf = sim_params.trifinger_model;
-  std::string cube_urdf = sim_params.cube_model;
   Parser parser(&plant, &scene_graph);
-  parser.AddModels(FindResourceOrThrow(trifinger_urdf));
-  parser.AddModels(FindResourceOrThrow(cube_urdf));
+
+  drake::multibody::ModelInstanceIndex trifinger_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.trifinger_model))[0];
+  drake::multibody::ModelInstanceIndex cube_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.cube_model))[0];
 
   // Fixes the trifinger base to the world frame.
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
@@ -88,7 +91,20 @@ int SimulateTrifinger(int argc, char* argv[]) {
   systems::AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channels.trifinger_input_channel,
       lcm_channels.trifinger_state_channel, sim_params.trifinger_publish_rate,
-      sim_params.publish_efforts, sim_params.actuator_delay);
+      trifinger_index, sim_params.publish_efforts, sim_params.actuator_delay);
+
+  auto cube_state_sender =
+      builder.AddSystem<systems::ObjectStateSender>(plant, cube_index);
+  auto cube_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib ::lcmt_object_state>(
+          lcm_channels.cube_state_channel, lcm,
+          1.0 / sim_params.cube_publish_rate));
+
+  builder.Connect(plant.get_state_output_port(cube_index),
+                  cube_state_sender->get_input_port_state());
+  builder.Connect(cube_state_sender->get_output_port(),
+                  cube_state_pub->get_input_port());
+
   // Builds diagram.
   auto diagram = builder.Build();
   diagram->set_name(("trifinger_sim"));

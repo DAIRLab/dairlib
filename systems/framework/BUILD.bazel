@@ -9,11 +9,13 @@ cc_library(
     srcs = [
         "impact_info_vector.cc",
         "output_vector.cc",
+        "state_vector.cc",
         "timestamped_vector.cc",
     ],
     hdrs = [
         "impact_info_vector.h",
         "output_vector.h",
+        "state_vector.h",
         "timestamped_vector.h",
     ],
     deps = [

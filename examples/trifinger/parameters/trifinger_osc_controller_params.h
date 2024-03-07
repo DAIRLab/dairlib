@@ -14,33 +14,27 @@ struct TrifingerControllerParams : OSCGains {
   Eigen::Vector3d min_fingertips_delta_position;
   Eigen::Vector3d max_fingertips_delta_position;
 
-  std::vector<double> neutral_position;
-  double x_scale;
-  double y_scale;
-  double z_scale;
+  std::vector<double> home_position;
 
-  double w_elbow;
-  double elbow_kp;
-  double elbow_kd;
+  std::vector<double> Fingertip0W;
+  std::vector<double> Fingertip0Kp;
+  std::vector<double> Fingertip0Kd;
+  std::vector<double> Fingertip120W;
+  std::vector<double> Fingertip120Kp;
+  std::vector<double> Fingertip120Kd;
+  std::vector<double> Fingertip240W;
+  std::vector<double> Fingertip240Kp;
+  std::vector<double> Fingertip240Kd;
 
-  std::vector<double> EndEffectorW;
-  std::vector<double> EndEffectorKp;
-  std::vector<double> EndEffectorKd;
-  std::vector<double> EndEffectorRotW;
-  std::vector<double> EndEffectorRotKp;
-  std::vector<double> EndEffectorRotKd;
-  std::vector<double> LambdaEndEffectorW;
-
-  Eigen::MatrixXd W_end_effector;
-  Eigen::MatrixXd K_p_end_effector;
-  Eigen::MatrixXd K_d_end_effector;
-  Eigen::MatrixXd W_mid_link;
-  Eigen::MatrixXd K_p_mid_link;
-  Eigen::MatrixXd K_d_mid_link;
-  Eigen::MatrixXd W_end_effector_rot;
-  Eigen::MatrixXd K_p_end_effector_rot;
-  Eigen::MatrixXd K_d_end_effector_rot;
-  Eigen::MatrixXd W_ee_lambda;
+  Eigen::MatrixXd W_fingertip_0;
+  Eigen::MatrixXd Kp_fingertip_0;
+  Eigen::MatrixXd Kd_fingertip_0;
+  Eigen::MatrixXd W_fingertip_120;
+  Eigen::MatrixXd Kp_fingertip_120;
+  Eigen::MatrixXd Kd_fingertip_120;
+  Eigen::MatrixXd W_fingertip_240;
+  Eigen::MatrixXd Kp_fingertip_240;
+  Eigen::MatrixXd Kd_fingertip_240;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -53,44 +47,43 @@ struct TrifingerControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(fingertip_240_name));
     a->Visit(DRAKE_NVP(min_fingertips_delta_position));
     a->Visit(DRAKE_NVP(max_fingertips_delta_position));
-    a->Visit(DRAKE_NVP(EndEffectorW));
-    a->Visit(DRAKE_NVP(EndEffectorKp));
-    a->Visit(DRAKE_NVP(EndEffectorKd));
-    a->Visit(DRAKE_NVP(EndEffectorRotW));
-    a->Visit(DRAKE_NVP(EndEffectorRotKp));
-    a->Visit(DRAKE_NVP(EndEffectorRotKd));
-    a->Visit(DRAKE_NVP(LambdaEndEffectorW));
-    a->Visit(DRAKE_NVP(w_elbow));
-    a->Visit(DRAKE_NVP(elbow_kp));
-    a->Visit(DRAKE_NVP(elbow_kd));
-    a->Visit(DRAKE_NVP(neutral_position));
-    a->Visit(DRAKE_NVP(x_scale));
-    a->Visit(DRAKE_NVP(y_scale));
-    a->Visit(DRAKE_NVP(z_scale));
+    a->Visit(DRAKE_NVP(Fingertip0W));
+    a->Visit(DRAKE_NVP(Fingertip0Kp));
+    a->Visit(DRAKE_NVP(Fingertip0Kd));
+    a->Visit(DRAKE_NVP(Fingertip120W));
+    a->Visit(DRAKE_NVP(Fingertip120Kp));
+    a->Visit(DRAKE_NVP(Fingertip120Kd));
+    a->Visit(DRAKE_NVP(Fingertip240W));
+    a->Visit(DRAKE_NVP(Fingertip240Kp));
+    a->Visit(DRAKE_NVP(Fingertip240Kd));
+    a->Visit(DRAKE_NVP(home_position));
 
-    W_end_effector = Eigen::Map<
+    W_fingertip_0 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorW.data(), 3, 3);
-    K_p_end_effector = Eigen::Map<
+        this->Fingertip0W.data(), 3, 3);
+    Kp_fingertip_0 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorKp.data(), 3, 3);
-    K_d_end_effector = Eigen::Map<
+        this->Fingertip0Kp.data(), 3, 3);
+    Kd_fingertip_0 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorKd.data(), 3, 3);
-    W_mid_link = this->w_elbow * MatrixXd::Identity(1, 1);
-    K_p_mid_link = this->elbow_kp * MatrixXd::Identity(1, 1);
-    K_d_mid_link = this->elbow_kd * MatrixXd::Identity(1, 1);
-    W_end_effector_rot = Eigen::Map<
+        this->Fingertip0Kd.data(), 3, 3);
+    W_fingertip_120 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorRotW.data(), 3, 3);
-    K_p_end_effector_rot = Eigen::Map<
+        this->Fingertip120W.data(), 3, 3);
+    Kp_fingertip_120 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorRotKp.data(), 3, 3);
-    K_d_end_effector_rot = Eigen::Map<
+        this->Fingertip120Kp.data(), 3, 3);
+    Kd_fingertip_120 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorRotKd.data(), 3, 3);
-    W_ee_lambda = Eigen::Map<
+        this->Fingertip120Kd.data(), 3, 3);
+    W_fingertip_240 = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->LambdaEndEffectorW.data(), 3, 3);
+        this->Fingertip240W.data(), 3, 3);
+    Kp_fingertip_240 = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->Fingertip240Kp.data(), 3, 3);
+    Kd_fingertip_240 = Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+        this->Fingertip240Kd.data(), 3, 3);
   }
 };

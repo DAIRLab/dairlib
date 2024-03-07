@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "dairlib/lcmt_object_state.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -20,6 +21,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 DEFINE_string(sim_parameters,
@@ -31,6 +33,7 @@ DEFINE_string(lcm_channels,
               "Filepath containing lcm channels");
 
 namespace dairlib {
+using dairlib::systems::ObjectStateReceiver;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::DrakeVisualizer;
@@ -38,6 +41,7 @@ using drake::geometry::SceneGraph;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Multiplexer;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
@@ -58,11 +62,11 @@ int DoMain(int argc, char* argv[]) {
   multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8, {0, 0, 1}, false);
 
   // Adds the URDF model to the trifinger plant.
-  std::string trifinger_urdf = sim_params.trifinger_model;
-  std::string cube_urdf = sim_params.cube_model;
   Parser parser(&plant, &scene_graph);
-  parser.AddModels(FindResourceOrThrow(trifinger_urdf));
-  parser.AddModels(FindResourceOrThrow(cube_urdf));
+  drake::multibody::ModelInstanceIndex trifinger_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.trifinger_model))[0];
+  drake::multibody::ModelInstanceIndex cube_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.cube_model))[0];
 
   // Fixes the trifinger base to the world frame.
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
@@ -74,20 +78,43 @@ int DoMain(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
       "udpm://239.255.76.67:7667?ttl=0");
 
-  // Create state receiver.
-  auto state_sub =
+  // Create trifinger and cube state receiver.
+  auto trifinger_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channels.trifinger_state_channel, lcm));
-  auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
-  builder.Connect(*state_sub, *state_receiver);
+  auto trifinger_state_receiver =
+      builder.AddSystem<RobotOutputReceiver>(plant, trifinger_index);
+  builder.Connect(*trifinger_state_sub, *trifinger_state_receiver);
 
-  auto passthrough = builder.AddSystem<SubvectorPassThrough>(
-      state_receiver->get_output_port(0).size(), 0, plant.num_positions());
-  builder.Connect(*state_receiver, *passthrough);
+  auto cube_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channels.cube_state_channel, lcm));
+  auto cube_state_receiver =
+      builder.AddSystem<ObjectStateReceiver>(plant, cube_index);
+  builder.Connect(*cube_state_sub, *cube_state_receiver);
+
+  auto trifinger_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      trifinger_state_receiver->get_output_port(0).size(), 0,
+      plant.num_positions(trifinger_index));
+  builder.Connect(*trifinger_state_receiver, *trifinger_passthrough);
+
+  auto cube_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      cube_state_receiver->get_output_port(0).size(), 0,
+      plant.num_positions(cube_index));
+  builder.Connect(*cube_state_receiver, *cube_passthrough);
+
+  std::vector<int> input_sizes = {plant.num_positions(trifinger_index),
+                                  plant.num_positions(cube_index)};
+  auto mux =
+      builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
+
+  builder.Connect(trifinger_passthrough->get_output_port(),
+                  mux->get_input_port(0));
+  builder.Connect(cube_passthrough->get_output_port(), mux->get_input_port(1));
 
   auto to_pose =
       builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
-  builder.Connect(*passthrough, *to_pose);
+  builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
@@ -99,7 +126,7 @@ int DoMain(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  // state_receiver->set_publish_period(1.0/30.0);  // framerate
+  // trifinger_state_receiver->set_publish_period(1.0/30.0);  // framerate
 
   auto diagram = builder.Build();
 
@@ -109,9 +136,14 @@ int DoMain(int argc, char* argv[]) {
   /// during initialization due to internal checks
   /// (unit quaternion check in MultibodyPositionToGeometryPose
   /// internal calculations)
-  auto& state_sub_context =
-      diagram->GetMutableSubsystemContext(*state_sub, context.get());
-  state_receiver->InitializeSubscriberPositions(plant, state_sub_context);
+  auto& trifinger_state_sub_context =
+      diagram->GetMutableSubsystemContext(*trifinger_state_sub, context.get());
+  auto& cube_state_sub_context =
+      diagram->GetMutableSubsystemContext(*cube_state_sub, context.get());
+  trifinger_state_receiver->InitializeSubscriberPositions(
+      plant, trifinger_state_sub_context);
+  cube_state_receiver->InitializeSubscriberPositions(plant,
+                                                     cube_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

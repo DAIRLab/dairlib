@@ -9,6 +9,7 @@ struct TrifingerSimParams {
   double dt;
   double realtime_rate;
   double trifinger_publish_rate;
+  double cube_publish_rate;
   bool publish_efforts;
   double actuator_delay;
   double visualizer_publish_rate;
@@ -26,6 +27,7 @@ struct TrifingerSimParams {
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
     a->Visit(DRAKE_NVP(trifinger_publish_rate));
+    a->Visit(DRAKE_NVP(cube_publish_rate));
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(actuator_delay));
     a->Visit(DRAKE_NVP(contact_solver));

@@ -11,11 +11,11 @@ from pydairlib.common import plot_styler
 
 
 def main():
-    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
+    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_running_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_kcmpc_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_standing_plot.yaml'
     # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_default_plot.yaml'
-    config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
+    # config_file = 'bindings/pydairlib/analysis/plot_configs/cassie_jumping_plot.yaml'
     plot_config = CassiePlotConfig(config_file)
 
     use_floating_base = plot_config.use_floating_base
@@ -96,9 +96,21 @@ def main():
     if plot_config.plot_floating_base_velocity_body_frame:
         plot = mbp_plots.plot_floating_base_body_frame_velocities(
             robot_output, t_x_slice, plant, context, "pelvis")
-        mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
+        # mbp_plots.add_fsm_to_plot(plot, osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names)
         plot.tight_layout()
+        # plot.save_fig('running_speed_plot_kd0.png')
         plot.save_fig('running_speed_plot_ii.png')
+
+    # manual plotting
+    ii_t = np.load('ii_t.npy')
+    ii_v = np.load('ii_v.npy')
+    kd0_t = np.load('kd0_t.npy')
+    kd0_v = np.load('kd0_v.npy')
+    velocity_comparison_plot = plot_styler.PlotStyler()
+    velocity_comparison_plot.plot(kd0_t, kd0_v, ylabel='Robot Forward Velocity (m/s)', xlabel='Time (s)', color=velocity_comparison_plot.orange)
+    velocity_comparison_plot.plot(ii_t, ii_v, color=velocity_comparison_plot.red)
+    velocity_comparison_plot.add_legend(['No Derivative Feedback', 'Impact-Invariant (Ours)'], loc='lower center')
+    velocity_comparison_plot.save_fig('running_speed_plot.png')
 
     # Plot all joint velocities
     if plot_config.plot_joint_velocities:

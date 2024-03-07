@@ -18,7 +18,7 @@ class PlotStyler():
     matplotlib.rcParams['figure.autolayout'] = True
     font = {'size': 24}
     matplotlib.rc('font', **font)
-    matplotlib.rcParams['lines.linewidth'] = 3
+    matplotlib.rcParams['lines.linewidth'] = 2
     plt.set_cmap('tab20')
   @staticmethod
   def set_compact_styling():
@@ -46,7 +46,7 @@ class PlotStyler():
     self.yellow = '#F2C100'
     self.grey = '#909090'
     self.orange = '#FE7F0E'
-    # self.directory = None
+    self.directory = '/home/yangwill/Pictures/plot_styler/'
     self.dpi = matplotlib.rcParams['figure.dpi']
     self.directory = '/home/yangwill/Pictures/plot_styler/'
     plt.rc('legend', fontsize=13)

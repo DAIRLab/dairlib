@@ -97,6 +97,11 @@ int do_main(int argc, char* argv[]) {
                                                                             plant_context.get(),
                                                                             meshcat,
                                                                             plant.GetBodyByName("pelvis").body_frame());
+  meshcat->SetProperty("/Lights/AmbientLight/<object>/", "intensity", 2.0);
+  meshcat->SetProperty("/Lights/FillLight/<object>/", "intensity", 5.0);
+  meshcat->SetProperty("/Lights/PointLightNegativeX/", "visible", false);
+  meshcat->SetProperty("/Lights/PointLightPositiveX/", "visible", false);
+
 //  auto ortho_camera = drake::geometry::Meshcat::OrthographicCamera();
 //  ortho_camera.top = 2;
 //  ortho_camera.bottom = -0.1;

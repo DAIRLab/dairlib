@@ -66,11 +66,12 @@ def main():
 
     done = False
     max_speed = 1.0
-    acceleration = 0.01
+    acceleration = 0.02
+    stay_stationary = -0.05 * np.ones(50)
     ramp_up = np.arange(0, max_speed, acceleration)
-    stay = max_speed * np.ones(500)
-    ramp_down = np.flip(np.arange(0, max_speed, 0.01))
-    speeds = np.hstack((ramp_up, stay, ramp_down))
+    stay_forward = max_speed * np.ones(250)
+    ramp_down = np.flip(np.arange(0, max_speed, 0.02))
+    speeds = np.hstack((stay_stationary, ramp_up, stay_forward, ramp_down, stay_stationary))
     i = 0
     while not done:
         # DRAWING STEP

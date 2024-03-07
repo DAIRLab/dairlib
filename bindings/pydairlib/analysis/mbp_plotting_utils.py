@@ -531,8 +531,10 @@ def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
     data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
         robot_output, plant, context,
         plant.GetBodyByName(fb_frame_name).body_frame())[:, 0]
-    legend_entries = {'base_vel': ['forward', 'lateral', 'vertical']}
+    legend_entries = {'base_vel': ['Forward', 'Lateral', 'Vertical']}
     ps = plot_styler.PlotStyler()
+    # np.save('kd0_t', data_dict['t'])
+    # np.save('kd0_v', data_dict['base_vel'])
     plotting_utils.make_plot(
         data_dict,
         't',
@@ -540,9 +542,8 @@ def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
         ['base_vel'],
         {},
         legend_entries,
-        {'title': 'Floating Base Velocity (Body Frame)',
-         'xlabel': 'Time (s)',
-         'ylabel': 'Velocity (m/s)'}, ps)
+        {'title': '', 'xlabel': 'Time (s)',
+         'ylabel': 'Robot Forward Velocity (m/s)'}, ps)
     return ps
 
 

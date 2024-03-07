@@ -53,13 +53,19 @@ cc_binary(
 cc_binary(
     name = "trifinger_osc_controller",
     srcs = ["trifinger_osc_controller.cc"],
+    data = [
+        ":trifinger_urdf",
+    ],
     deps = [
         "//common:eigen_utils",
         "//common:find_resource",
+        "//examples/trifinger/parameters:trifinger_lcm_channels",
         "//examples/trifinger/parameters:trifinger_osc_controller_params",
+        "//examples/trifinger/systems:fingertips_delta_position_receiver",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
         "//multibody:visualization_utils",
+        "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers/osc:operational_space_control",

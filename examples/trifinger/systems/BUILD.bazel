@@ -1,0 +1,16 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "fingertips_delta_position_receiver",
+    srcs = ["fingertips_delta_position_receiver.cc"],
+    hdrs = ["fingertips_delta_position_receiver.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

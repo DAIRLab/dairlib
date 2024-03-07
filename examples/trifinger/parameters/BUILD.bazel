@@ -27,6 +27,7 @@ cc_library(
     data = [
         "lcm_channels_hardware.yaml",
         "lcm_channels_simulation.yaml",
+        "trifinger_osc_qp_settings.yaml",
     ],
     deps = [
         "@drake//:drake_shared_library",

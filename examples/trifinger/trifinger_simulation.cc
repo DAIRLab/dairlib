@@ -89,7 +89,6 @@ int SimulateTrifinger(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channels.trifinger_input_channel,
       lcm_channels.trifinger_state_channel, sim_params.trifinger_publish_rate,
       sim_params.publish_efforts, sim_params.actuator_delay);
-
   // Builds diagram.
   auto diagram = builder.Build();
   diagram->set_name(("trifinger_sim"));

@@ -1,0 +1,6 @@
+trifinger_state_channel: TRIFINGER_STATE # lcmt_robot_output
+cube_state_channel: CUBE_STATE #lcmt_object_output
+trifinger_input_channel: TRIFINGER_INPUT # lcmt_robot_input
+osc_channel: OSC_TRIFINGER
+osc_debug_channel: OSC_DEBUG_TRIFINGER
+fingertips_delta_position_channel: FINGERTIPS_DELTA_POSITION

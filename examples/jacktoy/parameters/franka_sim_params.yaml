@@ -48,7 +48,6 @@ q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
 q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.35, 0.45, 0.5]
 
 # TODO: maybe there needs to be some more of these for visualizing other samples
-visualizer_end_effector_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 visualizer_sample_locations_model: examples/jacktoy/urdf/sample_locations.urdf
 visualizer_c3_mode_model: examples/jacktoy/urdf/c3_mode_visualization.urdf
 visualize_workspace: false
@@ -57,12 +56,14 @@ visualize_is_c3_mode: true
 
 visualize_sample_locations: true
 
+visualizer_curr_sample_end_effector_model: examples/jacktoy/urdf/ee_curr_traj_visualization_model.urdf
 visualizer_curr_sample_traj_jack_model: examples/jacktoy/urdf/jack_curr_traj_visualization_model.sdf
 visualize_pose_trace_curr: true
 visualize_center_of_mass_plan_curr: true
 visualize_c3_forces_curr: false
 
 
+visualizer_best_sample_end_effector_model: examples/jacktoy/urdf/ee_best_traj_visualization_model.urdf
 visualizer_best_sample_traj_jack_model: examples/jacktoy/urdf/jack_best_traj_visualization_model.sdf
 visualize_pose_trace_best: true
 visualize_center_of_mass_plan_best: true

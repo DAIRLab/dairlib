@@ -180,9 +180,9 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm));
-  auto box_state_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.box_state_channel, lcm));
+//   auto box_state_sub =
+//       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+//           lcm_channel_params.box_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
@@ -314,7 +314,7 @@ int do_main(int argc, char* argv[]) {
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr", FindResourceOrThrow(sim_params.visualizer_end_effector_model),
+        meshcat, "curr", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
@@ -329,7 +329,7 @@ int do_main(int argc, char* argv[]) {
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best", FindResourceOrThrow(sim_params.visualizer_end_effector_model),
+        meshcat, "best", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),
@@ -348,9 +348,8 @@ int do_main(int argc, char* argv[]) {
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "samples", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
         "sample_locations", "end_effector_orientation_target", 
-        1 + std::max(sampling_params.num_additional_samples_c3, 
-        sampling_params.num_additional_samples_repos),
-        false);
+        std::max(sampling_params.num_additional_samples_c3, 
+            sampling_params.num_additional_samples_repos), false);
 
     builder.Connect(sample_location_sub->get_output_port(),
                     sample_locations_drawer->get_input_port_trajectory());
@@ -430,8 +429,8 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   auto& tray_state_sub_context =
       diagram->GetMutableSubsystemContext(*tray_state_sub, context.get());
-  auto& box_state_sub_context =
-      diagram->GetMutableSubsystemContext(*box_state_sub, context.get());
+//   auto& box_state_sub_context =
+//       diagram->GetMutableSubsystemContext(*box_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
   tray_state_receiver->InitializeSubscriberPositions(plant,

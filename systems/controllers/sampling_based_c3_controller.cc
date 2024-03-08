@@ -236,8 +236,9 @@ SamplingC3Controller::SamplingC3Controller(
   ).get_index();
   
   // Sample location related output ports.
+  // This port will output all samples except the current location.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_locations", vector<Vector3d>(num_samples + 1, Vector3d::Zero()), // TODO don't use class vars for port types
+    "all_sample_locations", vector<Vector3d>(num_samples, Vector3d::Zero()), // TODO don't use class vars for port types
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
   all_sample_costs_port_ = this->DeclareAbstractOutputPort(
@@ -918,7 +919,12 @@ void SamplingC3Controller::OutputIsC3Mode(
 void SamplingC3Controller::OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
     std::vector<Eigen::Vector3d>* all_sample_locations) const {
-  *all_sample_locations = all_sample_locations_;
+  // Only output the samples after the first one since the first one is the
+  // current location.
+  std::vector<Eigen::Vector3d> sample_locations = std::vector<Eigen::Vector3d>(
+    all_sample_locations_.begin() + 1, all_sample_locations_.end());
+
+  *all_sample_locations = sample_locations;
 }
 
 void SamplingC3Controller::OutputAllSampleCosts(

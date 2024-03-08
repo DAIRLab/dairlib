@@ -224,11 +224,11 @@ def main():
   tracking_error_plot = plot_styler.PlotStyler()
   tracking_error_plot.plot(t, np.linalg.norm(vel_desired[:, selected_joint_indices] - vel_actual[:, selected_joint_indices], axis=-1),
                     xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(0))
-  tracking_error_plot.plot(t, np.linalg.norm(vel_proj_desired[:, selected_joint_indices] - vel_proj_actual[:, selected_joint_indices], axis=-1),
-                    xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(2))
-  tracking_error_plot.axes[0].legend(['Velocity Error', 'Projected Velocity Error'])
-  # tracking_proj_vel_plot.axes[0].set_ylim(ylim)
-  tracking_error_plot.save_fig('rabbit_tracking_errors.png')
+  # tracking_error_plot.plot(t, np.linalg.norm(vel_proj_desired[:, selected_joint_indices] - vel_proj_actual[:, selected_joint_indices], axis=-1),
+  #                   xlabel='Time (s)', ylabel='Velocity Error (rad/s)', color=tracking_error_plot.cmap(2))
+  # tracking_error_plot.axes[0].legend(['Velocity Error', 'Projected Velocity Error'])
+  tracking_error_plot.axes[0].legend(['Velocity Error'])
+  tracking_error_plot.save_fig('rabbit_tracking_errors_gen_vel_only.png')
 
   corrected_vel_plot = plot_styler.PlotStyler()
   corrected_vel_plot.plot(t, vel_corrected,

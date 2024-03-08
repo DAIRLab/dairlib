@@ -374,6 +374,7 @@ def plot_costs():
   legend_elements = [Patch(facecolor='black', alpha=1.0, label='Fail')]
   legend = ax.legend(handles=legend_elements, loc=1)
   cbar = plt.colorbar(im)
+  plt.clim(0.55, 1.0)
   # im = plt.imshow(u_cost, cmap=cmap)
   plt.xlabel('Projection Window Duration (s)')
   plt.ylabel('Deviation from Nominal Transition Time (s)')
@@ -386,7 +387,7 @@ def plot_costs():
   ax.set_yticklabels(np.around(landing_times, 3).tolist())
   ax.grid(which="minor", color='k', linestyle='-', linewidth=2)
   plt.savefig(trial_name + 'cost.png', dpi=240)
-  plt.show()
+  # plt.show()
 
 if __name__ == "__main__":
   # main()

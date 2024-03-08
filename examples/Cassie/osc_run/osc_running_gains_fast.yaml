@@ -39,7 +39,7 @@ target_vel_filter_alpha: 0.01
 rest_length: 0.9
 rest_length_offset: 0.05
 stance_duration: 0.2
-flight_duration: 0.1
+flight_duration: 0.11
 # max percent variance
 stance_variance: 0.4
 flight_variance: 0.2

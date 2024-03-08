@@ -1,14 +1,9 @@
 import numpy as np
-from pydrake.multibody.inverse_kinematics import InverseKinematics
-from pydrake.multibody.parsing import Parser
-from pydrake.systems.framework import DiagramBuilder
-from pydrake.multibody.plant import MultibodyPlant, AddMultibodyPlantSceneGraph, CoulombFriction
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import *
 from scipy.spatial.transform import Rotation as R
 from pydairlib.multibody import *
-from pydrake.solvers.mathematicalprogram import MathematicalProgram, Solve
-from pydrake.geometry import SceneGraph, DrakeVisualizer, HalfSpace, Box
+from pydrake.all import *
 from pydairlib.multibody import MultiposeVisualizer
 
 

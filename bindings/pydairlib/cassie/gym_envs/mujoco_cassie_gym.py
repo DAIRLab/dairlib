@@ -3,10 +3,7 @@ import copy
 import numpy as np
 import math
 
-from pydrake.multibody.parsing import Parser
-from pydrake.systems.framework import DiagramBuilder
-from pydrake.multibody.plant import *
-from pydrake.systems.analysis import Simulator
+from pydrake.all import *
 
 from pydairlib.common import FindResourceOrThrow
 from pydairlib.cassie.cassie_utils import *
@@ -16,7 +13,6 @@ from dairlib import lcmt_cassie_out
 from pydairlib.cassie.gym_envs.cassie_env_state import CassieEnvState, quat_to_rotation, \
     reexpress_state_local_to_global_omega, reexpress_state_global_to_local_omega
 from pydairlib.cassie.mujoco.drake_to_mujoco_converter import DrakeToMujocoConverter
-# from drake_to_mujoco_converter import DrakeToMujocoConverter
 
 from pydairlib.cassie.mujoco.cassiemujoco import *
 from pydairlib.cassie.mujoco.mujoco_lcm_utils import *

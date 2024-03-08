@@ -4,6 +4,8 @@
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/zero_order_hold.h>
 #include <iostream>
+#include <drake/geometry/meshcat.h>
+#include <drake/geometry/meshcat_visualizer.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -111,11 +113,12 @@ CassieSimDiagram::CassieSimDiagram(
   cassie_out_port_ = builder.ExportOutput(sensor_aggregator_->get_output_port(0),
                        "lcmt_cassie_out");
   if (visualize) {
-    DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);
+    auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+    drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+        &builder, *scene_graph_, meshcat);
   }
   builder.BuildInto(this);
   this->set_name("cassie_sim_diagram");
-  DrawAndSaveDiagramGraph(*this);
 }
 }  // namespace examples
 }  // namespace dairlib

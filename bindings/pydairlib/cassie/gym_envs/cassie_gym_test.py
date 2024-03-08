@@ -19,23 +19,24 @@ def main():
 
     action = np.zeros(18)
     cumulative_reward = 0
-    while 1:
-        controller_plant = MultibodyPlant(1e-3)
-        AddCassieMultibody(controller_plant, None, True, urdf, False, False, False)
-        controller_plant.Finalize()
-        controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
-        # controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
+    # while 1:
+    controller_plant = MultibodyPlant(1e-3)
+    AddCassieMultibody(controller_plant, None, True, urdf, False, False, False)
+    controller_plant.Finalize()
+    controller = OSCRunningControllerFactory(controller_plant, osc_running_gains_filename, osqp_settings)
+    # controller = OSCWalkingControllerFactory(controller_plant, True, osc_walking_gains_filename, osqp_settings)
 
-        # reward_func = RewardOSUDRL(reward_function_weights)
-        reward_func = RewardOSUDRL()
+    # reward_func = RewardOSUDRL(reward_function_weights)
+    reward_func = RewardOSUDRL()
 
-        # gym_env = DrakeCassieGym(reward_func, visualize=True)
-        gym_env = MuJoCoCassieGym(reward_func, visualize=True)
-        gym_env.make(controller)
+    gym_env = DrakeCassieGym(reward_func, visualize=True)
+    # gym_env = MuJoCoCassieGym(reward_func, visualize=True)
+    gym_env.make(controller)
+    while(1):
         cumulative_reward = gym_env.advance_to(25)
-        # print(cumulative_reward)
-        gym_env.free_sim()
-        # gym_env.reset()
+        gym_env.reset()
+    # print(cumulative_reward)
+    gym_env.free_sim()
     # while gym_env.current_time < 5.0:
     #     state, reward = gym_env.step(action)
     #     cumulative_reward += reward

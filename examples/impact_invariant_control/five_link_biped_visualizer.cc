@@ -20,9 +20,9 @@
 namespace dairlib {
 
 DEFINE_string(channel, "RABBIT_STATE", "LCM channel for receiving state. ");
-DEFINE_bool(com, true, "Visualize the COM as a sphere");
+DEFINE_bool(com, false, "Visualize the COM as a sphere");
 DEFINE_bool(
-    com_ground, true,
+    com_ground, false,
     "If com=true, sets whether the COM should be shown on the ground (z=0)"
     " or at the correct height.");
 

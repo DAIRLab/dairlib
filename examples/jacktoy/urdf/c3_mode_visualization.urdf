@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+
+<robot name="sample_sphere">
+  <link name="sample_sphere">
+   <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.0195"/>
+      </geometry>
+      <material name="finger_0_material">
+        <color rgba="1.0 0.75 0.79 1.0"/>
+      </material>
+    </visual>
+  </link>
+</robot>

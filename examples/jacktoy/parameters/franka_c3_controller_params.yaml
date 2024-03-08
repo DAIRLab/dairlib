@@ -8,6 +8,7 @@ end_effector_simple_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 end_effector_simple_name: end_effector_simple
 jack_model: examples/jacktoy/urdf/jack.sdf
 ground_model: examples/jacktoy/urdf/ground.urdf
+platform_model: examples/jacktoy/urdf/platform.urdf
 
 # Note:  Use capsule_1 body name as representative of the pose of the entire
 # jack model.  This works because capsule_1's origin is the same as the jack's.

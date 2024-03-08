@@ -72,32 +72,42 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
   drake::multibody::ModelInstanceIndex ground_index =
       parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
+  drake::multibody::ModelInstanceIndex platform_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex jack_index =
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
 //   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Eigen::VectorXd franka_origin = Eigen::VectorXd::Zero(3);
-
-  RigidTransform<double> T_X_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), franka_origin);
+  // All the urdfs have their origins at the world frame origin. We define all 
+  // the offsets by welding the frames such that changing the offsets in 
+  // the param file moves them to where we want in the world frame.
+  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
         sim_params.tool_attachment_frame);
+  RigidTransform<double> X_F_P =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.platform_franka_frame);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
                              sim_params.ground_franka_frame);
 
+  // Create a rigid transform from the world frame to the panda_link0 frame.
+  // Franka base is 2.45cm above the ground.
+  RigidTransform<double> X_F_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), sim_params.franka_origin);
+
   plant.WeldFrames(plant.world_frame(), 
-                   plant.GetFrameByName("panda_link0"), T_X_W);
+                   plant.GetFrameByName("panda_link0"), X_F_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), 
                    plant.GetFrameByName("end_effector_base"), T_EE_W);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
                    plant.GetFrameByName("ground"), X_F_G_franka);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
+                   plant.GetFrameByName("platform"), X_F_P);
 
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/

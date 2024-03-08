@@ -26,6 +26,8 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
+#include "examples/jacktoy/systems/franka_kinematics.h"
+#include "examples/jacktoy/systems/c3_mode_visualizer.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -87,55 +89,77 @@ int do_main(int argc, char* argv[]) {
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
       parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
-
+  drake::multibody::ModelInstanceIndex ground_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.ground_model))[0];
+  drake::multibody::ModelInstanceIndex platform_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.platform_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex jack_index =
       parser.AddModels(FindResourceOrThrow(sim_params.jack_model))[0];
-  multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Vector3d franka_origin = Eigen::VectorXd::Zero(3);
-
-  RigidTransform<double> R_X_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), franka_origin);
+  // All the urdfs have their origins at the world frame origin. We define all 
+  // the offsets by welding the frames such that changing the offsets in 
+  // the param file moves them to where we want in the world frame.
+  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
         sim_params.tool_attachment_frame);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
-                   R_X_W);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), T_EE_W);
+  RigidTransform<double> X_F_P =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.platform_franka_frame);
+  RigidTransform<double> X_F_G_franka =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.ground_franka_frame);
+
+  // Create a rigid transform from the world frame to the panda_link0 frame.
+  // Franka base is 2.45cm above the ground.
+  RigidTransform<double> X_F_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), sim_params.franka_origin);
+
+  plant.WeldFrames(plant.world_frame(), 
+                   plant.GetFrameByName("panda_link0"), X_F_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"), 
+                   plant.GetFrameByName("end_effector_base"), T_EE_W);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
+                   plant.GetFrameByName("ground"), X_F_G_franka);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
+                   plant.GetFrameByName("platform"), X_F_P);
 
   plant.Finalize();
 
 
   // Loading the full franka model that will go into franka kinematics system
   // This needs to load the full franka and full end effector model.
-  MultibodyPlant<double> plant_franka(0.0);
-  Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.AddModels(
-      drake::FindResourceOrThrow(sim_params.franka_model));
-  parser_franka.AddModels(sim_params.ground_model);
-  drake::multibody::ModelInstanceIndex end_effector_index =
-      parser_franka.AddModels(
-          FindResourceOrThrow(sim_params.end_effector_model))[0];
+	// Some of the frame definitions have been reused from the above plant so as 
+	// to avoid having to redefine them.
+	MultibodyPlant<double> plant_franka(0.0);
+  Parser parser_franka(&plant_franka, nullptr);	
+	parser_franka.AddModels(
+		drake::FindResourceOrThrow(sim_params.franka_model))[0];
+	parser_franka.AddModels(
+		FindResourceOrThrow(sim_params.ground_model))[0];
+	parser_franka.AddModels(
+		FindResourceOrThrow(sim_params.platform_model))[0];
+	parser_franka.AddModels(
+		FindResourceOrThrow(sim_params.end_effector_model))[0];
+			
+  // All the urdfs have their origins at the world frame origin. We define all 
+  // the offsets by welding the frames such that changing the offsets in 
+  // the param file moves them to where we want in the world frame.
+  // TODO: Do this in all the files.
 
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant_franka.WeldFrames(plant_franka.world_frame(),
-                          plant_franka.GetFrameByName("panda_link0"), X_WI);
-  RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-        sim_params.tool_attachment_frame);
-  RigidTransform<double> X_F_G_franka =
-      RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             sim_params.ground_franka_frame);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                          plant_franka.GetFrameByName("end_effector_base"),
-                          T_EE_W);
+  // Create a rigid transform from the world frame to the panda_link0 frame.
+  // Franka base is 2.45cm above the ground.
+  plant_franka.WeldFrames(plant_franka.world_frame(), 
+                   plant_franka.GetFrameByName("panda_link0"), X_F_W);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"), 
+                   plant_franka.GetFrameByName("end_effector_base"), T_EE_W);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
-                          plant_franka.GetFrameByName("ground"), X_F_G_franka);
+                   plant_franka.GetFrameByName("ground"), X_F_G_franka);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
+                   plant_franka.GetFrameByName("platform"), X_F_P);
 
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
@@ -187,6 +211,15 @@ int do_main(int argc, char* argv[]) {
           sim_params.end_effector_name, 
           sim_params.object_body_name,
 					false);
+	builder.Connect(franka_state_receiver->get_output_port(),
+									reduced_order_model_receiver->get_input_port_franka_state());
+	builder.Connect(tray_state_receiver->get_output_port(),
+									reduced_order_model_receiver->get_input_port_object_state());
+
+	// This system subscribes to the lcmt_timestamped_saved_traj message containing
+	auto is_c3_mode_sub = builder.AddSystem(
+			LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+					lcm_channel_params.is_c3_mode_channel, lcm));
 
   auto trajectory_sub_actor_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -353,7 +386,7 @@ int do_main(int argc, char* argv[]) {
                     end_effector_force_drawer_best->get_input_port_robot_time());
   }
 
-	if(sim_params.visualize_c3_mode){
+	if(sim_params.visualize_is_c3_mode){
 		// TODO: Create a system that will read either the lcmt_timestamped_saved_traj
 		// message containing the boolean value of whether the robot is in c3 mode
 		// (if that doesn't work, then use a subscriber system to read the boolean).
@@ -361,12 +394,16 @@ int do_main(int argc, char* argv[]) {
 		// output an LcmTrajectory which will contain one knot point - either at the 
 		// current end_effector location (if c3 mode) or at the base of the robot 
 		// (if repos mode).
+		auto c3_mode_visualizer = builder.AddSystem<systems::C3ModeVisualizer>();
+		builder.Connect(is_c3_mode_sub->get_output_port(),
+										c3_mode_visualizer->get_input_port_is_c3_mode());
+		builder.Connect(reduced_order_model_receiver->get_output_port(),
+										c3_mode_visualizer->get_input_port_curr_lcs_state());
     auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "samples", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
-        "sample_locations", "end_effector_orientation_target", 1);
-
-    builder.Connect(sample_location_sub->get_output_port(),
-                    sample_locations_drawer->get_input_port_trajectory());
+        meshcat, "c3_mode", FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
+        "c3_mode_visualization", "end_effector_orientation_target", 1);
+		builder.Connect(c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
+										is_c3_mode_drawer->get_input_port_trajectory());
 	}
 
   builder.Connect(franka_passthrough->get_output_port(),

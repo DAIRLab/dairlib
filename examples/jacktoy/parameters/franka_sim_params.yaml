@@ -3,12 +3,12 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf  
 end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
 end_effector_name: end_effector_tip
 ground_model: examples/jacktoy/urdf/ground.urdf
+platform_model: examples/jacktoy/urdf/platform.urdf
 # jack_model: examples/jacktoy/urdf/jack.urdf
 jack_model: examples/jacktoy/urdf/jack.sdf
 # Note:  Use capsule_1 body name as representative of the pose of the entire
 # jack model.  This works because capsule_1's origin is the same as the jack's.
 object_body_name: capsule_1
-box_model: examples/jacktoy/urdf/default_box.urdf  # TODO delete?
 
 franka_publish_rate: 1000
 object_publish_rate: 10
@@ -22,7 +22,16 @@ camera_pose: [1.5, 0, 0.6]
 camera_target: [0.5, 0, 0.5]
 
 tool_attachment_frame: [0, 0, 0.107]
+# TODO: @Bibit does this make sense?
+# This is the z value of the base of the franka wrt the surface of the table.  
+franka_origin: [0, 0, 0.0245]
 ground_franka_frame: [0, 0, -0.0745]
+# This is the z value of the platform wrt to the base of the franka.
+platform_franka_frame: [0, 0, -0.01225]
+#This is the z value of the ground wrt to the world frame. This is used for the 
+# plant_for_lcs in the c3_controller which does not have a full franka model.
+# TODO: @Bibit does this make sense? and should it be here?
+ground_world_frame: [0, 0, -0.05]   
 
 # Workspace Limits
 world_x_limits: [-2, 2]
@@ -41,8 +50,10 @@ q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.35, 0.45,
 # TODO: maybe there needs to be some more of these for visualizing other samples
 visualizer_end_effector_model: examples/jacktoy/urdf/end_effector_simple_model.urdf
 visualizer_sample_locations_model: examples/jacktoy/urdf/sample_locations.urdf
+visualizer_c3_mode_model: examples/jacktoy/urdf/c3_mode_visualization.urdf
 visualize_workspace: false
 visualize_c3_state: true
+visualize_is_c3_mode: true
 
 visualize_sample_locations: true
 

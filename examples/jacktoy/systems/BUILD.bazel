@@ -15,6 +15,7 @@ cc_library(
         ":tracking_trajectory_generator",
         ":sample_cost_sender",
         ":sample_location_sender",
+        ":c3_mode_visualizer",
     ],
 )
 
@@ -77,6 +78,19 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "c3_mode_visualizer",
+    srcs = ["c3_mode_visualizer.cc"],
+    hdrs = ["c3_mode_visualizer.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
     ],

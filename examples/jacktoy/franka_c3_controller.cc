@@ -13,6 +13,7 @@
 #include "common/eigen_utils.h"
 #include "examples/jacktoy/parameters/franka_c3_controller_params.h"
 #include "examples/jacktoy/parameters/franka_lcm_channels.h"
+#include "examples/jacktoy/parameters/franka_sim_params.h"
 #include "systems/controllers/sampling_params.h"
 #include "examples/jacktoy/parameters/trajectory_params.h"
 #include "examples/jacktoy/systems/c3_state_sender.h"
@@ -87,6 +88,10 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3SamplingParams sampling_params =
       drake::yaml::LoadYamlFile<SamplingC3SamplingParams>(
           "examples/jacktoy/parameters/sampling_params.yaml");
+	// Sim params are only used to keep the offsets between different models 
+	// in the scene consistent across all systems.
+  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
+      "examples/jacktoy/parameters/franka_sim_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
@@ -102,29 +107,44 @@ int DoMain(int argc, char* argv[]) {
   // This needs to load the full franka and full end effector model. Connections
   // made around line 184 to FrankaKinematics module.
   MultibodyPlant<double> plant_franka(0.0);
-  Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.AddModels(
-      drake::FindResourceOrThrow(controller_params.franka_model));
-  parser_franka.AddModels(controller_params.ground_model);
+  Parser parser_franka(&plant_franka, nullptr);	
+  drake::multibody::ModelInstanceIndex franka_index =
+      parser_franka.AddModels(drake::FindResourceOrThrow(controller_params.franka_model))[0];
+  drake::multibody::ModelInstanceIndex ground_index =
+      parser_franka.AddModels(FindResourceOrThrow(controller_params.ground_model))[0];
+  drake::multibody::ModelInstanceIndex platform_index =
+      parser_franka.AddModels(FindResourceOrThrow(controller_params.platform_model))[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
-      parser_franka.AddModels(
-          FindResourceOrThrow(controller_params.end_effector_model))[0];
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant_franka.WeldFrames(plant_franka.world_frame(),
-                          plant_franka.GetFrameByName("panda_link0"), X_WI);
+      parser_franka.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
+			
+  // All the urdfs have their origins at the world frame origin. We define all 
+  // the offsets by welding the frames such that changing the offsets in 
+  // the param file moves them to where we want in the world frame.
+  // TODO: Do this in all the files.
   RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-        controller_params.tool_attachment_frame);
+        sim_params.tool_attachment_frame);
+  RigidTransform<double> X_F_P =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.platform_franka_frame);
   RigidTransform<double> X_F_G_franka =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.ground_franka_frame);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                          plant_franka.GetFrameByName("end_effector_base"),
-                          T_EE_W);
+                             sim_params.ground_franka_frame);
+
+  // Create a rigid transform from the world frame to the panda_link0 frame.
+  // Franka base is 2.45cm above the ground.
+  RigidTransform<double> X_F_W = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), sim_params.franka_origin);
+
+  plant_franka.WeldFrames(plant_franka.world_frame(), 
+                   plant_franka.GetFrameByName("panda_link0"), X_F_W);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"), 
+                   plant_franka.GetFrameByName("end_effector_base"), T_EE_W);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
-                          plant_franka.GetFrameByName("ground"), X_F_G_franka);
+                   plant_franka.GetFrameByName("ground"), X_F_G_franka);
+  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
+                   plant_franka.GetFrameByName("platform"), X_F_P);
 
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
@@ -146,15 +166,19 @@ int DoMain(int argc, char* argv[]) {
   parser_for_lcs.AddModels(controller_params.end_effector_simple_model);
   parser_for_lcs.AddModels(controller_params.jack_model);
   parser_for_lcs.AddModels(controller_params.ground_model);
-
+	
   // TO DO: The base link may change to the simple end effector model link name
   // or might just be removed entirely.
   /// TODO: @Bibit/Will Please check if the weld frames are correct
+	RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  RigidTransform<double> X_W_G =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             sim_params.ground_world_frame);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("ground"),
-                           X_F_G_franka);
+                           X_W_G);
   plant_for_lcs.Finalize();
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_for_lcs);
@@ -215,15 +239,6 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(ground_contact1);
   contact_pairs.push_back(ground_contact2);
   contact_pairs.push_back(ground_contact3);
-
-  // Removed this next block because we are not passing contact pairs to the
-  // controller. Only contact geoms.
-  // TODO: Change the interface of Will’s C3_controller to take contact_geoms
-  // list instead of contact pairs.
-  //   std::vector<SortedPair<GeometryId>> contact_pairs;
-  //   for (auto geom_id : contact_geoms["PLATE"]) {
-  //     contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
-  //   }
 
   DiagramBuilder<double> builder;
 

@@ -15,6 +15,7 @@ struct FrankaC3ControllerParams {
   std::string jack_model;
   std::string object_body_name;
   std::string ground_model;
+  std::string platform_model;
 
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d ground_franka_frame;
@@ -31,6 +32,7 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(c3_options_file));
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(franka_model));
+    a->Visit(DRAKE_NVP(platform_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(end_effector_simple_model));
@@ -38,8 +40,6 @@ struct FrankaC3ControllerParams {
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(object_body_name));
     a->Visit(DRAKE_NVP(ground_model));
-    // a->Visit(DRAKE_NVP(left_support_model));
-    // a->Visit(DRAKE_NVP(right_support_model));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(target_frequency));
     

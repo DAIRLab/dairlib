@@ -107,6 +107,7 @@ cc_binary(
     deps = [
         ":franka_c3_controller_params",
         "//systems/controllers:sampling_params",
+        ":franka_sim_params",
         ":trajectory_params",
         ":franka_lcm_channels",
         "//common",
@@ -139,6 +140,7 @@ cc_binary(
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
+        "//examples/jacktoy/systems:franka_systems",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/primitives",

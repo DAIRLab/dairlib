@@ -10,7 +10,7 @@ struct FrankaSimParams {
   std::string ground_model;
   std::string jack_model;
   std::string object_body_name;
-  std::string box_model;
+  std::string platform_model;
 
   double dt;
   double realtime_rate;
@@ -28,7 +28,10 @@ struct FrankaSimParams {
   Eigen::VectorXd q_init_franka;
   Eigen::VectorXd q_init_object;
   Eigen::VectorXd tool_attachment_frame;
+  Eigen::Vector3d franka_origin;
   Eigen::Vector3d ground_franka_frame;
+  Eigen::Vector3d platform_franka_frame;
+  Eigen::Vector3d ground_world_frame;
 
   Eigen::VectorXd world_x_limits;
   Eigen::VectorXd world_y_limits;
@@ -37,8 +40,10 @@ struct FrankaSimParams {
   // Visualizer settings
   std::string visualizer_end_effector_model;
   std::string visualizer_sample_locations_model;
+  std::string visualizer_c3_mode_model;
   bool visualize_workspace;
   bool visualize_c3_state;
+  bool visualize_is_c3_mode;
   bool visualize_sample_locations;
 
   std::string visualizer_curr_sample_traj_jack_model;
@@ -60,7 +65,8 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(ground_model));
     a->Visit(DRAKE_NVP(jack_model));
     a->Visit(DRAKE_NVP(object_body_name));
-    a->Visit(DRAKE_NVP(box_model));
+    a->Visit(DRAKE_NVP(platform_model));
+    a->Visit(DRAKE_NVP(ground_world_frame));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
@@ -78,7 +84,9 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_object));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
+    a->Visit(DRAKE_NVP(franka_origin));
     a->Visit(DRAKE_NVP(ground_franka_frame));
+    a->Visit(DRAKE_NVP(platform_franka_frame));
 
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));
@@ -86,8 +94,10 @@ struct FrankaSimParams {
 
     a->Visit(DRAKE_NVP(visualizer_end_effector_model));
     a->Visit(DRAKE_NVP(visualizer_sample_locations_model));
+    a->Visit(DRAKE_NVP(visualizer_c3_mode_model));
     a->Visit(DRAKE_NVP(visualize_workspace));
     a->Visit(DRAKE_NVP(visualize_c3_state));
+    a->Visit(DRAKE_NVP(visualize_is_c3_mode));
     a->Visit(DRAKE_NVP(visualize_sample_locations));
 
     a->Visit(DRAKE_NVP(visualizer_curr_sample_traj_jack_model));

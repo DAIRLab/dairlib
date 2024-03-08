@@ -1,6 +1,9 @@
 #pragma once
 
 #include "fcc_qp.hpp"
+
+#include "dairlib/lcmt_fcc_qp.hpp"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/solvers/solver_base.h"
 #include "drake/solvers/osqp_solver.h"
@@ -62,6 +65,9 @@ class FCCQPSolver final : public drake::solvers::SolverBase {
     DRAKE_DEMAND(is_initialized());
     fcc_qp_->set_warm_start(warm_start);
   }
+
+  lcmt_fcc_qp SerializeToLCM(const drake::solvers::MathematicalProgram& prog)
+  const;
 
  private:
   void DoSolve(const drake::solvers::MathematicalProgram&,

@@ -1,4 +1,5 @@
 #include "fcc_qp_solver.h"
+#include "common/eigen_utils.h"
 
 namespace dairlib::solvers {
 
@@ -139,6 +140,32 @@ void FCCQPSolver::InitializeSolver(
     fcc_qp_->set_max_iter(int_opts.at("max_iter"));
   }
 }
+
+lcmt_fcc_qp FCCQPSolver::SerializeToLCM(const MathematicalProgram& prog) const {
+  lcmt_fcc_qp qp;
+  DRAKE_DEMAND(is_initialized());
+
+  const auto &[Q, b, c] = ParseQuadraticCosts(prog);
+  const auto &[Aeq, beq] = ParseLinearEqualityConstraints(prog);
+  const auto &[lb, ub] = ParseBoundingBoxConstraints(prog);
+
+  qp.num_vars = Q.rows();
+  qp.num_constraints = Aeq.rows();
+  qp.num_contact_vars = friction_coeffs_.size() * 3;
+  qp.num_contact_forces = friction_coeffs_.size();
+  qp.contact_vars_start = fcc_qp_->contact_vars_start();
+
+  qp.Q = CopyMatrixXdToVectorOfVectors(Q);
+  qp.b = CopyVectorXdToStdVector(b);
+  qp.c = c;
+  qp.Aeq = CopyMatrixXdToVectorOfVectors(Aeq);
+  qp.beq = CopyVectorXdToStdVector(beq);
+  qp.lb = CopyVectorXdToStdVector(lb);
+  qp.ub = CopyVectorXdToStdVector(ub);
+
+  return qp;
+}
+
 
 FCCQPSolver::FCCQPSolver() : drake::solvers::SolverBase(
     id(), &is_available, &is_enabled, &ProgramAttributesSatisfied){}

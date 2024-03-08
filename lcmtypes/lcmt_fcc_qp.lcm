@@ -1,0 +1,23 @@
+package dairlib;
+
+struct lcmt_fcc_qp {
+    // Dimension of dynamics terms
+    int32_t num_vars;
+    int32_t num_constraints;
+    int32_t num_contact_vars;
+    int32_t num_contact_forces;
+    int32_t contact_vars_start;
+
+    // Costs matrices
+    double Q[num_vars][num_vars];
+    double b[num_vars];
+    double c;
+
+    // Constraint matrices
+    double Aeq[num_vars][num_constraints];
+    double beq[num_constraints];
+    double lb[num_vars];
+    double ub[num_vars];
+    double friction_coeffs[num_contact_forces];
+
+}

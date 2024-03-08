@@ -37,6 +37,8 @@ cc_library(
     srcs = ["fcc_qp_solver.cc"],
     hdrs = ["fcc_qp_solver.h"],
     deps = [
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
         "@fcc_qp",
     ],

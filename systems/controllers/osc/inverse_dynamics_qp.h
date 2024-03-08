@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dairlib/lcmt_id_qp.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 
@@ -224,8 +223,6 @@ class InverseDynamicsQp {
       const Eigen::VectorXd &x,
       const std::vector<std::string> &active_contact_constraints,
       const std::vector<std::string> &active_external_forces);
-
-  lcmt_id_qp SerializeToLcm() const;
 
   /*!
    * @brief gets the drake QuadraticCost evaluator associated with a given cost

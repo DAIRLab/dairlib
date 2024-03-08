@@ -347,7 +347,10 @@ int do_main(int argc, char* argv[]) {
 		// here that is not used.
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "samples", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
-        "sample_locations", "end_effector_orientation_target", 1 + std::max(sampling_params.num_additional_samples_c3, sampling_params.num_additional_samples_repos));
+        "sample_locations", "end_effector_orientation_target", 
+        1 + std::max(sampling_params.num_additional_samples_c3, 
+        sampling_params.num_additional_samples_repos),
+        false);
 
     builder.Connect(sample_location_sub->get_output_port(),
                     sample_locations_drawer->get_input_port_trajectory());
@@ -401,7 +404,7 @@ int do_main(int argc, char* argv[]) {
 										c3_mode_visualizer->get_input_port_curr_lcs_state());
     auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "c3_mode", FindResourceOrThrow(sim_params.visualizer_c3_mode_model),
-        "c3_mode_visualization", "end_effector_orientation_target", 1);
+        "c3_mode_visualization", "end_effector_orientation_target", 1, false);
 		builder.Connect(c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
 										is_c3_mode_drawer->get_input_port_trajectory());
 	}

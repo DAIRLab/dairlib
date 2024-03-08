@@ -17,8 +17,6 @@ object_body_name: capsule_1
 tool_attachment_frame: [0, 0, 0.107]
 ground_franka_frame: [0, 0, -0.0745]
 
-end_effector_thickness: 0.016    # TODO delete?
-
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
 target_frequency: 0 #unused  # TODO delete

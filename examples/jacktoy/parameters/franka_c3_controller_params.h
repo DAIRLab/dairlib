@@ -21,7 +21,6 @@ struct FrankaC3ControllerParams {
   Eigen::Vector3d ground_franka_frame;
  
   double workspace_margin;
-  double end_effector_thickness;
 
   bool include_end_effector_orientation;
   double target_frequency;
@@ -45,7 +44,5 @@ struct FrankaC3ControllerParams {
     
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ground_franka_frame));
-
-    a->Visit(DRAKE_NVP(end_effector_thickness));
   }
 };

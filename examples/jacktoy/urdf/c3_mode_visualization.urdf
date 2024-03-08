@@ -5,10 +5,10 @@
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius="0.0195"/>
+        <sphere radius="0.0198"/>
       </geometry>
       <material name="finger_0_material">
-        <color rgba="1.0 0.75 0.79 1.0"/>
+        <color rgba="1.0 0.43 1.0 1.0"/>
       </material>
     </visual>
   </link>

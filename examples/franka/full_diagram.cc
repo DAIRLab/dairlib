@@ -1,4 +1,5 @@
 
+#include <iostream>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -29,7 +30,6 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-
 namespace dairlib {
 
 using drake::geometry::GeometrySet;
@@ -59,16 +59,6 @@ int DoMain(int argc, char* argv[]) {
       "examples/franka/parameters/franka_sim_params.yaml");
 
   DiagramBuilder<double> builder;
-
-  /// OSC
-  auto osc_controller = builder.AddSystem<FrankaOSCControllerDiagram>(
-      "examples/franka/parameters/franka_osc_controller_params.yaml",
-      "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
-
-  /// C3 plant
-  auto c3_controller = builder.AddSystem<FrankaC3ControllerDiagram>(
-      "examples/franka/parameters/franka_c3_controller_params.yaml",
-      "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
 
   /// Sim Start
   double sim_dt = sim_params.dt;
@@ -145,6 +135,17 @@ int DoMain(int argc, char* argv[]) {
       {"paddle", paddle_geom_set}, {"tray", tray_collision_set});
 
   plant.Finalize();
+
+  /// OSC
+  auto osc_controller = builder.AddSystem<FrankaOSCControllerDiagram>(
+      "examples/franka/parameters/franka_osc_controller_params.yaml",
+      "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
+
+  /// C3 plant
+  auto c3_controller = builder.AddSystem<FrankaC3ControllerDiagram>(
+      "examples/franka/parameters/franka_c3_controller_params.yaml",
+      "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
+
   /* -------------------------------------------------------------------------------------------*/
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       osc_controller->get_output_port_robot_input().size(), 0,
@@ -156,11 +157,13 @@ int DoMain(int argc, char* argv[]) {
   auto state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, &lcm,
-          1.0 / sim_params.franka_publish_rate));
+          drake::systems::TriggerTypeSet(
+              {drake::systems::TriggerType::kForced})));
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &lcm,
-          1.0 / sim_params.tray_publish_rate));
+          drake::systems::TriggerTypeSet(
+              {drake::systems::TriggerType::kForced})));
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));

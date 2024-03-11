@@ -103,15 +103,7 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   plant_tray_->Finalize();
   plant_tray_context_ = plant_tray_->CreateDefaultContext();
 
-  ///
-  //  plant_for_lcs_ =
-  //  std::make_unique<drake::multibody::MultibodyPlant<double>>(0.0);
-  //  AddMultibodyPlantSceneGraph(&plant_builder,
-  //  std::make_unique<drake::multibody::MultibodyPlant<double>>(0.0),
-  //  scene_graph_lcs_); plant_for_lcs_, scene_graph_lcs_ =
-  //  AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
   drake::planning::RobotDiagramBuilder<double> lcs_diagram_builder;
-  //  lcs_diagram_builder.plant()
   lcs_diagram_builder.parser().SetAutoRenaming(true);
   lcs_diagram_builder.parser().AddModels(controller_params.plate_model);
 
@@ -151,13 +143,6 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   plant_for_lcs_autodiff_ = drake::systems::System<double>::ToAutoDiffXd(
       robot_diagram_for_lcs_->plant());
 
-  //  auto plant_diagram = plant_builder.Build();
-  //  auto plant_diagram = plant_lcs_builder_->Build();
-  //  plant_for_lcs_diagram_context_ =
-  //      plant_diagram->CreateDefaultContext();
-  //  plant_for_lcs_context_ =
-  //  std::move(plant_diagram->GetMutableSubsystemContext(
-  //      plant_for_lcs_, plant_for_lcs_diagram_context_.get()));
   robot_diagram_root_context_ = robot_diagram_for_lcs_->CreateDefaultContext();
   plant_for_lcs_autodiff_context_ =
       plant_for_lcs_autodiff_->CreateDefaultContext();
@@ -269,8 +254,6 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
                   plate_balancing_target->get_input_port_tray_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   controller->get_input_port_lcs_state());
-  //  builder.Connect(radio_sub->get_output_port(),
-  //                  controller->get_input_port_radio());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   lcs_factory->get_input_port_lcs_state());
   builder.Connect(radio_to_vector->get_output_port(),
@@ -339,14 +322,9 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   builder.ExportOutput(
       c3_trajectory_generator->get_output_port_actor_trajectory(),
       "actor_trajectory");
-  //  builder.ExportOutput(c3_trajectory_generator->get_output_port_object_trajectory(),
-  //  "object_trajectory");
-  //  builder.ExportOutput(c3_output_sender->get_output_port_c3_force(),
-  //  "c3_forces");
 
   builder.BuildInto(this);
   this->set_name("FrankaC3Controller");
-  DrawAndSaveDiagramGraph(*this);
 }
 
 }  // namespace controllers

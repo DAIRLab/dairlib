@@ -50,24 +50,16 @@ class FrankaC3ControllerDiagram : public drake::systems::Diagram<double> {
  private:
   drake::multibody::MultibodyPlant<double>* plant_franka_;
   drake::multibody::MultibodyPlant<double>* plant_tray_;
-//  std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_for_lcs_;
-//  std::unique_ptr<drake::geometry::SceneGraph<double>> scene_graph_lcs_;
 
   // Storage for the diagram and its plant and scene graph.
   // After Build(), the `builder_` is set to nullptr.
   std::unique_ptr<drake::planning::RobotDiagram<double>> robot_diagram_for_lcs_;
+
   std::unique_ptr<drake::systems::Context<double>> robot_diagram_root_context_;
-//  std::unique_ptr<drake::systems::DiagramBuilder<double>> plant_lcs_builder_;
-//  drake::multibody::AddMultibodyPlantSceneGraphResult<double> pair_;
-//  drake::multibody::MultibodyPlant<double>& plant_for_lcs_;
-//  drake::geometry::SceneGraph<double>& scene_graph_lcs_;
   std::unique_ptr<drake::systems::Context<double>> plant_for_lcs_diagram_context_;
-//  drake::multibody::MultibodyPlant<double>& plant_for_lcs_;
-//  drake::geometry::SceneGraph<double>& scene_graph_lcs_;
   std::unique_ptr<drake::multibody::MultibodyPlant<drake::AutoDiffXd>> plant_for_lcs_autodiff_;
   std::unique_ptr<drake::systems::Context<double>> plant_franka_context_;
   std::unique_ptr<drake::systems::Context<double>> plant_tray_context_;
-//  drake::systems::Context<double>& plant_for_lcs_context_;
   std::unique_ptr<drake::systems::Context<drake::AutoDiffXd>> plant_for_lcs_autodiff_context_;
 
   const drake::systems::InputPortIndex franka_state_port_ =

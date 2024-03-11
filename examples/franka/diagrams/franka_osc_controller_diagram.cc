@@ -101,9 +101,6 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
   plant_context_ = plant_->CreateDefaultContext();
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(*plant_);
-//  auto end_effector_trajectory_receiver =
-//      builder.AddSystem(
-//          drake::systems::PassThrough<lcmt_timestamped_saved_traj>(drake::Value<lcmt_timestamped_saved_traj>{}));
   auto end_effector_position_receiver =
           builder.AddSystem<systems::LcmTrajectoryReceiver>(
               "end_effector_position_target");
@@ -228,16 +225,8 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
                   osc_command_pub->get_input_port());
   builder.Connect(osc->get_output_port_osc_command(),
                   osc_command_sender->get_input_port(0));
-
   builder.Connect(state_receiver->get_output_port(0),
                   osc->get_input_port_robot_output());
-//  builder.Connect(end_effector_trajectory_receiver->get_output_port(),
-//                  end_effector_position_receiver->get_input_port_trajectory());
-//  builder.Connect(end_effector_trajectory_receiver->get_output_port(),
-//                  end_effector_force_receiver->get_input_port_trajectory());
-//  builder.Connect(
-//      end_effector_trajectory_receiver->get_output_port(),
-//      end_effector_orientation_receiver->get_input_port_trajectory());
   builder.Connect(end_effector_position_receiver->get_output_port(0),
                   end_effector_trajectory->get_input_port_trajectory());
   builder.Connect(
@@ -254,23 +243,18 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
                   osc->get_input_port_tracking_data("end_effector_force"));
 
   // Publisher connections
-  builder.ExportInput(state_receiver->get_input_port(), "lcmt_robot_output");
-  builder.ExportInput(end_effector_position_receiver->get_input_port(),
+  franka_state_port_ = builder.ExportInput(state_receiver->get_input_port(), "lcmt_robot_output");
+  end_effector_position_port_ = builder.ExportInput(end_effector_position_receiver->get_input_port(),
                       "end_effector_position: lcmt_timestamped_trajectory");
-  builder.ExportInput(end_effector_orientation_receiver->get_input_port(),
+  end_effector_orientation_port_ = builder.ExportInput(end_effector_orientation_receiver->get_input_port(),
                       "end_effector_orientation: lcmt_timestamped_trajectory");
-  builder.ExportInput(end_effector_force_receiver->get_input_port(),
+  end_effector_force_port_ = builder.ExportInput(end_effector_force_receiver->get_input_port(),
                       "end_effector_force: lcmt_timestamped_trajectory");
-  builder.ExportInput(radio_to_vector->get_input_port(), "raw_radio");
+  radio_port_ = builder.ExportInput(radio_to_vector->get_input_port(), "raw_radio");
   builder.ExportOutput(osc->get_output_port_osc_command(), "robot_input");
-  //  builder.ExportOutput(c3_trajectory_generator->get_output_port_object_trajectory(),
-  //  "object_trajectory");
-  //  builder.ExportOutput(c3_output_sender->get_output_port_c3_force(),
-  //  "c3_forces");
 
   builder.BuildInto(this);
   this->set_name("FrankaOSCController");
-  DrawAndSaveDiagramGraph(*this);
 }
 
 }  // namespace controllers

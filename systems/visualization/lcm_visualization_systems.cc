@@ -81,15 +81,23 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string& model_file,
     const std::string& translation_trajectory_name,
-    const std::string& orientation_trajectory_name, int num_poses)
+    const std::string& orientation_trajectory_name, int num_poses,
+    bool add_transparency)
     : meshcat_(meshcat),
       translation_trajectory_name_(translation_trajectory_name),
       orientation_trajectory_name_(orientation_trajectory_name),
       N_(num_poses) {
   this->set_name("LcmPoseDrawer: " + translation_trajectory_name);
 
+  Eigen::VectorXd alpha_scale;
+  if (add_transparency){
+    alpha_scale = .0 * VectorXd::LinSpaced(N_ - 1, 0.1, 0.4);
+  }else{
+    alpha_scale = 1.0 * VectorXd::Ones(N_ - 1);
+  }
+
   multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_ - 1, 1.0 * VectorXd::LinSpaced(N_ - 1, 0.1, 0.4), "", meshcat);
+      model_file, N_ - 1, alpha_scale, "", meshcat);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",

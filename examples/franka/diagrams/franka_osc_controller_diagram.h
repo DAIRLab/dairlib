@@ -62,16 +62,11 @@ class FrankaOSCControllerDiagram : public drake::systems::Diagram<double> {
   drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
 
-  const drake::systems::InputPortIndex franka_state_port_ =
-      drake::systems::InputPortIndex(0);
-  const drake::systems::InputPortIndex end_effector_position_port_ =
-      drake::systems::InputPortIndex(1);
-  const drake::systems::InputPortIndex end_effector_orientation_port_ =
-      drake::systems::InputPortIndex(2);
-  const drake::systems::InputPortIndex end_effector_force_port_ =
-      drake::systems::InputPortIndex(3);
-  const drake::systems::InputPortIndex radio_port_ =
-      drake::systems::InputPortIndex(4);
+  drake::systems::InputPortIndex franka_state_port_;
+  drake::systems::InputPortIndex end_effector_position_port_;
+  drake::systems::InputPortIndex end_effector_orientation_port_;
+  drake::systems::InputPortIndex end_effector_force_port_;
+  drake::systems::InputPortIndex radio_port_;
   const drake::systems::OutputPortIndex robot_input_port_ =
       drake::systems::OutputPortIndex(0);
 };

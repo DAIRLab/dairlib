@@ -33,7 +33,7 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
   radio_port_ =
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
-  controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
+  controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Ones(1));
   DeclareForcedDiscreteUpdateEvent(
       &EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate);
   PiecewisePolynomial<double> empty_pp_traj(Vector3d::Zero());

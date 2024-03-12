@@ -2,14 +2,18 @@ admm_iter: 4
 rho: 0.1
 rho_scale: 1
 num_threads: 6
+num_outer_threads: 4
 delta_option: 1
 # options are 'MIQP' or 'QP'
-projection_type: 'MIQP'
+projection_type: 'QP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 contact_model: 'anitescu'
-
-mu: [0.6, 0.6, 0.6, 0.1] #0.4
-# mu_plate: 0.4
+# These mu values are the effective friction coefficients for the represented 
+# contact pair. These values match how drake computes frictional coefficients.
+# mu_effective = 2*mu1*mu2 / (mu1 + mu2). See urdfs for mu1 and mu2.
+# The contact pairs are ordered as ee_jack, capsule1_ground, capsule2_ground,
+# and capsule3_ground.
+mu: [0.4615, 0.4615, 0.4615, 0.4615]
 dt: 0.05
 planning_dt: 0.1
 execution_dt: 0.03
@@ -68,7 +72,7 @@ w_U: 0.5
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
 q_vector: [1000, 1000, 1000,        # end effector position
            0, 0, 0, 0,              # object orientation
-           100000, 100000, 1000,    # object position
+           1000000, 1000000, 10000000,    # object position
            10, 10, 10,              # end effector linear velocity
            0, 0, 0,                 # object angular velocity
            0.1, 0.1, 0.1]           # object linear velocity

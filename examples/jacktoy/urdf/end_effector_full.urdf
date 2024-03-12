@@ -59,6 +59,10 @@
       <geometry>
         <sphere radius="0.0195"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:mu_static value="1"/>
+        <drake:mu_dynamic value="1"/>
+      </drake:proximity_properties>
     </collision>
   </link>
   <joint name="fix_tip_link" type="fixed">

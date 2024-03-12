@@ -43,7 +43,9 @@ LcmTrajectoryDrawer::LcmTrajectoryDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     const std::string system_name,
     std::string trajectory_name)
-    : meshcat_(meshcat), trajectory_name_(std::move(trajectory_name)) {
+    : meshcat_(meshcat), 
+      system_name_(std::move(system_name)),
+      trajectory_name_(std::move(trajectory_name)) {
   this->set_name("LcmTrajectoryDrawer: " + system_name + trajectory_name_);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
@@ -87,7 +89,7 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   }
 
   DRAKE_DEMAND(line_points.rows() == 3);
-  meshcat_->SetLine("/trajectories/" + trajectory_name_, line_points, 100,
+  meshcat_->SetLine("/trajectories/" + system_name_ + trajectory_name_, line_points, 100,
                     rgba_);
   return drake::systems::EventStatus::Succeeded();
 }

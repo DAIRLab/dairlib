@@ -52,6 +52,7 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
 
   drake::systems::InputPortIndex trajectory_input_port_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  const std::string system_name_;
   const std::string trajectory_name_;
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
   int N_ = 5;

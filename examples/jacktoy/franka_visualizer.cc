@@ -277,12 +277,12 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_center_of_mass_plan_curr){
     auto trajectory_drawer_actor_curr =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat,"curr", "end_effector_position_target");
+            meshcat,"curr_", "end_effector_position_target");
     auto trajectory_drawer_object_curr =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"curr",
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"curr_",
                                                         "object_position_target");
     trajectory_drawer_actor_curr->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
-    trajectory_drawer_object_curr->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+    trajectory_drawer_object_curr->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_actor_curr->SetNumSamples(5);
     trajectory_drawer_object_curr->SetNumSamples(5);
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
@@ -294,12 +294,12 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_center_of_mass_plan_best){
     auto trajectory_drawer_actor_best =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
-            meshcat,"best", "end_effector_position_target");
+            meshcat,"best_", "end_effector_position_target");
     auto trajectory_drawer_object_best =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"best",
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"best_",
                                                         "object_position_target");
-    trajectory_drawer_actor_best->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
-    trajectory_drawer_object_best->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+    trajectory_drawer_actor_best->SetLineColor(drake::geometry::Rgba({0, 1, 0, 1}));
+    trajectory_drawer_object_best->SetLineColor(drake::geometry::Rgba({0, 1, 0, 1}));
     trajectory_drawer_actor_best->SetNumSamples(5);
     trajectory_drawer_object_best->SetNumSamples(5);
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
@@ -310,12 +310,12 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        meshcat, "curr_", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
-        "end_effector_position_target", "end_effector_orientation_target");
+        meshcat, "curr_", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
+        "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
                     object_pose_drawer_curr->get_input_port_trajectory());
@@ -325,12 +325,12 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_best){
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+        meshcat, "best_", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
-        "end_effector_position_target", "end_effector_orientation_target");
+        meshcat, "best_", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
+        "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     object_pose_drawer_best->get_input_port_trajectory());
@@ -346,7 +346,7 @@ int do_main(int argc, char* argv[]) {
 		// The last argument "end_effector_orientation_target" is a dummy argument 
 		// here that is not used.
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "samples", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
+        meshcat, "samples_", FindResourceOrThrow(sim_params.visualizer_sample_locations_model),
         "sample_locations", "end_effector_orientation_target", 
         std::max(sampling_params.num_additional_samples_c3, 
             sampling_params.num_additional_samples_repos), false);
@@ -366,7 +366,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_forces_curr){
     auto end_effector_force_drawer_curr = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "curr", "end_effector_position_target", "end_effector_force_target",
+        meshcat, "curr_", "end_effector_position_target", "end_effector_force_target",
         "lcs_force_trajectory_curr");
     builder.Connect(trajectory_sub_actor_curr->get_output_port(),
                     end_effector_force_drawer_curr->get_input_port_actor_trajectory());
@@ -378,7 +378,7 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_c3_forces_best){
     auto end_effector_force_drawer_best = builder.AddSystem<systems::LcmForceDrawer>(
-        meshcat, "best", "end_effector_position_target", "end_effector_force_target",
+        meshcat, "best_", "end_effector_position_target", "end_effector_force_target",
         "lcs_force_trajectory_best");
     builder.Connect(trajectory_sub_actor_best->get_output_port(),
                     end_effector_force_drawer_best->get_input_port_actor_trajectory());

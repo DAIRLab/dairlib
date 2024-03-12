@@ -73,6 +73,8 @@ SamplingC3Controller::SamplingC3Controller(
   n_u_ = plant_.num_actuators();
 
   n_x_ = n_q_ + n_v_;
+  // This dt is used for the radio input, not the C3 problem. Does this need to 
+  // change?
   dt_ = c3_options_.dt;
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
@@ -744,7 +746,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
 
   auto z_sol = c3_curr_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * c3_options_.planning_dt;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -754,9 +756,9 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
 
   // Interpolate the z_sol according to the time it takes to perform a control 
   // loop. If control loop is longer than the plan horizon, use the last z.
-  if (filtered_solve_time_ < (N_ - 1) * dt_) {
-    int index = filtered_solve_time_ / dt_;
-    double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
+  if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
+    int index = filtered_solve_time_ / c3_options_.planning_dt;
+    double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
     x_pred_curr_plan_ = weight * z_sol[index].segment(0, n_x_) +
               (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
@@ -771,7 +773,7 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
              filtered_solve_time_;
 
   for (int i = 0; i < N_; i++) {
-    c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
+    c3_intermediates->time_vector_(i) = t + i * c3_options_.planning_dt;
     c3_intermediates->w_.col(i) = w_curr_plan_[i].cast<float>();
     c3_intermediates->delta_.col(i) = delta_curr_plan_[i].cast<float>();
   }
@@ -813,7 +815,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
 
   auto z_sol = c3_best_plan_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * dt_;
+    c3_solution->time_vector_(i) = filtered_solve_time_ + t + i * c3_options_.planning_dt;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
@@ -823,9 +825,9 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
 
   // Interpolate the z_sol according to the time it takes to perform a control 
   // loop. If control loop is longer than the plan horizon, use the last z.
-  if (filtered_solve_time_ < (N_ - 1) * dt_) {
-    int index = filtered_solve_time_ / dt_;
-    double weight = ((index + 1) * dt_ - filtered_solve_time_) / dt_;
+  if (filtered_solve_time_ < (N_ - 1) * c3_options_.planning_dt) {
+    int index = filtered_solve_time_ / c3_options_.planning_dt;
+    double weight = ((index + 1) * c3_options_.planning_dt - filtered_solve_time_) / c3_options_.planning_dt;
     x_pred_best_plan_ = weight * z_sol[index].segment(0, n_x_) +
               (1 - weight) * z_sol[index + 1].segment(0, n_x_);
   } else {
@@ -840,7 +842,7 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
              filtered_solve_time_;
 
   for (int i = 0; i < N_; i++) {
-    c3_intermediates->time_vector_(i) = t + i * c3_options_.dt;
+    c3_intermediates->time_vector_(i) = t + i * c3_options_.planning_dt;
     c3_intermediates->w_.col(i) = w_best_plan_[i].cast<float>();
     c3_intermediates->delta_.col(i) = delta_best_plan_[i].cast<float>();
   }

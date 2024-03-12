@@ -69,6 +69,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(rho));
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
+    a->Visit(DRAKE_NVP(num_outer_threads));
     a->Visit(DRAKE_NVP(delta_option));
     a->Visit(DRAKE_NVP(contact_model));
     a->Visit(DRAKE_NVP(projection_type));

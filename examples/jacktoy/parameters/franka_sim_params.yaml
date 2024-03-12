@@ -22,15 +22,13 @@ camera_pose: [1.5, 0, 0.6]
 camera_target: [0.5, 0, 0.5]
 
 tool_attachment_frame: [0, 0, 0.107]
-# TODO: @Bibit does this make sense?
 # This is the z value of the base of the franka wrt the surface of the table.  
 franka_origin: [0, 0, 0.0245]
 ground_franka_frame: [0, 0, -0.0745]
 # This is the z value of the platform wrt to the base of the franka.
 platform_franka_frame: [0, 0, -0.01225]
-#This is the z value of the ground wrt to the world frame. This is used for the 
+# This is the z value of the ground wrt to the world frame. This is used for the 
 # plant_for_lcs in the c3_controller which does not have a full franka model.
-# TODO: @Bibit does this make sense? and should it be here?
 ground_world_frame: [0, 0, -0.05]   
 
 # Workspace Limits

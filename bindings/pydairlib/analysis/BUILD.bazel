@@ -15,7 +15,7 @@ py_binary(
     name = "copy_and_rename_experiment_videos",
     srcs = ["copy_and_rename_experiment_videos.py"],
     deps = [
-        ":file_utils_py",
+        ":analysis",
         "@lcm//:lcm-python",
     ],
 )

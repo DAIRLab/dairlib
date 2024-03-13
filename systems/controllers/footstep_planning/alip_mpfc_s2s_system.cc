@@ -371,11 +371,16 @@ void Alips2sMPFCSystem::CopyAnkleTorque(
     const Context<double> &context, lcmt_saved_traj *traj) const {
   double t  = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_))->get_timestamp();
+  const auto& mpc_sol =
+      context.get_abstract_state<alip_s2s_mpfc_solution>(mpc_solution_idx_);
+
+  double t_sol = std::clamp(mpc_sol.t_sol, 0.001, trajopt_.params().tmax);
+  double u_sol = std::clamp(mpc_sol.u_sol / t_sol, -trajopt_.params().umax, trajopt_.params().umax);
 
   LcmTrajectory::Trajectory input_traj;
   input_traj.traj_name = "input_traj";
   input_traj.datatypes = vector<std::string>(1, "double");
-  input_traj.datapoints = Eigen::RowVector2d::Zero();
+  input_traj.datapoints = Eigen::RowVector2d::Constant(u_sol);
   input_traj.time_vector = Eigen::Vector2d(t, std::numeric_limits<double>::infinity());
   LcmTrajectory lcm_traj(
       {input_traj}, {"input_traj"}, "input_traj", "input_traj", false);

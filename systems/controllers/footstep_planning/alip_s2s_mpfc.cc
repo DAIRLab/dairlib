@@ -96,6 +96,8 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
 
   mpfc_solution.t_nom = t;
   mpfc_solution.t_sol = result.GetSolution(tau_)(0);
+  mpfc_solution.u_sol = result.GetSolution(u_)(0);
+  mpfc_solution.desired_velocity = vdes;
 
   auto end = std::chrono::steady_clock::now();
 
@@ -105,13 +107,13 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   mpfc_solution.optimizer_time = solve_time.count();
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.input_footholds = footholds;
-  mpfc_solution.desired_velocity = vdes;
 
   return mpfc_solution;
 }
 
 void AlipS2SMPFC::MakeMPCVariables() {
   tau_ = prog_->NewContinuousVariables(1, "t0");
+  u_ = prog_->NewContinuousVariables(1, "u0");
   for (int i = 0; i < params_.nmodes; ++i) {
     std::string mode = std::to_string(i);
     xx_.push_back(prog_->NewContinuousVariables(nx_, "xx_" + mode));
@@ -149,6 +151,10 @@ void AlipS2SMPFC::MakeMPCCosts() {
 
   time_regularization_ = prog_->AddQuadraticCost(
      MatrixXd::Identity(1,1), VectorXd::Zero(1), tau_
+  ).evaluator();
+
+  ankle_torque_regularization_ = prog_->AddQuadraticCost(
+      MatrixXd::Identity(1,1), VectorXd::Zero(1), u_
   ).evaluator();
 
   // build cost matrices
@@ -295,13 +301,14 @@ void AlipS2SMPFC::MakeInitialConditionsConstraints() {
   ).evaluator();
 
   initial_state_c_ = prog_->AddLinearEqualityConstraint(
-      Eigen::MatrixXd::Identity(4, 5), Vector4d::Zero(), {xx_.front(), tau_}
+      Eigen::MatrixXd::Identity(4, 6), Vector4d::Zero(), {xx_.front(), tau_, u_}
   ).evaluator();
 
   initial_time_constraint_ = prog_->AddBoundingBoxConstraint(
       params_.tmin, params_.tmax, tau_
   ).evaluator();
 
+  ankle_torque_bounds_ = prog_->AddBoundingBoxConstraint(-1, 1, u_).evaluator();
 }
 
 void AlipS2SMPFC::UpdateInitialConditions(
@@ -313,19 +320,32 @@ void AlipS2SMPFC::UpdateInitialConditions(
   Matrix4d A = CalcA(params_.gait_params.height, params_.gait_params.mass);
   Matrix4d Ad = CalcAd(
       params_.gait_params.height, params_.gait_params.mass, t);
+  Vector4d Bd = alip_utils::CalcBd(
+      params_.gait_params.height, params_.gait_params.mass, t);
   Eigen::Matrix<double, 4, 5> A_t = Eigen::Matrix<double, 4, 5>::Zero();
 
   // linear approximation of exp(At) = exp(A t_*) + A exp(A t_*) * (t  -t*)
   Vector4d c = (Ad - A * Ad * t) * x;
   A_t.leftCols<4>() = Matrix4d::Identity();
   A_t.rightCols<1>() = - A * Ad * x;
-  initial_state_c_->UpdateCoefficients(A_t, c);
+
+  Eigen::Matrix<double, 4, 6> A_dyn = Eigen::Matrix<double, 4, 6>::Zero();
+  A_dyn.leftCols<5>() = A_t;
+  A_dyn.rightCols<1>() = -Bd;
+
+  initial_state_c_->UpdateCoefficients(A_dyn, c);
 
   initial_time_constraint_->UpdateLowerBound(
       Eigen::VectorXd::Constant(1,  tmin)
   );
   initial_time_constraint_->UpdateUpperBound(
       Eigen::VectorXd::Constant(1, tmax)
+  );
+  ankle_torque_bounds_->UpdateLowerBound(
+      Eigen::VectorXd::Constant(1, -params_.umax * t)
+  );
+  ankle_torque_bounds_->UpdateUpperBound(
+      Eigen::VectorXd::Constant(1, params_.umax * t)
   );
 }
 

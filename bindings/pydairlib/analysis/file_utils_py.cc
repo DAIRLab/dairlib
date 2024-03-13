@@ -122,7 +122,7 @@ PYBIND11_MODULE(file_utils, m) {
       }
     }
     return py::make_tuple(final_a, final_b);
-  }, py::arg("times_a"), py::arg("time_b"), py::arg("tol")=1.0);
+  }, py::arg("times_a"), py::arg("times_b"), py::arg("tol")=1.0);
 }
 
 

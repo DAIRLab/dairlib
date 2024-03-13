@@ -21,6 +21,7 @@ struct alip_s2s_mpfc_params {
   Eigen::MatrixXd R;
   Eigen::MatrixXd Qf;
   drake::solvers::SolverOptions solver_options;
+  double umax = 5;
 };
 
 struct alip_s2s_mpfc_params_io {

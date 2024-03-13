@@ -37,6 +37,7 @@ struct alip_s2s_mpfc_solution {
   vector<Eigen::VectorXd> ee{}; // workspace soft constraint slack var
   vector<Eigen::VectorXd> mu{}; // binary variables
   double t_sol;                 // first footstep duration
+  double u_sol;                 // ankle torque average during stance
 
   // some debug info
   bool success;
@@ -130,11 +131,13 @@ class AlipS2SMPFC {
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
   vector<VectorXDecisionVariable> mu_{}; // binary variables
-  VectorXDecisionVariable tau_;           // first footstep duration
+  VectorXDecisionVariable tau_;          // first footstep duration
+  VectorXDecisionVariable u_;            // Integrated ankle torque
 
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<BoundingBoxConstraint> initial_time_constraint_ = nullptr;
+  std::shared_ptr<BoundingBoxConstraint> ankle_torque_bounds_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> dynamics_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> footstep_choice_c_ = nullptr;
 
@@ -144,6 +147,7 @@ class AlipS2SMPFC {
   vector<vector<LinearBigMConstraint>> footstep_c_{};
   vector<vector<LinearBigMEqualityConstraint>> footstep_c_eq_{};
 
+  std::shared_ptr<QuadraticCost> ankle_torque_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> time_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr;
   vector<Binding<QuadraticCost>> tracking_cost_{};

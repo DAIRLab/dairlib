@@ -154,7 +154,8 @@ void AlipS2SMPFC::MakeMPCCosts() {
   ).evaluator();
 
   ankle_torque_regularization_ = prog_->AddQuadraticCost(
-      MatrixXd::Identity(1,1), VectorXd::Zero(1), u_
+      params_.ankle_torque_regularization * MatrixXd::Identity(1,1),
+      VectorXd::Zero(1), u_
   ).evaluator();
 
   // build cost matrices

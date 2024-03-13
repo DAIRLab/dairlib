@@ -7,6 +7,8 @@ double_stance_duration: 0.1
 soft_constraint_cost: 1000
 time_regularization: 10
 stance_width: 0.18
+max_ankle_torque: 5.0
+ankle_torque_regularization: 2.0
 reset_discretization_method: 'SPLIT'
 
 com_pos_bound: [0.3, 0.3]

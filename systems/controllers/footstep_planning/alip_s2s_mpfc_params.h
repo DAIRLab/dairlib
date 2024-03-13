@@ -21,7 +21,8 @@ struct alip_s2s_mpfc_params {
   Eigen::MatrixXd R;
   Eigen::MatrixXd Qf;
   drake::solvers::SolverOptions solver_options;
-  double umax = 5;
+  double umax = 5.0;
+  double ankle_torque_regularization = 1.0;
 };
 
 struct alip_s2s_mpfc_params_io {
@@ -34,6 +35,8 @@ struct alip_s2s_mpfc_params_io {
   double soft_constraint_cost;
   double time_regularization;
   double stance_width;
+  double max_ankle_torque;
+  double ankle_torque_regularization;
   std::string reset_discretization_method;
   std::vector<double> com_pos_bound;
   std::vector<double> com_vel_bound;
@@ -52,6 +55,8 @@ struct alip_s2s_mpfc_params_io {
     a->Visit(DRAKE_NVP(soft_constraint_cost));
     a->Visit(DRAKE_NVP(time_regularization));
     a->Visit(DRAKE_NVP(stance_width));
+    a->Visit(DRAKE_NVP(max_ankle_torque));
+    a->Visit(DRAKE_NVP(ankle_torque_regularization));
     a->Visit(DRAKE_NVP(reset_discretization_method));
     a->Visit(DRAKE_NVP(com_pos_bound));
     a->Visit(DRAKE_NVP(com_vel_bound));
@@ -88,6 +93,8 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
   params_out.gait_params.double_stance_duration =
       params_io.double_stance_duration;
   params_out.gait_params.stance_width = params_io.stance_width;
+  params_out.umax = params_io.max_ankle_torque;
+  params_out.ankle_torque_regularization = params_io.ankle_torque_regularization;
 
   DRAKE_DEMAND(params_io.reset_discretization_method == "ZOH" ||
       params_io.reset_discretization_method == "FOH" ||

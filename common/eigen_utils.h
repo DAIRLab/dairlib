@@ -56,5 +56,5 @@ inline VectorX<Scalar> stack(const std::vector<VectorX<Scalar>>& v) {
     out.segment(start, e.rows()) = e;
     start += e.rows();
   }
-  return out;
+  return out.head(start);
 }

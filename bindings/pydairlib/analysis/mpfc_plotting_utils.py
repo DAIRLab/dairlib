@@ -52,12 +52,43 @@ def process_mpfc_debug_data(data):
     }
 
 
+def process_contact(data):
+    n = len(data)
+    names = data[0].contact_names
+    t = np.zeros((n,))
+    contacts = [np.zeros((n,), dtype=bool) for _ in names]
+    for i, msg in enumerate(data):
+        t[i] = msg.utime * 1e-6
+        for k in range(len(names)):
+            contacts[k][i] = msg.contact[k]
+
+    ret = {names[i]: contacts[i].astype(int) for i in range(len(names))}
+    ret['t_contact'] = t
+    return ret
+
+
 def calc_next_footstep_in_stance_frame(mpc_data):
     n = len(mpc_data['t_mpc'])
     p1 = np.zeros((n, 3))
     for i, pp in enumerate(mpc_data['pp']):
         p1[i] = pp[1] - pp[0]
     return p1
+
+
+def plot_contact(contact_data, mpc_data, time_slice=None):
+    time_slice = slice(len(contact_data['t_contact'])) if time_slice is None \
+        else time_slice
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot_of_entire_series(
+        contact_data, 't_contact', {'right': ['right'], 'left': ['left']},
+        {'xlabel': 'Time (s)',
+         'ylabel': 'Contact State',
+         'title': 'Contact For Drift Correction'},
+        ps
+    )
+    add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
+
+    return ps
 
 
 def plot_initial_state(mpc_data, time_slice=None):
@@ -134,3 +165,7 @@ def plot_footstep_sol_in_stance_frame(mpc_data, time_slice=None):
 
 def mpfc_debug_callback(data_dict, channel):
     return process_mpfc_debug_data(data_dict[channel])
+
+
+def contact_callback(data_dict, channel):
+    return process_contact(data_dict[channel])

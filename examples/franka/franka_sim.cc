@@ -89,24 +89,22 @@ int DoMain(int argc, char* argv[]) {
 
   // we WANT to model collisions between link5 and the supports
   const drake::geometry::GeometrySet& franka_geom_set =
-      plant.CollectRegisteredGeometries(
-          {&plant.GetBodyByName("panda_link2"),
-           &plant.GetBodyByName("panda_link3"),
-           &plant.GetBodyByName("panda_link4"),
-//             &plant.GetBodyByName("panda_link5"),
-           &plant.GetBodyByName("panda_link6"),
-           &plant.GetBodyByName("panda_link7"),
-           &plant.GetBodyByName("plate"),
-           &plant.GetBodyByName("panda_link8")});
+      plant.CollectRegisteredGeometries({&plant.GetBodyByName("panda_link0"),
+                                         &plant.GetBodyByName("panda_link1"),
+                                         &plant.GetBodyByName("panda_link2"),
+                                         &plant.GetBodyByName("panda_link3"),
+                                         &plant.GetBodyByName("panda_link4")});
   if (sim_params.scene_index > 0) {
     drake::multibody::ModelInstanceIndex left_support_index =
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
         FindResourceOrThrow(sim_params.right_support_model))[0];
     RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(sim_params.left_support_orientation), sim_params.left_support_position);
+        drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
+        sim_params.left_support_position);
     RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(sim_params.right_support_orientation), sim_params.right_support_position);
+        drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
+        sim_params.right_support_position);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_S1_W);
@@ -124,13 +122,13 @@ int DoMain(int argc, char* argv[]) {
 
   const drake::geometry::GeometrySet& franka_only_geom_set =
       plant.CollectRegisteredGeometries({
-                                            &plant.GetBodyByName("panda_link2"),
-                                            &plant.GetBodyByName("panda_link3"),
-                                            &plant.GetBodyByName("panda_link4"),
-                                            &plant.GetBodyByName("panda_link5"),
-                                            &plant.GetBodyByName("panda_link6"),
-                                            &plant.GetBodyByName("panda_link8"),
-                                        });
+          &plant.GetBodyByName("panda_link2"),
+          &plant.GetBodyByName("panda_link3"),
+          &plant.GetBodyByName("panda_link4"),
+          &plant.GetBodyByName("panda_link5"),
+          &plant.GetBodyByName("panda_link6"),
+          &plant.GetBodyByName("panda_link8"),
+      });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
@@ -181,7 +179,8 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  q.tail(plant.num_positions(tray_index)) = sim_params.q_init_plate[sim_params.scene_index];
+  q.tail(plant.num_positions(tray_index)) =
+      sim_params.q_init_plate[sim_params.scene_index];
 
   plant.SetPositions(&plant_context, q);
 

@@ -197,8 +197,8 @@ int do_main(int argc, char* argv[]) {
                                                         "object_position_target");
     trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
-    trajectory_drawer_actor->SetNumSamples(5);
-    trajectory_drawer_object->SetNumSamples(5);
+    trajectory_drawer_actor->SetNumSamples(40);
+    trajectory_drawer_object->SetNumSamples(40);
     builder.Connect(trajectory_sub_actor->get_output_port(),
                     trajectory_drawer_actor->get_input_port_trajectory());
     builder.Connect(trajectory_sub_object->get_output_port(),

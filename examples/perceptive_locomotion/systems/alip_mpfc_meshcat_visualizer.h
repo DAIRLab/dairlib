@@ -1,7 +1,7 @@
 #pragma once
 
 // lcmtypes
-#include "dairlib/lcmt_mpc_debug.hpp"
+#include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
 
 // dairlib
 #include "geometry/convex_polygon_set.h"
@@ -59,13 +59,13 @@ class AlipMPFCMeshcatVisualizer : public drake::systems::LeafSystem<double> {
   // Matrix from robot yaw frame to world frame
   static Eigen::Matrix3d R_WB(const Eigen::Vector4d& wxyz);
 
-  void DrawComTrajSolution(
-      const std::string& path,
-      const dairlib::lcmt_mpc_solution& com_traj_solution,
-      const Eigen::Matrix3d& R_yaw,
-      const double z_com) const;
+//  void DrawComTrajSolution(
+//      const std::string& path,
+//      const dairlib::lcmt_mpc_solution& com_traj_solution,
+//      const Eigen::Matrix3d& R_yaw,
+//      const double z_com) const;
 
-  void DrawFootsteps(const dairlib::lcmt_mpc_solution& solution,
+  void DrawFootsteps(const dairlib::lcmt_alip_s2s_mpfc_debug& solution,
                      const Eigen::Matrix3d& R_yaw) const;
 
   drake::systems::EventStatus UnrestrictedUpdate(

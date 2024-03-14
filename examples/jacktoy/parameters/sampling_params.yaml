@@ -28,4 +28,4 @@ reposition_speed: 0.75    # m/s
 travel_cost_per_meter: 100
 reposition_fixed_cost: 100
 finished_reposition_cost: 1000000
-switching_hysteresis: 250
+switching_hysteresis: 100

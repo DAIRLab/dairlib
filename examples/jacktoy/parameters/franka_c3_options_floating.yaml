@@ -20,7 +20,7 @@ execution_dt: 0.03
 num_friction_directions: 2
 num_contacts: 4
 N: 5
-
+# This param has to do with the xbox input?
 use_predicted_x0: false
 solve_time_filter_alpha: 0.95
 # Workspace Limits
@@ -30,7 +30,7 @@ world_z_limits: [-2, 2]
 workspace_margins: 0.05
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [0, 30]
-gamma: 1.0
+gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_gamma: [1, 1, 1, 1]
@@ -51,12 +51,12 @@ u_u: [30, 30, 30]
 warm_start: false     # TODO: Check if we use this. Delete otherwise.
 
 # matrix scaling
-w_Q: 20
-w_R: 0
+w_Q: 50
+w_R: 50
 # Penalty on all decision variables, assuming scalar
-w_G: 1
+w_G: 0.1
 # Penalty on all decision variables, assuming scalar
-w_U: 0.5
+w_U: 0.1
 
 # n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
 # size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
@@ -71,10 +71,14 @@ w_U: 0.5
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
 q_vector: [1000, 1000, 1000,        # end effector position
            0, 0, 0, 0,              # object orientation
-           1000000, 1000000, 10000000,    # object position
+           10000, 10000, 10000,    # object position
            10, 10, 10,              # end effector linear velocity
            0, 0, 0,                 # object angular velocity
            0.1, 0.1, 0.1]           # object linear velocity
+# q_vector: [150, 150, 150, 0, 1, 1, 0, 1000000, 1000000, 100000000,
+#            5, 5, 15, 10, 10, 1, 5, 5, 5]
+# q_vector: [100, 100, 500, 0, 0, 0, 0, 1000000, 1000000, 100000000,
+#            5, 5, 15, 10, 10, 1, 5, 5, 5]
 
 # Penalty on all decision variables
 # g_vector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -88,5 +92,5 @@ q_vector: [1000, 1000, 1000,        # end effector position
 #           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 # Penalty on end effector (x,y,z) force efforts, assuming diagonal
-r_vector: [500, 500, 500]
+r_vector: [0.15, 0.15, 0.1]
 

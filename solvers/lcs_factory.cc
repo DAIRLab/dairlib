@@ -246,6 +246,16 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   c /= AnDn;
   H /= AnDn;
 
+  std::cout<<"Row 9 for z_jack of A: "<< A.row(9)<<std::endl;
+  std::cout<<"Row 9 for z_jack of B: "<< B.row(9)<<std::endl;
+  std::cout<<"Row 9 for z_jack of D: "<< D.row(9)<<std::endl;
+  std::cout<<"Row 9 for z_jack of d: "<< d.row(9)<<std::endl;
+
+  std::cout<<"Row 18 for jack vz of A: "<< A.row(18)<<std::endl;
+  std::cout<<"Row 18 for jack vz of B: "<< B.row(18)<<std::endl;
+  std::cout<<"Row 18 for jack vz of D: "<< D.row(18)<<std::endl;
+  std::cout<<"Row 18 for jack vz of d: "<< d.row(18)<<std::endl;
+
   LCS system(A, B, D, d, E, F, H, c, N, dt);
 
   std::pair<LCS, double> ret(system, AnDn);

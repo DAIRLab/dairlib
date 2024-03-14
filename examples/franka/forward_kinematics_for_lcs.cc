@@ -22,10 +22,10 @@
 #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
-#include "systems/primitives/radio_parser.h"
 
 namespace dairlib {
 
@@ -118,10 +118,11 @@ int DoMain(int argc, char* argv[]) {
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
           controller_params.end_effector_name, "tray",
           controller_params.include_end_effector_orientation);
-  auto c3_actual_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_actual_state_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          lcm_channel_params.radio_channel, &lcm));
+  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -131,19 +132,63 @@ int DoMain(int argc, char* argv[]) {
   };
   auto c3_state_sender =
       builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
+  auto plate_balancing_target =
+      builder.AddSystem<systems::PlateBalancingTargetGenerator>(
+          plant_tray, controller_params.end_effector_thickness,
+          controller_params.near_target_threshold);
+  plate_balancing_target->SetRemoteControlParameters(
+      controller_params.first_target[controller_params.scene_index], controller_params.second_target[controller_params.scene_index],
+      controller_params.third_target[controller_params.scene_index], controller_params.x_scale,
+      controller_params.y_scale, controller_params.z_scale);
+  std::vector<int> input_sizes = {3, 7, 3, 6};
+  auto target_state_mux =
+      builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
+  auto end_effector_zero_velocity_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          VectorXd::Zero(3));
+  auto tray_zero_velocity_source =
+      builder.AddSystem<drake::systems::ConstantVectorSource>(
+          VectorXd::Zero(6));
+  builder.Connect(end_effector_zero_velocity_source->get_output_port(),
+                  target_state_mux->get_input_port(2));
+  builder.Connect(tray_zero_velocity_source->get_output_port(),
+                  target_state_mux->get_input_port(3));
 
+
+  auto c3_actual_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_actual_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+
+  builder.Connect(*radio_sub, *radio_to_vector);
+  builder.Connect(tray_state_receiver->get_output_port(),
+                  plate_balancing_target->get_input_port_tray_state());
+  builder.Connect(plate_balancing_target->get_output_port_end_effector_target(),
+                  target_state_mux->get_input_port(0));
+  builder.Connect(plate_balancing_target->get_output_port_tray_target(),
+                  target_state_mux->get_input_port(1));
   builder.Connect(tray_state_sub->get_output_port(),
                   tray_state_receiver->get_input_port());
+  builder.Connect(radio_to_vector->get_output_port(),
+                  plate_balancing_target->get_input_port_radio());
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(tray_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
+  builder.Connect(target_state_mux->get_output_port(),
+                  c3_state_sender->get_input_port_target_state());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                   c3_actual_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+                  c3_target_state_publisher->get_input_port());
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_c3_controller"));
+  owned_diagram->set_name(("franka_forward_kinematics"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

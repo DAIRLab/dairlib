@@ -23,7 +23,7 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
     meshcat_(std::move(meshcat)) {
 
   mpc_debug_input_port_ = DeclareAbstractInputPort(
-      "mpc_debug", drake::Value<lcmt_mpc_debug>()
+      "mpc_debug", drake::Value<lcmt_alip_s2s_mpfc_debug>()
     ).get_index();
 
   foothold_input_port_ = DeclareAbstractInputPort(
@@ -42,35 +42,35 @@ AlipMPFCMeshcatVisualizer::AlipMPFCMeshcatVisualizer(
       &AlipMPFCMeshcatVisualizer::UnrestrictedUpdate);
 }
 
-void AlipMPFCMeshcatVisualizer::DrawComTrajSolution(
-    const std::string &path,
-    const dairlib::lcmt_mpc_solution &com_traj_solution,
-    const Matrix3d& R_yaw, const double z_com) const {
-
-  std::vector<drake::geometry::Rgba> rgb = {
-      drake::geometry::Rgba(0, 0, 1, 0.8),
-      drake::geometry::Rgba(1, 0, 0, 0.8)
-  };
-  for (int n = 0; n < com_traj_solution.nm; n++) {
-    Matrix3Xd segment = Matrix3Xd::Zero(3, com_traj_solution.nk);
-
-    Eigen::Vector3d pn = Eigen::Vector3d::Map(com_traj_solution.pp.at(n).data());
-    Eigen::Vector3d pnp1 = (n == (com_traj_solution.nm - 1)) ?
-        pn : Eigen::Vector3d::Map(com_traj_solution.pp.at(n+1).data());
-    for (int k = 0; k < com_traj_solution.nk; k++) {
-      Eigen::Vector3d com_k = Eigen::Vector3d::Zero();
-      com_k.head<2>() = Eigen::Vector4d::Map(com_traj_solution.xx.at(n).at(k).data()).head<2>() + pn.head<2>();
-      com_k(2) = z_com + pn(2) + (pnp1(2) - pn(2)) * (static_cast<double>(k) / (com_traj_solution.nk_minus_one));
-      segment.col(k) = R_yaw * com_k;
-    }
-    std::string label = path + "_" + std::to_string(n);
-    meshcat_->SetLine(label, segment, 4.0, rgb.at(n % 2));
-  }
-}
+//void AlipMPFCMeshcatVisualizer::DrawComTrajSolution(
+//    const std::string &path,
+//    const dairlib::lcmt_mpc_solution &com_traj_solution,
+//    const Matrix3d& R_yaw, const double z_com) const {
+//
+//  std::vector<drake::geometry::Rgba> rgb = {
+//      drake::geometry::Rgba(0, 0, 1, 0.8),
+//      drake::geometry::Rgba(1, 0, 0, 0.8)
+//  };
+//  for (int n = 0; n < com_traj_solution.nm; n++) {
+//    Matrix3Xd segment = Matrix3Xd::Zero(3, com_traj_solution.nk);
+//
+//    Eigen::Vector3d pn = Eigen::Vector3d::Map(com_traj_solution.pp.at(n).data());
+//    Eigen::Vector3d pnp1 = (n == (com_traj_solution.nm - 1)) ?
+//        pn : Eigen::Vector3d::Map(com_traj_solution.pp.at(n+1).data());
+//    for (int k = 0; k < com_traj_solution.nk; k++) {
+//      Eigen::Vector3d com_k = Eigen::Vector3d::Zero();
+//      com_k.head<2>() = Eigen::Vector4d::Map(com_traj_solution.xx.at(n).at(k).data()).head<2>() + pn.head<2>();
+//      com_k(2) = z_com + pn(2) + (pnp1(2) - pn(2)) * (static_cast<double>(k) / (com_traj_solution.nk_minus_one));
+//      segment.col(k) = R_yaw * com_k;
+//    }
+//    std::string label = path + "_" + std::to_string(n);
+//    meshcat_->SetLine(label, segment, 4.0, rgb.at(n % 2));
+//  }
+//}
 
 
 void AlipMPFCMeshcatVisualizer::DrawFootsteps(
-    const dairlib::lcmt_mpc_solution &solution,
+    const dairlib::lcmt_alip_s2s_mpfc_debug  &solution,
     const Eigen::Matrix3d &R_yaw) const {
 
   std::vector<drake::geometry::Rgba> rgb = {
@@ -78,7 +78,7 @@ void AlipMPFCMeshcatVisualizer::DrawFootsteps(
       drake::geometry::Rgba(0, 0, 1, 0.8)
   };
 
-  for (int n = 1; n < solution.nm; n++) {
+  for (int n = 1; n < solution.nmodes; n++) {
     Eigen::Matrix4d X = Eigen::Matrix4d::Identity();
     std::string path = "footstep_sol_" + std::to_string(n);
     X.block<3, 1>(0, 3) =
@@ -139,7 +139,7 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
   const Eigen::Matrix3d R_yaw = R_WB(quat);
 
   const auto& mpc_debug = EvalAbstractInput(
-      context, mpc_debug_input_port_)->get_value<lcmt_mpc_debug>();
+      context, mpc_debug_input_port_)->get_value<lcmt_alip_s2s_mpfc_debug>();
 
   ConvexPolygonSet foothold_set;
   if (get_input_port_terrain().HasValue(context)) {
@@ -147,12 +147,12 @@ drake::systems::EventStatus AlipMPFCMeshcatVisualizer::UnrestrictedUpdate(
         context, foothold_input_port_)->get_value<lcmt_foothold_set>();
     foothold_set = ConvexPolygonSet::CopyFromLcm(foothold_set_msg);
   } else {
-    foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.footholds);
+    foothold_set = ConvexPolygonSet::CopyFromLcm(mpc_debug.foothold_sequence);
     foothold_set.ReExpressInNewFrame(R_yaw.transpose());
   }
 
-  DrawComTrajSolution("com_sol", mpc_debug.solution, R_yaw, 0.83);
-  DrawFootsteps(mpc_debug.solution, R_yaw);
+//  DrawComTrajSolution("com_sol", mpc_debug.solution, R_yaw, 0.83);
+  DrawFootsteps(mpc_debug, R_yaw);
 
   int n_prev = state->get_discrete_state(n_footholds_idx_).get_value()(0);
   DrawFootholds(foothold_set, n_prev);

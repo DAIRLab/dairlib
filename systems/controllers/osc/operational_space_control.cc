@@ -494,7 +494,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     VectorXd ud = (get_input_port(ff_input_port_).HasValue(context)) ?
                    get_input_port(ff_input_port_).Eval(context) :
                    VectorXd::Zero(n_u_);
-    id_qp_.UpdateCost("input_cost", 2 * W, -2 * ud);
+
+    id_qp_.UpdateCost("input_cost", 2 * W, -2 * W * ud, ud.transpose() * W * ud);
   }
 
   // (Testing) 7. Cost for staying close to the previous input
@@ -576,11 +577,12 @@ void OperationalSpaceControl::UpdateContactForceRegularization(
       int i = id_qp_.get_contact_variable_start(cname);
       lambda_des_stacked.segment<3>(i) = lambda_des;
     }
+
+    double c = lambda_des_stacked.transpose() * W_lambda_c_reg_ * lambda_des_stacked;
     id_qp_.UpdateCost(
         "lambda_c_reg",
         2 *  W_lambda_c_reg_,
-        -2 * W_lambda_c_reg_ * lambda_des_stacked,
-        lambda_des_stacked.squaredNorm());
+        -2 * W_lambda_c_reg_ * lambda_des_stacked, c);
   }
 }
 

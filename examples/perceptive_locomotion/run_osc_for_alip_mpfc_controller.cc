@@ -548,14 +548,15 @@ int DoMain(int argc, char* argv[]) {
       {post_left_double_support_state, post_right_double_support_state});
 
   if (gains.W_com(0,0) == 0){
+    double w_ankle_tracking = 10;
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_left_motor", left_stance_state, 0.01);
+        "toe_left_motor", left_stance_state, w_ankle_tracking);
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_left_motor", post_right_double_support_state, 0.01);
+        "toe_left_motor", post_right_double_support_state, w_ankle_tracking);
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_right_motor", right_stance_state, 0.01);
+        "toe_right_motor", right_stance_state, w_ankle_tracking);
     osc->SetInputCostForJointAndFsmStateWeight(
-        "toe_right_motor", post_left_double_support_state, 0.01);
+        "toe_right_motor", post_left_double_support_state, w_ankle_tracking);
   }
   osc->Build();
 

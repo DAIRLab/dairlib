@@ -322,7 +322,7 @@ void AlipS2SMPFC::UpdateInitialConditions(
   Matrix4d Ad = CalcAd(
       params_.gait_params.height, params_.gait_params.mass, t);
   Vector4d Bd = alip_utils::CalcBd(
-      params_.gait_params.height, params_.gait_params.mass, t);
+      params_.gait_params.height, params_.gait_params.mass, tmin);
   Eigen::Matrix<double, 4, 5> A_t = Eigen::Matrix<double, 4, 5>::Zero();
 
   // linear approximation of exp(At) = exp(A t_*) + A exp(A t_*) * (t  -t*)

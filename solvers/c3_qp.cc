@@ -45,10 +45,13 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
   auto ln_ = prog.NewContinuousVariables(m_, "lambda");
   auto un_ = prog.NewContinuousVariables(k_, "u");
 
+  // This must be the parameter that regulates complimentarity violation. 
+  // As alpha tends to 0, the complimentarity condition is enforced more 
+  // strictly.
   double alpha = 0.01;
   double scaling = 1000;
 
-  MatrixXd EFH(m_, n_ + m_ + k_);
+  MatrixXd EFH = MatrixXd::Zero(m_, n_ + m_ + k_);
   EFH.block(0, 0, m_, n_) = E / scaling;
   EFH.block(0, n_, m_, m_) = F / scaling;
   EFH.block(0, n_ + m_, m_, k_) = H / scaling;

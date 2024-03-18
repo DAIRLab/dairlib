@@ -4,11 +4,14 @@
 #include "multibody/multibody_utils.h"
 #include "systems/framework/output_vector.h"
 
+#include "grid_map_core/grid_map_core.hpp"
+
 #include <iostream>
 
 namespace dairlib::systems::controllers {
 
 using multibody::ReExpressWorldVector3InBodyYawFrame;
+using multibody::ReExpressBodyYawVector3InWorldFrame;
 using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
 using geometry::ConvexPolygonSet;
@@ -27,6 +30,9 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::State;
+
+using grid_map::GridMap;
+
 
 Alips2sMPFCSystem::Alips2sMPFCSystem(
     const MultibodyPlant<double>& plant, Context<double>* plant_context,
@@ -81,8 +87,10 @@ Alips2sMPFCSystem::Alips2sMPFCSystem(
       .get_index();
   vdes_input_port_ = DeclareVectorInputPort("vdes_x_y", 2).get_index();
   foothold_input_port_ = DeclareAbstractInputPort(
-      "footholds", drake::Value<ConvexPolygonSet>())
-      .get_index();
+      "footholds", drake::Value<ConvexPolygonSet>()).get_index();
+
+  elevation_map_port_ = DeclareAbstractInputPort(
+      "elevation", drake::Value<GridMap>()).get_index();
 
   // output ports
   mpc_output_port_ = DeclareAbstractOutputPort(
@@ -247,6 +255,29 @@ void Alips2sMPFCSystem::CopyMpcOutput(
 
   const auto robot_output = dynamic_cast<const OutputVector<double>*>(
       this->EvalVectorInput(context, state_input_port_));
+
+  // If we have access to the elevation map, use that instead of the plane
+  // constraint to get the appropriate foot height
+  if (get_input_port_elevation().HasValue(context)) {
+    SetPositionsAndVelocitiesIfNew<double>(
+        plant_, robot_output->GetState(), context_);
+    Vector3d next_footstep_in_world =
+        ReExpressBodyYawVector3InWorldFrame<double>(
+        plant_, *context_, "pelvis", mpc_sol.pp.at(1));
+
+    auto grid_map = EvalAbstractInput(
+        context, elevation_map_port_)->get_value<GridMap>();
+
+    if (grid_map.isInside(next_footstep_in_world.head<2>())) {
+      double height = grid_map.atPosition(
+          "interpolated",
+          next_footstep_in_world.head<2>(),
+          grid_map::InterpolationMethods::INTER_LINEAR);
+      height -= mpc_sol.pp.front().z();
+      mpc_output->next_footstep_in_stance_frame[2] = height;
+    }
+  }
+
 
   // copy fsm info
   mpc_output->fsm.fsm_state = GetFsmForOutput(context);

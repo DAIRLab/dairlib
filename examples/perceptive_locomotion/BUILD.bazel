@@ -127,6 +127,7 @@ cc_binary(
         "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/filters:floating_base_velocity_filter",
         "//systems/framework:lcm_driven_loop",
+        "//systems/perception:grid_map_lcm_systems",
         "//systems/primitives:fsm_lcm_systems",
         "@drake//:drake_shared_library",
         "@gflags",

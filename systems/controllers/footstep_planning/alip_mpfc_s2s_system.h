@@ -38,6 +38,9 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_footholds() const {
     return this->get_input_port(foothold_input_port_);
   }
+  const drake::systems::InputPort<double>& get_input_port_elevation() const {
+    return this->get_input_port(elevation_map_port_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_mpc_output() const {
     return this->get_output_port(mpc_output_port_);
   }
@@ -85,6 +88,7 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex state_input_port_;
   drake::systems::InputPortIndex vdes_input_port_;
   drake::systems::InputPortIndex foothold_input_port_;
+  drake::systems::InputPortIndex elevation_map_port_;
 
   // drake output ports
   drake::systems::OutputPortIndex mpc_output_port_;

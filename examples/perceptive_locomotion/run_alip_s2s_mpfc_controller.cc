@@ -15,6 +15,7 @@
 #include "systems/controllers/footstep_planning/flat_terrain_foothold_source.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
+#include "systems/perception/grid_map_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -38,6 +39,8 @@ using Eigen::VectorXd;
 
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
+
+using perception::GridMapReceiver;
 
 using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
@@ -79,6 +82,9 @@ DEFINE_string(foothold_yaml, "", "yaml file with footholds for simulation");
 
 DEFINE_string(channel_terrain, "FOOTHOLDS_PROCESSED",
               "lcm channel containing the footholds");
+
+DEFINE_string(channel_elevation, "CASSIE_ELEVATION_MAP",
+              "elevation map lcm channel");
 
 DEFINE_bool(spring_model, true, "");
 
@@ -214,17 +220,22 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(foothold_oracle->get_output_port(),
                     foot_placement_controller->get_input_port_footholds());
   } else {
-
     if (FLAGS_use_perception) {
-
       auto plane_subscriber = builder.AddSystem(
           LcmSubscriberSystem::Make<lcmt_foothold_set>(
               FLAGS_channel_terrain, &lcm_local));
       auto plane_receiver =
           builder.AddSystem<geometry::ConvexPolygonReceiver>();
+      auto map_subscriber = builder.AddSystem(
+          LcmSubscriberSystem::Make<lcmt_grid_map>(
+              FLAGS_channel_elevation, &lcm_local));
+      auto map_receiver = builder.AddSystem<GridMapReceiver>();
       builder.Connect(*plane_subscriber, *plane_receiver);
       builder.Connect(plane_receiver->get_output_port(),
                       foot_placement_controller->get_input_port_footholds());
+      builder.Connect(*map_subscriber, *map_receiver);
+      builder.Connect(map_receiver->get_output_port(),
+                      foot_placement_controller->get_input_port_elevation());
     } else {
       auto foothold_oracle =
           builder.AddSystem<FlatTerrainFootholdSource>(

@@ -28,6 +28,7 @@ cc_library(
         ":alip_mpfc_system",
         ":alip_s2s_mpfc",
         "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
     ],
 )
 

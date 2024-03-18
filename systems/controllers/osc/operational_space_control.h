@@ -102,7 +102,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
       drake::systems::Context<double>* context_w_spr,
       drake::systems::Context<double>* context_wo_spr,
-      bool used_with_finite_state_machine = true);
+      bool used_with_finite_state_machine = true,
+      bool no_contact_mode = false);
 
   /***** Input/output ports *****/
 
@@ -453,6 +454,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
   // single_contact_mode_ is true if there is only 1 contact mode in OSC
   bool single_contact_mode_ = false;
+  bool no_contact_mode_ = false;
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>

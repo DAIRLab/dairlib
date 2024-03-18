@@ -19,7 +19,14 @@ group "3.[SIM] Trifinger" {
     }
 }
 
-group "3.lcm-tools" {
+group "4. Controllers" {
+    cmd "OSC Controller" {
+        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller";
+        host = "localhost";
+    }
+}
+
+group "5.lcm-tools" {
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";

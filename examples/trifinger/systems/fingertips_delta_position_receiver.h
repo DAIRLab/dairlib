@@ -1,10 +1,11 @@
 #pragma once
 
-#include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_fingertips_delta_position.hpp"
-#include "systems/framework/output_vector.h"
+#include "dairlib/lcmt_robot_input.hpp"
 #include "multibody/multibody_utils.h"
+#include "systems/framework/output_vector.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -16,8 +17,8 @@ class FingertipDeltaPositionReceiver
   FingertipDeltaPositionReceiver(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
-      const Eigen::Vector3d&  min_fingertips_delta_position,
-      const Eigen::Vector3d&  max_fingertips_delta_position,
+      const Eigen::Vector3d& min_fingertips_delta_position,
+      const Eigen::Vector3d& max_fingertips_delta_position,
       const std::string& fingertip_0_name,
       const std::string& fingertip_120_name,
       const std::string& fingertip_240_name);
@@ -35,9 +36,9 @@ class FingertipDeltaPositionReceiver
   }
 
  private:
-  void CalcFingertipsPositionTarget(
+  void CalcFingertipsPositionTargetTraj(
       const drake::systems::Context<double>& context,
-      drake::systems::BasicVector<double>* target) const;
+      drake::trajectories::Trajectory<double>* target) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
@@ -54,4 +55,4 @@ class FingertipDeltaPositionReceiver
   std::string fingertip_240_name_;
 };
 
-}  // namespace dairlib
+}  // namespace dairlib::systems

@@ -14,3 +14,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "fingertips_target_traj_demultiplexer",
+    srcs = ["fingertips_target_traj_demultiplexer.cc"],
+    hdrs = ["fingertips_target_traj_demultiplexer.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

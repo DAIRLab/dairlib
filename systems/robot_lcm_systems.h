@@ -47,7 +47,8 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
                   OutputVector<double>* output) const;
-  drake::multibody::ModelInstanceIndex model_instance_;
+  drake::multibody::ModelInstanceIndex model_instance_ =
+      drake::multibody::ModelInstanceIndex(1000);
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;
@@ -87,6 +88,8 @@ class RobotOutputSender : public drake::systems::LeafSystem<double> {
   void Output(const drake::systems::Context<double>& context,
               dairlib::lcmt_robot_output* output) const;
 
+  drake::multibody::ModelInstanceIndex model_instance_ =
+      drake::multibody::ModelInstanceIndex(1000);
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;
@@ -132,7 +135,8 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
  private:
   void CopyOutput(const drake::systems::Context<double>& context,
                   StateVector<double>* output) const;
-  drake::multibody::ModelInstanceIndex model_instance_;
+  drake::multibody::ModelInstanceIndex model_instance_ =
+      drake::multibody::ModelInstanceIndex(1000);
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;
@@ -147,7 +151,7 @@ class ObjectStateSender : public drake::systems::LeafSystem<double> {
   explicit ObjectStateSender(
       const drake::multibody::MultibodyPlant<double>& plant,
       drake::multibody::ModelInstanceIndex model_instance_index =
-      drake::multibody::default_model_instance());
+          drake::multibody::default_model_instance());
 
   explicit ObjectStateSender(
       const drake::multibody::MultibodyPlant<double>& plant);
@@ -160,7 +164,8 @@ class ObjectStateSender : public drake::systems::LeafSystem<double> {
   void Output(const drake::systems::Context<double>& context,
               dairlib::lcmt_object_state* output) const;
 
-  drake::multibody::ModelInstanceIndex model_instance_;
+  drake::multibody::ModelInstanceIndex model_instance_ =
+      drake::multibody::ModelInstanceIndex(1000);
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;

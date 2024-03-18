@@ -4,6 +4,8 @@
 #include <utility>
 
 namespace dairlib::systems {
+using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::Trajectory;
 
 FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
@@ -33,16 +35,18 @@ FingertipDeltaPositionReceiver::FingertipDeltaPositionReceiver(
               drake::Value<dairlib::lcmt_fingertips_delta_position>{})
           .get_index();
 
+  PiecewisePolynomial<double> empty_pp_traj(Eigen::Vector3d::Zero());
+  Trajectory<double>& traj_inst = empty_pp_traj;
   fingertips_target_port_ =
-      this->DeclareVectorOutputPort(
-              "fingertips_target", BasicVector<double>(9),
-              &FingertipDeltaPositionReceiver::CalcFingertipsPositionTarget)
+      this->DeclareAbstractOutputPort(
+              "fingertips_target_traj", traj_inst,
+              &FingertipDeltaPositionReceiver::CalcFingertipsPositionTargetTraj)
           .get_index();
 }
 
-void FingertipDeltaPositionReceiver::CalcFingertipsPositionTarget(
+void FingertipDeltaPositionReceiver::CalcFingertipsPositionTargetTraj(
     const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* target) const {
+    Trajectory<double>* target_traj) const {
   const OutputVector<double>* trifinger_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   const auto& fingertips_delta_pos_lcm_msg =
@@ -71,7 +75,12 @@ void FingertipDeltaPositionReceiver::CalcFingertipsPositionTarget(
       fingertip_240_pos;
   fingertips_target_pos +=
       Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
-  target->SetFromVector(fingertips_target_pos);
+  PiecewisePolynomial<double> const_traj(fingertips_target_pos);
+
+  auto casted_target_traj =
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          target_traj);
+  *casted_target_traj = const_traj;
 }
 
 }  // namespace dairlib::systems

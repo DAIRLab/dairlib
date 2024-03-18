@@ -57,3 +57,5 @@ build --define=WITH_SNOPT=OFF
 # use python3 by default
 build --python_path=python3
 build --jobs=8
+
+build:opt --incompatible_strict_action_env

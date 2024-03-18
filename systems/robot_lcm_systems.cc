@@ -15,8 +15,8 @@ namespace systems {
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
 using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
 using drake::systems::BasicVector;
+using drake::systems::Context;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::VectorXd;
@@ -33,7 +33,6 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -49,7 +48,7 @@ RobotOutputReceiver::RobotOutputReceiver(
 
 RobotOutputReceiver::RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
-    drake::multibody::ModelInstanceIndex model_instance) {
+    drake::multibody::ModelInstanceIndex model_instance){
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
@@ -142,7 +141,7 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (model_instance_ != drake::multibody::ModelInstanceIndex(1000)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -208,8 +207,7 @@ RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance,
     const bool publish_efforts, const bool publish_imu)
-    : publish_efforts_(publish_efforts),
-      publish_imu_(publish_imu) {
+    : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
   num_efforts_ = plant.num_actuators();
@@ -308,7 +306,6 @@ ObjectStateReceiver::ObjectStateReceiver(
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -342,7 +339,7 @@ ObjectStateReceiver::ObjectStateReceiver(
   this->DeclareVectorOutputPort(
       "x, t",
       StateVector<double>(plant.num_positions(model_instance),
-                           plant.num_velocities(model_instance)),
+                          plant.num_velocities(model_instance)),
       &ObjectStateReceiver::CopyOutput);
 }
 
@@ -396,7 +393,7 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (model_instance_ != drake::multibody::ModelInstanceIndex(1000)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -418,14 +415,13 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
 ObjectStateSender::ObjectStateSender(
-    const drake::multibody::MultibodyPlant<double>& plant){
+    const drake::multibody::MultibodyPlant<double>& plant) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1);
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 
@@ -446,7 +442,7 @@ ObjectStateSender::ObjectStateSender(
 ObjectStateSender::ObjectStateSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance)
-    : model_instance_(model_instance){
+    : model_instance_(model_instance) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
 
@@ -462,11 +458,10 @@ ObjectStateSender::ObjectStateSender(
       plant.get_joint(plant.GetJointIndices(model_instance).front())
           .velocity_start();
 
-  ordered_position_names_ =
-      multibody::ExtractOrderedNamesFromMap(position_index_map_, positions_start_idx_);
-  ordered_velocity_names_ =
-      multibody::ExtractOrderedNamesFromMap(velocity_index_map_, velocities_start_idx_);
-
+  ordered_position_names_ = multibody::ExtractOrderedNamesFromMap(
+      position_index_map_, positions_start_idx_);
+  ordered_velocity_names_ = multibody::ExtractOrderedNamesFromMap(
+      velocity_index_map_, velocities_start_idx_);
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -501,7 +496,7 @@ void ObjectStateSender::Output(const Context<double>& context,
     }
   }
   for (int i = 0; i < num_velocities_; i++) {
-//    state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
+    //    state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
     state_msg->velocity[i] = 0;
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
   }

@@ -12,6 +12,7 @@ def gphoto_stop_cmd(sig, _):
     print(f'caught signal {sig}, stopping recording then sutting down.')
     subprocess.run(['gphoto2', '--set-config', 'movie=0'])
 
+
 def main_external_camera():
     signal.signal(signal.SIGINT, gphoto_stop_cmd)
     subprocess.run(['gphoto2', '--set-config', 'movie=1'])

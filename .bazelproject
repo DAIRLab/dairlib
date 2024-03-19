@@ -1,7 +1,7 @@
 shard_sync: false
-derive_targets_from_directories: true
 directories:
   .
+  -./tools/bazel_ros2_rules
 
 targets:
   //...:all

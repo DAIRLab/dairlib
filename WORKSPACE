@@ -101,6 +101,45 @@ http_archive(
     urls = ["https://github.com/ros/genpy/archive/0.6.5.tar.gz"],
 )
 
+# Try to build ROS2 workspace
+local_repository(
+    name = "bazel_ros2_rules",
+    path = "./tools/bazel_ros2_rules",
+)
+
+load("@bazel_ros2_rules//deps:defs.bzl", "add_bazel_ros2_rules_dependencies")
+
+add_bazel_ros2_rules_dependencies()
+
+load("@bazel_ros2_rules//ros2:defs.bzl", "ros2_archive")
+load("@bazel_ros2_rules//ros2:defs.bzl", "ros2_local_repository")
+
+# Please keep this list sorted
+ROS2_PACKAGES = [
+    "action_msgs",
+    "builtin_interfaces",
+    "console_bridge_vendor",
+    "rclcpp",
+    "rclcpp_action",
+    "rclpy",
+    "ros2cli",
+    "ros2cli_common_extensions",
+    "rosbag2",
+    "rosidl_default_generators",
+    "tf2_py",
+] + [
+    # These are possible RMW implementations. Uncomment one and only one to
+    # change implementations
+    "rmw_cyclonedds_cpp",
+    # "rmw_fastrtps_cpp",
+]
+
+ros2_local_repository(
+    name = "ros2",
+    include_packages = ROS2_PACKAGES,
+    workspaces = ["/opt/ros/humble"],
+)
+
 # dairlib can use either a local version of invariant-ekf or a pegged revision
 # If the environment variable DAIRLIB_LOCAL_INEKF_PATH is set, it will use
 # a local version, ad the specified path. Otherwise, it will get a pegged

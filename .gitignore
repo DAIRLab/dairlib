@@ -19,3 +19,5 @@ attic/multibody/solver_log/
 /compile_commands.json
 # Ignore the directory in which `clangd` stores its local index.
 /.cache/
+
+/tools/bazel_ros2_rules/bazel-*

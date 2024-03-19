@@ -1,0 +1,3 @@
+trifinger_state_channel: /trifinger/joint_states
+cube_state_channel: /trifinger/cube_object_state
+trifinger_input_channel: /trifinger/trifinger_input

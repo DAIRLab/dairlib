@@ -1,0 +1,5 @@
+# Import base-level build configuration.
+import %workspace%/../../.bazelrc
+
+# Try to import user-specific configuration local to workspace.
+#try-import %workspace%/user.bazelrc

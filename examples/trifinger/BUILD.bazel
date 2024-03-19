@@ -3,6 +3,8 @@
 
 package(default_visibility = ["//visibility:public"])
 
+load("@ros2//:ros_cc.bzl", "ros_cc_binary")
+
 cc_library(
     name = "trifinger_urdf",
     data = glob([
@@ -107,5 +109,35 @@ py_binary(
     deps = [
         "//bindings/pydairlib",
         "@drake//bindings/pydrake",
+    ],
+)
+
+cc_library(
+    name = "talker_cc",
+    hdrs = ["talker.h"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//tools/drake_ros:drake_ros_core",
+    ],
+)
+
+cc_library(
+    name = "listener_cc",
+    hdrs = ["listener.h"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+ros_cc_binary(
+    name = "talker_listener",
+    srcs = ["talker_listener.cc"],
+    rmw_implementation = "rmw_cyclonedds_cpp",
+    deps = [
+        ":listener_cc",
+        ":talker_cc",
+        "@ros2//:rclcpp_cc",
+        "@ros2//:std_msgs_cc",
+        "@ros2//resources/rmw_isolation:rmw_isolation_cc",
     ],
 )

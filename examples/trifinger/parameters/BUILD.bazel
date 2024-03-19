@@ -33,3 +33,10 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "trifinger_ros2_channels",
+    hdrs = ["trifinger_ros2_channels.h"],
+    data = ["trifinger_ros2_channels.yaml"],
+    deps = ["@drake//:drake_shared_library"],
+)

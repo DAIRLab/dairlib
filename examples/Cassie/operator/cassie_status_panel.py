@@ -1,7 +1,17 @@
+import time
+
+import lcm
 import sys
 import pygame
 
 from time import sleep
+from cassie_status_lcm_backend import (
+    PDPublisher,
+    HeightPublisher,
+    StatusSubscriber
+)
+
+from pygame_utils import TextPrint
 
 # Initialize Pygame
 pygame.init()
@@ -46,7 +56,7 @@ set_height_button = pygame.Rect(
     sh_button_size
 )
 publish_button = pygame.Rect(
-    (50, SCREEN_HEIGHT // 2 + 2 * int(input_box.size[1] * 1.1)),
+    (50, SCREEN_HEIGHT // 2 + int(2.2 * input_box.size[1] * 1.1)),
     sh_button_size
 )
 
@@ -58,18 +68,26 @@ numeric_keys = [
     pygame.K_KP8, pygame.K_KP9
 ]
 
+lc = lcm.LCM()
+
+pd_pub = PDPublisher(lc)
+height_pub = HeightPublisher(lc)
+status_sub = StatusSubscriber(lc, "INPUT_SUPERVISOR_STATUS")
+status_printer = TextPrint(72, (50, 50))
+
 
 # Functions
 def set_height():
-    print("Height set to:", height_input_text)
+    h = float(height_input_text)
+    height_pub.publish(h)
 
 
 def publish():
-    print("Publishing...")
+    pd_pub.publish()
 
 
 def get_status():
-    return "Status Message Here"
+    return status_sub.status_text
 
 
 def handle_keyboard(current_event, current_text):
@@ -127,8 +145,8 @@ while running:
     screen.fill(WHITE)
 
     # Render status message
-    status_surface = FONT.render(get_status(), True, BLACK)
-    screen.blit(status_surface, (50, 50))
+    status_printer.reset()
+    status_printer.print(screen, get_status(), BLACK)
 
     # Render input box
     pygame.draw.rect(screen, text_box_color, input_box, 2)
@@ -148,7 +166,8 @@ while running:
             screen.blit(cursor, (cursor_pos, input_box.y))
 
     pygame.display.flip()
-    sleep(0.02)
+    lc.handle_timeout(5)
+    time.sleep(0.02)
 
 pygame.quit()
 sys.exit()

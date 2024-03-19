@@ -562,21 +562,3 @@ py_binary(
     ],
 )
 
-py_binary(
-    name = "cassie_xbox_remote_py",
-    srcs = ["cassie_xbox_remote.py"],
-    data = [
-        "@lcm//:lcm-python",
-    ],
-    main = "cassie_xbox_remote.py",
-    deps = [
-        "//lcmtypes:lcmtypes_robot_py",
-    ],
-)
-
-load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
-
-drake_runfiles_binary(
-    name = "cassie_xbox_remote",
-    target = "cassie_xbox_remote_py",
-)

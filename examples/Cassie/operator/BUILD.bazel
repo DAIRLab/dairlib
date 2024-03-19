@@ -1,0 +1,51 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "cassie_status_lcm_backend",
+    srcs = ["cassie_status_lcm_backend.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "cassie_status_panel_py",
+    srcs = ["cassie_status_panel.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_status_panel.py",
+    deps = [
+        ":cassie_status_lcm_backend",
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+py_binary(
+    name = "cassie_xbox_remote_py",
+    srcs = ["cassie_xbox_remote.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "cassie_xbox_remote.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)
+
+load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
+
+drake_runfiles_binary(
+    name = "cassie_xbox_remote",
+    target = "cassie_xbox_remote_py",
+)
+
+drake_runfiles_binary(
+    name = "cassie_status_panel",
+    target = "cassie_status_panel_py"
+)

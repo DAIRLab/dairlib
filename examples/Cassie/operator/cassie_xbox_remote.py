@@ -3,40 +3,11 @@ import pygame
 import dairlib.lcmt_radio_out
 import lcm
 import numpy as np
+from pygame_utils import TextPrint
 
 # colors
 cassie_blue = (6, 61, 128)
 white = (255, 255, 255)
-
-# This is a simple class that will help us print to the screen
-# It has nothing to do with the joysticks, just outputting the
-# information.
-class TextPrint:
-    def __init__(self):
-        self.reset()
-        self.font = pygame.font.Font(None, 30)
-
-    def print(self, screen, textString):
-        textList = textString.split("\n")
-        for string in textList:
-            textBitmap = self.font.render(string, True, white)
-            screen.blit(textBitmap, [self.x, self.y])
-            self.y += self.line_height
-        self.y += self.new_line_height
-
-
-    def reset(self):
-        self.x = 10
-        self.y = 10
-        self.line_height = 30
-        self.new_line_height = 40
-
-    def indent(self):
-        self.x += 10
-
-    def unindent(self):
-        self.x -= 10
-
 
 def main():
     ramp_speed = len(sys.argv) > 1
@@ -50,7 +21,7 @@ def main():
 
     # Used to manage how fast the screen updates
     clock = pygame.time.Clock()
-    textPrint = TextPrint()
+    textPrint = TextPrint(30, (10, 10))
 
     # radio spoof variables
     radio_channel_6_pos = 0
@@ -79,8 +50,13 @@ def main():
 
         # Get the name from the OS for the controller/joystick
         name = joystick.get_name()
-        textPrint.print(screen, "Welcome! remember to make this the active \nwindow when you wish to use the remote")
-        textPrint.print(screen, "Controller detected: {}".format(name) )
+        textPrint.print(
+            screen,
+            "Welcome! remember to make this the active "
+            "\nwindow when you wish to use the remote",
+            white
+        )
+        textPrint.print(screen, "Controller detected: {}".format(name), white)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # If user clicked close
@@ -92,8 +68,11 @@ def main():
                 # saturate between -1 and 1
                 radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
 
-
-        textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
+        textPrint.print(
+            screen, "Side dial position: {:.2f}".format(
+                radio_channel_6_pos
+            ), white
+        )
 
         # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
 
@@ -121,5 +100,7 @@ def main():
         i += 1
 
     pygame.quit()
+
+
 if __name__ == '__main__':
     main()

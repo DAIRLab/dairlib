@@ -100,7 +100,7 @@ def main():
     elevation_map_publisher_network = LcmPublisherSystem.Make(
         channel="NETWORK_CASSIE_ELEVATION_MAP",
         lcm_type=lcmt_grid_map,
-        lcm=elevation_mapping.lcm(),
+        lcm=network_lcm,
         publish_triggers={TriggerType.kPeriodic},
         publish_period=1.0 / 5.0,
         use_cpp_serializer=True

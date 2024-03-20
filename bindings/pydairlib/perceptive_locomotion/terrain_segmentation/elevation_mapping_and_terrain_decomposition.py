@@ -11,6 +11,8 @@ from pydrake.systems.all import (
     TriggerType,
 )
 
+from pydrake.lcm import DrakeLcm
+
 from pydrake.common.value import AbstractValue
 
 import pydairlib.lcm  # needed for cpp serialization of lcm messages
@@ -61,6 +63,7 @@ def main():
     terrain_segmentation = TerrainSegmentationSystem()
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
+    network_lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=1")
 
     contact_subscriber = LcmSubscriberSystem.Make(
         channel="NETWORK_CASSIE_CONTACT_DISPATCHER",
@@ -69,21 +72,37 @@ def main():
         use_cpp_serializer=True
     )
 
-    foothold_publisher = LcmPublisherSystem.Make(
+    foothold_publisher_local = LcmPublisherSystem.Make(
         channel="FOOTHOLDS_PROCESSED",
         lcm_type=lcmt_foothold_set,
         lcm=elevation_mapping.lcm(),
-        publish_triggers={TriggerType.kForced},
-        publish_period=0.0,
+        publish_triggers={TriggerType.kPeriodic},
+        publish_period=1.0 / 30.0,
+        use_cpp_serializer=True
+    )
+    foothold_publisher_network = LcmPublisherSystem.Make(
+        channel="NETWORK_FOOTHOLDS_PROCESSED",
+        lcm_type=lcmt_foothold_set,
+        lcm=network_lcm,
+        publish_triggers={TriggerType.kPeriodic},
+        publish_period=1.0 / 5.0,
         use_cpp_serializer=True
     )
     elevation_map_sender = GridMapSender()
-    elevation_map_publisher = LcmPublisherSystem.Make(
+    elevation_map_publisher_local = LcmPublisherSystem.Make(
         channel="CASSIE_ELEVATION_MAP",
         lcm_type=lcmt_grid_map,
         lcm=elevation_mapping.lcm(),
-        publish_triggers={TriggerType.kForced},
-        publish_period=0.0,
+        publish_triggers={TriggerType.kPeriodic},
+        publish_period=1.0 / 30.0,
+        use_cpp_serializer=True
+    )
+    elevation_map_publisher_network = LcmPublisherSystem.Make(
+        channel="NETWORK_CASSIE_ELEVATION_MAP",
+        lcm_type=lcmt_grid_map,
+        lcm=elevation_mapping.lcm(),
+        publish_triggers={TriggerType.kPeriodic},
+        publish_period=1.0 / 5.0,
         use_cpp_serializer=True
     )
 
@@ -91,10 +110,12 @@ def main():
     builder.AddSystem(terrain_segmentation)
     builder.AddSystem(convex_decomposition)
     builder.AddSystem(contact_subscriber)
-    builder.AddSystem(foothold_publisher)
+    builder.AddSystem(foothold_publisher_local)
+    builder.AddSystem(foothold_publisher_network)
     builder.AddSystem(foothold_sender)
     builder.AddSystem(elevation_map_sender)
-    builder.AddSystem(elevation_map_publisher)
+    builder.AddSystem(elevation_map_publisher_local)
+    builder.AddSystem(elevation_map_publisher_network)
 
     builder.Connect(
         contact_subscriber.get_output_port(),
@@ -114,7 +135,11 @@ def main():
     )
     builder.Connect(
         foothold_sender.get_output_port(),
-        foothold_publisher.get_input_port()
+        foothold_publisher_local.get_input_port()
+    )
+    builder.Connect(
+        foothold_sender.get_output_port(),
+        foothold_publisher_network.get_input_port()
     )
     builder.Connect(
         terrain_segmentation.get_output_port(),
@@ -122,7 +147,11 @@ def main():
     )
     builder.Connect(
         elevation_map_sender.get_output_port(),
-        elevation_map_publisher.get_input_port()
+        elevation_map_publisher_local.get_input_port()
+    )
+    builder.Connect(
+        elevation_map_sender.get_output_port(),
+        elevation_map_publisher_network.get_input_port()
     )
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(

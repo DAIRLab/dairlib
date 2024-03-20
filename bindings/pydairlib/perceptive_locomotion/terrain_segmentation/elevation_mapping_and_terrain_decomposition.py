@@ -97,14 +97,14 @@ def main():
         publish_period=1.0 / 30.0,
         use_cpp_serializer=True
     )
-    elevation_map_publisher_network = LcmPublisherSystem.Make(
-        channel="NETWORK_CASSIE_ELEVATION_MAP",
-        lcm_type=lcmt_grid_map,
-        lcm=elevation_mapping.lcm(),
-        publish_triggers={TriggerType.kPeriodic},
-        publish_period=1.0 / 5.0,
-        use_cpp_serializer=True
-    )
+    # elevation_map_publisher_network = LcmPublisherSystem.Make(
+    #     channel="NETWORK_CASSIE_ELEVATION_MAP",
+    #     lcm_type=lcmt_grid_map,
+    #     lcm=network_lcm,
+    #     publish_triggers={TriggerType.kPeriodic},
+    #     publish_period=1.0 / 5.0,
+    #     use_cpp_serializer=True
+    # )
 
     builder.AddSystem(elevation_mapping)
     builder.AddSystem(terrain_segmentation)
@@ -115,7 +115,7 @@ def main():
     builder.AddSystem(foothold_sender)
     builder.AddSystem(elevation_map_sender)
     builder.AddSystem(elevation_map_publisher_local)
-    builder.AddSystem(elevation_map_publisher_network)
+    # builder.AddSystem(elevation_map_publisher_network)
 
     builder.Connect(
         contact_subscriber.get_output_port(),
@@ -149,10 +149,10 @@ def main():
         elevation_map_sender.get_output_port(),
         elevation_map_publisher_local.get_input_port()
     )
-    builder.Connect(
-        elevation_map_sender.get_output_port(),
-        elevation_map_publisher_network.get_input_port()
-    )
+    # builder.Connect(
+    #     elevation_map_sender.get_output_port(),
+    #     elevation_map_publisher_network.get_input_port()
+    # )
     diagram = builder.Build()
     DrawAndSaveDiagramGraph(
         diagram,

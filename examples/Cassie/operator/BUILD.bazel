@@ -13,15 +13,26 @@ py_library(
     ],
 )
 
+py_library(
+    name = "pygame_utils",
+    srcs = ["pygame_utils.py"],
+    deps = [],
+)
+
 py_binary(
     name = "cassie_status_panel_py",
     srcs = ["cassie_status_panel.py"],
     data = [
         "@lcm//:lcm-python",
     ],
+    imports = [
+        ":cassie_status_lcm_backend",
+        ":pygame_utils",
+    ],
     main = "cassie_status_panel.py",
     deps = [
         ":cassie_status_lcm_backend",
+        ":pygame_utils",
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
@@ -47,5 +58,5 @@ drake_runfiles_binary(
 
 drake_runfiles_binary(
     name = "cassie_status_panel",
-    target = "cassie_status_panel_py"
+    target = "cassie_status_panel_py",
 )

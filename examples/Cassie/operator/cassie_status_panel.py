@@ -23,8 +23,8 @@ LIGHT_SKY_BLUE = (135, 206, 250)
 DODGER_BLUE = (30, 144, 255)
 
 # Set up the screen
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 1500
+SCREEN_WIDTH = 600
+SCREEN_HEIGHT = 750
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Cassie Status Panel")
 
@@ -73,7 +73,7 @@ lc = lcm.LCM()
 pd_pub = PDPublisher(lc)
 height_pub = HeightPublisher(lc)
 status_sub = StatusSubscriber(lc, "INPUT_SUPERVISOR_STATUS")
-status_printer = TextPrint(72, (50, 50))
+status_printer = TextPrint(40, (50, 50))
 
 
 # Functions

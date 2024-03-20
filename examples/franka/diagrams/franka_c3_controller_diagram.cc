@@ -41,7 +41,6 @@ using dairlib::solvers::LCSFactory;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
-using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
@@ -221,8 +220,8 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
       robot_diagram_for_lcs_->plant(),
       robot_diagram_for_lcs_->mutable_plant_context(
           robot_diagram_root_context_.get()),
-      *plant_for_lcs_autodiff_, *plant_for_lcs_autodiff_context_,
-      contact_pairs, c3_options);
+      *plant_for_lcs_autodiff_, *plant_for_lcs_autodiff_context_, contact_pairs,
+      c3_options);
   auto controller = builder.AddSystem<systems::C3Controller>(
       robot_diagram_for_lcs_->plant(), c3_options);
   auto c3_trajectory_generator =
@@ -276,42 +275,42 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   // publisher connections
   DRAKE_DEMAND(c3_options.publish_frequency > 0);
 
-  auto actor_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_channel, lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / c3_options.publish_frequency));
-  auto object_trajectory_sender = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_object_channel, lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / c3_options.publish_frequency));
-  auto c3_output_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-          lcm_channel_params.c3_debug_output_channel, lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / c3_options.publish_frequency));
-  auto c3_target_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_target_state_channel, lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / c3_options.publish_frequency));
-  auto c3_actual_state_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-          lcm_channel_params.c3_actual_state_channel, lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / c3_options.publish_frequency));
-  auto c3_forces_publisher =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-          lcm_channel_params.c3_force_channel, lcm,
-          TriggerTypeSet({TriggerType::kPeriodic}), 1 / c3_options.publish_frequency));
-  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
-                  actor_trajectory_sender->get_input_port());
-  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
-                  object_trajectory_sender->get_input_port());
-  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
-                  c3_target_state_publisher->get_input_port());
-  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
-                  c3_actual_state_publisher->get_input_port());
-  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
-                  c3_output_publisher->get_input_port());
-  builder.Connect(c3_output_sender->get_output_port_c3_force(),
-                  c3_forces_publisher->get_input_port());
+//  auto actor_trajectory_sender = builder.AddSystem(
+//      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+//          lcm_channel_params.c3_actor_channel, lcm,
+//          TriggerTypeSet({TriggerType::kForced})));
+//  auto object_trajectory_sender = builder.AddSystem(
+//      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+//          lcm_channel_params.c3_object_channel, lcm,
+//          TriggerTypeSet({TriggerType::kForced})));
+//  auto c3_output_publisher =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
+//          lcm_channel_params.c3_debug_output_channel, lcm,
+//          TriggerTypeSet({TriggerType::kForced})));
+//  auto c3_target_state_publisher =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+//          lcm_channel_params.c3_target_state_channel, lcm,
+//          TriggerTypeSet({TriggerType::kForced})));
+//  auto c3_actual_state_publisher =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+//          lcm_channel_params.c3_actual_state_channel, lcm,
+//          TriggerTypeSet({TriggerType::kForced})));
+//  auto c3_forces_publisher =
+//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
+//          lcm_channel_params.c3_force_channel, lcm,
+//          TriggerTypeSet({TriggerType::kForced})));
+//  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+//                  actor_trajectory_sender->get_input_port());
+//  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
+//                  object_trajectory_sender->get_input_port());
+//  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+//                  c3_target_state_publisher->get_input_port());
+//  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
+//                  c3_actual_state_publisher->get_input_port());
+//  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
+//                  c3_output_publisher->get_input_port());
+//  builder.Connect(c3_output_sender->get_output_port_c3_force(),
+//                  c3_forces_publisher->get_input_port());
 
   // Publisher connections
   builder.ExportInput(franka_state_receiver->get_input_port(),

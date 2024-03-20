@@ -4,7 +4,6 @@
 
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
-#include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>

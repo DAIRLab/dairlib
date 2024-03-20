@@ -24,7 +24,6 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
 #include "systems/controllers/osc/operational_space_control.h"
-#include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/primitives/radio_parser.h"

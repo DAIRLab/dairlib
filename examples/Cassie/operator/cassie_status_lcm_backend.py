@@ -46,7 +46,7 @@ class PDPublisher:
             # ramp up the gains for 5 seconds
             msg.timestamp = int(time.time() * 1e6)
             msg.kp = [kp * i / 99.0 for kp in self.kp]
-            msg.kd = [kd * i / 99.0 for kd in self.kp]
+            msg.kd = [kd * i / 99.0 for kd in self.kd]
             msg.desired_position = self.joint_default
 
             self.lc.publish("PD_CONFIG", msg.encode())

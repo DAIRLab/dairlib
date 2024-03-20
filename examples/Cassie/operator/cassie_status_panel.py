@@ -68,7 +68,7 @@ numeric_keys = [
     pygame.K_KP8, pygame.K_KP9
 ]
 
-lc = lcm.LCM()
+lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
 
 pd_pub = PDPublisher(lc)
 height_pub = HeightPublisher(lc)

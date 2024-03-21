@@ -62,14 +62,10 @@ class FrankaC3ControllerDiagram : public drake::systems::Diagram<double> {
   std::unique_ptr<drake::systems::Context<double>> plant_tray_context_;
   std::unique_ptr<drake::systems::Context<drake::AutoDiffXd>> plant_for_lcs_autodiff_context_;
 
-  const drake::systems::InputPortIndex franka_state_port_ =
-      drake::systems::InputPortIndex(0);
-  const drake::systems::InputPortIndex tray_state_port_ =
-      drake::systems::InputPortIndex(1);
-  const drake::systems::InputPortIndex radio_port_ =
-      drake::systems::InputPortIndex(2);
-  const drake::systems::OutputPortIndex mpc_plan_port_ =
-      drake::systems::OutputPortIndex(0);
+  drake::systems::InputPortIndex franka_state_port_;
+  drake::systems::InputPortIndex tray_state_port_;
+  drake::systems::InputPortIndex radio_port_;
+  drake::systems::OutputPortIndex mpc_plan_port_;
 };
 
 }  // namespace controllers

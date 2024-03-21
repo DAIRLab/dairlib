@@ -12,6 +12,7 @@ warm_start: true
 use_predicted_x0: true
 solve_time_filter_alpha: 0.95
 # set to 0 to publish as fast as possible
+#publish_frequency: 0
 publish_frequency: 30
 
 # Workspace Limits
@@ -35,7 +36,7 @@ gamma: 1.0 # discount factor on MPC costs
 w_Q: 50
 w_R: 50
 # Penalty on all decision variables, assuming scalar
-w_G: 0.1
+w_G: 0.2
 # Penalty on all decision variables, assuming scalar
 w_U: 0.1
 

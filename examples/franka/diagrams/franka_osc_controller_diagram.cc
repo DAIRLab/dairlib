@@ -123,7 +123,7 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
       builder.AddSystem<systems::RobotCommandSender>(*plant_);
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorTrajectoryGenerator>();
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+  auto passthrough = builder.AddSystem<drake::systems::PassThrough<double>>(18);
   VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
       controller_params.neutral_position.data(),
       controller_params.neutral_position.size());
@@ -212,11 +212,13 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
                     franka_command_sender->get_input_port(0));
   }
 
-  builder.Connect(radio_to_vector->get_output_port(),
+//  builder.Connect(radio_to_vector->get_output_port(),
+//                  passthrough->get_input_port());
+  builder.Connect(passthrough->get_output_port(),
                   end_effector_trajectory->get_input_port_radio());
-  builder.Connect(radio_to_vector->get_output_port(),
+  builder.Connect(passthrough->get_output_port(),
                   end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(radio_to_vector->get_output_port(),
+  builder.Connect(passthrough->get_output_port(),
                   end_effector_force_trajectory->get_input_port_radio());
   builder.Connect(franka_command_sender->get_output_port(),
                   franka_command_pub->get_input_port());
@@ -249,7 +251,7 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
                       "end_effector_orientation: lcmt_timestamped_trajectory");
   end_effector_force_port_ = builder.ExportInput(end_effector_force_receiver->get_input_port(),
                       "end_effector_force: lcmt_timestamped_trajectory");
-  radio_port_ = builder.ExportInput(radio_to_vector->get_input_port(), "raw_radio");
+  radio_port_ = builder.ExportInput(passthrough->get_input_port(), "raw_radio");
   builder.ExportOutput(osc->get_output_port_osc_command(), "robot_input");
 
   builder.BuildInto(this);

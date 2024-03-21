@@ -30,6 +30,7 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/primitives/radio_parser.h"
 namespace dairlib {
 
 using drake::geometry::GeometrySet;
@@ -170,9 +171,9 @@ int DoMain(int argc, char* argv[]) {
 
   //// OSC connections
 
-  builder.Connect(plant.get_state_output_port(tray_index),
-                  tray_state_sender->get_input_port_state());
-
+  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+  builder.Connect(radio_sub->get_output_port(),
+                  radio_to_vector->get_input_port());
   // Diagram Connections
   builder.Connect(osc_controller->get_output_port_robot_input(),
                   passthrough->get_input_port());
@@ -189,9 +190,9 @@ int DoMain(int argc, char* argv[]) {
                   c3_controller->get_input_port_robot_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   c3_controller->get_input_port_object_state());
-  builder.Connect(radio_sub->get_output_port(),
+  builder.Connect(radio_to_vector->get_output_port(),
                   c3_controller->get_input_port_radio());
-  builder.Connect(radio_sub->get_output_port(),
+  builder.Connect(radio_to_vector->get_output_port(),
                   osc_controller->get_input_port_radio());
 
   builder.Connect(*franka_state_sender, *state_pub);
@@ -199,6 +200,8 @@ int DoMain(int argc, char* argv[]) {
                   tray_state_pub->get_input_port());
   builder.Connect(plant.get_state_output_port(franka_index),
                   franka_state_sender->get_input_port_state());
+  builder.Connect(plant.get_state_output_port(tray_index),
+                  tray_state_sender->get_input_port_state());
   builder.Connect(passthrough->get_output_port(),
                   plant.get_actuation_input_port());
 

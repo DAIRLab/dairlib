@@ -14,6 +14,8 @@
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
+#include <drake/systems/primitives/pass_through.h>
+#include <drake/systems/primitives/discrete_time_delay.h>
 
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
@@ -227,6 +229,15 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(
           robot_diagram_for_lcs_->plant(), c3_options);
+//  auto placeholder_trajectory = lcmt_timestamped_saved_traj();
+  auto placeholder_solution = C3Output::C3Solution();
+  placeholder_solution.x_sol_ = Eigen::MatrixXf::Zero(c3_options.g_x.size(), c3_options.N);
+  placeholder_solution.lambda_sol_ = Eigen::MatrixXf::Zero(c3_options.g_lambda.size(), c3_options.N);
+  placeholder_solution.u_sol_ = Eigen::MatrixXf::Zero(c3_options.g_u.size(), c3_options.N);
+  placeholder_solution.time_vector_ = Eigen::VectorXf::LinSpaced(c3_options.N, 0, 1);
+  auto discrete_time_delay = builder.AddSystem<drake::systems::DiscreteTimeDelay>(1 / c3_options.publish_frequency,
+                                                                                  1,
+                                                                                  drake::Value(placeholder_solution));
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",
       "tray_qx",         "tray_qy",        "tray_qz",         "tray_x",
@@ -239,8 +250,16 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   c3_trajectory_generator->SetPublishEndEffectorOrientation(
       controller_params.include_end_effector_orientation);
   auto c3_output_sender = builder.AddSystem<systems::C3OutputSender>();
-  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+  auto passthrough = builder.AddSystem<drake::systems::PassThrough<double>>(18);
+
   controller->SetOsqpSolverOptions(solver_options);
+
+  // publisher connections
+  DRAKE_DEMAND(c3_options.publish_frequency > 0);
+  builder.Connect(controller->get_output_port_c3_solution(),
+                  discrete_time_delay->get_input_port());
+
+
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
   builder.Connect(target_state_mux->get_output_port(),
@@ -255,9 +274,9 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
                   controller->get_input_port_lcs_state());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
                   lcs_factory->get_input_port_lcs_state());
-  builder.Connect(radio_to_vector->get_output_port(),
+  builder.Connect(passthrough->get_output_port(),
                   plate_balancing_target->get_input_port_radio());
-  builder.Connect(controller->get_output_port_c3_solution(),
+  builder.Connect(discrete_time_delay->get_output_port(),
                   c3_trajectory_generator->get_input_port_c3_solution());
   builder.Connect(lcs_factory->get_output_port_lcs_contact_jacobian(),
                   c3_output_sender->get_input_port_lcs_contact_info());
@@ -267,58 +286,59 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   builder.Connect(reduced_order_model_receiver->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
 
-  builder.Connect(controller->get_output_port_c3_solution(),
+  builder.Connect(discrete_time_delay->get_output_port(),
                   c3_output_sender->get_input_port_c3_solution());
   builder.Connect(controller->get_output_port_c3_intermediates(),
                   c3_output_sender->get_input_port_c3_intermediates());
 
-  // publisher connections
-  DRAKE_DEMAND(c3_options.publish_frequency > 0);
 
-//  auto actor_trajectory_sender = builder.AddSystem(
-//      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-//          lcm_channel_params.c3_actor_channel, lcm,
-//          TriggerTypeSet({TriggerType::kForced})));
-//  auto object_trajectory_sender = builder.AddSystem(
-//      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-//          lcm_channel_params.c3_object_channel, lcm,
-//          TriggerTypeSet({TriggerType::kForced})));
-//  auto c3_output_publisher =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-//          lcm_channel_params.c3_debug_output_channel, lcm,
-//          TriggerTypeSet({TriggerType::kForced})));
-//  auto c3_target_state_publisher =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-//          lcm_channel_params.c3_target_state_channel, lcm,
-//          TriggerTypeSet({TriggerType::kForced})));
-//  auto c3_actual_state_publisher =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-//          lcm_channel_params.c3_actual_state_channel, lcm,
-//          TriggerTypeSet({TriggerType::kForced})));
-//  auto c3_forces_publisher =
-//      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-//          lcm_channel_params.c3_force_channel, lcm,
-//          TriggerTypeSet({TriggerType::kForced})));
-//  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
-//                  actor_trajectory_sender->get_input_port());
-//  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
-//                  object_trajectory_sender->get_input_port());
-//  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
-//                  c3_target_state_publisher->get_input_port());
-//  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
-//                  c3_actual_state_publisher->get_input_port());
-//  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
-//                  c3_output_publisher->get_input_port());
-//  builder.Connect(c3_output_sender->get_output_port_c3_force(),
-//                  c3_forces_publisher->get_input_port());
+
+  auto actor_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_actor_channel, lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto object_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_object_channel, lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_output_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
+          lcm_channel_params.c3_debug_output_channel, lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_target_state_channel, lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_actual_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_actual_state_channel, lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_forces_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
+          lcm_channel_params.c3_force_channel, lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+                  actor_trajectory_sender->get_input_port());
+  builder.Connect(c3_trajectory_generator->get_output_port_object_trajectory(),
+                  object_trajectory_sender->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+                  c3_target_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
+                  c3_actual_state_publisher->get_input_port());
+  builder.Connect(c3_output_sender->get_output_port_c3_debug(),
+                  c3_output_publisher->get_input_port());
+  builder.Connect(c3_output_sender->get_output_port_c3_force(),
+                  c3_forces_publisher->get_input_port());
+
+
 
   // Publisher connections
-  builder.ExportInput(franka_state_receiver->get_input_port(),
+  franka_state_port_ = builder.ExportInput(franka_state_receiver->get_input_port(),
                       "franka_state: lcmt_robot_output");
-  builder.ExportInput(tray_state_receiver->get_input_port(),
+  tray_state_port_ = builder.ExportInput(tray_state_receiver->get_input_port(),
                       "tray_state: lcmt_object_state");
-  builder.ExportInput(radio_to_vector->get_input_port(), "raw_radio");
-  builder.ExportOutput(
+  radio_port_ = builder.ExportInput(passthrough->get_input_port(), "raw_radio");
+  mpc_plan_port_ = builder.ExportOutput(
       c3_trajectory_generator->get_output_port_actor_trajectory(),
       "actor_trajectory");
 

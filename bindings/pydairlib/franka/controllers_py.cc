@@ -23,7 +23,7 @@ PYBIND11_MODULE(controllers, m) {
                     drake::lcm::DrakeLcm*>(),
            py::arg("controller_settings"), py::arg("lcm_channels"),
            py::arg("lcm"))
-      .def("FrankaOSCControllerDiagram",
+      .def("get_input_port_robot_state",
            &FrankaOSCControllerDiagram::get_input_port_robot_state,
            py_rvp::reference_internal)
       .def("get_input_port_end_effector_position",

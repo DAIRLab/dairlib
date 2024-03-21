@@ -8,6 +8,8 @@
 #include "dairlib/lcmt_osc_tracking_data.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
+#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "dairlib/lcmt_radio_out.hpp"
 
 #include "drake/bindings/pydrake/systems/lcm_pybind.h"
 
@@ -25,6 +27,8 @@ void BindCppSerializers() {
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_osc_tracking_data>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_robot_input>("dairlib");
   drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_saved_traj>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_timestamped_saved_traj>("dairlib");
+  drake::pydrake::pysystems::pylcm::BindCppSerializer<dairlib::lcmt_radio_out>("dairlib");
 }
 
 }  // namespace pydairlib

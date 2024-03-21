@@ -87,7 +87,8 @@ C3Controller::C3Controller(
 
   c3_->SetOsqpSolverOptions(solver_options_);
 
-  // Set actor bounds, TODO(yangwill): move this out of here because it is task specific
+  // Set actor bounds, TODO(yangwill): move this out of here because it is task
+  // specific
   for (int i : vector<int>({0})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
     A(i) = 1.0;
@@ -175,7 +176,6 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
-
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
   const TimestampedVector<double>* lcs_x =
@@ -186,7 +186,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   drake::VectorX<double> x_lcs = lcs_x->get_data();
   auto& x_pred = context.get_discrete_state(x_pred_index_).value();
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
-  auto mutable_solve_time = discrete_state->get_mutable_value(filtered_solve_time_index_);
+  auto mutable_solve_time =
+      discrete_state->get_mutable_value(filtered_solve_time_index_);
 
   if (x_lcs.segment(n_q_, 3).norm() > 0.01 && c3_options_.use_predicted_x0 &&
       !x_pred.isZero()) {
@@ -234,7 +235,10 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
       1e6;
   mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
-                         solve_time_filter_constant_ * mutable_solve_time[0];
+                          solve_time_filter_constant_ * mutable_solve_time[0];
+
+//  solve_time = 1.0 / c3_options_.publish_frequency;
+//  mutable_solve_time[0] = solve_time;
 
   auto z_sol = c3_->GetFullSolution();
   if (mutable_solve_time[0] < N_ * dt_) {
@@ -270,8 +274,7 @@ void C3Controller::OutputC3Intermediates(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
-  double t = context.get_discrete_state(plan_start_time_index_)[0] +
-      solve_time;
+  double t = context.get_discrete_state(plan_start_time_index_)[0] + solve_time;
   auto delta = c3_->GetDualDeltaSolution();
   auto w = c3_->GetDualWSolution();
 

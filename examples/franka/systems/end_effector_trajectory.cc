@@ -1,5 +1,5 @@
 #include "end_effector_trajectory.h"
-
+#include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
@@ -67,6 +67,7 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   } else {
     if (trajectory_input.value(0).isZero()) {
     } else {
+      std::cout << "time difference: " << context.get_time() - trajectory_input.start_time() << std::endl;
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);
     }

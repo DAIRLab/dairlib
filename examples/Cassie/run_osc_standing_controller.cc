@@ -152,7 +152,8 @@ int DoMain(int argc, char* argv[]) {
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant_w_springs, context_w_spr.get(), false);
+      plant_w_springs, context_w_spr.get(), false,
+      systems::controllers::OscSolverChoice::kFCCQP);
 
   // Distance constraint
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_springs);

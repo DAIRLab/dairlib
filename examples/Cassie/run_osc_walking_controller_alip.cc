@@ -83,6 +83,9 @@ DEFINE_string(gains_filename, "examples/Cassie/osc/osc_walking_gains_alip.yaml",
               "Filepath containing gains");
 DEFINE_bool(publish_osc_data, true,
             "whether to publish lcm messages for OscTrackData");
+
+DEFINE_bool(publish_qp, false, "whether to broadcast the QP over LCM");
+
 DEFINE_double(qp_time_limit, 0.002, "maximum qp solve time");
 
 DEFINE_bool(publish_filtered_state, false,
@@ -342,6 +345,14 @@ int DoMain(int argc, char* argv[]) {
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
       plant_w_spr, context_w_spr.get(), true, osc_solver_choice);
 
+  if (osc_solver_choice == systems::controllers::kFCCQP and FLAGS_publish_qp) {
+    auto qp_pub = builder.AddSystem(
+        LcmPublisherSystem::Make<lcmt_fcc_qp>(
+            "FCCQP", &lcm_local, {TriggerType::kForced})
+    );
+    builder.Connect(osc->get_output_port_fccqp(), qp_pub->get_input_port());
+  }
+
   // Cost
   int n_v = plant_w_spr.num_velocities();
   int n_u = plant_w_spr.num_actuators();
@@ -554,6 +565,10 @@ int DoMain(int argc, char* argv[]) {
     osc->SetInputCostForJointAndFsmStateWeight(
         "toe_right_motor", post_left_double_support_state, 1.0);
   }
+
+  osc->SetLambdaContactRegularizationWeight(
+      gains.w_lambda * gains.W_lambda_c_regularization);
+
   osc->Build();
 
   // Connect ports

@@ -162,6 +162,7 @@ lcmt_fcc_qp FCCQPSolver::SerializeToLCM(const MathematicalProgram& prog) const {
   qp.beq = CopyVectorXdToStdVector(beq);
   qp.lb = CopyVectorXdToStdVector(lb);
   qp.ub = CopyVectorXdToStdVector(ub);
+  qp.friction_coeffs = friction_coeffs_;
 
   return qp;
 }

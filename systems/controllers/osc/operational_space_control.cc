@@ -94,6 +94,12 @@ OperationalSpaceControl::OperationalSpaceControl(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
           .get_index();
 
+  if (solver_choice == kFCCQP) {
+    fcc_qp_output_port_ = DeclareAbstractOutputPort(
+        "lcmt_fcc_qp", &OperationalSpaceControl::AssignFccQPLcmOutput
+        ).get_index();
+  }
+
   failure_port_ = this->DeclareVectorOutputPort(
                           "failure_signal", TimestampedVector<double>(1),
                           &OperationalSpaceControl::CheckTracking)
@@ -344,9 +350,6 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
         << timestamp;
-    if (fccqp_solver_->is_initialized()) {
-      fccqp_solver_->set_warm_start(false);
-    }
     if (osqp_solver_->IsInitialized()) {
       osqp_solver_->DisableWarmStart();
     }
@@ -452,16 +455,16 @@ VectorXd OperationalSpaceControl::SolveQp(
     MatrixXd A = MatrixXd::Zero(1, nc / kSpaceDim);
     if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
         ds_states_.end()) {
-      double s = std::clamp(t_since_last_state_switch / ds_duration_, 0.0, 1.0);
+      double s = std::clamp(t_since_last_state_switch / ds_duration_, 0.02, 0.98);
       double alpha_left = 0;
       double alpha_right = 0;
       if (prev_distinct_fsm_state_ == right_support_state_) {
         // We want left foot force to gradually increase
-        alpha_left = std::clamp(1.0 - s, 0.0, 1.0);
+        alpha_left = std::clamp(1.0 - s, 0.02, 0.98);
         alpha_right = -s;
       } else if (prev_distinct_fsm_state_ == left_support_state_) {
         alpha_left = -s;
-        alpha_right = std::clamp(1.0 - s, 0.0, 1.0);
+        alpha_right = std::clamp(1.0 - s, 0.02, 0.98);
       }
       A(0, 0) = alpha_left;
       A(0, 1) = alpha_left;
@@ -652,6 +655,13 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   ii_lambda_sol_ = A_constrained.completeOrthogonalDecomposition()
                        .solve(b_constrained)
                        .head(active_constraint_dim);
+}
+
+void OperationalSpaceControl::AssignFccQPLcmOutput(
+    const Context<double> &context, lcmt_fcc_qp *output) const {
+  if (fccqp_solver_->is_initialized()) {
+    *output = fccqp_solver_->SerializeToLCM(id_qp_.get_prog());
+  }
 }
 
 void OperationalSpaceControl::AssignOscLcmOutput(

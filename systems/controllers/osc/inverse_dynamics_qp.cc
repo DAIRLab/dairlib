@@ -206,6 +206,8 @@ void InverseDynamicsQp::UpdateDynamics(
   A_dyn.block(0, nv_ + nu_ + nh_, nv_, nc_) = -Jc.transpose();
   A_dyn.block(0, nv_ + nu_ + nh_ + nc_, nv_, ne_) = -Je.transpose();
 
+  // Active rows: Jc * dv + epsilon == -Jc_dot * v
+  // Inactive rows: epsilon == 0
   MatrixXd A_c = MatrixXd::Zero(nc_active_, nv_ + nc_active_);
   A_c.block(0, 0, nc_active_, nv_) = Jc_active;
   A_c.block(0, nv_, nc_active_, nc_active_) =

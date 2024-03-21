@@ -12,6 +12,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_osc_output.hpp"
 #include "dairlib/lcmt_osc_qp_output.hpp"
+#include "dairlib/lcmt_fcc_qp.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "solvers/fcc_qp_solver.h"
@@ -133,6 +134,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_output_port_failure() const {
     return this->get_output_port(failure_port_);
   }
+
+  /*!
+   * Output: FCCQP lcm message (only available with FCCQP Solver)
+   */
+   const drake::systems::OutputPort<double>& get_output_port_fccqp() const {
+     DRAKE_DEMAND(solver_choice_ == OscSolverChoice::kFCCQP);
+     return this->get_output_port(fcc_qp_output_port_);
+   }
 
   /*!
    * Input: OutputVector containing the robot state
@@ -337,10 +346,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Safety function that triggers when the tracking cost is too high
   void CheckTracking(const drake::systems::Context<double>& context,
                      TimestampedVector<double>* output) const;
+  void AssignFccQPLcmOutput(const drake::systems::Context<double>& context,
+                            lcmt_fcc_qp* output) const;
 
   // Input/Output ports
   int osc_debug_port_;
   int osc_output_port_;
+  int fcc_qp_output_port_;
   int state_port_;
   int clock_port_;
   int fsm_port_;

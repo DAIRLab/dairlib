@@ -441,7 +441,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
     omp_set_nested(1);
   }
 
-// #pragma omp parallel for num_threads(options_.num_threads)
+#pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
     if (warm_start_) {
       if (i == N_ - 1) {

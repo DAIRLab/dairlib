@@ -201,7 +201,6 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
   }
 
   for (int iter = 0; iter < options_.admm_iter; iter++) {
-    std::cout<<"Admm Iteration: "<<iter<<std::endl;
     ADMMStep(x0, &delta, &w, &Gv, iter);
   }
 
@@ -286,31 +285,16 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
 
   
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
-  std::cout<<"z after SolveQP: "<<std::endl;
-  for (int i = 0; i < z.size(); i++) {
-    std::cout<<"at i "<< i <<z[i]<<std::endl;
-  }
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
   for (int i = 0; i < N_; i++) {
     ZW[i] = w->at(i) + z[i];
   }
-
-  std::cout<<"delta before Solve Projection: "<<std::endl;
-  for (int i = 0; i < z.size(); i++) {
-    std::cout<<"at i "<< i <<delta->at(i)<<std::endl;
-  }
-
   if (U_[0].isZero(0)) {
     *delta = SolveProjection(*Gv, ZW, admm_iteration);
 
   } else {
     *delta = SolveProjection(U_, ZW, admm_iteration);
-  }
-
-  std::cout<<"delta after Solve Projection: "<<std::endl;
-  for (int i = 0; i < z.size(); i++) {
-    std::cout<<"at i "<< i <<delta->at(i)<<std::endl;
   }
 
   for (int i = 0; i < N_; i++) {

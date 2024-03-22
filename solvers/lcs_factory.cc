@@ -201,12 +201,11 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
 
-    // TODO(yangwill): check gap function to make sure it makes sense. Potential
-    // source of uncertainty
-    //  std::cout << "phi: " << phi << std::endl;
-    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
+    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v  
+        - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
-        J_t * dt * d_v - J_n * vNqdot * plant.GetPositions(context);
+        J_t * dt * d_v;
+
   } else if (contact_model == ContactModel::kAnitescu) {
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());
@@ -245,16 +244,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
   E /= AnDn;
   c /= AnDn;
   H /= AnDn;
-
-  std::cout<<"Row 9 for z_jack of A: "<< A.row(9)<<std::endl;
-  std::cout<<"Row 9 for z_jack of B: "<< B.row(9)<<std::endl;
-  std::cout<<"Row 9 for z_jack of D: "<< D.row(9)<<std::endl;
-  std::cout<<"Row 9 for z_jack of d: "<< d.row(9)<<std::endl;
-
-  std::cout<<"Row 18 for jack vz of A: "<< A.row(18)<<std::endl;
-  std::cout<<"Row 18 for jack vz of B: "<< B.row(18)<<std::endl;
-  std::cout<<"Row 18 for jack vz of D: "<< D.row(18)<<std::endl;
-  std::cout<<"Row 18 for jack vz of d: "<< d.row(18)<<std::endl;
 
   LCS system(A, B, D, d, E, F, H, c, N, dt);
 

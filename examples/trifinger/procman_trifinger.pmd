@@ -26,7 +26,18 @@ group "4. Controllers" {
     }
 }
 
-group "5.lcm-tools" {
+group "5. ROS-LCM Bridge" {
+    cmd "ROS-to-LCM" {
+        exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge";
+        host = "localhost";
+    }
+    cmd "LCM-to-ROS" {
+        exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge";
+        host = "localhost";
+    }
+}
+
+group "6.lcm-tools" {
     cmd "0.lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";

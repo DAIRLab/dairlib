@@ -45,8 +45,8 @@ build --host_cxxopt=-std=c++17
 # https://github.com/bazelbuild/bazel/issues/1164
 build --action_env=CCACHE_DISABLE=1
 
-build --action_env=PATH=/usr/bin:/bin
-build --action_env=LD_LIBRARY_PATH=
+# build --action_env=PATH=/usr/bin:/bin
+# build --action_env=LD_LIBRARY_PATH=
 
 # TODO(jwnimmer-tri) We should see if we can reuse more of Drake's
 # customizations somehow.

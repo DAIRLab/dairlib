@@ -102,6 +102,7 @@ http_archive(
 )
 
 # Try to build ROS2 workspace
+# TODO: use http_archive() and remove this local repo from dairlib
 local_repository(
     name = "bazel_ros2_rules",
     path = "./tools/bazel_ros2_rules",
@@ -116,6 +117,8 @@ load("@bazel_ros2_rules//ros2:defs.bzl", "ros2_local_repository")
 
 # Please keep this list sorted
 ROS2_PACKAGES = [
+    "sensor_msgs",
+    "nav_msgs",
     "action_msgs",
     "builtin_interfaces",
     "console_bridge_vendor",

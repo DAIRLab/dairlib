@@ -23,3 +23,21 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "trifinger_ros_lcm_msgs_conversions",
+    srcs = ["trifinger_ros_lcm_msgs_conversions.cc"],
+    hdrs = ["trifinger_ros_lcm_msgs_conversions.h"],
+    deps = [
+        "//common",
+        "//examples/trifinger/trifinger_ros2_msgs:trifinger_ros2_msgs_cc",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@ros2//:nav_msgs_cc",
+        "@ros2//:rclcpp_cc",
+        "@ros2//:sensor_msgs_cc",
+        "@ros2//:std_msgs_cc",
+    ],
+)

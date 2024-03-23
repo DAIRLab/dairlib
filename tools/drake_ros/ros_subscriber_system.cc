@@ -5,8 +5,9 @@
 #include <string>
 #include <utility>
 
-#include "subscription.h"  // NOLINT(build/include)
 #include <drake/systems/framework/abstract_values.h>
+
+#include "subscription.h"  // NOLINT(build/include)
 
 namespace drake_ros {
 namespace {
@@ -17,6 +18,7 @@ class MessageQueue {
   void PutMessage(std::shared_ptr<MessageT> message) {
     std::lock_guard<std::mutex> lock(mutex_);
     message_ = message;
+    received_message_count_++;
   }
 
   std::shared_ptr<MessageT> TakeMessage() {
@@ -24,11 +26,21 @@ class MessageQueue {
     return std::move(message_);
   }
 
+  const int GetReceivedMessageCount() {
+    std::lock_guard<std::mutex> lock(received_message_mutex_);
+    return received_message_count_;
+  }
+
  private:
   // Mutex to synchronize access to the queue.
   std::mutex mutex_;
+
+  // Mutex to synchronize access to number of received messages
+  std::mutex received_message_mutex_;
+
   // Last received message (i.e. queue of size 1).
   std::shared_ptr<MessageT> message_;
+  int received_message_count_{0};
 };
 }  // namespace
 
@@ -62,6 +74,10 @@ RosSubscriberSystem::RosSubscriberSystem(
 
   DeclareStateOutputPort(drake::systems::kUseDefaultName,
                          impl_->message_state_index);
+}
+
+const int RosSubscriberSystem::GetReceivedMessageCount() {
+  return impl_->queue.GetReceivedMessageCount();
 }
 
 RosSubscriberSystem::~RosSubscriberSystem() {}

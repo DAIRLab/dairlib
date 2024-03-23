@@ -1,7 +1,0 @@
-string action
-builtin_interfaces/Duration period
-builtin_interfaces/Duration timeout
----
-string reason
----
-string message

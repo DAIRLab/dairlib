@@ -236,8 +236,10 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
         E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
   }
 
-  auto Dn = D.squaredNorm();
-  auto An = A.squaredNorm();
+  // auto Dn = D.squaredNorm();
+  // auto An = A.squaredNorm();
+  auto Dn = D.norm();
+  auto An = A.norm();
   auto AnDn = An / Dn;
 
   D *= AnDn;

@@ -10,6 +10,7 @@ enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
                         RANDOM_ON_SPHERE_SAMPLING };
 
 struct SamplingC3SamplingParams {
+  int control_loop_delay_ms;
   int sampling_strategy;
   double sampling_radius;
   double min_angle_from_vertical;
@@ -26,6 +27,7 @@ struct SamplingC3SamplingParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(control_loop_delay_ms));
     a->Visit(DRAKE_NVP(sampling_strategy));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(min_angle_from_vertical));

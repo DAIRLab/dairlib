@@ -1,5 +1,6 @@
 #include "sampling_based_c3_controller.h"
 #include <iostream>
+#include <thread>
 
 #include <omp.h>
 #include <utility>
@@ -506,6 +507,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
 
+  // Adding delay
+  std::this_thread::sleep_for(std::chrono::milliseconds(sampling_params_.control_loop_delay_ms));
   // End of control loop cleanup.
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;

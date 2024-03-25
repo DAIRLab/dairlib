@@ -2,6 +2,7 @@
 # 0 means radially symmetric sampling on a circle.
 # 1 means random sampling on a 2D circle.
 # 2 means random sampling on a 3D sphere.
+control_loop_delay_ms: 0
 sampling_strategy: 2
 
 # Size of sampling circle; used for both circle perimeter (0, 1) and spherical

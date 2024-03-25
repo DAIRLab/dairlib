@@ -1,0 +1,56 @@
+admm_iter: 3
+rho: 0.1
+rho_scale: 2.2
+num_threads: 2
+delta_option: 1
+# options are 'MIQP' or 'QP'
+projection_type: 'MIQP'
+# options are 'stewart_and_trinkle' or 'anitescu'
+contact_model: 'stewart_and_trinkle'
+#contact_model: 'stewart_and_trinkle'
+warm_start: true
+
+mu: [1, 1]
+# dt is the planned LCS dt
+dt: 0.1
+# solv_dt is the realizerized LCS dt
+solve_dt: 0.05
+num_friction_directions: 2
+num_contacts: 2
+N: 5
+
+# matrix scaling, easy function to scaling all terms instead of tuning one by one
+w_Q: 1
+w_R: 1
+# Penalty on all decision variables, assuming scalar
+w_G: 1
+# Penalty on all decision variables, assuming scalar
+w_U: 1
+
+# State Tracking Error, assuming diagonal
+q_vector: [500, 500, 500, 0, 0, 0, 0, 5000, 5000, 5000,
+           10, 10, 10, 0, 0, 0, 0.1, 0.1, 0.1]
+
+# Penalty on efforts, assuming diagonal
+r_vector: [0.01, 0.01, 0.01]
+
+# Penalty on all decision variables
+g_x: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001,
+      0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+# for S-T lambda
+g_gamma: [0.001, 0.0000001]
+g_lambda_n: [0.001, 0.0000001]
+g_lambda_t: [0.001, 0.001, 0.001, 0.001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+# for Anitescu lambda
+g_lambda: [0.001, 0.001, 0.001, 0.001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+g_u: [0.001, 0.001, 0.001]
+
+# Penalty on all decision variables
+u_x: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+# for S-T lambda
+u_gamma: [1, 1]
+u_lambda_n: [1, 1]
+u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1]
+# for Anitescu lambda
+u_lambda: [1, 1, 1, 1, 1, 1, 1, 1]
+u_u: [1, 1, 1]

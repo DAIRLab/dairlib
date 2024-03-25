@@ -5,16 +5,28 @@
 
 struct C3Options {
   // Hyperparameters
-  int admm_iter = 3;    // total number of ADMM iterations    //3   //old one 2
-  float rho = 0.1;       // inital value of the rho parameter
-  float rho_scale = 2.2;  // scaling of rho parameter (/rho = rho_scale * /rho)  //2.2 //old one 3
-  int num_threads = 2;   // 0 is dynamic, greater than 0 for a fixed count
-  int delta_option = 1;  // different options for delta update
+  int admm_iter;     // total number of ADMM iterations
+  float rho;         // initial value of the rho parameter
+  float rho_scale;   // scaling of rho parameter (/rho = rho_scale * /rho)
+  int num_threads;   // 0 is dynamic, greater than 0 for a fixed count
+  int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
   bool warm_start;
+  bool use_predicted_x0;
+  double solve_time_filter_alpha;
+  double publish_frequency;
+
+  std::vector<double> world_x_limits;
+  std::vector<double> world_y_limits;
+  std::vector<double> world_z_limits;
+  std::vector<double> u_horizontal_limits;
+  std::vector<double> u_vertical_limits;
+  double workspace_margins;
 
   int N;
+  double gamma;
+
   double w_Q;
   double w_R;
   double w_G;
@@ -22,14 +34,15 @@ struct C3Options {
 
   std::vector<double> q_vector;
   std::vector<double> r_vector;
+
   std::vector<double> g_vector;
   std::vector<double> g_x;
   std::vector<double> g_gamma;
   std::vector<double> g_lambda_n;
   std::vector<double> g_lambda_t;
   std::vector<double> g_lambda;
-
   std::vector<double> g_u;
+
   std::vector<double> u_vector;
   std::vector<double> u_x;
   std::vector<double> u_gamma;
@@ -61,6 +74,16 @@ struct C3Options {
       DRAKE_DEMAND(contact_model == "anitescu");
     }
     a->Visit(DRAKE_NVP(warm_start));
+    a->Visit(DRAKE_NVP(use_predicted_x0));
+    a->Visit(DRAKE_NVP(solve_time_filter_alpha));
+    a->Visit(DRAKE_NVP(publish_frequency));
+
+    a->Visit(DRAKE_NVP(world_x_limits));
+    a->Visit(DRAKE_NVP(world_y_limits));
+    a->Visit(DRAKE_NVP(world_z_limits));
+    a->Visit(DRAKE_NVP(u_horizontal_limits));
+    a->Visit(DRAKE_NVP(u_vertical_limits));
+    a->Visit(DRAKE_NVP(workspace_margins));
 
     a->Visit(DRAKE_NVP(mu));
     a->Visit(DRAKE_NVP(dt));
@@ -69,22 +92,19 @@ struct C3Options {
     a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
+    a->Visit(DRAKE_NVP(gamma));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_G));
     a->Visit(DRAKE_NVP(w_U));
-    // a->Visit(DRAKE_NVP(g_size));
-    // a->Visit(DRAKE_NVP(u_size));
     a->Visit(DRAKE_NVP(q_vector));
     a->Visit(DRAKE_NVP(r_vector));
-    //    a->Visit(DRAKE_NVP(g_vector));
     a->Visit(DRAKE_NVP(g_x));
     a->Visit(DRAKE_NVP(g_gamma));
     a->Visit(DRAKE_NVP(g_lambda_n));
     a->Visit(DRAKE_NVP(g_lambda_t));
     a->Visit(DRAKE_NVP(g_lambda));
     a->Visit(DRAKE_NVP(g_u));
-    //    a->Visit(DRAKE_NVP(u_vector));
     a->Visit(DRAKE_NVP(u_x));
     a->Visit(DRAKE_NVP(u_gamma));
     a->Visit(DRAKE_NVP(u_lambda_n));

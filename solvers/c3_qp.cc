@@ -27,21 +27,14 @@ using drake::solvers::OsqpSolver;
 using drake::solvers::OsqpSolverDetails;
 using drake::solvers::Solve;
 
-C3QP::C3QP(const LCS& LCS, const vector<MatrixXd>& Q, const vector<MatrixXd>& R,
-           const vector<MatrixXd>& G, const vector<MatrixXd>& U,
-           const vector<VectorXd>& xdesired, const C3Options& options,
-           const std::vector<Eigen::VectorXd>& warm_start_delta,
-           const std::vector<Eigen::VectorXd>& warm_start_binary,
-           const std::vector<Eigen::VectorXd>& warm_start_x,
-           const std::vector<Eigen::VectorXd>& warm_start_lambda,
-           const std::vector<Eigen::VectorXd>& warm_start_u, bool warm_start)
-    : C3(LCS, Q, R, G, U, xdesired, options, warm_start_delta,
-         warm_start_binary, warm_start_x, warm_start_lambda, warm_start_u,
-         warm_start) {}
+C3QP::C3QP(const LCS& LCS, const CostMatrices& costs,
+           const vector<VectorXd>& xdesired, const C3Options& options)
+    : C3(LCS, costs, xdesired, options) {}
 
 VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
                                      const MatrixXd& E, const MatrixXd& F,
                                      const MatrixXd& H, const VectorXd& c,
+                                     const int admm_iteration,
                                      const int& warm_start_index) {
   drake::solvers::MathematicalProgram prog;
   drake::solvers::SolverOptions solver_options;
@@ -104,11 +97,11 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
 }
 
 std::vector<Eigen::VectorXd> C3QP::GetWarmStartDelta() const {
-  return warm_start_delta_;
+  return warm_start_delta_[0];
 }
 
 std::vector<Eigen::VectorXd> C3QP::GetWarmStartBinary() const {
-  return warm_start_binary_;
+  return warm_start_binary_[0];
 }
 
 }  // namespace solvers

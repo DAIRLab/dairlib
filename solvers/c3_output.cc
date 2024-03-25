@@ -74,6 +74,7 @@ lcmt_c3_output C3Output::GenerateLcmObject(double time) const {
   }
 
   c3_output.c3_solution = c3_solution;
+  // Not assigning to reduce space
   c3_output.c3_intermediates = lcmt_c3_intermediates();
 
   return c3_output;

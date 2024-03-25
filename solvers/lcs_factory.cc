@@ -203,9 +203,9 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     // TODO(yangwill): check gap function to make sure it makes sense. Potential
     // source of uncertainty
     //  std::cout << "phi: " << phi << std::endl;
-    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v;
+    c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v  - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
-        J_t * dt * d_v - J_n * vNqdot * plant.GetPositions(context);
+        J_t * dt * d_v;
   } else if (contact_model == ContactModel::kAnitescu) {
     VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
         mu.data(), mu.size());

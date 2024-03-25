@@ -125,6 +125,18 @@ cc_library(
         "robot_properties_fingers/cube/**"])
 )
 
+## parameters library ##
+cc_library(
+    name = "trajectory_params",
+    hdrs = ["parameters/trajectory_params.h"],
+    data = [
+        "parameters/trajectory_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 cc_library(
     name = "c3_ball_rolling_params",
     hdrs = ["parameters/c3_ball_rolling_params.h"],
@@ -169,6 +181,7 @@ cc_library(
     ],
 )
 
+## lcm controller and system library ##
 cc_binary(
     name = "lcm_ball_rolling_planner",
     srcs = ["lcm_ball_rolling_planner.cc"],
@@ -211,7 +224,7 @@ cc_binary(
         "//systems/framework:lcm_driven_loop",
         "//systems/controllers:impedance_controller",
         "//examples/franka_ball_rolling:impedance_controller_params",
-        "//examples/franka_ball_rolling/systems:c3_systems",
+        "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -222,7 +235,7 @@ cc_binary(
 cc_binary(
   name = "lcm_state_estimator",
   srcs = ["lcm_state_estimator.cc"],
-  deps = ["//examples/franka_ball_rolling/systems:c3_systems",
+  deps = ["//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
           "//examples/franka_ball_rolling:c3_parameters",
           "//examples/franka_ball_rolling:c3_state_estimator_params",
           "//systems:robot_lcm_systems",

@@ -164,50 +164,19 @@ int DoMain(int argc, char* argv[]) {
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& simulator_context = simulator.get_mutable_context();
   int cur_received_message_count = 0;
-
-  //  // Wait for the first message.
-  //  drake::log()->info("Waiting for first ROS message from TriFinger");
-  //  int old_message_count = 0;
-  //  old_message_count =
-  //      trifinger_joint_state_ros_subscriber->WaitForMessage(old_message_count);
-  //
-  //  // Initialize the context based on the first message.
-  //  const double t0 = franka_joint_state_ros_subscriber->message_time();
-  //  diagram_context.SetTime(t0);
   simulator.Initialize();
-  //
-  //  drake::log()->info("trifinger ros-lcm bridge started");
-  //
-  //  while (true) {
-  //    old_message_count =
-  //        franka_joint_state_ros_subscriber->WaitForMessage(old_message_count);
-  //    const double time = franka_joint_state_ros_subscriber->message_time();
-  //
-  //    // Check if we are very far ahead or behind
-  //    // (likely due to a restart of the driving clock)
-  //    if (time > simulator.get_context().get_time() + 1.0 ||
-  //        time < simulator.get_context().get_time()) {
-  //      std::cout << "Dispatcher time is " <<
-  //      simulator.get_context().get_time()
-  //                << ", but stepping to " << time << std::endl;
-  //      std::cout << "Difference is too large, resetting dispatcher time."
-  //                << std::endl;
-  //      simulator.get_mutable_context().SetTime(time);
-  //      simulator.Initialize();
-  //    }
-  // Step the simulator in 0.1s intervals
-  constexpr double kStep{0.1};
 
+  constexpr double kStep{0.1};
   while (simulator_context.get_time() < FLAGS_simulation_sec) {
     const double next_time =
         std::min(FLAGS_simulation_sec, simulator_context.get_time() + kStep);
     simulator.AdvanceTo(next_time);
 
+    // ros-driven loop
     int actual_count =
         fingertips_delta_position_ros_subscriber->GetReceivedMessageCount();
     if (actual_count > cur_received_message_count) {
       cur_received_message_count = actual_count;
-      drake::log()->info("New message received");
       // Force-publish via the diagram
       diagram.CalcForcedUnrestrictedUpdate(
           simulator_context, &simulator_context.get_mutable_state());

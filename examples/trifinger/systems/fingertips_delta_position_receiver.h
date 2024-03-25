@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drake/common/trajectories/trajectory.h>
 #include "dairlib/lcmt_fingertips_delta_position.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "multibody/multibody_utils.h"
@@ -36,9 +37,13 @@ class FingertipDeltaPositionReceiver
   }
 
  private:
-  void CalcFingertipsPositionTargetTraj(
+  void CopyToOutputTraj(
       const drake::systems::Context<double>& context,
-      drake::trajectories::Trajectory<double>* target) const;
+      drake::trajectories::Trajectory<double> *target_traj) const;
+
+  drake::systems::EventStatus DiscreteVariableUpdate(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
@@ -46,6 +51,8 @@ class FingertipDeltaPositionReceiver
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex fingertips_delta_position_port_;
   drake::systems::OutputPortIndex fingertips_target_port_;
+  drake::systems::DiscreteStateIndex fingertips_target_idx_;
+  drake::systems::DiscreteStateIndex prev_target_timestamp_idx_;
 
   Eigen::Vector3d min_fingertips_delta_position_;
   Eigen::Vector3d max_fingertips_delta_position_;

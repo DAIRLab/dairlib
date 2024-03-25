@@ -26,7 +26,8 @@ def qp_callback(data):
 def main(logfile):
     log = lcm.EventLog(logfile, 'r')
     qps = get_log_data(log, {'FCCQP': lcmt_fcc_qp}, 0, -1, qp_callback)
-    save_file = logfile.replace('lcmlog-05', 'id_qp_log_walking_reg.npz')
+    qps = qps[:100]
+    save_file = logfile.replace('lcmlog-01', 'id_qp_log_walking_reg.npz')
     np.savez(save_file, qps=qps)
 
     import pdb; pdb.set_trace()

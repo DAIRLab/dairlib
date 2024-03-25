@@ -146,7 +146,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
         prog_
-            .AddQuadraticCost(Q_.at(i) * 2, -2 * Q_.at(i) * x_desired_.at(i),
+            .AddQuadraticCost(2 * Q_.at(i), -2 * Q_.at(i) * x_desired_.at(i),
                               x_.at(i), 1)
             .evaluator()
             .get();

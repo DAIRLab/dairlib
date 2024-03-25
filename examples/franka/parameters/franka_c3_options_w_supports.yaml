@@ -3,19 +3,19 @@ rho: 0 # does not do anything
 rho_scale: 4
 num_threads: 5
 delta_option: 1
-# options are 'MIQP' or 'QP'
+#options are 'MIQP' or 'QP'
 projection_type: 'MIQP'
-# options are 'stewart_and_trinkle' or 'anitescu'
-#contact_model: 'stewart_and_trinkle'
+#options are 'stewart_and_trinkle' or 'anitescu'
+#contact_model : 'stewart_and_trinkle'
 contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
 solve_time_filter_alpha: 0.95
-# set to 0 to publish as fast as possible
-#publish_frequency: 0
-publish_frequency: 30
+#set to 0 to publish as fast as possible
+#publish_frequency : 0
+publish_frequency: 25
 
-# Workspace Limits
+#Workspace Limits
 world_x_limits: [0.4, 0.6]
 world_y_limits: [-0.1, 0.1]
 world_z_limits: [0.35, 0.7]
@@ -32,21 +32,21 @@ num_contacts: 7
 N: 5
 gamma: 1.0 # discount factor on MPC costs
 
-# matrix scaling
+#matrix scaling
 w_Q: 50
 w_R: 50
-# Penalty on all decision variables, assuming scalar
-w_G: 0.2
-# Penalty on all decision variables, assuming scalar
+#Penalty on all decision variables, assuming scalar
+w_G: 0.3
+#Penalty on all decision variables, assuming scalar
 w_U: 0.1
 
-# State Tracking Error, assuming diagonal
+#State Tracking Error, assuming diagonal
 q_vector: [150, 150, 150, 0, 1, 1, 0, 15000, 15000, 15000,
            5, 5, 15, 10, 10, 1, 5, 5, 5]
-# Penalty on efforts, assuming diagonal
+#Penalty on efforts, assuming diagonal
 r_vector: [0.15, 0.15, 0.1]
 
-# Penalty on matching projected variables
+#Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 g_gamma: [1, 1, 1, 1, 1, 1, 1]
 g_lambda_n: [1, 1, 1, 1, 1, 1, 1]
@@ -54,7 +54,7 @@ g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 g_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 g_u: [1, 1, 1]
 
-# Penalty on matching the QP variables
+#Penalty on matching the QP variables
 u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 u_gamma: [1, 1, 1, 1, 1, 1, 1]
 u_lambda_n: [1, 1, 1, 1, 1, 1, 1]

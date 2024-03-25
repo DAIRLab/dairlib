@@ -24,13 +24,14 @@
 #include "common/find_resource.h"
 #include "examples/franka/diagrams/franka_c3_controller_diagram.h"
 #include "examples/franka/diagrams/franka_osc_controller_diagram.h"
+#include "examples/franka/parameters/franka_c3_controller_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "systems/primitives/radio_parser.h"
 namespace dairlib {
 
 using drake::geometry::GeometrySet;
@@ -58,6 +59,11 @@ int DoMain(int argc, char* argv[]) {
   // load parameters
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/franka/parameters/franka_sim_params.yaml");
+  FrankaC3ControllerParams c3_params =
+      drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
+          "examples/franka/parameters/franka_c3_controller_params.yaml");
+  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
+      c3_params.c3_options_file[c3_params.scene_index]);
 
   DiagramBuilder<double> builder;
 
@@ -144,7 +150,7 @@ int DoMain(int argc, char* argv[]) {
 
   /// C3 plant
   auto c3_controller = builder.AddSystem<FrankaC3ControllerDiagram>(
-      "examples/franka/parameters/franka_c3_controller_params.yaml",
+      "examples/franka/parameters/franka_c3_controller_params.yaml", c3_options,
       "examples/franka/parameters/lcm_channels_simulation.yaml", &lcm);
 
   /* -------------------------------------------------------------------------------------------*/

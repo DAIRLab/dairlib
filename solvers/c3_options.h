@@ -26,6 +26,7 @@ struct C3Options {
 
   int N;
   double gamma;
+
   double w_Q;
   double w_R;
   double w_G;
@@ -33,14 +34,15 @@ struct C3Options {
 
   std::vector<double> q_vector;
   std::vector<double> r_vector;
+
   std::vector<double> g_vector;
   std::vector<double> g_x;
   std::vector<double> g_gamma;
   std::vector<double> g_lambda_n;
   std::vector<double> g_lambda_t;
   std::vector<double> g_lambda;
-
   std::vector<double> g_u;
+
   std::vector<double> u_vector;
   std::vector<double> u_x;
   std::vector<double> u_gamma;

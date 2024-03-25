@@ -59,7 +59,7 @@ using multibody::MakeNameToVelocitiesMap;
 using std::string;
 
 FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
-    const string& controller_settings, const string& lcm_channels,
+    const string& controller_settings, const C3Options c3_options, const string& lcm_channels,
     drake::lcm::DrakeLcm* lcm) {
   this->set_name("FrankaC3Controller");
   DiagramBuilder<double> builder;
@@ -68,8 +68,8 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(controller_settings);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(lcm_channels);
-  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
-      controller_params.c3_options_file[controller_params.scene_index]);
+//  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
+//      controller_params.c3_options_file[controller_params.scene_index]);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
@@ -236,7 +236,7 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   placeholder_solution.u_sol_ = Eigen::MatrixXf::Zero(c3_options.g_u.size(), c3_options.N);
   placeholder_solution.time_vector_ = Eigen::VectorXf::LinSpaced(c3_options.N, 0, 1);
   auto discrete_time_delay = builder.AddSystem<drake::systems::DiscreteTimeDelay>(1 / c3_options.publish_frequency,
-                                                                                  1,
+                                                                                  2,
                                                                                   drake::Value(placeholder_solution));
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "tray_qw",

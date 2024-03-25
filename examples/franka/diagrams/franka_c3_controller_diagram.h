@@ -11,6 +11,7 @@
 #include <drake/lcm/drake_lcm.h>
 #include <drake/planning/robot_diagram_builder.h>
 #include <drake/planning/robot_diagram.h>
+#include "solvers/c3_options.h"
 
 namespace dairlib {
 namespace examples {
@@ -22,7 +23,7 @@ class FrankaC3ControllerDiagram : public drake::systems::Diagram<double> {
 
   /// @param[in] osc_gains_filename filepath containing the osc_running_gains.
   /// @param[in] osqp_settings filepath containing the osqp settings.
-  FrankaC3ControllerDiagram(const std::string& controller_settings,
+  FrankaC3ControllerDiagram(const std::string& controller_settings, const C3Options c3_options,
                               const std::string& lcm_channels,
                               drake::lcm::DrakeLcm* lcm);
 

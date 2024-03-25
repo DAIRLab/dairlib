@@ -237,17 +237,19 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
                           solve_time_filter_constant_ * mutable_solve_time[0];
 
-//  solve_time = 1.0 / c3_options_.publish_frequency;
-//  mutable_solve_time[0] = solve_time;
+  if (c3_options_.publish_frequency > 0){
+    solve_time = 1.0 / c3_options_.publish_frequency;
+    mutable_solve_time[0] = solve_time;
+  }
 
   auto z_sol = c3_->GetFullSolution();
-  if (mutable_solve_time[0] < N_ * dt_) {
+  if (mutable_solve_time[0] < (N_ - 1) * dt_) {
     int index = mutable_solve_time[0] / dt_;
-    double weight = ((index + 1) * dt_ - mutable_solve_time[0]) / dt_;
-    mutable_x_pred = weight * z_sol[index].segment(0, n_x_) +
-                     (1 - weight) * z_sol[index + 1].segment(0, n_x_);
+    double weight = (mutable_solve_time[0] - index * dt_) / dt_;
+    mutable_x_pred = (1 - weight) * z_sol[index].segment(0, n_x_) +
+                     weight * z_sol[index + 1].segment(0, n_x_);
   } else {
-    mutable_x_pred = z_sol[1].segment(0, n_x_);
+    mutable_x_pred = z_sol[-1].segment(0, n_x_);
   }
 
   return drake::systems::EventStatus::Succeeded();

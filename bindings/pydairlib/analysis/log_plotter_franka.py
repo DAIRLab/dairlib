@@ -56,7 +56,7 @@ def main():
                      plot_config.start_time,
                      plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback
-                     franka_plant, channel_x, channel_u,
+                     franka_plant, True, channel_x, channel_u,
                      channel_osc)  # processing callback arguments
 
     # processing callback arguments

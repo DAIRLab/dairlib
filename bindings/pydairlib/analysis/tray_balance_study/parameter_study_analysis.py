@@ -64,11 +64,10 @@ def load_lcm_logs():
 
         for j in range(5):
             # ps = plot_styler.PlotStyler()
-            log_filename = param_study['results_folder'] + param_study['parameter'][1] + '/simlog-' + '%02d_%1d' % (i, j)
-            print(log_filename)
+            log_filename = param_study['results_folder'] + param_study['parameter'][2] + '/simlog-' + '%02d_%1d' % (i, j)
             log = lcm.EventLog(log_filename, "r")
             c3_target, c3_actual, c3_output = \
-                get_log_data(log, c3_channels, start_time, duration, callback,
+                get_log_data(log, c3_channels, start_time, duration, callback, False,
                              lcm_channels['c3_target_state_channel'], lcm_channels['c3_actual_state_channel'],
                              lcm_channels['c3_debug_output_channel'])
             length = min(c3_target['t'].shape[0], c3_actual['t'].shape[0])
@@ -92,15 +91,16 @@ def load_lcm_logs():
             # plt.show()
         print(successes)
         all_successes[i] = successes
-    np.save('target_successes_23', all_successes )
+    # np.save('target_successes_23', all_successes )
+    np.save('target_successes_03_25', all_successes )
 
 def plot_logs():
-    all_successes = np.load('all_successes.npy')
+    all_successes = np.load('target_successes_03_25.npy')
     bar_width = 0.025
     bar_positions = np.arange(all_successes.shape[0])
     n = all_successes.shape[0]
     # mu_range = np.arange(0.3, 0.74, 0.05)
-    effective_mu_range = np.arange(0.2, 0.61, 0.05)
+    effective_mu_range = np.arange(0.1, 0.71, 0.1)
 
     plt.rc('legend', fontsize=36)
     plt.rc('axes', labelsize=36, titlesize=36)
@@ -111,7 +111,7 @@ def plot_logs():
         # for j in range(3):
         # plt.bar(bar_positions[i], all_successes[i, 2] / 30, width=bar_width)
         # plt.bar(effective_mu_range[i], all_successes[i, 2] / all_successes[i, 0], width=bar_width, color='grey')
-        plt.bar(effective_mu_range[i], all_successes[i, 0] / 30, width=bar_width, color='grey')
+        plt.bar(effective_mu_range[i], all_successes[i, 0] / 5, width=bar_width, color='grey')
     plt.ylabel('Target Success Rate')
     plt.xlabel('Tray/End Effector Friction Coefficient')
 
@@ -123,8 +123,8 @@ def plot_logs():
     plt.show()
 
 def main():
-    load_lcm_logs()
-    # plot_logs()
+    # load_lcm_logs()
+    plot_logs()
 
 
 

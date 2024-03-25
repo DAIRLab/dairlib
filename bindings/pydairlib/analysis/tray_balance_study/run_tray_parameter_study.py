@@ -8,12 +8,12 @@ import numpy as np
 import yaml
 def main():
     config_file = 'parameter_study_config.yaml'
-    sim_time = 10.0
+    sim_time = 20.0
     cooldown_time = 10.0
     start_time = 0
     realtime_rate = 1.0
     num_trials = 5
-    c3_start_up_time = 4.0
+    c3_start_up_time = 1.0
     sim_run_time = sim_time / realtime_rate
     controller_startup_time = 0.1
 
@@ -28,7 +28,7 @@ def main():
 
     # parameter = 'mu_c3'
     # parameter = 'mass_real'
-    parameter = config['parameter'][1]
+    parameter = config['parameter'][2]
 
     nominal_mu_value = 'mu: [0.6, 0.6, 0.6, 0.1, 0.1, 0.1, 0.1]'
     # nominal_real_mu_value = '<drake:mu_dynamic>0.4</drake:mu_dynamic>'
@@ -52,7 +52,6 @@ def main():
     # for i in trange(mu_range.shape[0]):
     for i in trange(effective_mu_range.shape[0]):
         plate_mu = 0.5 * effective_mu_range[i] / (1 - effective_mu_range[i]/(2 * tray_mu))
-
         # modified_mu_value = 'mu: [%.2f, %.2f, %.2f, 0.1, 0.1, 0.1, 0.1]' % (mu_range[i], mu_range[i], mu_range[i])
         # modified_mass_value = '<mass> %.1f </mass>' % (mass_range[i])
         # modified_real_mu_value = '<drake:mu_dynamic>%.2f</drake:mu_dynamic>' % (mu_range[i])

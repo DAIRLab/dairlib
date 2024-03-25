@@ -6,7 +6,7 @@ from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import *
 from pydairlib.lcm.lcm_trajectory import *
 import pydrake.systems.lcm as mut
-
+from load_c3_options import load_c3_options
 import dairlib
 
 
@@ -18,56 +18,7 @@ def main():
 
   sim_params = yaml_load(filename=sim_params_file)
   lcm_params = yaml_load(filename=lcm_params_file)
-  c3_params = yaml_load(filename=c3_params_file)
-  c3_options_file = c3_params['c3_options_file'][c3_params['scene_index']]
-  c3_options_dict = yaml_load(filename=c3_options_file)
-  c3_options = C3Options()
-  c3_options.admm_iter = c3_options_dict['admm_iter']
-  c3_options.rho = c3_options_dict['rho']
-  c3_options.rho_scale = c3_options_dict['rho_scale']
-  c3_options.num_threads = c3_options_dict['num_threads']
-  c3_options.delta_option = c3_options_dict['delta_option']
-  c3_options.projection_type = c3_options_dict['projection_type']
-  c3_options.contact_model = c3_options_dict['contact_model']
-  c3_options.warm_start = c3_options_dict['warm_start']
-  c3_options.use_predicted_x0 = c3_options_dict['use_predicted_x0']
-  c3_options.solve_time_filter_alpha = c3_options_dict['solve_time_filter_alpha']
-  c3_options.publish_frequency = c3_options_dict['publish_frequency']
-  c3_options.world_x_limits = c3_options_dict['world_x_limits']
-  c3_options.world_y_limits = c3_options_dict['world_y_limits']
-  c3_options.world_z_limits = c3_options_dict['world_z_limits']
-  c3_options.u_horizontal_limits = c3_options_dict['u_horizontal_limits']
-  c3_options.u_vertical_limits = c3_options_dict['u_vertical_limits']
-  c3_options.workspace_margins = c3_options_dict['workspace_margins']
-  c3_options.N = c3_options_dict['N']
-  c3_options.gamma = c3_options_dict['gamma']
-  c3_options.gamma = c3_options_dict['gamma']
-  c3_options.q_vector = c3_options_dict['q_vector']
-  c3_options.r_vector = c3_options_dict['r_vector']
-  c3_options.g_x = c3_options_dict['g_x']
-  c3_options.g_gamma = c3_options_dict['g_gamma']
-  c3_options.g_lambda_n = c3_options_dict['g_lambda_n']
-  c3_options.g_lambda_t = c3_options_dict['g_lambda_t']
-  c3_options.g_lambda = c3_options_dict['g_lambda']
-  c3_options.g_u = c3_options_dict['g_u']
-  c3_options.u_x = c3_options_dict['u_x']
-  c3_options.u_gamma = c3_options_dict['u_gamma']
-  c3_options.u_lambda_n = c3_options_dict['u_lambda_n']
-  c3_options.u_lambda_t = c3_options_dict['u_lambda_t']
-  c3_options.u_lambda = c3_options_dict['u_lambda']
-  c3_options.u_u = c3_options_dict['u_u']
-  c3_options.gamma = c3_options_dict['gamma']
-  c3_options.mu = c3_options_dict['mu']
-  c3_options.dt = c3_options_dict['dt']
-  c3_options.solve_dt = c3_options_dict['solve_dt']
-  c3_options.num_friction_directions = c3_options_dict['num_friction_directions']
-  c3_options.num_contacts = c3_options_dict['num_contacts']
-  c3_options.Q = c3_options_dict['w_Q'] * np.diag(np.array(c3_options_dict['q_vector']))
-  c3_options.R = c3_options_dict['w_R'] * np.diag(np.array(c3_options_dict['r_vector']))
-  g_vec = np.hstack((c3_options_dict['g_x'], c3_options_dict['g_lambda'], c3_options_dict['g_u']))
-  u_vec = np.hstack((c3_options_dict['u_x'], c3_options_dict['u_lambda'], c3_options_dict['u_u']))
-  c3_options.G = c3_options_dict['w_G'] * np.diag(g_vec)
-  c3_options.U = c3_options_dict['w_U'] * np.diag(u_vec)
+  c3_options = load_c3_options(c3_params_file)
 
   lcm = DrakeLcm("udpm://239.255.76.67:7667?ttl=0")
   builder = DiagramBuilder()
@@ -102,8 +53,6 @@ def main():
                    T_S2_W)
   plant.Finalize()
 
-
-
   osc_controller = builder.AddSystem(FrankaOSCControllerDiagram(
     "examples/franka/parameters/franka_osc_controller_params.yaml",
     "examples/franka/parameters/lcm_channels_simulation.yaml", lcm))
@@ -125,6 +74,20 @@ def main():
   #   lcm_channel_params.tray_state_channel, &lcm,
   # drake::systems::TriggerTypeSet(
   # {drake::systems::TriggerType::kForced})));
+
+  parameters = 2 * np.random.random(5) - 1  # center around 0. [-1, 1]
+  print(parameters)
+  c3_options.publish_frequency = (parameters[0] * 5) + 25
+  c3_options.Q = (1 + 0.5 * parameters[1]) * c3_options.Q
+  c3_options.R = (1 + 0.5 * parameters[2]) * c3_options.R
+  c3_options.G = (1 + 0.5 * parameters[3]) * c3_options.G
+  c3_options.U = (1 + 0.5 * parameters[4]) * c3_options.U
+  scales = np.array([(parameters[0] * 5),
+                     (1 + 0.5 * parameters[1]),
+                     (1 + 0.5 * parameters[2]),
+                     (1 + 0.5 * parameters[3]),
+                     (1 + 0.5 * parameters[4])])
+  print(scales)
 
   passthrough = builder.AddSystem(SubvectorPassThrough(8, 0, 7))
   tray_state_sender = builder.AddSystem(ObjectStateSender(plant, tray_index))

@@ -311,7 +311,7 @@ int do_main(int argc, char* argv[]) {
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "curr_", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
-        "object_position_target", "object_orientation_target");
+        "object_position_target", "object_orientation_target", 5, false);
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, "curr_", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),

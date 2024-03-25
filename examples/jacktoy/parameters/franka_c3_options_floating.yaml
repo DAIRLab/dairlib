@@ -13,9 +13,8 @@ contact_model: 'anitescu'
 # mu_effective = 2*mu1*mu2 / (mu1 + mu2). See urdfs for mu1 and mu2.
 # The contact pairs are ordered as ee_jack, capsule1_ground, capsule2_ground,
 # and capsule3_ground.
-# mu: [0.4615, 0.4615]  #For single link testing. 
 mu: [0.4615, 0.4615, 0.4615, 0.4615]
-dt: 0.05
+dt: 0.05    # This is used by the radio input currently but we don't use it.
 planning_dt: 0.1
 execution_dt: 0.03
 num_friction_directions: 2

@@ -425,6 +425,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
 
       // Solve C3, store resulting object and cost.
+      test_c3_object->SetOsqpSolverOptions(solver_options_);
       test_c3_object->Solve(test_state, deltas.at(i), ws.at(i));
       auto cost_trajectory_pair = test_c3_object->CalcCost(test_state, true);
       double c3_cost = cost_trajectory_pair.first;

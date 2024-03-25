@@ -403,7 +403,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
-
+  test_c3_object->SetOsqpSolverOptions(solver_options_);
   // Solve C3, store resulting object and cost.
   test_c3_object->Solve(test_state, deltas.at(0), ws.at(0));
   auto cost_trajectory_pair = test_c3_object->CalcCost(test_state, true);

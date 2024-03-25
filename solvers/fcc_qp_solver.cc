@@ -129,15 +129,25 @@ void FCCQPSolver::InitializeSolver(
     }
   }
 
+  fcc_qp::FCCQPOptions fcc_qp_options;
+
   if (has_option(double_opts, "rho")) {
-    fcc_qp_->set_rho(double_opts.at("rho"));
+    fcc_qp_options.rho = double_opts.at("rho");
   }
   if (has_option(double_opts, "eps")) {
-    fcc_qp_->set_eps(double_opts.at("eps"));
+    fcc_qp_options.eps_bound = double_opts.at("eps");
+    fcc_qp_options.eps_fcone = double_opts.at("eps");
   }
   if (has_option(int_opts, "max_iter")) {
-    fcc_qp_->set_max_iter(int_opts.at("max_iter"));
+    DRAKE_DEMAND(int_opts.at("max_iter") > 0);
+    fcc_qp_options.max_iter = int_opts.at("max_iter");
   }
+  if (has_option(int_opts, "polish")) {
+    fcc_qp_options.polish = static_cast<bool>(int_opts.at("polish"));
+  }
+
+  fcc_qp_->set_options(fcc_qp_options);
+
 }
 
 FCCQPSolver::FCCQPSolver() : drake::solvers::SolverBase(

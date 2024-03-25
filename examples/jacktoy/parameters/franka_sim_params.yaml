@@ -37,7 +37,7 @@ world_y_limits: [-2, 2]
 world_z_limits: [-2, 2]
 
 dt: 0.0001
-realtime_rate: 1
+realtime_rate: 0.25
 
 # TODO: Set the initial locations to something sensical
 q_init_franka: [0, 0.275, 0, -2.222, 0, 2.497, 0]
@@ -52,7 +52,7 @@ visualize_workspace: false
 visualize_c3_state: true
 visualize_is_c3_mode: true
 
-visualize_sample_locations: true
+visualize_sample_locations: false
 
 visualizer_curr_sample_end_effector_model: examples/jacktoy/urdf/ee_curr_traj_visualization_model.urdf
 visualizer_curr_sample_traj_jack_model: examples/jacktoy/urdf/jack_curr_traj_visualization_model.sdf

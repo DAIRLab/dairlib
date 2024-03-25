@@ -11,7 +11,7 @@ struct C3Options {
   int num_threads;   // for inner C3 loop.
                      // 0 is dynamic, greater than 0 for a fixed count
   int num_outer_threads;  // for outer sampling loop.
-  int delta_option;  // different options for delta update
+  // int delta_option;  // different options for delta update
   std::string projection_type;
   std::string contact_model;
   bool warm_start;
@@ -69,7 +69,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(rho_scale));
     a->Visit(DRAKE_NVP(num_threads));
     a->Visit(DRAKE_NVP(num_outer_threads));
-    a->Visit(DRAKE_NVP(delta_option));
+    // a->Visit(DRAKE_NVP(delta_option));
     a->Visit(DRAKE_NVP(contact_model));
     a->Visit(DRAKE_NVP(projection_type));
     if (projection_type == "QP") {

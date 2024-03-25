@@ -350,8 +350,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
+  // std::cout<<"candidate states size before adding curr: "<<candidate_states.size()<<std::endl;
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
+  // std::cout<<"candidate states size after: "<<candidate_states.size()<<std::endl;
 
   // Update the set of sample locations under consideration.
   for (int i = 0; i < num_total_samples; i++) {
@@ -394,7 +396,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // Preparation for parallelization.
-  all_sample_costs_ = std::vector<double>(num_total_samples, -1);
+  // all_sample_costs_ = std::vector<double>(num_total_samples, -1);
   std::vector<std::shared_ptr<solvers::C3>> c3_objects(num_total_samples, nullptr);
   std::vector<std::vector<Eigen::VectorXd>> deltas(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
@@ -442,17 +444,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
       if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
+        std::cout<<"Adding finished reposition cost"<<std::endl;
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
       }
       else if (i > CURRENT_LOCATION_INDEX) {
+        std::cout<<"Adding reposition fixed cost"<<std::endl;
         all_sample_costs_[i] += sampling_params_.reposition_fixed_cost;
       }
     }
   // End of parallelization
 
   // Review the cost results to determine the best sample.
-  double best_additional_sample_cost;
+  double best_additional_sample_cost = 9999999999;
   if (num_total_samples > 1) {
+    std::cout<<"Finding best sample"<<std::endl;
     std::vector<double> additional_sample_cost_vector = 
       std::vector<double>(all_sample_costs_.begin()+1, all_sample_costs_.end());
     best_additional_sample_cost = 
@@ -479,8 +484,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis.
+    // std::cout<<"Current location index: "<<CURRENT_LOCATION_INDEX<<std::endl;
+    // std::cout<<"Switching hysteresis: "<<sampling_params_.switching_hysteresis<<std::endl;
+    // std::cout<<"Current location cost: "<<all_sample_costs_[CURRENT_LOCATION_INDEX]<<std::endl;
+    // std::cout<<"Best additional sample cost: "<<best_additional_sample_cost<<std::endl;
+    // std::cout<<"\tRHS: "<<best_additional_sample_cost + sampling_params_.switching_hysteresis<<std::endl;
+
     if (all_sample_costs_[CURRENT_LOCATION_INDEX] > 
         best_additional_sample_cost + sampling_params_.switching_hysteresis) {
+      // std::cout<<"Switching to repositioning"<<std::endl;
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
     }
@@ -490,6 +502,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     if (best_additional_sample_cost > 
         all_sample_costs_[CURRENT_LOCATION_INDEX] + 
         sampling_params_.switching_hysteresis) {
+      // std::cout<<"Switching to C3"<<std::endl;
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
     }
@@ -557,7 +570,9 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   // Get the input from the plan.
   vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
-
+  std::cout<<"u_sol x"<<u_sol[0]<<std::endl;
+  std::cout<<"u_sol y"<<u_sol[1]<<std::endl;
+  std::cout<<"u_sol z"<<u_sol[2]<<std::endl;
 
   // Resolving contact model param to ContactModel type to pass to LCSFactory.
   solvers::ContactModel contact_model;

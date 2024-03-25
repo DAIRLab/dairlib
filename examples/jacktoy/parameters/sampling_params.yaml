@@ -18,8 +18,8 @@ min_angle_from_vertical: 0  #0.785
 max_angle_from_vertical: 1.822
 
 # Number of additional samples to consider in each mode (repositioning or C3).
-num_additional_samples_repos: 2
-num_additional_samples_c3: 1
+num_additional_samples_repos: 0
+num_additional_samples_c3: 0
 
 # Repositioning parameters.
 spline_width: 0.13

@@ -3,7 +3,7 @@ rho: 0.1
 rho_scale: 1
 num_threads: 6
 num_outer_threads: 4
-delta_option: 1
+# delta_option: 1
 # options are 'MIQP' or 'QP'
 projection_type: 'QP'
 # options are 'stewart_and_trinkle' or 'anitescu'

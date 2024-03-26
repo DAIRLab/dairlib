@@ -1,7 +1,33 @@
 from pydairlib.franka.controllers import C3Options
 import numpy as np
 from pydrake.common.yaml import yaml_load
+from pydrake.all import *
 
+def compute_reward_sparse(times, sim_states):
+  first_target = np.array([0.45, 0, 0.485])
+  second_target = np.array([0.45, 0, 0.6])
+  third_target = np.array([0.7, 0.0, 0.485])
+  length = min(times.shape[0], times.shape[0])
+  reached_first_target = np.any(np.all(np.isclose(sim_states[:, 7:10], second_target, atol=1e-3), axis=1))
+  reached_second_target = np.any(np.all(np.isclose(sim_states[:, 7:10], third_target, atol=1e-3), axis=1))
+  reached_third_target = reached_second_target and np.linalg.norm(sim_states[:length, 7:10] - sim_states[:length, 7:10], axis=1)[-1] < 0.1
+  # return reached_first_target + reached_second_target + reached_third_target
+  return reached_first_target + reached_second_target + reached_third_target
+
+def compute_reward_mpc(times, sim_states):
+  first_target = np.array([0.45, 0, 0.485])
+  second_target = np.array([0.45, 0, 0.6])
+  third_target = np.array([0.7, 0.0, 0.485])
+  neutral_orientation = Quaternion()
+  cumulative_cost = 0
+  for i in range(times.shape[0]):
+    tray_pos = sim_states[11:14, i]
+    tray_orientation = sim_states[7:11, i]
+    cumulative_cost += np.linalg.norm(tray_pos - first_target)
+    angle_difference = Quaternion.multiply(neutral_orientation.conjugate(), Quaternion(tray_orientation))
+    cumulative_cost += RotationMatrix(angle_difference).ToAngleAxis().angle()
+  cumulative_cost /= times.shape[0]
+  return cumulative_cost
 
 def load_c3_options(c3_params_file):
   c3_params = yaml_load(filename=c3_params_file)

@@ -18,7 +18,7 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator() {
+EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const Eigen::Vector3d& neutral_pose) {
   // Input/Output Setup
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
@@ -31,7 +31,7 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator() {
       this->DeclareVectorInputPort("lcmt_radio_out", BasicVector<double>(18))
           .get_index();
 
-  PiecewisePolynomial<double> empty_pp_traj(neutral_pose_);
+  PiecewisePolynomial<double> empty_pp_traj(neutral_pose);
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("end_effector_trajectory", traj_inst,
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
@@ -67,7 +67,6 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   } else {
     if (trajectory_input.value(0).isZero()) {
     } else {
-//      std::cout << "time difference: " << context.get_time() - trajectory_input.start_time() << std::endl;
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);
     }

@@ -192,7 +192,9 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 
 void C3::Solve(const VectorXd& x0) {
   VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
-  delta_init.head(n_) = x0;
+  if (options_.delta_option == 1){
+    delta_init.head(n_) = x0;
+  }
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_ + m_ + k_));
   vector<MatrixXd> Gv = G_;

@@ -576,13 +576,14 @@ VectorXd OperationalSpaceControl::SolveQp(
     auto map_iterator = contact_indices_map_.find(fsm_state);
     if (map_iterator != contact_indices_map_.end()) {
       active_contact_set = map_iterator->second;
-    } else {
-      static const drake::logging::Warn log_once(const_cast<char*>(
-          (std::to_string(fsm_state) +
-           " is not a valid finite state machine state in OSC. This can happen "
-           "if there are modes with no active contacts.")
-              .c_str()));
     }
+//    else {
+//      static const drake::logging::Warn log_once(const_cast<char*>(
+//          (std::to_string(fsm_state) +
+//           " is not a valid finite state machine state in OSC. This can happen "
+//           "if there are modes with no active contacts.")
+//              .c_str()));
+//    }
   }
 
   // Update context

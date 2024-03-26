@@ -6,11 +6,11 @@ from pydairlib.systems.primitives import *
 from pydairlib.systems.robot_lcm_systems import *
 from pydairlib.lcm.lcm_trajectory import *
 import pydrake.systems.lcm as mut
-from load_c3_options import load_c3_options
+from franka_env_helper_functions import *
 import dairlib
 
 
-def main():
+def run_sim(intrinsics, gains):
   osc_params_file = "examples/franka/parameters/franka_osc_controller_params.yaml"
   c3_params_file = "examples/franka/parameters/franka_c3_controller_params.yaml"
   lcm_params_file = "examples/franka/parameters/lcm_channels_simulation.yaml"
@@ -61,33 +61,19 @@ def main():
     "examples/franka/parameters/franka_c3_controller_params.yaml", c3_options,
     "examples/franka/parameters/lcm_channels_simulation.yaml", lcm))
 
-  # c3_publish_frequency = c3_options.publish_frequency
-  # placeholder_trajectory = dairlib.lcmt_timestamped_saved_traj()
-  # a = Value(placeholder_trajectory)
-  # discrete_time_delay = builder.AddSystem(
-  #   DiscreteTimeDelay(1.0 / c3_publish_frequency, 1, Value(placeholder_trajectory)))
-
-  # state_pub =builder.AddSystem(LcmPublisherSystem.Make(lcm_params['franka_state_channel'], lcm_type=dairlib.lcmt_robot_output,
-  #   lcm=lcm, publish_triggers=TriggerType.kForced, use_cpp_serializer=True))
-  # tray_state_pub =
-  # builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-  #   lcm_channel_params.tray_state_channel, &lcm,
-  # drake::systems::TriggerTypeSet(
-  # {drake::systems::TriggerType::kForced})));
-
-  parameters = 2 * np.random.random(5) - 1  # center around 0. [-1, 1]
-  print(parameters)
-  c3_options.publish_frequency = (parameters[0] * 5) + 25
-  c3_options.Q = (1 + 0.5 * parameters[1]) * c3_options.Q
-  c3_options.R = (1 + 0.5 * parameters[2]) * c3_options.R
-  c3_options.G = (1 + 0.5 * parameters[3]) * c3_options.G
-  c3_options.U = (1 + 0.5 * parameters[4]) * c3_options.U
-  scales = np.array([(parameters[0] * 5),
-                     (1 + 0.5 * parameters[1]),
-                     (1 + 0.5 * parameters[2]),
-                     (1 + 0.5 * parameters[3]),
-                     (1 + 0.5 * parameters[4])])
-  print(scales)
+  # parameters = 2 * np.random.random(5) - 1  # center around 0. [-1, 1]
+  # print(parameters)
+  c3_options.publish_frequency = (gains[0] * 5) + 25
+  c3_options.Q = (1 + 0.5 * gains[1]) * c3_options.Q
+  c3_options.R = (1 + 0.5 * gains[2]) * c3_options.R
+  c3_options.G = (1 + 0.5 * gains[3]) * c3_options.G
+  c3_options.U = (1 + 0.5 * gains[4]) * c3_options.U
+  scales = np.array([(gains[0] * 5),
+                     (1 + 0.5 * gains[1]),
+                     (1 + 0.5 * gains[2]),
+                     (1 + 0.5 * gains[3]),
+                     (1 + 0.5 * gains[4])])
+  # print(scales)
 
   passthrough = builder.AddSystem(SubvectorPassThrough(8, 0, 7))
   tray_state_sender = builder.AddSystem(ObjectStateSender(plant, tray_index))
@@ -147,10 +133,18 @@ def main():
   simulator.Initialize()
   simulator.AdvanceTo(5.0)
 
-  sim_states = sim_state_logger.GetLog(logger_context)
+  sim_data = sim_state_logger.GetLog(logger_context)
+  sim_states = sim_data.data()
+  sim_times = sim_data.sample_times()
+
+  # reward = compute_reward_sparse(sim_times, sim_states)
+  reward = compute_reward_mpc(sim_times, sim_states)
+  # print(reward)
   # print(sim_states.data().shape)
   # print(sim_states.sample_times().shape)
+  return reward, sim_states
 
 
 if __name__ == '__main__':
-  main()
+  reward, sim_states = run_sim(np.zeros(5), np.zeros(5))
+  print(reward)

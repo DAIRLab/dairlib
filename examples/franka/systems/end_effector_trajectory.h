@@ -8,7 +8,7 @@ namespace dairlib {
 class EndEffectorTrajectoryGenerator
     : public drake::systems::LeafSystem<double> {
  public:
-  EndEffectorTrajectoryGenerator();
+  EndEffectorTrajectoryGenerator(const Eigen::Vector3d& neutral_pose);
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_port_);

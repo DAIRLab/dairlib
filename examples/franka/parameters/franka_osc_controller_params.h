@@ -16,7 +16,7 @@ struct FrankaControllerParams : OSCGains {
   bool enforce_acceleration_constraints;
   bool publish_debug_info;
 
-  std::vector<double> neutral_position;
+  Eigen::VectorXd neutral_position;
   double x_scale;
   double y_scale;
   double z_scale;

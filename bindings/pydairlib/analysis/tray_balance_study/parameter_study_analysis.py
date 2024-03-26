@@ -92,7 +92,7 @@ def load_lcm_logs():
         print(successes)
         all_successes[i] = successes
     # np.save('target_successes_23', all_successes )
-    np.save('target_successes_03_25', all_successes )
+    np.save('target_successes_03_26', all_successes )
 
 def plot_logs():
     all_successes = np.load('target_successes_03_25.npy')
@@ -123,8 +123,8 @@ def plot_logs():
     plt.show()
 
 def main():
-    # load_lcm_logs()
-    plot_logs()
+    load_lcm_logs()
+    # plot_logs()
 
 
 

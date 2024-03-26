@@ -122,13 +122,10 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(*plant_);
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorTrajectoryGenerator>();
+      builder.AddSystem<EndEffectorTrajectoryGenerator>(controller_params.neutral_position);
   auto passthrough = builder.AddSystem<drake::systems::PassThrough<double>>(18);
-  VectorXd neutral_position = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-      controller_params.neutral_position.data(),
-      controller_params.neutral_position.size());
   end_effector_trajectory->SetRemoteControlParameters(
-      neutral_position, controller_params.x_scale, controller_params.y_scale,
+      controller_params.neutral_position, controller_params.x_scale, controller_params.y_scale,
       controller_params.z_scale);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationGenerator>();

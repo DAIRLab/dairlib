@@ -22,6 +22,8 @@ struct FrankaLcmChannels {
   std::string c3_force_best_channel;
   std::string c3_debug_output_best_channel;
 
+  std::string c3_trajectory_exec_actor_channel;
+  std::string repos_trajectory_exec_actor_channel;
   std::string tracking_trajectory_actor_channel;
   std::string tracking_trajectory_object_channel;
 
@@ -53,6 +55,8 @@ struct FrankaLcmChannels {
     a->Visit(DRAKE_NVP(c3_force_best_channel));
     a->Visit(DRAKE_NVP(c3_debug_output_best_channel));
 
+    a->Visit(DRAKE_NVP(c3_trajectory_exec_actor_channel));
+    a->Visit(DRAKE_NVP(repos_trajectory_exec_actor_channel));
     a->Visit(DRAKE_NVP(tracking_trajectory_actor_channel));
     a->Visit(DRAKE_NVP(tracking_trajectory_object_channel));
 

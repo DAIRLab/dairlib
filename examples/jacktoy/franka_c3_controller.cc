@@ -380,6 +380,14 @@ int DoMain(int argc, char* argv[]) {
 
   // These systems publish the tracking output.
   // TODO: Add c3 and repos trajectory publisher systems to publish over lcm.
+  auto actor_c3_execution_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_trajectory_exec_actor_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto actor_repos_execution_trajectory_sender = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.repos_trajectory_exec_actor_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
   auto actor_tracking_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
@@ -509,23 +517,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(
       controller->get_output_port_c3_traj_execute(),
       c3_tracking_trajectory_generator->get_input_port_tracking_trajectory());
-//   builder.Connect(
-//       c3_tracking_trajectory_generator->get_output_port_actor_trajectory(),
-//       mode_selector->get_input_port_c3_actor_trajectory());
-//   builder.Connect(
-//       c3_tracking_trajectory_generator->get_output_port_object_trajectory(),
-//       mode_selector->get_input_port_c3_object_trajectory());
   builder.Connect(controller->get_output_port_repos_traj_execute(),
                   repos_tracking_trajectory_generator
                       ->get_input_port_tracking_trajectory());
-//   builder.Connect(
-//       repos_tracking_trajectory_generator->get_output_port_actor_trajectory(),
-//       mode_selector->get_input_port_repositioning_actor_trajectory());
-//   builder.Connect(
-//       repos_tracking_trajectory_generator->get_output_port_object_trajectory(),
-//       mode_selector->get_input_port_repositioning_object_trajectory());
-//   builder.Connect(controller->get_output_port_is_c3_mode(),
-//                   mode_selector->get_input_port_is_c3_mode());
+
+  builder.Connect(c3_tracking_trajectory_generator->get_output_port_actor_trajectory(),
+                  actor_c3_execution_trajectory_sender->get_input_port());
+  builder.Connect(repos_tracking_trajectory_generator->get_output_port_actor_trajectory(),
+                  actor_repos_execution_trajectory_sender->get_input_port());
   builder.Connect(
       controller->get_output_port_traj_execute(),
       exec_trajectory_generator->get_input_port_tracking_trajectory());

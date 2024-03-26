@@ -17,6 +17,9 @@ c3_object_best_plan_channel: C3_TRAJECTORY_OBJECT_BEST_PLAN # lcmt_timestamped_s
 c3_force_best_channel: C3_FORCES_BEST
 c3_debug_output_best_channel: C3_DEBUG_BEST
 
+c3_trajectory_exec_actor_channel: C3_EXECUTION_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
+repos_trajectory_exec_actor_channel: REPOS_EXECUTION_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
+
 tracking_trajectory_actor_channel: TRACKING_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
 tracking_trajectory_object_channel: TRACKING_TRAJECTORY_OBJECT # lcmt_timestamped_saved_traj
 

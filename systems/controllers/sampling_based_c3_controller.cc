@@ -455,7 +455,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // End of parallelization
 
   // Review the cost results to determine the best sample.
-  double best_additional_sample_cost = 9999999999;
+  double best_additional_sample_cost = -1;
   if (num_total_samples > 1) {
     std::cout<<"Finding best sample"<<std::endl;
     std::vector<double> additional_sample_cost_vector = 
@@ -468,6 +468,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                        std::end(additional_sample_cost_vector));
     best_sample_index_ = (SampleIndex)(
       std::distance(std::begin(additional_sample_cost_vector), it) + 1);
+  }
+  else{
+    // If there is only one sample, set the best sample to the current location
+    // and set the cost to a high value to ensure that the c3 is chosen.
+    best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
+                                  + sampling_params_.switching_hysteresis + 99;
   }
 
   // Update C3 objects and intermediates for current and best samples.
@@ -570,9 +576,6 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   // Get the input from the plan.
   vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
-  std::cout<<"u_sol x"<<u_sol[0]<<std::endl;
-  std::cout<<"u_sol y"<<u_sol[1]<<std::endl;
-  std::cout<<"u_sol z"<<u_sol[2]<<std::endl;
 
   // Resolving contact model param to ContactModel type to pass to LCSFactory.
   solvers::ContactModel contact_model;

@@ -34,9 +34,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 
   // Determine which sampling strategy to use.
   if (sampling_params.sampling_strategy == RADIALLY_SYMMETRIC_SAMPLING){
-    // std::cout<<"before for loop"<<std::endl;
     for (int i = 0; i < num_samples; i++){
-      std::cout<<"generating a sample"<<std::endl;
       candidate_states[i] = generate_radially_symmetric_sample_location(
         n_q, n_v, x_lcs, num_samples, i,
         sampling_params.sampling_radius, sampling_params.sampling_height
@@ -44,9 +42,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     }    
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_CIRCLE_SAMPLING){
-    // std::cout<<"before for loop"<<std::endl;
     for (int i = 0; i < num_samples; i++){
-      std::cout<<"generating a sample"<<std::endl;
       candidate_states[i] = generate_random_sample_location_on_circle(
         n_q, n_v, x_lcs, sampling_params.sampling_radius,
         sampling_params.sampling_height
@@ -54,9 +50,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     }
   }
   else if(sampling_params.sampling_strategy == RANDOM_ON_SPHERE_SAMPLING){
-    // std::cout<<"before for loop"<<std::endl;
     for (int i = 0; i < num_samples; i++){
-      std::cout<<"generating a sample"<<std::endl;
       candidate_states[i] = generate_random_sample_location_on_sphere(
         n_q, n_v, x_lcs, sampling_params.sampling_radius,
         sampling_params.min_angle_from_vertical,

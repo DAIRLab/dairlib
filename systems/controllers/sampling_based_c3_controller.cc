@@ -396,7 +396,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // Preparation for parallelization.
-  // all_sample_costs_ = std::vector<double>(num_total_samples, -1);
+  // This size is adapting to the number of samples based on mode.
+  all_sample_costs_ = std::vector<double>(num_total_samples, -1);
   std::vector<std::shared_ptr<solvers::C3>> c3_objects(num_total_samples, nullptr);
   std::vector<std::vector<Eigen::VectorXd>> deltas(num_total_samples, 
                   std::vector<Eigen::VectorXd>(N_,VectorXd::Zero(n_x_ + n_lambda_ + n_u_)));
@@ -444,11 +445,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
       if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
-        std::cout<<"Adding finished reposition cost"<<std::endl;
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
       }
       else if (i > CURRENT_LOCATION_INDEX) {
-        std::cout<<"Adding reposition fixed cost"<<std::endl;
         all_sample_costs_[i] += sampling_params_.reposition_fixed_cost;
       }
     }
@@ -457,7 +456,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Review the cost results to determine the best sample.
   double best_additional_sample_cost = -1;
   if (num_total_samples > 1) {
-    std::cout<<"Finding best sample"<<std::endl;
     std::vector<double> additional_sample_cost_vector = 
       std::vector<double>(all_sample_costs_.begin()+1, all_sample_costs_.end());
     best_additional_sample_cost = 

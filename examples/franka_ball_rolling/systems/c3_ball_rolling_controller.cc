@@ -196,7 +196,7 @@ void C3BallRollingController::CalcControl(const Context<double>& context,
 
     return;
   }
-
+    ///////////////////////////// Go into FK Block /////////////////////////////
   /// FK
   // update context once for FK
   plant_franka_.SetPositions(&context_franka_, robot_output->GetPositions());
@@ -264,7 +264,9 @@ void C3BallRollingController::CalcControl(const Context<double>& context,
     traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
     traj_desired_vector(q_map_.at("base_z")) = ball_radius + table_offset;
   }
+    ///////////////////////////// Go into FK Block /////////////////////////////
 
+  ///////////////////////////// Go into Heuristic Block /////////////////////////////
   // compute sphere positional error
   Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("base_x")),
                       traj_desired_vector(q_map_.at("base_y")),
@@ -359,10 +361,12 @@ Quaterniond temp(0, 1, 0, 0);
 RotationMatrix<double> default_orientation(temp);
 VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
+///////////////////////////// Go into Heuristic Block /////////////////////////////
+
 
 
   // VectorXd orientation_d = (R_desired).ToQuaternionAsVector4();
-
+///////////////////////////// Go into LCS Factory Block /////////////////////////////
   /// update autodiff
   VectorXd xu(plant_f_.num_positions() + plant_f_.num_velocities() +
       plant_f_.num_actuators());
@@ -395,6 +399,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   solvers::LCS system_ = system_scaling_pair.first;
   double scaling = system_scaling_pair.second;
 
+  ///////////////////////////// Go into LCS Factory Block /////////////////////////////
+
+  ///////////////////////////// C3 Block /////////////////////////////
   C3Options options;
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
@@ -424,6 +431,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     w = w_reset;
   }
 
+  ///////////////////////////// C3 Block /////////////////////////////
+
+    ///////////////////////////// Go into Heuristic Block /////////////////////////////
   MatrixXd Qnew;
   MatrixXd Gnew;
   Qnew = Q_[0];
@@ -443,19 +453,20 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
   std::vector<MatrixXd> Gha(G_.size(), Gnew);
-
-  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options,
-   warm_start_delta_, warm_start_binary_, warm_start_x_,
-   warm_start_lambda_, warm_start_u_, true);
+    ///////////////////////////// Go into Heuristic Block /////////////////////////////
 
 
-//  solvers::MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, scaling,
-//                      warm_start_delta_, warm_start_binary_, warm_start_x_,
-//                      warm_start_lambda_, warm_start_u_, true);
+    ///////////////////////////// C3 Block /////////////////////////////
+//  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options,
+//   warm_start_delta_, warm_start_binary_, warm_start_x_,
+//   warm_start_lambda_, warm_start_u_, true);
 
+  solvers::C3::CostMatrices Cost(Qha,R_,Gha,U_);
+  solvers::C3MIQP opt(system_, Cost, traj_desired, options);
 
   /// calculate the input given x[i]
-  auto zfin = opt.Solve(state, delta, w);
+  opt.Solve(state);
+  auto zfin = opt.GetFullSolution();
   VectorXd input = zfin[0].segment(n + m, k);
 
   warm_start_x_ = opt.GetWarmStartX();
@@ -464,6 +475,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   warm_start_delta_ = opt.GetWarmStartDelta();
   warm_start_binary_ = opt.GetWarmStartBinary();
 
+    ///////////////////////////// Go into Re-Linearize Block /////////////////////////////
   // compute dt based on moving averaege filter
   double dt = 0;
   if (moving_average_.empty()){
@@ -521,6 +533,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   VectorXd st_desired(force_des.size() + state_next.size() + orientation_d.size() + ball_xyz_d.size() + ball_xyz.size() + true_ball_xyz.size());
 
   st_desired << state_next.head(3), orientation_d, state_next.tail(16), force_des.head(6), ball_xyz_d, ball_xyz, true_ball_xyz;
+    ///////////////////////////// Go into Re-Linearize Block /////////////////////////////
 
 //  std::cout << "ADMM_X" << std::endl;
 //  std::cout << state_next.tail(9) << std::endl;

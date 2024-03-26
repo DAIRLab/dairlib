@@ -9,15 +9,12 @@
 namespace dairlib {
 namespace systems {
 
+// A class that generates
 class TargetGenerator
     : public drake::systems::LeafSystem<double> {
  public:
   TargetGenerator(
       const drake::multibody::MultibodyPlant<double>& object_plant);
-
-  const drake::systems::InputPort<double>& get_input_port_radio() const {
-    return this->get_input_port(radio_port_);
-  }
 
   const drake::systems::InputPort<double>& get_input_port_object_state() const {
     return this->get_input_port(object_state_port_);

@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "c3_ball_rolling_systems",
     srcs = [
-        "control_target_generator.cc",
+        "track_target_generator.cc",
         "c3_ball_rolling_controller.cc",
         "gravity_compensator.cc",
         "c3_trajectory_source.cc",
@@ -13,7 +13,7 @@ cc_library(
         "robot_output_passthrough.cc"
     ],
     hdrs = [
-        "control_target_generator.h",
+        "track_target_generator.h",
         "c3_ball_rolling_controller.h",
         "gravity_compensator.h",
         "c3_trajectory_source.h",

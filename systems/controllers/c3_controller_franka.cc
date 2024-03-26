@@ -94,21 +94,21 @@ C3Controller_franka::C3Controller_franka(
   int nlambda = 12;
   int nu = 3;
 
-  for (int i = 0; i < time_horizon; i++){
-    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
-  }
-  for (int i = 0; i < time_horizon; i++){
-    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
-  }
-  for (int i = 0; i < time_horizon+1; i++){
-    warm_start_x_.push_back(VectorXd::Zero(nx));
-  }
-  for (int i = 0; i < time_horizon; i++){
-    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
-  }
-  for (int i = 0; i < time_horizon; i++){
-    warm_start_u_.push_back(VectorXd::Zero(nu));
-  }
+//  for (int i = 0; i < time_horizon; i++){
+//    warm_start_delta_.push_back(VectorXd::Zero(nx+nlambda+nu));
+//  }
+//  for (int i = 0; i < time_horizon; i++){
+//    warm_start_binary_.push_back(VectorXd::Zero(nlambda));
+//  }
+//  for (int i = 0; i < time_horizon+1; i++){
+//    warm_start_x_.push_back(VectorXd::Zero(nx));
+//  }
+//  for (int i = 0; i < time_horizon; i++){
+//    warm_start_lambda_.push_back(VectorXd::Zero(nlambda));
+//  }
+//  for (int i = 0; i < time_horizon; i++){
+//    warm_start_u_.push_back(VectorXd::Zero(nu));
+//  }
   
 
   state_input_port_ =
@@ -400,7 +400,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   solvers::LCS system_ = system_scaling_pair.first;
   double scaling = system_scaling_pair.second;
 
-  C3Options options;
+  C3Options options = drake::yaml::LoadYamlFile<C3Options>(
+          "examples/franka_ball_rolling/parameters/c3_options_ball_rolling.yaml");
   int N = (system_.A_).size();
   int n = ((system_.A_)[0].cols());
   int m = ((system_.D_)[0].cols());
@@ -449,9 +450,29 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);
   std::vector<MatrixXd> Gha(G_.size(), Gnew);
 
-  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options,
-   warm_start_delta_, warm_start_binary_, warm_start_x_,
-   warm_start_lambda_, warm_start_u_, true);
+//  solvers::C3MIQP opt(system_, Qha, R_, Gha, U_, traj_desired, options,
+//   warm_start_delta_, warm_start_binary_, warm_start_x_,
+//   warm_start_lambda_, warm_start_u_, true);
+
+  solvers::C3::CostMatrices Cost(Qha,R_,Gha,U_);
+//  std::cout<<"Qha"<<Qha.size()<<std::endl;
+//  std::cout<<"R_"<<R_.size()<<std::endl;
+//  std::cout<<"Gha"<<Gha.size()<<std::endl;
+//  std::cout<<"U_"<<U_.size()<<std::endl;
+//
+//  std::cout<<"N"<<N<<std::endl;
+//  std::cout<<"n"<<n<<std::endl;
+//  std::cout<<"m"<<m<<std::endl;
+//  std::cout<<"k"<<k<<std::endl;
+//
+//  std::cout<<"traj_desired_size"<<traj_desired.size()<<std::endl;
+//  std::cout<<"traj_desired_vector"<<traj_desired_vector<<std::endl;
+
+
+
+
+
+  solvers::C3MIQP opt(system_, Cost, traj_desired, options);
 
 
 //  solvers::MIQP opt(system_, Qha, R_, G_, U_, traj_desired, options, scaling,
@@ -460,14 +481,15 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
 
 
   /// calculate the input given x[i]
-  auto zfin = opt.Solve(state, delta, w);
+  opt.Solve(state);
+  auto zfin = opt.GetFullSolution();
   VectorXd input = zfin[0].segment(n + m, k);
 
-  warm_start_x_ = opt.GetWarmStartX();
-  warm_start_lambda_ = opt.GetWarmStartLambda();
-  warm_start_u_ = opt.GetWarmStartU();
-  warm_start_delta_ = opt.GetWarmStartDelta();
-  warm_start_binary_ = opt.GetWarmStartBinary();
+//  warm_start_x_ = opt.GetWarmStartX();
+//  warm_start_lambda_ = opt.GetWarmStartLambda();
+//  warm_start_u_ = opt.GetWarmStartU();
+//  warm_start_delta_ = opt.GetWarmStartDelta();
+//  warm_start_binary_ = opt.GetWarmStartBinary();
 
   // compute dt based on moving averaege filter
   double dt = 0;

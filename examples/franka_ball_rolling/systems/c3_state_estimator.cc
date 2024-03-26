@@ -210,7 +210,7 @@ RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, 
 }
 
 /* ------------------------------------------------------------------------------ */
-/// Method implementation of FrankaBallToBallPosition class
+/// Method implementation of TrueBallToEstimatedBall class
 
 TrueBallToEstimatedBall::TrueBallToEstimatedBall(
   double stddev, double period) : 

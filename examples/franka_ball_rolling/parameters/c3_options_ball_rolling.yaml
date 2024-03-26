@@ -9,6 +9,22 @@ projection_type: 'MIQP'
 contact_model: 'stewart_and_trinkle'
 #contact_model: 'stewart_and_trinkle'
 warm_start: true
+# whether to account the effect of slow solving time to do interpolation
+use_predicted_x0: false
+solve_time_filter_alpha: 0
+# set to 0 to publish as fast as possible
+publish_frequency: 0
+
+
+#Workspace Limits (not used)
+world_x_limits: [-10, 10]
+world_y_limits: [-10, 10]
+world_z_limits: [-10, 10]
+workspace_margins: 0
+
+# control Limits (not used)
+u_horizontal_limits: [-100, 100]
+u_vertical_limits: [-100, 100]
 
 mu: [1, 1]
 # dt is the planned LCS dt
@@ -18,6 +34,7 @@ solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 2
 N: 5
+gamma: 1.0 # discount factor on MPC costs
 
 # matrix scaling, easy function to scaling all terms instead of tuning one by one
 w_Q: 1

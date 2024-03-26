@@ -7,7 +7,7 @@ end_effector_name: end_effector_tip
 
 tool_attachment_frame: [0, 0, 0.107]
 
-neutral_position: [0.55, 0, 0.45]
+neutral_position: [0, 0.5, 0.15]
 x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1

@@ -186,7 +186,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotCommandSender>(osc_plant);
   auto end_effector_trajectory =
       builder.AddSystem<EndEffectorTrajectoryGenerator>(
-          osc_plant, osc_plant_context.get());
+          controller_params.neutral_position);
   auto end_effector_orientation_trajectory =
       builder.AddSystem<EndEffectorOrientationGenerator>(
           osc_plant, osc_plant_context.get());
@@ -473,8 +473,6 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputReceiver>(osc_plant);
 
   //// OSC connections
-  builder.Connect(osc_state_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_state());
   builder.Connect(radio_sub->get_output_port(0),
                   end_effector_trajectory->get_input_port_radio());
   builder.Connect(osc_state_receiver->get_output_port(0),

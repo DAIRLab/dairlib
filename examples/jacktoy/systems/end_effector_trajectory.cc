@@ -5,16 +5,9 @@
 
 using Eigen::Map;
 using Eigen::MatrixXd;
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::Vector4d;
 using Eigen::VectorXd;
 using std::string;
 
-using dairlib::systems::OutputVector;
-using drake::multibody::BodyFrame;
-using drake::multibody::Frame;
-using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -25,15 +18,8 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
-    const MultibodyPlant<double>& plant, Context<double>* context)
-    : plant_(plant), context_(context), world_(plant.world_frame()) {
+EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const Eigen::VectorXd& neutral_pose) {
   // Input/Output Setup
-  state_port_ = this->DeclareVectorInputPort(
-                        "x", OutputVector<double>(plant_.num_positions(),
-                                                  plant_.num_velocities(),
-                                                  plant_.num_actuators()))
-                    .get_index();
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
   trajectory_port_ =
@@ -41,11 +27,11 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
               "trajectory",
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
-  radio_port_ =
-      this->DeclareAbstractInputPort("lcmt_radio_out",
-                                     drake::Value<dairlib::lcmt_radio_out>{})
-          .get_index();
-  PiecewisePolynomial<double> empty_pp_traj(neutral_pose_);
+  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
+                                    drake::Value<dairlib::lcmt_radio_out>{}).get_index();
+
+
+  PiecewisePolynomial<double> empty_pp_traj(neutral_pose);
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort("end_effector_trajectory", traj_inst,
                                   &EndEffectorTrajectoryGenerator::CalcTraj);
@@ -60,31 +46,24 @@ void EndEffectorTrajectoryGenerator::SetRemoteControlParameters(
   z_scale_ = z_scale;
 }
 
-PiecewisePolynomial<double> EndEffectorTrajectoryGenerator::GeneratePose(
-    const drake::systems::Context<double>& context) const {
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
-  VectorXd y0 = neutral_pose_;
-  y0(0) += radio_out->channel[0] * x_scale_;
-  y0(1) += radio_out->channel[1] * y_scale_;
-  y0(2) += radio_out->channel[2] * z_scale_;
-  return drake::trajectories::PiecewisePolynomial<double>(y0);
-}
-
 void EndEffectorTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  //  // Read in finite state machine
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
-  const auto& radio_out =
-      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
+  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (radio_out->channel[14]) {
-    *casted_traj = GeneratePose(context);
+    PiecewisePolynomial<double> result;
+    VectorXd y_0 = neutral_pose_;
+    y_0(0) += radio_out->channel[0] * x_scale_;
+    y_0(1) += radio_out->channel[1] * y_scale_;
+    y_0(2) += radio_out->channel[2] * z_scale_;
+    result = drake::trajectories::PiecewisePolynomial<double>(y_0);
+    *casted_traj = result;
   } else {
     if (trajectory_input.value(0).isZero()) {
     } else {

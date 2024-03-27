@@ -211,7 +211,6 @@ RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, 
 
 /* ------------------------------------------------------------------------------ */
 /// Method implementation of TrueBallToEstimatedBall class
-
 TrueBallToEstimatedBall::TrueBallToEstimatedBall(
   double stddev, double period) : 
   stddev_(stddev), period_(period) {
@@ -256,7 +255,6 @@ EventStatus TrueBallToEstimatedBall::UpdateBallPosition(
     std::normal_distribution<> d{0, stddev_};
 
     ///changes
-
     double x_noise = d(gen);
     double y_noise = d(gen);
 

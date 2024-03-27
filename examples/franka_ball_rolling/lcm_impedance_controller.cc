@@ -194,7 +194,7 @@ int DoMain(int argc, char* argv[]){
   msg_data[10] = 0;
   msg_data[11] = impedance_param.traj_radius * sin(M_PI * impedance_param.phase / 180.0) + impedance_param.x_c;
   msg_data[12] = impedance_param.traj_radius * cos(M_PI * impedance_param.phase / 180.0) + impedance_param.y_c;
-  msg_data[13] = impedance_param.ball_radius - impedance_param.ground_offset_frame(2);;
+  msg_data[13] = impedance_param.ball_radius + impedance_param.ground_offset_frame(2);;
   msg_data[32] = msg_data[7];
   msg_data[33] = msg_data[8];
   msg_data[34] = msg_data[9];

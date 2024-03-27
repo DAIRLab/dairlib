@@ -7,6 +7,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
+#include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #define PI 3.14159265359
 
 namespace dairlib {
@@ -19,7 +20,9 @@ class TargetGenerator
     : public drake::systems::LeafSystem<double> {
  public:
   TargetGenerator(
-      const drake::multibody::MultibodyPlant<double>& object_plant);
+      const drake::multibody::MultibodyPlant<double>& robot_plant,
+      const SimulateFrankaParams& sim_param,
+      const BallRollingTrajectoryParams& traj_param);
 
   /// the input port take lcmt_robot_output (x, u, timestamp) in from the state estimation block
   /// only need the state x to generate the target
@@ -37,10 +40,7 @@ class TargetGenerator
     return this->get_output_port(target_port_);
   }
 
-  void SetTrajectoryParameters(const int& trajectory_type, const double& traj_radius, const double& x_c, const double& y_c,
-                               const double& lead_angle, const double& velocity_circle,
-                               const double& start_x, const double& start_y, const double& end_x, const double& end_y,
-                               const double& lead_step, const double& velocity_line);
+  void SetTrajectoryParameters(const BallRollingTrajectoryParams& traj_param);
 
  private:
   void CalcTrackTarget(const drake::systems::Context<double>& context,

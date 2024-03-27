@@ -14,21 +14,19 @@ y_c: 0
 lead_angle: 20 # angle in degrees
 
 # time based circular specific setting
-time_increment_circle: 1
-hold_order_circle: 0 # 0 for zero order hold, 1 for first order hold
+velocity_circle: 5 # angular velocity in degrees/s
 
 # --------------------------  straight line trajectory parameter  ------------------------#
 # straight line path parameters (general)
-start_x: 0.45           # x coordinate of start point of straight line.
-start_y: 0.35           # y coordinate of start point of straight line.
-end_x: 0.45             # x coordinate of end point of straight line.
-end_y: -0.35            # y coordinate of end point of straight line.
+start_x: 0.55           # x coordinate of start point of straight line.
+start_y: 0.2           # y coordinate of start point of straight line.
+end_x: 0.55             # x coordinate of end point of straight line.
+end_y: -0.2            # y coordinate of end point of straight line.
 
 # state based straight line specific setting
-lead_step: 0.2          # lookahead length for adaptive straight line.
+lead_step: 0.04          # lookahead length for adaptive straight line.
 
 # time based circular specific setting
-time_increment_line: 1
-hold_order_line: 0 # 0 for zero order hold, 1 for first order hold
+velocity_line: 0.04
 
 

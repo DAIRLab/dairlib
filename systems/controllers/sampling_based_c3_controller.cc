@@ -574,6 +574,8 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
   // Get the input from the plan.
   vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
+  // Get full state solution from the plan.
+  vector<VectorXd> x_sol = c3_curr_plan_->GetStateSolution();
 
   // Resolving contact model param to ContactModel type to pass to LCSFactory.
   solvers::ContactModel contact_model;
@@ -585,29 +587,18 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     throw std::runtime_error("unknown or unsupported contact model");
   }
 
-  // Create an LCS object.
-  vector<SortedPair<GeometryId>> resolved_contact_pairs =
-    LCSFactoryPreProcessor::PreProcessor(
-      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
-  auto system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
-    plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-    c3_options_.num_friction_directions, c3_options_.mu, 
-    c3_options_.execution_dt, N_, contact_model);
-  solvers::LCS lcs_object = system_scaling_pair.first;
-
   // Setting up matrices to set up LCMTrajectory object.
-  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_ + 1);
-  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_ + 1);
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_);
+  Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_);
 
   // Roll out the execution LCS with the planned inputs.
   knots.col(0) = x_lcs;
   timestamps[0] = t + filtered_solve_time_;
   for (int i = 0; i < N_; i++) {
     // Set up matrices for LCMTrajectory object.
-    // Simulate returns a const Eigen::VectorXd& so we need to cast it to a
-    // non-const type.
-    knots.col(i+1) = lcs_object.Simulate(knots.col(i), u_sol[i]);
-    timestamps[i+1] = t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt;
+    // Manually simulate forward using the dynamics.
+    knots.col(i) = x_sol[i];
+    timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
   
   LcmTrajectory::Trajectory c3_execution_traj;
@@ -695,7 +686,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   timestamps[0] = t + filtered_solve_time_;
 
   for (int i = 0; i < N_+1; i++) {
-    double t_spline = (i+1)*c3_options_.execution_dt/total_travel_time;
+    double t_spline = (i+1)*c3_options_.planning_dt/total_travel_time;
     // Don't overshoot the end of the spline.
     t_spline = std::min(1.0, t_spline);
 
@@ -712,7 +703,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
 
     knots.col(i)= next_lcs_state;
-    timestamps[i] = t + filtered_solve_time_ + (i+1)*c3_options_.execution_dt;
+    timestamps[i] = t + filtered_solve_time_ + (i+1)*c3_options_.planning_dt;
   }
 
   LcmTrajectory::Trajectory repos_execution_traj;

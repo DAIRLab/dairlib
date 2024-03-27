@@ -212,15 +212,27 @@ int do_main(int argc, char* argv[]) {
           sim_params.object_body_name,
 					false);
 	builder.Connect(franka_state_receiver->get_output_port(),
-									reduced_order_model_receiver->get_input_port_franka_state());
+																	reduced_order_model_receiver->get_input_port_franka_state());
 	builder.Connect(tray_state_receiver->get_output_port(),
-									reduced_order_model_receiver->get_input_port_object_state());
+																	reduced_order_model_receiver->get_input_port_object_state());
 
 	// This system subscribes to the lcmt_timestamped_saved_traj message containing
 	auto is_c3_mode_sub = builder.AddSystem(
-			LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-					lcm_channel_params.is_c3_mode_channel, lcm));
+					LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+									lcm_channel_params.is_c3_mode_channel, lcm));
 
+	// These systems subscribe to the c3 and repos trajectory execution channels
+	// to visualize posible execution trajectories for the actor for either mode.
+  auto c3_execution_trajectory_sub_actor = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.c3_trajectory_exec_actor_channel, lcm));
+  auto repos_execution_trajectory_sub_actor = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.repos_trajectory_exec_actor_channel, lcm));
+
+	// These systems subscribe to the c3 curr and best plan channels to visualize
+	// the center of mass trajectories for the actor and object according to each
+	// plan.
   auto trajectory_sub_actor_curr = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_curr_plan_channel, lcm));
@@ -274,6 +286,23 @@ int do_main(int argc, char* argv[]) {
                        {1, 0, 0, 0.2});
     meshcat->SetTransform("c3_state/workspace", RigidTransformd(workspace_center));
   }
+  if (sim_params.visualize_execution_plan){
+    auto c3_exec_trajectory_drawer_actor =
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(
+            meshcat,"c3_exec_", "end_effector_position_target");
+    auto repos_trajectory_drawer_actor =
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"repos_exec_",
+                                                        "end_effector_position_target");
+    c3_exec_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
+    repos_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({0, 1, 0, 1}));
+    c3_exec_trajectory_drawer_actor->SetNumSamples(5);
+    repos_trajectory_drawer_actor->SetNumSamples(6);
+    builder.Connect(c3_execution_trajectory_sub_actor->get_output_port(),
+                    c3_exec_trajectory_drawer_actor->get_input_port_trajectory());
+    builder.Connect(repos_execution_trajectory_sub_actor->get_output_port(),
+                    repos_trajectory_drawer_actor->get_input_port_trajectory());
+  }
+
   if (sim_params.visualize_center_of_mass_plan_curr){
     auto trajectory_drawer_actor_curr =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(

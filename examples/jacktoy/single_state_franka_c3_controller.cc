@@ -271,7 +271,7 @@ int DoMain(int argc, char* argv[]) {
       trajectory_params.trajectory_type, trajectory_params.traj_radius,
       trajectory_params.x_c, trajectory_params.y_c,
       trajectory_params.lead_angle, trajectory_params.fixed_goal_x,
-      trajectory_params.fixed_goal_y, trajectory_params.step_size,
+      trajectory_params.fixed_goal_y, trajectory_params.fixed_target_orientation, trajectory_params.step_size,
       trajectory_params.start_point_x, trajectory_params.start_point_y,
       trajectory_params.end_point_x, trajectory_params.end_point_y,
       trajectory_params.lookahead_step_size, trajectory_params.max_step_size,

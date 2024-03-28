@@ -41,7 +41,7 @@ TargetGenerator::TargetGenerator(
 void TargetGenerator::SetRemoteControlParameters(
     const int& trajectory_type, const double& traj_radius,
     const double& x_c, const double& y_c, const double& lead_angle, const double& fixed_goal_x, 
-    const double& fixed_goal_y, const double& step_size, const double& start_point_x, const double& start_point_y, 
+    const double& fixed_goal_y, const Eigen::VectorXd& fixed_target_orientation, const double& step_size, const double& start_point_x, const double& start_point_y, 
     const double& end_point_x, const double& end_point_y, const double& lookahead_step_size, const double& max_step_size, 
     const double& ee_goal_height, const double& object_half_width) {
   // Set the target parameters
@@ -53,6 +53,7 @@ void TargetGenerator::SetRemoteControlParameters(
   lead_angle_ = lead_angle;
   fixed_goal_x_ = fixed_goal_x;
   fixed_goal_y_ = fixed_goal_y;
+  fixed_target_orientation_ = fixed_target_orientation;
   step_size_ = step_size;
   start_point_x_ = start_point_x;
   start_point_y_ = start_point_y;
@@ -181,7 +182,7 @@ void TargetGenerator::CalcObjectTarget(
     DRAKE_THROW_UNLESS(false);
   }
 
-  target_obj_state << 1, 0, 0, 0, target_obj_position;  // The first four used to be the quaternion for a flat tray. Does this need to change @Bibit?
+  target_obj_state << fixed_target_orientation_, target_obj_position;  // The first four used to be the quaternion for a flat tray. Does this need to change @Bibit?
   target->SetFromVector(target_obj_state);
 }
 

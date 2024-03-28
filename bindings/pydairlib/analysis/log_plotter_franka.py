@@ -15,10 +15,10 @@ from pydrake.all import JointIndex, JointActuatorIndex
 from matplotlib.patches import Patch
 
 def main():
-    config_file = ('bindings/pydairlib/analysis/plot_configs'
-                   '/franka_hardware_plot_config.yaml')
     # config_file = ('bindings/pydairlib/analysis/plot_configs'
-    #                '/franka_sim_plot_config.yaml')
+    #                '/franka_hardware_plot_config.yaml')
+    config_file = ('bindings/pydairlib/analysis/plot_configs'
+                   '/franka_sim_plot_config.yaml')
     plot_config = FrankaPlotConfig(config_file)
 
     channel_x = plot_config.channel_x
@@ -151,8 +151,8 @@ def main():
 
         # plot.add_legend(['robot_des_x', 'robot_des_y', 'robot_des_z', 'robot_x', 'robot_y', 'robot_z'], subplot_index = 0)
 
-        plot.axes[0].set_xlim([0.4, 0.8])
-        plot.axes[0].set_ylim([0.35, 0.65])
+        # plot.axes[0].set_xlim([0.4, 0.8])
+        # plot.axes[0].set_ylim([0.35, 0.65])
 
         plot.add_legend(['Tray Path', 'End Effector Path'])
         # plot.add_legend(['tray target x', 'tray target y', 'tray target z'])
@@ -162,72 +162,13 @@ def main():
 
         # plot.save_fig('figure_8_tracking_over_time')
         # plot.save_fig('figure_8_tracking')
-        plot.save_fig('c3_gaiting')
+        # plot.save_fig('c3_gaiting')
         # plot.save_fig('c3_actual_trajectory_time')
 
         # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 0:1], subplot_index = 0)
         # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 7:8], subplot_index = 1)
         # plot.axes[0].set_ylim([0.4, 0.7])
         # plot.add_legend(['tray_des_x', 'tray_des_y', 'tray_des_z', 'tray_x', 'tray_y', 'tray_z'], subplot_index = 1)
-    if True:
-        plotter = plot_styler.PlotStyler()
-        # zero_vel_threshold = 0.00001
-        # tray_x_vel = np.diff(c3_tracking_actual['x'][:, 7])
-        # end_effector_x_vel = np.diff(c3_tracking_actual['x'][:, 0])
-        # tray_x_vel[np.abs(tray_x_vel) < zero_vel_threshold] = 0
-        # end_effector_x_vel[np.abs(end_effector_x_vel) < zero_vel_threshold] = 0
-        # tray_x_vel_dir = np.sign(tray_x_vel)
-        # end_effector_x_vel_dir = np.sign(end_effector_x_vel)
-        sticking_contacts = [slice(12, 18), slice(25, 28), slice(34, 53), slice(59, 210), slice(216, 221), slice(232, 235), slice(247, 290)]
-        sliding_contacts = [slice(17, 20), slice(22, 26), slice(27, 35), slice(52, 60), slice(209, 217), slice(220, 233), slice(234, 248)]
-        no_contacts = [slice(0, 13), slice(19, 23)]
-
-        support_sticking_contacts = [slice(0, 13), slice(18, 27), slice(35, 40), slice(259, 290)]
-        support_sliding_contacts = [slice(12, 19), slice(26, 36), slice(39, 68), slice(218, 260)]
-        support_no_contacts = [slice(67, 219)]
-
-        plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 7:8], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 0:1], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        ax = plotter.fig.axes[0]
-        ymin, ymax = ax.get_ylim()
-        halfway = ymin + 0.5 * (ymax - ymin)
-        # colors = plt.get_cmap('tab20c')
-        for i in no_contacts:
-            ax.fill_between(c3_tracking_actual['t'][i], halfway, ymax,
-                            color=plotter.cmap(0), alpha=0.2)
-        for i in sticking_contacts:
-            ax.fill_between(c3_tracking_actual['t'][i], halfway, ymax,
-                            color=plotter.cmap(2), alpha=0.2)
-        for i in sliding_contacts:
-            ax.fill_between(c3_tracking_actual['t'][i], halfway, ymax,
-                            color=plotter.cmap(4), alpha=0.2)
-        for i in support_no_contacts:
-            ax.fill_between(c3_tracking_actual['t'][i], ymin, halfway,
-                            color=plotter.cmap(0), alpha=0.2)
-        for i in support_sticking_contacts:
-            ax.fill_between(c3_tracking_actual['t'][i], ymin, halfway,
-                            color=plotter.cmap(2), alpha=0.2)
-        for i in support_sliding_contacts:
-            ax.fill_between(c3_tracking_actual['t'][i], ymin, halfway,
-                            color=plotter.cmap(4), alpha=0.2)
-        legend_elements = []
-        labels = ['No Contact', 'Sticking', 'Sliding']
-        # legend_elements.append(Patch(color='none', label=labels[0]))
-        for i in range(3):
-            legend_elements.append(
-                Patch(facecolor=plotter.cmap(2 * i), alpha=0.3,
-                      label=labels[i]))
-        # legend = ax.legend(handles=['Tray x', 'Tray y', 'Tray z', 'End Effector x', 'End Effector y', 'End Effector z'], loc=1)
-        # ax.add_artist(legend)
-        legend = ax.legend(handles=legend_elements, loc=(0.55, 0.765))
-        ax.add_artist(legend)
-        plotter.add_legend(['Tray x', 'End Effector x', 'Tray z', 'End Effector z'], subplot_index = 0, loc=(0.27, 0.7))
-        plotter.axes[0].set_xlim([7.4, 15.5])
-
-        # plotter.save_fig('c3_actual_trajectory_time')
-
 
     # plot = plot_styler.PlotStyler(nrows=2)
     # plot.plot(c3_tracking_target['t'], solve_times, subplot_index = 0)

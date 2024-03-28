@@ -46,7 +46,7 @@ class PlotStyler():
     self.orange = '#FE7F0E'
     # self.directory = None
     self.dpi = plt.rcParams['figure.dpi']
-    self.directory = '/home/yangwill/Pictures/plot_styler/'
+    # self.directory = '/home/yangwill/Pictures/plot_styler/'
     plt.rc('legend', fontsize=24)
     plt.rc('axes', labelsize=24, titlesize=24)
     plt.rc('xtick', labelsize=24)

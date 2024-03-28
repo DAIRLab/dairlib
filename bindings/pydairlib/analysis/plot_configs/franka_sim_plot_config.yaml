@@ -2,12 +2,15 @@
 channel_x: "FRANKA_STATE_SIMULATION"
 channel_u: "OSC_FRANKA"
 channel_osc: "OSC_DEBUG_FRANKA"
-channel_c3: "C3_DEBUG"
-channel_tray: "TRAY_STATE_SIMULATION"
+# channel_c3: "C3_DEBUG"
+channel_c3: "C3_DEBUG_BEST"
+channel_tray: "OBJECT_STATE_SIMULATION"
 channel_c3_target: "C3_TARGET"
 channel_c3_actual: "C3_ACTUAL"
 plot_style: 'compact' # compact, paper, default
 
+# Give a start and end for how long you want to plot the data. 
+# Helps load faster.
 start_time: 0
 #duration: 0.47
 duration: -1
@@ -16,7 +19,7 @@ duration: -1
 # Desired RobotOutput plots
 plot_joint_positions: false
 plot_joint_velocities: false
-plot_measured_efforts: true
+plot_measured_efforts: false
 plot_commanded_efforts: false
 plot_contact_forces: false
 plot_end_effector: true
@@ -30,8 +33,8 @@ fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', 'Left Flight (LF)', 
 
 # Desired osc plots
 plot_qp_costs: false
-plot_qp_solve_time: true
-plot_qp_solutions: true
+plot_qp_solve_time: false
+plot_qp_solutions: false
 plot_tracking_costs: false
 plot_active_tracking_datas: false
 tracking_datas_to_plot:

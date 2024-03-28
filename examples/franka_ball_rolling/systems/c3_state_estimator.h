@@ -28,6 +28,7 @@
 
 using drake::systems::Context;
 using drake::systems::LeafSystem;
+using drake::systems::BasicVector;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;

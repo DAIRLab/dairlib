@@ -24,6 +24,7 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@lcm",
+        "franka_kinematics",
         "//multibody:utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:geom_geom_collider",
@@ -36,5 +37,31 @@ cc_library(
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//examples/franka_ball_rolling:c3_state_estimator_params",
         "//examples/franka_ball_rolling:c3_ball_rolling_params",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics",
+    srcs = ["franka_kinematics.cc"],
+    hdrs = ["franka_kinematics.h"],
+    deps = [
+        ":franka_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics_vector",
+    srcs = ["franka_kinematics_vector.cc"],
+    hdrs = ["franka_kinematics_vector.h"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
     ],
 )

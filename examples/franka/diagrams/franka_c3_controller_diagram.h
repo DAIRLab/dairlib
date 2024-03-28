@@ -25,7 +25,7 @@ class FrankaC3ControllerDiagram : public drake::systems::Diagram<double> {
   /// @param[in] osqp_settings filepath containing the osqp settings.
   FrankaC3ControllerDiagram(const std::string& controller_settings, const C3Options c3_options,
                               const std::string& lcm_channels,
-                              drake::lcm::DrakeLcm* lcm);
+                              drake::lcm::DrakeLcm* lcm, bool publish_c3_debug = false);
 
   /// @return the input port for the plant state.
   const drake::systems::InputPort<double>& get_input_port_robot_state() const {

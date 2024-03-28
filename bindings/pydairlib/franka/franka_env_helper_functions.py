@@ -23,8 +23,10 @@ def compute_reward_mpc(times, sim_states):
   for i in range(times.shape[0]):
     tray_pos = sim_states[11:14, i]
     tray_orientation = sim_states[7:11, i]
+    tray_quat = Quaternion(tray_orientation / np.linalg.norm(tray_orientation))
     cumulative_cost += np.linalg.norm(tray_pos - first_target)
-    angle_difference = Quaternion.multiply(neutral_orientation.conjugate(), Quaternion(tray_orientation))
+    # tray_quat /= np.linalg.norm(tray_quat.wxyz())
+    angle_difference = Quaternion.multiply(neutral_orientation.conjugate(), tray_quat)
     cumulative_cost += RotationMatrix(angle_difference).ToAngleAxis().angle()
   cumulative_cost /= times.shape[0]
   return cumulative_cost

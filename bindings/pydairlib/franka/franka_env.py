@@ -53,6 +53,12 @@ def run_sim(intrinsics, gains):
                    T_S2_W)
   plant.Finalize()
 
+  c3_options.publish_frequency = (gains[0] * 5) + 25
+  c3_options.Q = (1 + 0.5 * gains[1]) * c3_options.Q
+  c3_options.R = (1 + 0.5 * gains[2]) * c3_options.R
+  c3_options.G = (1 + 0.5 * gains[3]) * c3_options.G
+  c3_options.U = (1 + 0.5 * gains[4]) * c3_options.U
+
   osc_controller = builder.AddSystem(FrankaOSCControllerDiagram(
     "examples/franka/parameters/franka_osc_controller_params.yaml",
     "examples/franka/parameters/lcm_channels_simulation.yaml", lcm))
@@ -60,20 +66,6 @@ def run_sim(intrinsics, gains):
   c3_controller = builder.AddSystem(FrankaC3ControllerDiagram(
     "examples/franka/parameters/franka_c3_controller_params.yaml", c3_options,
     "examples/franka/parameters/lcm_channels_simulation.yaml", lcm))
-
-  # parameters = 2 * np.random.random(5) - 1  # center around 0. [-1, 1]
-  # print(parameters)
-  c3_options.publish_frequency = (gains[0] * 5) + 25
-  c3_options.Q = (1 + 0.5 * gains[1]) * c3_options.Q
-  c3_options.R = (1 + 0.5 * gains[2]) * c3_options.R
-  c3_options.G = (1 + 0.5 * gains[3]) * c3_options.G
-  c3_options.U = (1 + 0.5 * gains[4]) * c3_options.U
-  scales = np.array([(gains[0] * 5),
-                     (1 + 0.5 * gains[1]),
-                     (1 + 0.5 * gains[2]),
-                     (1 + 0.5 * gains[3]),
-                     (1 + 0.5 * gains[4])])
-  # print(scales)
 
   passthrough = builder.AddSystem(SubvectorPassThrough(8, 0, 7))
   tray_state_sender = builder.AddSystem(ObjectStateSender(plant, tray_index))
@@ -146,5 +138,7 @@ def run_sim(intrinsics, gains):
 
 
 if __name__ == '__main__':
-  reward, sim_states = run_sim(np.zeros(5), np.zeros(5))
+  parameters = 2 * np.random.random(5) - 1  # center around 0. [-1, 1]
+  # reward, sim_states = run_sim(np.zeros(5), np.ones(5))
+  reward, sim_states = run_sim(np.zeros(5), parameters)
   print(reward)

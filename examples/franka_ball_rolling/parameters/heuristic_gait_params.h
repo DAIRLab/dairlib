@@ -9,7 +9,8 @@ struct HeuristicGaitParams {
   double return_phase;
   VectorXd gait_parameters;
   int axis_option;
-  double orientation_degrees;
+  double tilt_degrees;
+  std::vector<double> q_new_vector;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -17,6 +18,7 @@ struct HeuristicGaitParams {
     a->Visit(DRAKE_NVP(return_phase));
     a->Visit(DRAKE_NVP(gait_parameters));
     a->Visit(DRAKE_NVP(axis_option));
-    a->Visit(DRAKE_NVP(orientation_degrees));
+    a->Visit(DRAKE_NVP(tilt_degrees));
+    a->Visit(DRAKE_NVP(q_new_vector));
   }
 };

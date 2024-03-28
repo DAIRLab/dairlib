@@ -6,6 +6,7 @@ cc_library(
     name = "c3_ball_rolling_systems",
     srcs = [
         "track_target_generator.cc",
+        "heuristic_generator.cc",
         "c3_ball_rolling_controller.cc",
         "gravity_compensator.cc",
         "c3_state_estimator.cc",
@@ -13,6 +14,7 @@ cc_library(
     ],
     hdrs = [
         "track_target_generator.h",
+        "heuristic_generator.h",
         "c3_ball_rolling_controller.h",
         "gravity_compensator.h",
         "c3_state_estimator.h",

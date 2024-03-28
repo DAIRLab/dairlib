@@ -11,7 +11,11 @@ gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] #
 # axis_option 1: tilt EE away from the desired direction of the ball
 # axis_option 2: tilt EE toward the center of the circle trajectory (only works for circular path)
 axis_option: 1
-orientation_degrees: 15 # tilt angle
+tilt_degrees: 15 # tilt angle for end-effector
+
+# --------------------------  Return Phase New Gain parameters  -----------------------------#
+q_new_vector: [1000000000, 1000000000, 1000000000, 0, 0, 0, 0, 0, 5, 1000,
+           10, 10, 10, 0, 0, 0, 0.1, 0.1, 0.1]
 
 
 

@@ -19,7 +19,7 @@
 #include <drake/systems/framework/vector_base.h>
 #include <drake/math/rotation_matrix.h>
 
-#include "examples/franka_trajectory_following/c3_parameters.h"
+#include "examples/franka_ball_rolling/c3_parameters.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 

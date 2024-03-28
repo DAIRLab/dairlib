@@ -22,12 +22,10 @@
 namespace dairlib {
 namespace systems {
 
-/// Outputs a lcmt_timestamped_saved_traj
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
   explicit C3Controller(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
       C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -53,9 +51,12 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     solver_options_ = options;
+    c3_->SetOsqpSolverOptions(solver_options_);
   }
 
  private:
+  solvers::LCS CreatePlaceholderLCS() const;
+
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -73,7 +74,6 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex c3_intermediates_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
 
   C3Options c3_options_;
   drake::solvers::SolverOptions solver_options_ =
@@ -90,11 +90,11 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   double dt_;
 
   mutable std::unique_ptr<solvers::C3> c3_;
-  mutable std::vector<Eigen::VectorXd> delta_;
-  mutable std::vector<Eigen::VectorXd> w_;
-  mutable double solve_time_;
 
+  double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
+  drake::systems::DiscreteStateIndex x_pred_index_;
+  drake::systems::DiscreteStateIndex filtered_solve_time_index_;
   std::vector<Eigen::MatrixXd> Q_;
   std::vector<Eigen::MatrixXd> R_;
   std::vector<Eigen::MatrixXd> G_;

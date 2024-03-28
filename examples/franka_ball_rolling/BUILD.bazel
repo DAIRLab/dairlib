@@ -138,6 +138,17 @@ cc_library(
 )
 
 cc_library(
+    name = "heuristic_gait_params",
+    hdrs = ["parameters/heuristic_gait_params.h"],
+    data = [
+        "parameters/heuristic_gait_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "c3_ball_rolling_params",
     hdrs = ["parameters/c3_ball_rolling_params.h"],
     data = [

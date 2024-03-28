@@ -1,7 +1,5 @@
 #pragma once
 
-// #include "solvers/c3_options.h"   Is this needed in this file?
-
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct BallRollingTrajectoryParams {

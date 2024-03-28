@@ -1,0 +1,18 @@
+# --------------------------  Time-based Heuristic Phase  -----------------------------#
+roll_phase: 1  # time duration of the rolling phase
+return_phase: 0.5 # time duration of the return phase (upward, sideway, reposition)
+
+# --------------------------  Gaiting parameters  -----------------------------#
+# first is how backward the end-effect should be (i.e. x,y) in sideway and reposition phases
+# second to fourth parameters is how high the end-effector should be in upward, sideway, reposition phases
+gait_parameters: [0.02, 0.0951, 0.0911, 0.0691] #
+
+# --------------------------  End-effector Tilting parameters  -----------------------------#
+# axis_option 1: tilt EE away from the desired direction of the ball
+# axis_option 2: tilt EE toward the center of the circle trajectory (only works for circular path)
+axis_option: 1
+orientation_degrees: 15 # tilt angle
+
+
+
+

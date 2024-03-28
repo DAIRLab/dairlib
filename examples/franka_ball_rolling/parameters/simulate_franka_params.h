@@ -28,6 +28,8 @@ struct SimulateFrankaParams {
   double x_c;
   double y_c;
   double ball_radius;
+  double ee_radius;
+
 
   double stabilize_time1;
   double move_time;
@@ -55,6 +57,8 @@ struct SimulateFrankaParams {
     a->Visit(DRAKE_NVP(x_c));
     a->Visit(DRAKE_NVP(y_c));
     a->Visit(DRAKE_NVP(ball_radius));
+    a->Visit(DRAKE_NVP(ee_radius));
+
 
     a->Visit(DRAKE_NVP(stabilize_time1));
     a->Visit(DRAKE_NVP(move_time));

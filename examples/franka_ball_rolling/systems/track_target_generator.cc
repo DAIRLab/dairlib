@@ -23,18 +23,19 @@ TargetGenerator::TargetGenerator(
                                                         robot_plant.num_actuators()))
             .get_index();
     // OUTPUT PORTS
+    // TODO:: make dimension not hardcoded
     target_port_ =
       this->DeclareVectorOutputPort(
-              "track_target", BasicVector<double>(3),
+              "track_target", BasicVector<double>(7),
               &TargetGenerator::CalcTrackTarget)
           .get_index();
 
     // Set Trajectory Patameters
-    SetTrajectoryParameters(traj_param);
+    SetTrajectoryParameters(sim_param, traj_param);
 }
 
-void TargetGenerator::SetTrajectoryParameters(
-        const BallRollingTrajectoryParams& traj_param) {
+void TargetGenerator::SetTrajectoryParameters(const SimulateFrankaParams& sim_param,
+                                              const BallRollingTrajectoryParams& traj_param) {
   // Set the target parameters
   // Create class variables for each parameter
 
@@ -44,6 +45,7 @@ void TargetGenerator::SetTrajectoryParameters(
   traj_radius_ = traj_param.traj_radius;
   x_c_ = traj_param.x_c;
   y_c_ = traj_param.y_c;
+  initial_phase_ = sim_param.phase;
   // state based circular specific setting
   lead_angle_ = traj_param.lead_angle;
   // time based circular specific setting, angular velocity
@@ -58,6 +60,9 @@ void TargetGenerator::SetTrajectoryParameters(
   lead_step_ = traj_param.lead_step;
   // time based line specific setting, velocity
   velocity_line_ = traj_param.velocity_line;
+
+  /// object height should be fixed since it is on the table
+  object_height_ =  sim_param.ball_radius - sim_param.ground_offset_frame(2);
 }
 
 void TargetGenerator::CalcTrackTarget(
@@ -70,9 +75,6 @@ void TargetGenerator::CalcTrackTarget(
   // Get ball position and timestamp
   VectorXd obj_curr_position = plant_state->GetPositions().tail(3);
   double timestamp = plant_state->get_timestamp();
-  SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<SimulateFrankaParams>(
-            "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
-  double object_height = sim_param.ball_radius - sim_param.ground_offset_frame(2);
 
   // Initialize target pose
   VectorXd target_obj_state = VectorXd::Zero(7);
@@ -81,10 +83,10 @@ void TargetGenerator::CalcTrackTarget(
   /// Different trajectory types
   if (trajectory_type_ == 0){
       //  0: time based circle trajectory, velocity_circle_ is angular velocity in degrees/s
-      double theta = PI * (timestamp * velocity_circle_ + sim_param.phase) / 180;
+      double theta = PI * (timestamp * velocity_circle_ + initial_phase_) / 180;
       target_obj_position(0) = x_c_ + traj_radius_ * sin(theta);
       target_obj_position(1) = y_c_ + traj_radius_ * cos(theta);
-      target_obj_position(2) = object_height;
+      target_obj_position(2) = object_height_;
   }
   else if (trajectory_type_ == 1){
       //  1: state based circle trajectory, assign target angle on the circle using current angle
@@ -98,7 +100,7 @@ void TargetGenerator::CalcTrackTarget(
 
       target_obj_position(0) = x_c_ + traj_radius_ * sin(theta);
       target_obj_position(1) = y_c_ + traj_radius_ * cos(theta);
-      target_obj_position(2) = object_height;
+      target_obj_position(2) = object_height_;
   }
   else if (trajectory_type_ == 2){
       //  2: time based line trajectory, velocity_circle_ is angular velocity in degrees/s
@@ -121,14 +123,14 @@ void TargetGenerator::CalcTrackTarget(
           double velocity = sgn * velocity_line_;
           target_obj_position(0) = start_x_;
           target_obj_position(1) = start_y_ + sgn * velocity * period_time;
-          target_obj_position(2) = object_height;
+          target_obj_position(2) = object_height_;
       }
       else{
           // end to start
           double velocity = sgn * velocity_line_;
           target_obj_position(0) = start_x_;
           target_obj_position(1) = end_y_ - sgn * velocity * period_time;
-          target_obj_position(2) = object_height;
+          target_obj_position(2) = object_height_;
       }
   }
   else if (trajectory_type_ == 3){
@@ -138,7 +140,7 @@ void TargetGenerator::CalcTrackTarget(
       if (obj_curr_position(1) < end_y_){
           target_obj_position(0) = start_x_;
           target_obj_position(1) = obj_curr_position(1) + lead_step_;
-          target_obj_position(2) = object_height;
+          target_obj_position(2) = object_height_;
       }
   }
   else if(trajectory_type_ == 4){

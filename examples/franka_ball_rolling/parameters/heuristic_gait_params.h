@@ -10,7 +10,7 @@ struct HeuristicGaitParams {
   VectorXd gait_parameters;
   int axis_option;
   double tilt_degrees;
-  std::vector<double> q_new_vector;
+  VectorXd q_new_vector;
 
   template <typename Archive>
   void Serialize(Archive* a) {

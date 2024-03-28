@@ -40,7 +40,8 @@ class TargetGenerator
     return this->get_output_port(target_port_);
   }
 
-  void SetTrajectoryParameters(const BallRollingTrajectoryParams& traj_param);
+  void SetTrajectoryParameters(const SimulateFrankaParams& sim_param,
+                               const BallRollingTrajectoryParams& traj_param);
 
  private:
   void CalcTrackTarget(const drake::systems::Context<double>& context,
@@ -58,6 +59,8 @@ class TargetGenerator
   double traj_radius_;
   double x_c_;
   double y_c_;
+  double initial_phase_;
+
   // state based circular specific setting
   double lead_angle_;
   // time based circular specific setting
@@ -72,6 +75,9 @@ class TargetGenerator
   double lead_step_;
   // time based line specific setting
   double velocity_line_;
+
+  /// object on the table, height is fixed
+  double object_height_;
 };
 
 }  // namespace systems

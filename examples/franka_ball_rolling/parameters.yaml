@@ -32,7 +32,7 @@ R: 0.01                 # torque cost in xyz
 G: 0.001 #0.001
 G_ground: 0.0000001
 U_default: 1
-U_pos_vel: 100      # first 19 diag elements of U
+U_pos_vel: 100      # first 19 diag elemeaxaants of U
 U_u: 1                  # last 3 diag elements of U
 q_init_finger: [0, 0, 0.085] #[0, 0, 0.0775] CHANGED THIS
 q_init_ball_c3: [1, 0, 0, 0, 0.05, 0.05, 0.03] # last 3 elements don't matter

@@ -252,6 +252,7 @@ cc_binary(
           "//systems:robot_lcm_systems",
           "//systems:system_utils",
           "//systems/framework:lcm_driven_loop",
+          "@drake//:drake_shared_library",
           "@gflags"
   ],
   data = ["@drake//manipulation/models/franka_description:models"

@@ -25,7 +25,6 @@
 #include "systems/system_utils.h"
 
 #include "examples/franka_ball_rolling/c3_parameters.h"
-#include "examples/franka_ball_rolling/systems/c3_trajectory_source.h"
 #include "examples/franka_ball_rolling/systems/gravity_compensator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/controllers/impedance_controller.h"

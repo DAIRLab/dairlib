@@ -177,7 +177,7 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   MatrixXd J(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
       context_, JacobianWrtVariable::kV,
-      *EE_frame_, EE_offset_,
+      *EE_frame_, VectorXd::Zero(3),
       *world_frame_, *world_frame_, &J);
 
   // perform all truncations, since the plant contains the franka and the ball
@@ -192,7 +192,8 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   const drake::math::RigidTransform<double> H_W_EE =
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("end_effector_tip"));
   const RotationMatrix<double> R_W_EE = H_W_EE.rotation();
-  Vector3d p = H_W_EE.translation() + R_W_EE * EE_offset_;
+//  Vector3d p = H_W_EE.translation() + R_W_EE * EE_offset_;
+  Vector3d p = H_W_EE.translation();
 
   // build task space state vectors, task space state is the end-effecot [orientation, position]
   VectorXd x = VectorXd::Zero(6);

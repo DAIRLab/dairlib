@@ -10,7 +10,7 @@ offset_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/table_o
 
 # -----------------------  Extra Model Fixed Frame Settings  ------------------------#
 # the tranlsation vector of end effector base frame to panda link 7
-tool_attachment_frame: [0, 0, 0.107] # should match real measurement
+tool_attachment_frame: [0, 0, 0.1118] # should match real measurement
 # the tranlsation vector of ground to panda link 0 (world frame)
 ground_offset_frame: [0, 0, -0.0245] # should match real measurement table height calibration
 # the end-effector offset should match urdf definition and real measurement, the offset is

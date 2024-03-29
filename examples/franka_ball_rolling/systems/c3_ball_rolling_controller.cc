@@ -205,7 +205,9 @@ void C3BallRollingController::CalcControl(const Context<double>& context,
   const drake::math::RigidTransform<double> H_mat =
       plant_franka_.EvalBodyPoseInWorld(context_franka_, plant_franka_.GetBodyByName("panda_link10"));
   const RotationMatrix<double> R_current = H_mat.rotation();
-  Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
+//  Vector3d end_effector = H_mat.translation() + R_current*EE_offset_;
+  Vector3d end_effector = H_mat.translation();
+
 
   // jacobian and end_effector_dot
   auto EE_frame_ = &plant_franka_.GetBodyByName("panda_link10").body_frame();
@@ -213,7 +215,7 @@ void C3BallRollingController::CalcControl(const Context<double>& context,
   MatrixXd J_fb (6, plant_franka_.num_velocities());
   plant_franka_.CalcJacobianSpatialVelocity(
       context_franka_, JacobianWrtVariable::kV,
-      *EE_frame_, EE_offset_,
+      *EE_frame_, VectorXd::Zero(3),
       *world_frame_, *world_frame_, &J_fb);
   MatrixXd J_franka = J_fb.block(0, 0, 6, 7);
   VectorXd end_effector_dot = ( J_franka * (robot_output->GetVelocities()).head(7) ).tail(3);

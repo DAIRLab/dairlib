@@ -8,9 +8,12 @@ projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 #contact_model: 'stewart_and_trinkle'
 contact_model: 'anitescu'
-warm_start: false
+warm_start: true
 use_predicted_x0: true
+end_on_qp_step: false
 solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
+#publish_frequency : 0
+publish_frequency: 25
 
 # Workspace Limits
 world_x_limits: [0.45, 0.65]

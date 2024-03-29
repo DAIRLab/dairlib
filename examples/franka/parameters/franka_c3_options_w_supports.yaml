@@ -10,6 +10,7 @@ projection_type: 'MIQP'
 contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
+end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 #set to 0 to publish as fast as possible
 #publish_frequency : 0

@@ -14,6 +14,7 @@ struct C3Options {
   std::string contact_model;
   bool warm_start;
   bool use_predicted_x0;
+  bool end_with_qp_step;
   double solve_time_filter_alpha;
   double publish_frequency;
 

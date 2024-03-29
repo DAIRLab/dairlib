@@ -50,4 +50,4 @@ def generate_dataset(n_datapoints,
 if __name__ == '__main__':
   hersh_dataset_params_file = 'bindings/pydairlib/franka/parameters/dataset_params.yaml'
   params = yaml_load(filename=hersh_dataset_params_file)
-  generate_dataset(500 * 64, 64, np.ones(5), np.zeros(5), params['high_level_folder'])
+  generate_dataset(50 * 64, 64, np.ones(5), np.zeros(5), params['high_level_folder'])

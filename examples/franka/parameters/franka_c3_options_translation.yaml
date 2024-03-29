@@ -10,7 +10,10 @@ contact_model: 'anitescu'
 #contact_model: 'stewart_and_trinkle'
 warm_start: true
 use_predicted_x0: false
+end_on_qp_step: false
 solve_time_filter_alpha: 0.9
+#publish_frequency : 0
+publish_frequency: 25
 
 # Workspace Limits
 world_x_limits: [0.4, 0.6]

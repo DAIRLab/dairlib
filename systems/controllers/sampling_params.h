@@ -21,9 +21,9 @@ struct SamplingC3SamplingParams {
   double spline_width;
   double reposition_speed;
   double travel_cost_per_meter;
-  double reposition_fixed_cost;
+  double c3_to_repos_hysteresis;
   double finished_reposition_cost;
-  double switching_hysteresis;
+  double repos_to_c3_hysteresis;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -38,8 +38,8 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(reposition_speed));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
-    a->Visit(DRAKE_NVP(reposition_fixed_cost));
+    a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));
     a->Visit(DRAKE_NVP(finished_reposition_cost));
-    a->Visit(DRAKE_NVP(switching_hysteresis));
+    a->Visit(DRAKE_NVP(repos_to_c3_hysteresis));
   }
 };

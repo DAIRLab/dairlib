@@ -447,9 +447,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
       }
-      else if (i > CURRENT_LOCATION_INDEX) {
-        all_sample_costs_[i] += sampling_params_.reposition_fixed_cost;
-      }
     }
   // End of parallelization
 
@@ -468,16 +465,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::distance(std::begin(additional_sample_cost_vector), it) + 1);
   }
   else{
-    // If there is only one sample, set the best sample to the current location
-    // and set the cost to a high value to ensure that the c3 is chosen.
+    // If there is no other sample, then set the best sample to the current 
+    // location and set the cost to a high value to ensure that the c3 is chosen.
     best_additional_sample_cost = all_sample_costs_[CURRENT_LOCATION_INDEX] 
-                                  + sampling_params_.switching_hysteresis + 99;
+                                  + sampling_params_.c3_to_repos_hysteresis + 99;
   }
 
   // Update C3 objects and intermediates for current and best samples.
-  // c3_curr_plan_ = std::make_unique<solvers::C3>(std::move(c3_objects.at(CURRENT_LOCATION_INDEX)));
   c3_curr_plan_ = c3_objects.at(CURRENT_LOCATION_INDEX);
-  // c3_best_plan_ = std::make_unique<solvers::C3>(std::move(c3_objects.at(best_sample_index_)));
   c3_best_plan_ = c3_objects.at(best_sample_index_);
   delta_curr_plan_ = deltas.at(CURRENT_LOCATION_INDEX);
   delta_best_plan_ = deltas.at(best_sample_index_);
@@ -488,15 +483,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis.
-    // std::cout<<"Current location index: "<<CURRENT_LOCATION_INDEX<<std::endl;
-    // std::cout<<"Switching hysteresis: "<<sampling_params_.switching_hysteresis<<std::endl;
-    // std::cout<<"Current location cost: "<<all_sample_costs_[CURRENT_LOCATION_INDEX]<<std::endl;
-    // std::cout<<"Best additional sample cost: "<<best_additional_sample_cost<<std::endl;
-    // std::cout<<"\tRHS: "<<best_additional_sample_cost + sampling_params_.switching_hysteresis<<std::endl;
-
     if (all_sample_costs_[CURRENT_LOCATION_INDEX] > 
-        best_additional_sample_cost + sampling_params_.switching_hysteresis) {
-      // std::cout<<"Switching to repositioning"<<std::endl;
+        best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis) {
       is_doing_c3_ = false;
       finished_reposition_flag_ = false;
     }
@@ -505,8 +493,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Switch to C3 if the current sample is better, with hysteresis.
     if (best_additional_sample_cost > 
         all_sample_costs_[CURRENT_LOCATION_INDEX] + 
-        sampling_params_.switching_hysteresis) {
-      // std::cout<<"Switching to C3"<<std::endl;
+        sampling_params_.repos_to_c3_hysteresis) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
     }

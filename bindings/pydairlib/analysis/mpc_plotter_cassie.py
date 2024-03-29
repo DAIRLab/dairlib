@@ -43,6 +43,7 @@ def main():
     _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
     _ = mpfc_plots.plot_timing_solution(mpfc_debug_data)
     _ = mpfc_plots.plot_contact(contact_data, mpfc_debug_data)
+    _ = mpfc_plots.plot_solve_time(mpfc_debug_data)
     plt.show()
 
 

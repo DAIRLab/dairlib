@@ -142,9 +142,6 @@ void FCCQPSolver::InitializeSolver(
     DRAKE_DEMAND(int_opts.at("max_iter") > 0);
     fcc_qp_options.max_iter = int_opts.at("max_iter");
   }
-  if (has_option(int_opts, "polish")) {
-    fcc_qp_options.polish = static_cast<bool>(int_opts.at("polish"));
-  }
 
   fcc_qp_->set_options(fcc_qp_options);
 

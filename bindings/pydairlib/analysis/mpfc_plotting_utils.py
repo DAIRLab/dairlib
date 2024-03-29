@@ -163,6 +163,30 @@ def plot_footstep_sol_in_stance_frame(mpc_data, time_slice=None):
     return ps
 
 
+def plot_solve_time(mpc_data, time_slice=None):
+    time_slice = slice(len(mpc_data['t_mpc'])) if time_slice is None else (
+        time_slice)
+    ps = plot_styler.PlotStyler()
+
+    data = {
+        't_mpc': mpc_data['t_mpc'],
+        'solve_time': mpc_data['solve_time']
+    }
+
+    plotting_utils.make_plot_of_entire_series(
+        data,
+        't_mpc',
+        {'solve_time': ['solve time']},
+        {'xlabel': 'Time',
+         'ylabel': 'solve time (s)',
+         'title': 'MPFC Solve Time'}, ps
+    )
+
+    add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
+
+    return ps
+
+
 def mpfc_debug_callback(data_dict, channel):
     return process_mpfc_debug_data(data_dict[channel])
 

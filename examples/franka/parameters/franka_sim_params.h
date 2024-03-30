@@ -9,6 +9,7 @@ struct FrankaSimParams {
   std::string tray_model;
   std::string left_support_model;
   std::string right_support_model;
+  std::string center_support_model;
 
   double dt;
   double realtime_rate;
@@ -49,6 +50,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(tray_model));
     a->Visit(DRAKE_NVP(left_support_model));
     a->Visit(DRAKE_NVP(right_support_model));
+    a->Visit(DRAKE_NVP(center_support_model));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));

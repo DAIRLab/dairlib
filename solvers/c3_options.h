@@ -14,15 +14,16 @@ struct C3Options {
   std::string contact_model;
   bool warm_start;
   bool use_predicted_x0;
-  bool end_with_qp_step;
+  bool end_on_qp_step;
   double solve_time_filter_alpha;
   double publish_frequency;
 
-  std::vector<double> world_x_limits;
-  std::vector<double> world_y_limits;
-  std::vector<double> world_z_limits;
+//  std::vector<double> world_x_limits;
+//  std::vector<double> world_y_limits;
+//  std::vector<double> world_z_limits;
   std::vector<double> u_horizontal_limits;
   std::vector<double> u_vertical_limits;
+  std::vector<Eigen::VectorXd> workspace_limits;
   double workspace_margins;
 
   int N;
@@ -76,12 +77,13 @@ struct C3Options {
     }
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
+    a->Visit(DRAKE_NVP(end_on_qp_step));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
 
-    a->Visit(DRAKE_NVP(world_x_limits));
-    a->Visit(DRAKE_NVP(world_y_limits));
-    a->Visit(DRAKE_NVP(world_z_limits));
+    a->Visit(DRAKE_NVP(workspace_limits));
+//    a->Visit(DRAKE_NVP(world_y_limits));
+//    a->Visit(DRAKE_NVP(world_z_limits));
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
     a->Visit(DRAKE_NVP(workspace_margins));

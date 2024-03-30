@@ -215,7 +215,7 @@ void C3::Solve(const VectorXd& x0) {
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
-  if (!options_.end_with_qp_step){
+  if (!options_.end_on_qp_step){
     *z_sol_ = delta;
     z_sol_->at(0).segment(0, n_) = x0;
     for (int i = 1; i < N_; ++i) {

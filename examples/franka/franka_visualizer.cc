@@ -103,18 +103,26 @@ int do_main(int argc, char* argv[]) {
         parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
     drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
         FindResourceOrThrow(sim_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W =
+    drake::multibody::ModelInstanceIndex center_support_index = parser.AddModels(
+        FindResourceOrThrow(sim_params.center_support_model))[0];
+    RigidTransform<double> T_LS_W =
         RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
                                sim_params.left_support_position);
-    RigidTransform<double> T_S2_W =
+    RigidTransform<double> T_RS_W =
         RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
                                sim_params.right_support_position);
+    RigidTransform<double> T_CS_W =
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
+                               0.5 * (sim_params.left_support_position + sim_params.right_support_position));
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
-                     T_S1_W);
+                     T_LS_W);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", right_support_index),
-                     T_S2_W);
+                     T_RS_W);
+    plant.WeldFrames(plant.world_frame(),
+                     plant.GetFrameByName("support", center_support_index),
+                     T_CS_W);
   }
 
   plant.Finalize();

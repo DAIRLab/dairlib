@@ -13,13 +13,15 @@ use_predicted_x0: true
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 #set to 0 to publish as fast as possible
-#publish_frequency : 0
-publish_frequency: 25
+publish_frequency : 0
+#publish_frequency: 25
 
-#Workspace Limits
-world_x_limits: [0.4, 0.6]
-world_y_limits: [-0.1, 0.1]
-world_z_limits: [0.35, 0.7]
+# End Effector Workspace Limits Specified as Linear Constraints [x, y, z, lb, ub]
+workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.6],
+                   [0.0, 1.0, 0.0, -0.1, 0.1],
+                   [0.0, 0.0, 1.0, 0.35, 0.7]]
+#world_y_limits: [-0.1, 0.1]
+#world_z_limits: [0.35, 0.7]
 workspace_margins: 0.05
 
 u_horizontal_limits: [-10, 10]
@@ -37,7 +39,7 @@ gamma: 1.0 # discount factor on MPC costs
 w_Q: 50
 w_R: 50
 #Penalty on all decision variables, assuming scalar
-w_G: 0.3
+w_G: 0.15
 #Penalty on all decision variables, assuming scalar
 w_U: 0.1
 

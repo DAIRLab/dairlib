@@ -66,8 +66,9 @@ int DoMain(int argc, char* argv[]){
 
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  Vector3d T_F_G(0, 0, -0.0745);
-  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
+//  Vector3d T_F_G(0, 0, -0.0745);
+//  RigidTransform<double> X_F_G = RigidTransform<double>(T_F_G);
+  RigidTransform<double> X_F_G = RigidTransform<double>(ball_rolling_param.ground_offset_frame);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("ground"), X_F_G);
   plant.Finalize();
@@ -86,8 +87,10 @@ int DoMain(int argc, char* argv[]){
   parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
   parser_f.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
   RigidTransform<double> X_WI_f = RigidTransform<double>::Identity();
-  Vector3d T_F_G_f(0, 0, -0.0745);
-  RigidTransform<double> X_F_G_f = RigidTransform<double>(T_F_G);
+//  Vector3d T_F_G_f(0, 0, -0.0745);
+//  RigidTransform<double> X_F_G_f = RigidTransform<double>(T_F_G);
+  RigidTransform<double> X_F_G_f = RigidTransform<double>(ball_rolling_param.ground_offset_frame);
+
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("base_link"), X_WI_f);
   plant_f.WeldFrames(plant_f.world_frame(), plant_f.GetFrameByName("ground"), X_F_G_f);
   plant_f.Finalize();
@@ -113,11 +116,15 @@ int DoMain(int argc, char* argv[]){
   parser_franka.AddModelFromFile("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
   RigidTransform<double> X_WI_franka = RigidTransform<double>::Identity();
 
-  Vector3d T_F_EE_franka(0, 0, 0.107);
-  Vector3d T_F_G_franka(0, 0, -0.0745);
+//  Vector3d T_F_EE_franka(0, 0, 0.107);
+//  Vector3d T_F_G_franka(0, 0, -0.0745);
+//
+//  RigidTransform<double> X_F_EE_franka = RigidTransform<double>(T_F_EE_franka);
+//  RigidTransform<double> X_F_G_franka = RigidTransform<double>(T_F_G_franka);
 
-  RigidTransform<double> X_F_EE_franka = RigidTransform<double>(T_F_EE_franka);
-  RigidTransform<double> X_F_G_franka = RigidTransform<double>(T_F_G_franka);
+  RigidTransform<double> X_F_EE_franka = RigidTransform<double>(ball_rolling_param.tool_attachment_frame);
+  RigidTransform<double> X_F_G_franka = RigidTransform<double>(ball_rolling_param.ground_offset_frame);
+
 
   plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI_franka);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"), plant_franka.GetFrameByName("end_effector_base"), X_F_EE_franka);

@@ -21,6 +21,8 @@ camera_target: [[0.5, 0, 0.5],
                 [0.5, 0, 0.55]]
 
 tool_attachment_frame: [0, 0, 0.107]
+
+
 #left_support_position: [0.8, 0.15, 0.447]
 #right_support_position: [0.8, -0.15, 0.447]
 #left_support_orientation: [0.0, 0.0, 0.0]

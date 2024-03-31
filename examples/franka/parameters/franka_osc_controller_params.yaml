@@ -6,7 +6,7 @@ end_effector_name: plate
 
 tool_attachment_frame: [0, 0, 0.107]
 
-neutral_position: [0.5196, 0.1   , 0.45]
+neutral_position: [0.4763, 0.075 , 0.45]
 #neutral_position: [0.55, 0, 0.45]
 x_scale: 0.1
 y_scale: 0.1

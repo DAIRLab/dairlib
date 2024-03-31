@@ -211,6 +211,23 @@ cc_binary(
 )
 
 cc_binary(
+    name = "lcm_c3_ball_rolling",
+    srcs = ["lcm_c3_ball_rolling.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers:c3_controller_franka",
+        "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_ball_rolling:c3_ball_rolling_params",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = ["@drake//manipulation/models/franka_description:models"]
+)
+
+cc_binary(
     name = "lcm_simulate_franka",
     srcs = ["lcm_simulate_franka.cc"],
     deps = [

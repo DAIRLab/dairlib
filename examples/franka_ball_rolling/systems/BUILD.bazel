@@ -51,6 +51,7 @@ cc_library(
         "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
+        "//examples/franka_ball_rolling:simulate_franka_params",
     ],
 )
 

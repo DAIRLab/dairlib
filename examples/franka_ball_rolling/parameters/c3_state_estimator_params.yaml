@@ -24,6 +24,8 @@ v_FIR_value: [0.1, 0.9]
 ball_noise_stddev: 0.00
 # state estimation publish rate, in Hz (mimic real possibly slow measurement)
 estimation_rate: 80
+# whether or not to project the state estimation to avoid large penetration
+project_state_option: 1
 
 # ---------------------------  Initial Condition Settings  ---------------------------#
 # q_ball: only define the quaternion [qw, qi, qj, qk], position xy computed according to

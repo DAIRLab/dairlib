@@ -21,7 +21,8 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                    Context<double>* object_context,
                                    const std::string& end_effector_name,
                                    const std::string& object_name,
-                                   bool include_end_effector_orientation)
+                                   bool include_end_effector_orientation,
+                                   const SimulateFrankaParams& sim_param)
     : franka_plant_(franka_plant),
       franka_context_(franka_context),
       object_plant_(object_plant),
@@ -55,6 +56,9 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                   num_end_effector_velocities_, num_object_velocities_),
               &FrankaKinematics::ComputeLCSState)
           .get_index();
+
+  end_effector_radius_ = sim_param.ee_radius;
+  object_radius_ = sim_param.ball_radius;
 }
 
 void FrankaKinematics::ComputeLCSState(
@@ -112,6 +116,26 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_object);
   lcs_state->set_timestamp(franka_output->get_timestamp());
+}
+
+Eigen::Vector3d FrankaKinematics::ProjectStateEstimate(
+    const Eigen::Vector3d& end_effector_position,
+    const Eigen::Vector3d& object_position) const {
+
+  Eigen::Vector3d dist_vec = object_position - end_effector_position;
+  double R = object_radius_;
+  double r = end_effector_radius_;
+
+  if (dist_vec.norm() < (R+r)*(1)){
+    Eigen::Vector3d u(dist_vec(0), dist_vec(1), 0);
+    double u_norm = u.norm();
+    double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
+
+    return object_position + du * u / u_norm;
+  }
+  else {
+    return object_position;
+  }
 }
 
 }  // namespace systems

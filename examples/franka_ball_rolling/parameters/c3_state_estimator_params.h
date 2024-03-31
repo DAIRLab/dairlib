@@ -21,6 +21,7 @@ struct C3StateEstimatorParams {
   std::vector<double> v_FIR_value;
   double ball_noise_stddev;
   double estimation_rate;
+  int project_state_option;
 
   VectorXd q_init_ball;
   double traj_radius;
@@ -45,6 +46,8 @@ struct C3StateEstimatorParams {
     a->Visit(DRAKE_NVP(v_FIR_value));
     a->Visit(DRAKE_NVP(ball_noise_stddev));
     a->Visit(DRAKE_NVP(estimation_rate));
+    a->Visit(DRAKE_NVP(project_state_option));
+
 
     a->Visit(DRAKE_NVP(ground_offset_frame));
     a->Visit(DRAKE_NVP(q_init_ball));

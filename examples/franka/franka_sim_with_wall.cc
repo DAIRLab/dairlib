@@ -94,7 +94,7 @@ int DoMain(int argc, char* argv[]) {
       drake::math::RollPitchYaw<double>(sim_params.wall_orientation),
       sim_params.wall_position);
   plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("wall", wall_index), T_Wall_W);
+                   plant.GetFrameByName("base", wall_index), T_Wall_W);
 
   const drake::geometry::GeometrySet& franka_only_geom_set =
       plant.CollectRegisteredGeometries({

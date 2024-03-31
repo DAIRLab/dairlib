@@ -16,9 +16,9 @@ solve_time_filter_alpha: 0.9
 publish_frequency: 25
 
 # Workspace Limits
-world_x_limits: [0.4, 0.6]
-world_y_limits: [-0.2, 0.2]
-world_z_limits: [0.3, 0.6]
+workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.6],
+                   [0.0, 1.0, 0.0, -0.2, 0.2],
+                   [0.0, 0.0, 1.0, 0.3, 0.6]]
 workspace_margins: 0.05
 
 u_horizontal_limits: [-10, 10]

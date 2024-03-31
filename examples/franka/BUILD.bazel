@@ -295,9 +295,9 @@ cc_library(
     name = "franka_c3_controller_params",
     hdrs = ["parameters/franka_c3_controller_params.h"],
     data = [
+        "parameters/c3_options/franka_c3_options_floating.yaml",
+        "parameters/c3_options/franka_c3_options_translation.yaml",
         "parameters/franka_c3_controller_params.yaml",
-        "parameters/franka_c3_options_floating.yaml",
-        "parameters/franka_c3_options_translation.yaml",
         "parameters/franka_qp_options.yaml",
     ],
     deps = [

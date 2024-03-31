@@ -5,10 +5,7 @@ end_effector_lcs_model: examples/franka/urdf/plate_end_effector_translation.urdf
 tool_attachment_frame: [0, 0, 0.107]
 end_effector_thickness: 0.016
 object_models: [examples/franka/urdf/tray_lcs.sdf]
-environment_models: [examples/franka/urdf/support_point_contact.urdf,
-                     examples/franka/urdf/support_point_contact.urdf]
+environment_models: [examples/franka/urdf/side_wall.urdf]
 # orientation in RPY then position in XYZ
-environment_orientations: [[0.0, 0.0, 0.0],
-                           [0.0, 0.0, 0.0]]
-environment_positions: [[0.8, 0.15, 0.447],
-                        [0.8, -0.15, 0.447]]
+environment_orientations: [[0.0, 0.0, 0.0]]
+environment_positions: [[0.6, 0.35, 0.25]]

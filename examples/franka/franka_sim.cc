@@ -71,6 +71,8 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
+  drake::multibody::ModelInstanceIndex object_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -108,7 +110,7 @@ int DoMain(int argc, char* argv[]) {
                                sim_params.right_support_position);
     RigidTransform<double> T_CS_W =
         RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               0.5 * (sim_params.left_support_position + sim_params.right_support_position));
+                               0.5 * (sim_params.left_support_position + sim_params.right_support_position) + sim_params.center_support_offset);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_LS_W);
@@ -120,23 +122,23 @@ int DoMain(int argc, char* argv[]) {
                      T_CS_W);
     const drake::geometry::GeometrySet& support_geom_set =
         plant.CollectRegisteredGeometries({
-            &plant.GetBodyByName("support", left_support_index),
-            &plant.GetBodyByName("support", right_support_index),
-            &plant.GetBodyByName("support", center_support_index),
-        });
+                                              &plant.GetBodyByName("support", left_support_index),
+                                              &plant.GetBodyByName("support", right_support_index),
+                                              &plant.GetBodyByName("support", center_support_index),
+                                          });
     plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
         {"supports", support_geom_set}, {"franka", franka_geom_set});
   }
 
   const drake::geometry::GeometrySet& franka_only_geom_set =
       plant.CollectRegisteredGeometries({
-          &plant.GetBodyByName("panda_link2"),
-          &plant.GetBodyByName("panda_link3"),
-          &plant.GetBodyByName("panda_link4"),
-          &plant.GetBodyByName("panda_link5"),
-          &plant.GetBodyByName("panda_link6"),
-          &plant.GetBodyByName("panda_link8"),
-      });
+                                            &plant.GetBodyByName("panda_link2"),
+                                            &plant.GetBodyByName("panda_link3"),
+                                            &plant.GetBodyByName("panda_link4"),
+                                            &plant.GetBodyByName("panda_link5"),
+                                            &plant.GetBodyByName("panda_link6"),
+                                            &plant.GetBodyByName("panda_link8"),
+                                        });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
@@ -158,11 +160,21 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.tray_publish_rate));
+  auto object_state_sender =
+      builder.AddSystem<systems::ObjectStateSender>(plant, object_index);
+  auto object_state_pub =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.object_state_channel, lcm,
+          1.0 / sim_params.object_publish_rate));
 
   builder.Connect(plant.get_state_output_port(tray_index),
                   tray_state_sender->get_input_port_state());
   builder.Connect(tray_state_sender->get_output_port(),
                   tray_state_pub->get_input_port());
+  builder.Connect(plant.get_state_output_port(object_index),
+                  object_state_sender->get_input_port_state());
+  builder.Connect(object_state_sender->get_output_port(),
+                  object_state_pub->get_input_port());
 
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
@@ -183,12 +195,13 @@ int DoMain(int argc, char* argv[]) {
       plant, &simulator.get_mutable_context());
 
   VectorXd q = VectorXd::Zero(nq);
-  std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  q.tail(plant.num_positions(tray_index)) =
+  q.segment(plant.num_positions(franka_index), plant.num_positions(tray_index)) =
       sim_params.q_init_plate[sim_params.scene_index];
+  q.tail(plant.num_positions(object_index)) =
+      sim_params.q_init_object[sim_params.scene_index];
 
   plant.SetPositions(&plant_context, q);
 

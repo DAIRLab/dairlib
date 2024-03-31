@@ -7,6 +7,7 @@ struct FrankaSimParams {
   std::string franka_model;
   std::string end_effector_model;
   std::string tray_model;
+  std::string object_model;
   std::string left_support_model;
   std::string right_support_model;
   std::string center_support_model;
@@ -16,6 +17,7 @@ struct FrankaSimParams {
   double actuator_delay;
   double franka_publish_rate;
   double tray_publish_rate;
+  double object_publish_rate;
   double visualizer_publish_rate;
 
   int scene_index;
@@ -27,11 +29,13 @@ struct FrankaSimParams {
 
   Eigen::VectorXd q_init_franka;
   std::vector<Eigen::VectorXd> q_init_plate;
+  std::vector<Eigen::VectorXd> q_init_object;
   Eigen::VectorXd tool_attachment_frame;
   Eigen::VectorXd left_support_position;
   Eigen::VectorXd right_support_position;
   Eigen::VectorXd left_support_orientation;
   Eigen::VectorXd right_support_orientation;
+  Eigen::VectorXd center_support_offset;
 
   std::vector<Eigen::VectorXd> world_x_limits;
   std::vector<Eigen::VectorXd> world_y_limits;
@@ -48,6 +52,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(tray_model));
+    a->Visit(DRAKE_NVP(object_model));
     a->Visit(DRAKE_NVP(left_support_model));
     a->Visit(DRAKE_NVP(right_support_model));
     a->Visit(DRAKE_NVP(center_support_model));
@@ -57,6 +62,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(actuator_delay));
     a->Visit(DRAKE_NVP(franka_publish_rate));
     a->Visit(DRAKE_NVP(tray_publish_rate));
+    a->Visit(DRAKE_NVP(object_publish_rate));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
 
     a->Visit(DRAKE_NVP(scene_index));
@@ -68,11 +74,13 @@ struct FrankaSimParams {
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));
+    a->Visit(DRAKE_NVP(q_init_object));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(left_support_position));
     a->Visit(DRAKE_NVP(right_support_position));
     a->Visit(DRAKE_NVP(left_support_orientation));
     a->Visit(DRAKE_NVP(right_support_orientation));
+    a->Visit(DRAKE_NVP(center_support_offset));
 
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));

@@ -84,6 +84,8 @@ int do_main(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
+  drake::multibody::ModelInstanceIndex object_index =
+      parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -113,7 +115,7 @@ int do_main(int argc, char* argv[]) {
                                sim_params.right_support_position);
     RigidTransform<double> T_CS_W =
         RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               0.5 * (sim_params.left_support_position + sim_params.right_support_position));
+                               0.5 * (sim_params.left_support_position + sim_params.right_support_position) + sim_params.center_support_offset);
     plant.WeldFrames(plant.world_frame(),
                      plant.GetFrameByName("support", left_support_index),
                      T_LS_W);
@@ -136,13 +138,15 @@ int do_main(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm));
-  auto box_state_sub =
+  auto object_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.box_state_channel, lcm));
+          lcm_channel_params.object_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto tray_state_receiver =
       builder.AddSystem<ObjectStateReceiver>(plant, tray_index);
+  auto object_state_receiver =
+      builder.AddSystem<ObjectStateReceiver>(plant, object_index);
 
   auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
       franka_state_receiver->get_output_port(0).size(), 0,
@@ -153,16 +157,20 @@ int do_main(int argc, char* argv[]) {
   auto tray_passthrough = builder.AddSystem<SubvectorPassThrough>(
       tray_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(tray_index));
+  auto object_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      tray_state_receiver->get_output_port(0).size(), 0,
+      plant.num_positions(object_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                  plant.num_positions(tray_index)};
+                                  plant.num_positions(tray_index),
+                                  plant.num_positions(object_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
 
   auto trajectory_sub_actor = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, lcm));
-  auto trajectory_sub_object = builder.AddSystem(
+  auto trajectory_sub_tray = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_object_channel, lcm));
   auto trajectory_sub_force =
@@ -209,7 +217,7 @@ int do_main(int argc, char* argv[]) {
     trajectory_drawer_object->SetNumSamples(40);
     builder.Connect(trajectory_sub_actor->get_output_port(),
                     trajectory_drawer_actor->get_input_port_trajectory());
-    builder.Connect(trajectory_sub_object->get_output_port(),
+    builder.Connect(trajectory_sub_tray->get_output_port(),
                     trajectory_drawer_object->get_input_port_trajectory());
   }
 
@@ -221,7 +229,7 @@ int do_main(int argc, char* argv[]) {
         meshcat, FindResourceOrThrow(sim_params.end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target");
 
-    builder.Connect(trajectory_sub_object->get_output_port(),
+    builder.Connect(trajectory_sub_tray->get_output_port(),
                     object_pose_drawer->get_input_port_trajectory());
     builder.Connect(trajectory_sub_actor->get_output_port(),
                     end_effector_pose_drawer->get_input_port_trajectory());
@@ -251,6 +259,7 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
+  builder.Connect(object_passthrough->get_output_port(), mux->get_input_port(2));
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
@@ -258,8 +267,10 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*franka_state_receiver, *franka_passthrough);
   builder.Connect(*franka_state_receiver, *robot_time_passthrough);
   builder.Connect(*tray_state_receiver, *tray_passthrough);
+  builder.Connect(*object_state_receiver, *object_passthrough);
   builder.Connect(*franka_state_sub, *franka_state_receiver);
   builder.Connect(*tray_state_sub, *tray_state_receiver);
+  builder.Connect(*object_state_sub, *object_state_receiver);
 
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
@@ -268,12 +279,14 @@ int do_main(int argc, char* argv[]) {
       diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
   auto& tray_state_sub_context =
       diagram->GetMutableSubsystemContext(*tray_state_sub, context.get());
-  auto& box_state_sub_context =
-      diagram->GetMutableSubsystemContext(*box_state_sub, context.get());
+  auto& object_state_sub_context =
+      diagram->GetMutableSubsystemContext(*object_state_sub, context.get());
   franka_state_receiver->InitializeSubscriberPositions(
       plant, franka_state_sub_context);
   tray_state_receiver->InitializeSubscriberPositions(plant,
                                                      tray_state_sub_context);
+  object_state_receiver->InitializeSubscriberPositions(plant,
+                                                       object_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

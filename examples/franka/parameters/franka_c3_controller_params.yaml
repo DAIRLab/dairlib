@@ -13,17 +13,17 @@ left_support_model: examples/franka/urdf/support_point_contact.urdf
 right_support_model: examples/franka/urdf/support_point_contact.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
-#left_support_position: [0.8, 0.15, 0.447]
-#right_support_position: [0.8, -0.15, 0.447]
-#left_support_orientation: [0.0, 0.0, 0.0]
-#right_support_orientation: [0.0, 0.0, 0.0]
-left_support_position: [0.6178, 0.3299, 0.45  ]
-right_support_position: [0.7678, 0.0701, 0.45  ]
-left_support_orientation: [0.    , 0.    , 0.5236]
-right_support_orientation: [0.    , 0.    , 0.5236]
+left_support_position: [0.8, 0.15, 0.447]
+right_support_position: [0.8, -0.15, 0.447]
+left_support_orientation: [0.0, 0.0, 0.0]
+right_support_orientation: [0.0, 0.0, 0.0]
+#left_support_position: [0.6178, 0.3299, 0.45  ]
+#right_support_position: [0.7678, 0.0701, 0.45  ]
+#left_support_orientation: [0.    , 0.    , 0.5236]
+#right_support_orientation: [0.    , 0.    , 0.5236]
 end_effector_thickness: 0.016
 
-scene_index: 2
+scene_index: 1
 
 include_end_effector_orientation: false
 # Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan

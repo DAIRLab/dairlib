@@ -12,7 +12,7 @@ object_publish_rate: 1000
 visualizer_publish_rate: 30
 actuator_delay: 0.000
 
-scene_index: 0
+scene_index: 1
 visualize_drake_sim: true
 publish_efforts: true
 

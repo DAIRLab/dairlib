@@ -19,6 +19,7 @@
 
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
+#include "examples/franka/parameters/franka_c3_scene_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
@@ -68,6 +69,9 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(controller_settings);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(lcm_channels);
+  FrankaC3SceneParams scene_params =
+      drake::yaml::LoadYamlFile<FrankaC3SceneParams>(
+          controller_params.c3_scene_file[controller_params.scene_index]);
 //  C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
 //      controller_params.c3_options_file[controller_params.scene_index]);
   drake::solvers::SolverOptions solver_options =
@@ -78,10 +82,10 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   plant_franka_ = new drake::multibody::MultibodyPlant<double>(0.0);
   Parser parser_franka(plant_franka_, nullptr);
   parser_franka.AddModels(
-      drake::FindResourceOrThrow(controller_params.franka_model));
+      drake::FindResourceOrThrow(scene_params.franka_model));
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
-          FindResourceOrThrow(controller_params.end_effector_model))[0];
+          FindResourceOrThrow(scene_params.end_effector_model))[0];
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka_->WeldFrames(plant_franka_->world_frame(),
@@ -89,7 +93,7 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
 
   RigidTransform<double> T_EE_W =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.tool_attachment_frame);
+                             scene_params.tool_attachment_frame);
   plant_franka_->WeldFrames(
       plant_franka_->GetFrameByName("panda_link7"),
       plant_franka_->GetFrameByName("plate", end_effector_index), T_EE_W);
@@ -100,42 +104,31 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   ///
   plant_tray_ = new drake::multibody::MultibodyPlant<double>(0.0);
   Parser parser_tray(plant_tray_, nullptr);
-  parser_tray.AddModels(controller_params.tray_model);
+  parser_tray.AddModels(scene_params.object_models[0]);
   plant_tray_->Finalize();
   plant_tray_context_ = plant_tray_->CreateDefaultContext();
 
   drake::planning::RobotDiagramBuilder<double> lcs_diagram_builder;
   lcs_diagram_builder.parser().SetAutoRenaming(true);
-  lcs_diagram_builder.parser().AddModels(controller_params.plate_model);
+  lcs_diagram_builder.parser().AddModels(scene_params.end_effector_lcs_model);
 
-  drake::multibody::ModelInstanceIndex left_support_index;
-  drake::multibody::ModelInstanceIndex right_support_index;
-  if (controller_params.scene_index > 0) {
-    left_support_index = lcs_diagram_builder.parser().AddModels(
-        FindResourceOrThrow(controller_params.left_support_model))[0];
-    right_support_index = lcs_diagram_builder.parser().AddModels(
-        FindResourceOrThrow(controller_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W =
+  std::vector<drake::multibody::ModelInstanceIndex> environment_model_indices;
+  environment_model_indices.resize(scene_params.environment_models.size());
+  for (int i = 0; i < scene_params.environment_models.size(); ++i) {
+    environment_model_indices[i] = lcs_diagram_builder.parser().AddModels(
+        FindResourceOrThrow(scene_params.environment_models[i]))[0];
+    RigidTransform<double> T_E_W =
         RigidTransform<double>(drake::math::RollPitchYaw<double>(
-                                   controller_params.left_support_orientation),
-                               controller_params.left_support_position);
-    RigidTransform<double> T_S2_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(
-                                   controller_params.right_support_orientation),
-                               controller_params.right_support_position);
+                                   scene_params.environment_orientations[i]),
+                               scene_params.environment_positions[i]);
     lcs_diagram_builder.plant().WeldFrames(
         lcs_diagram_builder.plant().world_frame(),
-        lcs_diagram_builder.plant().GetFrameByName("support",
-                                                   left_support_index),
-        T_S1_W);
-    lcs_diagram_builder.plant().WeldFrames(
-        lcs_diagram_builder.plant().world_frame(),
-        lcs_diagram_builder.plant().GetFrameByName("support",
-                                                   right_support_index),
-        T_S2_W);
+        lcs_diagram_builder.plant().GetFrameByName("base", environment_model_indices[i]),
+        T_E_W);
   }
-  lcs_diagram_builder.parser().AddModels(controller_params.tray_model);
-
+  for (int i = 0; i < scene_params.object_models.size(); ++i) {
+    lcs_diagram_builder.parser().AddModels(scene_params.object_models[i]);
+  }
   lcs_diagram_builder.plant().WeldFrames(
       lcs_diagram_builder.plant().world_frame(),
       lcs_diagram_builder.plant().GetFrameByName("base_link"), X_WI);
@@ -152,21 +145,16 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   std::vector<drake::geometry::GeometryId> end_effector_contact_points =
       robot_diagram_for_lcs_->plant().GetCollisionGeometriesForBody(
           robot_diagram_for_lcs_->plant().GetBodyByName("plate"));
-  if (controller_params.scene_index > 0) {
-    std::vector<drake::geometry::GeometryId> left_support_contact_points =
+  for (int i = 0; i < environment_model_indices.size(); ++i) {
+    std::vector<drake::geometry::GeometryId>
+        environment_support_contact_points =
         robot_diagram_for_lcs_->plant().GetCollisionGeometriesForBody(
-            robot_diagram_for_lcs_->plant().GetBodyByName("support",
-                                                          left_support_index));
-    std::vector<drake::geometry::GeometryId> right_support_contact_points =
-        robot_diagram_for_lcs_->plant().GetCollisionGeometriesForBody(
-            robot_diagram_for_lcs_->plant().GetBodyByName("support",
-                                                          right_support_index));
-    end_effector_contact_points.insert(end_effector_contact_points.end(),
-                                       left_support_contact_points.begin(),
-                                       left_support_contact_points.end());
-    end_effector_contact_points.insert(end_effector_contact_points.end(),
-                                       right_support_contact_points.begin(),
-                                       right_support_contact_points.end());
+            robot_diagram_for_lcs_->plant().GetBodyByName("base",
+                                        environment_model_indices[i]));
+    end_effector_contact_points.insert(
+        end_effector_contact_points.end(),
+        environment_support_contact_points.begin(),
+        environment_support_contact_points.end());
   }
   std::vector<drake::geometry::GeometryId> tray_geoms =
       robot_diagram_for_lcs_->plant().GetCollisionGeometriesForBody(
@@ -188,12 +176,12 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           *plant_franka_, plant_franka_context_.get(), *plant_tray_,
-          plant_tray_context_.get(), controller_params.end_effector_name,
+          plant_tray_context_.get(), scene_params.end_effector_name,
           "tray", controller_params.include_end_effector_orientation);
 
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(
-          *plant_tray_, controller_params.end_effector_thickness,
+          *plant_tray_, scene_params.end_effector_thickness,
           controller_params.near_target_threshold);
   plate_balancing_target->SetRemoteControlParameters(
       controller_params.first_target[controller_params.scene_index],

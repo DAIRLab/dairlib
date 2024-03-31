@@ -115,15 +115,16 @@ int do_main(int argc, char* argv[]) {
                                sim_params.right_support_position);
     RigidTransform<double> T_CS_W =
         RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               0.5 * (sim_params.left_support_position + sim_params.right_support_position) + sim_params.center_support_offset);
+                               0.5 * (sim_params.left_support_position + sim_params.right_support_position)
+                                   + sim_params.center_support_offset);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", left_support_index),
+                     plant.GetFrameByName("base", left_support_index),
                      T_LS_W);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", right_support_index),
+                     plant.GetFrameByName("base", right_support_index),
                      T_RS_W);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", center_support_index),
+                     plant.GetFrameByName("base", center_support_index),
                      T_CS_W);
   }
 

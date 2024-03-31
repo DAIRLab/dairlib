@@ -15,7 +15,7 @@ solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
 #publish_frequency : 0
 publish_frequency: 0
 
-# Workspace Limits
+# Workspace Limits (specified as Linear Constraints on the end effector position)
 workspace_limits: [[0.866, 0.5, 0.0, 0.4, 0.6],
                    [-0.5  , 0.866, 0.0, -0.2, -0.0],
                    [0.0, 0.0, 1.0, 0.35, 0.7]]
@@ -24,6 +24,7 @@ workspace_margins: 0.05
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [0, 30]
 
+# LCS generation parameters
 mu: [0.6, 0.6, 0.6, 0.1, 0.1, 0.1, 0.1]
 dt: 0.075
 solve_dt: 0.05

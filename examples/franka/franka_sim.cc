@@ -112,19 +112,19 @@ int DoMain(int argc, char* argv[]) {
         RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
                                0.5 * (sim_params.left_support_position + sim_params.right_support_position) + sim_params.center_support_offset);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", left_support_index),
+                     plant.GetFrameByName("base", left_support_index),
                      T_LS_W);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", right_support_index),
+                     plant.GetFrameByName("base", right_support_index),
                      T_RS_W);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", center_support_index),
+                     plant.GetFrameByName("base", center_support_index),
                      T_CS_W);
     const drake::geometry::GeometrySet& support_geom_set =
         plant.CollectRegisteredGeometries({
-                                              &plant.GetBodyByName("support", left_support_index),
-                                              &plant.GetBodyByName("support", right_support_index),
-                                              &plant.GetBodyByName("support", center_support_index),
+                                              &plant.GetBodyByName("base", left_support_index),
+                                              &plant.GetBodyByName("base", right_support_index),
+                                              &plant.GetBodyByName("base", center_support_index),
                                           });
     plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
         {"supports", support_geom_set}, {"franka", franka_geom_set});

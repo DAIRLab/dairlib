@@ -12,6 +12,7 @@
 
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
+#include "examples/franka/parameters/franka_c3_scene_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
@@ -66,6 +67,9 @@ int DoMain(int argc, char* argv[]) {
   FrankaC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
           FLAGS_controller_settings);
+  FrankaC3SceneParams scene_params =
+      drake::yaml::LoadYamlFile<FrankaC3SceneParams>(
+          controller_params.c3_scene_file[controller_params.scene_index]);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   drake::solvers::SolverOptions solver_options =
@@ -78,10 +82,10 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(
-      drake::FindResourceOrThrow(controller_params.franka_model));
+      drake::FindResourceOrThrow(scene_params.franka_model));
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
-          FindResourceOrThrow(controller_params.end_effector_model))[0];
+          FindResourceOrThrow(scene_params.end_effector_model))[0];
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
@@ -89,7 +93,7 @@ int DoMain(int argc, char* argv[]) {
 
   RigidTransform<double> T_EE_W =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.tool_attachment_frame);
+                             scene_params.tool_attachment_frame);
   plant_franka.WeldFrames(
       plant_franka.GetFrameByName("panda_link7"),
       plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
@@ -100,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
   ///
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
-  parser_tray.AddModels(controller_params.tray_model);
+  parser_tray.AddModels(scene_params.object_models[0]);
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
@@ -116,7 +120,7 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          controller_params.end_effector_name, "tray",
+          scene_params.end_effector_name, "tray",
           controller_params.include_end_effector_orientation);
   auto radio_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
@@ -134,7 +138,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
   auto plate_balancing_target =
       builder.AddSystem<systems::PlateBalancingTargetGenerator>(
-          plant_tray, controller_params.end_effector_thickness,
+          plant_tray, scene_params.end_effector_thickness,
           controller_params.near_target_threshold);
   plate_balancing_target->SetRemoteControlParameters(
       controller_params.first_target[controller_params.scene_index], controller_params.second_target[controller_params.scene_index],

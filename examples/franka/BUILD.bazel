@@ -116,33 +116,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
-        ":franka_lcm_channels",
-        "//common",
-        "//examples/franka/systems:franka_systems",
-        "//lcm:lcm_trajectory_saver",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers",
-        "//systems/controllers:c3_controller",
-        "//systems/controllers:lcs_factory_system",
-        "//systems/controllers/osc:operational_space_control",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/primitives:radio_parser",
-        "//systems/trajectory_optimization:c3_output_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "franka_c3_controller_with_object",
-    srcs = ["franka_c3_controller_with_object.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    deps = [
-        ":franka_c3_controller_params",
+        ":franka_c3_scene_params",
         ":franka_lcm_channels",
         "//common",
         "//examples/franka/systems:franka_systems",
@@ -170,6 +144,7 @@ cc_binary(
     ],
     deps = [
         ":franka_c3_controller_params",
+        ":franka_c3_scene_params",
         ":franka_lcm_channels",
         "//common",
         "//examples/franka/systems:franka_systems",
@@ -327,6 +302,19 @@ cc_library(
     ],
     deps = [
         "//solvers:c3",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_c3_scene_params",
+    hdrs = ["parameters/franka_c3_scene_params.h"],
+    data = [
+        "parameters/c3_scenes/supports_scene.yaml",
+        "parameters/c3_scenes/two_object_scene.yaml",
+        "parameters/c3_scenes/wall_scene.yaml",
+    ],
+    deps = [
         "@drake//:drake_shared_library",
     ],
 )

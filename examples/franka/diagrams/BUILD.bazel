@@ -7,6 +7,7 @@ cc_library(
     deps = [
         "//common",
         "//examples/franka:franka_c3_controller_params",
+        "//examples/franka:franka_c3_scene_params",
         "//examples/franka:franka_lcm_channels",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",

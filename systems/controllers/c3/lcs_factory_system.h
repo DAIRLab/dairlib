@@ -18,10 +18,10 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
  public:
   explicit LCSFactorySystem(
       const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
+      drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-      drake::systems::Context<drake::AutoDiffXd>* context_ad,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad,
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
       C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
@@ -40,38 +40,25 @@ class LCSFactorySystem : public drake::systems::LeafSystem<double> {
     return this->get_output_port(lcs_contact_jacobian_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_lcs_contact_points() const {
-    return this->get_output_port(lcs_contact_points_port_);
-  }
-
  private:
-  drake::systems::EventStatus UpdateLCS(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
   void OutputLCS(const drake::systems::Context<double>& context,
                  solvers::LCS* output_traj) const;
   void OutputLCSContactJacobian(const drake::systems::Context<double>& context,
-                 Eigen::MatrixXd* output_jacobian) const;
-  void OutputLCSContactPoints(const drake::systems::Context<double>& context,
-                 std::vector<Eigen::VectorXd>* contact_points) const;
+                                std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*) const;
 
   drake::systems::InputPortIndex lcs_state_input_port_;
 //  drake::systems::InputPortIndex lcs_inputs_input_port_;
   drake::systems::OutputPortIndex lcs_port_;
   drake::systems::OutputPortIndex lcs_contact_jacobian_port_;
-  drake::systems::OutputPortIndex lcs_contact_points_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
+  drake::systems::Context<double>& context_;
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
+  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>
       contact_pairs_;
 
   C3Options c3_options_;
-
-//  mutable std::vector<Eigen::VectorXd> witness_points_;
-//  mutable Eigen::MatrixXd contact_jacobian_;
 
   // convenience for variable sizes
   int n_q_;

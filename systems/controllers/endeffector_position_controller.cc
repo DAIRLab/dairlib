@@ -4,6 +4,19 @@
 namespace dairlib{
 namespace systems{
 
+using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::Quaternion;
+using Eigen::Quaterniond;
+using Eigen::AngleAxis;
+using Eigen::AngleAxisd;
+using drake::systems::LeafSystem;
+using drake::systems::Context;
+using drake::multibody::MultibodyPlant;
+using drake::multibody::Frame;
+using drake::systems::BasicVector;
+using drake::VectorX;
+
 EndEffectorPositionController::EndEffectorPositionController(
 	const MultibodyPlant<double>& plant, std::string ee_frame_name,
 	Eigen::Vector3d ee_contact_frame, double k_p, double k_omega)

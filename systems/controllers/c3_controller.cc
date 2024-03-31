@@ -87,25 +87,13 @@ C3Controller::C3Controller(
 
   c3_->SetOsqpSolverOptions(solver_options_);
 
-  // Set actor bounds, TODO(yangwill): move this out of here because it is task
-  // specific
-  for (int i : vector<int>({0})) {
+  // Set actor bounds,
+  // TODO(yangwill): move this out of here because it is task specific
+  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.world_x_limits[0],
-                             c3_options_.world_x_limits[1], 1);
-  }
-  for (int i : vector<int>({1})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.world_y_limits[0],
-                             c3_options_.world_y_limits[1], 1);
-  }
-  for (int i : vector<int>({2})) {
-    Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
-    A(i) = 1.0;
-    c3_->AddLinearConstraint(A, c3_options_.world_z_limits[0],
-                             c3_options_.world_z_limits[1], 1);
+    A.segment(0, 3) = c3_options_.workspace_limits[i].segment(0, 3);
+    c3_->AddLinearConstraint(A, c3_options_.workspace_limits[i][3],
+                             c3_options_.workspace_limits[i][4], 1);
   }
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
@@ -212,18 +200,16 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
   // Force Checking of Workspace Limits
-  DRAKE_DEMAND(lcs_x->get_data()[0] >
-               c3_options_.world_x_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[0] <
-               c3_options_.world_x_limits[1] + c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[1] >
-               c3_options_.world_y_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[1] <
-               c3_options_.world_y_limits[1] + c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[2] >
-               c3_options_.world_z_limits[0] - c3_options_.workspace_margins);
-  DRAKE_DEMAND(lcs_x->get_data()[2] <
-               c3_options_.world_z_limits[1] + c3_options_.workspace_margins);
+  for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
+    DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
+                     c3_options_.workspace_limits[i].segment(0, 3) >
+                 c3_options_.workspace_limits[i][3] -
+                     c3_options_.workspace_margins);
+    DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
+                     c3_options_.workspace_limits[i].segment(0, 3) <
+                 c3_options_.workspace_limits[i][4] +
+                     c3_options_.workspace_margins);
+  }
 
   c3_->UpdateLCS(lcs);
   c3_->UpdateTarget(x_desired);
@@ -237,7 +223,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
                           solve_time_filter_constant_ * mutable_solve_time[0];
 
-  if (c3_options_.publish_frequency > 0){
+  if (c3_options_.publish_frequency > 0) {
     solve_time = 1.0 / c3_options_.publish_frequency;
     mutable_solve_time[0] = solve_time;
   }

@@ -192,8 +192,8 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 
 void C3::Solve(const VectorXd& x0) {
   VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
-  if(options_.delta_option ==1){
-      delta_init.head(n_) = x0;
+  if (options_.delta_option == 1){
+    delta_init.head(n_) = x0;
   }
   std::vector<VectorXd> delta(N_, delta_init);
   std::vector<VectorXd> w(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -215,24 +215,18 @@ void C3::Solve(const VectorXd& x0) {
 
   vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
-  // use the following line to let the C3 solution z either follow projection solution or follow QP solution
-  // using "*z_sol_ = delta" means solution follows projection step
-  // not using "*z_sol_ = delta" means z_sol_ = [x_sol, lambda_sol, u_sol] from last QP
-
-//  *z_sol_ = delta;
-
-  // use the following block to get the full C3 solution rollout, currently only shows the rollout in state
-  // and use the QP solution to do the rollout
-  z_sol_->at(0).segment(0, n_) = x0;
-  for (int i = 1; i < N_; ++i) {
-    z_sol_->at(i).segment(0, n_) =
-        A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
-        D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+  if (!options_.end_on_qp_step){
+    *z_sol_ = delta;
+    z_sol_->at(0).segment(0, n_) = x0;
+    for (int i = 1; i < N_; ++i) {
+      z_sol_->at(i).segment(0, n_) =
+          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
+              D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+    }
+    *w_sol_ = w;
+    *delta_sol_ = delta;
   }
 
-  // w_sol and delta_sol is straightforward
-  *w_sol_ = w;
-  *delta_sol_ = delta;
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,

@@ -11,15 +11,16 @@ contact_model: 'stewart_and_trinkle'
 warm_start: true
 # whether to account the effect of slow solving time to do interpolation
 use_predicted_x0: false
+end_on_qp_step: true
 solve_time_filter_alpha: 0
 # set to 0 to publish as fast as possible
 publish_frequency: 0
 
 
-#Workspace Limits (not used)
-world_x_limits: [-10, 10]
-world_y_limits: [-10, 10]
-world_z_limits: [-10, 10]
+#Workspace Limits Specified as Linear Constraints [x, y, z, lb, ub] (not used)
+workspace_limits: [[1.0, 0.0, 0.0, -10, 10],
+                   [0.0, 1.0, 0.0, -10, 10],
+                   [0.0, 0.0, 1.0, -10, 10]]
 workspace_margins: 0
 
 # control Limits (not used)

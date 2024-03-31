@@ -63,6 +63,26 @@ cc_binary(
 )
 
 cc_binary(
+    name = "franka_sim_with_wall",
+    srcs = ["franka_sim_with_wall.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_lcm_channels",
+        ":franka_sim_params",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
     name = "franka_osc_controller",
     srcs = ["franka_osc_controller.cc"],
     data = [
@@ -171,6 +191,29 @@ cc_binary(
 cc_binary(
     name = "franka_visualizer",
     srcs = ["franka_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "@drake//manipulation/models/franka_description:models",
+    ],
+    deps = [
+        ":franka_lcm_channels",
+        ":franka_sim_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_visualizer_with_wall",
+    srcs = ["franka_visualizer_with_wall.cc"],
     data = [
         ":urdfs",
         "@drake//manipulation/models/franka_description:models",

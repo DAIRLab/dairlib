@@ -11,6 +11,7 @@ struct FrankaSimParams {
   std::string left_support_model;
   std::string right_support_model;
   std::string center_support_model;
+  std::string wall_model;
 
   double dt;
   double realtime_rate;
@@ -35,6 +36,8 @@ struct FrankaSimParams {
   Eigen::VectorXd right_support_position;
   Eigen::VectorXd left_support_orientation;
   Eigen::VectorXd right_support_orientation;
+  Eigen::VectorXd wall_position;
+  Eigen::VectorXd wall_orientation;
   Eigen::VectorXd center_support_offset;
 
   std::vector<Eigen::VectorXd> world_x_limits;
@@ -56,6 +59,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(left_support_model));
     a->Visit(DRAKE_NVP(right_support_model));
     a->Visit(DRAKE_NVP(center_support_model));
+    a->Visit(DRAKE_NVP(wall_model));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
@@ -80,6 +84,8 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(right_support_position));
     a->Visit(DRAKE_NVP(left_support_orientation));
     a->Visit(DRAKE_NVP(right_support_orientation));
+    a->Visit(DRAKE_NVP(wall_position));
+    a->Visit(DRAKE_NVP(wall_orientation));
     a->Visit(DRAKE_NVP(center_support_offset));
 
     a->Visit(DRAKE_NVP(world_x_limits));

@@ -8,4 +8,4 @@ object_models: [examples/franka/urdf/tray_lcs.sdf]
 environment_models: [examples/franka/urdf/side_wall.urdf]
 # orientation in RPY then position in XYZ
 environment_orientations: [[0.0, 0.0, 0.0]]
-environment_positions: [[0.6, 0.35, 0.25]]
+environment_positions: [[0.6, 0.3, 0.25]]

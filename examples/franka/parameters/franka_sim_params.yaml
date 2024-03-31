@@ -30,7 +30,7 @@ left_support_position: [0.8, 0.15, 0.447]
 right_support_position: [0.8, -0.15, 0.447]
 left_support_orientation: [0.0, 0.0, 0.0]
 right_support_orientation: [0.0, 0.0, 0.0]
-wall_position: [0.6, 0.35, 0.25]
+wall_position: [0.6, 0.3, 0.25]
 wall_orientation: [0.0, 0.0, 0.0]
 center_support_offset: [-0.1, 0.0, 0.0]
 

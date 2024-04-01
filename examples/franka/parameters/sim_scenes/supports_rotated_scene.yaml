@@ -5,3 +5,6 @@ environment_orientations: [[0.    , 0.    , 0.5236],
                            [0.    , 0.    , 0.5236]]
 environment_positions: [[0.6178, 0.3299, 0.45  ],
                         [0.7678, 0.0701, 0.45  ]]
+
+camera_pose: [ 0.5, -0.9, 0.75 ]
+camera_target: [ 0.5, 0, 0.5 ]

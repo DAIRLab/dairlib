@@ -1,13 +1,11 @@
-scene_index: 4
+scene_index: 3
 c3_options_file: [examples/franka/parameters/c3_options/franka_c3_options_translation.yaml,
                   examples/franka/parameters/c3_options/franka_c3_options_w_supports.yaml,
                   examples/franka/parameters/c3_options/franka_c3_options_side_supports.yaml,
-                  examples/franka/parameters/c3_options/franka_c3_options_translation.yaml,
                   examples/franka/parameters/c3_options/franka_c3_options_wall.yaml,]
 c3_scene_file: [examples/franka/parameters/c3_scenes/tray_scene.yaml,
                 examples/franka/parameters/c3_scenes/supports_scene.yaml,
                 examples/franka/parameters/c3_scenes/supports_rotated_scene.yaml,
-                examples/franka/parameters/c3_scenes/two_object_scene.yaml,
                 examples/franka/parameters/c3_scenes/wall_scene.yaml]
 osqp_settings_file: examples/franka/parameters/franka_c3_qp_settings.yaml
 
@@ -19,17 +17,14 @@ near_target_threshold: 0.05
 first_target: [[0.45, 0.0, 0.5],
                [0.45, 0, 0.485],
                [0.3897, 0.025, 0.49],
-               [0.45, 0.0, 0.485],
                [0.55, 0.0, 0.485],]
 second_target: [[0.45, 0.0, 0.5],
                 [0.45, 0, 0.6],
                 [0.3897, 0.025, 0.6],
-                [0.45, 0.0, 0.485],
-                [0.45, 0.0, 0.485],]
+                [0.55, 0.0, 0.485],]
 third_target: [[0.45, 0.0, 0.5],
                [0.7, 0.00, 0.485],
                [0.6062, 0.15, 0.49],
-               [0.45, 0.0, 0.485],
                [0.55, 0.0, 0.485],]
 x_scale: 0.1
 y_scale: 0.1

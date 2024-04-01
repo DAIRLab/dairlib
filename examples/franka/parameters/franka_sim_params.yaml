@@ -8,20 +8,13 @@ object_publish_rate: 1000
 visualizer_publish_rate: 30
 actuator_delay: 0.000
 
-scene_index: 0
+scene_index: 3
 visualize_drake_sim: true
 publish_efforts: true
 
-camera_pose: [[1.5, 0, 0.6],
-              [0.5, -0.9, 0.75],
-              [1.5, 0, 0.6]]
-camera_target: [[0.5, 0, 0.5],
-                [0.5, 0, 0.5],
-                [0.5, 0, 0.55]]
-
 tool_attachment_frame: [0, 0, 0.107]
 
-sim_scene_file: [examples/franka/parameters/sim_scenes/tray_scene.yaml,
+sim_scene_file: [examples/franka/parameters/sim_scenes/empty_scene.yaml,
                  examples/franka/parameters/sim_scenes/supports_scene.yaml,
                  examples/franka/parameters/sim_scenes/supports_rotated_scene.yaml,
                  examples/franka/parameters/sim_scenes/wall_scene.yaml]
@@ -37,29 +30,33 @@ sim_scene_file: [examples/franka/parameters/sim_scenes/tray_scene.yaml,
 # Workspace Limits
 world_x_limits: [[0.4, 0.6],
                  [0.4, 0.6],
+                 [0.45, 0.65],
                  [0.45, 0.65]]
 world_y_limits: [[-0.15, 0.15],
                  [-0.1, 0.1],
-                 [-0.05, 0.3]]
+                 [-0.05, 0.3],
+                 [0.45, 0.65]]
 world_z_limits: [[0.35, 0.7],
                  [0.35, 0.7],
-                 [0.35, 0.7]]
+                 [0.35, 0.7],
+                 [0.45, 0.65]]
 
 dt: 0.0005
-realtime_rate: 0.1
+realtime_rate: 1.0
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
-q_init_plate: [[1, 0, 0, 0, 0.55, -0.075, 0.465],
+q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.465],
                [1, 0, 0, 0, 0.7, 0.00, 0.485],
-               [1.    , 0.    , 0.    , 0.    , 0.6062, 0.15  , 0.485 ]]
+               [1.    , 0.    , 0.    , 0.    , 0.6062, 0.15  , 0.485 ],
+               [1, 0, 0, 0, 0.55, 0.06, 0.465]]
 
 q_init_object: [[1, 0, 0, 0, 0.55, 0.0, 0.0],
                [1, 0, 0, 0, 0.7, 0.00, 0.0],
                [1.    , 0.    , 0.    , 0.    , 0.6062, 0.15  , 0.5 ],
-               [1.    , 0.    , 0.    , 0.    , 0.55, 0.0 , 0.5 ]]
+               [1.    , 0.    , 0.    , 0.    , 0.55, 0.0 , 0.0 ]]
 
 visualize_workspace: false
-visualize_pose_trace: false
+visualize_pose_trace: true
 visualize_center_of_mass_plan: true
 visualize_c3_forces: true
 visualize_c3_state: true

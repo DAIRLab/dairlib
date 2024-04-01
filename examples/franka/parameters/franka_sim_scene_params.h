@@ -8,8 +8,8 @@ struct FrankaSimSceneParams {
   std::vector<Eigen::VectorXd> environment_orientations;
   std::vector<Eigen::VectorXd> environment_positions;
 
-  std::vector<Eigen::VectorXd> camera_pose;
-  std::vector<Eigen::VectorXd> camera_target;
+  Eigen::VectorXd camera_pose;
+  Eigen::VectorXd camera_target;
 
   template <typename Archive>
   void Serialize(Archive* a) {

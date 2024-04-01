@@ -10,7 +10,7 @@ projection_type: 'MIQP'
 contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
-end_on_qp_step: false
+end_on_qp_step: true
 solve_time_filter_alpha: 0.95
 #set to 0 to publish as fast as possible
 publish_frequency : 0
@@ -18,7 +18,7 @@ publish_frequency : 0
 
 # End Effector Workspace Limits Specified as Linear Constraints [x, y, z, lb, ub]
 workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.6],
-                   [0.0, 1.0, 0.0, -0.15, 0.15]]
+                   [0.0, 1.0, 0.0, -0.1, 0.1]]
 #world_y_limits: [-0.1, 0.1]
 #world_z_limits: [0.35, 0.7]
 workspace_margins: 0.05
@@ -36,14 +36,14 @@ gamma: 1.0 # discount factor on MPC costs
 
 #matrix scaling
 w_Q: 50
-w_R: 5
+w_R: 50
 #Penalty on all decision variables, assuming scalar
 w_G: 0.5
 #Penalty on all decision variables, assuming scalar
 w_U: 0.1
 
 #State Tracking Error, assuming diagonal
-q_vector: [150, 150, 150, 0, 1, 1, 0, 5000, 5000, 5000,
+q_vector: [150, 150, 150, 0, 1, 1, 0, 5000, 50000, 10000,
            5, 5, 15, 10, 10, 1, 5, 5, 5]
 #Penalty on efforts, assuming diagonal
 r_vector: [0.15, 0.15, 0.1]
@@ -54,7 +54,7 @@ g_gamma: [1, 1, 1, 1, 1, 1, 1]
 g_lambda_n: [1, 1, 1, 1, 1, 1, 1]
 g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 g_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
-g_u: [1, 1, 1]
+g_u: [1, 50, 1]
 
 #Penalty on matching the QP variables
 u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

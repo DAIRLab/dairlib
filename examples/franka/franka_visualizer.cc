@@ -182,8 +182,8 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  meshcat->SetCameraPose(scene_params.camera_pose[sim_params.scene_index],
-                         scene_params.camera_target[sim_params.scene_index]);
+  meshcat->SetCameraPose(scene_params.camera_pose,
+                         scene_params.camera_target);
 
   if (sim_params.visualize_workspace) {
     double width = sim_params.world_x_limits[sim_params.scene_index][1] -

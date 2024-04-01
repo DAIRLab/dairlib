@@ -27,6 +27,7 @@
 #include "examples/franka/parameters/franka_c3_controller_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
+#include "examples/franka/parameters/franka_sim_scene_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -59,6 +60,9 @@ int DoMain(int argc, char* argv[]) {
   // load parameters
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       "examples/franka/parameters/franka_sim_params.yaml");
+  FrankaSimSceneParams scene_params =
+      drake::yaml::LoadYamlFile<FrankaSimSceneParams>(
+          sim_params.sim_scene_file[sim_params.scene_index]);
   FrankaC3ControllerParams c3_params =
       drake::yaml::LoadYamlFile<FrankaC3ControllerParams>(
           "examples/franka/parameters/franka_c3_controller_params.yaml");
@@ -91,41 +95,33 @@ int DoMain(int argc, char* argv[]) {
                    plant.GetFrameByName("plate", c3_end_effector_index),
                    T_EE_W);
 
-  if (sim_params.scene_index > 0) {
-    drake::multibody::ModelInstanceIndex left_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
-        sim_params.left_support_position);
-    RigidTransform<double> T_S2_W = RigidTransform<double>(
-        drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-        sim_params.right_support_position);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", left_support_index),
-                     T_S1_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("support", right_support_index),
-                     T_S2_W);
-    const drake::geometry::GeometrySet& support_geom_set =
-        plant.CollectRegisteredGeometries({
-            &plant.GetBodyByName("support", left_support_index),
-            &plant.GetBodyByName("support", right_support_index),
-        });
-    // we WANT to model collisions between link5 and the supports
-    const drake::geometry::GeometrySet& paddle_geom_set =
-        plant.CollectRegisteredGeometries(
-            {&plant.GetBodyByName("panda_link2"),
-             &plant.GetBodyByName("panda_link3"),
-             &plant.GetBodyByName("panda_link4"),
-             &plant.GetBodyByName("panda_link6"),
-             &plant.GetBodyByName("panda_link7"), &plant.GetBodyByName("plate"),
-             &plant.GetBodyByName("panda_link8")});
+  const drake::geometry::GeometrySet& franka_geom_set =
+      plant.CollectRegisteredGeometries({&plant.GetBodyByName("panda_link0"),
+                                         &plant.GetBodyByName("panda_link1"),
+                                         &plant.GetBodyByName("panda_link2"),
+                                         &plant.GetBodyByName("panda_link3"),
+                                         &plant.GetBodyByName("panda_link4")});
 
-    plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-        {"paddle", support_geom_set}, {"tray", paddle_geom_set});
+  drake::geometry::GeometrySet support_geom_set;
+  std::vector<drake::multibody::ModelInstanceIndex> environment_model_indices;
+  environment_model_indices.resize(scene_params.environment_models.size());
+  for (int i = 0; i < scene_params.environment_models.size(); ++i) {
+    environment_model_indices[i] = parser.AddModels(
+        FindResourceOrThrow(scene_params.environment_models[i]))[0];
+    RigidTransform<double> T_E_W =
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(
+                                   scene_params.environment_orientations[i]),
+                               scene_params.environment_positions[i]);
+    plant.WeldFrames(
+        plant.world_frame(),
+        plant.GetFrameByName("base", environment_model_indices[i]),
+        T_E_W);
+    support_geom_set.Add(plant.GetCollisionGeometriesForBody(plant.GetBodyByName("base",
+                                                                                 environment_model_indices[i])));
   }
+  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+      {"supports", support_geom_set}, {"franka", franka_geom_set});
+
 
   const drake::geometry::GeometrySet& paddle_geom_set =
       plant.CollectRegisteredGeometries({

@@ -122,13 +122,13 @@ int DoMain(int argc, char* argv[]){
   //q(2) = param.q_init_finger(2) + param.table_offset;
   q(2) = param.finger_radius + 2*param.ball_radius + param.table_offset;
 
-  q[q_map["base_qw"]] = param.q_init_ball_c3(0);
-  q[q_map["base_qx"]] = param.q_init_ball_c3(1);
-  q[q_map["base_qy"]] = param.q_init_ball_c3(2);
-  q[q_map["base_qz"]] = param.q_init_ball_c3(3);
-  q[q_map["base_x"]] = param.q_init_ball_c3(4);
-  q[q_map["base_y"]] = param.q_init_ball_c3(5);
-  q[q_map["base_z"]] = param.q_init_ball_c3(6);
+  q[q_map["sphere_qw"]] = param.q_init_ball_c3(0);
+  q[q_map["sphere_qx"]] = param.q_init_ball_c3(1);
+  q[q_map["sphere_qy"]] = param.q_init_ball_c3(2);
+  q[q_map["sphere_qz"]] = param.q_init_ball_c3(3);
+  q[q_map["sphere_x"]] = param.q_init_ball_c3(4);
+  q[q_map["sphere_y"]] = param.q_init_ball_c3(5);
+  q[q_map["sphere_z"]] = param.q_init_ball_c3(6);
   double mu = param.mu;
 
   MatrixXd Qinit = param.Q_default * MatrixXd::Identity(nq+nv, nq+nv);

@@ -267,14 +267,14 @@ void C3Controller_franka::CalcControl(const Context<double>& context,
     double angle = atan2(x,y);
     double theta = angle + param_.lead_angle * PI / 180;
 
-    traj_desired_vector(q_map_.at("base_x")) = x_c + traj_radius * sin(theta);
-    traj_desired_vector(q_map_.at("base_y")) = y_c + traj_radius * cos(theta);
-    traj_desired_vector(q_map_.at("base_z")) = ball_radius + table_offset;
+    traj_desired_vector(q_map_.at("sphere_x")) = x_c + traj_radius * sin(theta);
+    traj_desired_vector(q_map_.at("sphere_y")) = y_c + traj_radius * cos(theta);
+    traj_desired_vector(q_map_.at("sphere_z")) = ball_radius + table_offset;
   }
 
   // compute sphere positional error
-  Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("base_x")),
-                      traj_desired_vector(q_map_.at("base_y")),
+  Vector3d ball_xyz_d(traj_desired_vector(q_map_.at("sphere_x")),
+                      traj_desired_vector(q_map_.at("sphere_y")),
                       table_offset + ball_radius);
   Vector3d error_xy = ball_xyz_d - ball_xyz;
   error_xy(2) = 0;
@@ -621,12 +621,12 @@ void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::Vecto
     } else if (dist_y < -noise_threshold) {
       dist_y = -noise_threshold;
     }
-    double x_obs = q_plant(q_map_franka_.at("base_x")) + dist_x;
-    double y_obs = q_plant(q_map_franka_.at("base_y")) + dist_y;
+    double x_obs = q_plant(q_map_franka_.at("sphere_x")) + dist_x;
+    double y_obs = q_plant(q_map_franka_.at("sphere_y")) + dist_y;
 
     double alpha_p = param_.alpha_p;
-    q_plant(q_map_franka_.at("base_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
-    q_plant(q_map_franka_.at("base_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
+    q_plant(q_map_franka_.at("sphere_x")) = alpha_p*x_obs + (1-alpha_p)*prev_position_(0);
+    q_plant(q_map_franka_.at("sphere_y")) = alpha_p*y_obs + (1-alpha_p)*prev_position_(1);
 
     ///project estimate
     q_plant.tail(7) << 1, 0, 0, 0, ProjectStateEstimate(end_effector, q_plant.tail(3));;

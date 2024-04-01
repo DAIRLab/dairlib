@@ -126,13 +126,13 @@ int DoMain(int argc, char* argv[]){
 
   // initialize ball
   double traj_radius = param.traj_radius;
-  q[q_map["base_qw"]] = param.q_init_ball(0);
-  q[q_map["base_qx"]] = param.q_init_ball(1);
-  q[q_map["base_qy"]] = param.q_init_ball(2);
-  q[q_map["base_qz"]] = param.q_init_ball(3);
-  q[q_map["base_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
-  q[q_map["base_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
-  q[q_map["base_z"]] = param.ball_radius + param.table_offset;
+  q[q_map["sphere_qw"]] = param.q_init_ball(0);
+  q[q_map["sphere_qx"]] = param.q_init_ball(1);
+  q[q_map["sphere_qy"]] = param.q_init_ball(2);
+  q[q_map["sphere_qz"]] = param.q_init_ball(3);
+  q[q_map["sphere_x"]] = param.x_c + traj_radius * sin(M_PI * param.phase / 180.0);
+  q[q_map["sphere_y"]] = param.y_c + traj_radius * cos(M_PI * param.phase / 180.0);
+  q[q_map["sphere_z"]] = param.ball_radius + param.table_offset;
 
   plant.SetPositions(&plant_context, q);
 

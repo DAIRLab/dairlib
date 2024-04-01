@@ -57,7 +57,9 @@ int DoMain(int argc, char* argv[]){
 
   // load urdf models
   Parser parser(&plant);
-  parser.AddModelFromFile(sim_param.franka_model);
+  drake::multibody::ModelInstanceIndex franka_index =
+            parser.AddModels(sim_param.franka_model)[0];
+//  parser.AddModelFromFile(sim_param.franka_model);
   parser.AddModelFromFile(sim_param.offset_model);
   parser.AddModelFromFile(sim_param.ground_model);
   parser.AddModelFromFile(sim_param.end_effector_model);
@@ -79,7 +81,9 @@ int DoMain(int argc, char* argv[]){
 
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
-  
+
+
+//  auto default_index =  drake::multibody::ModelInstanceIndex(1);
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
           &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
           1 / publish_dt, true, 0.0);
@@ -136,13 +140,13 @@ int DoMain(int argc, char* argv[]){
 
   // initialize ball
   double traj_radius = sim_param.traj_radius;
-  q[q_map["base_qw"]] = sim_param.q_init_ball(0);
-  q[q_map["base_qx"]] = sim_param.q_init_ball(1);
-  q[q_map["base_qy"]] = sim_param.q_init_ball(2);
-  q[q_map["base_qz"]] = sim_param.q_init_ball(3);
-  q[q_map["base_x"]] = sim_param.x_c + traj_radius * sin(M_PI * sim_param.phase / 180.0);
-  q[q_map["base_y"]] = sim_param.y_c + traj_radius * cos(M_PI * sim_param.phase / 180.0);
-  q[q_map["base_z"]] = sim_param.ball_radius + sim_param.ground_offset_frame(2);
+  q[q_map["sphere_qw"]] = sim_param.q_init_ball(0);
+  q[q_map["sphere_qx"]] = sim_param.q_init_ball(1);
+  q[q_map["sphere_qy"]] = sim_param.q_init_ball(2);
+  q[q_map["sphere_qz"]] = sim_param.q_init_ball(3);
+  q[q_map["sphere_x"]] = sim_param.x_c + traj_radius * sin(M_PI * sim_param.phase / 180.0);
+  q[q_map["sphere_y"]] = sim_param.y_c + traj_radius * cos(M_PI * sim_param.phase / 180.0);
+  q[q_map["sphere_z"]] = sim_param.ball_radius + sim_param.ground_offset_frame(2);
 
   plant.SetPositions(&plant_context, q);
 

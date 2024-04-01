@@ -301,7 +301,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     auto force_norm = force.norm();
     const std::string& force_path_root =
         force_path_ + "/lcs_force_" + std::to_string(i) + "/";
-    if (force_norm >= 0.5) {
+    if (force_norm >= 0.1) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
                             contact_force_color_);
@@ -318,7 +318,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
       meshcat_->SetTransform(
           force_arrow_path,
           RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
-      const double height = force_norm / newtons_per_meter_;
+      const double height = 2 * force_norm / newtons_per_meter_;
       meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                             {0, 0, 0.5 * height});
       // Note: Meshcat does not fully support non-uniform scaling (see

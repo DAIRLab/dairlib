@@ -131,7 +131,7 @@ class LcmForceDrawer : public drake::systems::LeafSystem<double> {
   drake::geometry::Rgba actor_force_color_ = drake::geometry::Rgba(1, 0, 1, 1.0);
   drake::geometry::Rgba contact_force_color_ = drake::geometry::Rgba(0.949, 0.757, 0.0, 1.0);
   const double radius_ = 0.002;
-  const double newtons_per_meter_ = 40;
+  const double newtons_per_meter_ = 30;
 };
 
 /// Receives the output of an MPC planner as a lcmt_timestamped_saved_traj,

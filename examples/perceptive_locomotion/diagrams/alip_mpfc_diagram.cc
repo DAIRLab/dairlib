@@ -1,18 +1,18 @@
 #include <iostream>
 
 #include "alip_mpfc_diagram.h"
+
+#include "dairlib/lcmt_alip_s2s_mpfc_debug.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 
 #include "examples/Cassie/cassie_utils.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/solver_options_io.h"
-#include "systems/controllers/footstep_planning/alip_mpfc_system.h"
+#include "systems/controllers/footstep_planning/alip_mpfc_s2s_system.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
 #include "geometry/convex_polygon_set.h"
 
-#include "drake/common/yaml/yaml_io.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 
@@ -28,9 +28,8 @@ using Eigen::VectorXd;
 using geometry::ConvexPolygon;
 using geometry::ConvexPolygonSet;
 
-using systems::controllers::AlipMPFC;
+using systems::controllers::Alips2sMPFCSystem;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::AlipMPFCGains;
 
 using drake::systems::TriggerType;
 using drake::systems::DiagramBuilder;
@@ -53,31 +52,21 @@ AlipMPFCDiagram::AlipMPFCDiagram(
   left_right_toe.push_back(left_toe_mid);
   left_right_toe.push_back(right_toe_mid);
 
-  gains_mpc = drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(gains_filename);
   plant_context_ = plant_.CreateDefaultContext();
 
-  gains_mpc.SetFilterData(
-      plant_.CalcTotalMass(*plant_context_), gains_mpc.h_des);
+  gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
+      gains_filename,
+      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml",
+      plant_, *plant_context_
+  );
 
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
 
-  double single_support_duration = gains_mpc.ss_time;
-  double double_support_duration = gains_mpc.ds_time;
-
-  state_durations = {single_support_duration, single_support_duration};
-
-  planner_solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(
-              "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml"
-          )).GetAsSolverOptions(drake::solvers::GurobiSolver::id());
-
-  auto foot_placement_controller = builder.AddSystem<AlipMPFC>(
+  auto foot_placement_controller = builder.AddSystem<Alips2sMPFCSystem>(
       plant_, plant_context_.get(), left_right_fsm_states,
-      post_left_right_fsm_states, state_durations, double_support_duration,
-      left_right_toe, gains_mpc.gains, planner_solver_options);
+      post_left_right_fsm_states, left_right_toe, gains_mpc);
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_);
 
@@ -90,7 +79,7 @@ AlipMPFCDiagram::AlipMPFCDiagram(
 
   if (debug_publish_period > 0) {
     auto mpc_debug_pub = builder.AddSystem(
-        LcmPublisherSystem::Make<lcmt_mpc_debug>(
+        LcmPublisherSystem::Make<lcmt_alip_s2s_mpfc_debug>(
             "ALIP_MPFC_DEBUG", &lcm_local, debug_publish_period));
     builder.Connect(foot_placement_controller->get_output_port_mpc_debug(),
                     mpc_debug_pub->get_input_port());

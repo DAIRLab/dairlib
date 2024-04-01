@@ -1,6 +1,7 @@
 #pragma once
 
 #include "solvers/solver_options_io.h"
+#include "drake/solvers/gurobi_solver.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/common/yaml/yaml_io.h"

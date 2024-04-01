@@ -5,7 +5,8 @@
 #include "drake/systems/framework/diagram.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
-#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
+#include "systems/controllers/footstep_planning/alip_utils.h"
+#include "systems/controllers/footstep_planning/alip_s2s_mpfc_params.h"
 
 
 namespace dairlib {
@@ -58,7 +59,7 @@ class AlipMPFCDiagram  : public drake::systems::Diagram<double> {
 
   std::vector<double> state_durations;
 
-  AlipMpfcGainsImport gains_mpc;
+  systems::controllers::alip_s2s_mpfc_params gains_mpc;
 
   drake::systems::InputPortIndex input_port_footholds_;
   drake::systems::InputPortIndex input_port_state_;

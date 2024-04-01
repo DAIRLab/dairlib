@@ -54,7 +54,7 @@ class TerrainSegmentationSystem(LeafSystem):
         self.variance_blur = self.kernel_size / 2
         self.laplacian_blur = self.kernel_size / 4
         self.var_safety_margin = self.kernel_size / 2
-        self.safe_inf_norm = 0.04  # max 5 cm difference
+        self.safe_inf_norm = 0.04  # maximum difference between map and smoothed map
         self.below_edge_factor = 6.0
         self.safety_threshold = 0.7
 

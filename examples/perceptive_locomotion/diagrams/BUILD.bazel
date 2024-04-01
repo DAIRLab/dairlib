@@ -31,13 +31,13 @@ cc_library(
     deps = [
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/osc",
-        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
         "//geometry:convex_polygon",
         "//lcmtypes:lcmt_robot",
         "//solvers:solver_options_io",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/controllers/footstep_planning:alip_mpfc_system",
+        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
+        "//systems/controllers/footstep_planning:alip_utils",
         "@drake//:drake_shared_library",
     ],
 )

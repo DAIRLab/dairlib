@@ -21,7 +21,7 @@ struct C3StateEstimatorParams {
   std::vector<double> v_FIR_value;
   double ball_noise_stddev;
   double estimation_rate;
-  int project_state_option;
+  bool project_state_option;
 
   VectorXd q_init_ball;
   double traj_radius;

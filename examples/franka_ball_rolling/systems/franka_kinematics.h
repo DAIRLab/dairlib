@@ -17,14 +17,15 @@ namespace systems {
 /// Outputs a lcmt_timestamped_saved_traj
 class FrankaKinematics : public drake::systems::LeafSystem<double> {
  public:
-  explicit FrankaKinematics(const drake::multibody::MultibodyPlant<double>& franka_plant,
-                            drake::systems::Context<double>* franka_context,
-                            const drake::multibody::MultibodyPlant<double>& object_plant,
-                            drake::systems::Context<double>* object_context,
-                            const std::string& end_effector_name,
-                            const std::string& object_name,
+  explicit FrankaKinematics(const drake::multibody::MultibodyPlant<double> &franka_plant,
+                            drake::systems::Context<double> *franka_context,
+                            const drake::multibody::MultibodyPlant<double> &object_plant,
+                            drake::systems::Context<double> *object_context,
+                            const std::string &end_effector_name,
+                            const std::string &object_name,
                             bool include_end_effector_orientation,
-                            const SimulateFrankaParams& sim_param);
+                            const SimulateFrankaParams &sim_param,
+                            bool project_state_option);
 
   const drake::systems::InputPort<double>& get_input_port_object_state() const {
     return this->get_input_port(object_state_port_);
@@ -45,9 +46,9 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
 
   /// special function only for ball rolling example
   /// project the state estimation of the ball out from large penetration
-  Eigen::Vector3d ProjectStateEstimate(
-            const Eigen::Vector3d& end_effector_position,
-            const Eigen::Vector3d& object_position) const;
+  Eigen::VectorXd ProjectStateEstimate(
+          const Eigen::VectorXd &end_effector_position,
+          const Eigen::VectorXd &object_position) const;
 
   drake::systems::InputPortIndex franka_state_port_;
   drake::systems::InputPortIndex object_state_port_;
@@ -70,6 +71,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   /// only for ball rolling example
   double object_radius_;
   double end_effector_radius_;
+  const bool project_state_option_;
 };
 
 }  // namespace systems

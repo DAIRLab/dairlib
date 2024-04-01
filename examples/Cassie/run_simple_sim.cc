@@ -139,7 +139,7 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           FLAGS_state_channel_name, lcm, 1.0 / FLAGS_publish_rate));
   builder.Connect(plant->state_output_port(),
-                  state_sender->get_input_port_state());
+                  state_sender->get_input_port_c3_solution());
   builder.Connect(state_sender->get_output_port(0),
                   state_pub->get_input_port());
 

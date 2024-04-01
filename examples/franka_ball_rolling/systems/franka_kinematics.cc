@@ -8,6 +8,7 @@ namespace dairlib {
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
+using Eigen::Vector3d;
 using Eigen::VectorXd;
 using systems::OutputVector;
 using systems::StateVector;
@@ -15,14 +16,15 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
-                                   Context<double>* franka_context,
-                                   const MultibodyPlant<double>& object_plant,
-                                   Context<double>* object_context,
-                                   const std::string& end_effector_name,
-                                   const std::string& object_name,
+FrankaKinematics::FrankaKinematics(const drake::multibody::MultibodyPlant<double> &franka_plant,
+                                   drake::systems::Context<double> *franka_context,
+                                   const drake::multibody::MultibodyPlant<double> &object_plant,
+                                   drake::systems::Context<double> *object_context,
+                                   const std::string &end_effector_name,
+                                   const std::string &object_name,
                                    bool include_end_effector_orientation,
-                                   const SimulateFrankaParams& sim_param)
+                                   const SimulateFrankaParams &sim_param,
+                                   bool project_state_option)
     : franka_plant_(franka_plant),
       franka_context_(franka_context),
       object_plant_(object_plant),
@@ -30,7 +32,8 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
       world_(franka_plant_.world_frame()),
       end_effector_name_(end_effector_name),
       object_name_(object_name),
-      include_end_effector_orientation_(include_end_effector_orientation) {
+      include_end_effector_orientation_(include_end_effector_orientation),
+      project_state_option_(project_state_option){
   this->set_name("franka_kinematics");
   franka_state_port_ =
       this->DeclareVectorInputPort(
@@ -109,7 +112,13 @@ void FrankaKinematics::ComputeLCSState(
   }
 
   VectorXd object_position = q_object;
-  object_position << q_object.head(4), object_pose.translation();
+  VectorXd object_xyz = object_pose.translation();
+  if (project_state_option_) {
+      object_xyz = ProjectStateEstimate(end_effector_pose.translation(),
+                                         object_pose.translation());
+  }
+
+  object_position << q_object.head(4), object_xyz;
 
   lcs_state->SetEndEffectorPositions(end_effector_positions);
   lcs_state->SetObjectPositions(object_position);
@@ -118,16 +127,16 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->set_timestamp(franka_output->get_timestamp());
 }
 
-Eigen::Vector3d FrankaKinematics::ProjectStateEstimate(
-    const Eigen::Vector3d& end_effector_position,
-    const Eigen::Vector3d& object_position) const {
+Eigen::VectorXd FrankaKinematics::ProjectStateEstimate(
+        const Eigen::VectorXd &end_effector_position,
+        const Eigen::VectorXd &object_position) const {
 
-  Eigen::Vector3d dist_vec = object_position - end_effector_position;
+  VectorXd dist_vec = object_position - end_effector_position;
   double R = object_radius_;
   double r = end_effector_radius_;
 
   if (dist_vec.norm() < (R+r)*(1)){
-    Eigen::Vector3d u(dist_vec(0), dist_vec(1), 0);
+    Vector3d u(dist_vec(0), dist_vec(1), 0);
     double u_norm = u.norm();
     double du = sqrt((R+r)*(R+r) - dist_vec(2)*dist_vec(2)) - u_norm;
 

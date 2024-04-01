@@ -20,14 +20,11 @@ class TargetGenerator
     : public drake::systems::LeafSystem<double> {
  public:
   TargetGenerator(
-      const drake::multibody::MultibodyPlant<double>& robot_plant,
+      const drake::multibody::MultibodyPlant<double>& lcs_plant,
       const SimulateFrankaParams& sim_param,
       const BallRollingTrajectoryParams& traj_param);
 
-  /// the input port take lcmt_robot_output (x, u, timestamp) in from the state estimation block
-  /// only need the state x to generate the target
-  /// potential TODO:
-  /// x contain the whole plants state, can seperate robot and object, position and velocity ports if needed
+  /// the first input port take in lcs state (i.e. state for simplified model)
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(plant_state_port_);
   }

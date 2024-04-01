@@ -32,9 +32,7 @@ class HeuristicGenerator
       const BallRollingTrajectoryParams& trajectory_param,
       const C3Options& c3_param);
 
-  /// the first input port take lcmt_robot_output (x, u, timestamp) in from the state estimation block
-  /// potential TODO:
-  /// x contain the whole plants state, can seperate robot and object, position and velocity ports if needed
+  /// the first input port take in lcs state (i.e. state for simplified model)
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(plant_state_port_);
   }

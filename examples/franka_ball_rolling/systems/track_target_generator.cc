@@ -12,15 +12,15 @@ namespace dairlib {
 namespace systems {
 
 TargetGenerator::TargetGenerator(
-    const MultibodyPlant<double>& robot_plant,
+    const MultibodyPlant<double>& lcs_plant,
     const SimulateFrankaParams& sim_param,
     const BallRollingTrajectoryParams& traj_param) {
     // INPUT PORTS
     plant_state_port_ =
     this->DeclareVectorInputPort(
-                    "plant_state", OutputVector<double>(robot_plant.num_positions(),
-                                                        robot_plant.num_velocities(),
-                                                        robot_plant.num_actuators()))
+                    "plant_state", OutputVector<double>(lcs_plant.num_positions(),
+                                                        lcs_plant.num_velocities(),
+                                                        lcs_plant.num_actuators()))
             .get_index();
     // OUTPUT PORTS
     // TODO:: make dimension not hardcoded

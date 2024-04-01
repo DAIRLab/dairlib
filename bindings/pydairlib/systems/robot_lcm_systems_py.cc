@@ -31,7 +31,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
   py::class_<RobotOutputSender, drake::systems::LeafSystem<double>>(
       m, "RobotOutputSender")
       .def(py::init<const MultibodyPlant<double>&, bool>())
-      .def("get_input_port_state", &RobotOutputSender::get_input_port_state,
+      .def("get_input_port_c3_solution", &RobotOutputSender::get_input_port_state,
           py_rvp::reference_internal)
       .def("get_input_port_effort", &RobotOutputSender::get_input_port_effort,
           py_rvp::reference_internal)

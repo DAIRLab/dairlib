@@ -6,9 +6,7 @@ cc_library(
     hdrs = ["franka_c3_controller_diagram.h"],
     deps = [
         "//common",
-        "//examples/franka:franka_c3_controller_params",
-        "//examples/franka:franka_c3_scene_params",
-        "//examples/franka:franka_lcm_channels",
+        "//examples/franka:parameters",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
@@ -31,8 +29,7 @@ cc_library(
     hdrs = ["franka_osc_controller_diagram.h"],
     deps = [
         "//common",
-        "//examples/franka:franka_lcm_channels",
-        "//examples/franka:franka_osc_controller_params",
+        "//examples/franka:parameters",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
@@ -52,8 +49,7 @@ cc_library(
     hdrs = ["franka_sim_diagram.h"],
     deps = [
         "//common",
-        "//examples/franka:franka_lcm_channels",
-        "//examples/franka:franka_sim_params",
+        "//examples/franka:parameters",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "@drake//:drake_shared_library",

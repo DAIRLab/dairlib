@@ -1,0 +1,9 @@
+environment_models: [examples/franka/urdf/support.urdf,
+                     examples/franka/urdf/support.urdf,
+                     examples/franka/urdf/center_support.urdf]
+# orientation in RPY then position in XYZ
+environment_orientations: [[0.0, 0.0, 0.0],
+                           [0.0, 0.0, 0.0]]
+environment_positions: [[0.8, 0.15, 0.447],
+                        [0.8, -0.15, 0.447],
+                        [0.7, 0.0, 0.447]]

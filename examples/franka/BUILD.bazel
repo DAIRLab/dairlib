@@ -10,18 +10,6 @@ cc_library(
     ]),
 )
 
-cc_library(
-    name = "parameters",
-    data = glob([
-        "*yaml",
-    ]),
-)
-
-cc_library(
-    name = "franka_hardware",
-    deps = [],
-)
-
 cc_binary(
     name = "full_diagram",
     srcs = ["full_diagram.cc"],
@@ -30,10 +18,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_c3_controller_params",
-        ":franka_lcm_channels",
-        ":franka_osc_controller_params",
-        ":franka_sim_params",
+        ":parameters",
         "//examples/franka/diagrams:franka_c3_controller_diagram",
         "//examples/franka/diagrams:franka_osc_controller_diagram",
         "//systems:robot_lcm_systems",
@@ -50,28 +35,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
-        "//common",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "franka_sim_with_wall",
-    srcs = ["franka_sim_with_wall.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
+        ":parameters",
         "//common",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -90,8 +54,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_lcm_channels",
-        ":franka_osc_controller_params",
+        ":parameters",
         "//common",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
@@ -115,9 +78,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_c3_controller_params",
-        ":franka_c3_scene_params",
-        ":franka_lcm_channels",
+        ":parameters",
         "//common",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
@@ -143,9 +104,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_c3_controller_params",
-        ":franka_c3_scene_params",
-        ":franka_lcm_channels",
+        ":parameters",
         "//common",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
@@ -171,31 +130,7 @@ cc_binary(
         "@drake//manipulation/models/franka_description:models",
     ],
     deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
-        "//common",
-        "//multibody:utils",
-        "//multibody:visualization_utils",
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/primitives",
-        "//systems/trajectory_optimization:lcm_trajectory_systems",
-        "//systems/visualization:lcm_visualization_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "franka_visualizer_with_wall",
-    srcs = ["franka_visualizer_with_wall.cc"],
-    data = [
-        ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
-    ],
-    deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
+        ":parameters",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -218,8 +153,7 @@ cc_binary(
     ],
     tags = ["ros"],
     deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
+        ":parameters",
         "//common",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -242,8 +176,7 @@ cc_binary(
     ],
     tags = ["ros"],
     deps = [
-        ":franka_lcm_channels",
-        ":franka_sim_params",
+        ":parameters",
         "//common",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -258,62 +191,18 @@ cc_binary(
 )
 
 cc_library(
-    name = "franka_lcm_channels",
-    hdrs = ["parameters/franka_lcm_channels.h"],
-    data = [
-        "parameters/lcm_channels_hardware.yaml",
-        "parameters/lcm_channels_simulation.yaml",
+    name = "parameters",
+    hdrs = [
+        "parameters/franka_c3_controller_params.h",
+        "parameters/franka_c3_scene_params.h",
+        "parameters/franka_lcm_channels.h",
+        "parameters/franka_osc_controller_params.h",
+        "parameters/franka_sim_params.h",
+        "parameters/franka_sim_scene_params.h",
     ],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_sim_params",
-    hdrs = ["parameters/franka_sim_params.h"],
-    data = [
-        "parameters/franka_sim_params.yaml",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_osc_controller_params",
-    hdrs = ["parameters/franka_osc_controller_params.h"],
-    data = [
-        "parameters/franka_osc_controller_params.yaml",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_c3_controller_params",
-    hdrs = ["parameters/franka_c3_controller_params.h"],
-    data = [
-        "parameters/c3_options/franka_c3_options_floating.yaml",
-        "parameters/c3_options/franka_c3_options_translation.yaml",
-        "parameters/franka_c3_controller_params.yaml",
-        "parameters/franka_qp_options.yaml",
-    ],
-    deps = [
-        "//solvers:c3",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "franka_c3_scene_params",
-    hdrs = ["parameters/franka_c3_scene_params.h"],
-    data = [
-        "parameters/c3_scenes/supports_scene.yaml",
-        "parameters/c3_scenes/two_object_scene.yaml",
-        "parameters/c3_scenes/wall_scene.yaml",
-    ],
+    data = glob([
+        "*yaml",
+    ]),
     deps = [
         "@drake//:drake_shared_library",
     ],

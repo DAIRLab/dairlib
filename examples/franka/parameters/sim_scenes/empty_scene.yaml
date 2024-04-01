@@ -1,0 +1,4 @@
+environment_models: []
+# orientation in RPY then position in XYZ
+environment_orientations: []
+environment_positions: []

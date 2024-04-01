@@ -2,16 +2,12 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-
 struct FrankaSimParams {
+  std::vector<std::string> sim_scene_file;
   std::string franka_model;
   std::string end_effector_model;
   std::string tray_model;
   std::string object_model;
-  std::string left_support_model;
-  std::string right_support_model;
-  std::string center_support_model;
-  std::string wall_model;
 
   double dt;
   double realtime_rate;
@@ -25,20 +21,10 @@ struct FrankaSimParams {
   bool visualize_drake_sim;
   bool publish_efforts;
 
-  std::vector<Eigen::VectorXd> camera_pose;
-  std::vector<Eigen::VectorXd> camera_target;
-
   Eigen::VectorXd q_init_franka;
   std::vector<Eigen::VectorXd> q_init_plate;
   std::vector<Eigen::VectorXd> q_init_object;
   Eigen::VectorXd tool_attachment_frame;
-  Eigen::VectorXd left_support_position;
-  Eigen::VectorXd right_support_position;
-  Eigen::VectorXd left_support_orientation;
-  Eigen::VectorXd right_support_orientation;
-  Eigen::VectorXd wall_position;
-  Eigen::VectorXd wall_orientation;
-  Eigen::VectorXd center_support_offset;
 
   std::vector<Eigen::VectorXd> world_x_limits;
   std::vector<Eigen::VectorXd> world_y_limits;
@@ -52,14 +38,11 @@ struct FrankaSimParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(sim_scene_file));
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(tray_model));
     a->Visit(DRAKE_NVP(object_model));
-    a->Visit(DRAKE_NVP(left_support_model));
-    a->Visit(DRAKE_NVP(right_support_model));
-    a->Visit(DRAKE_NVP(center_support_model));
-    a->Visit(DRAKE_NVP(wall_model));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
@@ -73,20 +56,10 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(visualize_drake_sim));
     a->Visit(DRAKE_NVP(publish_efforts));
 
-    a->Visit(DRAKE_NVP(camera_pose));
-    a->Visit(DRAKE_NVP(camera_target));
-
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));
     a->Visit(DRAKE_NVP(q_init_object));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
-    a->Visit(DRAKE_NVP(left_support_position));
-    a->Visit(DRAKE_NVP(right_support_position));
-    a->Visit(DRAKE_NVP(left_support_orientation));
-    a->Visit(DRAKE_NVP(right_support_orientation));
-    a->Visit(DRAKE_NVP(wall_position));
-    a->Visit(DRAKE_NVP(wall_orientation));
-    a->Visit(DRAKE_NVP(center_support_offset));
 
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));

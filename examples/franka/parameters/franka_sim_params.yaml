@@ -2,10 +2,6 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 tray_model: examples/franka/urdf/tray.sdf
 object_model: examples/franka/urdf/cylinder_object.urdf
-left_support_model: examples/franka/urdf/support.urdf
-right_support_model: examples/franka/urdf/support.urdf
-center_support_model: examples/franka/urdf/center_support.urdf
-wall_model: examples/franka/urdf/side_wall.urdf
 franka_publish_rate: 1000
 tray_publish_rate: 1000
 object_publish_rate: 1000
@@ -25,14 +21,10 @@ camera_target: [[0.5, 0, 0.5],
 
 tool_attachment_frame: [0, 0, 0.107]
 
-
-left_support_position: [0.8, 0.15, 0.447]
-right_support_position: [0.8, -0.15, 0.447]
-left_support_orientation: [0.0, 0.0, 0.0]
-right_support_orientation: [0.0, 0.0, 0.0]
-wall_position: [0.6, 0.3, 0.25]
-wall_orientation: [0.0, 0.0, 0.0]
-center_support_offset: [-0.1, 0.0, 0.0]
+sim_scene_file: [examples/franka/parameters/sim_scenes/tray_scene.yaml,
+                 examples/franka/parameters/sim_scenes/supports_scene.yaml,
+                 examples/franka/parameters/sim_scenes/supports_rotated_scene.yaml,
+                 examples/franka/parameters/sim_scenes/wall_scene.yaml]
 
 #left_support_position: [0.6178, 0.3299, 0.45  ]
 #right_support_position: [0.7678, 0.0701, 0.45  ]
@@ -54,10 +46,10 @@ world_z_limits: [[0.35, 0.7],
                  [0.35, 0.7]]
 
 dt: 0.0005
-realtime_rate: 1.0
+realtime_rate: 0.1
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
-q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.5],
+q_init_plate: [[1, 0, 0, 0, 0.55, -0.075, 0.465],
                [1, 0, 0, 0, 0.7, 0.00, 0.485],
                [1.    , 0.    , 0.    , 0.    , 0.6062, 0.15  , 0.485 ]]
 

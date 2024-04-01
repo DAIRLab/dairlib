@@ -21,6 +21,7 @@
 #include "common/find_resource.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
+#include "examples/franka/parameters/franka_sim_scene_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -57,6 +58,9 @@ int DoMain(int argc, char* argv[]) {
       "examples/franka/parameters/franka_sim_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  FrankaSimSceneParams scene_params =
+      drake::yaml::LoadYamlFile<FrankaSimSceneParams>(
+          sim_params.sim_scene_file[sim_params.scene_index]);
 
   // load urdf and sphere
   DiagramBuilder<double> builder;
@@ -95,40 +99,26 @@ int DoMain(int argc, char* argv[]) {
                                          &plant.GetBodyByName("panda_link2"),
                                          &plant.GetBodyByName("panda_link3"),
                                          &plant.GetBodyByName("panda_link4")});
-  if (sim_params.scene_index > 0) {
-    drake::multibody::ModelInstanceIndex left_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.right_support_model))[0];
-    drake::multibody::ModelInstanceIndex center_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.center_support_model))[0];
-    RigidTransform<double> T_LS_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
-                               sim_params.left_support_position);
-    RigidTransform<double> T_RS_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               sim_params.right_support_position);
-    RigidTransform<double> T_CS_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               0.5 * (sim_params.left_support_position + sim_params.right_support_position) + sim_params.center_support_offset);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("base", left_support_index),
-                     T_LS_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("base", right_support_index),
-                     T_RS_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("base", center_support_index),
-                     T_CS_W);
-    const drake::geometry::GeometrySet& support_geom_set =
-        plant.CollectRegisteredGeometries({
-                                              &plant.GetBodyByName("base", left_support_index),
-                                              &plant.GetBodyByName("base", right_support_index),
-                                              &plant.GetBodyByName("base", center_support_index),
-                                          });
-    plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
-        {"supports", support_geom_set}, {"franka", franka_geom_set});
+
+  drake::geometry::GeometrySet support_geom_set;
+  std::vector<drake::multibody::ModelInstanceIndex> environment_model_indices;
+  environment_model_indices.resize(scene_params.environment_models.size());
+  for (int i = 0; i < scene_params.environment_models.size(); ++i) {
+    environment_model_indices[i] = parser.AddModels(
+        FindResourceOrThrow(scene_params.environment_models[i]))[0];
+    RigidTransform<double> T_E_W =
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(
+                                   scene_params.environment_orientations[i]),
+                               scene_params.environment_positions[i]);
+    plant.WeldFrames(
+        plant.world_frame(),
+        plant.GetFrameByName("base", environment_model_indices[i]),
+        T_E_W);
+    support_geom_set.Add(plant.GetCollisionGeometriesForBody(plant.GetBodyByName("base",
+                                                                                 environment_model_indices[i])));
   }
+  plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
+      {"supports", support_geom_set}, {"franka", franka_geom_set});
 
   const drake::geometry::GeometrySet& franka_only_geom_set =
       plant.CollectRegisteredGeometries({

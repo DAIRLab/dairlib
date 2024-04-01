@@ -12,6 +12,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
+#include "examples/franka/parameters/franka_sim_scene_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -68,6 +69,9 @@ int do_main(int argc, char* argv[]) {
       "examples/franka/parameters/franka_sim_params.yaml");
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
+  FrankaSimSceneParams scene_params =
+      drake::yaml::LoadYamlFile<FrankaSimSceneParams>(
+          sim_params.sim_scene_file[sim_params.scene_index]);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -100,32 +104,18 @@ int do_main(int argc, char* argv[]) {
   plant.WeldFrames(plant.GetFrameByName("panda_link7"),
                    plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
-  if (sim_params.scene_index > 0) {
-    drake::multibody::ModelInstanceIndex left_support_index =
-        parser.AddModels(FindResourceOrThrow(sim_params.left_support_model))[0];
-    drake::multibody::ModelInstanceIndex right_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.right_support_model))[0];
-    drake::multibody::ModelInstanceIndex center_support_index = parser.AddModels(
-        FindResourceOrThrow(sim_params.center_support_model))[0];
-    RigidTransform<double> T_LS_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.left_support_orientation),
-                               sim_params.left_support_position);
-    RigidTransform<double> T_RS_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               sim_params.right_support_position);
-    RigidTransform<double> T_CS_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(sim_params.right_support_orientation),
-                               0.5 * (sim_params.left_support_position + sim_params.right_support_position)
-                                   + sim_params.center_support_offset);
+  std::vector<drake::multibody::ModelInstanceIndex> environment_model_indices;
+  environment_model_indices.resize(scene_params.environment_models.size());
+  for (int i = 0; i < scene_params.environment_models.size(); ++i) {
+    environment_model_indices[i] = parser.AddModels(
+        FindResourceOrThrow(scene_params.environment_models[i]))[0];
+    RigidTransform<double> T_E_W =
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(
+                                   scene_params.environment_orientations[i]),
+                               scene_params.environment_positions[i]);
     plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("base", left_support_index),
-                     T_LS_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("base", right_support_index),
-                     T_RS_W);
-    plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("base", center_support_index),
-                     T_CS_W);
+                     plant.GetFrameByName("base", environment_model_indices[i]),
+                     T_E_W);
   }
 
   plant.Finalize();
@@ -192,26 +182,36 @@ int do_main(int argc, char* argv[]) {
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-  meshcat->SetCameraPose(sim_params.camera_pose[sim_params.scene_index], sim_params.camera_target[sim_params.scene_index]);
+  meshcat->SetCameraPose(scene_params.camera_pose[sim_params.scene_index],
+                         scene_params.camera_target[sim_params.scene_index]);
 
-  if (sim_params.visualize_workspace){
-    double width = sim_params.world_x_limits[sim_params.scene_index][1] - sim_params.world_x_limits[sim_params.scene_index][0];
-    double depth = sim_params.world_y_limits[sim_params.scene_index][1] - sim_params.world_y_limits[sim_params.scene_index][0];
-    double height = sim_params.world_z_limits[sim_params.scene_index][1] - sim_params.world_z_limits[sim_params.scene_index][0];
-    Vector3d workspace_center = {0.5 * (sim_params.world_x_limits[sim_params.scene_index][1] + sim_params.world_x_limits[sim_params.scene_index][0]),
-                                 0.5 * (sim_params.world_y_limits[sim_params.scene_index][1] + sim_params.world_y_limits[sim_params.scene_index][0]),
-                                 0.5 * (sim_params.world_z_limits[sim_params.scene_index][1] + sim_params.world_z_limits[sim_params.scene_index][0])};
-    meshcat->SetObject("c3_state/workspace", drake::geometry::Box(width, depth, height),
+  if (sim_params.visualize_workspace) {
+    double width = sim_params.world_x_limits[sim_params.scene_index][1] -
+                   sim_params.world_x_limits[sim_params.scene_index][0];
+    double depth = sim_params.world_y_limits[sim_params.scene_index][1] -
+                   sim_params.world_y_limits[sim_params.scene_index][0];
+    double height = sim_params.world_z_limits[sim_params.scene_index][1] -
+                    sim_params.world_z_limits[sim_params.scene_index][0];
+    Vector3d workspace_center = {
+        0.5 * (sim_params.world_x_limits[sim_params.scene_index][1] +
+               sim_params.world_x_limits[sim_params.scene_index][0]),
+        0.5 * (sim_params.world_y_limits[sim_params.scene_index][1] +
+               sim_params.world_y_limits[sim_params.scene_index][0]),
+        0.5 * (sim_params.world_z_limits[sim_params.scene_index][1] +
+               sim_params.world_z_limits[sim_params.scene_index][0])};
+    meshcat->SetObject("c3_state/workspace",
+                       drake::geometry::Box(width, depth, height),
                        {1, 0, 0, 0.2});
-    meshcat->SetTransform("c3_state/workspace", RigidTransformd(workspace_center));
+    meshcat->SetTransform("c3_state/workspace",
+                          RigidTransformd(workspace_center));
   }
-  if (sim_params.visualize_center_of_mass_plan){
+  if (sim_params.visualize_center_of_mass_plan) {
     auto trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(
             meshcat, "end_effector_position_target");
     auto trajectory_drawer_object =
-        builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,
-                                                        "object_position_target");
+        builder.AddSystem<systems::LcmTrajectoryDrawer>(
+            meshcat, "object_position_target");
     trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
     trajectory_drawer_object->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
     trajectory_drawer_actor->SetNumSamples(40);
@@ -222,9 +222,10 @@ int do_main(int argc, char* argv[]) {
                     trajectory_drawer_object->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_pose_trace){
+  if (sim_params.visualize_pose_trace) {
     auto object_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow("examples/franka/urdf/tray_transparent.sdf"),
+        meshcat,
+        FindResourceOrThrow("examples/franka/urdf/tray_transparent.sdf"),
         "object_position_target", "object_orientation_target");
     auto end_effector_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(sim_params.end_effector_model),
@@ -236,7 +237,7 @@ int do_main(int argc, char* argv[]) {
                     end_effector_pose_drawer->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_c3_state){
+  if (sim_params.visualize_c3_state) {
     auto c3_target_drawer =
         builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, false);
     builder.Connect(c3_state_actual_sub->get_output_port(),
@@ -245,14 +246,16 @@ int do_main(int argc, char* argv[]) {
                     c3_target_drawer->get_input_port_c3_state_target());
   }
 
-  if (sim_params.visualize_c3_forces){
+  if (sim_params.visualize_c3_forces) {
     auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
         meshcat, "end_effector_position_target", "end_effector_force_target",
         "lcs_force_trajectory");
-    builder.Connect(trajectory_sub_actor->get_output_port(),
-                    end_effector_force_drawer->get_input_port_actor_trajectory());
-    builder.Connect(trajectory_sub_force->get_output_port(),
-                    end_effector_force_drawer->get_input_port_force_trajectory());
+    builder.Connect(
+        trajectory_sub_actor->get_output_port(),
+        end_effector_force_drawer->get_input_port_actor_trajectory());
+    builder.Connect(
+        trajectory_sub_force->get_output_port(),
+        end_effector_force_drawer->get_input_port_force_trajectory());
     builder.Connect(robot_time_passthrough->get_output_port(),
                     end_effector_force_drawer->get_input_port_robot_time());
   }
@@ -260,7 +263,8 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));
   builder.Connect(tray_passthrough->get_output_port(), mux->get_input_port(1));
-  builder.Connect(object_passthrough->get_output_port(), mux->get_input_port(2));
+  builder.Connect(object_passthrough->get_output_port(),
+                  mux->get_input_port(2));
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
@@ -286,8 +290,8 @@ int do_main(int argc, char* argv[]) {
       plant, franka_state_sub_context);
   tray_state_receiver->InitializeSubscriberPositions(plant,
                                                      tray_state_sub_context);
-  object_state_receiver->InitializeSubscriberPositions(plant,
-                                                       object_state_sub_context);
+  object_state_receiver->InitializeSubscriberPositions(
+      plant, object_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

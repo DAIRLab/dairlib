@@ -82,8 +82,6 @@ struct C3Options {
     a->Visit(DRAKE_NVP(publish_frequency));
 
     a->Visit(DRAKE_NVP(workspace_limits));
-//    a->Visit(DRAKE_NVP(world_y_limits));
-//    a->Visit(DRAKE_NVP(world_z_limits));
     a->Visit(DRAKE_NVP(u_horizontal_limits));
     a->Visit(DRAKE_NVP(u_vertical_limits));
     a->Visit(DRAKE_NVP(workspace_margins));
@@ -145,6 +143,11 @@ struct C3Options {
         this->g_vector.data(), this->g_vector.size());
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
+
+    DRAKE_DEMAND(g_lambda.size() == num_contacts * num_friction_directions*2);
+    DRAKE_DEMAND(u_lambda.size() == num_contacts * num_friction_directions*2);
+    DRAKE_DEMAND(mu.size() == num_contacts);
+    DRAKE_DEMAND(g.size() == u.size());
 
     Q = w_Q * q.asDiagonal();
     R = w_R * r.asDiagonal();

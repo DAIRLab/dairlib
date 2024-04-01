@@ -16,6 +16,8 @@ struct FrankaSimSceneParams {
     a->Visit(DRAKE_NVP(environment_models));
     a->Visit(DRAKE_NVP(environment_orientations));
     a->Visit(DRAKE_NVP(environment_positions));
+    DRAKE_DEMAND(environment_models.size() == environment_orientations.size());
+    DRAKE_DEMAND(environment_models.size() == environment_positions.size());
 
     a->Visit(DRAKE_NVP(camera_pose));
     a->Visit(DRAKE_NVP(camera_target));

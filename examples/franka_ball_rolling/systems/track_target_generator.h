@@ -1,8 +1,8 @@
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
-//#include "systems/framework/state_vector.h"
 #include <drake/common/yaml/yaml_io.h>
+#include "systems/framework/state_vector.h"
 #include "systems/framework/output_vector.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -30,8 +30,7 @@ class TargetGenerator
   }
 
   /// the output port send out y_des (tracking target of simplified model) to the Heuristic planning block
-  /// potential TODO:
-  /// y_d contain the whole desired state, can seperate robot and object, position and velocity ports if needed
+  /// y_d contain the object position, first 4 quaternion and position xyz
   const drake::systems::OutputPort<double>&
   get_output_port_target() const {
     return this->get_output_port(target_port_);
@@ -43,9 +42,6 @@ class TargetGenerator
  private:
   void CalcTrackTarget(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* target) const;
-  drake::systems::EventStatus DiscreteVariableUpdate(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   drake::systems::InputPortIndex plant_state_port_;
   drake::systems::OutputPortIndex target_port_;

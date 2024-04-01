@@ -18,15 +18,14 @@ TargetGenerator::TargetGenerator(
     // INPUT PORTS
     plant_state_port_ =
     this->DeclareVectorInputPort(
-                    "plant_state", OutputVector<double>(lcs_plant.num_positions(),
-                                                        lcs_plant.num_velocities(),
-                                                        lcs_plant.num_actuators()))
+                    "lcs_plant_state", StateVector<double>(lcs_plant.num_positions(),
+                                                        lcs_plant.num_velocities()))
             .get_index();
     // OUTPUT PORTS
     // TODO:: make dimension not hardcoded
     target_port_ =
       this->DeclareVectorOutputPort(
-              "track_target", BasicVector<double>(7),
+              "object_position_target", BasicVector<double>(7),
               &TargetGenerator::CalcTrackTarget)
           .get_index();
 

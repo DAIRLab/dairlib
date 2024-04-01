@@ -20,28 +20,27 @@ HeuristicGenerator::HeuristicGenerator(
     // INPUT PORTS 1, get current simplified plant (i.e. plant to generate lcs) state
     plant_state_port_ =
             this->DeclareVectorInputPort(
-            "lcs_plant_state", OutputVector<double>(lcs_plant.num_positions(),
-                                                    lcs_plant.num_velocities(),
-                                                    lcs_plant.num_actuators()))
-            .get_index();
+                            "lcs_plant_state", StateVector<double>(lcs_plant.num_positions(),
+                                                                   lcs_plant.num_velocities()))
+                    .get_index();
     // INPUT PORTS 2, get object desired target trajectory
     // TODO:: make dimension not hardcoded
     input_target_port_ =
             this->DeclareVectorInputPort(
-                    "input_target", BasicVector<double>(7))
+                    "object_target", BasicVector<double>(7))
                     .get_index();
 
     // OUTPUT PORTS 1: send out simple model desired state (y_des)
     output_target_port_ =
             this->DeclareVectorOutputPort(
-                    "output_target", BasicVector<double>(lcs_plant.num_positions() + lcs_plant.num_velocities()),
+                    "lcs_state_target", BasicVector<double>(lcs_plant.num_positions() + lcs_plant.num_velocities()),
                     &HeuristicGenerator::CalcHeuristicTarget)
                     .get_index();
 
     // OUTPUT PORTS 2: send out heuristic end-effector tilt
     orientation_port_ =
             this->DeclareVectorOutputPort(
-                    "orientation_target", BasicVector<double>(4),
+                    "orientation_target", BasicVector<double>(3),
                     &HeuristicGenerator::CalcHeuristicTilt)
                     .get_index();
 

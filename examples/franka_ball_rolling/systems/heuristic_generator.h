@@ -1,7 +1,7 @@
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
-//#include "systems/framework/state_vector.h"
+#include "systems/framework/state_vector.h"
 #include <drake/common/yaml/yaml_io.h>
 #include "systems/framework/output_vector.h"
 #include "drake/systems/framework/leaf_system.h"

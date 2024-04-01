@@ -168,7 +168,6 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
 
   // Constraints in OSC
-  KinematicEvaluatorSet<double> evaluators;
   DistanceEvaluator<double> left_loop;
   DistanceEvaluator<double> right_loop;
   FixedJointEvaluator<double> left_fixed_knee_spring;
@@ -177,10 +176,6 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   FixedJointEvaluator<double> right_fixed_ankle_spring;
 
   WorldYawViewFrame<double> view_frame;
-  WorldPointEvaluator<double> left_toe_evaluator;
-  WorldPointEvaluator<double> left_heel_evaluator;
-  WorldPointEvaluator<double> right_toe_evaluator;
-  WorldPointEvaluator<double> right_heel_evaluator;
 
   // gain multipliers
   std::shared_ptr<PiecewisePolynomial<double>> swing_ft_gain_multiplier_gain_multiplier;

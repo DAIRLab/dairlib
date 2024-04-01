@@ -14,7 +14,7 @@ from pydairlib.common.plot_styler import PlotStyler
 import dairlib
 
 mpfc_channels = {
-    "ALIP__S2S_MPFC_DEBUG": dairlib.lcmt_alip_s2s_mpfc_debug,
+    "ALIP_S2S_MPFC_DEBUG": dairlib.lcmt_alip_s2s_mpfc_debug,
     "NETWORK_CASSIE_CONTACT_DISPATCHER": dairlib.lcmt_contact
 }
 

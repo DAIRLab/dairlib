@@ -7,20 +7,26 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "systems/plant_visualizer.h"
 #include "systems/perception/grid_map_visualizer.h"
+#include "lcm/lcm_log_sink.h"
 
 #include "drake/systems/analysis/simulator.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/primitives/constant_vector_source.h"
+
+#include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_robot_input.hpp"
 
 namespace dairlib {
 namespace perceptive_locomotion {
 
 using drake::systems::ConstantVectorSource;
+using drake::systems::lcm::LcmPublisherSystem;
 
 int DoMain() {
 
   const std::string urdf = "examples/Cassie/urdf/cassie_v2.urdf";
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  [[maybe_unused]] auto instance =
+  auto instance =
       AddCassieMultibody(&plant, nullptr, true, urdf, true, false);
   plant.Finalize();
 
@@ -28,7 +34,7 @@ int DoMain() {
   std::string gains_file =
       "examples/perceptive_locomotion/gains/osc_gains_simulation.yaml";
   std::string gains_mpc_file =
-      "examples/perceptive_locomotion/gains/alip_mpfc_gains_simulation.yaml";
+      "examples/perceptive_locomotion/gains/alip_s2s_mpfc_gains.yaml";
   std::string osqp_options =
       "examples/perceptive_locomotion/gains/osqp_options_osc.yaml";
   std::string camera_yaml =
@@ -50,6 +56,16 @@ int DoMain() {
   auto sim_diagram = builder.AddSystem<HikingSimDiagram>(
       terrain_yaml, camera_yaml
   );
+
+//  lcm::LcmLogSink lcm_log_sink{};
+//  auto state_pub = LcmPublisherSystem::Make<lcmt_robot_output>(
+//      "CASSIE_STATE_SIMULATION", &lcm_log_sink);
+//  auto input_pub = LcmPublisherSystem::Make<lcmt_robot_input>(
+//      "OSC_WALKING", &lcm_log_sink);
+
+//  auto state_pub_ref = builder.AddSystem(std::move(state_pub));
+//  auto input_pub_ref = builder.AddSystem(std::move(input_pub));
+
   std::map<std::string, drake::systems::sensors::CameraInfo> sensor_info;
   for (const auto& sensor_name : {"pelvis_depth"}) {
     sensor_info.insert(
@@ -107,6 +123,11 @@ int DoMain() {
       grid_map_visualizer->get_input_port()
   );
 
+//  builder.Connect(osc_diagram->get_output_port_actuation(),
+//                  input_pub_ref->get_input_port());
+//  builder.Connect(sim_diagram->get_output_port_state_lcm(),
+//                  state_pub_ref->get_input_port());
+
   auto diagram = builder.Build();
   diagram->set_name("mpfc_osc_with_sim");
   DrawAndSaveDiagramGraph(*diagram);
@@ -127,9 +148,12 @@ int DoMain() {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(0.05);
-  simulator.Initialize();
+//  simulator.set_target_realtime_rate(0.05);
+//  simulator.Initialize();
   simulator.AdvanceTo(0.5);
+
+//  lcm_log_sink.WriteLog("../lcm_log_sink_test_log");
+
   return 0;
 }
 }

@@ -1,5 +1,6 @@
 #include "lcm_log_sink.h"
 
+#include <memory>
 #include <chrono>
 #include <limits>
 #include <map>
@@ -23,20 +24,49 @@ using MultichannelHandlerFunction =
 
 class LcmLogSink::Impl {
  public:
-  std::vector<::lcm_eventlog_event_t> event_buf{};
+  std::vector<::lcm_eventlog_event_t> event_buf_{};
+
+  void Append(const std::string& channel, const void* data,
+              int data_size, unsigned long timestamp) {
+    ::lcm_eventlog_event_t log_event{};
+    log_event.timestamp = timestamp;
+    log_event.channellen = channel.size();
+    log_event.channel = static_cast<char*>(malloc(sizeof(char) * (channel.size() + 1)));
+    DRAKE_DEMAND(log_event.channel != nullptr);
+    strcpy(log_event.channel, channel.c_str());
+    log_event.datalen = data_size;
+    log_event.data = malloc(data_size);
+    DRAKE_DEMAND(log_event.data != nullptr);
+    mempcpy(log_event.data, data, data_size);
+    event_buf_.push_back(log_event);
+  }
 
   void WriteLog(const std::string& filename) {
     lcm_eventlog_t* log = ::lcm_eventlog_create(filename.c_str(), "w");
     if (log == nullptr) {
       throw std::logic_error("Couldn't create lcm log " + filename);
     }
-    for (::lcm_eventlog_event_t& event: event_buf) {
+    for (::lcm_eventlog_event_t& event: event_buf_) {
       int status = ::lcm_eventlog_write_event(log, &event);
       if (status != 0) {
         throw std::logic_error("Message write failure");
       }
     }
   }
+
+  void FreeBuf() {
+    for (auto& e: event_buf_) {
+      if (e.channel != nullptr) {
+        free(e.channel);
+        e.channel = nullptr;
+      }
+      if (e.data != nullptr) {
+        free(e.data);
+        e.data  = nullptr;
+      }
+    }
+  }
+  ~Impl() { FreeBuf(); }
 };
 
 LcmLogSink::LcmLogSink(bool overwrite_publish_time_with_system_clock):
@@ -53,20 +83,18 @@ std::string LcmLogSink::get_lcm_url() const {
 
 void LcmLogSink::Publish(const std::string& channel, const void* data,
                           int data_size, std::optional<double> time_sec) {
-  // TODO (@Brian-Acosta) write to Impl internal buffer instead of directly
-  //  saving to log
-  ::lcm_eventlog_event_t log_event{};
+  unsigned long timestamp;
   if (!overwrite_publish_time_with_system_clock_) {
-    log_event.timestamp = second_to_timestamp(time_sec.value_or(0.0));
+    timestamp = second_to_timestamp(time_sec.value_or(0.0));
   } else {
-    log_event.timestamp = std::chrono::steady_clock::now().time_since_epoch() /
+    timestamp = std::chrono::steady_clock::now().time_since_epoch() /
         std::chrono::microseconds(1);
   }
-  log_event.channellen = channel.size();
-  log_event.channel = const_cast<char*>(channel.c_str());
-  log_event.datalen = data_size;
-  log_event.data = const_cast<void*>(data);
-  impl_->event_buf.push_back(log_event);
+  impl_->Append(channel, data, data_size, timestamp);
+}
+
+void LcmLogSink::WriteLog(const std::string &fname) {
+  impl_->WriteLog(fname);
 }
 
 std::shared_ptr<DrakeSubscriptionInterface> LcmLogSink::Subscribe(

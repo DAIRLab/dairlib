@@ -6,6 +6,8 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 #include "drake/common/yaml/yaml_io.h"
 
+#include "alip_utils.h"
+
 
 namespace dairlib::systems::controllers {
 
@@ -76,10 +78,13 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
   auto params_io = drake::yaml::LoadYamlFile<alip_s2s_mpfc_params_io>(
       gains_yaml_path
   );
-  auto solver_options_io =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          solver_options_yaml_path
-      );
+  solvers::SolverOptionsFromYaml solver_options_io;
+  if (!solver_options_yaml_path.empty()) {
+    solver_options_io =
+        drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+            solver_options_yaml_path
+        );
+  }
 
   alip_s2s_mpfc_params params_out;
   params_out.nmodes = params_io.nmodes;

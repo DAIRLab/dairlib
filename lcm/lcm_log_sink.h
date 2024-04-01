@@ -101,6 +101,8 @@ namespace lcm {
 
   std::string get_lcm_url() const override;
 
+  void WriteLog(const std::string& fname);
+
  private:
   void OnHandleSubscriptionsError(const std::string&) override;
 

@@ -29,7 +29,7 @@ using drake::solvers::CommonSolverOption;
  */
 struct SolverOptionsFromYaml {
   // Common solver options
-  int print_to_console;
+  int print_to_console{0};
   std::string log_file_name;
   std::map<std::string, int> int_options;
   std::map<std::string, double> double_options;

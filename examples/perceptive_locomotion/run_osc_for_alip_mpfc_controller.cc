@@ -20,9 +20,9 @@
 #include "multibody/multibody_utils.h"
 
 // MPC related
-#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
 #include "systems/primitives/fsm_lcm_systems.h"
+#include "systems/controllers/footstep_planning/alip_s2s_mpfc_params.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
 
@@ -123,10 +123,6 @@ DEFINE_bool(add_camera_inertia, true,
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Read-in the parameters
-  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
-  auto gains_mpc =
-      drake::yaml::LoadYamlFile<AlipMpfcGainsImport>(FLAGS_mpfc_gains_filename);
 
   const std::string urdf_w_spr = "examples/Cassie/urdf/cassie_v2.urdf";
   const std::string urdf_wo_spr = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
@@ -155,6 +151,12 @@ int DoMain(int argc, char* argv[]) {
   plant_w_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
+
+  // Read-in the parameters
+  auto gains = drake::yaml::LoadYamlFile<OSCWalkingGainsALIP>(FLAGS_gains_filename);
+  auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
+      FLAGS_mpfc_gains_filename, "", plant_w_spr, *context_w_spr);
+
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
@@ -241,9 +243,9 @@ int DoMain(int argc, char* argv[]) {
   int right_stance_state = 1;
   int post_left_double_support_state = 3;
   int post_right_double_support_state = 4;
-  double left_support_duration = gains_mpc.ss_time;
-  double right_support_duration = gains_mpc.ss_time;
-  double double_support_duration = gains_mpc.ds_time;
+  double left_support_duration = gains_mpc.gait_params.single_stance_duration;
+  double right_support_duration = gains_mpc.gait_params.single_stance_duration;
+  double double_support_duration = gains_mpc.gait_params.double_stance_duration;
 
   auto fsm = builder.AddSystem<FsmReceiver>(plant_w_spr);
   builder.Connect(mpc_receiver->get_output_port_fsm(),
@@ -284,12 +286,11 @@ int DoMain(int argc, char* argv[]) {
     {post_left_double_support_state, post_right_double_support_state},
     gains.mid_foot_height,
     gains.final_foot_height,
-    gains.final_foot_velocity_z,
-    gains_mpc.retraction_dist,
+    gains.final_foot_velocity_z
   };
 
   systems::controllers::AlipComTrajGeneratorParams com_params{
-      gains_mpc.h_des,
+      gains_mpc.gait_params.height,
       unordered_fsm_states,
       contact_points_in_each_state,
   };
@@ -446,7 +447,7 @@ int DoMain(int argc, char* argv[]) {
           swing_ft_gain_multiplier_samples));
   std::vector<double> swing_ft_accel_gain_multiplier_breaks{
       0, left_support_duration / 2, left_support_duration * 3 / 4,
-      gains_mpc.t_max};
+      gains_mpc.tmax};
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples(
       4, drake::MatrixX<double>::Identity(3, 3));
   swing_ft_accel_gain_multiplier_samples[0](2, 2) *= 1.1;

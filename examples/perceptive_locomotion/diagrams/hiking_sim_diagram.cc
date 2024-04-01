@@ -4,7 +4,6 @@
 
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "multibody/multibody_utils.h"
 #include "multibody/stepping_stone_utils.h"
 #include "systems/system_utils.h"
 #include "systems/robot_lcm_systems.h"

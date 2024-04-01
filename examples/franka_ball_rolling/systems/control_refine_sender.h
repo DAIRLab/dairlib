@@ -2,6 +2,7 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 //#include "systems/framework/state_vector.h"
+#include "solvers/c3_output.h"
 #include <drake/common/yaml/yaml_io.h>
 #include "systems/framework/output_vector.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -55,15 +56,13 @@ class ControlRefineSender
       return this->get_output_port(contact_torque_port_);
   }
 
-  void SetParameters(const SimulateFrankaParams& sim_param,
-                     const BallRollingTrajectoryParams& traj_param);
-
  private:
   void CalcTrackTarget(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* target) const;
-  drake::systems::EventStatus DiscreteVariableUpdate(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  // update discrete states to get the filtered approximate solve time
+  drake::systems::EventStatus UpdateSolveTimeHistory(const drake::systems::Context<double>& context,
+            drake::systems::State<double>* state) const;
 
   drake::systems::InputPortIndex c3_solution_port_;
   drake::systems::InputPortIndex lcs_state_port_;
@@ -72,6 +71,26 @@ class ControlRefineSender
   drake::systems::OutputPortIndex target_port_;
   drake::systems::OutputPortIndex contact_torque_port_;
 
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>& context_;
+  const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::systems::Context<drake::AutoDiffXd>& context_ad_;
+  const std::vector<drake::SortedPair<drake::geometry::GeometryId>>contact_pairs_;
+
+  C3Options c3_options_;
+
+  // convenience for variable sizes
+  int n_q_;
+  int n_v_;
+  int n_x_;
+  int n_lambda_;
+  int n_u_;
+  int N_;
+
+  // solve_time_filter
+  int dt_history_idx_;
+  const int dt_filter_length_ = 10;
+  int  prev_time_idx_;
 };
 
 }  // namespace systems

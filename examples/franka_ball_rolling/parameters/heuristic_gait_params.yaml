@@ -18,6 +18,8 @@ tilt_degrees: 15 # tilt angle for end-effector
 q_new_vector: [1000000000, 1000000000, 1000000000, 0, 0, 0, 0, 0, 0, 5,
            10, 10, 10, 0, 0, 0, 0.1, 0.1, 0.1]
 
+# --------------------------  Solve time filter parameters  -----------------------------#
+
 
 
 

@@ -7,6 +7,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 
 namespace dairlib {
 namespace systems {
@@ -19,9 +20,8 @@ HeuristicGenerator::HeuristicGenerator(
     const C3Options& c3_param) {
     // INPUT PORTS 1, get current simplified plant (i.e. plant to generate lcs) state
     plant_state_port_ =
-            this->DeclareVectorInputPort(
-                            "lcs_plant_state", StateVector<double>(lcs_plant.num_positions(),
-                                                                   lcs_plant.num_velocities()))
+            this->DeclareVectorInputPort("lcs_state", TimestampedVector<double>(
+                    lcs_plant.num_positions()+lcs_plant.num_velocities()))
                     .get_index();
     // INPUT PORTS 2, get object desired target trajectory
     // TODO:: make dimension not hardcoded
@@ -97,7 +97,8 @@ void HeuristicGenerator::CalcHeuristicTarget(
   VectorXd ee_des_position = VectorXd::Zero(3);
   VectorXd ee_cur_position = lcs_plant_state->GetPositions().head(3);
 
-  // rolling phase
+
+    // rolling phase
   if ( time_in_period < roll_phase_ ) {
       ee_des_position[0] = object_cur_position[0];
       ee_des_position[1] = object_cur_position[1];

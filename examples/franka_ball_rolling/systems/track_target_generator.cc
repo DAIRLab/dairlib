@@ -17,17 +17,16 @@ TargetGenerator::TargetGenerator(
     const BallRollingTrajectoryParams& traj_param) {
     // INPUT PORTS
     plant_state_port_ =
-    this->DeclareVectorInputPort(
-                    "lcs_plant_state", StateVector<double>(lcs_plant.num_positions(),
-                                                        lcs_plant.num_velocities()))
-            .get_index();
+            this->DeclareVectorInputPort("lcs_state", TimestampedVector<double>(
+                            lcs_plant.num_positions()+lcs_plant.num_velocities()))
+                    .get_index();
     // OUTPUT PORTS
     // TODO:: make dimension not hardcoded
     target_port_ =
-      this->DeclareVectorOutputPort(
+            this->DeclareVectorOutputPort(
               "object_position_target", BasicVector<double>(7),
               &TargetGenerator::CalcTrackTarget)
-          .get_index();
+              .get_index();
 
     // Set Trajectory Patameters
     SetTrajectoryParameters(sim_param, traj_param);

@@ -71,6 +71,9 @@ class TargetGenerator
 
   /// object on the table, height is fixed
   double object_height_;
+
+  /// initialization parameters
+  double settling_time_;
 };
 
 }  // namespace systems

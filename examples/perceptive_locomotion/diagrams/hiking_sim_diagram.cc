@@ -49,7 +49,7 @@ HikingSimDiagram::HikingSimDiagram(
 
 
   // magic numbers:
-  static constexpr double sim_dt = 5e-4;
+  static constexpr double sim_dt = 1e-3;
   static constexpr double terrain_friction = 0.8;
   static constexpr double actuator_delay = 2e-3;
   static constexpr double actuator_update_period = 1e-3;

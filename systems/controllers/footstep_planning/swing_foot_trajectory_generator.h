@@ -108,6 +108,7 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   const double mid_foot_height_;
   const double desired_final_foot_height_;
   const double desired_final_vertical_foot_velocity_;
+  const bool used_with_sim_;
 
   // Maps
   std::map<int, alip_utils::PointOnFramed> stance_foot_map_;

@@ -42,7 +42,7 @@ int DoMain() {
   std::string gains_mpc_file =
       "examples/perceptive_locomotion/gains/alip_s2s_mpfc_gains.yaml";
   std::string osqp_options =
-      "examples/perceptive_locomotion/gains/osqp_options_osc.yaml";
+      "solvers/fcc_qp_options_default.yaml";
   std::string camera_yaml =
       "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml";
   std::string terrain_yaml =
@@ -79,7 +79,7 @@ int DoMain() {
           "CASSIE_STATE_SIMULATION",
           &lcm_log_sink,
           {TriggerType::kPeriodic},
-          0.0005)
+          0.001)
   );
   auto osc_debug_pub = builder.AddSystem(
       LcmPublisherSystem::Make<lcmt_osc_output>(
@@ -169,7 +169,7 @@ int DoMain() {
       diagram.get(),
       context.get() ,
       Vector3d::Zero(),
-      0.25,
+      0.15,
       0.94
   );
   drake::systems::Simulator<double> simulator(*diagram, std::move(context));

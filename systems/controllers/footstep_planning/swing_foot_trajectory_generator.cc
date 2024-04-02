@@ -49,7 +49,8 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
       mid_foot_height_(params.mid_foot_height),
       desired_final_foot_height_(params.desired_final_foot_height),
       desired_final_vertical_foot_velocity_(
-          params.desired_final_vertical_foot_velocity) {
+          params.desired_final_vertical_foot_velocity),
+      used_with_sim_(params.used_with_sim) {
 
   this->set_name("swing_ft_traj_interface_system");
   DRAKE_DEMAND(left_right_support_fsm_states_.size() == 2);
@@ -153,6 +154,10 @@ EventStatus SwingFootTrajectoryGenerator::UnrestrictedUpdate(
   auto prev_spline =
       state->get_abstract_state<PathParameterizedTrajectory<double>>(
           prev_spline_idx_);
+
+  if (used_with_sim_ and prev_time(0) == robot_output->get_timestamp()) {
+    return EventStatus::DidNothing();
+  }
 
   // when entering a new state which is in left_right_support_fsm_states
   if (fsm_state != prev_fsm_state(0) && is_single_support(fsm_state)) {

@@ -283,7 +283,9 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant_context.get(), true);
+      plant, plant_context.get(), true,
+      systems::controllers::OscSolverChoice::kFCCQP
+  );
 
   // Cost
   int n_v = plant.num_velocities();

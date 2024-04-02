@@ -82,7 +82,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(MpfcOscDiagram)
 
   // TODO (@Brian-Acosta) Add factory method for getting the plant
-  MpfcOscDiagram(drake::multibody::MultibodyPlant<double>& plant,
+  MpfcOscDiagram(const drake::multibody::MultibodyPlant<double>& plant,
                  const string& osc_gains_filename,
                  const string& mpc_gains_filename,
                  const string& osqp_settings_filename,
@@ -114,7 +114,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   const OutputPort<double>& get_output_port_switching_time() const {
     return get_output_port(output_port_switching_time_);
   }
-  drake::multibody::MultibodyPlant<double>& get_plant() {
+  const drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
   void SetSwingFootPositionAtLiftoff(
@@ -124,7 +124,7 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
  private:
 
   const MpfcOscDiagramInputType input_type_;
-  drake::multibody::MultibodyPlant<double>* plant_;
+  const drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context;
 
   std::pair<const Vector3d, const Frame<double>&> left_toe;

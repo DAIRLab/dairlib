@@ -65,7 +65,7 @@ using multibody::MakeNameToPositionsMap;
 
 
 MpfcOscDiagram::MpfcOscDiagram(
-    drake::multibody::MultibodyPlant<double>& plant,
+    const drake::multibody::MultibodyPlant<double>& plant,
     const string& osc_gains_filename, const string& mpc_gains_filename,
     const string& osqp_settings_filename, MpfcOscDiagramInputType input_type) :
     input_type_(input_type),
@@ -293,20 +293,22 @@ MpfcOscDiagram::MpfcOscDiagram(
   }
 
   // Constraints in OSC
-  auto evaluators = std::make_unique<KinematicEvaluatorSet<double>>(*plant_);
+  auto evaluators = std::make_unique<KinematicEvaluatorSet<double>>(plant);
 
-  WorldPointEvaluator<double> left_toe_evaluator(WorldPointEvaluator(
+  std::vector<int> yz_active = {1, 2};
+  std::vector<int> xyz_active = {0, 1, 2};
+  auto left_toe_evaluator = std::make_unique<WorldPointEvaluator<double>>(
       plant, left_toe.first, left_toe.second, view_frame,
-      Matrix3d::Identity(), Vector3d::Zero(), {1, 2}));
-  WorldPointEvaluator<double> left_heel_evaluator(WorldPointEvaluator(
+      Matrix3d::Identity(), Vector3d::Zero(), yz_active);
+  auto left_heel_evaluator = std::make_unique<WorldPointEvaluator<double>>(
           plant, left_heel.first, left_heel.second, view_frame,
-          Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}));
-  WorldPointEvaluator<double> right_toe_evaluator(WorldPointEvaluator(
+          Matrix3d::Identity(), Vector3d::Zero(), xyz_active);
+  auto right_toe_evaluator = std::make_unique<WorldPointEvaluator<double>>(
           plant, right_toe.first, right_toe.second, view_frame,
-          Matrix3d::Identity(), Vector3d::Zero(), {1, 2}));
-  WorldPointEvaluator<double> right_heel_evaluator(WorldPointEvaluator(
+          Matrix3d::Identity(), Vector3d::Zero(), yz_active);
+  auto right_heel_evaluator = std::make_unique<WorldPointEvaluator<double>>(
           plant, right_heel.first, right_heel.second, view_frame,
-          Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2}));
+          Matrix3d::Identity(), Vector3d::Zero(), xyz_active);
 
   evaluators->add_evaluator(&left_loop);
   evaluators->add_evaluator(&right_loop);
@@ -321,20 +323,16 @@ MpfcOscDiagram::MpfcOscDiagram(
   osc->SetContactFriction(gains.mu);
 
   osc->AddContactPoint(
-      "left_toe",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
+      "left_toe", std::move(left_toe_evaluator),
       {left_stance_state, post_left_double_support_state, post_right_double_support_state});
   osc->AddContactPoint(
-      "left_heel",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
+      "left_heel", std::move(left_heel_evaluator),
       {left_stance_state, post_left_double_support_state, post_right_double_support_state});
   osc->AddContactPoint(
-      "right_toe",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
+      "right_toe", std::move(right_toe_evaluator),
       {right_stance_state, post_left_double_support_state, post_right_double_support_state});
   osc->AddContactPoint(
-      "right_heel",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
+      "right_heel", std::move(right_heel_evaluator),
       {right_stance_state, post_left_double_support_state, post_right_double_support_state});
 
   osc->SetSolverOptionsFromYaml(osqp_settings_filename);

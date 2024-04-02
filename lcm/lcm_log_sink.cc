@@ -37,7 +37,7 @@ class LcmLogSink::Impl {
     log_event.datalen = data_size;
     log_event.data = malloc(data_size);
     DRAKE_DEMAND(log_event.data != nullptr);
-    mempcpy(log_event.data, data, data_size);
+    memcpy(log_event.data, data, data_size);
     event_buf_.push_back(log_event);
   }
 

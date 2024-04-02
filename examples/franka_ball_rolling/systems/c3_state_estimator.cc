@@ -64,6 +64,14 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
       BasicVector<double>(num_franka_positions_ + num_ball_positions_ + 
                           num_franka_velocities_ + num_ball_velocities_),
       &C3StateEstimator::EstimateState);
+  franka_state_output_port_ = this->DeclareVectorOutputPort(
+      "x_franka",
+      BasicVector<double>(num_franka_positions_ + num_franka_velocities_),
+      &C3StateEstimator::EstimateFrankaState).get_index();
+  ball_state_output_port_ = this->DeclareVectorOutputPort(
+      "x_object",
+      StateVector<double>(num_ball_positions_, num_ball_velocities_),
+      &C3StateEstimator::EstimateObjectState).get_index();
   this->DeclareVectorOutputPort(
       "u",
       BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
@@ -178,6 +186,55 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
           + num_ball_positions_ + num_ball_velocities_);
   value << positions, velocities;
   output->SetFromVector(value);
+}
+
+void C3StateEstimator::EstimateFrankaState(const drake::systems::Context<double>& context,
+                  BasicVector<double>* output) const {
+
+  /// parse inputs
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& franka_output = input->get_value<dairlib::lcmt_robot_output>();
+
+  /// generate output
+  VectorXd positions = VectorXd::Zero(num_franka_positions_);
+  for (int i = 0; i < num_franka_positions_; i++){
+    positions(i) = franka_output.position[i];
+  }
+
+  VectorXd velocities = VectorXd::Zero(num_franka_velocities_);
+  for (int i = 0; i < num_franka_velocities_; i++){
+    velocities(i) = franka_output.velocity[i];
+  }
+  VectorXd value = VectorXd::Zero(num_franka_positions_ + num_franka_velocities_);
+  value << positions, velocities;
+  output->SetFromVector(value);
+}
+
+void C3StateEstimator::EstimateObjectState(const drake::systems::Context<double>& context,
+                  StateVector<double>* output) const {
+
+  /// parse inputs
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& franka_output = input->get_value<dairlib::lcmt_robot_output>();
+
+  /// read in estimates froms states
+  Vector3d ball_position = context.get_discrete_state(p_idx_).value();
+  VectorXd ball_orientation = context.get_discrete_state(orientation_idx_).value();
+  Vector3d ball_velocity = context.get_discrete_state(v_idx_).value();
+  Vector3d angular_velocity = context.get_discrete_state(w_idx_).value();
+
+  /// generate output
+  // NOTE: vector sizes are hard coded for C3 experiments
+  VectorXd positions = VectorXd::Zero(num_ball_positions_);
+  positions.tail(num_ball_positions_) << ball_orientation, ball_position;
+
+  VectorXd velocities = VectorXd::Zero(num_ball_velocities_);
+  velocities.tail(num_ball_velocities_) << angular_velocity, ball_velocity;
+
+  output->SetPositions(positions);
+  output->SetVelocities(velocities);
 }
 
 void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& context,

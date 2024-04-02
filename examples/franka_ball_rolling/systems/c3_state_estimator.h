@@ -11,6 +11,7 @@
 #include <Eigen/Geometry> 
 
 #include "systems/framework/output_vector.h"
+#include "systems/framework/state_vector.h"
 #include "drake/systems/framework/leaf_system.h"
 
 #include "drake/systems/framework/context.h"
@@ -44,6 +45,15 @@ class C3StateEstimator : public LeafSystem<double> {
  public:
   C3StateEstimator(const std::vector<double>& p_FIR_values,
                    const std::vector<double>& v_FIR_values);
+
+  const drake::systems::OutputPort<double>& get_output_port_franka_state()
+      const {
+    return this->get_output_port(franka_state_output_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_object_state()
+      const {
+    return this->get_output_port(ball_state_output_port_);
+  }
   
  private: 
   // update discrete states
@@ -54,6 +64,10 @@ class C3StateEstimator : public LeafSystem<double> {
   // estimates state
   void EstimateState(const drake::systems::Context<double>& context,
                     BasicVector<double>* output) const;
+  void EstimateFrankaState(const drake::systems::Context<double>& context,
+                       BasicVector<double>* output) const;
+  void EstimateObjectState(const drake::systems::Context<double>& context,
+                       StateVector<double>* output) const;
   void OutputEfforts(const drake::systems::Context<double>& context,
                     BasicVector<double>* output) const;
   drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis, double theta) const;
@@ -73,6 +87,9 @@ class C3StateEstimator : public LeafSystem<double> {
   // port indices
   int franka_input_port_;
   int ball_input_port_;
+
+  drake::systems::OutputPortIndex franka_state_output_port_;
+  drake::systems::OutputPortIndex ball_state_output_port_;
 
   // FIR filter design
   std::vector<double> p_FIR_values_;

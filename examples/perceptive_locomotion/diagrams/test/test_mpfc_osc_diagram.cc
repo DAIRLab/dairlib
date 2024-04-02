@@ -60,11 +60,15 @@ int DoMain() {
   lcm::LcmLogSink lcm_log_sink{};
   auto state_pub = LcmPublisherSystem::Make<lcmt_robot_output>(
       "CASSIE_STATE_SIMULATION", &lcm_log_sink);
-//  auto input_pub = LcmPublisherSystem::Make<lcmt_robot_input>(
-//      "OSC_WALKING", &lcm_log_sink);
+  auto osc_debug_pub = LcmPublisherSystem::Make<lcmt_osc_output>(
+      "OSC_DEBUG_WALKING", &lcm_log_sink
+      );
+  auto input_pub = LcmPublisherSystem::Make<lcmt_robot_input>(
+      "OSC_WALKING", &lcm_log_sink);
 
   auto state_pub_ref = builder.AddSystem(std::move(state_pub));
-//  auto input_pub_ref = builder.AddSystem(std::move(input_pub));
+  auto osc_pub_ref = builder.AddSystem(std::move(osc_debug_pub));
+  auto input_pub_ref = builder.AddSystem(std::move(input_pub));
 
   std::map<std::string, drake::systems::sensors::CameraInfo> sensor_info;
   for (const auto& sensor_name : {"pelvis_depth"}) {
@@ -123,8 +127,10 @@ int DoMain() {
       grid_map_visualizer->get_input_port()
   );
 
-//  builder.Connect(osc_diagram->get_output_port_actuation(),
-//                  input_pub_ref->get_input_port());
+  builder.Connect(osc_diagram->get_output_port_osc_debug(),
+                  osc_pub_ref->get_input_port());
+  builder.Connect(osc_diagram->get_output_port_u_lcm(),
+                  input_pub_ref->get_input_port());
   builder.Connect(sim_diagram->get_output_port_state_lcm(),
                   state_pub_ref->get_input_port());
 
@@ -147,12 +153,13 @@ int DoMain() {
   drake::systems::Simulator<double> simulator(*diagram, std::move(context));
 
   simulator.set_publish_every_time_step(false);
-  simulator.set_publish_at_initialization(false);
+  simulator.set_publish_at_initialization(true);
 //  simulator.set_target_realtime_rate(0.05);
 //  simulator.Initialize();
   simulator.AdvanceTo(0.5);
 
   lcm_log_sink.WriteLog("../lcm_log_sink_test_log");
+  lcm_log_sink.clear();
 
   return 0;
 }

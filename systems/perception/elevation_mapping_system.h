@@ -185,7 +185,7 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   std::map<std::string, drake::systems::InputPortIndex> input_ports_pcl_;
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_pose_covariance_;
-  drake::systems::InputPortIndex input_port_contact_{-1};
+  drake::systems::InputPortIndex input_port_contact_;
 
   drake::systems::OutputPortIndex output_port_elevation_map_;
   drake::systems::OutputPortIndex output_port_grid_map_;

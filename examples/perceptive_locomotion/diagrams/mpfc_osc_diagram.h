@@ -88,31 +88,40 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
                  const string& osqp_settings_filename,
                  MpfcOscDiagramInputType input_type);
 
-  const InputPort<double>& get_input_port_state() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);
   }
-  const InputPort<double>& get_input_port_footstep_command() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_footstep_command()
+  const {
     DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kFootstepCommand);
     return get_input_port(input_port_footstep_command_);
   }
-  const InputPort<double>& get_input_port_alip_mpc_output() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_alip_mpc_output()
+  const {
     DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kLcmtAlipMpcOutput);
     return get_input_port(input_port_alip_mpc_output_);
   }
-  const InputPort<double>& get_input_port_radio() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_radio() const {
     return get_input_port(input_port_radio_);
   }
-  const OutputPort<double>& get_output_port_actuation() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_actuation() const {
     return get_output_port(output_port_u_cmd_);
   }
-  const OutputPort<double>& get_output_port_fsm() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_fsm() const {
     return get_output_port(output_port_fsm_);
   }
-  const OutputPort<double>& get_output_port_alip() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_alip() const {
     return get_output_port(output_port_alip_);
   }
-  const OutputPort<double>& get_output_port_switching_time() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_switching_time()
+  const {
     return get_output_port(output_port_switching_time_);
+  }
+  [[nodiscard]] const OutputPort<double>& get_output_port_u_lcm() const {
+    return get_output_port(output_port_u_lcm_);
+  }
+  [[nodiscard]] const OutputPort<double>& get_output_port_osc_debug() const {
+    return get_output_port(output_port_osc_debug_);
   }
   const drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
@@ -201,6 +210,8 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   drake::systems::InputPortIndex input_port_radio_;
 
   drake::systems::OutputPortIndex output_port_u_cmd_;
+  drake::systems::OutputPortIndex output_port_u_lcm_;
+  drake::systems::OutputPortIndex output_port_osc_debug_;
   drake::systems::OutputPortIndex output_port_fsm_;
   drake::systems::OutputPortIndex output_port_switching_time_;
   drake::systems::OutputPortIndex output_port_alip_;

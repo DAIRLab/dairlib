@@ -115,6 +115,8 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   // Create state receiver.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto input_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant, plant_context.get(), gains.vel_scale_rot,
       gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
@@ -492,10 +494,17 @@ MpfcOscDiagram::MpfcOscDiagram(
                   alip_input_receiver->get_input_port_u());
   builder.Connect(alip_input_receiver->get_output_port(),
                   osc->get_feedforward_input_port());
-
+  builder.Connect(osc->get_output_port_osc_command(),
+                  input_sender->get_input_port());
 
   output_port_u_cmd_ = builder.ExportOutput(
       osc->get_output_port_osc_command(), "u, t"
+  );
+  output_port_u_lcm_ = builder.ExportOutput(
+      input_sender->get_output_port(), "lcmt_robot_input"
+  );
+  output_port_osc_debug_ = builder.ExportOutput(
+      osc->get_output_port_osc_debug(), "lcmt_osc_debug"
   );
   output_port_fsm_ = builder.ExportOutput(
       fsm->get_output_port_fsm(), "fsm"

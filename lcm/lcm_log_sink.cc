@@ -1,11 +1,8 @@
 #include "lcm_log_sink.h"
 
 #include <memory>
-#include <chrono>
-#include <limits>
 #include <map>
 #include <stdexcept>
-#include <utility>
 #include <vector>
 
 #include "lcm/lcm.h"
@@ -66,14 +63,16 @@ class LcmLogSink::Impl {
         e.data  = nullptr;
       }
     }
+    event_buf_.clear();
   }
+
   ~Impl() { FreeBuf(); }
 };
 
 LcmLogSink::LcmLogSink(bool overwrite_publish_time_with_system_clock):
       overwrite_publish_time_with_system_clock_(
           overwrite_publish_time_with_system_clock),
-      url_("lcmlogsink//:"),
+      url_("lcmlogsink//:logsink"),
       impl_(new Impl) {}
 
 LcmLogSink::~LcmLogSink() = default;
@@ -96,6 +95,9 @@ void LcmLogSink::Publish(const std::string& channel, const void* data,
 
 void LcmLogSink::WriteLog(const std::string &fname) {
   impl_->WriteLog(fname);
+}
+void LcmLogSink::clear() {
+  impl_->FreeBuf();
 }
 
 std::shared_ptr<DrakeSubscriptionInterface> LcmLogSink::Subscribe(

@@ -249,10 +249,12 @@ void OperationalSpaceControl::Build() {
   lambda_h_sol_ = std::make_unique<Eigen::VectorXd>(id_qp_.nh());
   epsilon_sol_ = std::make_unique<Eigen::VectorXd>(id_qp_.nc_active());
   u_prev_ = std::make_unique<Eigen::VectorXd>(n_u_);
+
   dv_sol_->setZero();
   u_sol_->setZero();
   lambda_c_sol_->setZero();
   lambda_h_sol_->setZero();
+  epsilon_sol_->setZero();
   u_prev_->setZero();
 
   // Add costs
@@ -541,6 +543,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     // Extract solutions
     *dv_sol_ = result.GetSolution(id_qp_.dv());
     *u_sol_ = result.GetSolution(id_qp_.u());
+    *u_prev_ = *u_sol_;
     *lambda_c_sol_ = result.GetSolution(id_qp_.lambda_c());
     *lambda_h_sol_ = result.GetSolution(id_qp_.lambda_h());
     *epsilon_sol_ = result.GetSolution(id_qp_.epsilon());
@@ -723,17 +726,13 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   }
   output->num_regularization_costs = output->regularization_costs.size();
 
-  output->tracking_data_names.clear();
-  output->tracking_data.clear();
-  output->tracking_costs.clear();
-
   lcmt_osc_qp_output qp_output;
   qp_output.solve_time = solve_time_;
   qp_output.u_dim = n_u_;
   qp_output.lambda_c_dim = id_qp_.nc();
   qp_output.lambda_h_dim = id_qp_.nh();
   qp_output.v_dim = n_v_;
-  qp_output.epsilon_dim = id_qp_.nc_active();;
+  qp_output.epsilon_dim = id_qp_.nc_active();
   qp_output.u_sol = CopyVectorXdToStdFloatVector(*u_sol_);
   qp_output.lambda_c_sol = CopyVectorXdToStdFloatVector(*lambda_c_sol_);
   qp_output.lambda_h_sol = CopyVectorXdToStdFloatVector(*lambda_h_sol_);
@@ -744,6 +743,10 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data = std::vector<lcmt_osc_tracking_data>();
   output->tracking_costs = std::vector<float>();
   output->tracking_data_names = std::vector<std::string>();
+
+  output->tracking_data.clear();
+  output->tracking_costs.clear();
+  output->tracking_data_names.clear();
 
   for (unsigned int i = 0; i < tracking_data_vec_->size(); i++) {
     auto tracking_data = tracking_data_vec_->at(i).get();
@@ -790,7 +793,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     }
   }
 
-  *u_prev_ = *u_sol_;
   output->num_tracking_data = output->tracking_data_names.size();
   output->num_regularization_costs = output->regularization_cost_names.size();
 }

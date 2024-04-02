@@ -42,7 +42,17 @@ OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
       n_ydot_(n_ydot),
       K_p_(K_p),
       K_d_(K_d),
-      W_(W) {}
+      W_(W) {
+  y_ = VectorXd::Zero(n_y);
+  y_des_ = VectorXd::Zero(n_y);
+  error_y_ = VectorXd::Zero(n_ydot);
+  error_ydot_ = VectorXd::Zero(n_ydot);
+  ydot_ = VectorXd::Zero(n_ydot);
+  ydot_des_ = VectorXd::Zero(n_ydot);
+  yddot_des_ = VectorXd::Zero(n_ydot);
+  yddot_command_ = VectorXd::Zero(n_ydot);
+  yddot_command_sol_ = VectorXd::Zero(n_ydot);
+}
 
 // Update
 void OscTrackingData::Update(

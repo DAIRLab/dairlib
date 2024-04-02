@@ -51,8 +51,9 @@ RigidTransformd ReadCameraPoseFromYaml(const std::string& fname) {
 
   Matrix3d R = Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>(
       R_p.at("rotation").data());
+
   Vector3d t = Eigen::Map<Vector3d>(R_p.at("translation").data());
-  return {RotationMatrix<double>(R), t};
+  return {RotationMatrix<double>::ProjectToRotationMatrix(R), t};
 }
 
 //  https://github.com/RobotLocomotion/drake/blob/master/examples/manipulation_station/manipulation_station.cc

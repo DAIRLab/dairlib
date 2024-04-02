@@ -169,8 +169,8 @@ int DoMain() {
       diagram.get(),
       context.get() ,
       Vector3d::Zero(),
-      0.15,
-      0.94
+      0.1,
+      0.95
   );
   drake::systems::Simulator<double> simulator(*diagram, std::move(context));
 

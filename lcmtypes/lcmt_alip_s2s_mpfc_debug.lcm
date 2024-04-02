@@ -6,6 +6,7 @@ struct lcmt_alip_s2s_mpfc_debug
     int32_t fsm_state;
 
     int64_t solve_time_us;
+    int64_t optimizer_time_us;
     string  solution_result;
 
     int32_t nx;

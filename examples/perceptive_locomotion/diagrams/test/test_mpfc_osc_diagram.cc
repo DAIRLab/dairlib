@@ -189,8 +189,8 @@ int DoMain() {
       diagram.get(),
       context.get() ,
       Vector3d::Zero(),
-      0.25,
-      0.94
+      0.1,
+      0.95
   );
 
   perception_module->InitializeEkf(context.get(), q, v);

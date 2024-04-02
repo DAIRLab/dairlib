@@ -80,6 +80,9 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   mpfc_solution.success = result.is_success();
   mpfc_solution.solution_result = result.get_solution_result();
 
+  auto solution_details =
+      result.get_solver_details<drake::solvers::GurobiSolver>();
+
   mpfc_solution.pp.clear();
   mpfc_solution.xx.clear();
   mpfc_solution.ee.clear();
@@ -104,7 +107,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   std::chrono::duration<double> total_time = end - start;
   std::chrono::duration<double> solve_time = solver_end - solver_start;
 
-  mpfc_solution.optimizer_time = solve_time.count();
+  mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
   mpfc_solution.input_footholds = footholds;
 

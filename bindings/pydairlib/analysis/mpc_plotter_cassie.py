@@ -25,7 +25,7 @@ def init_ps():
 
 
 def main():
-    # init_ps()
+    init_ps()
     filename_mpc = sys.argv[1]
     log_mpc = lcm.EventLog(filename_mpc, "r")
 
@@ -39,11 +39,11 @@ def main():
     #     "NETWORK_CASSIE_CONTACT_DISPATCHER"
     # )
 
+    _ = mpfc_plots.plot_solve_time(mpfc_debug_data)
     _ = mpfc_plots.plot_footstep_sol_in_stance_frame(mpfc_debug_data)
     _ = mpfc_plots.plot_initial_state(mpfc_debug_data)
     _ = mpfc_plots.plot_timing_solution(mpfc_debug_data)
     # _ = mpfc_plots.plot_contact(contact_data, mpfc_debug_data)
-    _ = mpfc_plots.plot_solve_time(mpfc_debug_data)
     plt.show()
 
 

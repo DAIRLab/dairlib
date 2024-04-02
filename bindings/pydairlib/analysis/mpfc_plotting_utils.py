@@ -18,6 +18,7 @@ def process_mpfc_debug_data(data):
     t_mpc = np.zeros((n,))
     fsm = np.zeros((n,), dtype=int)
     solve_time = np.zeros((n,))
+    optimizer_time = np.zeros((n,))
     initial_state = np.zeros((n, 4))
     initial_stance_foot = np.zeros((n, 3))
     desired_velocity = np.zeros((n, 2))
@@ -30,6 +31,7 @@ def process_mpfc_debug_data(data):
         t_mpc[i] = msg.utime * 1e-6
         fsm[i] = msg.fsm_state
         solve_time[i] = msg.solve_time_us * 1e-6
+        optimizer_time[i] = msg.optimizer_time_us * 1e-6
         initial_state[i] = msg.initial_state
         initial_stance_foot[i] = msg.initial_stance_foot
         desired_velocity[i] = msg.desired_velocity
@@ -42,6 +44,7 @@ def process_mpfc_debug_data(data):
         't_mpc': t_mpc,
         'fsm': fsm,
         'solve_time': solve_time,
+        'optimizer_time': optimizer_time,
         'initial_state': initial_state,
         'initial_stance_foot': initial_stance_foot,
         'desired_velocity': desired_velocity,
@@ -170,19 +173,21 @@ def plot_solve_time(mpc_data, time_slice=None):
 
     data = {
         't_mpc': mpc_data['t_mpc'],
-        'solve_time': mpc_data['solve_time']
+        'solve_time': mpc_data['solve_time'],
+        'optimizer_time': mpc_data['optimizer_time']
     }
 
     plotting_utils.make_plot_of_entire_series(
         data,
         't_mpc',
-        {'solve_time': ['solve time']},
+        {'solve_time': ['solve time (wall clock time to call solver.Solve())'],
+         'optimizer_time': ['optimizer time (reported by Gurobi)']},
         {'xlabel': 'Time',
          'ylabel': 'solve time (s)',
-         'title': 'MPFC Solve Time'}, ps
+         'title': 'MPC Solve Time'}, ps
     )
 
-    add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
+    # add_fsm_to_plot(ps, mpc_data['t_mpc'], mpc_data['fsm'], _fsm_state_names)
 
     return ps
 

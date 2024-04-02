@@ -336,6 +336,7 @@ void Alips2sMPFCSystem::CopyMpcDebugToLcm(
   mpc_debug->utime = utime;
   mpc_debug->fsm_state = fsm;
   mpc_debug->solve_time_us = mpc_sol.total_time * 1e6;
+  mpc_debug->optimizer_time_us = mpc_sol.optimizer_time * 1e6;
   mpc_debug->solution_result = std::to_string(mpc_sol.solution_result);
 
   mpc_debug->nx = 4;

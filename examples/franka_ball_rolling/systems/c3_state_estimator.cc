@@ -64,6 +64,10 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
       BasicVector<double>(num_franka_positions_ + num_ball_positions_ + 
                           num_franka_velocities_ + num_ball_velocities_),
       &C3StateEstimator::EstimateState);
+  this->DeclareVectorOutputPort(
+      "u",
+      BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
+      &C3StateEstimator::OutputEfforts);
   franka_state_output_port_ = this->DeclareVectorOutputPort(
       "x_franka",
       BasicVector<double>(num_franka_positions_ + num_franka_velocities_),
@@ -72,10 +76,6 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
       "x_object",
       StateVector<double>(num_ball_positions_, num_ball_velocities_),
       &C3StateEstimator::EstimateObjectState).get_index();
-  this->DeclareVectorOutputPort(
-      "u",
-      BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
-      &C3StateEstimator::OutputEfforts);
 }
 
 EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,

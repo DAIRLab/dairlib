@@ -21,6 +21,16 @@ cc_library(
 )
 
 cc_library(
+    name = "lcm_log_sink",
+    srcs = ["lcm_log_sink.cc"],
+    hdrs = ["lcm_log_sink.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
     name = "lcm_trajectory_saver",
     srcs = ["lcm_trajectory.cc"],
     hdrs = ["lcm_trajectory.h"],

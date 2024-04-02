@@ -45,7 +45,7 @@ w_U: 0.1
 q_vector: [50, 50, 50, 0, 1, 1, 0, 75000, 75000, 75000,
            5, 5, 5, 10, 10, 1, 5, 5, 5]
 #Penalty on efforts, assuming diagonal
-r_vector: [0.1, 0.1, 0.01]
+r_vector: [0.1, 0.1, 0.1]
 
 #Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

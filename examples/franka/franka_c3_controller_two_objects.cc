@@ -12,6 +12,7 @@
 
 #include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
+#include "examples/franka/parameters/franka_c3_scene_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/systems/c3_state_sender.h"
 #include "examples/franka/systems/c3_trajectory_generator.h"
@@ -22,10 +23,10 @@
 #include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/controllers/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
-#include "systems/primitives/radio_parser.h"
 
 namespace dairlib {
 
@@ -70,6 +71,9 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
   C3Options c3_options = drake::yaml::LoadYamlFile<C3Options>(
       controller_params.c3_options_file[controller_params.scene_index]);
+  FrankaC3SceneParams scene_params =
+      drake::yaml::LoadYamlFile<FrankaC3SceneParams>(
+          controller_params.c3_scene_file[controller_params.scene_index]);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
@@ -80,10 +84,10 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(
-      drake::FindResourceOrThrow(controller_params.franka_model));
+      drake::FindResourceOrThrow(scene_params.franka_model));
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
-          FindResourceOrThrow(controller_params.end_effector_model))[0];
+          FindResourceOrThrow(scene_params.end_effector_model))[0];
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_franka.WeldFrames(plant_franka.world_frame(),
@@ -91,7 +95,7 @@ int DoMain(int argc, char* argv[]) {
 
   RigidTransform<double> T_EE_W =
       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-                             controller_params.tool_attachment_frame);
+                             scene_params.tool_attachment_frame);
   plant_franka.WeldFrames(
       plant_franka.GetFrameByName("panda_link7"),
       plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
@@ -102,38 +106,36 @@ int DoMain(int argc, char* argv[]) {
   ///
   MultibodyPlant<double> plant_tray(0.0);
   Parser parser_tray(&plant_tray, nullptr);
-  parser_tray.AddModels(controller_params.tray_model);
+
+  auto tray_index = parser_tray.AddModels(scene_params.object_models[0])[0];
+  auto object_index = parser_tray.AddModels(scene_params.object_models[1])[0];
   plant_tray.Finalize();
   auto tray_context = plant_tray.CreateDefaultContext();
 
   ///
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
-  Parser parser_plate(&plant_for_lcs);
-  parser_plate.SetAutoRenaming(true);
-  parser_plate.AddModels(controller_params.plate_model);
+  Parser lcs_parser(&plant_for_lcs);
+  lcs_parser.SetAutoRenaming(true);
+  lcs_parser.AddModels(scene_params.end_effector_lcs_model);
 
-  drake::multibody::ModelInstanceIndex left_support_index;
-  drake::multibody::ModelInstanceIndex right_support_index;
-  if (controller_params.scene_index > 0) {
-    left_support_index = parser_plate.AddModels(
-        FindResourceOrThrow(controller_params.left_support_model))[0];
-    right_support_index = parser_plate.AddModels(
-        FindResourceOrThrow(controller_params.right_support_model))[0];
-    RigidTransform<double> T_S1_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.left_support_orientation),
-                               controller_params.left_support_position);
-    RigidTransform<double> T_S2_W =
-        RigidTransform<double>(drake::math::RollPitchYaw<double>(controller_params.right_support_orientation),
-                               controller_params.right_support_position);
+  std::vector<drake::multibody::ModelInstanceIndex> environment_model_indices;
+  environment_model_indices.resize(scene_params.environment_models.size());
+  for (int i = 0; i < scene_params.environment_models.size(); ++i) {
+    environment_model_indices[i] = lcs_parser.AddModels(
+        FindResourceOrThrow(scene_params.environment_models[i]))[0];
+    RigidTransform<double> T_E_W =
+        RigidTransform<double>(drake::math::RollPitchYaw<double>(
+                                   scene_params.environment_orientations[i]),
+                               scene_params.environment_positions[i]);
     plant_for_lcs.WeldFrames(
         plant_for_lcs.world_frame(),
-        plant_for_lcs.GetFrameByName("support", left_support_index), T_S1_W);
-    plant_for_lcs.WeldFrames(
-        plant_for_lcs.world_frame(),
-        plant_for_lcs.GetFrameByName("support", right_support_index), T_S2_W);
+        plant_for_lcs.GetFrameByName("base", environment_model_indices[i]),
+        T_E_W);
   }
-  parser_plate.AddModels(controller_params.tray_model);
+  for (int i = 0; i < scene_params.object_models.size(); ++i) {
+    lcs_parser.AddModels(scene_params.object_models[i]);
+  }
 
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                            plant_for_lcs.GetFrameByName("base_link"), X_WI);
@@ -152,31 +154,30 @@ int DoMain(int argc, char* argv[]) {
   std::vector<drake::geometry::GeometryId> end_effector_contact_points =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("plate"));
-  if (controller_params.scene_index > 0) {
-    std::vector<drake::geometry::GeometryId> left_support_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("support", left_support_index));
-    std::vector<drake::geometry::GeometryId> right_support_contact_points =
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName("support", right_support_index));
-    end_effector_contact_points.insert(end_effector_contact_points.end(),
-                                       left_support_contact_points.begin(),
-                                       left_support_contact_points.end());
-    end_effector_contact_points.insert(end_effector_contact_points.end(),
-                                       right_support_contact_points.begin(),
-                                       right_support_contact_points.end());
+  for (int i = 0; i < environment_model_indices.size(); ++i) {
+    std::vector<drake::geometry::GeometryId>
+        environment_support_contact_points =
+            plant_for_lcs.GetCollisionGeometriesForBody(
+                plant_for_lcs.GetBodyByName("base",
+                                            environment_model_indices[i]));
+    end_effector_contact_points.insert(
+        end_effector_contact_points.end(),
+        environment_support_contact_points.begin(),
+        environment_support_contact_points.end());
   }
   std::vector<drake::geometry::GeometryId> tray_geoms =
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("tray"));
-  std::unordered_map<std::string, std::vector<drake::geometry::GeometryId>>
-      contact_geoms;
-  contact_geoms["PLATE"] = end_effector_contact_points;
-  contact_geoms["TRAY"] = tray_geoms;
+  std::vector<drake::geometry::GeometryId> object_geoms =
+      plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("base"));
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
-  for (auto geom_id : contact_geoms["PLATE"]) {
-    contact_pairs.emplace_back(geom_id, contact_geoms["TRAY"][0]);
+  for (auto geom_id : end_effector_contact_points) {
+    contact_pairs.emplace_back(geom_id, tray_geoms[0]);
+  }
+  for (auto geom_id : object_geoms) {
+    contact_pairs.emplace_back(tray_geoms[0], geom_id);
   }
 
   DiagramBuilder<double> builder;
@@ -184,14 +185,19 @@ int DoMain(int argc, char* argv[]) {
   auto tray_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, &lcm));
+  auto object_state_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.object_state_channel, &lcm));
   auto franka_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
   auto tray_state_receiver =
-      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray);
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray, tray_index);
+  auto object_state_receiver =
+      builder.AddSystem<systems::ObjectStateReceiver>(plant_tray, object_index);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_tray, tray_context.get(),
-          controller_params.end_effector_name, "tray",
+          scene_params.end_effector_name, "tray",
           controller_params.include_end_effector_orientation);
   auto actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -224,13 +230,16 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
   auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
 
-
   auto plate_balancing_target =
-      builder.AddSystem<systems::PlateBalancingTargetGenerator>(plant_tray, controller_params.end_effector_thickness, controller_params.near_target_threshold);
+      builder.AddSystem<systems::PlateBalancingTargetGenerator>(
+          plant_tray, scene_params.end_effector_thickness,
+          controller_params.near_target_threshold);
   plate_balancing_target->SetRemoteControlParameters(
-      controller_params.first_target[controller_params.scene_index], controller_params.second_target[controller_params.scene_index],
-      controller_params.third_target[controller_params.scene_index], controller_params.x_scale,
-      controller_params.y_scale, controller_params.z_scale);
+      controller_params.first_target[controller_params.scene_index],
+      controller_params.second_target[controller_params.scene_index],
+      controller_params.third_target[controller_params.scene_index],
+      controller_params.x_scale, controller_params.y_scale,
+      controller_params.z_scale);
   std::vector<int> input_sizes = {3, 7, 3, 6};
   auto target_state_mux =
       builder.AddSystem<drake::systems::Multiplexer>(input_sizes);
@@ -251,8 +260,8 @@ int DoMain(int argc, char* argv[]) {
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,
       *plate_context_ad, contact_pairs, c3_options);
-  auto controller = builder.AddSystem<systems::C3Controller>(
-      plant_for_lcs, c3_options);
+  auto controller =
+      builder.AddSystem<systems::C3Controller>(plant_for_lcs, c3_options);
   auto c3_trajectory_generator =
       builder.AddSystem<systems::C3TrajectoryGenerator>(plant_for_lcs,
                                                         c3_options);
@@ -319,7 +328,7 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_c3_controller"));
   plant_diagram->set_name(("franka_c3_plant"));
-//  DrawAndSaveDiagramGraph(*plant_diagram);
+  //  DrawAndSaveDiagramGraph(*plant_diagram);
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(

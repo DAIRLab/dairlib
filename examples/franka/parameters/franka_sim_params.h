@@ -33,7 +33,8 @@ struct FrankaSimParams {
   bool visualize_pose_trace;
   bool visualize_center_of_mass_plan;
   bool visualize_c3_forces;
-  bool visualize_c3_state;
+  bool visualize_c3_object_state;
+  bool visualize_c3_end_effector_state;
   bool visualize_workspace;
 
   template <typename Archive>
@@ -68,7 +69,8 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(visualize_pose_trace));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan));
     a->Visit(DRAKE_NVP(visualize_c3_forces));
-    a->Visit(DRAKE_NVP(visualize_c3_state));
+    a->Visit(DRAKE_NVP(visualize_c3_object_state));
+    a->Visit(DRAKE_NVP(visualize_c3_end_effector_state));
     a->Visit(DRAKE_NVP(visualize_workspace));
   }
 };

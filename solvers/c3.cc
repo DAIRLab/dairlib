@@ -130,9 +130,6 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     LinEq.block(0, n_, n_, m_) = D_.at(i);
     LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
 
-    //    prog_.AddLinearEqualityConstraint(
-    //        LinEq, -d_.at(i), {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i +
-    //        1)});
     dynamics_constraints_[i] =
         prog_
             .AddLinearEqualityConstraint(
@@ -140,7 +137,6 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
-    //    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
@@ -185,7 +181,7 @@ void C3::UpdateLCS(const LCS& lcs) {
 void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   x_desired_ = x_des;
   for (int i = 0; i < N_ + 1; i++) {
-    target_cost_[i]->UpdateCoefficients(Q_.at(i) * 2,
+    target_cost_[i]->UpdateCoefficients(2 * Q_.at(i),
                                         -2 * Q_.at(i) * x_desired_.at(i));
   }
 }

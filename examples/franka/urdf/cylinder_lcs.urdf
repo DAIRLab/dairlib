@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot name="box">
+    <link name="box">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.00025083" ixy="0" ixz="0" iyy="0.00025083" iyz="0" izz="0.0005"/>
+        </inertial>
+        <collision name="collision">
+            <origin rpy="0 0 0" xyz="0 0 0.0"/>
+            <geometry>
+              <cylinder radius="0.1" length="0.01"/>
+            </geometry>
+        </collision>
+        <collision name="middle_right">
+              <geometry>
+                <sphere radius="0.001"/>
+              </geometry>
+              <origin rpy="0 0 0" xyz="0.1 0.0 0.004"/>
+            </collision>
+          <collision name="top_left">
+            <geometry>
+              <sphere radius="0.001"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="-0.05 0.0866  0.004"/>
+          </collision>
+          <collision name="bottom_left">
+            <geometry>
+              <sphere radius="0.001"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="-0.05 -0.0866 0.004"/>
+          </collision>
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0.0"/>
+            <geometry>
+              <cylinder radius="0.1" length="0.01"/>
+            </geometry>
+        </visual>
+    </link>
+</robot>

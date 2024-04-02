@@ -9,7 +9,7 @@ osc_cmd: bazel-bin/examples/franka/franka_osc_controller
 c3_cmd: bazel-bin/examples/franka/franka_c3_controller
 fix_inertia_cmd: 'python3 -m pydrake.multibody.fix_inertia --in_place examples/franka/urdf/tray_parameter_sweep.sdf'
 
-nominal_c3_gain_filename: franka_c3_options_side_supports.yaml
+nominal_c3_gain_filename: franka_c3_options_rotated_supports.yaml
 #nominal_model_filename: tray.sdf
 nominal_model_filename: plate_end_effector.urdf
 

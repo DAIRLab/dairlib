@@ -237,9 +237,9 @@ int do_main(int argc, char* argv[]) {
                     end_effector_pose_drawer->get_input_port_trajectory());
   }
 
-  if (sim_params.visualize_c3_state) {
+  if (sim_params.visualize_c3_object_state || sim_params.visualize_c3_end_effector_state) {
     auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, false);
+        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, sim_params.visualize_c3_object_state, sim_params.visualize_c3_end_effector_state);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),

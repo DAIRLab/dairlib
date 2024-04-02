@@ -173,7 +173,7 @@ SwingFootTrajSolver::AdaptSwingFootTraj(
       Qacc(k,l) *= pow(knots.back(), k+l-3) - pow(knots.at(1), k+l-3);
     }
   }
-  Qacc += 0.05 * MatrixXd::Identity(kPolyDegXY, kPolyDegXY);
+  Qacc += 0.25 * MatrixXd::Identity(kPolyDegXY, kPolyDegXY);
 
   x_min_accel_cost->UpdateCoefficients(Qacc, VectorXd::Zero(kPolyDegXY), true);
   y_min_accel_cost->UpdateCoefficients(Qacc, VectorXd::Zero(kPolyDegXY), true);

@@ -68,6 +68,8 @@ AlipMPFCDiagram::AlipMPFCDiagram(
       plant_, plant_context_.get(), left_right_fsm_states,
       post_left_right_fsm_states, left_right_toe, gains_mpc);
 
+  foot_placement_controller->MakeDrivenByStandaloneSimulator(0.01);
+
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant_);
 
   builder.Connect(state_receiver->get_output_port(),
@@ -99,6 +101,10 @@ AlipMPFCDiagram::AlipMPFCDiagram(
   output_port_mpc_output_ = builder.ExportOutput(
       foot_placement_controller->get_output_port_mpc_output(),
       "lcmt_alip_mpc_output"
+  );
+  output_port_mpfc_debug_ = builder.ExportOutput(
+      foot_placement_controller->get_output_port_mpc_debug(),
+      "lcmt_alip_s2s_mpfc_debug"
   );
 
   // Create the diagram

@@ -28,6 +28,7 @@ struct SwingFootTrajectoryGeneratorParams {
   double desired_final_foot_height;
   double desired_final_vertical_foot_velocity;
   double retraction_dist = 0.07;
+  bool used_with_sim=false;
 };
 
 class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
@@ -64,6 +65,11 @@ class SwingFootTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex liftoff_swing_foot_pos_state_idx()
   const {
     return liftoff_swing_foot_pos_idx_;
+  }
+
+  void MakeDrivenByStandaloneSimulator() {
+    DeclarePerStepUnrestrictedUpdateEvent(
+        &SwingFootTrajectoryGenerator::UnrestrictedUpdate);
   }
 
  private:

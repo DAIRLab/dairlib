@@ -29,6 +29,13 @@ class Alips2sMPFCSystem : public drake::systems::LeafSystem<double> {
       std::vector<PointOnFramed> left_right_foot,
       const alip_s2s_mpfc_params& mpfc_params);
 
+  void MakeDrivenByStandaloneSimulator(double update_period) {
+    DeclareInitializationUnrestrictedUpdateEvent(
+        &Alips2sMPFCSystem::UnrestrictedUpdate);
+    DeclarePeriodicUnrestrictedUpdateEvent(
+        update_period, 0, &Alips2sMPFCSystem::UnrestrictedUpdate);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);
   }

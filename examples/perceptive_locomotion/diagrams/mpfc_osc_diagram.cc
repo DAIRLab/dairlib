@@ -215,6 +215,8 @@ MpfcOscDiagram::MpfcOscDiagram(
       gains.mid_foot_height,
       gains.final_foot_height,
       gains.final_foot_velocity_z,
+      0.0, // retraction dist is unused
+      true // make the swing foot generator driven by a standalone simulator
   };
 
   com_params = {

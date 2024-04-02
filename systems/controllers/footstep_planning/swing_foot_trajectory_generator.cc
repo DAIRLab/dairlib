@@ -110,6 +110,10 @@ SwingFootTrajectoryGenerator::SwingFootTrajectoryGenerator(
       {params.left_right_support_fsm_states.at(0), params.left_right_foot.at(1)});
   swing_foot_map_.insert(
       {params.left_right_support_fsm_states.at(1), params.left_right_foot.at(0)});
+
+  if (params.used_with_sim) {
+    MakeDrivenByStandaloneSimulator();
+  }
 }
 
 EventStatus SwingFootTrajectoryGenerator::UnrestrictedUpdate(
@@ -120,7 +124,7 @@ EventStatus SwingFootTrajectoryGenerator::UnrestrictedUpdate(
 
   // If we're in double support, no need to do anything
   if (not is_single_support(fsm_state)) {
-    auto pp_traj =
+    auto& pp_traj =
         state->get_mutable_abstract_state<PathParameterizedTrajectory<double>>(
             prev_spline_idx_);
     pp_traj = PathParameterizedTrajectory<double>(
@@ -184,12 +188,15 @@ EventStatus SwingFootTrajectoryGenerator::UnrestrictedUpdate(
     prev_time(0) = liftoff_time;
   }
 
+  prev_time(0) = std::min(prev_time(0), touchdown_time);
+
   prev_spline = foot_traj_solver_.AdaptSwingFootTraj(
       prev_spline, prev_time(0), liftoff_time, touchdown_time, mid_foot_height_,
       -desired_final_vertical_foot_velocity_, desired_final_foot_height_,
       swing_foot_pos_at_liftoff, footstep_target_in_stance_frame);
 
   // update prev_fsm_state, prev_time, and prev_spline
+  prev_time(0) = robot_output->get_timestamp();
   state->get_mutable_discrete_state(prev_fsm_state_idx_).set_value(prev_fsm_state);
   state->get_mutable_discrete_state(prev_time_idx_).set_value(prev_time);
   state->get_mutable_abstract_state<PathParameterizedTrajectory<double>>(

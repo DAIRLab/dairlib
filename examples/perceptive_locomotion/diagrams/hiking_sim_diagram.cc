@@ -51,11 +51,11 @@ HikingSimDiagram::HikingSimDiagram(
   // magic numbers:
   static constexpr double sim_dt = 5e-4;
   static constexpr double terrain_friction = 0.8;
-  static constexpr double actuator_delay = 6e-3;
-  static constexpr double actuator_update_period = 2e-3;
+  static constexpr double actuator_delay = 2e-3;
+  static constexpr double actuator_update_period = 1e-3;
 
   // other constants
-  auto contact_solver = drake::multibody::DiscreteContactSolver::kSap;
+  auto contact_approx = drake::multibody::DiscreteContactApproximation::kSimilar;
   const std::string renderer_name = "hiking_sim_renderer";
 
   DiagramBuilder<double> builder;
@@ -63,7 +63,7 @@ HikingSimDiagram::HikingSimDiagram(
   // Add the plant
   scene_graph_ = builder.AddSystem<SceneGraph<double>>();
   plant_ = builder.AddSystem<MultibodyPlant<double>>(sim_dt);
-  plant_->set_discrete_contact_solver(contact_solver);
+  plant_->set_discrete_contact_approximation(contact_approx);
 
   multibody::AddSteppingStonesToSim(
       plant_, scene_graph_, terrain, terrain_friction

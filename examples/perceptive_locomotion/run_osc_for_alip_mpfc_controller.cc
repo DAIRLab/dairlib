@@ -105,7 +105,7 @@ DEFINE_string(gains_filename,
               "Filepath containing gains");
 
 DEFINE_string(mpfc_gains_filename,
-              "examples/perceptive_locomotion/gains/alip_mpfc_gains.yaml",
+              "examples/perceptive_locomotion/gains/alip_s2s_mpfc_gains.yaml",
               "Filepath to alip mpfc gains");
 
 DEFINE_string(channel_mpc, "ALIP_MPC", "alip mpc output lcm channel");

@@ -52,6 +52,7 @@ class LcmLogSink::Impl {
         throw std::logic_error("Message write failure");
       }
     }
+    ::lcm_eventlog_destroy(log);
   }
 
   void FreeBuf() {

@@ -30,8 +30,7 @@ class MoveToInitial
 
   /// the output port send out y_des (tracking target of simplified model) to the Heuristic planning block
   /// y_d contain the object position, first 4 quaternion and position xyz
-  const drake::systems::OutputPort<double>&
-  get_output_port_target() const {
+  const drake::systems::OutputPort<double>& get_output_port_target() const {
     return this->get_output_port(target_port_);
   }
 
@@ -39,6 +38,11 @@ class MoveToInitial
                                const HeuristicGaitParams heuristic_param);
 
  private:
+
+  drake::systems::EventStatus UpdateFirstMessageTime(
+            const drake::systems::Context<double>& context,
+            drake::systems::State<double>* state) const;
+
   void CalcTarget(const drake::systems::Context<double>& context,
                   TimestampedVector<double>* output) const;
   std::vector<Eigen::Vector3d> move_to_initial_position(
@@ -56,8 +60,8 @@ class MoveToInitial
   drake::systems::InputPortIndex state_input_port_;
   drake::systems::OutputPortIndex target_port_;
 
-  mutable bool received_first_message_{false};
-  mutable double first_message_time_{-1.0};
+  int first_message_time_idx_;
+  int received_first_message_idx_;
 
   double stabilize_time1_;
   double move_time_;

@@ -40,11 +40,19 @@ class TargetGenerator
                                const BallRollingTrajectoryParams& traj_param);
 
  private:
+
+  drake::systems::EventStatus UpdateFirstMessageTime(
+            const drake::systems::Context<double>& context,
+            drake::systems::State<double>* state) const;
+
   void CalcTrackTarget(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* target) const;
 
   drake::systems::InputPortIndex plant_state_port_;
   drake::systems::OutputPortIndex target_port_;
+
+  int first_message_time_idx_;
+  int received_first_message_idx_;
 
   int trajectory_type_;
 

@@ -68,6 +68,11 @@ class HeuristicGenerator
                               const C3Options& c3_param);
 
  private:
+
+  drake::systems::EventStatus UpdateFirstMessageTime(
+            const drake::systems::Context<double>& context,
+            drake::systems::State<double>* state) const;
+
   void CalcHeuristicTarget(const drake::systems::Context<double>& context,
                            drake::systems::BasicVector<double>* target_state) const;
   void CalcHeuristicTilt(const drake::systems::Context<double>& context,
@@ -81,6 +86,9 @@ class HeuristicGenerator
   drake::systems::OutputPortIndex output_target_port_;
   drake::systems::OutputPortIndex orientation_port_;
   drake::systems::OutputPortIndex gain_port_;
+
+  int first_message_time_idx_;
+  int received_first_message_idx_;
 
   double roll_phase_;
   double return_phase_;

@@ -6,6 +6,8 @@ using dairlib::systems::OutputVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
+using drake::systems::State;
+using drake::systems::Context;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
@@ -50,6 +52,29 @@ HeuristicGenerator::HeuristicGenerator(
 
     // Set Trajectory Patameters
     SetHeuristicParameters(sim_param, heuristic_param, trajectory_param, c3_param);
+
+    first_message_time_idx_ = this->DeclareAbstractState(
+            drake::Value<double>(0));
+    received_first_message_idx_ = this->DeclareAbstractState(
+            drake::Value<bool>(false));
+
+    this->DeclarePerStepUnrestrictedUpdateEvent(
+            &HeuristicGenerator::UpdateFirstMessageTime);
+}
+
+EventStatus HeuristicGenerator::UpdateFirstMessageTime(const Context<double>& context,
+                                                  State<double>* state) const {
+    auto& received_first_message = state->get_mutable_abstract_state<bool>(received_first_message_idx_);
+    auto& first_message_time = state->get_mutable_abstract_state<double>(first_message_time_idx_);
+
+    if (!received_first_message){
+        auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
+        double timestamp = robot_output->get_timestamp();
+        received_first_message = true;
+        first_message_time = timestamp;
+        return EventStatus::Succeeded();
+    }
+    return EventStatus::Succeeded();
 }
 
 void HeuristicGenerator::SetHeuristicParameters( const SimulateFrankaParams& sim_param,
@@ -74,8 +99,8 @@ void HeuristicGenerator::SetHeuristicParameters( const SimulateFrankaParams& sim
 }
 
 void HeuristicGenerator::CalcHeuristicTarget(
-    const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* target) const {
+    const Context<double>& context,
+    BasicVector<double>* target) const {
 
   // Evaluate input port for plant state (object state) and object target
   auto lcs_plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
@@ -131,8 +156,8 @@ void HeuristicGenerator::CalcHeuristicTarget(
 
 
 void HeuristicGenerator::CalcHeuristicTilt(
-    const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* orientation_target) const {
+    const Context<double>& context,
+    BasicVector<double>* orientation_target) const {
 
     // Evaluate input port for plant state (object state) and object target
     auto lcs_plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
@@ -162,7 +187,7 @@ void HeuristicGenerator::CalcHeuristicTilt(
 }
 
 void HeuristicGenerator::CalcHeuristicGain(
-    const drake::systems::Context<double>& context,
+    const Context<double>& context,
     solvers::C3::CostMatrices* Cost_target) const {
 
     // Evaluate input port for plant state (object state) and object target

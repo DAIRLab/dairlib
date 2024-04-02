@@ -6,6 +6,8 @@ using dairlib::systems::OutputVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
+using drake::systems::Context;
+using drake::systems::State;
 using Eigen::VectorXd;
 
 namespace dairlib {
@@ -30,6 +32,29 @@ TargetGenerator::TargetGenerator(
 
     // Set Trajectory Patameters
     SetTrajectoryParameters(sim_param, traj_param);
+
+    first_message_time_idx_ = this->DeclareAbstractState(
+            drake::Value<double>(0));
+    received_first_message_idx_ = this->DeclareAbstractState(
+            drake::Value<bool>(false));
+
+    this->DeclarePerStepUnrestrictedUpdateEvent(
+            &TargetGenerator::UpdateFirstMessageTime);
+}
+
+EventStatus TargetGenerator::UpdateFirstMessageTime(const Context<double>& context,
+                                                  State<double>* state) const {
+    auto& received_first_message = state->get_mutable_abstract_state<bool>(received_first_message_idx_);
+    auto& first_message_time = state->get_mutable_abstract_state<double>(first_message_time_idx_);
+
+    if (!received_first_message){
+        auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
+        double timestamp = robot_output->get_timestamp();
+        received_first_message = true;
+        first_message_time = timestamp;
+        return EventStatus::Succeeded();
+    }
+    return EventStatus::Succeeded();
 }
 
 void TargetGenerator::SetTrajectoryParameters(const SimulateFrankaParams& sim_param,
@@ -64,8 +89,8 @@ void TargetGenerator::SetTrajectoryParameters(const SimulateFrankaParams& sim_pa
 }
 
 void TargetGenerator::CalcTrackTarget(
-    const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* target) const {
+    const Context<double>& context,
+    BasicVector<double>* target) const {
 
   // Evaluate input port for object state
   auto plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
@@ -73,6 +98,8 @@ void TargetGenerator::CalcTrackTarget(
   // Get ball position and timestamp
   VectorXd obj_curr_position = plant_state->GetPositions().tail(3);
   double timestamp = plant_state->get_timestamp();
+  auto first_message_time = context.get_abstract_state<double>(first_message_time_idx_);
+  double curr_time = timestamp - first_message_time;
 
   // Initialize target pose
   VectorXd target_obj_state = VectorXd::Zero(7);
@@ -81,7 +108,7 @@ void TargetGenerator::CalcTrackTarget(
   /// Different trajectory types
   if (trajectory_type_ == 0){
       //  0: time based circle trajectory, velocity_circle_ is angular velocity in degrees/s
-      double theta = PI * (timestamp * velocity_circle_ + initial_phase_) / 180;
+      double theta = PI * (curr_time * velocity_circle_ + initial_phase_) / 180;
       target_obj_position(0) = x_c_ + traj_radius_ * sin(theta);
       target_obj_position(1) = y_c_ + traj_radius_ * cos(theta);
       target_obj_position(2) = object_height_;
@@ -112,8 +139,8 @@ void TargetGenerator::CalcTrackTarget(
       else if ((end_y_ - start_y_) < 0) {
           sgn = -1;
       }
-      int period_count = int(floor((timestamp / period)));
-      double period_time = timestamp - period * period_count;
+      int period_count = int(floor((curr_time / period)));
+      double period_time = curr_time - period * period_count;
 
       // reverse the velocity sign every period then end to start
       if (period_count % 2 == 0){

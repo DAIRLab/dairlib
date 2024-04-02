@@ -6,6 +6,8 @@ using dairlib::systems::OutputVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::EventStatus;
+using drake::systems::Context;
+using drake::systems::State;
 using drake::math::RotationMatrix;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -34,6 +36,29 @@ MoveToInitial::MoveToInitial(
 
     // Set Trajectory Patameters
     SetParameters(sim_param, heuristic_param);
+
+    first_message_time_idx_ = this->DeclareAbstractState(
+            drake::Value<double>(0));
+    received_first_message_idx_ = this->DeclareAbstractState(
+            drake::Value<bool>(false));
+
+    this->DeclarePerStepUnrestrictedUpdateEvent(
+            &MoveToInitial::UpdateFirstMessageTime);
+}
+
+EventStatus MoveToInitial::UpdateFirstMessageTime(const Context<double>& context,
+                                                  State<double>* state) const {
+    auto& received_first_message = state->get_mutable_abstract_state<bool>(received_first_message_idx_);
+    auto& first_message_time = state->get_mutable_abstract_state<double>(first_message_time_idx_);
+
+    if (!received_first_message){
+        auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+        double timestamp = robot_output->get_timestamp();
+        received_first_message = true;
+        first_message_time = timestamp;
+        return EventStatus::Succeeded();
+    }
+    return EventStatus::Succeeded();
 }
 
 void MoveToInitial::SetParameters(const SimulateFrankaParams& sim_param,
@@ -54,18 +79,14 @@ void MoveToInitial::SetParameters(const SimulateFrankaParams& sim_param,
 }
 
 void MoveToInitial::CalcTarget(
-    const drake::systems::Context<double>& context,
+    const Context<double>& context,
     TimestampedVector<double>* output) const {
 
     auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
     double timestamp = robot_output->get_timestamp();
 
-    if (!received_first_message_){
-        received_first_message_ = true;
-        first_message_time_ = timestamp;
-    }
-
-    double curr_time = timestamp - first_message_time_;
+    auto first_message_time = context.get_abstract_state<double>(first_message_time_idx_);
+    double curr_time = timestamp - first_message_time;
 
     Vector3d start = initial_start_;
     Vector3d finish = initial_finish_;

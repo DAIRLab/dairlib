@@ -56,6 +56,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
 
  private:
   solvers::LCS CreatePlaceholderLCS() const;
+  solvers::C3::CostMatrices CreatePlaceholderCostMatrices() const;
 
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
@@ -73,6 +74,7 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_input_port_;
+  drake::systems::InputPortIndex cost_matrices_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
   drake::systems::OutputPortIndex solve_time_port_;

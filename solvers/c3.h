@@ -108,6 +108,8 @@ class C3 {
  public:
   void UpdateLCS(const LCS& lcs);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
+  void UpdateCostMatrices(const CostMatrices& cost_matrices);
+
 
  protected:
   std::vector<std::vector<Eigen::VectorXd>> warm_start_delta_;
@@ -130,10 +132,10 @@ class C3 {
   std::vector<Eigen::MatrixXd> F_;
   std::vector<Eigen::MatrixXd> H_;
   std::vector<Eigen::VectorXd> c_;
-  const std::vector<Eigen::MatrixXd> Q_;
-  const std::vector<Eigen::MatrixXd> R_;
-  const std::vector<Eigen::MatrixXd> U_;
-  const std::vector<Eigen::MatrixXd> G_;
+  std::vector<Eigen::MatrixXd> Q_;
+  std::vector<Eigen::MatrixXd> R_;
+  std::vector<Eigen::MatrixXd> U_;
+  std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
   const C3Options options_;
 

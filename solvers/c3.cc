@@ -190,6 +190,21 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
   }
 }
 
+void C3::UpdateCostMatrices(const dairlib::solvers::C3::CostMatrices &cost_matrices) {
+
+  Q_ = cost_matrices.Q;
+  R_ = cost_matrices.R;
+  G_ = cost_matrices.G;
+  U_ = cost_matrices.U;
+  for (int i = 0; i < N_ + 1; i++) {
+    target_cost_[i]->UpdateCoefficients(Q_.at(i) * 2,
+                                        -2 * Q_.at(i) * x_desired_.at(i));
+    if (i < N_) {
+        input_costs_[i]->UpdateCoefficients(2 * R_.at(i), VectorXd::Zero(k_));
+    }
+  }
+}
+
 void C3::Solve(const VectorXd& x0) {
   VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
   if (options_.delta_option == 1){

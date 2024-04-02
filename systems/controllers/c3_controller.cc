@@ -70,6 +70,7 @@ C3Controller::C3Controller(
   auto lcs_placeholder = CreatePlaceholderLCS();
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
+  auto cost_matrices_placeholder = CreatePlaceholderCostMatrices();
   if (c3_options_.projection_type == "MIQP") {
     c3_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                    C3::CostMatrices(Q_, R_, G_, U_),
@@ -114,9 +115,12 @@ C3Controller::C3Controller(
   lcs_input_port_ =
       this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder))
           .get_index();
-
   target_input_port_ =
-      this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
+      this->DeclareVectorInputPort("x_lcs_des", n_x_)
+          .get_index();
+  cost_matrices_input_port_ =
+      this->DeclareAbstractInputPort("c3_cost_matrices", drake::Value<C3::CostMatrices>(cost_matrices_placeholder))
+          .get_index();
 
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
@@ -136,7 +140,7 @@ C3Controller::C3Controller(
                                       &C3Controller::OutputC3Intermediates)
           .get_index();
 
-  c3_intermediates_port_ =
+  solve_time_port_ =
       this->DeclareVectorOutputPort("solve_time", BasicVector<double>(1),
                                             &C3Controller::OutputC3Solvetime)
           .get_index();
@@ -165,6 +169,14 @@ LCS C3Controller::CreatePlaceholderLCS() const {
   return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.dt);
 }
 
+C3::CostMatrices C3Controller::CreatePlaceholderCostMatrices() const {
+    std::vector<MatrixXd> Q(N_+1, MatrixXd::Zero(n_x_, n_x_));
+    std::vector<MatrixXd> R(N_, MatrixXd::Zero(n_u_, n_u_));
+    std::vector<MatrixXd> G(N_, MatrixXd::Zero(n_x_ + n_u_ + n_lambda_, n_x_ + n_u_ + n_lambda_));
+    std::vector<MatrixXd> U(N_, MatrixXd::Zero(n_x_ + n_u_ + n_lambda_, n_x_ + n_u_ + n_lambda_));
+    return C3::CostMatrices(Q, R, G, U);
+}
+
 drake::systems::EventStatus C3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
@@ -177,6 +189,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
+  auto& cost_matrices = this->EvalAbstractInput(context, cost_matrices_input_port_)
+          ->get_value<C3::CostMatrices>();
   auto& x_pred = context.get_discrete_state(x_pred_index_).value();
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
   auto mutable_solve_time =
@@ -217,6 +231,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   }
 
   c3_->UpdateLCS(lcs);
+  c3_->UpdateCostMatrices(cost_matrices);
   c3_->UpdateTarget(x_desired);
   c3_->Solve(x_lcs);
 

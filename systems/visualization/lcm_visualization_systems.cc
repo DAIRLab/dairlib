@@ -318,7 +318,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
       meshcat_->SetTransform(
           force_arrow_path,
           RigidTransformd(RotationMatrixd::MakeFromOneVector(force, 2)));
-      const double height = 2 * force_norm / newtons_per_meter_;
+      const double height = force_norm / newtons_per_meter_;
       meshcat_->SetProperty(force_arrow_path + "/cylinder", "position",
                             {0, 0, 0.5 * height});
       // Note: Meshcat does not fully support non-uniform scaling (see

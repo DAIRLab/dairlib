@@ -60,7 +60,7 @@ void TargetGenerator::SetTrajectoryParameters(const SimulateFrankaParams& sim_pa
   velocity_line_ = traj_param.velocity_line;
 
   /// object height should be fixed since it is on the table
-  object_height_ =  sim_param.ball_radius - sim_param.ground_offset_frame(2);
+  object_height_ =  sim_param.ball_radius + sim_param.ground_offset_frame(2);
 }
 
 void TargetGenerator::CalcTrackTarget(

@@ -18,6 +18,13 @@ tilt_degrees: 15 # tilt angle for end-effector
 q_new_vector: [1000000000, 1000000000, 1000000000, 0, 0, 0, 0, 0, 0, 5,
            10, 10, 10, 0, 0, 0, 0.1, 0.1, 0.1]
 
+# --------------------------  Move to Initial parameters  -----------------------------#
+initial_start: [0.55, 0, 0.12]
+initial_finish: [0, 0, 0.07]
+stabilize_time1: 0.5
+move_time: 0.75
+stabilize_time2: 0.75
+
 # --------------------------  Solve time filter parameters  -----------------------------#
 
 

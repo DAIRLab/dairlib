@@ -193,6 +193,24 @@ cc_library(
 )
 
 ## lcm controller and system library ##
+
+cc_binary(
+    name = "lcm_move_to_initial",
+    srcs = ["lcm_move_to_initial.cc"],
+    deps = [
+        "//systems:robot_lcm_systems",
+        "//systems/controllers",
+        "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//examples/franka_ball_rolling:simulate_franka_params",
+        "//examples/franka_ball_rolling:heuristic_gait_params",
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    data = ["@drake//manipulation/models/franka_description:models"]
+)
+
 cc_binary(
     name = "lcm_ball_rolling_planner",
     srcs = ["lcm_ball_rolling_planner.cc"],

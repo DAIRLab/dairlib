@@ -86,7 +86,7 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
         auto& prev_time = state->get_mutable_abstract_state<double>(
                 prev_time_idx_);
 
-        const auto& ball_position = input->get_value<dairlib::lcmt_ball_position>();
+//        const auto& ball_position = input->get_value<dairlib::lcmt_ball_position>();
         return EventStatus::Succeeded();
 }
 

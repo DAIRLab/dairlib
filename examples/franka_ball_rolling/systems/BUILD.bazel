@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "c3_ball_rolling_systems",
     srcs = [
+        "move_to_initial.cc",
         "track_target_generator.cc",
         "heuristic_generator.cc",
         "c3_ball_rolling_controller.cc",
@@ -14,6 +15,7 @@ cc_library(
         "robot_output_passthrough.cc"
     ],
     hdrs = [
+        "move_to_initial.h",
         "track_target_generator.h",
         "heuristic_generator.h",
         "c3_ball_rolling_controller.h",
@@ -33,6 +35,7 @@ cc_library(
         "//multibody/kinematic:kinematic",
         "//solvers:lcs",
         "//solvers:c3",
+        "//solvers:c3_output",
         "//examples/franka_ball_rolling:trajectory_params",
         "//examples/franka_ball_rolling:heuristic_gait_params",
         "//examples/franka_ball_rolling:c3_parameters",

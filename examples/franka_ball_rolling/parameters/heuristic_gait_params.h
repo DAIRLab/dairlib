@@ -12,6 +12,12 @@ struct HeuristicGaitParams {
   double tilt_degrees;
   VectorXd q_new_vector;
 
+  VectorXd initial_start;
+  VectorXd initial_finish;
+  double stabilize_time1;
+  double move_time;
+  double stabilize_time2;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(roll_phase));
@@ -20,5 +26,11 @@ struct HeuristicGaitParams {
     a->Visit(DRAKE_NVP(axis_option));
     a->Visit(DRAKE_NVP(tilt_degrees));
     a->Visit(DRAKE_NVP(q_new_vector));
+
+    a->Visit(DRAKE_NVP(initial_start));
+    a->Visit(DRAKE_NVP(initial_finish));
+    a->Visit(DRAKE_NVP(stabilize_time1));
+    a->Visit(DRAKE_NVP(move_time));
+    a->Visit(DRAKE_NVP(stabilize_time2));
   }
 };

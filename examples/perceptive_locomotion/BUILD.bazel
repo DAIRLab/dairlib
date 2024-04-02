@@ -260,3 +260,19 @@ cc_binary(
         "@gflags",
     ],
 )
+
+
+cc_binary(
+    name = "standalone_experiment_sim",
+    srcs = ["standalone_experiment_sim.cc"],
+    deps = [
+        "//examples/perceptive_locomotion/diagrams:alip_mpfc_diagram",
+        "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
+        "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
+        "//examples/Cassie:cassie_fixed_point_solver",
+        "//examples/Cassie:cassie_utils",
+        "//lcm:lcm_log_sink",
+        "//systems:plant_visualizer",
+        "//systems/perception:grid_map_visualizer",
+    ],
+)

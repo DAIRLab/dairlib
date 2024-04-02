@@ -72,6 +72,8 @@ ControlRefineSender::ControlRefineSender(
 
     prev_time_idx_ = this->DeclareAbstractState(
             drake::Value<double>(0));
+    dt_idx_ = this->DeclareAbstractState(
+            drake::Value<double>(0));
     dt_history_idx_ = this->DeclareAbstractState(
             drake::Value<std::deque<double>>());
 }
@@ -85,8 +87,37 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
                 dt_history_idx_);
         auto& prev_time = state->get_mutable_abstract_state<double>(
                 prev_time_idx_);
+        auto& dt = state->get_mutable_abstract_state<double>(
+                dt_idx_);
 
-//        const auto& ball_position = input->get_value<dairlib::lcmt_ball_position>();
+        const TimestampedVector<double>* lcs_x =
+                (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                                  lcs_state_port_);
+        const auto& c3_solution =
+                this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
+
+        double timestamp = lcs_x->get_timestamp();
+
+        if (dt_history.empty()) {
+            prev_time = timestamp;
+            dt = c3_options_.solve_dt;
+            dt_history.push_back(dt);
+            return EventStatus::Succeeded();
+        }
+        else if (dt_history.size() < dt_filter_length_){
+            dt_history.push_back(timestamp - prev_time);
+        }
+        else {
+            dt_history.pop_front();
+            dt_history.push_back(timestamp - prev_time);
+        }
+        prev_time = timestamp;
+        double dt_accumulation = 0;
+        for (int i = 0; i < (int) dt_history.size(); i++){
+            dt_accumulation += dt_history[i];
+        }
+        dt = dt_accumulation / dt_history.size();
+
         return EventStatus::Succeeded();
 }
 
@@ -117,9 +148,10 @@ void ControlRefineSender::CalcTrackTarget(
         throw std::runtime_error("unknown or unsupported contact model");
     }
 
+    double relinearize_dt = context.get_discrete_state(dt_idx_).value()[0];
     auto system_scaling_pair = LCSFactory::LinearizePlantToLCS(
             plant_, context_, plant_ad_, context_ad_, contact_pairs_,
-            c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+            c3_options_.num_friction_directions, c3_options_.mu, relinearize_dt,
             c3_options_.N, contact_model);
 
     LCS lcs_system = system_scaling_pair.first;
@@ -128,13 +160,13 @@ void ControlRefineSender::CalcTrackTarget(
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd state = q_v_u.head(n_x_);
     VectorXd force;
-    VectorXd input = c3_solution->u_sol_.col(0).cast <double> ();
+    VectorXd input = c3_solution->u_sol_.col(0).cast<double>();
 
-    auto flag = LCPSolver.SolveLcpLemkeRegularized(lcs_system.F_[0], lcs_system.E_[0] * scaling * state + lcs_system.c_[0] * scaling + lcs_system.H_[0] * scaling * input,
+    auto flag = LCPSolver.SolveLcpLemkeRegularized(lcs_system.F_[0],
+                                                   lcs_system.E_[0] * scaling * state + lcs_system.c_[0] * scaling + lcs_system.H_[0] * scaling * input,
                                                    &force);
 
     VectorXd state_next = lcs_system.A_[0] * state + lcs_system.B_[0] * input + lcs_system.D_[0] * force / scaling + lcs_system.d_[0];
-
 }
 }  // namespace systems
 }  // namespace dairlib

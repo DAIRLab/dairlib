@@ -30,8 +30,8 @@ u_vertical_limits: [-100, 100]
 mu: [1, 1]
 # dt is the planned LCS dt
 dt: 0.1
-# solv_dt is the realizerized LCS dt
-solve_dt: 0.05
+# solv_dt is the initialized re-linearized LCS dt
+solve_dt: 0.015
 num_friction_directions: 2
 num_contacts: 2
 N: 5

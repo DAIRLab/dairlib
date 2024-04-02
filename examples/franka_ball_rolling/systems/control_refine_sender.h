@@ -89,8 +89,10 @@ class ControlRefineSender
 
   // solve_time_filter
   int dt_history_idx_;
-  const int dt_filter_length_ = 10;
+  const int dt_filter_length_{10};
   int  prev_time_idx_;
+  int  dt_idx_;
+
 };
 
 }  // namespace systems

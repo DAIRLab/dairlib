@@ -136,6 +136,11 @@ C3Controller::C3Controller(
                                       &C3Controller::OutputC3Intermediates)
           .get_index();
 
+  c3_intermediates_port_ =
+      this->DeclareVectorOutputPort("solve_time", BasicVector<double>(1),
+                                            &C3Controller::OutputC3Solvetime)
+          .get_index();
+
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_index_ = DeclareDiscreteState(n_x_);
   filtered_solve_time_index_ = DeclareDiscreteState(1);
@@ -273,5 +278,11 @@ void C3Controller::OutputC3Intermediates(
   }
 }
 
+void C3Controller::OutputC3Solvetime(const drake::systems::Context<double> &context,
+                                     drake::systems::BasicVector<double> *solve_time) const {
+    VectorXd filtered_solve_time = VectorXd::Zero(1);
+    filtered_solve_time << context.get_discrete_state(filtered_solve_time_index_)[0];
+    solve_time->SetFromVector(filtered_solve_time);
+}
 }  // namespace systems
 }  // namespace dairlib

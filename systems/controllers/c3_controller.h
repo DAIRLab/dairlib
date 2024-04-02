@@ -67,11 +67,15 @@ class C3Controller : public drake::systems::LeafSystem<double> {
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
                              C3Output::C3Intermediates* c3_intermediates) const;
 
+  void OutputC3Solvetime(const drake::systems::Context<double>& context,
+                         drake::systems::BasicVector<double>* solve_time) const;
+
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
+  drake::systems::OutputPortIndex solve_time_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
 

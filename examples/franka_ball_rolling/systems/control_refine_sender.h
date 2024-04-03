@@ -5,6 +5,7 @@
 #include "solvers/c3_output.h"
 #include <drake/common/yaml/yaml_io.h>
 #include "systems/framework/output_vector.h"
+#include "systems/framework/timestamped_vector.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
@@ -44,6 +45,10 @@ class ControlRefineSender
       return this->get_input_port(lcs_state_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_ee_orientation() const {
+      return this->get_input_port(ee_orientation_port_);
+  }
+
   /// the first output port send out desired state of the impedance controller to track
   const drake::systems::OutputPort<double>&
   get_output_port_target() const {
@@ -58,7 +63,10 @@ class ControlRefineSender
 
  private:
   void CalcTrackTarget(const drake::systems::Context<double>& context,
-                       drake::systems::BasicVector<double>* target) const;
+                       TimestampedVector<double>* target) const;
+
+  void CalcFeedForwardTorque(const drake::systems::Context<double>& context,
+                         drake::systems::BasicVector<double>* torque) const;
 
   // update discrete states to get the filtered approximate solve time
   drake::systems::EventStatus UpdateSolveTimeHistory(const drake::systems::Context<double>& context,
@@ -66,6 +74,7 @@ class ControlRefineSender
 
   drake::systems::InputPortIndex c3_solution_port_;
   drake::systems::InputPortIndex lcs_state_port_;
+  drake::systems::InputPortIndex ee_orientation_port_;
 
 
   drake::systems::OutputPortIndex target_port_;
@@ -86,6 +95,11 @@ class ControlRefineSender
   int n_lambda_;
   int n_u_;
   int N_;
+
+  // do all the calculation in event status to avoid code duplication
+  int x_next_idx_;
+  int force_idx_;
+  int contact_jacobian_idx;
 
   // solve_time_filter
   int dt_history_idx_;

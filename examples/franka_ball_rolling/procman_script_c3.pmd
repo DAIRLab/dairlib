@@ -48,8 +48,8 @@ group "3.[SIM] Valgrind Debug Clean_Up_Test" {
 }
 
 group "4.[SIM] New Blocks Test" {
-    cmd "a.[SIM] C3" {
-        exec = "valgrind --leak-check=yes bazel-bin/examples/franka_ball_rolling/lcm_ball_rolling_planner --TTL 0";
+    cmd "a.[SIM] c3 ball rolling planner" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_c3_ball_rolling_cleanup --TTL 0";
         host = "localhost";
     }
     cmd "b.[SIM] move to initial" {
@@ -70,14 +70,38 @@ group "4.[SIM] New Blocks Test" {
     }
 }
 
-group "5. lcm spy" {
+group "5.[SIM] New Blocks Test Valgrind" {
+    cmd "a.[SIM] c3 ball rolling planner" {
+        exec = "valgrind --leak-check=yes bazel-bin/examples/franka_ball_rolling/lcm_c3_ball_rolling_cleanup --TTL 0";
+        host = "localhost";
+    }
+    cmd "b.[SIM] move to initial" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_move_to_initial --TTL 0";
+        host = "localhost";
+    }
+    cmd "c.[SIM] franka" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_simulate_franka_cleanup";
+        host = "localhost";
+    }
+    cmd "d.[SIM] impedance controller" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_impedance_controller_cleanup";
+        host = "localhost";
+    }
+    cmd "e.[SIM]run_state_estimator" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator_cleanup";
+        host = "localhost";
+    }
+}
+
+
+group "6. lcm spy" {
     cmd "a.[SIM] C3" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
 }
 
-group "6.Logging, Utils" {
+group "7.Logging, Utils" {
     cmd "a.start_logging" {
         exec = "bazel-bin/examples/franka_trajectory_following/scripts/start_logging";
         host = "localhost";

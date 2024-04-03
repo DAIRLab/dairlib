@@ -165,6 +165,7 @@ int DoMain(int argc, char* argv[]){
   /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();
+  diagram->set_name(("Diagram_Impedance_Controller"));
   DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_impedance_controller");
 
   auto context_d = diagram->CreateDefaultContext();

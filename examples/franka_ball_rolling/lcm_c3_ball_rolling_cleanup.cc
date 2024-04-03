@@ -21,7 +21,16 @@
 #include "examples/franka_ball_rolling/parameters/heuristic_gait_params.h"
 #include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
+#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
+
 #include "solvers/c3_options.h"
+
+#include "examples/franka_ball_rolling/systems/franka_kinematics.h"
+#include "examples/franka_ball_rolling/systems/track_target_generator.h"
+#include "examples/franka_ball_rolling/systems/heuristic_generator.h"
+#include "examples/franka_ball_rolling/systems/c3_state_sender.h"
+
+
 
 #include "systems/controllers/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -40,6 +49,8 @@ using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Context;
+using drake::systems::TriggerType;
+using drake::systems::TriggerTypeSet;
 using drake::multibody::Parser;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
@@ -58,6 +69,10 @@ int DoMain(int argc, char* argv[]){
           "examples/franka_ball_rolling/parameters/trajectory_params.yaml");
   HeuristicGaitParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicGaitParams>(
             "examples/franka_ball_rolling/parameters/heuristic_gait_params.yaml");
+  C3StateEstimatorParams estimation_param = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
+  C3Options c3_param = drake::yaml::LoadYamlFile<C3Options>(
+          "examples/franka_ball_rolling/parameters/c3_options_ball_rolling.yaml");
 
 
   /* -------------------------------- Setup LCM --------------------------------------------*/
@@ -95,7 +110,7 @@ int DoMain(int argc, char* argv[]){
   auto ball_context = plant_ball.CreateDefaultContext();
 
   DiagramBuilder<double> builder;
-  /* ----------------------- Subscriber and Sender for forward kinematics --------------------------*/
+  /* ----------------------------- State Subscriber/Receiver --------------------------------*/
   auto ball_state_sub =
             builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
                     "BALL_STATE_ESTIMATE_NEW", &lcm));
@@ -103,11 +118,98 @@ int DoMain(int argc, char* argv[]){
             builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
   auto ball_state_receiver =
             builder.AddSystem<systems::ObjectStateReceiver>(plant_ball);
+  // franka_state receiver and subsription is declared in lcm driven loop
+  builder.Connect(ball_state_sub->get_output_port(),
+                    ball_state_receiver->get_input_port());
 
+  /* -------------------------Simplified Model/Forward Kinematics Block --------------------------------*/
+  // TODO: think which yaml should put include_end_effector (now hardcoded false)
+  auto simplified_model_receiver =
+            builder.AddSystem<systems::FrankaKinematics>(
+                    plant_franka, franka_context.get(), plant_ball, ball_context.get(),
+                    "end_effector_tip", "sphere",
+                    false, sim_param, false);
 
+  /* ----------------------- State Receiver to Forward Kinematics port connection --------------------------*/
+  builder.Connect(franka_state_receiver->get_output_port(),
+                  simplified_model_receiver->get_input_port_franka_state());
+  builder.Connect(ball_state_receiver->get_output_port(),
+                  simplified_model_receiver->get_input_port_object_state());
+
+  /* ------------- Create LCS plant (for Target Generator, Heuristic Generator and C3 Controller ---------------*/
+  DiagramBuilder<double> builder_lcs;
+  auto [plant_lcs, scene_graph] = AddMultibodyPlantSceneGraph(&builder_lcs, 0.0);
+  Parser parser_lcs(&plant_lcs);
+  // TODO: create a high level planning parameter yaml file to save the simplified model urdf path
+  // (maybe can integrate with HeuristicGaitParameters)
+  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_simple.urdf");
+  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
+  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
+  RigidTransform<double> X_WI_lcs = RigidTransform<double>::Identity();
+  RigidTransform<double> X_F_G_lcs = RigidTransform<double>(sim_param.ground_offset_frame);
+
+  plant_lcs.WeldFrames(plant_lcs.world_frame(), plant_lcs.GetFrameByName("base_link"), X_WI_lcs);
+  plant_lcs.WeldFrames(plant_lcs.world_frame(), plant_lcs.GetFrameByName("ground"), X_F_G_lcs);
+  plant_lcs.Finalize();
+
+  std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_ad_lcs =
+    drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
+  auto diagram_lcs = builder_lcs.Build();
+  std::unique_ptr<Context<double>> diagram_context_lcs = diagram_lcs->CreateDefaultContext();
+  auto& context_lcs = diagram_lcs->GetMutableSubsystemContext(plant_lcs, diagram_context_lcs.get());
+  auto context_ad_lcs = plant_ad_lcs->CreateDefaultContext();
+
+  drake::geometry::GeometryId end_effector_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName("end_effector_simple"))[0];
+  drake::geometry::GeometryId ball_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName("sphere"))[0];
+  drake::geometry::GeometryId ground_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName("ground"))[0];
+  std::vector<drake::geometry::GeometryId> contact_geoms =
+    {end_effector_geoms, ball_geoms, ground_geoms};
+
+  /* --------------------------------- Target and Heuristic Generator Blocks  -----------------------------------------*/
+  auto target_generator =
+          builder.AddSystem<systems::TargetGenerator>(plant_lcs, sim_param, traj_param);
+  auto heuristic_generator =
+            builder.AddSystem<systems::HeuristicGenerator>(plant_lcs, sim_param, heuristic_param,
+                                                           traj_param, c3_param);
+
+  /* ----------------------- Generators and Forward Kinematics port connection --------------------------*/
+  builder.Connect(simplified_model_receiver->get_output_port_lcs_state(),
+                  target_generator->get_input_port_state());
+  builder.Connect(simplified_model_receiver->get_output_port_lcs_state(),
+                  heuristic_generator->get_input_port_state());
+  builder.Connect(target_generator->get_output_port_target(),
+                    heuristic_generator->get_input_port_target());
+
+  /* ----------------------- Visualization and Publish of LCS state actual and target  --------------------------*/
+  std::vector<std::string> state_names = {
+            "end_effector_x",  "end_effector_y", "end_effector_z",  "ball_qw",
+            "ball_qx",         "ball_qy",        "ball_qz",         "ball_x",
+            "ball_y",          "ball_z",         "end_effector_vx", "end_effector_vy",
+            "end_effector_vz", "ball_wx",        "ball_wy",         "ball_wz",
+            "ball_vz",         "ball_vz",        "ball_vz",
+  };
+  auto c3_state_sender =
+            builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
+  auto c3_actual_state_publisher =
+            builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+                    "LCS_STATE", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(simplified_model_receiver->get_output_port_lcs_state(),
+                    c3_state_sender->get_input_port_actual_state());
+  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
+                    c3_actual_state_publisher->get_input_port());
+
+  /* ----------------------- Visualization and Publish of LCS state actual and target  --------------------------*/
+  auto diagram = builder.Build();
+  diagram->set_name(("Diagram_C3_Ball_Rolling_Planner"));
+  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_c3_ball_rolling");
   /* -------------------------------------------------------------------------------------------*/
-//  loop.Simulate(std::numeric_limits<double>::infinity());
-
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
+            &lcm, std::move(diagram), franka_state_receiver,
+            "FRANKA_STATE_ESTIMATE_NEW", true);
+  loop.Simulate(std::numeric_limits<double>::infinity());
   return 0;
 }
 

@@ -139,13 +139,14 @@ int DoMain(int argc, char* argv[]) {
 
 
   /* ------------------------------- build diagram ------------------------------------------------*/
-  auto sys = builder.Build();
-  auto sys_context = sys->CreateDefaultContext();
-  dairlib::DrawAndSaveDiagramGraph(*sys, "examples/franka_ball_rolling/diagram_lcm_state_estimator");
+  auto diagram = builder.Build();
+  diagram->set_name(("Diagram_State_Estimation"));
+  auto diagram_context = diagram->CreateDefaultContext();
+  dairlib::DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_state_estimator");
 
   dairlib::systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(sys), passthrough,
-      "FRANKA_OUTPUT", true);
+          &drake_lcm, std::move(diagram), passthrough,
+          "FRANKA_OUTPUT", true);
   
   loop.Simulate(std::numeric_limits<double>::infinity());
 

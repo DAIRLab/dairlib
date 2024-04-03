@@ -176,7 +176,7 @@ int DoMain() {
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
-  simulator.set_target_realtime_rate(1.0);
+//  simulator.set_target_realtime_rate(1.0);
 //  simulator.Initialize();
   simulator.AdvanceTo(10.0);
 

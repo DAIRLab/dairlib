@@ -61,7 +61,7 @@ def main():
     latching_switch_x = 0
     latching_switch_y = 1
     print("Teleop Status: " + str(latching_switch_a))
-    print("End Effector Follow Status: " + str(latching_switch_b))
+    print("Move Target with Remote: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
     while not done:
         # DRAWING STEP
@@ -79,7 +79,7 @@ def main():
                     print("Teleop Status: " + str(latching_switch_a))
                 if event.button == 1:
                     latching_switch_b = not latching_switch_b
-                    print("End Effector Follow Status: " + str(latching_switch_b))
+                    print("Move Target with Remote: " + str(latching_switch_b))
                 if event.button == 2:
                     latching_switch_x = not latching_switch_x
                     print("Force Tracking Status: " + str(not latching_switch_x))

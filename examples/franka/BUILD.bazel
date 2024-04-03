@@ -37,10 +37,12 @@ cc_binary(
     deps = [
         ":parameters",
         "//common",
+        "//examples/franka/systems:franka_systems",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

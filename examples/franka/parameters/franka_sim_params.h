@@ -30,6 +30,8 @@ struct FrankaSimParams {
   std::vector<Eigen::VectorXd> world_y_limits;
   std::vector<Eigen::VectorXd> world_z_limits;
 
+  std::vector<double> external_force_scaling;
+
   bool visualize_pose_trace;
   bool visualize_center_of_mass_plan;
   bool visualize_c3_forces;
@@ -65,6 +67,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(world_x_limits));
     a->Visit(DRAKE_NVP(world_y_limits));
     a->Visit(DRAKE_NVP(world_z_limits));
+    a->Visit(DRAKE_NVP(external_force_scaling));
 
     a->Visit(DRAKE_NVP(visualize_pose_trace));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan));

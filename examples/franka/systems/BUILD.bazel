@@ -9,8 +9,22 @@ cc_library(
         ":end_effector_force_trajectory",
         ":end_effector_orientation",
         ":end_effector_trajectory",
+        ":external_force_generator",
         ":franka_kinematics",
         ":plate_balancing_target",
+    ],
+)
+
+cc_library(
+    name = "external_force_generator",
+    srcs = ["external_force_generator.cc"],
+    hdrs = ["external_force_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
     ],
 )
 

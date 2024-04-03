@@ -2,12 +2,14 @@
 
 #include <vector>
 
+#include <dairlib/lcmt_radio_out.hpp>
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/meshcat_visualizer.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/parsing/parser.h>
+#include <drake/multibody/plant/externally_applied_spatial_force.h>
 #include <drake/systems/analysis/simulator.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
@@ -22,7 +24,9 @@
 #include "examples/franka/parameters/franka_lcm_channels.h"
 #include "examples/franka/parameters/franka_sim_params.h"
 #include "examples/franka/parameters/franka_sim_scene_params.h"
+#include "examples/franka/systems/external_force_generator.h"
 #include "multibody/multibody_utils.h"
+#include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 
 namespace dairlib {
@@ -110,25 +114,24 @@ int DoMain(int argc, char* argv[]) {
         RigidTransform<double>(drake::math::RollPitchYaw<double>(
                                    scene_params.environment_orientations[i]),
                                scene_params.environment_positions[i]);
-    plant.WeldFrames(
-        plant.world_frame(),
-        plant.GetFrameByName("base", environment_model_indices[i]),
-        T_E_W);
-    support_geom_set.Add(plant.GetCollisionGeometriesForBody(plant.GetBodyByName("base",
-                                                                                 environment_model_indices[i])));
+    plant.WeldFrames(plant.world_frame(),
+                     plant.GetFrameByName("base", environment_model_indices[i]),
+                     T_E_W);
+    support_geom_set.Add(plant.GetCollisionGeometriesForBody(
+        plant.GetBodyByName("base", environment_model_indices[i])));
   }
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
       {"supports", support_geom_set}, {"franka", franka_geom_set});
 
   const drake::geometry::GeometrySet& franka_only_geom_set =
       plant.CollectRegisteredGeometries({
-                                            &plant.GetBodyByName("panda_link2"),
-                                            &plant.GetBodyByName("panda_link3"),
-                                            &plant.GetBodyByName("panda_link4"),
-                                            &plant.GetBodyByName("panda_link5"),
-                                            &plant.GetBodyByName("panda_link6"),
-                                            &plant.GetBodyByName("panda_link8"),
-                                        });
+          &plant.GetBodyByName("panda_link2"),
+          &plant.GetBodyByName("panda_link3"),
+          &plant.GetBodyByName("panda_link4"),
+          &plant.GetBodyByName("panda_link5"),
+          &plant.GetBodyByName("panda_link6"),
+          &plant.GetBodyByName("panda_link8"),
+      });
   auto tray_collision_set = GeometrySet(
       plant.GetCollisionGeometriesForBody(plant.GetBodyByName("tray")));
   plant.ExcludeCollisionGeometriesWithCollisionFilterGroupPair(
@@ -166,6 +169,22 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(object_state_sender->get_output_port(),
                   object_state_pub->get_input_port());
 
+  auto external_force_generator = builder.AddSystem<ExternalForceGenerator>(
+      plant.GetBodyByName("tray").index());
+  external_force_generator->SetRemoteControlParameters(
+      sim_params.external_force_scaling[0],
+      sim_params.external_force_scaling[1],
+      sim_params.external_force_scaling[2]);
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          lcm_channel_params.radio_channel, &drake_lcm));
+  auto radio_to_vector = builder.AddSystem<systems::RadioToVector>();
+  builder.Connect(*radio_sub, *radio_to_vector);
+  builder.Connect(radio_to_vector->get_output_port(),
+                  external_force_generator->get_input_port_radio());
+  builder.Connect(external_force_generator->get_output_port_spatial_force(),
+                  plant.get_applied_spatial_force_input_port());
+
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
 
@@ -188,7 +207,8 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
-  q.segment(plant.num_positions(franka_index), plant.num_positions(tray_index)) =
+  q.segment(plant.num_positions(franka_index),
+            plant.num_positions(tray_index)) =
       sim_params.q_init_plate[sim_params.scene_index];
   q.tail(plant.num_positions(object_index)) =
       sim_params.q_init_object[sim_params.scene_index];

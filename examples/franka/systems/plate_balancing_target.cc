@@ -154,9 +154,11 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
              context.get_discrete_state(sequence_index_)[0] == 3) {
     tray_position = third_target_;
   }
-  tray_position(0) += radio_out->value()[0] * x_scale_;
-  tray_position(1) += radio_out->value()[1] * y_scale_;
-  tray_position(2) += radio_out->value()[2] * z_scale_;
+  if (radio_out->value()[13] > 0) {
+    tray_position(0) += radio_out->value()[0] * x_scale_;
+    tray_position(1) += radio_out->value()[1] * y_scale_;
+    tray_position(2) += radio_out->value()[2] * z_scale_;
+  }
   //  tray_position(0) = 0.55;
   //  tray_position(1) = 0.1 * sin(4 * context.get_time());
   //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());

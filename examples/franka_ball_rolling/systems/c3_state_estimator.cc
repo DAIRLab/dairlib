@@ -74,7 +74,7 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
       &C3StateEstimator::EstimateFrankaState).get_index();
   ball_state_output_port_ = this->DeclareVectorOutputPort(
       "x_object",
-      StateVector<double>(num_ball_positions_, num_ball_velocities_),
+      BasicVector<double>(num_ball_positions_ + num_ball_velocities_),
       &C3StateEstimator::EstimateObjectState).get_index();
 }
 
@@ -206,13 +206,13 @@ void C3StateEstimator::EstimateFrankaState(const drake::systems::Context<double>
   for (int i = 0; i < num_franka_velocities_; i++){
     velocities(i) = franka_output.velocity[i];
   }
-  VectorXd value = VectorXd::Zero(num_franka_positions_ + num_franka_velocities_);
-  value << positions, velocities;
-  output->SetFromVector(value);
+  VectorXd franka_state = VectorXd::Zero(num_franka_positions_ + num_franka_velocities_);
+  franka_state << positions, velocities;
+  output->SetFromVector(franka_state);
 }
 
 void C3StateEstimator::EstimateObjectState(const drake::systems::Context<double>& context,
-                  StateVector<double>* output) const {
+                  BasicVector<double>* output) const {
 
   /// parse inputs
   const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
@@ -227,14 +227,10 @@ void C3StateEstimator::EstimateObjectState(const drake::systems::Context<double>
 
   /// generate output
   // NOTE: vector sizes are hard coded for C3 experiments
-  VectorXd positions = VectorXd::Zero(num_ball_positions_);
-  positions.tail(num_ball_positions_) << ball_orientation, ball_position;
+  VectorXd ball_state = VectorXd::Zero(num_ball_positions_ + num_ball_velocities_);
+  ball_state << ball_orientation, ball_position, angular_velocity, ball_velocity;
 
-  VectorXd velocities = VectorXd::Zero(num_ball_velocities_);
-  velocities.tail(num_ball_velocities_) << angular_velocity, ball_velocity;
-
-  output->SetPositions(positions);
-  output->SetVelocities(velocities);
+  output->SetFromVector(ball_state);
 }
 
 void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& context,

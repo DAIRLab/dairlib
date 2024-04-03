@@ -6,16 +6,19 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include <drake/lcm/drake_lcm.h>
-
-#include "examples/franka_ball_rolling/systems/c3_state_estimator.h"
-#include "examples/franka_ball_rolling/systems/robot_output_passthrough.h"
-#include "systems/robot_lcm_systems.h"
 #include <drake/multibody/tree/multibody_element.h>
 #include <drake/multibody/parsing/parser.h>
 
-#include "systems/framework/lcm_driven_loop.h"
-#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
 #include "dairlib/lcmt_robot_output.hpp"
+
+#include "examples/franka_ball_rolling/systems/c3_state_estimator.h"
+#include "examples/franka_ball_rolling/systems/robot_output_passthrough.h"
+
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+
+#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
 
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -29,6 +32,8 @@ using drake::math::RigidTransform;
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  /* -------------------------------------------------------------------------------------------*/
   C3StateEstimatorParams state_estimator_param = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
           "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
 
@@ -37,11 +42,11 @@ int DoMain(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
-  parser.AddModelFromFile(state_estimator_param.franka_model);
-  parser.AddModelFromFile(state_estimator_param.offset_model);
-  parser.AddModelFromFile(state_estimator_param.ground_model);
-  parser.AddModelFromFile(state_estimator_param.end_effector_model);
-  parser.AddModelFromFile(state_estimator_param.ball_model);
+  parser.AddModels(state_estimator_param.franka_model);
+  parser.AddModels(state_estimator_param.offset_model);
+  parser.AddModels(state_estimator_param.ground_model);
+  parser.AddModels(state_estimator_param.end_effector_model);
+  parser.AddModels(state_estimator_param.ball_model);
 
 
   /// Fix base of finger to world
@@ -60,7 +65,8 @@ int DoMain(int argc, char* argv[]) {
   /// subscribe to franka state
   auto passthrough = 
     builder.AddSystem<dairlib::systems::RobotOutputPassthrough>(plant);
-  
+
+  /* -------------------------------------------------------------------------------------------*/
   /// state estimation block
   std::vector<double> p_FIR_values = state_estimator_param.p_FIR_value;
   std::vector<double> v_FIR_values = state_estimator_param.v_FIR_value;
@@ -82,6 +88,7 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm* pub_lcm;
   pub_lcm = &drake_lcm;
 
+  /* ------------------------------- old sender publisher block------------------------------------------------*/
   auto sender = builder.AddSystem<dairlib::systems::RobotOutputSender>(plant, true);
   auto robot_output_pub = builder.AddSystem(
     LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
@@ -91,12 +98,50 @@ int DoMain(int argc, char* argv[]) {
     sender->get_input_port(0));
   builder.Connect(state_estimator->get_output_port(1), 
     sender->get_input_port(1));
-  builder.Connect(*sender, *robot_output_pub);  
+  builder.Connect(*sender, *robot_output_pub);
+
+  /* ------------------------------- new sender publisher block------------------------------------------------*/
+  // new sender and publisher, in the end will replace the above block
+  // plant_franka is the plant that only loads franka
+  // TODO: in the future, use a single plant and model index to simplify all these
+  MultibodyPlant<double> plant_franka(0.0);
+  Parser parser_franka(&plant_franka);
+  parser_franka.AddModels(state_estimator_param.franka_model);
+  plant_franka.WeldFrames(plant_franka.world_frame(), plant_franka.GetFrameByName("panda_link0"), X_WI);
+  plant_franka.Finalize();
+
+  auto sender_franka = builder.AddSystem<dairlib::systems::RobotOutputSender>(plant_franka, true);
+  auto franka_output_pub = builder.AddSystem(
+    LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+      "FRANKA_STATE_ESTIMATE_NEW", pub_lcm,
+      {drake::systems::TriggerType::kForced}));
+  // hard code port index for now
+  builder.Connect(state_estimator->get_output_port(2),
+                  sender_franka->get_input_port(0));
+  builder.Connect(state_estimator->get_output_port(1),
+                  sender_franka->get_input_port(1));
+  builder.Connect(*sender_franka, *franka_output_pub);
+
+  MultibodyPlant<double> plant_object(0.0);
+  Parser parser_object(&plant_object);
+  drake::multibody::ModelInstanceIndex object_index =
+          parser_object.AddModels(state_estimator_param.ball_model)[0];
+  plant_object.Finalize();
+  auto sender_object = builder.AddSystem<dairlib::systems::ObjectStateSender>(plant_object, object_index);
+  auto object_state_pub = builder.AddSystem(
+            LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+                    "BALL_STATE_ESTIMATE_NEW", pub_lcm,
+                    {drake::systems::TriggerType::kForced}));
+  // hard code port index for now
+  builder.Connect(state_estimator->get_output_port(3),
+                  sender_object->get_input_port(0));
+  builder.Connect(*sender_object, *object_state_pub);
 
 
+  /* ------------------------------- build diagram ------------------------------------------------*/
   auto sys = builder.Build();
   auto sys_context = sys->CreateDefaultContext();
-  // dairlib::DrawAndSaveDiagramGraph(*sys, "examples/franka_ball_rolling/diagram_run_state_estimator");
+  dairlib::DrawAndSaveDiagramGraph(*sys, "examples/franka_ball_rolling/diagram_lcm_state_estimator");
 
   dairlib::systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &drake_lcm, std::move(sys), passthrough,

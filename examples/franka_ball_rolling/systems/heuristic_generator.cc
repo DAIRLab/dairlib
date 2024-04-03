@@ -8,8 +8,11 @@ using drake::systems::BasicVector;
 using drake::systems::EventStatus;
 using drake::systems::State;
 using drake::systems::Context;
+using drake::math::RotationMatrix;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::Quaterniond;
+using Eigen::AngleAxis;
 
 namespace dairlib {
 namespace systems {
@@ -42,7 +45,7 @@ HeuristicGenerator::HeuristicGenerator(
     // OUTPUT PORTS 2: send out heuristic end-effector tilt
     orientation_port_ =
             this->DeclareVectorOutputPort(
-                    "orientation_target", BasicVector<double>(3),
+                    "orientation_target", BasicVector<double>(4),
                     &HeuristicGenerator::CalcHeuristicTilt)
                     .get_index();
 
@@ -183,7 +186,13 @@ void HeuristicGenerator::CalcHeuristicTilt(
         std::cerr << ("Unknown axis option") << std::endl;
         DRAKE_THROW_UNLESS(false);
     }
-    orientation_target->SetFromVector(axis);
+
+    AngleAxis<double> angle_axis(PI * tilt_degrees_ / 180.0, axis);
+    RotationMatrix<double> rot(angle_axis);
+    Quaterniond default_orientation(0, 1, 0, 0);
+    RotationMatrix<double> default_orientation_Matrix(default_orientation);
+    VectorXd orientation_d = (rot * default_orientation_Matrix).ToQuaternionAsVector4();
+    orientation_target->SetFromVector(orientation_d);
 }
 
 void HeuristicGenerator::CalcHeuristicGain(

@@ -45,10 +45,6 @@ group "3.[SIM] Valgrind Debug Clean_Up_Test" {
         exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator";
         host = "localhost";
     }
-    cmd "e.[SIM] sim visualizer" {
-        exec = "bazel-bin/examples/franka_ball_rolling/visualizer --channel=FRANKA_OUTPUT";
-        host = "localhost";
-    }
 }
 
 group "4.[SIM] New Blocks Test" {
@@ -61,19 +57,15 @@ group "4.[SIM] New Blocks Test" {
         host = "localhost";
     }
     cmd "c.[SIM] franka" {
-        exec = "bazel-bin/examples/franka_ball_rolling/lcm_simulate_franka";
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_simulate_franka_cleanup";
         host = "localhost";
     }
     cmd "d.[SIM] impedance controller" {
-        exec = "bazel-bin/examples/franka_ball_rolling/lcm_impedance_controller";
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_impedance_controller_cleanup";
         host = "localhost";
     }
     cmd "e.[SIM]run_state_estimator" {
-        exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator";
-        host = "localhost";
-    }
-    cmd "f.[SIM] sim visualizer" {
-        exec = "bazel-bin/examples/franka_ball_rolling/visualizer --channel=FRANKA_OUTPUT";
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator_cleanup";
         host = "localhost";
     }
 }

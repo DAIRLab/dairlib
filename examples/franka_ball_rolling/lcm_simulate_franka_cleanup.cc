@@ -11,30 +11,27 @@
 #include <drake/systems/analysis/simulator.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
-#include <drake/systems/lcm/lcm_publisher_system.h>
-#include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <drake/systems/primitives/vector_log_sink.h>
 #include <drake/visualization/visualization_config_functions.h>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
+
+#include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 
 namespace dairlib {
 
+using drake::math::RigidTransform;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
-using drake::multibody::AddMultibodyPlantSceneGraph;
-using drake::math::RigidTransform;
-using drake::systems::DiagramBuilder;
-using drake::systems::lcm::LcmPublisherSystem;
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::Context;
 using drake::multibody::Parser;
-using drake::trajectories::PiecewisePolynomial;
+using drake::multibody::AddMultibodyPlantSceneGraph;
+using drake::systems::DiagramBuilder;
+using drake::systems::Context;
 using drake::systems::VectorLogSink;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
@@ -45,11 +42,12 @@ using Eigen::Vector3d;
 using Eigen::MatrixXd;
 
 int DoMain(int argc, char* argv[]){
+  /* -------------------------------------------------------------------------------------------*/
   // load parameters
   SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<SimulateFrankaParams>(
     "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
 
-  // set simulation step and publish time rates
+  // set plant, simulation step and publish time rates
   DiagramBuilder<double> builder;
   double sim_dt = sim_param.sim_dt;
   double publish_dt = sim_param.publish_dt;
@@ -57,13 +55,11 @@ int DoMain(int argc, char* argv[]){
 
   // load urdf models
   Parser parser(&plant);
-  drake::multibody::ModelInstanceIndex franka_index =
-            parser.AddModels(sim_param.franka_model)[0];
-//  parser.AddModelFromFile(sim_param.franka_model);
-  parser.AddModelFromFile(sim_param.offset_model);
-  parser.AddModelFromFile(sim_param.ground_model);
-  parser.AddModelFromFile(sim_param.end_effector_model);
-  parser.AddModelFromFile(sim_param.ball_model);
+  parser.AddModelFromFile(sim_param.franka_model);
+  parser.AddModels(sim_param.offset_model);
+  parser.AddModels(sim_param.ground_model);
+  parser.AddModels(sim_param.end_effector_model);
+  parser.AddModels(sim_param.ball_model);
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);
@@ -74,16 +70,12 @@ int DoMain(int argc, char* argv[]){
   plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("visual_table_offset"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("ground"), X_F_G);
 
-
   plant.Finalize();
-  
-  /* -------------------------------------------------------------------------------------------*/
 
+  /* -------------------------------------------------------------------------------------------*/
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
 
-
-//  auto default_index =  drake::multibody::ModelInstanceIndex(1);
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
           &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
           1 / publish_dt, true, 0.0);
@@ -115,7 +107,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(mux->get_output_port(0), logger->get_input_port(0));
 
   auto diagram = builder.Build();
-  // DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_simulate_franka_lcm");
+  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_simulate_franka");
 
   drake::systems::Simulator<double> simulator(*diagram);
   
@@ -129,7 +121,8 @@ int DoMain(int argc, char* argv[]){
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
-  // initialize EE close to {0.5, 0, 0.12}[m] in task space
+  // TODO:: find a more elegant way to assign these, possibly using model indices
+  // initialize franka configurations
   q[q_map["panda_joint1"]] = sim_param.q_init_franka(0);
   q[q_map["panda_joint2"]] = sim_param.q_init_franka(1);
   q[q_map["panda_joint3"]] = sim_param.q_init_franka(2);
@@ -138,7 +131,7 @@ int DoMain(int argc, char* argv[]){
   q[q_map["panda_joint6"]] = sim_param.q_init_franka(5);
   q[q_map["panda_joint7"]] = sim_param.q_init_franka(6);
 
-  // initialize ball
+  // initialize ball positions
   double traj_radius = sim_param.traj_radius;
   q[q_map["sphere_qw"]] = sim_param.q_init_ball(0);
   q[q_map["sphere_qx"]] = sim_param.q_init_ball(1);

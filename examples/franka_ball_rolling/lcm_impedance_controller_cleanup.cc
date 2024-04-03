@@ -2,33 +2,27 @@
 #include <math.h>
 #include <gflags/gflags.h>
 
+#include <drake/math/rigid_transform.h>
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include <drake/lcm/drake_lcm.h>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/common/trajectories/piecewise_polynomial.h>
-#include <drake/math/rigid_transform.h>
-#include "drake/systems/primitives/trajectory_source.h"
 
-
-#include "systems/robot_lcm_systems.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_c3.hpp"
+
 #include "multibody/multibody_utils.h"
+
+#include "systems/robot_lcm_systems.h"
+#include "systems/framework/lcm_driven_loop.h"
+#include "systems/controllers/impedance_controller.h"
+#include "systems/system_utils.h"
 
 #include "examples/franka_ball_rolling/parameters/impedance_controller_params.h"
 #include "examples/franka_ball_rolling/systems/gravity_compensator.h"
-#include "systems/controllers/impedance_controller.h"
-#include "systems/framework/lcm_driven_loop.h"
-#include "systems/system_utils.h"
 
-
-DEFINE_string(channel, "FRANKA_OUTPUT",
-              "LCM channel for receiving state. "
-              "Use FRANKA_OUTPUT to get state from simulator, and "
-              "use FRANKA_ROS_OUTPUT to get state from from franka_ros");
 
 namespace dairlib {
 
@@ -41,7 +35,6 @@ using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::Context;
 using drake::multibody::Parser;
-using drake::trajectories::PiecewisePolynomial;
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -49,18 +42,20 @@ using Eigen::MatrixXd;
 int DoMain(int argc, char* argv[]){
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  /* -------------------------------------------------------------------------------------------*/
   ImpedanceControllerParams impedance_param = drake::yaml::LoadYamlFile<ImpedanceControllerParams>(
     "examples/franka_ball_rolling/parameters/impedance_controller_params.yaml");
 
+  /// TODO: in the end should remove ball related stuff since impedance controller is only franka related
   drake::lcm::DrakeLcm drake_lcm;
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
-  parser.AddModelFromFile(impedance_param.franka_model);
-  parser.AddModelFromFile(impedance_param.offset_model);
-  parser.AddModelFromFile(impedance_param.ground_model);
-  parser.AddModelFromFile(impedance_param.end_effector_model);
-  parser.AddModelFromFile(impedance_param.ball_model);
+  parser.AddModels(impedance_param.franka_model);
+  parser.AddModels(impedance_param.offset_model);
+  parser.AddModels(impedance_param.ground_model);
+  parser.AddModels(impedance_param.end_effector_model);
+  parser.AddModels(impedance_param.ball_model);
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -81,6 +76,7 @@ int DoMain(int argc, char* argv[]){
   // all for the geometry and contact information needed for feedforward force_feedback in the
   // impedance controller, it's update in impedance controller should be synchronized with the
   // general plant!
+  /// TODO: in the end should remove this and send the feedforward contact torque from upper level commands
 
   DiagramBuilder<double> builder_contact;
   auto [plant_contact, scene_graph] = AddMultibodyPlantSceneGraph(&builder_contact, 0.0);
@@ -110,6 +106,7 @@ int DoMain(int argc, char* argv[]){
   MatrixXd translational_damping = impedance_param.translational_damping.asDiagonal();
   MatrixXd rotational_damping = impedance_param.rotational_damping.asDiagonal();
 
+  /// TODO: should remove the hard coded dimension in the future, possibly using model indices
   MatrixXd K = MatrixXd::Zero(6,6);
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness;
@@ -138,6 +135,8 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
   /// get trajectory info from c3
+  /// TODO: in the end should make the interface easier and not hard code dimension and port index
+  /// TODO: make gravity compensation an option in the impedance controller, not a seperate system
   auto c3_subscriber = builder.AddSystem(
     LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
       "CONTROLLER_INPUT", &drake_lcm));
@@ -152,34 +151,31 @@ int DoMain(int argc, char* argv[]){
 
   builder.Connect(state_receiver->get_output_port(0), 
     controller->get_input_port(0));
-  
-  if (FLAGS_channel == "FRANKA_OUTPUT"){
-    auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
-    builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
-    builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
 
-    auto control_publisher = builder.AddSystem(
+  auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+  builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
+  builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
+
+  auto control_publisher = builder.AddSystem(
         LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           "FRANKA_INPUT", &drake_lcm, 
           {drake::systems::TriggerType::kForced}, 0.0));
-    builder.Connect(control_sender->get_output_port(),
+  builder.Connect(control_sender->get_output_port(),
         control_publisher->get_input_port());
-  }
   /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();
-//  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/lcm_impedance_controller");
-//  DrawAndSaveDiagramGraph(*diagram_contact, "examples/franka_ball_rolling/lcm_impedance_controller_contact");
-
+  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_impedance_controller");
 
   auto context_d = diagram->CreateDefaultContext();
   auto& receiver_context = diagram->GetMutableSubsystemContext(*state_receiver, context_d.get());
   (void) receiver_context; // suppressed unused variable warning
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &drake_lcm, std::move(diagram), state_receiver, FLAGS_channel, true);
+      &drake_lcm, std::move(diagram), state_receiver, "FRANKA_OUTPUT", true);
   
   /// initialize message
+  /// TODO: in the end should find a more elegant way to do this, align with CONTROLLER_INPUT settings
   std::vector<double> msg_data(38, 0);
   msg_data[0] = impedance_param.initial_start(0);
   msg_data[1] = impedance_param.initial_start(1);

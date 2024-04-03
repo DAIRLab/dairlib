@@ -67,7 +67,7 @@ class C3StateEstimator : public LeafSystem<double> {
   void EstimateFrankaState(const drake::systems::Context<double>& context,
                        BasicVector<double>* output) const;
   void EstimateObjectState(const drake::systems::Context<double>& context,
-                       StateVector<double>* output) const;
+                           BasicVector<double>* output) const;
   void OutputEfforts(const drake::systems::Context<double>& context,
                     BasicVector<double>* output) const;
   drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis, double theta) const;

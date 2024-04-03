@@ -3,7 +3,7 @@ end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 tray_model: examples/franka/urdf/tray_lcs.sdf # rigid contact model does not do sticking well
 object_model: examples/franka/urdf/cylinder_object.urdf
 franka_publish_rate: 1000
-tray_publish_rate: 100
+tray_publish_rate: 1000
 object_publish_rate: 1000
 visualizer_publish_rate: 30
 actuator_delay: 0.000

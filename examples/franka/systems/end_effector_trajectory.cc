@@ -59,9 +59,11 @@ void EndEffectorTrajectoryGenerator::CalcTraj(
   if (radio_out->value()[14]) {
     PiecewisePolynomial<double> result;
     VectorXd y_0 = neutral_pose_;
-    y_0(0) += radio_out->value()[0] * x_scale_;
-    y_0(1) += radio_out->value()[1] * y_scale_;
-    y_0(2) += radio_out->value()[2] * z_scale_;
+    if (radio_out->value()[10]){
+      y_0(0) += radio_out->value()[0] * x_scale_;
+      y_0(1) += radio_out->value()[1] * y_scale_;
+      y_0(2) += radio_out->value()[2] * z_scale_;
+    }
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;
   } else {

@@ -59,10 +59,13 @@ def main():
     latching_switch_a = 1
     latching_switch_b = 1
     latching_switch_x = 0
-    latching_switch_y = 1
+    latching_switch_y = 0
+    latching_switch_rt = 1 # right trigger
     print("Teleop Status: " + str(latching_switch_a))
-    print("Move Target with Remote: " + str(latching_switch_b))
+    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
     print("Force Tracking Status: " + str(not latching_switch_x))
+    print("Spatial Force on Object Status: " + str(not latching_switch_y))
+    print("Set OSC Target with Remote Status: " + str(not latching_switch_rt))
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
@@ -79,13 +82,16 @@ def main():
                     print("Teleop Status: " + str(latching_switch_a))
                 if event.button == 1:
                     latching_switch_b = not latching_switch_b
-                    print("Move Target with Remote: " + str(latching_switch_b))
+                    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
                 if event.button == 2:
                     latching_switch_x = not latching_switch_x
                     print("Force Tracking Status: " + str(not latching_switch_x))
                 if event.button == 3:
                     latching_switch_y = not latching_switch_y
-                    print("Ready to Reset Status: " + str(latching_switch_y))
+                    print("Spatial Force on Object Status: " + str(latching_switch_y))
+                if event.button == 5:
+                    latching_switch_rt = not latching_switch_rt
+                    print("Set OSC Target with Remote Status: " + str(latching_switch_rt))
 
 
         # Send LCM message
@@ -102,6 +108,7 @@ def main():
         radio_msg.channel[14] = latching_switch_a
         radio_msg.channel[11] = latching_switch_x
         radio_msg.channel[12] = latching_switch_y
+        radio_msg.channel[10] = latching_switch_rt
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 

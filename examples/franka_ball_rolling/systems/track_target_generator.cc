@@ -40,6 +40,10 @@ TargetGenerator::TargetGenerator(
 
     this->DeclarePerStepUnrestrictedUpdateEvent(
             &TargetGenerator::UpdateFirstMessageTime);
+
+    n_q = lcs_plant.num_positions();
+    n_v = lcs_plant.num_velocities();
+    n_x = n_q + n_v;
 }
 
 EventStatus TargetGenerator::UpdateFirstMessageTime(const Context<double>& context,
@@ -48,8 +52,8 @@ EventStatus TargetGenerator::UpdateFirstMessageTime(const Context<double>& conte
     auto& first_message_time = state->get_mutable_abstract_state<double>(first_message_time_idx_);
 
     if (!received_first_message){
-        auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
-        double timestamp = robot_output->get_timestamp();
+        auto plant_state = (TimestampedVector<double>*)this->EvalVectorInput(context, plant_state_port_);
+        double timestamp = plant_state->get_timestamp();
         received_first_message = true;
         first_message_time = timestamp;
         return EventStatus::Succeeded();
@@ -93,13 +97,16 @@ void TargetGenerator::CalcTrackTarget(
     BasicVector<double>* target) const {
 
   // Evaluate input port for object state
-  auto plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
+  auto plant_state = (TimestampedVector<double>*)this->EvalVectorInput(context, plant_state_port_);
 
-  // Get ball position and timestamp
-  VectorXd obj_curr_position = plant_state->GetPositions().tail(3);
+  // Get timestamp
+  VectorXd lcs_state = plant_state->get_data();
   double timestamp = plant_state->get_timestamp();
   auto first_message_time = context.get_abstract_state<double>(first_message_time_idx_);
   double curr_time = timestamp - first_message_time;
+
+  // Get ball position
+  VectorXd obj_curr_position = lcs_state.head(n_q).tail(3);
 
   // Initialize target pose
   VectorXd target_obj_state = VectorXd::Zero(7);

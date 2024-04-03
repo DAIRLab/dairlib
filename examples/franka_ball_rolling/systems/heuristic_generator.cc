@@ -42,15 +42,16 @@ HeuristicGenerator::HeuristicGenerator(
                     &HeuristicGenerator::CalcHeuristicTarget)
                     .get_index();
 
-    // OUTPUT PORTS 2: send out heuristic end-effector tilt
-    orientation_port_ =
-            this->DeclareVectorOutputPort(
-                    "orientation_target", BasicVector<double>(4),
-                    &HeuristicGenerator::CalcHeuristicTilt)
+    // OUTPUT PORTS 2: send out c3_controller cost
+    cost_matrices_port_ =
+            this->DeclareAbstractOutputPort("cost_matrices", &HeuristicGenerator::CalcHeuristicCostMatrices)
                     .get_index();
 
-    gain_port_ =
-            this->DeclareAbstractOutputPort("gain_target",&HeuristicGenerator::CalcHeuristicGain)
+    // OUTPUT PORTS 3: send out heuristic end-effector tilt
+    orientation_port_ =
+            this->DeclareVectorOutputPort(
+                            "orientation_target", BasicVector<double>(4),
+                            &HeuristicGenerator::CalcHeuristicTilt)
                     .get_index();
 
     // Set Trajectory Patameters
@@ -63,6 +64,10 @@ HeuristicGenerator::HeuristicGenerator(
 
     this->DeclarePerStepUnrestrictedUpdateEvent(
             &HeuristicGenerator::UpdateFirstMessageTime);
+
+    n_q = lcs_plant.num_positions();
+    n_v = lcs_plant.num_velocities();
+    n_x = n_q + n_v;
 }
 
 EventStatus HeuristicGenerator::UpdateFirstMessageTime(const Context<double>& context,
@@ -106,27 +111,28 @@ void HeuristicGenerator::CalcHeuristicTarget(
     BasicVector<double>* target) const {
 
   // Evaluate input port for plant state (object state) and object target
-  auto lcs_plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
+  auto plant_state = (TimestampedVector<double>*)this->EvalVectorInput(context, plant_state_port_);
   auto object_target = (BasicVector<double>*)this->EvalVectorInput(context, input_target_port_);
 
-  double timestamp = lcs_plant_state->get_timestamp();
-  VectorXd object_cur_position = lcs_plant_state->GetPositions().tail(3);
+  double timestamp = plant_state->get_timestamp();
+  VectorXd lcs_state = plant_state->get_data();
+  VectorXd object_cur_position = lcs_state.head(n_q).tail(3);
   VectorXd object_des_position = object_target->value().tail(3);
   VectorXd object_position_error = object_des_position - object_cur_position;
   VectorXd error_normed = object_position_error / object_position_error.norm();
 
   // compute rolling phase and period time (i.e. time in a single period)
-  double shifted_time = timestamp - settling_time_ -  return_phase_;
+  double curr_time = timestamp - context.get_abstract_state<double>(first_message_time_idx_);
+  double shifted_time = curr_time  -  return_phase_;
   if (shifted_time < 0) shifted_time += rolling_period_;
   double time_in_period = shifted_time - rolling_period_ * floor((shifted_time / rolling_period_));
   double back_dist = gait_parameters_(1);
 
   // assigning heuristic determined end-effector position
   VectorXd ee_des_position = VectorXd::Zero(3);
-  VectorXd ee_cur_position = lcs_plant_state->GetPositions().head(3);
+  VectorXd ee_cur_position = lcs_state.head(n_q).head(3);
 
-
-    // rolling phase
+  // rolling phase
   if ( time_in_period < roll_phase_ ) {
       ee_des_position[0] = object_cur_position[0];
       ee_des_position[1] = object_cur_position[1];
@@ -151,8 +157,8 @@ void HeuristicGenerator::CalcHeuristicTarget(
       ee_des_position[2] = gait_parameters_[4] + table_offset_;
   }
 
-  VectorXd velocity_des = VectorXd::Zero(lcs_plant_state->GetVelocities().size());
-  VectorXd target_lcs_state = VectorXd::Zero(lcs_plant_state->GetPositions().size() + lcs_plant_state->GetVelocities().size());
+  VectorXd velocity_des = VectorXd::Zero(n_v);
+  VectorXd target_lcs_state = VectorXd::Zero(n_x);
   target_lcs_state << ee_des_position, 1, 0, 0, 0, object_des_position, velocity_des;
   target->SetFromVector(target_lcs_state);
 }
@@ -163,10 +169,11 @@ void HeuristicGenerator::CalcHeuristicTilt(
     BasicVector<double>* orientation_target) const {
 
     // Evaluate input port for plant state (object state) and object target
-    auto lcs_plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
+    auto plant_state = (TimestampedVector<double>*)this->EvalVectorInput(context, plant_state_port_);
     auto object_target = (BasicVector<double>*)this->EvalVectorInput(context, input_target_port_);
 
-    VectorXd object_cur_position = lcs_plant_state->GetPositions().tail(3);
+    VectorXd lcs_state = plant_state->get_data();
+    VectorXd object_cur_position = lcs_state.head(n_q).tail(3);
     VectorXd object_des_position = object_target->value().tail(3);
     VectorXd object_position_error = object_des_position - object_cur_position;
     VectorXd error_normed = object_position_error / object_position_error.norm();
@@ -195,18 +202,18 @@ void HeuristicGenerator::CalcHeuristicTilt(
     orientation_target->SetFromVector(orientation_d);
 }
 
-void HeuristicGenerator::CalcHeuristicGain(
-    const Context<double>& context,
-    solvers::C3::CostMatrices* Cost_target) const {
+void HeuristicGenerator::CalcHeuristicCostMatrices(
+        const drake::systems::Context<double> &context,
+        solvers::C3::CostMatrices* Cost_matrices) const {
 
     // Evaluate input port for plant state (object state) and object target
-    auto lcs_plant_state = (OutputVector<double>*)this->EvalVectorInput(context, plant_state_port_);
-    auto object_target = (BasicVector<double>*)this->EvalVectorInput(context, input_target_port_);
+    auto lcs_plant_state = (TimestampedVector<double>*)this->EvalVectorInput(context, plant_state_port_);
 
     double timestamp = lcs_plant_state->get_timestamp();
+    double curr_time = timestamp - context.get_abstract_state<double>(first_message_time_idx_);
 
     // compute rolling phase and period time (i.e. time in a single period)
-    double shifted_time = timestamp - settling_time_ -  return_phase_;
+    double shifted_time = curr_time  -  return_phase_;
     if (shifted_time < 0) shifted_time += rolling_period_;
     double time_in_period = shifted_time - rolling_period_ * floor((shifted_time / rolling_period_));
 
@@ -225,7 +232,7 @@ void HeuristicGenerator::CalcHeuristicGain(
     std::vector<MatrixXd> U_c3(c3_param_.N, U);
 
     solvers::C3::CostMatrices Cost(Q_c3, R_c3, G_c3, U_c3);
-    *Cost_target = Cost;
+    *Cost_matrices = Cost;
 }
 
 }  // namespace systems

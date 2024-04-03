@@ -54,6 +54,11 @@ class TargetGenerator
   int first_message_time_idx_;
   int received_first_message_idx_;
 
+  /// necessary dimensions
+  int n_q;
+  int n_v;
+  int n_x;
+
   int trajectory_type_;
 
   /// circle trajectory parameters (general)

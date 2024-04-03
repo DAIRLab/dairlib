@@ -30,9 +30,8 @@
 #include "examples/franka_ball_rolling/systems/heuristic_generator.h"
 #include "examples/franka_ball_rolling/systems/c3_state_sender.h"
 
-
-
 #include "systems/controllers/c3_controller.h"
+#include "systems/controllers/c3/lcs_factory_system.h"
 #include "systems/framework/lcm_driven_loop.h"
 
 DEFINE_int32(TTL, 0,
@@ -45,6 +44,8 @@ using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::math::RigidTransform;
+using drake::SortedPair;
+using drake::geometry::GeometryId;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -124,7 +125,7 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------Simplified Model/Forward Kinematics Block --------------------------------*/
   // TODO: think which yaml should put include_end_effector (now hardcoded false)
-  auto simplified_model_receiver =
+  auto simplified_model_generator =
             builder.AddSystem<systems::FrankaKinematics>(
                     plant_franka, franka_context.get(), plant_ball, ball_context.get(),
                     "end_effector_tip", "sphere",
@@ -132,9 +133,9 @@ int DoMain(int argc, char* argv[]){
 
   /* ----------------------- State Receiver to Forward Kinematics port connection --------------------------*/
   builder.Connect(franka_state_receiver->get_output_port(),
-                  simplified_model_receiver->get_input_port_franka_state());
+                  simplified_model_generator->get_input_port_franka_state());
   builder.Connect(ball_state_receiver->get_output_port(),
-                  simplified_model_receiver->get_input_port_object_state());
+                  simplified_model_generator->get_input_port_object_state());
 
   /* ------------- Create LCS plant (for Target Generator, Heuristic Generator and C3 Controller ---------------*/
   DiagramBuilder<double> builder_lcs;
@@ -159,14 +160,18 @@ int DoMain(int argc, char* argv[]){
   auto& context_lcs = diagram_lcs->GetMutableSubsystemContext(plant_lcs, diagram_context_lcs.get());
   auto context_ad_lcs = plant_ad_lcs->CreateDefaultContext();
 
-  drake::geometry::GeometryId end_effector_geoms =
+  GeometryId end_effector_geoms =
           plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName("end_effector_simple"))[0];
-  drake::geometry::GeometryId ball_geoms =
+  GeometryId ball_geoms =
           plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName("sphere"))[0];
-  drake::geometry::GeometryId ground_geoms =
+  GeometryId ground_geoms =
           plant_lcs.GetCollisionGeometriesForBody(plant_lcs.GetBodyByName("ground"))[0];
-  std::vector<drake::geometry::GeometryId> contact_geoms =
+  std::vector<GeometryId> contact_geoms =
     {end_effector_geoms, ball_geoms, ground_geoms};
+
+    std::vector<SortedPair<GeometryId>> contact_pairs;
+    contact_pairs.push_back(SortedPair(contact_geoms[0], contact_geoms[1]));
+    contact_pairs.push_back(SortedPair(contact_geoms[1], contact_geoms[2]));
 
   /* --------------------------------- Target and Heuristic Generator Blocks  -----------------------------------------*/
   auto target_generator =
@@ -176,12 +181,35 @@ int DoMain(int argc, char* argv[]){
                                                            traj_param, c3_param);
 
   /* ----------------------- Generators and Forward Kinematics port connection --------------------------*/
-  builder.Connect(simplified_model_receiver->get_output_port_lcs_state(),
+  builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                   target_generator->get_input_port_state());
-  builder.Connect(simplified_model_receiver->get_output_port_lcs_state(),
+  builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                   heuristic_generator->get_input_port_state());
   builder.Connect(target_generator->get_output_port_target(),
                     heuristic_generator->get_input_port_target());
+
+  /* -------------------------------------- LCS Factory System Block  -----------------------------------------*/
+  auto lcs_factory_system = builder.AddSystem<systems::LCSFactorySystem>(plant_lcs,context_lcs,
+                                                                         *plant_ad_lcs,*context_ad_lcs,
+                                                                         contact_pairs,c3_param);
+
+  /* ----------------------------------- LCS Factory System port connection --------------------------------*/
+  builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
+                  lcs_factory_system->get_input_port_lcs_state());
+
+  /* ------------------------------ C3Controller Block  -----------------------------------------*/
+  auto c3_controller = builder.AddSystem<systems::C3Controller>(plant_lcs, c3_param);
+
+  /* ----------------------------------- C3Controller port connection --------------------------------*/
+  builder.Connect(heuristic_generator->get_output_port_target(),
+                  c3_controller->get_input_port_target());
+  builder.Connect(heuristic_generator->get_output_port_cost_matrices(),
+                    c3_controller->get_input_port_cost_matrices());
+  builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
+                  c3_controller->get_input_port_lcs_state());
+  builder.Connect(lcs_factory_system->get_output_port_lcs(),
+                    c3_controller->get_input_port_lcs());
+
 
   /* ----------------------- Visualization and Publish of LCS state actual and target  --------------------------*/
   std::vector<std::string> state_names = {
@@ -196,8 +224,8 @@ int DoMain(int argc, char* argv[]){
   auto c3_actual_state_publisher =
             builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
                     "LCS_STATE", &lcm, TriggerTypeSet({TriggerType::kForced})));
-  builder.Connect(simplified_model_receiver->get_output_port_lcs_state(),
-                    c3_state_sender->get_input_port_actual_state());
+  builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
+                  c3_state_sender->get_input_port_actual_state());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                     c3_actual_state_publisher->get_input_port());
 

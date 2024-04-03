@@ -58,8 +58,8 @@ class HeuristicGenerator
 
   /// the third output port send out time-based C3 gains
   const drake::systems::OutputPort<double>&
-  get_output_port_gain() const {
-        return this->get_output_port(gain_port_);
+  get_output_port_cost_matrices() const {
+        return this->get_output_port(cost_matrices_port_);
   }
 
   void SetHeuristicParameters(const SimulateFrankaParams& sim_param,
@@ -77,18 +77,23 @@ class HeuristicGenerator
                            drake::systems::BasicVector<double>* target_state) const;
   void CalcHeuristicTilt(const drake::systems::Context<double>& context,
                              drake::systems::BasicVector<double>* target_orientation) const;
-  void CalcHeuristicGain(const drake::systems::Context<double>& context,
-                            solvers::C3::CostMatrices* Cost_matrices) const;
+  void CalcHeuristicCostMatrices(const drake::systems::Context<double>& context,
+                                 solvers::C3::CostMatrices* Cost_matrices) const;
 
   drake::systems::InputPortIndex plant_state_port_;
   drake::systems::InputPortIndex input_target_port_;
 
   drake::systems::OutputPortIndex output_target_port_;
   drake::systems::OutputPortIndex orientation_port_;
-  drake::systems::OutputPortIndex gain_port_;
+  drake::systems::OutputPortIndex cost_matrices_port_;
 
   int first_message_time_idx_;
   int received_first_message_idx_;
+
+  /// necessary dimensions
+  int n_q;
+  int n_v;
+  int n_x;
 
   double roll_phase_;
   double return_phase_;

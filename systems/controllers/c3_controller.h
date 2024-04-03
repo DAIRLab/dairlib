@@ -40,6 +40,10 @@ class C3Controller : public drake::systems::LeafSystem<double> {
     return this->get_input_port(lcs_input_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_cost_matrices() const {
+        return this->get_input_port(cost_matrices_input_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_c3_solution()
       const {
     return this->get_output_port(c3_solution_port_);

@@ -234,6 +234,7 @@ cc_binary(
     deps = [
         "//systems:robot_lcm_systems",
         "//systems/controllers",
+        "//systems/controllers:lcs_factory_system",
         "//systems/framework:lcm_driven_loop",
         "//systems/controllers:c3_controller_franka",
         "//examples/franka_ball_rolling/systems:franka_kinematics",

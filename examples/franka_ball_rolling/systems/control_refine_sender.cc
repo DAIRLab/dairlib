@@ -67,7 +67,7 @@ ControlRefineSender::ControlRefineSender(
     // OUTPUT PORTS
     target_port_ =
       this->DeclareVectorOutputPort(
-              "track_target", TimestampedVector<double>(7),
+              "track_target", TimestampedVector<double>(38),
               &ControlRefineSender::CalcTrackTarget)
           .get_index();
 
@@ -191,14 +191,25 @@ void ControlRefineSender::CalcTrackTarget(
     const BasicVector<double>* ee_orientation =
             (BasicVector<double>*)this->EvalVectorInput(context,
                                                               ee_orientation_port_);
+    const TimestampedVector<double>* lcs_x =
+            (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                              lcs_state_port_);
+
+    double timestamp = lcs_x->get_timestamp();
+
     VectorXd ee_orientation_target = VectorXd::Zero(4);
     ee_orientation_target << ee_orientation->get_value();
 
     VectorXd x_next = context.get_discrete_state(x_next_idx_).value();
 
-    VectorXd track_target = VectorXd::Zero(7);
-    track_target << x_next.head(3), ee_orientation_target;
-    target->SetFromVector(track_target);
+    VectorXd track_target = VectorXd::Zero(38);
+    track_target << x_next.head(3), ee_orientation_target, VectorXd::Zero(7), x_next.segment(9,11), VectorXd::Zero(21);
+
+    // TODO:: need to add parameters and clamp on final output
+    // temporarily hack to test on old interface
+//    std::cout<<track_target.size()<<std::endl;
+    target->SetDataVector(track_target);
+    target->set_timestamp(timestamp);
 }
 
 void ControlRefineSender::CalcFeedForwardTorque(const Context<double> &context,

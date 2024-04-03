@@ -1,7 +1,7 @@
 admm_iter: 3
 rho: 0.1
 rho_scale: 2.2
-num_threads: 2
+num_threads: 1
 delta_option: 1
 # options are 'MIQP' or 'QP'
 projection_type: 'MIQP'

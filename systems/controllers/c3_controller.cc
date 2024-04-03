@@ -180,9 +180,12 @@ C3::CostMatrices C3Controller::CreatePlaceholderCostMatrices() const {
 drake::systems::EventStatus C3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+
+  std::cout<<"BP1"<<std::endl;
   auto start = std::chrono::high_resolution_clock::now();
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
+  std::cout<<"BP2"<<std::endl;
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -191,6 +194,35 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   drake::VectorX<double> x_lcs = lcs_x->get_data();
   auto& cost_matrices = this->EvalAbstractInput(context, cost_matrices_input_port_)
           ->get_value<C3::CostMatrices>();
+    std::cout<<Q_.size()<<std::endl;
+    std::cout<<R_.size()<<std::endl;
+    std::cout<<G_.size()<<std::endl;
+    std::cout<<U_.size()<<std::endl;
+    std::cout<<Q_.at(0).size()<<std::endl;
+    std::cout<<R_.at(0).size()<<std::endl;
+    std::cout<<G_.at(0).size()<<std::endl;
+    std::cout<<U_.at(0).size()<<std::endl;
+    std::cout<<cost_matrices.Q.size()<<std::endl;
+    std::cout<<cost_matrices.R.size()<<std::endl;
+    std::cout<<cost_matrices.G.size()<<std::endl;
+    std::cout<<cost_matrices.U.size()<<std::endl;
+    std::cout<<cost_matrices.Q.at(0).size()<<std::endl;
+    std::cout<<cost_matrices.R.at(0).size()<<std::endl;
+    std::cout<<cost_matrices.G.at(0).size()<<std::endl;
+    std::cout<<cost_matrices.U.at(0).size()<<std::endl;
+
+    std::cout<<x_des.value().size()<<std::endl;
+    std::cout<<x_lcs.size()<<std::endl;
+
+    std::cout<<lcs.A_[0].size()<<std::endl;
+    std::cout<<lcs.B_[0].size()<<std::endl;
+    std::cout<<lcs.D_[0].size()<<std::endl;
+    std::cout<<lcs.d_[0].size()<<std::endl;
+    std::cout<<lcs.E_[0].size()<<std::endl;
+    std::cout<<lcs.F_[0].size()<<std::endl;
+    std::cout<<lcs.H_[0].size()<<std::endl;
+    std::cout<<lcs.c_[0].size()<<std::endl;
+  std::cout<<"BP3"<<std::endl;
   auto& x_pred = context.get_discrete_state(x_pred_index_).value();
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
   auto mutable_solve_time =
@@ -217,7 +249,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
 
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
-
+  std::cout<<"BP4"<<std::endl;
   // Force Checking of Workspace Limits
   for (int i = 0; i < c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x->get_data().segment(0, 3).transpose() *
@@ -235,6 +267,8 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   c3_->UpdateTarget(x_desired);
   c3_->Solve(x_lcs);
 
+
+  std::cout<<"BP5"<<std::endl;
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   double solve_time =
@@ -242,12 +276,13 @@ drake::systems::EventStatus C3Controller::ComputePlan(
       1e6;
   mutable_solve_time[0] = (1 - solve_time_filter_constant_) * solve_time +
                           solve_time_filter_constant_ * mutable_solve_time[0];
-
+  std::cout<<"BP7"<<std::endl;
   if (c3_options_.publish_frequency > 0) {
     solve_time = 1.0 / c3_options_.publish_frequency;
     mutable_solve_time[0] = solve_time;
   }
 
+  std::cout<<"BP8"<<std::endl;
   auto z_sol = c3_->GetFullSolution();
   if (mutable_solve_time[0] < (N_ - 1) * dt_) {
     int index = mutable_solve_time[0] / dt_;
@@ -258,6 +293,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     mutable_x_pred = z_sol[-1].segment(0, n_x_);
   }
 
+  std::cout<<"BP9"<<std::endl;
   return drake::systems::EventStatus::Succeeded();
 }
 

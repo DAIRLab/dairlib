@@ -28,6 +28,7 @@
 #include "examples/franka_ball_rolling/systems/franka_kinematics.h"
 #include "examples/franka_ball_rolling/systems/track_target_generator.h"
 #include "examples/franka_ball_rolling/systems/heuristic_generator.h"
+#include "examples/franka_ball_rolling/systems/control_refine_sender.h"
 #include "examples/franka_ball_rolling/systems/c3_state_sender.h"
 
 #include "systems/controllers/c3_controller.h"
@@ -197,7 +198,7 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                   lcs_factory_system->get_input_port_lcs_state());
 
-  /* ------------------------------ C3Controller Block  -----------------------------------------*/
+  /* ------------------------------------- C3Controller Block  -----------------------------------------*/
   auto c3_controller = builder.AddSystem<systems::C3Controller>(plant_lcs, c3_param);
 
   /* ----------------------------------- C3Controller port connection --------------------------------*/
@@ -209,6 +210,42 @@ int DoMain(int argc, char* argv[]){
                   c3_controller->get_input_port_lcs_state());
   builder.Connect(lcs_factory_system->get_output_port_lcs(),
                     c3_controller->get_input_port_lcs());
+
+  /* ------------------------------------- ControlRefinement Block  -----------------------------------------*/
+  auto control_refinement = builder.AddSystem<systems::ControlRefineSender>(plant_lcs,context_lcs,
+                                                                            *plant_ad_lcs,*context_ad_lcs,
+                                                                            contact_pairs,c3_param);
+
+  /* ----------------------------------- ControlRefinement port connection --------------------------------*/
+  builder.Connect(heuristic_generator->get_output_port_orientation(),
+                  control_refinement->get_input_port_ee_orientation());
+  builder.Connect(c3_controller->get_output_port_c3_solution(),
+                    control_refinement->get_input_port_c3_solution());
+  builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
+                    control_refinement->get_input_port_lcs_state());
+
+  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
+  builder.Connect(control_refinement->get_output_port_target(),
+                  state_force_sender->get_input_port(0));
+
+  /* ----------------------- Determine if TTL 0 or 1 should be used for publishing  --------------------------*/
+  drake::lcm::DrakeLcm* pub_lcm;
+  if (FLAGS_TTL == 0) {
+        std::cout << "Using TTL=0" << std::endl;
+        pub_lcm = &lcm;
+  }
+  else if (FLAGS_TTL == 1) {
+        std::cout << "Using TTL=1" << std::endl;
+        pub_lcm = &lcm_network;
+  }
+
+  /* ----------------------------------- Final command publisher --------------------------------*/
+  auto control_publisher = builder.AddSystem(
+            LcmPublisherSystem::Make<dairlib::lcmt_c3>(
+                    "CONTROLLER_INPUT_NEW", pub_lcm,
+                    {drake::systems::TriggerType::kForced}, 0.0));
+  builder.Connect(state_force_sender->get_output_port(),
+                    control_publisher->get_input_port());
 
 
   /* ----------------------- Visualization and Publish of LCS state actual and target  --------------------------*/
@@ -229,10 +266,12 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                     c3_actual_state_publisher->get_input_port());
 
+
   /* ----------------------- Visualization and Publish of LCS state actual and target  --------------------------*/
   auto diagram = builder.Build();
   diagram->set_name(("Diagram_C3_Ball_Rolling_Planner"));
   DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/diagram_lcm_c3_ball_rolling");
+
   /* -------------------------------------------------------------------------------------------*/
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
             &lcm, std::move(diagram), franka_state_receiver,

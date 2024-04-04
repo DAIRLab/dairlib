@@ -224,44 +224,61 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
 std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
-  const VectorXd& x0, bool use_full_cost
+  const VectorXd& x0, const std::vector<Eigen::VectorXd>& full_x_sol
 ) const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
-  XX[0] = x0;
-  
+  for (int i = 0; i < N_; i++){
+    XX[i] = full_x_sol[i];
+  }
+  XX[N_] = full_x_sol[N_ - 1];
+
   for (int i = 0; i < N_ ; i++){
     UU[i] = zfin_[i].segment(n_ + m_, k_);
-    XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
   }
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.
   std::vector<Eigen::MatrixXd> Q_eff = Q_;
   std::vector<Eigen::MatrixXd> R_eff = R_;
 
-  // If not calculating the full cost, calculate just the object position error
-  // cost.
-  if (use_full_cost == false) {
-    for (int i = 0; i < N_; i++){
-      // Make R all zeros since not penalizing input effort.
-      R_eff[i] = R_eff[i] * 0;
-
-      // Use all zeros for Q and R except for portion of Q that corresponds to
-      // object xyz errors.
-      // TODO: These have hard-coded numbers 0, 7, 10, 16 but should be replaced
-      for(int j = 0; j < 7; j++) {Q_eff.at(i)(j,j) = 0;}
-      for(int j = 10; j < 16; j++) {Q_eff.at(i)(j,j) = 0;}
-    }
-
-    // Do Nth step for Q.
-    for(int j = 0; j < 7; j++) {Q_eff.at(N_)(j,j) = 0;}
-    for(int j = 10; j < 16; j++) {Q_eff.at(N_)(j,j) = 0;}
-  }
-
   // Calculate the cost over the N+1 time steps.
   double cost = 0;
+  // Print full Q_eff and R_eff matrices.
+  // std::cout<<"\tQ_eff at i = 0: "<<std::endl;
+  // std::cout<<Q_eff.at(0)<<std::endl;
+  // std::cout<<"\tR_eff at i = 0: "<<std::endl;
+  // std::cout<<R_eff.at(0)<<std::endl;
+
   for (int i = 0; i < N_; i++){
+    // Print cost contribution for each part of the cost function.
+    // std::cout<<"\ttimestep "<<i<<std::endl;
+    // std::cout<<"\t\tCost contribution from qeex, qeey, qeez: "<<
+    //   (XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()*
+    //   Q_eff.at(i).block(0,0,3,3)*(XX[i].segment(0,3) - x_desired_[i].segment(0,3))<<std::endl;
+    //   // Print x and x_desired values for this part of the cost function.
+    // std::cout<<"\t\tx_ee: "<<XX[i].segment(0,3).transpose()<<std::endl;
+    // std::cout<<"\t\tx_desired_ee: "<<x_desired_[i].segment(0,3).transpose()<<std::endl;
+    // // Print error terms and cost values for this part of the cost function.
+    // std::cout<<"\t\txee error: "<<(XX[i].segment(0,3) - x_desired_[i].segment(0,3)).transpose()<<std::endl;
+    // std::cout<<"\t\tCost contribution from qow, qox, qoy, qoz: "<<
+    //   (XX[i].segment(3,4) - x_desired_[i].segment(3,4)).transpose()*
+    //   Q_eff.at(i).block(3,3,4,4)*(XX[i].segment(3,4) - x_desired_[i].segment(3,4))<<std::endl;
+    // std::cout<<"\t\tcost contribution from qox, qoy, qoz: "<<
+    //   (XX[i].segment(7,3) - x_desired_[i].segment(7,3)).transpose()*
+    //   Q_eff.at(i).block(7,7,3,3)*(XX[i].segment(7,3) - x_desired_[i].segment(7,3))<<std::endl;
+    // std::cout<<"\t\tcost contribution from vxee, vyee, vzee: "<<
+    //   (XX[i].segment(10,3) - x_desired_[i].segment(10,3)).transpose()*
+    //   Q_eff.at(i).block(10,10,3,3)*(XX[i].segment(10,3) - x_desired_[i].segment(10,3))<<std::endl;
+    // std::cout<<"\t\tcost contribution from wox, woy, woz: "<<
+    //   (XX[i].segment(13,3) - x_desired_[i].segment(13,3)).transpose()*
+    //   Q_eff.at(i).block(13,13,3,3)*(XX[i].segment(13,3) - x_desired_[i].segment(13,3))<<std::endl;
+    // std::cout<<"\t\tcost contribution from vxox, vxoy, vxoz: "<<
+    //   (XX[i].segment(16,3) - x_desired_[i].segment(16,3)).transpose()*
+    //   Q_eff.at(i).block(16,16,3,3)*(XX[i].segment(16,3) - x_desired_[i].segment(16,3))<<std::endl;
+
+    // std::cout<<"\t\tCost contribution from u: "<<
+    //   UU[i].transpose()*R_eff.at(i)*UU[i]<<std::endl;
     cost = cost + 
       (XX[i] - x_desired_[i]).transpose()*Q_eff.at(i)*(XX[i] - x_desired_[i]) + 
       UU[i].transpose()*R_eff.at(i)*UU[i];

@@ -105,6 +105,9 @@ SamplingC3Controller::SamplingC3Controller(
                                         x_desired_placeholder, c3_options_);
 
   } else if (c3_options_.projection_type == "QP") {
+    // std::cout<<"Q in controller: "<<Q_[0]<<std::endl;
+    // std::cout<<"R in controller: "<<R_[0]<<std::endl;
+
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
@@ -431,8 +434,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Solve C3, store resulting object and cost.
       test_c3_object->SetOsqpSolverOptions(solver_options_);
       test_c3_object->Solve(test_state, deltas.at(i), ws.at(i));
-      auto cost_trajectory_pair = test_c3_object->CalcCost(test_state, true);
+      // Get the state solution and calculate the cost.
+      auto test_x_sol = test_c3_object->GetStateSolution();
+      auto cost_trajectory_pair = test_c3_object->CalcCost(test_state, test_x_sol);
       double c3_cost = cost_trajectory_pair.first;
+      // Print the cost for each sample.
+      std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;
       // TODO: This doesn't work because of the unique_ptr. Figure out how to fix.
        #pragma omp critical
       {

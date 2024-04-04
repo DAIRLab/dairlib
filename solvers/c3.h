@@ -48,7 +48,7 @@ class C3 {
   ///   cost based on object state errors
   /// @return The cost and the full state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-    const Eigen::VectorXd& x0, bool use_full_cost) const;
+    const Eigen::VectorXd& x0, const std::vector<Eigen::VectorXd>& full_x_sol) const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system

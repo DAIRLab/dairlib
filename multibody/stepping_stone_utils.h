@@ -26,7 +26,7 @@ struct SquareSteppingStoneList {
   template<typename Archive>
   void Serialize(Archive *a) {
     a->Visit(DRAKE_NVP(stones));
-    std::tie(this->footholds, this->cubes) = GetFootholdsWithMargin(stones, 0.12);
+    std::tie(this->footholds, this->cubes) = GetFootholdsWithMargin(stones, 0.13);
   }
 
   static std::pair<std::vector<ConvexPolygon>,

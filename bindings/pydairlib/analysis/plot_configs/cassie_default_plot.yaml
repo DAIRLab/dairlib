@@ -24,7 +24,7 @@ plot_commanded_efforts: true
 plot_contact_forces: false
 special_positions_to_plot: [ ]
 special_velocities_to_plot: [ ]
-special_efforts_to_plot: [ ]
+special_efforts_to_plot: ['toe_right_motor', 'toe_left_motor']
 
 # FSM Names
 fsm_state_names: [ 'Left Stance (LS)', 'Right Stance (RS)', ' ', 'Double Support Post Left (DSPL)', 'Double Support Post Right (DSPR)' ]
@@ -39,8 +39,8 @@ plot_qp_costs: true
 plot_tracking_costs: true
 plot_qp_solve_time: true
 tracking_datas_to_plot:
-  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
-  pelvis_balance_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
-  pelvis_heading_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
-  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] }
-  swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] }
+#  swing_hip_yaw_traj: {'dims': [0], 'derivs': ['pos']}
+#  pelvis_balance_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
+#  pelvis_heading_traj: {'dims': [0, 1, 2], 'derivs': ['accel']}
+#  alip_com_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'accel' ] }
+  swing_ft_traj: { 'dims': [ 0, 1, 2 ], 'derivs': [ 'pos', 'vel', 'accel' ] }

@@ -43,12 +43,8 @@ class C3 {
              std::vector<Eigen::VectorXd>& w);
 
   /// Compute the MPC cost, using previously solved MPC solution
-  /// @param x0 The initial state of the system
-  /// @param use_full_cost If true, use the full cost, otherwise only compute
-  ///   cost based on object state errors
   /// @return The cost and the full state trajectory
-  std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-    const Eigen::VectorXd& x0, const std::vector<Eigen::VectorXd>& full_x_sol) const;
+  std::pair<double, std::vector<Eigen::VectorXd>> CalcCost() const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system

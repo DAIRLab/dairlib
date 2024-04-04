@@ -223,16 +223,14 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 // This function relies on the previously computed zfin_ from the Solve function.
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(
-  const VectorXd& x0, const std::vector<Eigen::VectorXd>& full_x_sol
-) const{
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost() const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
   for (int i = 0; i < N_; i++){
-    XX[i] = full_x_sol[i];
+    XX[i] = zfin_[i].segment(0, n_);
   }
-  XX[N_] = full_x_sol[N_ - 1];
+  XX[N_] = zfin_[N_ - 1].segment(0, n_);
 
   for (int i = 0; i < N_ ; i++){
     UU[i] = zfin_[i].segment(n_ + m_, k_);

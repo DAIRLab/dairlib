@@ -435,8 +435,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object->SetOsqpSolverOptions(solver_options_);
       test_c3_object->Solve(test_state, deltas.at(i), ws.at(i));
       // Get the state solution and calculate the cost.
-      auto test_x_sol = test_c3_object->GetStateSolution();
-      auto cost_trajectory_pair = test_c3_object->CalcCost(test_state, test_x_sol);
+      auto cost_trajectory_pair = test_c3_object->CalcCost();
       double c3_cost = cost_trajectory_pair.first;
       // Print the cost for each sample.
       std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;

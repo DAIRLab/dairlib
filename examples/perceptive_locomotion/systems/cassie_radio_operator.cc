@@ -77,7 +77,11 @@ drake::systems::EventStatus CassieRadioOperator::DiscreteUpdate(
   double heading_error = atan2(heading(1), heading(0));
   double yaw_rate = std::clamp(heading_error, -rot_vel_to_radio, rot_vel_to_radio);
 
-  Eigen::Vector2d vdes = 0.5 * pose.rotation().matrix().topLeftCorner<2,2>().transpose() * to_target;
+  double ramp_factor = std::min(robot_output->get_timestamp(), 1.0);
+
+  Eigen::Vector2d vdes = ramp_factor * 0.5 * pose.rotation().matrix().topLeftCorner<2,2>().transpose() * to_target;
+  vdes -= 0.5 * pose.rotation().matrix().topLeftCorner<2,2>().transpose() * v.segment<2>(3);
+
 
   discrete_values->get_mutable_value(vdes_state_index_) << yaw_rate, vdes(0), vdes(1);
 

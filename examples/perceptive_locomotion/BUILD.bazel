@@ -269,6 +269,7 @@ cc_binary(
         "//examples/perceptive_locomotion/diagrams:alip_mpfc_diagram",
         "//examples/perceptive_locomotion/diagrams:hiking_sim_diagram",
         "//examples/perceptive_locomotion/diagrams:mpfc_osc_diagram",
+        "//examples/perceptive_locomotion/systems:meshcat_mpc_debug_visualizer",
         "//examples/perceptive_locomotion/systems:cassie_radio_operator",
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",

@@ -4,8 +4,8 @@
 #include "examples/perceptive_locomotion/diagrams/hiking_sim_diagram.h"
 #include "examples/perceptive_locomotion/diagrams/alip_mpfc_diagram.h"
 #include "examples/perceptive_locomotion/systems/cassie_radio_operator.h"
+#include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
 
-#include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "systems/plant_visualizer.h"
@@ -130,9 +130,11 @@ int DoMain(int argc, char **argv) {
         {sensor_name, sim_diagram->get_depth_camera_info(sensor_name)}
     );
   }
-  auto visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
+  auto plant_visualizer = builder.AddSystem<systems::PlantVisualizer>(urdf);
+  auto mpfc_visualizer = builder.AddSystem<AlipMPFCMeshcatVisualizer>(
+      plant_visualizer->get_meshcat(), plant_visualizer->get_plant());
   multibody::AddSteppingStonesToMeshcatFromYaml(
-      visualizer->get_meshcat(), terrain_yaml
+      plant_visualizer->get_meshcat(), terrain_yaml
   );
   auto goal_position = builder.AddSystem<ConstantVectorSource<double>>(
     goal_location
@@ -180,7 +182,15 @@ int DoMain(int argc, char **argv) {
   );
   builder.Connect(
       sim_diagram->get_output_port_state(),
-      visualizer->get_input_port()
+      plant_visualizer->get_input_port()
+  );
+  builder.Connect(
+      sim_diagram->get_output_port_state(),
+      mpfc_visualizer->get_input_port_state()
+  );
+  builder.Connect(
+      mpfc->get_output_port_mpfc_debug(),
+      mpfc_visualizer->get_input_port_mpc()
   );
 
   builder.Connect(osc_diagram->get_output_port_osc_debug(),

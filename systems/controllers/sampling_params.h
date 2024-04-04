@@ -7,11 +7,13 @@
 
 enum SamplingStrategy { RADIALLY_SYMMETRIC_SAMPLING,
                         RANDOM_ON_CIRCLE_SAMPLING,
-                        RANDOM_ON_SPHERE_SAMPLING };
+                        RANDOM_ON_SPHERE_SAMPLING, 
+                        FIXED_SAMPLE};
 
 struct SamplingC3SamplingParams {
   int control_loop_delay_ms;
   int sampling_strategy;
+  Eigen::VectorXd fixed_sample_location;
   double sampling_radius;
   double min_angle_from_vertical;
   double max_angle_from_vertical;
@@ -20,6 +22,7 @@ struct SamplingC3SamplingParams {
   int num_additional_samples_c3;
   double spline_width;
   double reposition_speed;
+  bool simulate_dynamics_for_cost;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
   double finished_reposition_cost;
@@ -29,6 +32,7 @@ struct SamplingC3SamplingParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(control_loop_delay_ms));
     a->Visit(DRAKE_NVP(sampling_strategy));
+    a->Visit(DRAKE_NVP(fixed_sample_location));
     a->Visit(DRAKE_NVP(sampling_radius));
     a->Visit(DRAKE_NVP(min_angle_from_vertical));
     a->Visit(DRAKE_NVP(max_angle_from_vertical));
@@ -37,6 +41,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(reposition_speed));
+    a->Visit(DRAKE_NVP(simulate_dynamics_for_cost));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));
     a->Visit(DRAKE_NVP(finished_reposition_cost));

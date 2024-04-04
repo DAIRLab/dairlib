@@ -46,6 +46,13 @@ static Eigen::VectorXd generate_random_sample_location_on_sphere(
     const double& sampling_radius,
     const double& min_angle_from_vertical,
     const double& max_angle_from_vertical);
+
+static Eigen::VectorXd generate_fixed_sample(
+  const int& n_q,
+  const int& n_v,
+  const Eigen::VectorXd& x_lcs,
+  const double& sampling_height,
+  Eigen::VectorXd fixed_sample_location);
 } // namespace systems
 } // namespace dairlib
 

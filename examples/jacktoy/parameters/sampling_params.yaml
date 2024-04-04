@@ -2,8 +2,12 @@
 # 0 means radially symmetric sampling on a circle.
 # 1 means random sampling on a 2D circle.
 # 2 means random sampling on a 3D sphere.
+# 3 means a fixed sample location. Currently allows for 1 fixed sample.
 control_loop_delay_ms: 0
 sampling_strategy: 2
+
+# This is the fixed sample location for sampling strategy 3.
+fixed_sample_location: [0.25, 0.60]
 
 # Size of sampling circle; used for both circle perimeter (0, 1) and spherical
 # surface sampling (2).
@@ -24,6 +28,9 @@ num_additional_samples_c3: 1
 # Repositioning parameters.
 spline_width: 0.13
 reposition_speed: 0.75    # m/s
+
+# Parameters for the cost function.
+simulate_dynamics_for_cost: false
 
 # Cost associated with traveling.
 travel_cost_per_meter: 100

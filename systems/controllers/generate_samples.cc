@@ -58,6 +58,11 @@ std::vector<Eigen::VectorXd> generate_sample_states(
       );
     }
   }
+  else if(sampling_params.sampling_strategy == FIXED_SAMPLE){
+      candidate_states[0] = generate_fixed_sample(
+        n_q, n_v, x_lcs, sampling_params.sampling_height, 
+        sampling_params.fixed_sample_location);
+  }
   for (int i = 0; i < candidate_states.size(); i++){
   }
   return candidate_states;
@@ -202,6 +207,32 @@ static Eigen::VectorXd generate_random_sample_location_on_sphere(
   // Store and return the candidate state.
   Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   candidate_state << test_q.head(3), x_lcs.segment(3, n_q - 3), test_v;
+  return candidate_state;
+}
+
+// Sampling strategy 3: This generates a fixed sample. 
+static Eigen::VectorXd generate_fixed_sample(
+  const int& n_q,
+  const int& n_v,
+  const Eigen::VectorXd& x_lcs,
+  const double& sampling_height,
+  Eigen::VectorXd fixed_sample_location){
+
+  // Pull out the q and v from the LCS state.  The end effector location and
+  // velocity of this state will be changed for the sample.
+  VectorXd test_q = x_lcs.head(n_q);
+  VectorXd test_v = x_lcs.tail(n_v);
+
+  // Update the hypothetical state's end effector location to the tested sample
+  // location and set ee velocity to 0.
+  test_q[0] = fixed_sample_location[0];
+  test_q[1] = fixed_sample_location[1];
+  test_q[2] = sampling_height;
+  
+  // Store and return the candidate state.
+  Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
+  candidate_state << test_q.head(3), x_lcs.segment(3, n_q - 3), test_v;
+
   return candidate_state;
 }
 } // namespace systems

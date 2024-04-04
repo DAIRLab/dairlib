@@ -17,9 +17,9 @@ publish_frequency : 0
 #publish_frequency: 25
 
 # End Effector Workspace Limits Specified as Linear Constraints [x, y, z, lb, ub]
-workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.7],
+workspace_limits: [[1.0, 0.0, 0.0, 0.45, 0.7],
                    [0.0, 1.0, 0.0, -0.2, 0.2],
-                   [0.0, 0.0, 1.0, 0.35, 0.6]]
+                   [0.0, 0.0, 1.0, 0.4, 0.5]]
 workspace_margins: 0.05
 
 u_horizontal_limits: [-10, 10]
@@ -42,7 +42,7 @@ w_G: 0.5
 w_U: 0.5
 
 #State Tracking Error, assuming diagonal
-q_vector: [5, 10, 150, 1000, 1000, 1000, 1000, 5, 10, 15000,
+q_vector: [10, 25, 150, 1000, 1000, 1000, 1000, 25, 25, 15000,
            5, 5, 5, 1, 1, 500, 5, 5, 5]
 #Penalty on efforts, assuming diagonal
 r_vector: [1.9, 0.5, 0.05]

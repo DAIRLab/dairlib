@@ -1,6 +1,7 @@
 #include "plate_balancing_target.h"
 
 #include <iostream>
+#include <Eigen/Geometry>
 
 #include "dairlib/lcmt_radio_out.hpp"
 
@@ -35,6 +36,10 @@ PlateBalancingTargetGenerator::PlateBalancingTargetGenerator(
   tray_target_port_ = this->DeclareVectorOutputPort(
                               "tray_target", BasicVector<double>(7),
                               &PlateBalancingTargetGenerator::CalcTrayTarget)
+                          .get_index();
+  tray_velocity_target_port_ = this->DeclareVectorOutputPort(
+                              "tray_velocity_target", BasicVector<double>(6),
+                              &PlateBalancingTargetGenerator::CalcTrayVelocityTarget)
                           .get_index();
   sequence_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   within_target_index_ = this->DeclareDiscreteState(VectorXd::Zero(1));
@@ -165,6 +170,28 @@ void PlateBalancingTargetGenerator::CalcTrayTarget(
   //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
   //  tray_position(2) = 0.45;
   target_tray_state << 1, 0, 0, 0, tray_position;  // tray orientation is flat
+  target->SetFromVector(target_tray_state);
+}
+
+void PlateBalancingTargetGenerator::CalcTrayVelocityTarget(
+    const drake::systems::Context<double>& context,
+    BasicVector<double>* target) const {
+  const StateVector<double>* tray_state =
+      (StateVector<double>*)this->EvalVectorInput(context, tray_state_port_);
+  Eigen::Quaterniond y_quat_des(1, 0, 0, 0);
+  const VectorX<double> &q = tray_state->GetPositions();
+  Eigen::Quaterniond y_quat(q(0), q(1), q(2), q(3));
+  Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
+  VectorXd angle_error = angle_axis_diff.angle() * angle_axis_diff.axis();
+
+  VectorXd target_tray_state = VectorXd::Zero(6);
+
+  //  tray_position(0) = 0.55;
+  //  tray_position(1) = 0.1 * sin(4 * context.get_time());
+  //  tray_position(2) = 0.45 + 0.1 * cos(2 *context.get_time());
+  //  tray_position(1) = 0.1 * (int) (2 * sin(0.5 * context.get_time()));
+  //  tray_position(2) = 0.45;
+  target_tray_state << angle_error, VectorXd::Zero(3);  // tray orientation is flat
   target->SetFromVector(target_tray_state);
 }
 

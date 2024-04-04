@@ -237,16 +237,13 @@ int DoMain(int argc, char* argv[]) {
   auto end_effector_zero_velocity_source =
       builder.AddSystem<drake::systems::ConstantVectorSource>(
           VectorXd::Zero(3));
-  auto tray_zero_velocity_source =
-      builder.AddSystem<drake::systems::ConstantVectorSource>(
-          VectorXd::Zero(6));
   builder.Connect(plate_balancing_target->get_output_port_end_effector_target(),
                   target_state_mux->get_input_port(0));
   builder.Connect(plate_balancing_target->get_output_port_tray_target(),
                   target_state_mux->get_input_port(1));
   builder.Connect(end_effector_zero_velocity_source->get_output_port(),
                   target_state_mux->get_input_port(2));
-  builder.Connect(tray_zero_velocity_source->get_output_port(),
+  builder.Connect(plate_balancing_target->get_output_port_tray_velocity_target(),
                   target_state_mux->get_input_port(3));
   auto lcs_factory = builder.AddSystem<systems::LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_for_lcs_autodiff,

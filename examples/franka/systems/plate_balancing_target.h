@@ -34,6 +34,11 @@ class PlateBalancingTargetGenerator
     return this->get_output_port(tray_target_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_tray_velocity_target()
+  const {
+    return this->get_output_port(tray_velocity_target_port_);
+  }
+
   void SetRemoteControlParameters(const Eigen::Vector3d& first_target,
                                   const Eigen::Vector3d& second_target,
                                   const Eigen::Vector3d& third_target,
@@ -45,6 +50,8 @@ class PlateBalancingTargetGenerator
                              drake::systems::BasicVector<double>* target) const;
   void CalcTrayTarget(const drake::systems::Context<double>& context,
                       drake::systems::BasicVector<double>* target) const;
+  void CalcTrayVelocityTarget(const drake::systems::Context<double>& context,
+                      drake::systems::BasicVector<double>* target) const;
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -53,6 +60,7 @@ class PlateBalancingTargetGenerator
   drake::systems::InputPortIndex tray_state_port_;
   drake::systems::OutputPortIndex end_effector_target_port_;
   drake::systems::OutputPortIndex tray_target_port_;
+  drake::systems::OutputPortIndex tray_velocity_target_port_;
 
   drake::systems::DiscreteStateIndex sequence_index_;
   drake::systems::DiscreteStateIndex within_target_index_;

@@ -36,6 +36,7 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
   }
 
   void SetLineColor(drake::geometry::Rgba rgba) { rgba_ = rgba; }
+  void SetLineWidth(double line_width) { line_width_ = line_width; }
 
   void SetNumSamples(int N) {
     DRAKE_DEMAND(N > 1);
@@ -55,6 +56,7 @@ class LcmTrajectoryDrawer : public drake::systems::LeafSystem<double> {
   const std::string system_name_;
   const std::string trajectory_name_;
   drake::geometry::Rgba rgba_ = drake::geometry::Rgba(0.1, 0.1, 0.1, 1.0);
+  double line_width_ = 100;
   int N_ = 5;
 };
 

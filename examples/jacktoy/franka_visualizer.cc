@@ -293,8 +293,10 @@ int do_main(int argc, char* argv[]) {
     auto repos_trajectory_drawer_actor =
         builder.AddSystem<systems::LcmTrajectoryDrawer>(meshcat,"repos_exec_",
                                                         "end_effector_position_target");
-    c3_exec_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0, 0, 1}));
-    repos_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({0, 1, 0, 1}));
+    c3_exec_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({1, 0.75, 0.79, 1}));
+    c3_exec_trajectory_drawer_actor->SetLineWidth(10000000);
+    repos_trajectory_drawer_actor->SetLineColor(drake::geometry::Rgba({0, 0, 1, 1}));
+    repos_trajectory_drawer_actor->SetLineWidth(10000000);
     c3_exec_trajectory_drawer_actor->SetNumSamples(5);
     repos_trajectory_drawer_actor->SetNumSamples(6);
     builder.Connect(c3_execution_trajectory_sub_actor->get_output_port(),

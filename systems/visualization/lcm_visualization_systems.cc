@@ -89,7 +89,7 @@ drake::systems::EventStatus LcmTrajectoryDrawer::DrawTrajectory(
   }
 
   DRAKE_DEMAND(line_points.rows() == 3);
-  meshcat_->SetLine("/trajectories/" + system_name_ + trajectory_name_, line_points, 100,
+  meshcat_->SetLine("/trajectories/" + system_name_ + trajectory_name_, line_points, line_width_,
                     rgba_);
   return drake::systems::EventStatus::Succeeded();
 }

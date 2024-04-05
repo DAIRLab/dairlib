@@ -594,6 +594,7 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   //   past_velocities_.pop_front();
   //   past_velocities_.push_back(v_ball);
   // }
+//  std::cout<< dt <<std::endl;
 }
 
 void C3Controller_franka::StateEstimation(Eigen::VectorXd& q_plant, Eigen::VectorXd& v_plant,

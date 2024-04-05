@@ -21,8 +21,8 @@ q_new_vector: [1000000000, 1000000000, 1000000000, 0, 0, 0, 0, 0, 0, 5,
 # --------------------------  Move to Initial parameters  -----------------------------#
 initial_start: [0.55, 0, 0.12]
 initial_finish: [0, 0, 0.07]
-stabilize_time1: 0.5
-move_time: 0.75
+stabilize_time1: 2.5
+move_time: 3.25
 stabilize_time2: 0.75
 
 # --------------------------  Solve time filter parameters  -----------------------------#

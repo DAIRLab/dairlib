@@ -98,7 +98,7 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
   const auto& ball_position = input->get_value<dairlib::lcmt_ball_position>();
   int id = ball_position.id;
   double timestamp = ball_position.utime * 1.0e-6;
-  
+
   if (id != prev_id){
     double dt = timestamp - prev_time;
     if (!std::isnan(ball_position.xyz[0]) && dt > 1e-9){

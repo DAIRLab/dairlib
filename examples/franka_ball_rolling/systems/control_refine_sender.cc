@@ -90,7 +90,7 @@ ControlRefineSender::ControlRefineSender(
     contact_jacobian_idx = this->DeclareAbstractState(
             drake::Value<MatrixXd>(contact_jacobian_holder));
 
-    this->DeclarePerStepUnrestrictedUpdateEvent(
+    this->DeclareForcedUnrestrictedUpdateEvent(
             &ControlRefineSender::UpdateSolveTimeHistory);
 
 }
@@ -117,7 +117,6 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
 
         // get approximate compute time for state_estimation->forward kinematics->c3 computation
         if (dt_history.empty()) {
-            prev_time = timestamp;
             dt = c3_options_.solve_dt;
             dt_history.push_back(dt);
         }
@@ -129,12 +128,11 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
             dt_history.push_back(timestamp - prev_time);
         }
         dt = c3_options_.solve_dt;
-//        prev_time = timestamp;
-//        double dt_accumulation = 0;
-//        for (int i = 0; i < (int) dt_history.size(); i++){
-//            dt_accumulation += dt_history[i];
-//        }
-//        dt = dt_accumulation / dt_history.size();
+        double dt_accumulation = 0;
+        for (int i = 0; i < (int) dt_history.size(); i++){
+            dt_accumulation += dt_history[i];
+        }
+        dt = dt_accumulation / dt_history.size();
 
         // generate lcs and compute output
         VectorXd q_v_u =
@@ -187,10 +185,12 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
 
 //        std::cout<< lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0] << std::endl;
 //        std::cout << timestamp - prev_time << std::endl;
+//        std::cout << dt << std::endl;
 
         x_next.SetFromVector(lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0]);
         force.SetFromVector(lambda);
         contact_jacobian = jacobian;
+        prev_time = timestamp;
 
         return EventStatus::Succeeded();
 }

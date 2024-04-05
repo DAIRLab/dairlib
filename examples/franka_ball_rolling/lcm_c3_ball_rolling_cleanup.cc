@@ -242,8 +242,8 @@ int DoMain(int argc, char* argv[]){
   /* ----------------------------------- Final command publisher --------------------------------*/
   auto control_publisher = builder.AddSystem(
             LcmPublisherSystem::Make<dairlib::lcmt_c3>(
-                    "CONTROLLER_INPUT_NEW", pub_lcm,
-                    {drake::systems::TriggerType::kForced}, 0.0));
+                    "CONTROLLER_INPUT", pub_lcm,
+                    {drake::systems::TriggerType::kForced}));
   builder.Connect(state_force_sender->get_output_port(),
                     control_publisher->get_input_port());
 
@@ -260,11 +260,19 @@ int DoMain(int argc, char* argv[]){
             builder.AddSystem<systems::C3StateSender>(3 + 7 + 3 + 6, state_names);
   auto c3_actual_state_publisher =
             builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
-                    "LCS_STATE", &lcm, TriggerTypeSet({TriggerType::kForced})));
+                    "LCS_ACTUAL_STATE", &lcm, TriggerTypeSet({TriggerType::kForced})));
+  auto c3_target_state_publisher =
+            builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+                    "LCS_TARGET_STATE", &lcm,
+                    TriggerTypeSet({TriggerType::kForced})));
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                   c3_state_sender->get_input_port_actual_state());
+  builder.Connect(heuristic_generator->get_output_port_target(),
+                    c3_state_sender->get_input_port_target_state());
   builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
                     c3_actual_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+                  c3_target_state_publisher->get_input_port());
 
 
   /* ----------------------- Visualization and Publish of LCS state actual and target  --------------------------*/

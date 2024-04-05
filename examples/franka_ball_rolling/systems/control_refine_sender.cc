@@ -90,6 +90,9 @@ ControlRefineSender::ControlRefineSender(
     contact_jacobian_idx = this->DeclareAbstractState(
             drake::Value<MatrixXd>(contact_jacobian_holder));
 
+    this->DeclarePerStepUnrestrictedUpdateEvent(
+            &ControlRefineSender::UpdateSolveTimeHistory);
+
 }
 
 // update discrete states to get the filtered approximate solve time
@@ -125,12 +128,13 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
             dt_history.pop_front();
             dt_history.push_back(timestamp - prev_time);
         }
-        prev_time = timestamp;
-        double dt_accumulation = 0;
-        for (int i = 0; i < (int) dt_history.size(); i++){
-            dt_accumulation += dt_history[i];
-        }
-        dt = dt_accumulation / dt_history.size();
+        dt = c3_options_.solve_dt;
+//        prev_time = timestamp;
+//        double dt_accumulation = 0;
+//        for (int i = 0; i < (int) dt_history.size(); i++){
+//            dt_accumulation += dt_history[i];
+//        }
+//        dt = dt_accumulation / dt_history.size();
 
         // generate lcs and compute output
         VectorXd q_v_u =
@@ -138,8 +142,13 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
                                plant_.num_actuators());
         // u is irrelevant in pure geometric/kinematic calculation
         q_v_u << lcs_x->get_data(), VectorXd::Zero(n_u_);
+        drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
+
         plant_.SetPositionsAndVelocities(&context_, q_v_u.head(n_x_));
         multibody::SetInputsIfNew<double>(plant_, q_v_u.tail(n_u_), &context_);
+        multibody::SetInputsIfNew<drake::AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_),
+                                                     &context_ad_);
+
         solvers::ContactModel contact_model;
         if (c3_options_.contact_model == "stewart_and_trinkle") {
             contact_model = solvers::ContactModel::kStewartAndTrinkle;
@@ -176,6 +185,9 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
         auto& force = state->get_mutable_discrete_state(force_idx_);
         auto& contact_jacobian = state->get_mutable_abstract_state<MatrixXd>(contact_jacobian_idx);
 
+//        std::cout<< lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0] << std::endl;
+//        std::cout << timestamp - prev_time << std::endl;
+
         x_next.SetFromVector(lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0]);
         force.SetFromVector(lambda);
         contact_jacobian = jacobian;
@@ -203,11 +215,10 @@ void ControlRefineSender::CalcTrackTarget(
     VectorXd x_next = context.get_discrete_state(x_next_idx_).value();
 
     VectorXd track_target = VectorXd::Zero(38);
-    track_target << x_next.head(3), ee_orientation_target, VectorXd::Zero(7), x_next.segment(9,11), VectorXd::Zero(21);
+    track_target << x_next.head(3), ee_orientation_target, VectorXd::Zero(7), x_next.segment(9,3), VectorXd::Zero(21);
 
     // TODO:: need to add parameters and clamp on final output
     // temporarily hack to test on old interface
-//    std::cout<<track_target.size()<<std::endl;
     target->SetDataVector(track_target);
     target->set_timestamp(timestamp);
 }

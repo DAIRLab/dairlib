@@ -80,11 +80,11 @@ SamplingC3Controller::SamplingC3Controller(
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * c3_options_.num_contacts[c3_options_.scene_index] +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.scene_index];
   } else if (c3_options_.contact_model == "anitescu") {
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.scene_index];
   } else {
     std::cerr << ("Unknown contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -384,13 +384,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       throw std::runtime_error("unknown or unsupported contact model");
     }
     // Create an LCS object.
-    // Preprocessing the contact pairs to resolve the contact pairs
-    vector<SortedPair<GeometryId>> resolved_contact_pairs =
-      LCSFactoryPreProcessor::PreProcessor(
-        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
+    // Preprocessing the contact pairs
+    vector<SortedPair<GeometryId>> resolved_contact_pairs;
+    if(c3_options_.scene_index == 0){
+      // Find closest ee-obj contact pairs
+      resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+          plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+          c3_options_.num_contacts[c3_options_.scene_index], true);
+    }
+    else if(c3_options_.scene_index == 1){
+      // Use all contact pairs
+      resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+          plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+          c3_options_.num_contacts[c3_options_.scene_index], false);
+    }
     auto sample_system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu, 
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.scene_index], 
       c3_options_.planning_dt, N_, contact_model);
     solvers::LCS lcs_object_sample = sample_system_scaling_pair.first;
 
@@ -803,12 +813,23 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     throw std::runtime_error("unknown or unsupported contact model");
   }
 
-  vector<SortedPair<GeometryId>> resolved_contact_pairs =
-    LCSFactoryPreProcessor::PreProcessor(
-      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
+  // Preprocessing the contact pairs
+  vector<SortedPair<GeometryId>> resolved_contact_pairs;
+  if(c3_options_.scene_index == 0){
+    // Find closest ee-obj contact pairs
+    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+        c3_options_.num_contacts[c3_options_.scene_index], true);
+  }
+  else if(c3_options_.scene_index == 1){
+    // Use all contact pairs
+    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+        c3_options_.num_contacts[c3_options_.scene_index], false);
+  }
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.scene_index], c3_options_.dt,
       c3_options_.N, contact_model);
 }
 
@@ -876,14 +897,24 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     throw std::runtime_error("unknown or unsupported contact model");
   }
 
-  vector<SortedPair<GeometryId>> resolved_contact_pairs =
-    LCSFactoryPreProcessor::PreProcessor(
-      plant_, *context_, contact_pairs_, c3_options_.num_friction_directions);
+  // Preprocessing the contact pairs
+  vector<SortedPair<GeometryId>> resolved_contact_pairs;
+  if(c3_options_.scene_index == 0){
+    // Find closest ee-obj contact pairs
+    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+        c3_options_.num_contacts[c3_options_.scene_index], true);
+  }
+  else if(c3_options_.scene_index == 1){
+    // Use all contact pairs
+    resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
+        plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
+        c3_options_.num_contacts[c3_options_.scene_index], false);
+  }
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.scene_index], c3_options_.dt,
       c3_options_.N, contact_model);
-
   // Revert the context.
   UpdateContext(lcs_x->get_data());
 }

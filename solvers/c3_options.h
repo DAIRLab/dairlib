@@ -36,27 +36,28 @@ struct C3Options {
   std::vector<double> r_vector;
   std::vector<double> g_vector;
   std::vector<double> g_x;
-  std::vector<double> g_gamma;
-  std::vector<double> g_lambda_n;
-  std::vector<double> g_lambda_t;
-  std::vector<double> g_lambda;
+  std::vector<std::vector<double>> g_gamma;
+  std::vector<std::vector<double>> g_lambda_n;
+  std::vector<std::vector<double>> g_lambda_t;
+  std::vector<std::vector<double>> g_lambda;
 
   std::vector<double> g_u;
   std::vector<double> u_vector;
   std::vector<double> u_x;
-  std::vector<double> u_gamma;
-  std::vector<double> u_lambda_n;
-  std::vector<double> u_lambda_t;
-  std::vector<double> u_lambda;
+  std::vector<std::vector<double>> u_gamma;
+  std::vector<std::vector<double>> u_lambda_n;
+  std::vector<std::vector<double>> u_lambda_t;
+  std::vector<std::vector<double>> u_lambda;
   std::vector<double> u_u;
 
-  std::vector<double> mu;
+  std::vector<std::vector<double>> mu;
   double dt;                    // dt for everything if not using sampling-based
                                 // C3 controller.
   double planning_dt;           // dt for planning when comparing samples.
   double execution_dt;          // dt for execution after comparing samples.
   int num_friction_directions;
-  int num_contacts;
+  int scene_index;
+  std::vector<int> num_contacts;
   Eigen::MatrixXd Q;
   Eigen::MatrixXd R;
   Eigen::MatrixXd G;
@@ -91,6 +92,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(planning_dt));
     a->Visit(DRAKE_NVP(execution_dt));
     a->Visit(DRAKE_NVP(num_friction_directions));
+    a->Visit(DRAKE_NVP(scene_index));
     a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
@@ -117,22 +119,22 @@ struct C3Options {
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
     if (contact_model == "stewart_and_trinkle") {
-      g_vector.insert(g_vector.end(), g_gamma.begin(), g_gamma.end());
-      g_vector.insert(g_vector.end(), g_lambda_n.begin(), g_lambda_n.end());
-      g_vector.insert(g_vector.end(), g_lambda_t.begin(), g_lambda_t.end());
+      g_vector.insert(g_vector.end(), g_gamma[scene_index].begin(), g_gamma[scene_index].end());
+      g_vector.insert(g_vector.end(), g_lambda_n[scene_index].begin(), g_lambda_n[scene_index].end());
+      g_vector.insert(g_vector.end(), g_lambda_t[scene_index].begin(), g_lambda_t[scene_index].end());
     } else {
-      g_vector.insert(g_vector.end(), g_lambda.begin(), g_lambda.end());
+      g_vector.insert(g_vector.end(), g_lambda[scene_index].begin(), g_lambda[scene_index].end());
     }
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
     if (contact_model == "stewart_and_trinkle") {
-      u_vector.insert(u_vector.end(), u_gamma.begin(), u_gamma.end());
-      u_vector.insert(u_vector.end(), u_lambda_n.begin(), u_lambda_n.end());
-      u_vector.insert(u_vector.end(), u_lambda_t.begin(), u_lambda_t.end());
+      u_vector.insert(u_vector.end(), u_gamma[scene_index].begin(), u_gamma[scene_index].end());
+      u_vector.insert(u_vector.end(), u_lambda_n[scene_index].begin(), u_lambda_n[scene_index].end());
+      u_vector.insert(u_vector.end(), u_lambda_t[scene_index].begin(), u_lambda_t[scene_index].end());
     } else {
-      u_vector.insert(u_vector.end(), u_lambda.begin(), u_lambda.end());
+      u_vector.insert(u_vector.end(), u_lambda[scene_index].begin(), u_lambda[scene_index].end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
 

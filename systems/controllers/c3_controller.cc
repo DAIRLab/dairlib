@@ -56,11 +56,11 @@ C3Controller::C3Controller(
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * c3_options_.num_contacts[c3_options_.scene_index] +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.scene_index];
   } else if (c3_options_.contact_model == "anitescu") {
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.scene_index];
   }
 
   n_u_ = plant_.num_actuators();

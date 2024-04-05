@@ -45,11 +45,11 @@ LCSFactorySystem::LCSFactorySystem(
   dt_ = c3_options_.dt;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts +
-            2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * c3_options_.num_contacts[c3_options_.scene_index] +
+            2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.scene_index];
   } else if (c3_options_.contact_model == "anitescu") {
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.scene_index];
   }
   n_u_ = plant_.num_actuators();
 
@@ -113,7 +113,7 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
   double scale;
   std::tie(*output_lcs, scale) = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.scene_index], c3_options_.dt,
       c3_options_.N, contact_model);
 }
 
@@ -143,7 +143,7 @@ void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<do
   std::vector<Eigen::VectorXd> contact_points;
   *output = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.scene_index], c3_options_.dt,
       c3_options_.N, contact_model);
 }
 

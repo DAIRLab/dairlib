@@ -13,12 +13,17 @@ contact_model: 'anitescu'
 # mu_effective = 2*mu1*mu2 / (mu1 + mu2). See urdfs for mu1 and mu2.
 # The contact pairs are ordered as ee_jack, capsule1_ground, capsule2_ground,
 # and capsule3_ground.
-mu: [0.4615, 0.4615, 0.4615, 0.4615]
+mu: [[0.4615, 0.4615, 0.4615, 0.4615],
+    [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615]]
 dt: 0.05    # This is used by the radio input currently but we don't use it.
 planning_dt: 0.1
 execution_dt: 0.03
 num_friction_directions: 2
-num_contacts: 4
+# If scene index is 0, then we use 4 contacts with resolved ee-jack contact.
+# If scene index is 1, then we use 6 contacts without resolving ee-jack contact.
+scene_index: 0
+# num_contacts changes based on scene_index.
+num_contacts: [4,6]
 N: 5
 # This param has to do with the xbox input?
 use_predicted_x0: false
@@ -33,18 +38,26 @@ u_vertical_limits: [0, 30]
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
 g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-g_gamma: [1, 1, 1, 1]
-g_lambda_n: [1, 1, 1, 1]
-g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-g_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_gamma: [[1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1]]
+g_lambda_n: [[1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1]]
+g_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_u: [1, 1, 1]
 
 # Penalty on matching the QP variables
 u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-u_gamma: [1, 1, 1, 1]
-u_lambda_n: [1, 1, 1, 1]
-u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-u_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+u_gamma: [[1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1]]
+u_lambda_n: [[1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1]]
+u_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_lambda: [[100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]]
 u_u: [30, 30, 30]
 
 

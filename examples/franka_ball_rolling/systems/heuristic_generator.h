@@ -105,6 +105,7 @@ class HeuristicGenerator
   double x_c_;
   double y_c_;
   VectorXd q_new_vector_;
+  VectorXd g_new_vector_;
 
   double settling_time_;
   double ee_default_height;

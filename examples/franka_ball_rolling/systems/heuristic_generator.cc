@@ -99,6 +99,7 @@ void HeuristicGenerator::SetHeuristicParameters( const SimulateFrankaParams& sim
     x_c_ = trajectory_param.x_c;
     y_c_ = trajectory_param.y_c;
     q_new_vector_ = heuristic_param.q_new_vector;
+    g_new_vector_ = heuristic_param.g_new_vector;
 
     settling_time_ = sim_param.stabilize_time1 + sim_param.move_time + sim_param.stabilize_time2;
     ee_default_height = sim_param.ee_radius + 2 * sim_param.ball_radius + table_offset_;
@@ -224,6 +225,7 @@ void HeuristicGenerator::CalcHeuristicCostMatrices(
 
     if (time_in_period > roll_phase_){
         Q = q_new_vector_.asDiagonal();
+        G = g_new_vector_.asDiagonal();
     }
 
     std::vector<MatrixXd> Q_c3(c3_param_.N + 1, Q);

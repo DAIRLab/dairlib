@@ -438,7 +438,9 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
   Gnew = G_[0];
 
   if (ts > roll_phase){
-    double Qnew_finger = param_.Qnew_finger;
+    std::cout<< "before change" << std::endl;
+    std::cout<<Qnew<<std::endl;
+      double Qnew_finger = param_.Qnew_finger;
     Qnew(0,0) = Qnew_finger;
     Qnew(1,1) = Qnew_finger;
     Qnew(2,2) = Qnew_finger;
@@ -447,6 +449,8 @@ VectorXd orientation_d = (rot * default_orientation).ToQuaternionAsVector4();
     Qnew(9,9) = param_.Qnew_ball_y;
     Gnew = 0.001 * MatrixXd::Identity(n+k+m, n+k+m);
     Gnew(19+3,19+3) = 0.0000001;
+    std::cout<< "after change" << std::endl;
+    std::cout<<Qnew<<std::endl;
   }
 
   std::vector<MatrixXd> Qha(Q_.size(), Qnew);

@@ -11,12 +11,19 @@ struct HeuristicGaitParams {
   int axis_option;
   double tilt_degrees;
   VectorXd q_new_vector;
+  std::vector<double> g_new_list;
+  std::vector<double> g_new_x;
+  std::vector<double> g_new_gamma;
+  std::vector<double> g_new_lambda_n;
+  std::vector<double> g_new_lambda_t;
+  std::vector<double> g_new_lambda;
+  std::vector<double> g_new_u;
+  VectorXd g_new_vector;
 
   VectorXd initial_start;
   VectorXd initial_finish;
   double stabilize_time1;
   double move_time;
-  double stabilize_time2;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -25,12 +32,30 @@ struct HeuristicGaitParams {
     a->Visit(DRAKE_NVP(gait_parameters));
     a->Visit(DRAKE_NVP(axis_option));
     a->Visit(DRAKE_NVP(tilt_degrees));
+
     a->Visit(DRAKE_NVP(q_new_vector));
+    a->Visit(DRAKE_NVP(g_new_x));
+    a->Visit(DRAKE_NVP(g_new_gamma));
+    a->Visit(DRAKE_NVP(g_new_lambda_n));
+    a->Visit(DRAKE_NVP(g_new_lambda_t));
+    a->Visit(DRAKE_NVP(g_new_lambda));
+    a->Visit(DRAKE_NVP(g_new_u));
 
     a->Visit(DRAKE_NVP(initial_start));
     a->Visit(DRAKE_NVP(initial_finish));
     a->Visit(DRAKE_NVP(stabilize_time1));
     a->Visit(DRAKE_NVP(move_time));
-    a->Visit(DRAKE_NVP(stabilize_time2));
+
+    // TODO:: consider different contact model
+    g_new_list = std::vector<double>();
+    g_new_list.insert(g_new_list.end(), g_new_x.begin(), g_new_x.end());
+    g_new_list.insert(g_new_list.end(), g_new_gamma.begin(), g_new_gamma.end());
+    g_new_list.insert(g_new_list.end(), g_new_lambda_n.begin(), g_new_lambda_n.end());
+    g_new_list.insert(g_new_list.end(), g_new_lambda_t.begin(), g_new_lambda_t.end());
+    g_new_list.insert(g_new_list.end(), g_new_u.begin(), g_new_u.end());
+
+
+    g_new_vector = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+              this->g_new_list.data(), this->g_new_list.size());
   }
 };

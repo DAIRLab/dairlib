@@ -16,14 +16,23 @@ tilt_degrees: 15 # tilt angle for end-effector
 
 # --------------------------  Return Phase New Gain parameters  -----------------------------#
 q_new_vector: [1000000000, 1000000000, 1000000000, 0, 0, 0, 0, 0, 0, 5,
-           10, 10, 10, 0, 0, 0, 0.1, 0.1, 0.1]
+           10, 10, 10, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+# G: Penalty on all decision variables (G_x, G_lambda, G_u)
+g_new_x: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001,
+      0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+# for S-T G_lambda
+g_new_gamma: [0.001, 0.001]
+g_new_lambda_n: [0.001, 0.0000001]
+g_new_lambda_t: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+# for Anitescu G_lambda
+g_new_lambda: [0.001, 0.001, 0.001, 0.001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]
+g_new_u: [0.001, 0.001, 0.001]
 
 # --------------------------  Move to Initial parameters  -----------------------------#
 initial_start: [0.55, 0, 0.12]
 initial_finish: [0, 0, 0.07]
 stabilize_time1: 2.5
 move_time: 3.25
-stabilize_time2: 0.75
 
 # --------------------------  Solve time filter parameters  -----------------------------#
 

@@ -157,6 +157,7 @@ int DoMain(int argc, char* argv[]){
   q[q_map["sphere_y"]] = param.q_init_ball_c3(5);
   q[q_map["sphere_z"]] = param.q_init_ball_c3(6);
   double mu = param.mu;
+  std::cout<<q<<std::endl;
 
   MatrixXd Qinit = param.Q_default * MatrixXd::Identity(nq+nv, nq+nv);
   Qinit.block(0,0,3,3) << param.Q_finger * MatrixXd::Identity(3,3);
@@ -228,9 +229,9 @@ int DoMain(int argc, char* argv[]){
         pattern_line_y[j] = 0.1 - (j-line_step_size) * (0.2) / line_step_size;
       double x = 0.55;
       double y = pattern_line_y[i%(2*line_step_size)];
-      q(q_map["base_x"]) = x;
-      q(q_map["base_y"]) = y;
-      q(q_map["base_z"]) = param.ball_radius + param.table_offset;
+      q(q_map["sphere_x"]) = x;
+      q(q_map["sphere_y"]) = y;
+      q(q_map["sphere_z"]) = param.ball_radius + param.table_offset;
       VectorXd xtraj_hold = VectorXd::Zero(nq + nv);
       xtraj_hold.head(nq) << q;
       xtraj.push_back(xtraj_hold);
@@ -277,6 +278,7 @@ int DoMain(int argc, char* argv[]){
 //    xtraj_hold.head(nq) << q;
 //    xtraj.push_back(xtraj_hold);
   }
+//  std::cout<<q<<std::endl;
 
   // convert xtraj into MatrixXd
   MatrixXd xtraj_mat(nq+nv, values.size());

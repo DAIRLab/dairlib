@@ -215,7 +215,7 @@ void ControlRefineSender::CalcTrackTarget(
     VectorXd x_next = context.get_discrete_state(x_next_idx_).value();
 
     VectorXd track_target = VectorXd::Zero(38);
-    track_target << x_next.head(3), ee_orientation_target, VectorXd::Zero(7), x_next.segment(9,3), VectorXd::Zero(21);
+    track_target << x_next.head(3), ee_orientation_target, VectorXd::Zero(7), x_next.segment(10,3), VectorXd::Zero(21);
 
     // TODO:: need to add parameters and clamp on final output
     // temporarily hack to test on old interface

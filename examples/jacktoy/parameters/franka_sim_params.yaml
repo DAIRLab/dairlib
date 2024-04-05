@@ -59,12 +59,12 @@ visualize_execution_plan: true
 visualizer_curr_sample_end_effector_model: examples/jacktoy/urdf/ee_curr_traj_visualization_model.urdf
 visualizer_curr_sample_traj_jack_model: examples/jacktoy/urdf/jack_curr_traj_visualization_model.sdf
 visualize_pose_trace_curr: true
-visualize_center_of_mass_plan_curr: true
+visualize_center_of_mass_plan_curr: false
 visualize_c3_forces_curr: true
 
 
 visualizer_best_sample_end_effector_model: examples/jacktoy/urdf/ee_best_traj_visualization_model.urdf
 visualizer_best_sample_traj_jack_model: examples/jacktoy/urdf/jack_best_traj_visualization_model.sdf
 visualize_pose_trace_best: true
-visualize_center_of_mass_plan_best: true
+visualize_center_of_mass_plan_best: false
 visualize_c3_forces_best: false

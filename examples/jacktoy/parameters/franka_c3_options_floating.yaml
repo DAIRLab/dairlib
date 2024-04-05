@@ -19,10 +19,12 @@ dt: 0.05    # This is used by the radio input currently but we don't use it.
 planning_dt: 0.1
 execution_dt: 0.03
 num_friction_directions: 2
-# If scene index is 0, then we use 4 contacts with resolved ee-jack contact.
-# If scene index is 1, then we use 6 contacts without resolving ee-jack contact.
-scene_index: 0
-# num_contacts changes based on scene_index.
+# If is_nearest_contacts is 0, then we use 4 closest contacts with resolved 
+# ee-jack contact.
+# If is_nearest_contacts is 1, then we use 6 contacts without resolving 
+# ee-jack contact.
+is_nearest_contacts: 1
+# num_contacts changes based on the is_nearest_contacts flags.
 num_contacts: [4,6]
 N: 5
 # This param has to do with the xbox input?

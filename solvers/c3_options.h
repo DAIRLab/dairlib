@@ -56,7 +56,7 @@ struct C3Options {
   double planning_dt;           // dt for planning when comparing samples.
   double execution_dt;          // dt for execution after comparing samples.
   int num_friction_directions;
-  int scene_index;
+  int is_nearest_contacts;
   std::vector<int> num_contacts;
   Eigen::MatrixXd Q;
   Eigen::MatrixXd R;
@@ -92,7 +92,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(planning_dt));
     a->Visit(DRAKE_NVP(execution_dt));
     a->Visit(DRAKE_NVP(num_friction_directions));
-    a->Visit(DRAKE_NVP(scene_index));
+    a->Visit(DRAKE_NVP(is_nearest_contacts));
     a->Visit(DRAKE_NVP(num_contacts));
 
     a->Visit(DRAKE_NVP(N));
@@ -119,22 +119,22 @@ struct C3Options {
     g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), g_x.begin(), g_x.end());
     if (contact_model == "stewart_and_trinkle") {
-      g_vector.insert(g_vector.end(), g_gamma[scene_index].begin(), g_gamma[scene_index].end());
-      g_vector.insert(g_vector.end(), g_lambda_n[scene_index].begin(), g_lambda_n[scene_index].end());
-      g_vector.insert(g_vector.end(), g_lambda_t[scene_index].begin(), g_lambda_t[scene_index].end());
+      g_vector.insert(g_vector.end(), g_gamma[is_nearest_contacts].begin(), g_gamma[is_nearest_contacts].end());
+      g_vector.insert(g_vector.end(), g_lambda_n[is_nearest_contacts].begin(), g_lambda_n[is_nearest_contacts].end());
+      g_vector.insert(g_vector.end(), g_lambda_t[is_nearest_contacts].begin(), g_lambda_t[is_nearest_contacts].end());
     } else {
-      g_vector.insert(g_vector.end(), g_lambda[scene_index].begin(), g_lambda[scene_index].end());
+      g_vector.insert(g_vector.end(), g_lambda[is_nearest_contacts].begin(), g_lambda[is_nearest_contacts].end());
     }
 
     g_vector.insert(g_vector.end(), g_u.begin(), g_u.end());
     u_vector = std::vector<double>();
     u_vector.insert(u_vector.end(), u_x.begin(), u_x.end());
     if (contact_model == "stewart_and_trinkle") {
-      u_vector.insert(u_vector.end(), u_gamma[scene_index].begin(), u_gamma[scene_index].end());
-      u_vector.insert(u_vector.end(), u_lambda_n[scene_index].begin(), u_lambda_n[scene_index].end());
-      u_vector.insert(u_vector.end(), u_lambda_t[scene_index].begin(), u_lambda_t[scene_index].end());
+      u_vector.insert(u_vector.end(), u_gamma[is_nearest_contacts].begin(), u_gamma[is_nearest_contacts].end());
+      u_vector.insert(u_vector.end(), u_lambda_n[is_nearest_contacts].begin(), u_lambda_n[is_nearest_contacts].end());
+      u_vector.insert(u_vector.end(), u_lambda_t[is_nearest_contacts].begin(), u_lambda_t[is_nearest_contacts].end());
     } else {
-      u_vector.insert(u_vector.end(), u_lambda[scene_index].begin(), u_lambda[scene_index].end());
+      u_vector.insert(u_vector.end(), u_lambda[is_nearest_contacts].begin(), u_lambda[is_nearest_contacts].end());
     }
     u_vector.insert(u_vector.end(), u_u.begin(), u_u.end());
 

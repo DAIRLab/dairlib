@@ -11,6 +11,10 @@
 
 namespace dairlib::systems::controllers {
 
+enum AlipTrackingCostType {
+  kVelocity, kGait
+};
+
 struct alip_s2s_mpfc_params {
   alip_utils::AlipGaitParams gait_params;
   int nmodes;
@@ -24,8 +28,9 @@ struct alip_s2s_mpfc_params {
   Eigen::MatrixXd R;
   Eigen::MatrixXd Qf;
   drake::solvers::SolverOptions solver_options;
-  double umax = 5.0;
+  double umax = 25.0;
   double ankle_torque_regularization = 1.0;
+  AlipTrackingCostType tracking_cost_type = kVelocity;
 };
 
 struct alip_s2s_mpfc_params_io {
@@ -41,6 +46,7 @@ struct alip_s2s_mpfc_params_io {
   double max_ankle_torque;
   double ankle_torque_regularization;
   std::string reset_discretization_method;
+  std::string cost_type;
   std::vector<double> com_pos_bound;
   std::vector<double> com_vel_bound;
   std::vector<double> Q;
@@ -61,6 +67,7 @@ struct alip_s2s_mpfc_params_io {
     a->Visit(DRAKE_NVP(max_ankle_torque));
     a->Visit(DRAKE_NVP(ankle_torque_regularization));
     a->Visit(DRAKE_NVP(reset_discretization_method));
+    a->Visit(DRAKE_NVP(cost_type));
     a->Visit(DRAKE_NVP(com_pos_bound));
     a->Visit(DRAKE_NVP(com_vel_bound));
     a->Visit(DRAKE_NVP(Q));
@@ -105,6 +112,13 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
   DRAKE_DEMAND(params_io.reset_discretization_method == "ZOH" ||
       params_io.reset_discretization_method == "FOH" ||
       params_io.reset_discretization_method == "SPLIT");
+
+  DRAKE_DEMAND(params_io.cost_type == "velocity" or
+               params_io.cost_type == "gait");
+
+  if (params_io.cost_type == "gait") {
+    params_out.tracking_cost_type = kGait;
+  }
 
   alip_utils::ResetDiscretization
       reset_disc = alip_utils::ResetDiscretization::kZOH;

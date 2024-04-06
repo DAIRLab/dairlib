@@ -58,8 +58,7 @@ alip_s2s_mpfc_solution AlipS2SMPFC::Solve(
   UpdateCrossoverConstraint(stance);
   UpdateFootholdConstraints(footholds);
   UpdateInputCost(vdes, stance);
-  UpdateTrackingCost(vdes);
-  UpdateTerminalCost(vdes);
+  UpdateTrackingCost(vdes, stance);
   UpdateTimeRegularization(t);
 
   auto solver_start = std::chrono::steady_clock::now();
@@ -419,7 +418,17 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
 
 }
 
-void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes) {
+void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
+  if (params_.tracking_cost_type == kVelocity) {
+    UpdateTrackingCostVelocity(vdes);
+    UpdateTerminalCostVelocity(vdes);
+  } else {
+    UpdateTrackingCostGait(vdes, stance);
+    UpdateTerminalCostGait(vdes, stance);
+  }
+}
+
+void AlipS2SMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes) {
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
         -2 * Q_proj_ * g_proj_p1_ : -2 * Q_proj_ * g_proj_p2_;
@@ -429,15 +438,41 @@ void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes) {
   }
 }
 
-void AlipS2SMPFC::UpdateTerminalCost(const Vector2d &vdes) {
-
+void AlipS2SMPFC::UpdateTerminalCostVelocity(const Vector2d &vdes) {
   const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
       -2 * Q_proj_f_ * g_proj_p1_ : -2 * Q_proj_f_ * g_proj_p2_;
-
   Matrix4d Qf = 2 * Q_proj_f_;
   Vector4d bf = vdes_mul * vdes;
-
   terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
+}
+
+void AlipS2SMPFC::UpdateTrackingCostGait(const Vector2d &vdes, Stance stance) {
+  AlipGaitParams gait_params = params_.gait_params;
+  gait_params.desired_velocity = vdes;
+  gait_params.initial_stance_foot = stance;
+
+  const auto& [x0, x1] = alip_utils::MakePeriodicAlipGait(gait_params);
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    const Vector4d& xd = i % 2 == 0 ? x0: x1;
+    tracking_cost_.at(i).evaluator()->UpdateCoefficients(
+        2 * params_.Q, -2*params_.Q * xd, 0, true // we know it's convex
+    );
+  }
+
+}
+
+void AlipS2SMPFC::UpdateTerminalCostGait(const Eigen::Vector2d &vdes,
+                                         alip_utils::Stance stance) {
+  AlipGaitParams gait_params = params_.gait_params;
+  gait_params.desired_velocity = vdes;
+  gait_params.initial_stance_foot = stance;
+
+  const auto& [x0, x1] = alip_utils::MakePeriodicAlipGait(gait_params);
+
+  const Vector4d& xd = params_.nmodes % 2 == 0 ? x1 : x0;
+  terminal_cost_->UpdateCoefficients(
+      2* params_.Qf, -2 * params_.Qf * xd, 0, true);
+
 }
 
 void AlipS2SMPFC::UpdateTimeRegularization(double t) {

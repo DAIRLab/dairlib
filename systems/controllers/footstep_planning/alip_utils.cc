@@ -229,60 +229,19 @@ std::pair<Vector4d, Vector4d> MakePeriodicAlipGait(
   const Vector2d
       u1 = u0 - 2 * (s * gait_params.stance_width * Vector2d::UnitY());
 
-  const Matrix4d Ad = CalcAd(
+  const auto [A, B] = AlipStepToStepDynamics(
       gait_params.height,
       gait_params.mass,
-      gait_params.single_stance_duration
-  );
-  const Matrix<double, 4, 8> Ar = CalcResetMap(
-      gait_params.height,
-      gait_params.mass,
+      gait_params.single_stance_duration,
       gait_params.double_stance_duration,
       gait_params.reset_discretization_method
   );
 
-  const Matrix4d A = Ar.leftCols<4>() * Ad;
-  const Matrix<double, 4, 2> B = Ar.rightCols<2>();
-  const Vector4d
-      x0 = (Matrix4d::Identity() - A * A).inverse() * (A * B * u0 + B * u1);
-  const Vector4d x1 = A * x0 + B * u0;
+  // A^2 x0 + ABu0 + Bu1 = x0
+  Vector4d x0 = (Matrix4d::Identity() - A * A).inverse() * (A * B * u0 + B * u1);
+  Vector4d x1 = A*x0 + B* u0;
+
   return {x0, x1};
-}
-
-std::vector<VectorXd> MakePeriodicAlipGaitTrajectory(
-    const AlipGaitParams &gait_params, int nmodes, int knots_per_mode) {
-  DRAKE_DEMAND(gait_params.double_stance_duration > 0);
-  vector<VectorXd> gait = vector<VectorXd>(
-      nmodes, VectorXd::Zero(4 * knots_per_mode));
-  auto [x0, x1] = MakePeriodicAlipGait(gait_params);
-
-  Matrix4d Rx = Matrix4d::Identity();
-  Rx(1, 1) = -1;
-  Rx(2, 2) = -1;
-  const Matrix4d Ad = CalcAd(
-      gait_params.height,
-      gait_params.mass,
-      gait_params.single_stance_duration / (knots_per_mode - 1)
-  );
-
-  for (int i = 0; i < nmodes; i++) {
-    gait.at(i).head<4>() = (i % 2) == 0 ? x0 : x1;
-    for (int k = 1; k < knots_per_mode; k++) {
-      gait.at(i).segment(4 * k, 4) = Ad * gait.at(i).segment(4 * (k - 1), 4);
-    }
-  }
-
-  return gait;
-}
-
-Matrix4d SolveDareTwoStep(
-    const Matrix4d &Q, double com_z, double m, double tss, double tds,
-    int knots_per_mode, ResetDiscretization discretization) {
-  Matrix4d A = CalcAd(com_z, m, tss + tds);
-  Matrix<double, 4, 2> B = CalcResetMap(com_z, m, tds).rightCols<2>();
-  Matrix2d R = 0.01 * Matrix2d::Identity();
-  Matrix4d S = drake::math::DiscreteAlgebraicRiccatiEquation(A, B, Q, R);
-  return S;
 }
 
 }

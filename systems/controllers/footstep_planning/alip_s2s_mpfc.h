@@ -87,8 +87,11 @@ class AlipS2SMPFC {
   void UpdateCrossoverConstraint(alip_utils::Stance stance);
   void UpdateFootholdConstraints(const geometry::ConvexPolygonSet& footholds);
   void UpdateInputCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
-  void UpdateTrackingCost(const Eigen::Vector2d& vdes);
-  void UpdateTerminalCost(const Eigen::Vector2d& vdes);
+  void UpdateTrackingCost(const Eigen::Vector2d& vdes, alip_utils::Stance stance);
+  void UpdateTrackingCostVelocity(const Eigen::Vector2d& vdes);
+  void UpdateTerminalCostVelocity(const Eigen::Vector2d& vdes);
+  void UpdateTrackingCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
+  void UpdateTerminalCostGait(const Eigen::Vector2d& vdes,  alip_utils::Stance stance);
   void UpdateTimeRegularization(double t);
 
   void ValidateParams() const {

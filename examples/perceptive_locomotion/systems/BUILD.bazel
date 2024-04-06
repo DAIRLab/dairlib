@@ -36,14 +36,3 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
-
-cc_library(
-    name = "stance_foot_ros_sender",
-    srcs = ["stance_foot_ros_sender.cc"],
-    hdrs = ["stance_foot_ros_sender.h"],
-    tags = ["ros"],
-    deps = [
-        "@drake//:drake_shared_library",
-        "@ros",
-    ],
-)

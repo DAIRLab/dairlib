@@ -5,12 +5,13 @@
 #include "dairlib/lcmt_footstep_target.hpp"
 #include "dairlib/lcmt_fsm_info.hpp"
 
-// dairlib
+// dairlib - Cassie
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/osc/high_level_command.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
-#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
+
 #include "multibody/multibody_utils.h"
+
 #include "systems/controllers/footstep_planning/alip_one_step_footstep_controller.h"
 #include "systems/controllers/footstep_planning/footstep_lcm_systems.h"
 #include "systems/primitives/fsm_lcm_systems.h"
@@ -35,8 +36,6 @@ using Eigen::VectorXd;
 
 using systems::controllers::AlipOneStepFootstepController;
 using systems::controllers::alip_utils::PointOnFramed;
-using systems::controllers::AlipMPFCGains;
-using systems::controllers::FootstepSender;
 using systems::FsmSender;
 
 using drake::multibody::SpatialInertia;

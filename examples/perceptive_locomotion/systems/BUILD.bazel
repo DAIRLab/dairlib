@@ -22,10 +22,8 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-        "@ros",
     ],
 )
-
 
 cc_library(
     name = "meshcat_mpc_debug_visualizer",

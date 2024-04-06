@@ -3,30 +3,13 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "alip_mpfc_system",
-    srcs = ["alip_mpfc_system.cc"],
-    hdrs = ["alip_mpfc_system.h"],
-    deps = [
-        ":alip_miqp",
-        ":alip_multiqp",
-        ":alip_utils",
-        "//common:eigen_utils",
-        "//geometry:convex_polygon_set",
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//systems/filters:s2s_kalman_filter",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_mpfc_s2s_system",
     srcs = ["alip_mpfc_s2s_system.cc"],
     hdrs = ["alip_mpfc_s2s_system.h"],
     deps = [
-        ":alip_mpfc_system",
         ":alip_s2s_mpfc",
+        "//lcm:lcm_trajectory_saver",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
     ],
@@ -37,8 +20,6 @@ cc_library(
     srcs = ["alip_one_step_footstep_controller.cc"],
     hdrs = ["alip_one_step_footstep_controller.h"],
     deps = [
-        ":alip_mpfc_system",
-        ":alip_multiqp",
         ":alip_utils",
         "//common:eigen_utils",
         "//geometry:convex_polygon_set",
@@ -61,43 +42,11 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_multiqp",
-    srcs = ["alip_multiqp.cc"],
-    hdrs = ["alip_multiqp.h"],
-    deps = [
-        ":alip_mpc",
-    ],
-)
-
-cc_library(
-    name = "alip_miqp",
-    srcs = ["alip_miqp.cc"],
-    hdrs = ["alip_miqp.h"],
-    deps = [
-        ":alip_mpc",
-    ],
-)
-
-cc_library(
-    name = "alip_mpc",
-    srcs = ["alip_mpc.cc"],
-    hdrs = ["alip_mpc.h"],
-    deps = [
-        ":alip_utils",
-        "//geometry:convex_polygon",
-        "//solvers:constraints",
-        "//solvers:fast_osqp_solver",
-        "//solvers:optimization_utils",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "alip_s2s_mpfc",
     srcs = ["alip_s2s_mpfc.cc"],
     hdrs = [
         "alip_s2s_mpfc.h",
-        "alip_s2s_mpfc_params.h"
+        "alip_s2s_mpfc_params.h",
     ],
     deps = [
         ":alip_utils",

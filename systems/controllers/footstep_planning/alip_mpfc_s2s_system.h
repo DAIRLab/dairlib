@@ -1,13 +1,11 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
 #include <dairlib/lcmt_alip_s2s_mpfc_debug.hpp>
-#include <dairlib/lcmt_mpc_solution.hpp>
 #include <dairlib/lcmt_alip_mpc_output.hpp>
 
 #include "alip_utils.h"
 #include "alip_s2s_mpfc.h"
 #include "geometry/convex_polygon_set.h"
-#include "systems/filters/s2s_kalman_filter.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/snopt_solver.h"

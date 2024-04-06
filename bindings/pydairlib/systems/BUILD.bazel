@@ -31,10 +31,8 @@ pybind_py_library(
 pybind_py_library(
     name = "footstep_planning_py",
     cc_deps = [
+        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
         "//systems/controllers/footstep_planning:swing_foot_traj_solver",
-        "//systems/controllers/footstep_planning:alip_miqp",
-        "//systems/controllers/footstep_planning:alip_mpfc_system",
-        "//systems/controllers/footstep_planning:alip_multiqp",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "footstep_planning",

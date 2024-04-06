@@ -4,7 +4,6 @@
 #include "dairlib/lcmt_robot_input.hpp"
 
 // MPC related
-#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 #include "systems/primitives/fsm_lcm_systems.h"

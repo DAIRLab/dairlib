@@ -1,5 +1,3 @@
-#include "systems/controllers/footstep_planning/alip_multiqp.h"
-#include "systems/controllers/footstep_planning/alip_miqp.h"
 #include "systems/controllers/footstep_planning/alip_s2s_mpfc.h"
 #include "common/find_resource.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -11,13 +9,12 @@ using geometry::ConvexPolygon;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 using Eigen::Matrix4d;
 using Eigen::MatrixXd;
 
 struct mpc_profiling_data {
-  double multiqp_runtime;
-  double multiqp_solve_time;
   double miqp_runtime;
   double miqp_solve_time;
 };
@@ -46,9 +43,6 @@ std::vector<ConvexPolygon> GetRandomFootholds(int n, double r) {
 }
 
 mpc_profiling_data TestRandomFootholds(int n, double r) {
-  auto trajopt_miqp = AlipMIQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
-  auto trajopt_multiqp = AlipMultiQP(32, 0.85, 10, alip_utils::ResetDiscretization::kFOH, 3);
-
 
   auto test_gait = alip_utils::AlipGaitParams {
     0.85,
@@ -79,27 +73,12 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
   );
 
   auto trajopt_s2s = AlipS2SMPFC(params);
-
-  std::vector<AlipMPC*> trajopts = {&trajopt_miqp, &trajopt_multiqp};
-  trajopt_miqp.SetDoubleSupportTime(0.1);
-  trajopt_multiqp.SetDoubleSupportTime(0.1);
-  auto xd = trajopt_miqp.MakeXdesTrajForVdes(Vector2d::UnitX(), 0.3, 0.3, 10);
   auto footholds = GetRandomFootholds(n, r);
-  for (const auto trajopt: trajopts) {
-    trajopt->AddFootholds(footholds);
-    trajopt->UpdateNominalStanceTime(0.3, 0.3);
-    trajopt->AddTrackingCost(xd, Matrix4d::Identity(), Matrix4d::Identity());
-    trajopt->SetInputLimit(1);
-    trajopt->AddInputCost(10);
-    trajopt->Build();
-  }
-  mpc_profiling_data times{0, 0, 0, 0};
+  mpc_profiling_data times{0, 0};
   auto p0 = Vector3d::Zero();
-//  trajopt_miqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
-//  trajopt_multiqp.CalcOptimalFootstepPlan(xd.front().head<4>(), p0);
-
+  auto x0 = Vector4d::Zero();
   auto sol = trajopt_s2s.Solve(
-      xd.front().head<4>(), p0, 0.3, 0.3, 0.3,
+      x0, p0, 0.3, 0.3, 0.3,
       test_gait.desired_velocity, test_gait.initial_stance_foot, footholds);
 
   times.miqp_runtime = sol.total_time;
@@ -108,7 +87,7 @@ mpc_profiling_data TestRandomFootholds(int n, double r) {
 }
 
 std::vector<mpc_profiling_data> TestRandomFootholds(int n, double r, int trials) {
-  std::vector<mpc_profiling_data> data(trials, {0,0,0,0});
+  std::vector<mpc_profiling_data> data(trials, {0,0});
   for (int i = 0; i < trials; i++) {
     data.at(i) = TestRandomFootholds(n, r);
   }

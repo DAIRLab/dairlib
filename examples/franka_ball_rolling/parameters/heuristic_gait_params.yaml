@@ -5,8 +5,8 @@ return_phase: 0.5 # time duration of the return phase (upward, sideway, repositi
 # --------------------------  Gaiting parameters  -----------------------------#
 # firsr is how upward the end-effector should be in rolling phase
 # second is how backward the end-effect should be (i.e. x,y) in sideway and reposition phases
-# second to fourth parameters is how high the end-effector should be in upward, sideway, reposition phases
-gait_parameters: [0.004, 0.02, 0.0951, 0.0911, 0.0691] #
+# third to fifth parameters is how high the end-effector should be in upward, sideway, reposition phases
+gait_parameters: [0.004, 0.025, 0.0951, 0.0911, 0.0691] #
 
 # --------------------------  End-effector Tilting parameters  -----------------------------#
 # axis_option 1: tilt EE away from the desired direction of the ball
@@ -31,8 +31,8 @@ g_new_u: [0.001, 0.001, 0.001]
 # --------------------------  Move to Initial parameters  -----------------------------#
 initial_start: [0.55, 0, 0.12]
 initial_finish: [0, 0, 0.07]
-stabilize_time1: 2.5
-move_time: 3.25
+stabilize_time1: 2
+move_time: 2.5
 
 # --------------------------  Solve time filter parameters  -----------------------------#
 

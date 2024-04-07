@@ -130,7 +130,7 @@ C3Controller_franka::C3Controller_franka(
 
   // get c3_parameters
   param_ = drake::yaml::LoadYamlFile<C3Parameters>(
-      "examples/franka_trajectory_following/parameters.yaml");
+      "examples/franka_ball_rolling/parameters.yaml");
   max_desired_velocity_ = param_.velocity_limit;
 
   // filter info

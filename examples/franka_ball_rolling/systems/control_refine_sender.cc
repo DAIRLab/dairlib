@@ -127,7 +127,6 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
             dt_history.pop_front();
             dt_history.push_back(timestamp - prev_time);
         }
-        dt = c3_options_.solve_dt;
         double dt_accumulation = 0;
         for (int i = 0; i < (int) dt_history.size(); i++){
             dt_accumulation += dt_history[i];
@@ -183,8 +182,6 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
         auto& force = state->get_mutable_discrete_state(force_idx_);
         auto& contact_jacobian = state->get_mutable_abstract_state<MatrixXd>(contact_jacobian_idx);
 
-//        std::cout<< lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0] << std::endl;
-//        std::cout << timestamp - prev_time << std::endl;
 //        std::cout << dt << std::endl;
 
         x_next.SetFromVector(lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0]);

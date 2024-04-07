@@ -1,6 +1,6 @@
 import lcm
 
-def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_callback, print, *args,
+def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_callback, print_info, *args,
                  **kwargs):
     """
     Parses an LCM log and returns data as specified by a callback function
@@ -36,7 +36,7 @@ def get_log_data(lcm_log, lcm_channels, start_time, duration, data_processing_ca
             else:
                 data_to_process[event.channel] = \
                     [lcm_channels[event.channel].decode(event.data)]
-        if print and event.eventnum % 50000 == 0:
+        if print_info and event.eventnum % 50000 == 0:
             print(f'processed {(event.timestamp - t) * 1e-6:.1f}'
                   f' seconds of log data')
         if 0 < duration <= (event.timestamp - t) * 1e-6:

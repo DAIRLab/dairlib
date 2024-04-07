@@ -62,7 +62,6 @@ def process_state_channel(state_data, plant):
     q = []
     u = []
     v = []
-
     pos_map = MakeNameToPositionsMap(plant)
     vel_map = MakeNameToVelocitiesMap(plant)
     act_map = MakeNameToActuatorsMap(plant)

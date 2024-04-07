@@ -56,14 +56,14 @@ def main():
                      plot_config.start_time,
                      plot_config.duration,
                      mbp_plots.load_default_channels,  # processing callback
-                     franka_plant, True, channel_x, channel_u,
+                     True, franka_plant, channel_x, channel_u,
                      channel_osc)  # processing callback arguments
 
     # processing callback arguments
     if plot_config.plot_c3_debug:
         c3_output, c3_tracking_target, c3_tracking_actual = get_log_data(log, default_channels, plot_config.start_time,
-                                 plot_config.duration, mbp_plots.load_c3_debug,
-                                 channel_c3, channel_c3_target, channel_c3_actual)
+                                 plot_config.duration, mbp_plots.load_c3_debug, True,
+                                 channel_c3,  channel_c3_target, channel_c3_actual)
         solve_times = np.diff(c3_output['t'], prepend=[c3_output['t'][0]])
         print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output['t'])))
 
@@ -186,10 +186,12 @@ def main():
         support_sliding_contacts = [slice(12, 19), slice(26, 36), slice(39, 68), slice(218, 260)]
         support_no_contacts = [slice(67, 219)]
 
-        plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 7:8], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 0:1], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
-        plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        # plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 7:8], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        # plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 0:1], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        # plotter.plot(c3_tracking_actual['t'] - 0.15, c3_tracking_actual['x'][:, 9:10], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        # plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 2:3], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 0:3], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
+        plotter.plot(c3_tracking_actual['t'], c3_tracking_actual['x'][:, 7:10], subplot_index = 0, xlabel='Time (s)', ylabel='Position (m)', grid=False)
         ax = plotter.fig.axes[0]
         ymin, ymax = ax.get_ylim()
         halfway = ymin + 0.5 * (ymax - ymin)

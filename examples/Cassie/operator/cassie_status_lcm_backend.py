@@ -34,7 +34,7 @@ class PDPublisher:
             "knee_right",
             "toe_left",
             "toe_right"]
-        self.ramp_up_time = 2.0
+        self.ramp_up_time = 1.0
 
     def publish(self):
         msg = lcmt_pd_config()

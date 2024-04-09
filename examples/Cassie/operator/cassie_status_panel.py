@@ -23,13 +23,13 @@ LIGHT_SKY_BLUE = (135, 206, 250)
 DODGER_BLUE = (30, 144, 255)
 
 # Set up the screen
-SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 750
+SCREEN_WIDTH = 500
+SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Cassie Status Panel")
 
 # Fonts
-FONT = pygame.font.Font(None, 72)
+FONT = pygame.font.Font(None, 64)
 BUTTON_FONT = pygame.font.Font(None, 64)
 
 # Text input box

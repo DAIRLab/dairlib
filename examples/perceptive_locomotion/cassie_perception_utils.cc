@@ -13,11 +13,11 @@ MakeCassieElevationMappingPreProcessor(
   perception::perceptive_locomotion_preprocessor_params processor_params {
       "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
       {
-          {"toe_left", Vector3d(0.3, 0.1, 0.2),
+          {"toe_left", Vector3d(0.35, 0.15, 0.25),
            CassieTransformFootToToeFrame()},
           {"tarsus_left", Vector3d(0.5, 0.2, 0.2),
            drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-          {"toe_right", Vector3d(0.3, 0.1, 0.2),
+          {"toe_right", Vector3d(0.35, 0.15, 0.25),
            CassieTransformFootToToeFrame()},
           {"tarsus_right", Vector3d(0.5, 0.2, 0.2),
            drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},

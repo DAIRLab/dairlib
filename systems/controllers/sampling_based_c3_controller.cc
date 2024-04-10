@@ -731,6 +731,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_+1);
 
   for (int i = 0; i < N_+1; i++) {
+    // This is a curve_fraction and is not in the units of time or distance. 
+    // When it is 0, it is the current location. When it is 1, it is the goal.
     double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
 
     if (i == 1 & t_spline >= 1 & !is_doing_c3_){

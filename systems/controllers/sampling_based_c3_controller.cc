@@ -730,10 +730,6 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x_, N_+1);
   Eigen::VectorXd timestamps = Eigen::VectorXd::Zero(N_+1);
 
-  // Roll out the execution LCS with the planned inputs.
-  knots.col(0) = x_lcs;
-  timestamps[0] = t + filtered_solve_time_;
-
   for (int i = 0; i < N_+1; i++) {
     double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
 

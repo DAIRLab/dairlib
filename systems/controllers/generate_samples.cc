@@ -59,9 +59,11 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     }
   }
   else if(sampling_params.sampling_strategy == FIXED_SAMPLE){
+    if (num_samples != 0){
       candidate_states[0] = generate_fixed_sample(
         n_q, n_v, x_lcs, sampling_params.sampling_height, 
         sampling_params.fixed_sample_location);
+    }
   }
   for (int i = 0; i < candidate_states.size(); i++){
   }

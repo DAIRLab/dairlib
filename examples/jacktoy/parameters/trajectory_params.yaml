@@ -20,5 +20,5 @@ lookahead_step_size: 0.2     # lookahead size for adaptive straight line.
 max_step_size: 0.15           # if error is smaller or equal to this max step size, the projection point is set as the next target.
 
 # Sampling parameters
-ee_goal_height: 0.08          # height of the end effector above the jack TODO: @bibit what do you think about this name?
+ee_goal_height: 0.06          # height of the end effector above the jack TODO: @bibit what do you think about this name?
 object_half_width: 0.0625     # half width of the object. Make sure to match with urdf of object.

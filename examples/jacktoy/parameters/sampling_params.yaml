@@ -3,7 +3,7 @@
 # 1 means random sampling on a 2D circle.
 # 2 means random sampling on a 3D sphere.
 # 3 means a fixed sample location. Currently allows for 1 fixed sample.
-control_loop_delay_ms: 0
+control_loop_delay_ms: 100
 sampling_strategy: 2
 
 # This is the fixed sample location for sampling strategy 3.
@@ -22,7 +22,7 @@ min_angle_from_vertical: 0  #0.785
 max_angle_from_vertical: 1.822
 
 # Number of additional samples to consider in each mode (repositioning or C3).
-num_additional_samples_repos: 2
+num_additional_samples_repos: 1
 num_additional_samples_c3: 1
 
 # Repositioning parameters.
@@ -33,7 +33,8 @@ reposition_speed: 0.75    # m/s
 simulate_dynamics_for_cost: false
 
 # Cost associated with traveling.
-travel_cost_per_meter: 100
-c3_to_repos_hysteresis: 100
+travel_cost_per_meter: 0
+c3_to_repos_hysteresis: 200
 finished_reposition_cost: 1000000
-repos_to_c3_hysteresis: 250
+repos_to_c3_hysteresis: 100
+hysterisis_between_repos_targets: 0

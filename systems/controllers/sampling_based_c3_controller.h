@@ -265,6 +265,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Samples and associated costs.
   // TODO: to be updated in ComputePlan
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
+  mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
   // Miscellaneous sample related variables.
@@ -277,7 +278,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                      SAMPLE_INDEX_4, SAMPLE_INDEX_5, SAMPLE_INDEX_6,
                      SAMPLE_INDEX_7, SAMPLE_INDEX_8, SAMPLE_INDEX_9,
                      SAMPLE_INDEX_10, SAMPLE_INDEX_11, SAMPLE_INDEX_12 };
-  const int CURRENT_REPOSITION_INDEX = SAMPLE_INDEX_1;
+  const SampleIndex CURRENT_REPOSITION_INDEX = SAMPLE_INDEX_1;
 
   mutable SampleIndex best_sample_index_ = CURRENT_LOCATION_INDEX;
 

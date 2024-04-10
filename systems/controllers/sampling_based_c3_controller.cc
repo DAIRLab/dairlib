@@ -188,8 +188,11 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
                                         std::vector<Eigen::VectorXd>());
-  int num_samples = std::max(sampling_params_.num_additional_samples_repos,
+  // While repositioning, we always keep track of the previous repositioning
+  // target. Hence we have the +1 here.
+  int num_samples = std::max(sampling_params_.num_additional_samples_repos + 1,
                              sampling_params_.num_additional_samples_c3);
+  // The +1 here is to account for the current location.
   all_sample_locations_ = vector<Vector3d>(num_samples + 1, Vector3d::Zero());
   all_sample_costs_ = std::vector<double>(num_samples + 1, -1);
   LcmTrajectory lcm_traj = LcmTrajectory();
@@ -353,7 +356,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
-  // std::cout<<"candidate states size before adding curr: "<<candidate_states.size()<<std::endl;
+  // std::cout<<"state size: "<<candidate_states[0].size()<<std::endl;
+
+  // Add the previous best repsositioning target to the candidate states at the 
+  // first index always.
+  if (!is_doing_c3_){
+    // Add the current best repositioning target to the candidate states.
+    Eigen::VectorXd repositioning_target_state = x_lcs_curr;
+    repositioning_target_state.head(3) = prev_repositioning_target_;
+    candidate_states.insert(candidate_states.begin(), repositioning_target_state);
+  }
+  // Insert the current location at the beginning of the candidate states.
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
   // std::cout<<"candidate states size after: "<<candidate_states.size()<<std::endl;
@@ -449,7 +462,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_params_.simulate_dynamics_for_cost);
       double c3_cost = cost_trajectory_pair.first;
       // Print the cost for each sample.
-      // std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;
+      std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;
       // TODO: This doesn't work because of the unique_ptr. Figure out how to fix.
        #pragma omp critical
       {
@@ -461,12 +474,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       all_sample_costs_[i] = c3_cost + 
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
+      // TODO: Currently this is never satisfied because we never set the
+      // finished_reposition_flag_ to true. If we see an issue with the spline,
+      // then we might have to look into this.
       if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
+        std::cout<<"Finished repositioning. Adding a large cost to get out of this state."<<std::endl;
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
       }
     }
   // End of parallelization
 
+  // TODO: Review what is happening here. If we always fix the state in the
+  // CURRENT_REPOSITION_INDEX to be the prev one, then we only want to replace
+  // it if the newer sample is hysterisis_between_repositioning_samples better.
   // Review the cost results to determine the best sample.
   double best_additional_sample_cost = -1;
   if (num_total_samples > 1) {
@@ -500,6 +520,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis.
+    std::cout<<"best_additional_sample_cost: "<<best_additional_sample_cost<<std::endl;
     if (all_sample_costs_[CURRENT_LOCATION_INDEX] > 
         best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis) {
       is_doing_c3_ = false;
@@ -508,6 +529,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
   else { // Currently repositioning.
     // Switch to C3 if the current sample is better, with hysteresis.
+    if(best_sample_index_ != CURRENT_REPOSITION_INDEX){
+      // This means that the best sample is not the current repositioning
+      // target. If the cost of the current repositioning target is better than
+      // the current best sample by the hysterisis amount, then we continue 
+      // pursuing the previous repositioning target.
+      if(all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
+        sampling_params_.hysterisis_between_repos_targets){
+          best_sample_index_ = CURRENT_REPOSITION_INDEX;
+      }
+    }
     if (best_additional_sample_cost > 
         all_sample_costs_[CURRENT_LOCATION_INDEX] + 
         sampling_params_.repos_to_c3_hysteresis) {

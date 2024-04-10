@@ -225,22 +225,23 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
 // This function relies on the previously computed zfin_ from the Solve function.
 // Calculate the C3 cost and feasible trajectory associated with applying a 
 // provided control input sequence to a system at a provided initial state.
-// Or, use the zfin_ trajectory if simulate_dynamics_for_cost is false.
-std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(bool simulate_dynamics_for_cost) const{
+// Or, use the zfin_ trajectory if cost_type is false.
+std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const{
   // Extract the locally stored state and control sequences.
   vector<VectorXd> UU(N_, VectorXd::Zero(k_));
   std::vector<Eigen::VectorXd> XX(N_+1, VectorXd::Zero(n_)); 
 
-  // If simulate_dynamics_for_cost is true, simulate the dynamics to get the
-  // full state trajectory. Otherwise, use the zfin_ trajectory.
-  if (simulate_dynamics_for_cost){
+  // If cost_type is 0, simulate the dynamics to get the
+  // full state trajectory. 
+  if (cost_type == 0){
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++){
       XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       UU[i] = zfin_[i].segment(n_ + m_, k_);
     }
   }
-  else{
+  else if(cost_type == 1){
+    // If cost_type is 1, use the provided zfin_ trajectory for the full state.
     for (int i = 0; i < N_; i++){
       XX[i] = zfin_[i].segment(0, n_);
       UU[i] = zfin_[i].segment(n_ + m_, k_);
@@ -248,6 +249,20 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(bool simulate_dynami
     // Set the final state to the state at N_-1 because it only contains the 
     // traj for N_ time steps instead of N_+1.
     XX[N_] = zfin_[N_ - 1].segment(0, n_);
+  }
+  else if(cost_type == 2){
+    // If cost_type is 2, use z_fin for ee trajectory but simulate forward for 
+    // the object trajectory.
+    // Simulate the object trajectory.
+    XX[0] = zfin_[0].segment(0, n_);
+    for (int i = 0; i < N_; i++){
+      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      UU[i] = zfin_[i].segment(n_ + m_, k_);
+    }
+    // Replace ee traj with those from zfin_.
+    for (int i = 0; i < N_; i++){
+      XX[i].segment(0,3) = zfin_[i].segment(0,3);
+    }
   }
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.

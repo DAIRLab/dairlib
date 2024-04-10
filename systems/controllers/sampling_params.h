@@ -22,7 +22,7 @@ struct SamplingC3SamplingParams {
   int num_additional_samples_c3;
   double spline_width;
   double reposition_speed;
-  bool simulate_dynamics_for_cost;
+  int cost_type;
   double travel_cost_per_meter;
   double c3_to_repos_hysteresis;
   double finished_reposition_cost;
@@ -42,7 +42,7 @@ struct SamplingC3SamplingParams {
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(spline_width));
     a->Visit(DRAKE_NVP(reposition_speed));
-    a->Visit(DRAKE_NVP(simulate_dynamics_for_cost));
+    a->Visit(DRAKE_NVP(cost_type));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(c3_to_repos_hysteresis));
     a->Visit(DRAKE_NVP(finished_reposition_cost));

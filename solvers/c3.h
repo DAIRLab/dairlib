@@ -45,7 +45,7 @@ class C3 {
   /// Compute the MPC cost, using previously solved MPC solution
   /// @return The cost and the full state trajectory
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-    bool simulate_dynamics_for_cost = false) const;
+    int simulate_dynamics_for_cost = 2) const;
 
   /// Solve a single ADMM step
   /// @param x0 The initial state of the system

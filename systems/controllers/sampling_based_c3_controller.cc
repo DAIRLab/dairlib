@@ -470,7 +470,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object->Solve(test_state, deltas.at(i), ws.at(i));
       // Get the state solution and calculate the cost.
       auto cost_trajectory_pair = test_c3_object->CalcCost(
-        sampling_params_.simulate_dynamics_for_cost);
+        sampling_params_.cost_type);
       double c3_cost = cost_trajectory_pair.first;
       // TODO: This doesn't work because of the unique_ptr. Figure out how to fix.
        #pragma omp critical

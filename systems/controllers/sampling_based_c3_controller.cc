@@ -188,13 +188,12 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
                                         std::vector<Eigen::VectorXd>());
-  // While repositioning, we always keep track of the previous repositioning
-  // target. Hence we have the +1 here.
+  // Since the num_additional_samples_repos means the additional samples to 
+  // to generate in addition to the prev_repositioning_target_, add 1.
   int num_samples = std::max(sampling_params_.num_additional_samples_repos + 1,
                              sampling_params_.num_additional_samples_c3);
   // The +1 here is to account for the current location.
   all_sample_locations_ = vector<Vector3d>(num_samples + 1, Vector3d::Zero());
-  all_sample_costs_ = std::vector<double>(num_samples + 1, -1);
   LcmTrajectory lcm_traj = LcmTrajectory();
 
   // Current location plan output ports.
@@ -246,10 +245,14 @@ SamplingC3Controller::SamplingC3Controller(
   
   // Sample location related output ports.
   // This port will output all samples except the current location.
+  // all_sample_locations_port_ does not include the current location. So 
+  // index 0 is the first sample.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
     "all_sample_locations", vector<Vector3d>(num_samples, Vector3d::Zero()), // TODO don't use class vars for port types
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
+  // all_sample_costs_port_ does include the current location. So index 0 is
+  // the current location cost.
   all_sample_costs_port_ = this->DeclareAbstractOutputPort(
     "all_sample_costs", std::vector<double>(num_samples + 1, -1), // TODO don't use class vars for port types
     &SamplingC3Controller::OutputAllSampleCosts
@@ -361,7 +364,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Add the previous best repsositioning target to the candidate states at the 
   // first index always.
   if (!is_doing_c3_){
-    // Add the current best repositioning target to the candidate states.
+    // Add the prev best repositioning target to the candidate states.
     Eigen::VectorXd repositioning_target_state = x_lcs_curr;
     repositioning_target_state.head(3) = prev_repositioning_target_;
     candidate_states.insert(candidate_states.begin(), repositioning_target_state);
@@ -370,6 +373,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
   // std::cout<<"candidate states size after: "<<candidate_states.size()<<std::endl;
+  if(is_doing_c3_){
+    // print candidate state size
+    std::cout<<"num samples during C3: "<<num_total_samples<<std::endl;
+  }
+  else{
+    // print candidate state size
+    std::cout<<"num samples during repositioning: "<<num_total_samples<<std::endl;
+  }
 
   // Update the set of sample locations under consideration.
   for (int i = 0; i < num_total_samples; i++) {
@@ -461,8 +472,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       auto cost_trajectory_pair = test_c3_object->CalcCost(
         sampling_params_.simulate_dynamics_for_cost);
       double c3_cost = cost_trajectory_pair.first;
-      // Print the cost for each sample.
-      std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;
       // TODO: This doesn't work because of the unique_ptr. Figure out how to fix.
        #pragma omp critical
       {
@@ -481,6 +490,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         std::cout<<"Finished repositioning. Adding a large cost to get out of this state."<<std::endl;
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
       }
+      // Print the cost for each sample.
+      std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;
     }
   // End of parallelization
 
@@ -537,6 +548,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       if(all_sample_costs_[CURRENT_REPOSITION_INDEX] < all_sample_costs_[best_sample_index_] + 
         sampling_params_.hysterisis_between_repos_targets){
           best_sample_index_ = CURRENT_REPOSITION_INDEX;
+          best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
       }
     }
     if (best_additional_sample_cost > 
@@ -688,6 +700,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // Get the best sample location.
   Eigen::Vector3d best_sample_location =
     all_sample_locations_[best_sample_index_];
+  // Update the previous repositioning target for reference in next loop.
+  prev_repositioning_target_ = best_sample_location;
 
   // Get the current end effector location.
   Vector3d current_ee_location = x_lcs.head(3);
@@ -721,9 +735,16 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   timestamps[0] = t + filtered_solve_time_;
 
   for (int i = 0; i < N_+1; i++) {
-    double t_spline = (i+1)*c3_options_.planning_dt/total_travel_time;
+    double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
+
+    if (i == 1 & t_spline >= 1 & !is_doing_c3_){
+      // If it can get there in one step, then set finished_reposition_flag_ to
+      // true.
+      finished_reposition_flag_ = true;
+    }
     // Don't overshoot the end of the spline.
     t_spline = std::min(1.0, t_spline);
+
 
     Vector3d next_ee_loc = p0 + t_spline*(-3*p0 + 3*p1) + 
                            std::pow(t_spline,2) * (3*p0 - 6*p1 + 3*p2) +
@@ -738,7 +759,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     next_lcs_state.segment(n_q_, 3) = Vector3d::Zero();
 
     knots.col(i)= next_lcs_state;
-    timestamps[i] = t + filtered_solve_time_ + (i+1)*c3_options_.planning_dt;
+    timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
 
   LcmTrajectory::Trajectory repos_execution_traj;

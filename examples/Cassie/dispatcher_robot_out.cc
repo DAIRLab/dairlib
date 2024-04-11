@@ -66,8 +66,6 @@ DEFINE_double(pub_rate, 0.1, "Network LCM pubishing period (s).");
 DEFINE_double(fast_network_pub_rate, 0.005, "Network LCM pubishing period (s).");
 DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
-DEFINE_bool(test_with_ground_truth_state, false,
-            "Get floating base from ground truth state for testing");
 DEFINE_bool(publish_contact, false, "publish contact info to LCM or no");
 DEFINE_bool(broadcast_contact, false, "publish contact over the network");
 
@@ -210,8 +208,7 @@ int do_main(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_contact_detection_yaml));
 
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
-      plant, joint_offset_map, FLAGS_test_with_ground_truth_state,
-      FLAGS_test_mode);
+      plant, joint_offset_map, FLAGS_test_mode);
 
   state_estimator->SetSpringDeflectionThresholds(
       settings.knee_spring_threshold, settings.ankle_spring_threshold);
@@ -232,22 +229,7 @@ int do_main(int argc, char* argv[]) {
     input_receiver = builder.AddSystem<systems::CassieOutputReceiver>();
     builder.Connect(*input_receiver, *output_sender);
     builder.Connect(input_receiver->get_output_port(0),
-                    state_estimator->get_input_port(0));
-
-    // Adding "CASSIE_STATE_SIMULATION" and "CASSIE_INPUT" ports for testing
-    // estimator
-    // TODO(yminchen): delete this part after finishing estimator
-    if (FLAGS_floating_base && FLAGS_test_with_ground_truth_state) {
-      auto state_sub = builder.AddSystem(
-          LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-              FLAGS_state_channel_name, lcm));
-      auto state_receiver =
-          builder.AddSystem<systems::RobotOutputReceiver>(plant);
-      builder.Connect(state_sub->get_output_port(),
-                      state_receiver->get_input_port(0));
-      builder.Connect(state_receiver->get_output_port(0),
-                      state_estimator->get_input_port(1));
-    }
+                    state_estimator->get_input_port_cassie_out());
   }
 
   // Create and connect RobotOutput publisher.
@@ -474,7 +456,7 @@ int do_main(int argc, char* argv[]) {
     diagram_context.SetTime(t0);
     auto& output_sender_value = output_sender->get_input_port(0).FixValue(
         &output_sender_context, udp_sub.message());
-    auto& state_estimator_value = state_estimator->get_input_port(0).FixValue(
+    auto& state_estimator_value = state_estimator->get_input_port_cassie_out().FixValue(
         &state_estimator_context, udp_sub.message());
     drake::log()->info("dispatcher_robot_out started");
 

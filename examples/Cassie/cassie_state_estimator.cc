@@ -1,14 +1,9 @@
 #include "examples/Cassie/cassie_state_estimator.h"
 
 #include <math.h>
-
 #include <chrono>
 #include <fstream>
 #include <utility>
-
-#include "drake/solvers/equality_constrained_qp_solver.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/solve.h"
 
 namespace dairlib {
 namespace systems {
@@ -27,14 +22,12 @@ using drake::AbstractValue;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::MathematicalProgram;
-using drake::solvers::Solve;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::systems::EventStatus;
 using drake::systems::LeafSystem;
 using drake::systems::UnrestrictedUpdateEvent;
 
-using multibody::KinematicEvaluatorSet;
 using multibody::MakeJointPositionOffsetFromMap;
 using systems::OutputVector;
 
@@ -42,8 +35,7 @@ static const int SPACE_DIM = 3;
 
 CassieStateEstimator::CassieStateEstimator(
     const MultibodyPlant<double>& plant,
-    std::map<std::string, double> joint_offset_map,
-    bool test_with_ground_truth_state, int hardware_test_mode) :
+    std::map<std::string, double> joint_offset_map, int hardware_test_mode) :
       plant_(plant),
       world_(plant_.world_frame()),
       is_floating_base_(multibody::HasQuaternion(plant)),
@@ -55,23 +47,25 @@ CassieStateEstimator::CassieStateEstimator(
       rod_on_thighs_({LeftRodOnThigh(plant), RightRodOnThigh(plant)}),
       rod_on_heel_springs_({LeftRodOnHeel(plant), RightRodOnHeel(plant)}),
       rod_length_(kCassieAchillesLength),
-      hardware_test_mode_(hardware_test_mode),
-      joint_offsets_(MakeJointPositionOffsetFromMap(plant, joint_offset_map)){
+      joint_offsets_(MakeJointPositionOffsetFromMap(plant, joint_offset_map)),
+      hardware_test_mode_(hardware_test_mode) {
 
   n_q_ = plant.num_positions();
   n_v_ = plant.num_velocities();
   n_u_ = plant.num_actuators();
 
   // Declare input/output ports
-  cassie_out_input_port_ = this->DeclareAbstractInputPort(
-                                   "cassie_out_t", drake::Value<cassie_out_t>{})
-                               .get_index();
-  estimated_state_output_port_ =
-      this->DeclareVectorOutputPort("x, u, t",
-                                    OutputVector<double>(n_q_, n_v_, n_u_),
-                                    &CassieStateEstimator::CopyStateOut)
-          .get_index();
+  input_port_cassie_out_ = DeclareAbstractInputPort(
+      "cassie_out_t", drake::Value<cassie_out_t>{}).get_index();
 
+  input_port_landmark_ = DeclareAbstractInputPort(
+      "lcmt_landmark", drake::Value<lcmt_landmark_array>{}).get_index();
+
+  estimated_state_output_port_ =
+      this->DeclareVectorOutputPort(
+          "x, u, t",
+          OutputVector<double>(n_q_, n_v_, n_u_),
+          &CassieStateEstimator::CopyStateOut).get_index();
 
   // Initialize index maps
   actuator_idx_map_ = multibody::MakeNameToActuatorsMap(plant);
@@ -457,11 +451,62 @@ void CassieStateEstimator::EstimateContactForEkf(
   }
 }
 
+void CassieStateEstimator::DoKinematicUpdate(
+    int left_contact, int right_contact, inekf::InEKF &ekf) const {
+
+  std::vector<std::pair<int, bool>> contacts;
+  contacts.push_back(std::pair<int, bool>(0, left_contact));
+  contacts.push_back(std::pair<int, bool>(2, right_contact));
+//  contacts.push_back(std::pair<int, bool>(1, left_contact));
+//  contacts.push_back(std::pair<int, bool>(3, right_contact));
+  ekf.setContacts(contacts);
+
+  // rotation part of pose and covariance is unused in EKF
+  Eigen::Matrix4d rear_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix4d front_toe_pose = Eigen::Matrix4d::Identity();
+  Eigen::Matrix<double, 6, 6> rear_covariance = MatrixXd::Identity(6, 6);
+  Eigen::Matrix<double, 6, 6> front_covariance = MatrixXd::Identity(6, 6);
+
+  inekf::vectorKinematics measured_kinematics;
+  Vector3d toe_pos = Vector3d::Zero();
+  MatrixXd J = MatrixXd::Zero(3, n_v_);
+  for (int i = 0; i < 2; i++) {
+    plant_.CalcPointsPositions(*context_, *toe_frames_[i], rear_contact_disp_,
+                               pelvis_frame_, &toe_pos);
+    rear_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    rear_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+
+    plant_.CalcPointsPositions(*context_, *toe_frames_[i], front_contact_disp_,
+                               pelvis_frame_, &toe_pos);
+    front_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
+    front_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
+
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i], rear_contact_disp_,
+        pelvis_frame_, pelvis_frame_, &J);
+    MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
+    rear_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics rear_frame(2 * i, rear_toe_pose, rear_covariance);
+    measured_kinematics.push_back(rear_frame);
+    plant_.CalcJacobianTranslationalVelocity(
+        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
+        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
+    J_wrt_joints = J.block(0, 6, 3, 16);
+    front_covariance.block<3, 3>(3, 3) =
+        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
+    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
+    measured_kinematics.push_back(front_frame);
+  }
+
+  ekf.CorrectKinematics(measured_kinematics);
+}
+
 EventStatus CassieStateEstimator::Update(
     const Context<double>& context,
     drake::systems::State<double>* state) const {
   // Get cassie output
-  const auto& cassie_out= EvalAbstractInput(context, cassie_out_input_port_)
+  const auto& cassie_out= EvalAbstractInput(context, input_port_cassie_out_)
           ->get_value<cassie_out_t>();
 
   // Get current time and previous time
@@ -543,62 +588,18 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_vector(contact_idx_)
           .get_mutable_value() << left_contact, right_contact;
 
-  std::vector<std::pair<int, bool>> contacts;
-  // TODO(yangwill): Decide whether to use both contacts per foot or just one.
-  // Possibly leave it as an option to the state estimator
-  contacts.push_back(std::pair<int, bool>(0, left_contact));
-//  contacts.push_back(std::pair<int, bool>(1, left_contact));
-  contacts.push_back(std::pair<int, bool>(2, right_contact));
-//  contacts.push_back(std::pair<int, bool>(3, right_contact));
-  ekf.setContacts(contacts);
 
   // Step 4 - EKF (measurement step)
   plant_.SetPositionsAndVelocities(context_.get(), filtered_output.GetState());
+  DoKinematicUpdate(left_contact, right_contact, ekf);
 
-  // rotation part of pose and covariance is unused in EKF
-  Eigen::Matrix4d rear_toe_pose = Eigen::Matrix4d::Identity();
-  Eigen::Matrix4d front_toe_pose = Eigen::Matrix4d::Identity();
-  Eigen::Matrix<double, 6, 6> rear_covariance = MatrixXd::Identity(6, 6);
-  Eigen::Matrix<double, 6, 6> front_covariance = MatrixXd::Identity(6, 6);
-
-  inekf::vectorKinematics measured_kinematics;
-  Vector3d toe_pos = Vector3d::Zero();
-  MatrixXd J = MatrixXd::Zero(3, n_v_);
-  for (int i = 0; i < 2; i++) {
-    plant_.CalcPointsPositions(*context_, *toe_frames_[i], rear_contact_disp_,
-                               pelvis_frame_, &toe_pos);
-    rear_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
-    rear_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
-    plant_.CalcPointsPositions(*context_, *toe_frames_[i], front_contact_disp_,
-                               pelvis_frame_, &toe_pos);
-    front_toe_pose.block<3, 3>(0, 0) = Matrix3d::Identity();
-    front_toe_pose.block<3, 1>(0, 3) = toe_pos - imu_pos_;
-
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, *toe_frames_[i], rear_contact_disp_,
-        pelvis_frame_, pelvis_frame_, &J);
-    MatrixXd J_wrt_joints = J.block(0, 6, 3, 16);
-    rear_covariance.block<3, 3>(3, 3) =
-        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics rear_frame(2 * i, rear_toe_pose, rear_covariance);
-    measured_kinematics.push_back(rear_frame);
-    plant_.CalcJacobianTranslationalVelocity(
-        *context_, JacobianWrtVariable::kV, *toe_frames_[i],
-        front_contact_disp_, pelvis_frame_, pelvis_frame_, &J);
-    J_wrt_joints = J.block(0, 6, 3, 16);
-    front_covariance.block<3, 3>(3, 3) =
-        J_wrt_joints * cov_w_ * J_wrt_joints.transpose();
-    inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
-    measured_kinematics.push_back(front_frame);
-  }
-  ekf.CorrectKinematics(measured_kinematics);
 
   // Step 5 - Assign values to floating base state (pelvis)
   // We get the angular velocity directly from the IMU without filtering
   // because the magnitude of noise is about 2e-3.
   // Rotational position
   q = Quaterniond(ekf.getState().getRotation()).normalized();
-  estimated_fb_state[0] = q.w();
+  estimated_fb_state(0) = q.w();
   estimated_fb_state.segment<3>(1) = q.vec();
   // Translational position
   r_imu_to_pelvis_global = ekf.getState().getRotation() * (-imu_pos_);
@@ -635,7 +636,7 @@ EventStatus CassieStateEstimator::Update(
 void CassieStateEstimator::CopyStateOut(const Context<double>& context,
                                         OutputVector<double>* output) const {
   const auto& cassie_out =
-      this->EvalAbstractInput(context, cassie_out_input_port_)
+      this->EvalAbstractInput(context, input_port_cassie_out_)
           ->get_value<cassie_out_t>();
 
   // Assign values robot output vector

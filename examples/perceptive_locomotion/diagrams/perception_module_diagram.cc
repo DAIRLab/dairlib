@@ -30,9 +30,6 @@ using Eigen::Vector3d;
 using pcl::PointXYZRGBConfidenceRatio;
 using elevation_mapping::SensorProcessorBase;
 
-using multibody::DistanceEvaluator;
-using multibody::WorldPointEvaluator;
-using multibody::KinematicEvaluatorSet;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
@@ -52,31 +49,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
     std::map<std::string, drake::systems::sensors::CameraInfo> depth_sensor_info,
     std::string joint_offsets_yaml) :
     plant_(std::move(plant)),
-    plant_context_(plant_->CreateDefaultContext()),
-    fourbar_(*plant_),
-    left_contact_(*plant_),
-    right_contact_(*plant_),
-    left_loop_(LeftLoopClosureEvaluator(*plant_)),
-    right_loop_(RightLoopClosureEvaluator(*plant_)),
-    left_toe_evaluator_(*plant_, LeftToeFront(*plant_).first,
-                        LeftToeFront(*plant_).second, Matrix3d::Identity(),
-                        Vector3d::Zero(), {1, 2}),
-    left_heel_evaluator_(*plant_, LeftToeRear(*plant_).first,
-                         LeftToeRear(*plant_).second, Matrix3d::Identity(),
-                         Vector3d::Zero(), {0, 1, 2}),
-    right_toe_evaluator_(*plant_, RightToeFront(*plant_).first,
-                        RightToeFront(*plant_).second, Matrix3d::Identity(),
-                        Vector3d::Zero(), {1, 2}),
-    right_heel_evaluator_(*plant_, RightToeRear(*plant_).first,
-                         RightToeRear(*plant_).second, Matrix3d::Identity(),
-                         Vector3d::Zero(), {0, 1, 2}) {
-
-  fourbar_.add_evaluator(&left_loop_);
-  fourbar_.add_evaluator(&right_loop_);
-  right_contact_.add_evaluator(&right_toe_evaluator_);
-  right_contact_.add_evaluator(&right_heel_evaluator_);
-  left_contact_.add_evaluator(&left_toe_evaluator_);
-  left_contact_.add_evaluator(&right_toe_evaluator_);
+    plant_context_(plant_->CreateDefaultContext()) {
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -92,7 +65,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // state estimator
   // TODO: Add option to set joint offsets in state estimator
   state_estimator_ = builder.AddSystem<systems::CassieStateEstimator>(
-      *plant_, joint_offsets_, false, 2
+      *plant_, joint_offsets_, 2
   );
   state_estimator_->MakeDrivenBySimulator(ekf_update_period_);
 

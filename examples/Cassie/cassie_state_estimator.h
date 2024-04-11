@@ -6,12 +6,11 @@
 #include <string>
 #include <vector>
 
-#include <drake/lcmt_contact_results_for_viz.hpp>
-
 #include "dairlib/lcmt_contact.hpp"
+#include "dairlib/lcmt_landmark_array.hpp"
+
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "src/InEKF.h"
 #include "systems/framework/output_vector.h"
@@ -60,7 +59,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   explicit CassieStateEstimator(
       const drake::multibody::MultibodyPlant<double>& plant,
       std::map<std::string, double> joint_offset_map = {},
-      bool test_with_ground_truth_state = false, int hardware_test_mode = -1);
+      int hardware_test_mode = -1);
+
+  const drake::systems::InputPort<double>& get_input_port_cassie_out() const {
+    return get_input_port(input_port_cassie_out_);
+  }
+  const drake::systems::InputPort<double>& get_input_port_landmark() const {
+    return get_input_port(input_port_landmark_);
+  }
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
@@ -76,13 +82,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
                            double* left_heel_spring,
                            double* right_heel_spring) const;
 
-  /// EstimateContactForEkf() and EstimateContactForController()
-  /// estimate the ground contacts based on the optimal costs and spring
-  /// deflections.
-  /// Estimation from EstimateContactForEkf() is more conservative compared to
-  /// EstimateContactForController(). See the cc file for more detail.
-  /// The methods are set to be public in order to unit test them.
-
   void EstimateContactForEkf(const systems::OutputVector<double>& output,
                              int* left_contact, int* right_contact) const;
 
@@ -94,10 +93,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       drake::systems::Context<double>* context, Eigen::Vector4d quat,
       Eigen::Vector3d position,
       Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
+
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
                                  const Eigen::VectorXd& imu_value) const;
 
-  void SetSpringDeflectionThresholds(double knee_spring_threshold, double ankle_spring_threshold) {
+  void SetSpringDeflectionThresholds(
+      double knee_spring_threshold, double ankle_spring_threshold) {
     knee_spring_threshold_ekf_ = knee_spring_threshold;
     ankle_spring_threshold_ekf_ = ankle_spring_threshold;
   }
@@ -137,6 +138,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
+  // Do the kinematic update assuming the plant context has been updated to the
+  // correct value
+  void DoKinematicUpdate(
+      int left_contact, int right_contact, inekf::InEKF& ekf) const;
+
+  void DoLandmarkUpdate(
+      const lcmt_landmark_array& landmarks, inekf::InEKF& ekf) const;
+
   void CopyStateOut(const drake::systems::Context<double>& context,
                     systems::OutputVector<double>* output) const;
   void CopyContact(const drake::systems::Context<double>& context,
@@ -165,7 +174,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
   // Inputs
-  drake::systems::InputPortIndex cassie_out_input_port_;
+  drake::systems::InputPortIndex input_port_cassie_out_;
+  drake::systems::InputPortIndex input_port_landmark_;
 
   // Outputs
   drake::systems::OutputPortIndex estimated_state_output_port_;
@@ -195,7 +205,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   // IMU location wrt pelvis
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);
-  Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);
+
   // calibration offsets
   const Eigen::VectorXd joint_offsets_;
 

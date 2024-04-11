@@ -3,8 +3,6 @@
 // dairlib - perception
 #include "systems/perception/elevation_mapping_system.h"
 #include "examples/Cassie/cassie_state_estimator.h"
-#include "multibody/kinematic/world_point_evaluator.h"
-#include "multibody/kinematic/distance_evaluator.h"
 
 // drake
 #include "drake/systems/framework/diagram.h"
@@ -62,15 +60,6 @@ class PerceptionModuleDiagram : public drake::systems::Diagram<double> {
   // State estimator parameters
   std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context_;
-  multibody::KinematicEvaluatorSet<double> fourbar_;
-  multibody::KinematicEvaluatorSet<double> left_contact_;
-  multibody::KinematicEvaluatorSet<double> right_contact_;
-  multibody::DistanceEvaluator<double> left_loop_;
-  multibody::DistanceEvaluator<double> right_loop_;
-  multibody::WorldPointEvaluator<double> left_toe_evaluator_;
-  multibody::WorldPointEvaluator<double> left_heel_evaluator_;
-  multibody::WorldPointEvaluator<double> right_toe_evaluator_;
-  multibody::WorldPointEvaluator<double> right_heel_evaluator_;
   std::map<std::string, double> joint_offsets_;
   systems::CassieStateEstimator* state_estimator_;
 

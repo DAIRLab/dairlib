@@ -502,6 +502,16 @@ void CassieStateEstimator::DoKinematicUpdate(
   ekf.CorrectKinematics(measured_kinematics);
 }
 
+void CassieStateEstimator::DoLandmarkUpdate(
+    const lcmt_landmark_array &landmarks, inekf::InEKF &ekf) const {
+  inekf::vectorLandmarks landmark_vector;
+  for (const auto& landmark: landmarks.landmarks) {
+    Vector3d landmark_pos = Vector3d::Map(landmark.position) - imu_pos_;
+    landmark_vector.push_back(inekf::Landmark(landmark.id, landmark_pos));
+  }
+  ekf.CorrectLandmarks(landmark_vector);
+}
+
 EventStatus CassieStateEstimator::Update(
     const Context<double>& context,
     drake::systems::State<double>* state) const {

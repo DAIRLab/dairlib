@@ -69,7 +69,8 @@ class PlateBalancingTargetGenerator
   Eigen::Vector3d first_target_;
   Eigen::Vector3d second_target_;
   Eigen::Vector3d third_target_;
-  const double delay_at_top_ = 10.0;
+//  const double delay_at_top_ = 10.0;
+  const double delay_at_top_ = 3.0;
   double target_threshold_;
   double x_scale_;
   double y_scale_;

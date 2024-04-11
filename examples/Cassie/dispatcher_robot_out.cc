@@ -68,7 +68,6 @@ DEFINE_bool(simulation, false,
             "Simulated or real robot (default=false, real robot)");
 DEFINE_bool(test_with_ground_truth_state, false,
             "Get floating base from ground truth state for testing");
-DEFINE_bool(print_ekf_info, false, "Print ekf information to the terminal");
 DEFINE_bool(publish_contact, false, "publish contact info to LCM or no");
 DEFINE_bool(broadcast_contact, false, "publish contact over the network");
 
@@ -200,37 +199,6 @@ int do_main(int argc, char* argv[]) {
   plant.Finalize();
   auto plant_context = plant.CreateDefaultContext();
 
-  // Evaluators for fourbar linkages
-  multibody::KinematicEvaluatorSet<double> fourbar_evaluator(plant);
-  auto left_loop = LeftLoopClosureEvaluator(plant);
-  auto right_loop = RightLoopClosureEvaluator(plant);
-  fourbar_evaluator.add_evaluator(&left_loop);
-  fourbar_evaluator.add_evaluator(&right_loop);
-  // Evaluators for contact points (The position doesn't matter. It's not used
-  // in OSC)
-  multibody::KinematicEvaluatorSet<double> left_contact_evaluator(plant);
-  auto left_toe = LeftToeFront(plant);
-  auto left_heel = LeftToeRear(plant);
-  auto left_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, left_toe.first, left_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
-  auto left_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, left_heel.first, left_heel.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
-  left_contact_evaluator.add_evaluator(&left_toe_evaluator);
-  left_contact_evaluator.add_evaluator(&left_heel_evaluator);
-  multibody::KinematicEvaluatorSet<double> right_contact_evaluator(plant);
-  auto right_toe = RightToeFront(plant);
-  auto right_heel = RightToeRear(plant);
-  auto right_toe_evaluator = multibody::WorldPointEvaluator(
-      plant, right_toe.first, right_toe.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {1, 2});
-  auto right_heel_evaluator = multibody::WorldPointEvaluator(
-      plant, right_heel.first, right_heel.second, Matrix3d::Identity(),
-      Vector3d::Zero(), {0, 1, 2});
-  right_contact_evaluator.add_evaluator(&right_toe_evaluator);
-  right_contact_evaluator.add_evaluator(&right_heel_evaluator);
-
   // Create state estimator
   const auto joint_offset_map =
       (FLAGS_joint_offset_yaml.empty()) ?
@@ -242,14 +210,12 @@ int do_main(int argc, char* argv[]) {
       FindResourceOrThrow(FLAGS_contact_detection_yaml));
 
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
-      plant, &fourbar_evaluator, &left_contact_evaluator,
-      &right_contact_evaluator, joint_offset_map,
-      FLAGS_test_with_ground_truth_state, FLAGS_print_ekf_info,
+      plant, joint_offset_map, FLAGS_test_with_ground_truth_state,
       FLAGS_test_mode);
 
-  state_estimator->SetSpringDeflectionThresholds(settings.knee_spring_threshold,
-                                                 settings.ankle_spring_threshold);
-  state_estimator->SetContactForceThreshold(settings.contact_force_threshold);
+  state_estimator->SetSpringDeflectionThresholds(
+      settings.knee_spring_threshold, settings.ankle_spring_threshold);
+
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
   auto output_sender = builder.AddSystem<systems::CassieOutputSender>();
@@ -295,12 +261,6 @@ int do_main(int argc, char* argv[]) {
             "CASSIE_CONTACT_DISPATCHER", lcm, {TriggerType::kForced}));
     builder.Connect(state_estimator->get_contact_output_port(),
                     contact_pub->get_input_port());
-    // TODO(yangwill): Consider filtering contact estimation
-    auto gm_contact_pub = builder.AddSystem(
-        LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
-            "CASSIE_GM_CONTACT_DISPATCHER", lcm, {TriggerType::kForced}));
-    builder.Connect(state_estimator->get_gm_contact_output_port(),
-                    gm_contact_pub->get_input_port());
   }
 
   // Pass through to drop all but positions and velocities

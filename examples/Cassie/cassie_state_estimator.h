@@ -49,7 +49,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
  public:
   /// Constructor
   /// @param plant MultibodyPlant of the robot
-  /// @param test_with_ground_truth_state a flag indicating whether or not the
+  /// @param test_with_ground_truth_state a flag indicating whether or not thel
   /// user is testing the estimated state with the ground-truth state
   /// @param print_info_to_terminal a flag for printing message of EKF to the
   /// terminal
@@ -59,22 +59,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   ///    1: assume both feet are always in the air.
   explicit CassieStateEstimator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator,
-      const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator,
-      const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator,
       std::map<std::string, double> joint_offset_map = {},
-      bool test_with_ground_truth_state = false,
-      bool print_info_to_terminal = false, int hardware_test_mode = -1,
-      double contact_force_threshold = 60);
+      bool test_with_ground_truth_state = false, int hardware_test_mode = -1);
 
   const drake::systems::OutputPort<double>& get_robot_output_port() const {
     return this->get_output_port(estimated_state_output_port_);
   }
   const drake::systems::OutputPort<double>& get_contact_output_port() const {
     return this->get_output_port(contact_output_port_);
-  }
-  const drake::systems::OutputPort<double>& get_gm_contact_output_port() const {
-    return this->get_output_port(contact_forces_output_port_);
   }
   const drake::systems::OutputPort<double>& get_covariance_output_port() const {
     return this->get_output_port(pose_covariance_output_port_);
@@ -93,31 +85,21 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
 
   void EstimateContactForEkf(const systems::OutputVector<double>& output,
                              int* left_contact, int* right_contact) const;
-  void EstimateContactForController(const systems::OutputVector<double>& output,
-                                    int* left_contact,
-                                    int* right_contact) const;
-  void EstimateContactForces(const drake::systems::Context<double>& context,
-                             const systems::OutputVector<double>& output,
-                             Eigen::VectorXd& lambda, int& left_contact,
-                             int& right_contact) const;
 
   // Setters for initial values
   void setPreviousTime(drake::systems::Context<double>* context,
                        double time) const;
+
   void setInitialPelvisPose(
       drake::systems::Context<double>* context, Eigen::Vector4d quat,
       Eigen::Vector3d position,
       Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
                                  const Eigen::VectorXd& imu_value) const;
+
   void SetSpringDeflectionThresholds(double knee_spring_threshold, double ankle_spring_threshold) {
-    knee_spring_threshold_ctrl_ = knee_spring_threshold;
     knee_spring_threshold_ekf_ = knee_spring_threshold;
-    ankle_spring_threshold_ctrl_ = ankle_spring_threshold;
     ankle_spring_threshold_ekf_ = ankle_spring_threshold;
-  }
-  void SetContactForceThreshold(double force_threshold) {
-    contact_force_threshold_ = force_threshold;
   }
 
   // Copy joint state from cassie_out_t to an OutputVector
@@ -159,9 +141,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
                     systems::OutputVector<double>* output) const;
   void CopyContact(const drake::systems::Context<double>& context,
                    dairlib::lcmt_contact* contact_msg) const;
-  void CopyEstimatedContactForces(
-      const drake::systems::Context<double>& context,
-      drake::lcmt_contact_results_for_viz* contact_msg) const;
 
   void CopyPoseCovarianceOut(const drake::systems::Context<double>& context,
                              drake::systems::BasicVector<double>* cov) const;
@@ -171,9 +150,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   int n_u_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-  const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator_;
-  const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator_;
-  const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator_;
   const drake::multibody::BodyFrame<double>& world_;
   const bool is_floating_base_;
   std::unique_ptr<drake::systems::Context<double>> context_;
@@ -188,12 +164,12 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const drake::multibody::Body<double>& pelvis_;
   std::vector<Eigen::MatrixXd> joint_selection_matrices;
 
-  // Input/output port indices
+  // Inputs
   drake::systems::InputPortIndex cassie_out_input_port_;
-  drake::systems::InputPortIndex state_input_port_;
+
+  // Outputs
   drake::systems::OutputPortIndex estimated_state_output_port_;
   drake::systems::OutputPortIndex contact_output_port_;
-  drake::systems::OutputPortIndex contact_forces_output_port_;
   drake::systems::OutputPortIndex pose_covariance_output_port_;
 
 
@@ -205,10 +181,6 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::AbstractStateIndex ekf_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
   drake::systems::DiscreteStateIndex contact_idx_;
-  drake::systems::DiscreteStateIndex contact_forces_idx_;
-  // A state related to contact estimation
-  // This state store the previous generalized velocity
-  drake::systems::DiscreteStateIndex previous_velocity_idx_;
 
   // Cassie parameters
   std::vector<
@@ -220,7 +192,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   double rod_length_;
   Eigen::Vector3d front_contact_disp_;
   Eigen::Vector3d rear_contact_disp_;
-  Eigen::Vector3d mid_contact_disp_;
+
   // IMU location wrt pelvis
   Eigen::Vector3d imu_pos_ = Eigen::Vector3d(0.03155, 0, -0.07996);
   Eigen::Vector3d gravity_ = Eigen::Vector3d(0, 0, -9.81);
@@ -231,29 +203,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   Eigen::Matrix<double, 16, 16> cov_w_;
 
   // Contact Estimation Parameters
-  // The values of spring threshold are based on walking and standing values in
-  // simulation.
-  // Walking: https://drive.google.com/open?id=1vMIKAed8RHIFF1fbjTqBHtbgkPrHuzkS
-  //          https://drive.google.com/open?id=1UqiZSXhd9-4A6YwHArh-xPBMa16RyUGm
-  // Spring deflection of standing:
-  //     Knee ~-0.032
-  //     Heel ~???
-  //          https://drive.google.com/file/d/1o7QS4ZksU91EBIpwtNnKpunob93BKiX_
-  //          https://drive.google.com/file/d/1mlDzi0fa-YHopeRHaa-z88fPGuI2Aziv
-  double knee_spring_threshold_ctrl_ = -0.015;
   double knee_spring_threshold_ekf_ = -0.01;
-  double ankle_spring_threshold_ctrl_ = -0.01;
   double ankle_spring_threshold_ekf_ = -0.02;
-  const double w_soft_constraint_ = 100;  // Soft constraint cost
-  double contact_force_threshold_ = 60;  // Soft constraint cost
 
   // flag for testing and tuning
-  std::unique_ptr<drake::systems::Context<double>> context_gt_;
-  bool test_with_ground_truth_state_;
-  bool print_info_to_terminal_;
   mutable int hardware_test_mode_ = 0;
-  std::unique_ptr<int> counter_for_testing_ =
-      std::make_unique<int>(0);
 
   // Timestamp from unprocessed message
   double next_message_time_ = -std::numeric_limits<double>::infinity();

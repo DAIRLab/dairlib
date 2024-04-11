@@ -37,51 +37,8 @@ class ContactEstimationTest : public ::testing::Test {
                                                      plant_.num_velocities(),
                                                      plant_.num_actuators());
 
-    // Evaluators for fourbar linkages
-    fourbar_evaluator_ =
-        std::make_unique<multibody::KinematicEvaluatorSet<double>>(plant_);
-    left_loop_ = std::make_unique<multibody::DistanceEvaluator<double>>(
-        LeftLoopClosureEvaluator(plant_));
-    right_loop_ = std::make_unique<multibody::DistanceEvaluator<double>>(
-        RightLoopClosureEvaluator(plant_));
-    fourbar_evaluator_->add_evaluator(left_loop_.get());
-    fourbar_evaluator_->add_evaluator(right_loop_.get());
-
-    // Evaluators for foot contacts
-    std::vector<int> inds = {0, 1, 2};
-    left_contact_evaluator_ =
-        std::make_unique<multibody::KinematicEvaluatorSet<double>>(plant_);
-    auto left_toe = LeftToeFront(plant_);
-    auto left_heel = LeftToeRear(plant_);
-    left_toe_evaluator_ =
-        std::make_unique<multibody::WorldPointEvaluator<double>>(
-            plant_, left_toe.first, left_toe.second, Matrix3d::Identity(),
-            Vector3d::Zero(), inds);
-    left_heel_evaluator_ =
-        std::make_unique<multibody::WorldPointEvaluator<double>>(
-            plant_, left_heel.first, left_heel.second, Matrix3d::Identity(),
-            Vector3d::Zero(), inds);
-    left_contact_evaluator_->add_evaluator(left_toe_evaluator_.get());
-    left_contact_evaluator_->add_evaluator(left_heel_evaluator_.get());
-    right_contact_evaluator_ =
-        std::make_unique<multibody::KinematicEvaluatorSet<double>>(plant_);
-    auto right_toe = RightToeFront(plant_);
-    auto right_heel = RightToeRear(plant_);
-    right_toe_evaluator_ =
-        std::make_unique<multibody::WorldPointEvaluator<double>>(
-            plant_, right_toe.first, right_toe.second, Matrix3d::Identity(),
-            Vector3d::Zero(), inds);
-    right_heel_evaluator_ =
-        std::make_unique<multibody::WorldPointEvaluator<double>>(
-            plant_, right_heel.first, right_heel.second, Matrix3d::Identity(),
-            Vector3d::Zero(), inds);
-    right_contact_evaluator_->add_evaluator(right_toe_evaluator_.get());
-    right_contact_evaluator_->add_evaluator(right_heel_evaluator_.get());
-
     // state estimator
-    estimator_ = std::make_unique<CassieStateEstimator>(
-        plant_, fourbar_evaluator_.get(), left_contact_evaluator_.get(),
-        right_contact_evaluator_.get());
+    estimator_ = std::make_unique<CassieStateEstimator>(plant_);
   }
   drake::multibody::MultibodyPlant<double> plant_;
   std::unique_ptr<OutputVector<double>> output_;

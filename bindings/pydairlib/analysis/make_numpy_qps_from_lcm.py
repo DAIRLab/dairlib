@@ -6,6 +6,7 @@ from dairlib import lcmt_fcc_qp
 
 from pydairlib.analysis.process_lcm_log import get_log_data
 
+
 def qp_callback(data):
     qps = []
     for msg in data['FCCQP']:
@@ -25,7 +26,7 @@ def qp_callback(data):
 
 def main(logfile):
     log = lcm.EventLog(logfile, 'r')
-    qps = get_log_data(log, {'FCCQP': lcmt_fcc_qp}, 0, -1, qp_callback)
+    qps = get_log_data(log, {'FCCQP': lcmt_fcc_qp}, 0, 2, qp_callback)
     save_file = logfile.replace('lcmlog-05', 'id_qp_log_walking_reg.npz')
     np.savez(save_file, qps=qps)
 

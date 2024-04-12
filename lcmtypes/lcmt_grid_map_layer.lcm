@@ -1,0 +1,12 @@
+package dairlib;
+
+struct lcmt_grid_map_layer
+{
+    string name;
+
+    int32_t rows;
+    int32_t cols;
+
+    // data stored in column major order for eigen compatability
+    float data[cols][rows];
+}

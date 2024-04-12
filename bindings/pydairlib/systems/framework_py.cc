@@ -6,6 +6,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
+#include "multibody/multibody_utils.h"
 
 #include "dairlib/lcmt_robot_output.hpp"
 

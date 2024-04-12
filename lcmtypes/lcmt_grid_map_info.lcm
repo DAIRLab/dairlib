@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_grid_map_info
+{
+    int64_t utime;
+    string parent_frame;
+
+    double position[2];
+
+    double length_x;
+    double length_y;
+    double resolution;
+}

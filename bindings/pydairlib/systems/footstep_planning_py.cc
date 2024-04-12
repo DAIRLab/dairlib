@@ -11,8 +11,6 @@ namespace py = pybind11;
 namespace dairlib{
 namespace pydairlib{
 
-using systems::controllers::AlipMultiQP;
-using systems::controllers::AlipMIQP;
 using systems::controllers::alip_utils::Stance;
 using systems::controllers::alip_utils::AlipGaitParams;
 using systems::controllers::alip_utils::ResetDiscretization;
@@ -65,84 +63,6 @@ PYBIND11_MODULE(footstep_planning, m) {
                       &AlipGaitParams::initial_stance_foot)
       .def_readwrite("reset_discretization_method",
                       &AlipGaitParams::reset_discretization_method);
-
-  py::class_<AlipMultiQP>(
-      m, "AlipMultiQP")
-      .def(
-          py::init<double, double, int, ResetDiscretization, int>(),
-          py::arg("m"), py::arg("H"), py::arg("nk"),
-          py::arg("reset_discretization_method"), py::arg("nmodes"))
-      .def("AddFootholds", &AlipMultiQP::AddFootholds)
-      .def("AddMode", &AlipMultiQP::AddMode)
-      .def("AddInputCost", &AlipMultiQP::AddInputCost)
-      .def("ActivateInitialTimeEqualityConstraint", &AlipMultiQP::ActivateInitialTimeEqualityConstraint)
-      .def("UpdateMaximumCurrentStanceTime", &AlipMultiQP::UpdateMaximumCurrentStanceTime)
-      .def("UpdateTrackingCost", &AlipMultiQP::UpdateTrackingCost)
-      .def("AddTrackingCost", &AlipMultiQP::AddTrackingCost)
-      .def("Build", py::overload_cast<>(&AlipMultiQP::Build))
-      .def("UpdateFootholds", &AlipMultiQP::UpdateFootholds)
-      .def("MakeXdesTrajForVdes", &AlipMultiQP::MakeXdesTrajForVdes)
-      .def("UpdateNominalStanceTime", &AlipMultiQP::UpdateNominalStanceTime)
-      .def("SetInputLimit", &AlipMultiQP::SetInputLimit)
-      .def("SetMinimumStanceTime", &AlipMultiQP::SetMinimumStanceTime)
-      .def("SetMaximumStanceTime", &AlipMultiQP::SetMaximumStanceTime)
-      .def("SetDoubleSupportTime", &AlipMultiQP::SetDoubleSupportTime)
-      .def("CalcOptimalFootstepPlan", &AlipMultiQP::CalcOptimalFootstepPlan)
-      .def("GetFootstepSolution", &AlipMultiQP::GetFootstepSolution)
-      .def("GetStateSolution", &AlipMultiQP::GetStateSolution)
-      .def("GetInputSolution", &AlipMultiQP::GetInputSolution)
-      .def("GetTimingSolution", &AlipMultiQP::GetTimingSolution)
-      .def("GetFootstepGuess", &AlipMultiQP::GetFootstepGuess)
-      .def("GetStateGuess", &AlipMultiQP::GetStateGuess)
-      .def("GetInputGuess", &AlipMultiQP::GetInputGuess)
-      .def("GetTimingSGuess", &AlipMultiQP::GetTimingGuess)
-      .def("GetStateDesired", &AlipMultiQP::GetTimingDesired)
-      .def("GetDesiredInput", &AlipMultiQP::GetTimingDesired)
-      .def("GetTimingDesired", &AlipMultiQP::GetTimingDesired)
-      .def("GetDesiredFootstep", &AlipMultiQP::GetTimingDesired)
-      .def("get_prog", &AlipMultiQP::get_prog, py_rvp::reference_internal)
-      .def("get_solution", &AlipMultiQP::get_solution, py_rvp::reference_internal)
-      .def("nmodes", &AlipMultiQP::nmodes)
-      .def("nknots", &AlipMultiQP::nknots);
-
-  py::class_<AlipMIQP>(
-      m, "AlipMIQP")
-      .def(
-          py::init<double, double, int, ResetDiscretization, int>(),
-          py::arg("m"), py::arg("H"), py::arg("nk"),
-          py::arg("reset_discretization_method"), py::arg("nmodes"))
-      .def("AddFootholds", &AlipMIQP::AddFootholds)
-      .def("AddMode", &AlipMIQP::AddMode)
-      .def("AddInputCost", &AlipMIQP::AddInputCost)
-      .def("ActivateInitialTimeEqualityConstraint", &AlipMIQP::ActivateInitialTimeEqualityConstraint)
-      .def("UpdateMaximumCurrentStanceTime", &AlipMIQP::UpdateMaximumCurrentStanceTime)
-      .def("UpdateTrackingCost", &AlipMIQP::UpdateTrackingCost)
-      .def("AddTrackingCost", &AlipMIQP::AddTrackingCost)
-      .def("Build", py::overload_cast<>(&AlipMIQP::Build))
-      .def("UpdateFootholds", &AlipMIQP::UpdateFootholds)
-      .def("MakeXdesTrajForVdes", &AlipMIQP::MakeXdesTrajForVdes)
-      .def("UpdateNominalStanceTime", &AlipMIQP::UpdateNominalStanceTime)
-      .def("SetInputLimit", &AlipMIQP::SetInputLimit)
-      .def("SetMinimumStanceTime", &AlipMIQP::SetMinimumStanceTime)
-      .def("SetMaximumStanceTime", &AlipMIQP::SetMaximumStanceTime)
-      .def("SetDoubleSupportTime", &AlipMIQP::SetDoubleSupportTime)
-      .def("CalcOptimalFootstepPlan", &AlipMIQP::CalcOptimalFootstepPlan)
-      .def("GetFootstepSolution", &AlipMIQP::GetFootstepSolution)
-      .def("GetStateSolution", &AlipMIQP::GetStateSolution)
-      .def("GetInputSolution", &AlipMIQP::GetInputSolution)
-      .def("GetTimingSolution", &AlipMIQP::GetTimingSolution)
-      .def("GetFootstepGuess", &AlipMIQP::GetFootstepGuess)
-      .def("GetStateGuess", &AlipMIQP::GetStateGuess)
-      .def("GetInputGuess", &AlipMIQP::GetInputGuess)
-      .def("GetTimingSGuess", &AlipMIQP::GetTimingGuess)
-      .def("GetStateDesired", &AlipMIQP::GetTimingDesired)
-      .def("GetDesiredInput", &AlipMIQP::GetTimingDesired)
-      .def("GetTimingDesired", &AlipMIQP::GetTimingDesired)
-      .def("GetDesiredFootstep", &AlipMIQP::GetTimingDesired)
-      .def("get_prog", &AlipMIQP::get_prog, py_rvp::reference_internal)
-      .def("get_solution", &AlipMIQP::get_solution, py_rvp::reference_internal)
-      .def("nmodes", &AlipMIQP::nmodes)
-      .def("nknots", &AlipMIQP::nknots);
 
   m.def("AlipStepToStepDynamics", &AlipStepToStepDynamics, py::arg("com_z"),
         py::arg("m"), py::arg("Tss"), py::arg("Tds"),

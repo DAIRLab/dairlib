@@ -1,6 +1,4 @@
 #include "pelvis_pitch_traj_generator.h"
-#include <math.h>
-#include <string>
 #include "multibody/multibody_utils.h"
 
 using std::string;
@@ -61,7 +59,7 @@ drake::systems::EventStatus PelvisPitchTrajGenerator::PitchFilterUpdate(
   double des_pitch = EvalVectorInput(context, des_pitch_port_)->get_value()(0);
   double dt = t - t_prev;
   if (dt < 0.1) {
-    double tau = .800; // 200  ms time constant
+    double tau = 1.0;
     double alpha = dt / (tau + dt);
     des_pitch = alpha * des_pitch + (1.0 - alpha) * prev_pitch;
   }

@@ -3,9 +3,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "systems/controllers/footstep_planning/alip_miqp.h"
-#include "systems/controllers/footstep_planning/alip_multiqp.h"
-#include "systems/controllers/footstep_planning/alip_utils.h"
+#include "systems/controllers/footstep_planning/swing_foot_traj_solver.h"
+#include "systems/controllers/footstep_planning/alip_s2s_mpfc.h"
 
 namespace py = pybind11;
 

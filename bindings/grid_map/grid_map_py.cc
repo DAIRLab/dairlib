@@ -47,8 +47,18 @@ py::class_<GridMap, std::shared_ptr<GridMap>>(core, "GridMap")
   .def("atPosition",        py::overload_cast<const std::string&, const Position&, InterpolationMethods>(&GridMap::atPosition, py::const_), py::arg("layer"), py::arg("position"), py::arg("interpolationMethod")=InterpolationMethods::INTER_NEAREST)
   .def("atc",               py::overload_cast<const std::string&, const Index&>(&GridMap::at, py::const_), py::arg("layer"), py::arg("index")) // Constness is not supported in python, return a copy
   .def("at",                py::overload_cast<const std::string&, const Index&>(&GridMap::at), py::arg("layer"), py::arg("index"), pyref)
-  .def("getIndex",          &GridMap::getIndex, py::arg("position"), py::arg("index"))
-  .def("getPosition",       py::overload_cast<const Index&, Position&>(&GridMap::getPosition, py::const_), py::arg("index"), py::arg("position"))
+  .def("getIndex",
+       [](const GridMap* self, const Position& position) {
+            Index index = Index::Zero();
+            self->getIndex(position, index);
+            return index;
+    }, py::arg("position"))
+  .def("getPosition",
+       [](const GridMap* self, const Index& index){
+            Position position = Position::Zero();
+            self->getPosition(index, position);
+            return position;
+       }, py::arg("index"))
   .def("isInside",          &GridMap::isInside, py::arg("position"))
   .def("isValidAt",         py::overload_cast<const Index&>(&GridMap::isValid, py::const_), py::arg("index"))
   .def("isLayerValidAt",    py::overload_cast<const Index&, const std::string&>(&GridMap::isValid, py::const_), py::arg("index"), py::arg("layer"))

@@ -1,7 +1,7 @@
 #include "perception_module_diagram.h"
 
 // dairlib
-#include "systems/perception/pointcloud/drake_to_pcl_pointcloud.h"
+#include "systems/perception/pointcloud/drake_to_pcl_point_cloud.h"
 #include "systems/perception/pointcloud/voxel_grid_filter.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
@@ -11,6 +11,7 @@
 #include "examples/Cassie/networking/cassie_output_receiver.h"
 #include "examples/Cassie/cassie_state_estimator.h"
 #include "examples/Cassie/systems/sim_cassie_sensor_aggregator.h"
+#include "examples/perceptive_locomotion/cassie_perception_utils.h"
 #include "multibody/multibody_utils.h"
 
 // drake
@@ -29,9 +30,6 @@ using Eigen::Vector3d;
 using pcl::PointXYZRGBConfidenceRatio;
 using elevation_mapping::SensorProcessorBase;
 
-using multibody::DistanceEvaluator;
-using multibody::WorldPointEvaluator;
-using multibody::KinematicEvaluatorSet;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
@@ -43,6 +41,7 @@ using perception::DrakeToPclPointCloud;
 using drake::systems::BasicVector;
 using drake::systems::AbstractStateIndex;
 using drake::systems::ConstantVectorSource;
+using drake::multibody::Frame;
 
 PerceptionModuleDiagram::PerceptionModuleDiagram(
     std::unique_ptr<drake::multibody::MultibodyPlant<double>> plant,
@@ -50,31 +49,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
     std::map<std::string, drake::systems::sensors::CameraInfo> depth_sensor_info,
     std::string joint_offsets_yaml) :
     plant_(std::move(plant)),
-    plant_context_(plant_->CreateDefaultContext()),
-    fourbar_(*plant_),
-    left_contact_(*plant_),
-    right_contact_(*plant_),
-    left_loop_(LeftLoopClosureEvaluator(*plant_)),
-    right_loop_(RightLoopClosureEvaluator(*plant_)),
-    left_toe_evaluator_(*plant_, LeftToeFront(*plant_).first,
-                        LeftToeFront(*plant_).second, Matrix3d::Identity(),
-                        Vector3d::Zero(), {1, 2}),
-    left_heel_evaluator_(*plant_, LeftToeRear(*plant_).first,
-                         LeftToeRear(*plant_).second, Matrix3d::Identity(),
-                         Vector3d::Zero(), {0, 1, 2}),
-    right_toe_evaluator_(*plant_, RightToeFront(*plant_).first,
-                        RightToeFront(*plant_).second, Matrix3d::Identity(),
-                        Vector3d::Zero(), {1, 2}),
-    right_heel_evaluator_(*plant_, RightToeRear(*plant_).first,
-                         RightToeRear(*plant_).second, Matrix3d::Identity(),
-                         Vector3d::Zero(), {0, 1, 2}) {
-
-  fourbar_.add_evaluator(&left_loop_);
-  fourbar_.add_evaluator(&right_loop_);
-  right_contact_.add_evaluator(&right_toe_evaluator_);
-  right_contact_.add_evaluator(&right_heel_evaluator_);
-  left_contact_.add_evaluator(&left_toe_evaluator_);
-  left_contact_.add_evaluator(&right_toe_evaluator_);
+    plant_context_(plant_->CreateDefaultContext()) {
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -90,8 +65,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // state estimator
   // TODO: Add option to set joint offsets in state estimator
   state_estimator_ = builder.AddSystem<systems::CassieStateEstimator>(
-      *plant_, &fourbar_, &left_contact_, &right_contact_, joint_offsets_,
-      false, false, 2
+      *plant_, joint_offsets_, 2
   );
   state_estimator_->MakeDrivenBySimulator(ekf_update_period_);
 
@@ -121,7 +95,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
       elevation_mapping_params_io::ReadElevationMappingParamsFromYaml(
           elevation_mapping_params_yaml_path
       );
-  auto elevation_mapping_system =
+  elevation_mapping_system_ =
       builder.AddSystem<perception::ElevationMappingSystem>(
       *plant_, plant_context_.get(), mapping_params
   );
@@ -129,23 +103,9 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // configure depth sensors
   DRAKE_DEMAND(depth_sensor_info.size() == mapping_params.sensor_poses.size());
 
-  perceptive_locomotion_preprocessor_params preprocessor_params {
-      "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
-      {
-          {"toe_left", Vector3d(0.3, 0.1, 0.2),
-            CassieTransformFootToToeFrame()},
-          {"tarsus_left", Vector3d(0.5, 0.2, 0.2),
-           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-          {"toe_right", Vector3d(0.3, 0.1, 0.2),
-            CassieTransformFootToToeFrame()},
-          {"tarsus_right", Vector3d(0.5, 0.2, 0.2),
-           drake::math::RigidTransformd(Vector3d(0.204, -0.02, 0))},
-      } // crop boxes
-  };
-  auto preprocessor = std::make_shared<PerceptiveLocomotionPreprocessor>(
-      *plant_, plant_context_.get(), preprocessor_params,
-      elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
-  );
+  auto preprocessor =
+      perceptive_locomotion::MakeCassieElevationMappingPreProcessor(
+        *plant_, plant_context_.get());
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
   base_cov_dummy.resize(36,1);
@@ -159,7 +119,9 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
     const auto &sensor_name = sensor_pose.sensor_name_;
     DRAKE_DEMAND(depth_sensor_info.count(sensor_name) == 1);
 
-    elevation_mapping_system->AddSensorPreProcessor(sensor_name, preprocessor);
+    elevation_mapping_system_->AddSensorPreProcessor(
+        sensor_name, std::move(preprocessor)
+    );
     auto frame_rate = builder.AddNamedSystem<drake::systems::ZeroOrderHold>(
         "frame_rate_" + sensor_name,
         1.0 / 30.0, drake::Value<drake::systems::sensors::ImageDepth32F>()
@@ -183,7 +145,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
     builder.Connect(*voxel_filter, *point_cloud_converter);
     builder.Connect(
         point_cloud_converter->get_output_port(),
-        elevation_mapping_system->get_input_port_pointcloud(sensor_name)
+        elevation_mapping_system_->get_input_port_pointcloud(sensor_name)
     );
     input_port_depth_image_.insert({
         sensor_name,
@@ -206,15 +168,15 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   builder.Connect(imu_passthrough->get_output_port(),
                   robot_output_sender->get_input_port_imu());
   builder.Connect(state_estimator_->get_robot_output_port(),
-                  elevation_mapping_system->get_input_port_state());
+                  elevation_mapping_system_->get_input_port_state());
   builder.Connect(cov_source->get_output_port(),
-                  elevation_mapping_system->get_input_port_covariance());
+                  elevation_mapping_system_->get_input_port_covariance());
 
   input_port_cassie_out_ = builder.ExportInput(
       delay->get_input_port(), "lcmt_cassie_out"
   );
   output_port_elevation_map_ = builder.ExportOutput(
-      elevation_mapping_system->get_output_port_grid_map(), "elevation_grid_map"
+      elevation_mapping_system_->get_output_port_grid_map(), "elevation_grid_map"
   );
   output_port_robot_output_ = builder.ExportOutput(
       robot_output_sender->get_output_port(), "lcmt_robot_output"
@@ -291,6 +253,21 @@ void PerceptionModuleDiagram::InitializeEkf(
   state_estimator_->setPreviousImuMeasurement(
       &state_estimator_context, init_imu
   );
+}
+
+void PerceptionModuleDiagram::InitializeElevationMap(
+    const Eigen::VectorXd& robot_state,
+    drake::systems::Context<double>* root_context) const {
+
+  auto& context = elevation_mapping_system_->GetMyMutableContextFromRoot(
+      root_context
+  );
+  std::pair<const Vector3d, const Frame<double>&> left_heel = LeftToeRear(*plant_);
+  std::pair<const Vector3d, const Frame<double>&> right_heel = RightToeRear(*plant_);
+
+  elevation_mapping_system_->InitializeFlatTerrain(
+      robot_state, {left_heel, right_heel}, context);
+
 }
 
 void PerceptionModuleDiagram::InitializeEkf(

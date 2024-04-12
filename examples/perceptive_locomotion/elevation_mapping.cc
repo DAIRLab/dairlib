@@ -1,16 +1,32 @@
 #include "gflags/gflags.h"
 
+// Need to include ros stuff before any pcl dependencies to avoid
+// boost errors (pcl can use ros's copy of the boost headers,
+// but not the other way around)
+#ifdef DAIR_ROS_ON
+#include <signal.h>
+// ros deps
+#include "systems/ros/ros_subscriber_system.h"
+#include "sensor_msgs/PointCloud2.h"
+#include "systems/perception/pointcloud/ros_point_cloud2_receiver.h"
+void SigintHandler(int sig) {
+  ros::shutdown();
+  exit(0);
+}
+#endif
+
 #include "dairlib/lcmt_robot_output.hpp"
 #include "drake/lcmt_point_cloud.hpp"
 
 #include "examples/Cassie/cassie_utils.h"
+#include "examples/perceptive_locomotion/cassie_perception_utils.h"
 
 #include "systems/robot_lcm_systems.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/perception/grid_map_visualizer.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
-#include "systems/perception/pointcloud/lcm_to_pcl_pointcloud.h"
+#include "systems/perception/pointcloud/lcm_to_pcl_point_cloud.h"
 #include "systems/perception/camera_utils.h"
 #include "systems/plant_visualizer.h"
 #include "systems/system_utils.h"
@@ -20,6 +36,8 @@
 #include "drake/systems/primitives/constant_vector_source.h"
 
 namespace dairlib {
+
+using Eigen::Vector3d;
 
 using systems::RobotOutputReceiver;
 using perception::ElevationMappingSystem;
@@ -46,8 +64,19 @@ DEFINE_string(elevation_mapping_params_yaml,
               "elevation_mapping_params_simulation.yaml",
               "elevation mapping parameters file");
 
+DEFINE_bool(get_points_from_ros, false,
+            "Get point clouds from ros instead of lcm");
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+#ifndef DAIR_ROS_ON
+  DRAKE_DEMAND(FLAGS_get_points_from_ros == false);
+#else
+  ros::init(argc, argv, "elevation_mapping");
+  ros::NodeHandle node_handle;
+  ros::AsyncSpinner spinner(1);
+#endif
 
   drake::systems::DiagramBuilder<double> builder;
   drake::lcm::DrakeLcm lcm_local("udpm://239.255.76.67:7667?ttl=0");
@@ -64,29 +93,40 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_elevation_mapping_params_yaml
       );
 
-  perceptive_locomotion_preprocessor_params processor_params {
-    "examples/perceptive_locomotion/camera_calib/d455_noise_model.yaml",
-    {} // crop boxes
-  };
-
   auto elevation_mapping = builder.AddSystem<ElevationMappingSystem>(
       plant, plant_context.get(), mapping_params
   );
-  auto processor = std::make_shared<PerceptiveLocomotionPreprocessor>(
-      plant, plant_context.get(), processor_params,
-      elevation_mapping::SensorProcessorBase::GeneralParameters{"pelvis", "world"}
-  );
+  std::shared_ptr<PerceptiveLocomotionPreprocessor> processor =
+      perceptive_locomotion::MakeCassieElevationMappingPreProcessor(
+          plant, plant_context.get()
+      );
   elevation_mapping->AddSensorPreProcessor("pelvis_depth", std::move(processor));
 
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(plant);
 
-  auto pcl_subscriber = builder.AddSystem(
-      LcmSubscriberSystem::Make<lcmt_point_cloud>(
-          FLAGS_channel_point_cloud, &lcm_local
-      )
-  );
-  auto pcl_receiver = builder.AddSystem<
-      LcmToPclPointCloud<pcl::PointXYZRGBConfidenceRatio>>();
+  drake::systems::LeafSystem<double>* pcl_subscriber = nullptr;
+  drake::systems::LeafSystem<double>* pcl_receiver = nullptr;
+
+
+  if (FLAGS_get_points_from_ros) {
+#ifdef DAIR_ROS_ON
+    signal(SIGINT, SigintHandler);
+
+    pcl_subscriber = builder.AddSystem<systems::RosSubscriberSystem<
+        sensor_msgs::PointCloud2>>(FLAGS_channel_point_cloud, &node_handle);
+
+    pcl_receiver = builder.AddSystem<perception::RosPointCloud2Receiver
+        <pcl::PointXYZRGBConfidenceRatio>>();
+#endif
+  } else {
+    pcl_subscriber = builder.AddSystem(
+        LcmSubscriberSystem::Make<lcmt_point_cloud>(
+            FLAGS_channel_point_cloud, &lcm_local
+        )
+    );
+    pcl_receiver = builder.AddSystem<
+        LcmToPclPointCloud<pcl::PointXYZRGBConfidenceRatio>>();
+  }
 
   Eigen::MatrixXd base_cov_dummy = 0.1 * Eigen::MatrixXd::Identity(6, 6);
   base_cov_dummy.resize(36,1);
@@ -129,6 +169,11 @@ int DoMain(int argc, char* argv[]) {
       &lcm_local, std::move(diagram), state_receiver, FLAGS_channel_x, true
   );
 
+#ifdef DAIR_ROS_ON
+  if (FLAGS_get_points_from_ros) {
+    spinner.start();
+  }
+#endif
   loop.Simulate();
   return 0;
 }

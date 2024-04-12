@@ -1,3 +1,3 @@
-knee_spring_threshold: -0.015
-ankle_spring_threshold: -0.01
+knee_spring_threshold: -0.03
+ankle_spring_threshold: -0.03
 contact_force_threshold: 60

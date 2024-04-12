@@ -7,6 +7,7 @@ cc_library(
     deps = [
         ":multibody_plant_tf_broadcaster_system",
         ":robot_state_to_ros_pose",
+        ":ros_interface_system",
         ":ros_pubsub_systems",
     ],
 )
@@ -49,11 +50,25 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ros_interface_system",
+    srcs = ["ros_interface_system.cc"],
+    hdrs = ["ros_interface_system.h"],
+    tags = ["ros"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@ros",
+    ],
+)
+
 cc_binary(
     name = "test_ros_publisher_system",
     srcs = ["test/test_ros_publisher_system.cc"],
     tags = ["ros"],
-    deps = [":ros_pubsub_systems"],
+    deps = [
+        ":ros_interface_system",
+        ":ros_pubsub_systems",
+    ],
 )
 
 cc_binary(

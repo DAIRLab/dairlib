@@ -2,6 +2,7 @@
 #include <vector>
 #include <cmath>
 #include <assert.h>
+
 namespace dairlib::polynomials {
 
 inline std::vector<double> get_chebyshev_points(int n) {
@@ -28,4 +29,5 @@ inline std::vector<double> get_even_points(int n) {
   even.back() = 1.0;
   return even;
 }
+
 }

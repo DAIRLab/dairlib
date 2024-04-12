@@ -2,9 +2,9 @@ controller_frequency: 1000
 
 # OSC gains
 w_input: 0.0000
-w_input_reg: 0.000001
-w_accel: 0.00000001
-w_lambda: 0.00000001
+w_input_reg: 0.0001
+w_accel: 0.00001
+w_lambda: 0.0001
 w_soft_constraint: 80
 impact_threshold: 0.025
 impact_tau: 0.005
@@ -16,10 +16,10 @@ W_input_reg: [1, 0.9, 0.5, 0.1, 5,
 W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
-W_lambda_c_reg: [1, 0.001, 0.01,
-                 1, 0.001, 0.01,
-                 1, 0.1, 0.01,
-                 1, 0.1, 0.01]
+W_lambda_c_reg: [1, 1, 1,
+                 1, 1, 1,
+                 1, 1, 1,
+                 1, 1, 1]
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 
@@ -59,12 +59,12 @@ ds_time: 0.1
 contact_point_pos: 0.5
 
 # Swing foot trajectory
-max_CoM_to_footstep_dist: 0.55
-footstep_offset: 0.18
+max_CoM_to_footstep_dist: 0.52
+footstep_offset: 0.12
 center_line_offset: 0.04
 mid_foot_height: 0.17
-final_foot_height: 0.02
-final_foot_velocity_z: -.1
+final_foot_height: 0.0
+final_foot_velocity_z: 0.5
 
 # LIPM trajectory
 lipm_height: 0.85
@@ -73,8 +73,8 @@ w_swing_toe: 1
 swing_toe_kp: 1500
 swing_toe_kd: 10
 
-w_hip_yaw: 0.1
-hip_yaw_kp: 40
+w_hip_yaw: 2.0
+hip_yaw_kp: 50
 hip_yaw_kd: 1
 
 CoMW:
@@ -84,19 +84,19 @@ CoMW:
 CoMKp:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,    50]
+      0,    0,    70]
 CoMKd:
   [   0,    0,     0,
       0,    0,     0,
-      0,    0,     2.5]
+      0,    0,     4]
 PelvisBalanceW:
   [ 2,    0,     0,
     0,    4,     0,
     0,    0,     0]
 PelvisBalanceKp:
-  [200,      0,    0,
-    0,    200,    0,
-    0,      0,    0]
+  [200,    0,    0,
+   0,    200,    0,
+   0,      0,    0]
 PelvisBalanceKd:
   [   10,     0,    0,
       0,    10,    0,
@@ -121,13 +121,13 @@ SwingFootW:
     0,    4,     0,
     0,    0,     4]
 SwingFootKp:
-  [ 150,    0,     0,
-    0,  150,     0,
-    0,    0,   200]
+  [ 200,  0,     0,
+    0,   180,    0,
+    0,    0,   180]
 SwingFootKd:
-  [   1,    0,     0,
-      0,    1,     0,
-      0,    0,     1]
+  [4,  0,  0,
+   0,  3,  0,
+   0,  0,  3]
 
 AlipKalmanQ:
   [.001, .001, .01, .01]

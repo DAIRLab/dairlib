@@ -3,6 +3,46 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "cassie_elevation_mapping_ros_diagram",
+    srcs = ["cassie_elevation_mapping_ros_diagram.cc"],
+    hdrs = ["cassie_elevation_mapping_ros_diagram.h"],
+    local_defines = ["DAIR_ROS_ON"],
+    tags = ["ros"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/perception:camera_utils",
+        "//systems/perception:elevation_mapping_system",
+        "//systems/perception:perceptive_locomotion_preprocessor",
+        "//systems/perception/pointcloud:ros_point_cloud2_receiver",
+        "//systems/ros:dairlib_ros",
+        "@drake//:drake_shared_library",
+        "@ros",
+    ],
+)
+
+cc_library(
+    name = "alip_mpfc_diagram",
+    srcs = ["alip_mpfc_diagram.cc"],
+    hdrs = ["alip_mpfc_diagram.h"],
+    deps = [
+        "//examples/Cassie:cassie_utils",
+        "//examples/Cassie/osc",
+        "//geometry:convex_polygon",
+        "//lcmtypes:lcmt_robot",
+        "//solvers:solver_options_io",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
+        "//systems/controllers/footstep_planning:alip_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "mpfc_osc_diagram",
     srcs = ["mpfc_osc_diagram.cc"],
     hdrs = ["mpfc_osc_diagram.h"],
@@ -13,7 +53,6 @@ cc_library(
         "//examples/Cassie/osc",
         "//examples/Cassie/systems:cassie_out_to_radio",
         "//examples/Cassie/systems:simulator_drift",
-        "//examples/perceptive_locomotion/gains:alip_mpfc_gains",
         "//examples/perceptive_locomotion/systems:alip_input_receiver",
         "//multibody:utils",
         "//multibody:view_frame",
@@ -24,6 +63,7 @@ cc_library(
         "//systems/controllers:lcm_trajectory_receiver",
         "//systems/controllers/footstep_planning:alip_mpc_interface_system",
         "//systems/controllers/footstep_planning:alip_mpc_output_reciever",
+        "//systems/controllers/footstep_planning:alip_s2s_mpfc",
         "//systems/controllers/footstep_planning:alip_state_calculator_system",
         "//systems/controllers/footstep_planning:footstep_lcm_systems",
         "//systems/framework:lcm_driven_loop",
@@ -63,11 +103,12 @@ cc_library(
         "//examples/Cassie:cassie_utils",
         "//examples/Cassie/networking:cassie_udp_pub_sub",
         "//examples/Cassie/systems:sim_cassie_sensor_aggregator",
+        "//examples/perceptive_locomotion:cassie_perception_utils",
         "//multibody:utils",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/perception:elevation_mapping_system",
-        "//systems/perception/pointcloud:drake_to_pcl_pointcloud",
+        "//systems/perception/pointcloud:drake_to_pcl_point_cloud",
         "//systems/perception/pointcloud:voxel_grid_filter",
         "//systems/primitives",
         "@drake//:drake_shared_library",
@@ -89,6 +130,7 @@ cc_library(
 cc_library(
     name = "diagrams",
     deps = [
+        ":alip_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",
@@ -99,11 +141,13 @@ cc_binary(
     name = "test_mpfc_osc_diagram",
     srcs = ["test/test_mpfc_osc_diagram.cc"],
     deps = [
+        ":alip_mpfc_diagram",
         ":hiking_sim_diagram",
         ":mpfc_osc_diagram",
         ":perception_module_diagram",
         "//examples/Cassie:cassie_fixed_point_solver",
         "//examples/Cassie:cassie_utils",
+        "//lcm:lcm_log_sink",
         "//systems:plant_visualizer",
         "//systems/perception:grid_map_visualizer",
     ],

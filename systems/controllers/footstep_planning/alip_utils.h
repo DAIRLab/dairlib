@@ -110,15 +110,9 @@ MassNormalizedAlipStepToStepDynamics(
     double com_z, double Tss, double Tds,
     ResetDiscretization discretization
 );
-Eigen::Matrix4d SolveDareTwoStep(
-    const Eigen::Matrix4d& Q,
-    double com_z, double m, double tss, double tds, int knots_per_mode,
-    ResetDiscretization discretization);
 
 std::pair<Eigen::Vector4d, Eigen::Vector4d> MakePeriodicAlipGait(
     const AlipGaitParams& gait_params);
 
-std::vector<Eigen::VectorXd> MakePeriodicAlipGaitTrajectory(
-    const AlipGaitParams& gait_params, int nmodes, int knots_per_mode);
 
 }

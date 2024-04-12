@@ -10,6 +10,17 @@ cc_library(
 )
 
 cc_library(
+    name = "sos_filter",
+    srcs = ["sos_filter.cc"],
+    hdrs = ["sos_filter.h"],
+    deps = [
+        "//common:find_resource",
+        "@drake//:drake_shared_library",
+        "@eigen",
+    ],
+)
+
+cc_library(
     name = "output_vector_filter",
     srcs = ["output_vector_filter.cc"],
     hdrs = ["output_vector_filter.h"],

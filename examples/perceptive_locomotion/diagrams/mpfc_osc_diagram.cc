@@ -4,10 +4,10 @@
 #include "dairlib/lcmt_robot_input.hpp"
 
 // MPC related
-#include "examples/perceptive_locomotion/gains/alip_mpfc_gains.h"
 #include "examples/perceptive_locomotion/systems/cassie_ankle_torque_receiver.h"
 #include "examples/perceptive_locomotion/diagrams/mpfc_output_from_footstep.h"
 #include "systems/primitives/fsm_lcm_systems.h"
+#include "systems/controllers/footstep_planning/alip_s2s_mpfc_params.h"
 #include "systems/controllers/footstep_planning/alip_mpc_output_reciever.h"
 #include "systems/controllers/footstep_planning/alip_mpc_interface_system.h"
 #include "systems/controllers/footstep_planning/alip_state_calculator_system.h"
@@ -64,9 +64,10 @@ using multibody::MakeNameToPositionsMap;
 
 
 MpfcOscDiagram::MpfcOscDiagram(
-    drake::multibody::MultibodyPlant<double>& plant,
+    const drake::multibody::MultibodyPlant<double>& plant,
     const string& osc_gains_filename, const string& mpc_gains_filename,
-    const string& osqp_settings_filename) :
+    const string& osqp_settings_filename, MpfcOscDiagramInputType input_type) :
+    input_type_(input_type),
     plant_(&plant),
     left_toe(LeftToeFront(plant)),
     left_heel(LeftToeRear(plant)),
@@ -83,7 +84,6 @@ MpfcOscDiagram::MpfcOscDiagram(
     vel_map(MakeNameToVelocitiesMap(plant)),
     left_foot_points({left_heel, left_toe}),
     right_foot_points({right_heel, right_toe}),
-    evaluators(multibody::KinematicEvaluatorSet<double>(plant)),
     left_loop(LeftLoopClosureEvaluator(plant)),
     right_loop(RightLoopClosureEvaluator(plant)),
     left_fixed_knee_spring(
@@ -98,50 +98,67 @@ MpfcOscDiagram::MpfcOscDiagram(
     right_fixed_ankle_spring(
         FixedJointEvaluator(plant, pos_map.at("ankle_spring_joint_right"),
                             vel_map.at("ankle_spring_joint_rightdot"), 0)),
-    view_frame(WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))),
-    left_toe_evaluator(WorldPointEvaluator(
-        plant, left_toe.first, left_toe.second, view_frame,
-        Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
-    left_heel_evaluator(WorldPointEvaluator(
-        plant, left_heel.first, left_heel.second, view_frame,
-        Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})),
-    right_toe_evaluator(WorldPointEvaluator(
-        plant, right_toe.first, right_toe.second, view_frame,
-        Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
-    right_heel_evaluator(WorldPointEvaluator(
-        plant, right_heel.first, right_heel.second, view_frame,
-        Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2})) {
-
-  // Read-in the parameters
-  auto gains = LoadYamlFile<OSCWalkingGainsALIP>(osc_gains_filename);
-  auto gains_mpc = LoadYamlFile<AlipMpfcGainsImport>(mpc_gains_filename);
+    view_frame(WorldYawViewFrame<double>(plant.GetBodyByName("pelvis"))) {
 
   // Build the controller diagram
   DiagramBuilder<double> builder;
   plant_context = plant.CreateDefaultContext();
 
+  // Read-in the parameters
+  auto gains = LoadYamlFile<OSCWalkingGainsALIP>(osc_gains_filename);
+  auto gains_mpc = systems::controllers::MakeAlipS2SMPFCParamsFromYaml(
+      mpc_gains_filename,
+      "examples/perceptive_locomotion/gains/gurobi_options_planner.yaml",
+      plant, *plant_context
+  );
+
   // Create state receiver.
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto input_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
+
   auto high_level_command = builder.AddSystem<cassie::osc::HighLevelCommand>(
       plant, plant_context.get(), gains.vel_scale_rot,
       gains.vel_scale_trans_sagital, gains.vel_scale_trans_lateral);
 
-  auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
   auto mpc_receiver = builder.AddSystem<AlipMpcOutputReceiver>();
-  auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
-      gains_mpc.ss_time, gains_mpc.ds_time, plant);
-  auto fsm_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
-      gains_mpc.ss_time, gains_mpc.ds_time, plant);
-  builder.Connect(state_receiver->get_output_port(0),
-                  footstep_passthrough->get_input_port_state());
-  builder.Connect(*footstep_passthrough, *mpc_receiver);
-  builder.Connect(state_receiver->get_output_port(0),
-                  fsm_passthrough->get_input_port_state());
-  builder.Connect(*fsm_passthrough, *mpc_receiver_fsm);
-  auto dummy_foothold_source =
-      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(Vector3d::Zero());
-  builder.Connect(dummy_foothold_source->get_output_port(),
-                  fsm_passthrough->get_input_port_footstep());
+  auto fsm = builder.AddSystem<FsmReceiver>(plant);
+
+  if (input_type_ == MpfcOscDiagramInputType::kFootstepCommand) {
+    auto mpc_receiver_fsm = builder.AddSystem<AlipMpcOutputReceiver>();
+    auto footstep_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
+        gains_mpc.gait_params.single_stance_duration,
+        gains_mpc.gait_params.double_stance_duration,
+        plant
+    );
+    auto fsm_passthrough = builder.AddSystem<MpfcOutputFromFootstep>(
+        gains_mpc.gait_params.single_stance_duration,
+        gains_mpc.gait_params.double_stance_duration,
+        plant
+    );
+    builder.Connect(state_receiver->get_output_port(0),
+                    footstep_passthrough->get_input_port_state());
+    builder.Connect(*footstep_passthrough, *mpc_receiver);
+    builder.Connect(state_receiver->get_output_port(0),
+                    fsm_passthrough->get_input_port_state());
+    builder.Connect(*fsm_passthrough, *mpc_receiver_fsm);
+    auto dummy_foothold_source =
+        builder.AddSystem<drake::systems::ConstantVectorSource<double>>(Vector3d::Zero());
+    builder.Connect(dummy_foothold_source->get_output_port(),
+                    fsm_passthrough->get_input_port_footstep());
+    builder.Connect(mpc_receiver_fsm->get_output_port_fsm(),
+                    fsm->get_input_port_fsm_info());
+
+    input_port_footstep_command_ = builder.ExportInput(
+        footstep_passthrough->get_input_port_footstep(), "footstep"
+    );
+
+  } else {
+    builder.Connect(mpc_receiver->get_output_port_fsm(),
+                    fsm->get_input_port_fsm_info());
+    input_port_alip_mpc_output_ = builder.ExportInput(
+        mpc_receiver->get_input_port(), "lcmt_alip_mpc_output"
+    );
+  }
 
   builder.Connect(state_receiver->get_output_port(0),
                   high_level_command->get_input_port_state());
@@ -165,13 +182,11 @@ MpfcOscDiagram::MpfcOscDiagram(
   right_stance_state = 1;
   post_left_double_support_state = 3;
   post_right_double_support_state = 4;
-  left_support_duration = gains_mpc.ss_time;
-  right_support_duration = gains_mpc.ss_time;
-  double_support_duration = gains_mpc.ds_time;
+  left_support_duration = gains_mpc.gait_params.single_stance_duration;
+  right_support_duration = gains_mpc.gait_params.single_stance_duration;
+  double_support_duration = gains_mpc.gait_params.double_stance_duration;
 
-  auto fsm = builder.AddSystem<FsmReceiver>(plant);
-  builder.Connect(mpc_receiver_fsm->get_output_port_fsm(),
-                  fsm->get_input_port_fsm_info());
+
   builder.Connect(state_receiver->get_output_port(),
                   fsm->get_input_port_state());
 
@@ -196,21 +211,17 @@ MpfcOscDiagram::MpfcOscDiagram(
       left_right_support_fsm_states,
       left_right_foot,
       {post_left_double_support_state, post_right_double_support_state},
-      gains_mpc.h_des,
       gains.mid_foot_height,
-      0.05608,
       gains.final_foot_height,
       gains.final_foot_velocity_z,
-      gains_mpc.retraction_dist,
-      true
+      0.0, // retraction dist is unused
+      true // make the swing foot generator driven by a standalone simulator
   };
 
   com_params = {
-      gains_mpc.h_des,
-      gains_mpc.ds_time,
+      gains_mpc.gait_params.height,
       unordered_fsm_states,
       contact_points_in_each_state,
-      false
   };
 
   vector<int> post_left_post_right_ds_states =
@@ -271,7 +282,9 @@ MpfcOscDiagram::MpfcOscDiagram(
 
   // Create Operational space control
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true,
+      systems::controllers::OscSolverChoice::kFCCQP
+  );
 
   // Cost
   int n_v = plant.num_velocities();
@@ -284,39 +297,50 @@ MpfcOscDiagram::MpfcOscDiagram(
     );
   }
 
+  // Constraints in OSC
+  auto evaluators = std::make_unique<KinematicEvaluatorSet<double>>(plant);
 
-  evaluators.add_evaluator(&left_loop);
-  evaluators.add_evaluator(&right_loop);
-  evaluators.add_evaluator(&left_fixed_knee_spring);
-  evaluators.add_evaluator(&right_fixed_knee_spring);
-  evaluators.add_evaluator(&left_fixed_ankle_spring);
-  evaluators.add_evaluator(&right_fixed_ankle_spring);
-  osc->AddKinematicConstraint(&evaluators);
+  std::vector<int> yz_active = {1, 2};
+  std::vector<int> xyz_active = {0, 1, 2};
+  auto left_toe_evaluator = std::make_unique<WorldPointEvaluator<double>>(
+      plant, left_toe.first, left_toe.second, view_frame,
+      Matrix3d::Identity(), Vector3d::Zero(), yz_active);
+  auto left_heel_evaluator = std::make_unique<WorldPointEvaluator<double>>(
+          plant, left_heel.first, left_heel.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), xyz_active);
+  auto right_toe_evaluator = std::make_unique<WorldPointEvaluator<double>>(
+          plant, right_toe.first, right_toe.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), yz_active);
+  auto right_heel_evaluator = std::make_unique<WorldPointEvaluator<double>>(
+          plant, right_heel.first, right_heel.second, view_frame,
+          Matrix3d::Identity(), Vector3d::Zero(), xyz_active);
+
+  evaluators->add_evaluator(&left_loop);
+  evaluators->add_evaluator(&right_loop);
+  evaluators->add_evaluator(&left_fixed_knee_spring);
+  evaluators->add_evaluator(&right_fixed_knee_spring);
+  evaluators->add_evaluator(&left_fixed_ankle_spring);
+  evaluators->add_evaluator(&right_fixed_ankle_spring);
+
+  osc->AddKinematicConstraint(std::move(evaluators));
 
   osc->SetContactSoftConstraintWeight(gains.w_soft_constraint);
   osc->SetContactFriction(gains.mu);
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(post_left_double_support_state,
-                               &right_heel_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(post_right_double_support_state,
-                               &right_heel_evaluator);
 
-  osc->SetOsqpSolverOptionsFromYaml(osqp_settings_filename);
+  osc->AddContactPoint(
+      "left_toe", std::move(left_toe_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "left_heel", std::move(left_heel_evaluator),
+      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_toe", std::move(right_toe_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint(
+      "right_heel", std::move(right_heel_evaluator),
+      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
+
+  osc->SetSolverOptionsFromYaml(osqp_settings_filename);
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_schedule_breaks =
@@ -333,7 +357,7 @@ MpfcOscDiagram::MpfcOscDiagram(
           swing_ft_gain_multiplier_samples));
   std::vector<double> swing_ft_accel_gain_multiplier_breaks{
       0, left_support_duration / 2, left_support_duration * 3 / 4,
-      gains_mpc.t_max};
+      gains_mpc.tmax};
   std::vector<drake::MatrixX < double>>
   swing_ft_accel_gain_multiplier_samples(
       4, drake::MatrixX<double>::Identity(3, 3));
@@ -473,10 +497,17 @@ MpfcOscDiagram::MpfcOscDiagram(
                   alip_input_receiver->get_input_port_u());
   builder.Connect(alip_input_receiver->get_output_port(),
                   osc->get_feedforward_input_port());
-
+  builder.Connect(osc->get_output_port_osc_command(),
+                  input_sender->get_input_port());
 
   output_port_u_cmd_ = builder.ExportOutput(
       osc->get_output_port_osc_command(), "u, t"
+  );
+  output_port_u_lcm_ = builder.ExportOutput(
+      input_sender->get_output_port(), "lcmt_robot_input"
+  );
+  output_port_osc_debug_ = builder.ExportOutput(
+      osc->get_output_port_osc_debug(), "lcmt_osc_debug"
   );
   output_port_fsm_ = builder.ExportOutput(
       fsm->get_output_port_fsm(), "fsm"
@@ -490,9 +521,6 @@ MpfcOscDiagram::MpfcOscDiagram(
   input_port_state_ = builder.ExportInput(
       state_receiver->get_input_port(), "lcm_robot_output"
   );
-  input_port_footstep_command_ = builder.ExportInput(
-      footstep_passthrough->get_input_port_footstep(), "footstep"
-  );
   input_port_radio_ = builder.ExportInput(
       high_level_command->get_input_port_radio(), "lcmt_radio_out"
   );
@@ -502,6 +530,7 @@ MpfcOscDiagram::MpfcOscDiagram(
   // Create the diagram
   builder.BuildInto(this);
   this->set_name("osc_controller_for_alip_mpfc");
+  DrawAndSaveDiagramGraph(*this);
 }
 
 void MpfcOscDiagram::SetSwingFootPositionAtLiftoff(
@@ -514,7 +543,7 @@ void MpfcOscDiagram::SetSwingFootPositionAtLiftoff(
       "swing_ft_traj_interface_system"
   );
   const auto swing_traj_sys_casted =
-      dynamic_cast<const systems::controllers::SwingFootInterfaceSystem*>(
+      dynamic_cast<const systems::controllers::SwingFootTrajectoryGenerator*>(
           &swing_traj_sys
       );
   auto& swing_traj_ctx = swing_traj_sys_casted->GetMyMutableContextFromRoot(context);

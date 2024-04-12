@@ -14,17 +14,18 @@
 #include "dairlib/lcmt_osc_qp_output.hpp"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/world_point_evaluator.h"
+#include "solvers/fcc_qp_solver.h"
 #include "solvers/fast_osqp_solver.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
+#include "systems/controllers/osc/inverse_dynamics_qp.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/yaml/yaml_io.h"
-#include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
 #include "drake/systems/framework/diagram.h"
@@ -32,6 +33,11 @@
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib::systems::controllers {
+
+enum OscSolverChoice {
+  kFCCQP = 0,
+  kFastOSQP = 1,
+};
 
 /// `OperationalSpaceControl` takes in desired trajectory in world frame and
 /// outputs torque command of the motors.
@@ -98,11 +104,10 @@ namespace dairlib::systems::controllers {
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
   OperationalSpaceControl(
-      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
-      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      drake::systems::Context<double>* context_w_spr,
-      drake::systems::Context<double>* context_wo_spr,
-      bool used_with_finite_state_machine = true);
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
+      bool used_with_finite_state_machine = true,
+      OscSolverChoice = kFastOSQP);
 
   /***** Input/output ports *****/
 
@@ -238,14 +243,17 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
 
   // Constraint methods
-  void DisableAcutationConstraint() { with_input_constraints_ = false; }
   void SetContactFriction(double mu) { mu_ = mu; }
 
-  void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);
-  void AddStateAndContactPoint(
-      int state, const multibody::WorldPointEvaluator<double>* evaluator);
+  void AddContactPoint(
+      const std::string& name,
+      std::unique_ptr<const multibody::WorldPointEvaluator<double>> evaluator,
+      std::vector<int> fsm_states={});
+
   void AddKinematicConstraint(
-      const multibody::KinematicEvaluatorSet<double>* evaluators);
+      std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>
+      evaluator);
+
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
   /// desired traj (the period starts when the finite state machine switches to
@@ -268,16 +276,27 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                                        int left_support_state,
                                        int right_support_state,
                                        const std::vector<int>& ds_states);
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
-    solver_options_ = options;
+
+  void SetSolverOptions(const drake::solvers::SolverOptions& options) {
+    if (std::find(options.GetSolverIds().begin(), options.GetSolverIds().end(),
+                  solvers::FCCQPSolver::id()) != options.GetSolverIds().end()) {
+      fcc_qp_solver_options_ = options;
+    }
+    if (std::find(options.GetSolverIds().begin(), options.GetSolverIds().end(),
+                  drake::solvers::OsqpSolver::id()) != options.GetSolverIds().end()) {
+      osqp_solver_options_ = options;
+    }
   }
-  void SetOsqpSolverOptionsFromYaml(const std::string& yaml_string) {
-    SetOsqpSolverOptions(
+
+  void SetSolverOptionsFromYaml(const std::string& yaml_string) {
+    auto id = (solver_choice_ == kFCCQP) ?
+        solvers::FCCQPSolver::id() : drake::solvers::OsqpSolver::id();
+    SetSolverOptions(
         drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-            FindResourceOrThrow(yaml_string))
-            .GetAsSolverOptions(drake::solvers::OsqpSolver::id())
-    );
+            FindResourceOrThrow(yaml_string)).GetAsSolverOptions(id));
   };
+
+
   // OSC LeafSystem builder
   void Build();
 
@@ -293,6 +312,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
                           double t, int fsm_state,
                           double t_since_last_state_switch, double alpha,
                           int next_fsm_state) const;
+
+  // Updates the contact force regularization to a desired contact force of
+  // supporting the robot's weight evenly across each contact point
+  // TODO (@Brian-Acosta) we should support having an input port for this kind
+  //  of thing instead
+  void UpdateContactForceRegularization(
+      const std::vector<std::string>& contacts_currently_active) const;
+
 
   // Solves the optimization problem:
   // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
@@ -347,43 +374,21 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int prev_fsm_state_idx_;
   int prev_event_time_idx_;
 
-  // Map position/velocity from model with spring to without spring
-  Eigen::MatrixXd map_position_from_spring_to_no_spring_;
-  Eigen::MatrixXd map_velocity_from_spring_to_no_spring_;
-
   // Map from (non-const) trajectory names to input port indices
   std::map<std::string,
            drake::systems::InputPortIndex> traj_name_to_port_index_map_;
 
   // MBP's.
-  const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
-  const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
+  const drake::multibody::MultibodyPlant<double>& plant_;
 
   // MBP context's
-  drake::systems::Context<double>* context_w_spr_;
-  drake::systems::Context<double>* context_wo_spr_;
-
-  // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+  drake::systems::Context<double>* context_;
 
   // Size of position, velocity and input of the MBP without spring
   int n_q_;
   int n_v_;
   int n_u_;
   int n_revolute_joints_;
-
-  // Size of holonomic constraint and total/active contact constraints
-  int n_h_;
-  int n_c_;
-  int n_c_active_;
-
-  // Manually specified holonomic constraints (only valid for plants_wo_springs)
-  const multibody::KinematicEvaluatorSet<double>* kinematic_evaluators_ = nullptr;
-
-  // robot input limits
-  Eigen::VectorXd u_min_;
-  Eigen::VectorXd u_max_;
 
   // robot joint limits
   Eigen::VectorXd q_min_;
@@ -396,39 +401,23 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
-  // floating base model flag
-  bool is_quaternion_;
-
   // Solver
-  std::unique_ptr<dairlib::solvers::FastOsqpSolver> solver_;
-  drake::solvers::SolverOptions solver_options_ =
+  std::unique_ptr<solvers::FCCQPSolver> fccqp_solver_;
+  drake::solvers::SolverOptions fcc_qp_solver_options_ =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow("solvers/fcc_qp_options_default.yaml"))
+          .GetAsSolverOptions(dairlib::solvers::FCCQPSolver::id());
+
+  std::unique_ptr<solvers::FastOsqpSolver> osqp_solver_;
+  drake::solvers::SolverOptions osqp_solver_options_ =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow("solvers/osqp_options_default.yaml"))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+          .GetAsSolverOptions(solvers::FastOsqpSolver::id());
+
+  const OscSolverChoice solver_choice_;
 
   // MathematicalProgram
-  std::unique_ptr<drake::solvers::MathematicalProgram> prog_;
-
-  // Decision variables
-  drake::solvers::VectorXDecisionVariable dv_;
-  drake::solvers::VectorXDecisionVariable u_;
-  drake::solvers::VectorXDecisionVariable lambda_c_;
-  drake::solvers::VectorXDecisionVariable lambda_h_;
-  drake::solvers::VectorXDecisionVariable epsilon_;
-  // Cost and constraints
-  drake::solvers::LinearEqualityConstraint* dynamics_constraint_;
-  drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
-  drake::solvers::LinearEqualityConstraint* contact_constraints_;
-  std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
-
-  std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
-  drake::solvers::QuadraticCost* accel_cost_ = nullptr;
-  drake::solvers::LinearCost* joint_limit_cost_ = nullptr;
-  drake::solvers::QuadraticCost* input_cost_ = nullptr;
-  drake::solvers::QuadraticCost* input_smoothing_cost_ = nullptr;
-  drake::solvers::QuadraticCost* lambda_c_cost_ = nullptr;
-  drake::solvers::QuadraticCost* lambda_h_cost_ = nullptr;
-  drake::solvers::QuadraticCost* soft_constraint_cost_ = nullptr;
+  mutable InverseDynamicsQp id_qp_;
 
   // OSC solution
   std::unique_ptr<Eigen::VectorXd> dv_sol_;
@@ -437,11 +426,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
-  mutable double solve_time_;
+  mutable double solve_time_{};
 
   mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;
-  std::map<int, int> active_contact_dim_ = {};
 
   // OSC cost members
   /// Using u cost would push the robot away from the fixed point, so the user
@@ -457,18 +445,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::pair<int, double>>
       fsm_to_w_input_map_;  // each pair is (joint index, weight)
 
-  // OSC constraint members
-  bool with_input_constraints_ = true;
   // Soft contact penalty coefficient and friction cone coefficient
   double mu_ = -1;  // Friction coefficients
   double w_soft_constraint_ = -1;
 
   // Map finite state machine state to its active contact indices
-  std::map<int, std::set<int>> contact_indices_map_ = {};
-  // All contacts (used in contact constraints)
-  std::vector<const multibody::WorldPointEvaluator<double>*> all_contacts_ = {};
-  // single_contact_mode_ is true if there is only 1 contact mode in OSC
-  bool single_contact_mode_ = false;
+  std::map<int, std::vector<std::string>> contact_names_map_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
@@ -478,21 +460,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;
 
-  // Set a period during which we apply control (Unit: seconds)
-  // Let t be the elapsed time since fsm switched to a new state.
-  // We only apply the control when t_s <= t <= t_e
-  std::vector<double> t_s_vec_;
-  std::vector<double> t_e_vec_;
-
   // Optional feature -- contact force blend
   double ds_duration_ = -1;
-  int left_support_state_;
-  int right_support_state_;
-  std::vector<int> ds_states_;
-  double w_blend_constraint_ = 0.1;  // for soft constraint
+  int left_support_state_{};
+  int right_support_state_{};
+  std::vector<int> ds_states_{};
+  double w_blend_constraint_ = 10;  // for soft constraint
   mutable double prev_distinct_fsm_state_ = -1;
-  drake::solvers::LinearEqualityConstraint* blend_constraint_;
-  drake::solvers::VectorXDecisionVariable epsilon_blend_;
 };
 
 }  // namespace dairlib::systems::controllers

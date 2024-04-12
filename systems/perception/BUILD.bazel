@@ -11,6 +11,17 @@ cc_library(
 )
 
 cc_library(
+    name = "grid_map_lcm_systems",
+    srcs = ["grid_map_lcm_systems.cc"],
+    hdrs = ["grid_map_lcm_systems.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
+    ]
+)
+
+cc_library(
     name = "grid_map_visualizer",
     srcs = ["grid_map_visualizer.cc"],
     hdrs = ["grid_map_visualizer.h"],
@@ -45,6 +56,18 @@ cc_library(
         "@drake//:drake_shared_library",
         "@elevation_mapping//elevation_mapping:sensor_processors",
         "@pcl//:filters",
+    ],
+)
+
+cc_library(
+    name = "ideal_landmark_source",
+    srcs = ["ideal_landmark_source.cc"],
+    hdrs = ["ideal_landmark_source.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library"
     ],
 )
 

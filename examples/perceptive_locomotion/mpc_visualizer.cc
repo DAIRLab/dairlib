@@ -1,7 +1,6 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_mpc_debug.hpp"
 #include "examples/perceptive_locomotion/systems/alip_mpfc_meshcat_visualizer.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/plant_visualizer.h"
@@ -13,8 +12,8 @@
 
 namespace dairlib {
 
-DEFINE_string(channel_x, "CASSIE_STATE_DISPATCHER", "State channel");
-DEFINE_string(channel_mpc, "ALIP_MINLP_DEBUG", "mpc_debug_channel");
+DEFINE_string(channel_x, "NETWORK_CASSIE_STATE_DISPATCHER", "State channel");
+DEFINE_string(channel_mpc, "ALIP_S2S_MPFC_DEBUG", "mpc_debug_channel");
 DEFINE_string(channel_terrain, "", "lcm channel with processed footholds from "
                                    "lcm translator");
 
@@ -43,7 +42,7 @@ int do_main(int argc, char* argv[]) {
           FLAGS_channel_x, lcm)
   );
   auto mpc_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_mpc_debug>(
+      LcmSubscriberSystem::Make<lcmt_alip_s2s_mpfc_debug>(
           FLAGS_channel_mpc, lcm)
   );
   auto state_receiver = builder.AddSystem<RobotOutputReceiver>(

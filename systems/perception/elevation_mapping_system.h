@@ -29,25 +29,45 @@ struct elevation_map_update_params {
 
 struct elevation_mapping_params {
   std::vector<sensor_pose_params> sensor_poses;
+  std::map<std::string, std::pair<std::string, Eigen::Vector3d>> contacts;
   elevation_map_update_params update_params;
   std::string base_frame_name;
   Eigen::Vector3d track_point;
+  grid_map::Length map_length;
+  double resolution;
+  double initialization_offset;
+  double initialization_radius;
+  Eigen::Vector3d point_cloud_bias;
 };
 
 struct elevation_mapping_params_io {
   std::vector<std::map<std::string, std::string>> sensor_poses;
+  std::map<std::string, std::string> contact_frames;
+  std::map<std::string, std::vector<double>> contact_points;
   std::string map_update_trigger_type;
   std::string base_frame_name;
   std::vector<double> track_point;
+  std::vector<double> map_length;
+  std::vector<double> point_cloud_bias;
   double map_update_rate_hz;
+  double resolution;
+  double initialization_offset;
+  double initialization_radius;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(sensor_poses));
+    a->Visit(DRAKE_NVP(contact_frames));
+    a->Visit(DRAKE_NVP(contact_points));
     a->Visit(DRAKE_NVP(map_update_trigger_type));
     a->Visit(DRAKE_NVP(base_frame_name));
     a->Visit(DRAKE_NVP(track_point));
     a->Visit(DRAKE_NVP(map_update_rate_hz));
+    a->Visit(DRAKE_NVP(map_length));
+    a->Visit(DRAKE_NVP(resolution));
+    a->Visit(DRAKE_NVP(initialization_offset));
+    a->Visit(DRAKE_NVP(initialization_radius));
+    a->Visit(DRAKE_NVP(point_cloud_bias));
   }
 
   static elevation_mapping_params ReadElevationMappingParamsFromYaml(
@@ -78,8 +98,22 @@ struct elevation_mapping_params_io {
           params_io.map_update_rate_hz;
     }
     DRAKE_DEMAND(params_io.track_point.size() == 3);
+    DRAKE_DEMAND(params_io.map_length.size() == 2);
     params_out.track_point = Eigen::Vector3d::Map(params_io.track_point.data());
     params_out.base_frame_name = params_io.base_frame_name;
+    params_out.map_length = grid_map::Length::Map(params_io.map_length.data());
+    params_out.resolution = params_io.resolution;
+    params_out.initialization_offset = params_io.initialization_offset;
+    params_out.initialization_radius = params_io.initialization_radius;
+    params_out.point_cloud_bias = Eigen::Vector3d::Map(params_io.point_cloud_bias.data());
+
+    for (const auto& [k, v] : params_io.contact_frames) {
+      DRAKE_DEMAND(params_io.contact_points.count(k) == 1);
+      params_out.contacts[k] = {
+          v, Eigen::Vector3d::Map(params_io.contact_points.at(k).data())
+      };
+    }
+
     return params_out;
   };
 };
@@ -104,16 +138,29 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_covariance() const {
     return get_input_port(input_port_pose_covariance_);
   }
+  const drake::systems::InputPort<double>& get_input_port_contact() const {
+    DRAKE_DEMAND(not contacts_.empty());
+    return get_input_port(input_port_contact_);
+  }
   const drake::systems::OutputPort<double>& get_output_port_map() const {
     return get_output_port(output_port_elevation_map_);
   }
   const drake::systems::OutputPort<double>& get_output_port_grid_map() const {
     return get_output_port(output_port_grid_map_);
   }
+  bool has_contacts() const {
+    return (not contacts_.empty());
+  }
 
   void AddSensorPreProcessor(
       const std::string& sensor_name,
       std::shared_ptr<elevation_mapping::SensorProcessorBase> processor);
+
+  void InitializeFlatTerrain(
+      const Eigen::VectorXd& robot_state,
+      std::vector<std::pair<const Eigen::Vector3d,
+                const drake::multibody::Frame<double>&>> contacts,
+      drake::systems::Context<double>&) const;
 
  private:
 
@@ -129,13 +176,17 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
   const drake::multibody::Body<double>& robot_base_;
   drake::systems::Context<double>* context_;
   std::map<std::string, sensor_pose_params> sensor_poses_;
+  std::map<std::string, std::pair<std::string, Eigen::Vector3d>> contacts_;
   const Eigen::Vector3d track_point_; // point in the base frame to pin the map
+  elevation_mapping_params params_;
 
 
   // ports
   std::map<std::string, drake::systems::InputPortIndex> input_ports_pcl_;
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_pose_covariance_;
+  drake::systems::InputPortIndex input_port_contact_;
+
   drake::systems::OutputPortIndex output_port_elevation_map_;
   drake::systems::OutputPortIndex output_port_grid_map_;
 

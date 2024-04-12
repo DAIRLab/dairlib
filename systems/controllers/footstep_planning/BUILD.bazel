@@ -3,20 +3,15 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "alip_mpfc_system",
-    srcs = ["alip_mpfc_system.cc"],
-    hdrs = ["alip_mpfc_system.h"],
+    name = "alip_mpfc_s2s_system",
+    srcs = ["alip_mpfc_s2s_system.cc"],
+    hdrs = ["alip_mpfc_s2s_system.h"],
     deps = [
-        ":alip_miqp",
-        ":alip_multiqp",
-        ":alip_utils",
-        "//common:eigen_utils",
-        "//geometry:convex_polygon_set",
+        ":alip_s2s_mpfc",
         "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//systems/filters:s2s_kalman_filter",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
     ],
 )
 
@@ -25,8 +20,6 @@ cc_library(
     srcs = ["alip_one_step_footstep_controller.cc"],
     hdrs = ["alip_one_step_footstep_controller.h"],
     deps = [
-        ":alip_mpfc_system",
-        ":alip_multiqp",
         ":alip_utils",
         "//common:eigen_utils",
         "//geometry:convex_polygon_set",
@@ -49,33 +42,19 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_multiqp",
-    srcs = ["alip_multiqp.cc"],
-    hdrs = ["alip_multiqp.h"],
-    deps = [
-        ":alip_mpc",
+    name = "alip_s2s_mpfc",
+    srcs = ["alip_s2s_mpfc.cc"],
+    hdrs = [
+        "alip_s2s_mpfc.h",
+        "alip_s2s_mpfc_params.h",
     ],
-)
-
-cc_library(
-    name = "alip_miqp",
-    srcs = ["alip_miqp.cc"],
-    hdrs = ["alip_miqp.h"],
-    deps = [
-        ":alip_mpc",
-    ],
-)
-
-cc_library(
-    name = "alip_mpc",
-    srcs = ["alip_mpc.cc"],
-    hdrs = ["alip_mpc.h"],
     deps = [
         ":alip_utils",
-        "//geometry:convex_polygon",
+        "//common:eigen_utils",
+        "//geometry:convex_polygon_set",
         "//solvers:constraints",
-        "//solvers:fast_osqp_solver",
         "//solvers:optimization_utils",
+        "//solvers:solver_options_io",
         "@drake//:drake_shared_library",
     ],
 )
@@ -119,11 +98,32 @@ cc_library(
     srcs = ["alip_mpc_interface_system.cc"],
     hdrs = ["alip_mpc_interface_system.h"],
     deps = [
+        ":swing_foot_trajectory_generator",
+        "//systems/controllers:alip_com_trajectory_generator",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "swing_foot_traj_solver",
+    srcs = ["swing_foot_traj_solver.cc"],
+    hdrs = ["swing_foot_traj_solver.h"],
+    deps = [
+        "//common:eigen_utils",
+        "//solvers:fcc_qp_solver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "swing_foot_trajectory_generator",
+    srcs = ["swing_foot_trajectory_generator.cc"],
+    hdrs = ["swing_foot_trajectory_generator.h"],
+    deps = [
         ":alip_utils",
+        ":swing_foot_traj_solver",
         "//common:polynomial_utils",
         "//multibody:utils",
-        "//systems/controllers:alip_traj_gen",
-        "//systems/controllers:control_utils",
         "//systems/controllers:minimum_snap_trajectory_generation",
         "//systems/framework:vector",
         "//systems/primitives",

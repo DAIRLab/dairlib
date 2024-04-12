@@ -6,10 +6,10 @@ W_input_reg: [1, 0.9, 0.5, 0.1, 5,
 W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001,
           1, 1, 1, 1, 0.01, 0.01, 0.01, 0.001]
-W_lambda_c_reg: [1, 0.001, 0.01,
-                 1, 0.001, 0.01,
-                 1, 0.1, 0.01,
-                 1, 0.1, 0.01]
+W_lambda_c_reg: [1, 1, 1,
+                 1, 1, 1,
+                 1, 1, 1,
+                 1, 1, 1]
 W_lambda_h_reg: [0.01, 0.01, 0.01,
                  0.01, 0.02, 0.02]
 
@@ -52,7 +52,7 @@ contact_point_pos: 0.5
 max_CoM_to_footstep_dist: 0.55
 footstep_offset: 0.6
 center_line_offset: 0.04
-mid_foot_height: 0.14
+mid_foot_height: 0.22
 final_foot_height: 0.02
 final_foot_velocity_z: 1.0
 
@@ -66,7 +66,7 @@ w_accel: 0.0
 w_soft_constraint: 80000
 w_input_reg: 0.001
 w_input: 0.0000
-w_lambda: 0.0000
+w_lambda: 0.00001
 impact_threshold: 0.025
 impact_tau: 0.005
 
@@ -114,7 +114,7 @@ PelvisHeadingKp:
 PelvisHeadingKd:
   [   0,     0,    0,
       0,     0,    0,
-      0,     0,    6]
+      0,     0,    10]
 period_of_no_heading_control: 0.0
 
 SwingFootW:

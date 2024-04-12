@@ -17,10 +17,10 @@ def mpc_debug_logging_main():
     logdir = f"{os.getenv('HOME')}/logs/{year}/{curr_date}"
     dair = f"{os.getenv('HOME')}/workspace/brian/dairlib/"
 
-    mpc_gains = os.path.join(
-        dair,
-        "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml"
-    )
+    # mpc_gains = os.path.join(
+    #     dair,
+    #     "examples/perceptive_locomotion/gains/alip_minlp_gains.yaml"
+    # )
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
@@ -29,7 +29,7 @@ def mpc_debug_logging_main():
         os.mkdir(logdir)
 
     os.chdir(logdir)
-    current_logs = sorted(glob.glob('lcmlog-mpc-*'))
+    current_logs = sorted(glob.glob('lcmlog-laptop-*'))
     if current_logs:
         last_log = int(current_logs[-1].split('-')[-1])
         log_num = f'{last_log+1:02}'
@@ -41,8 +41,8 @@ def mpc_debug_logging_main():
         f.write("\n\ngit diff:\n\n")
         f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
 
-    subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])
-    subprocess.run(['lcm-logger', '-f', 'lcmlog-mpc-%s' % log_num])
+    # subprocess.run(['cp', mpc_gains, 'alip_minlp_gains_%s.yaml' % log_num])
+    subprocess.run(['lcm-logger', '-f', 'lcmlog-laptop-%s' % log_num])
 
 
 def log_everything_main():

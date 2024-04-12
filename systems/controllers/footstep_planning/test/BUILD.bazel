@@ -3,13 +3,12 @@ load("@drake//tools/lint:lint.bzl", "add_lint_tests")
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
-    name = "alip_minlp_test",
+    name = "alip_mpc_test",
     srcs = ["alip_mpc_test.cc"],
     deps = [
         "//common:find_resource",
         "//solvers:solver_options_io",
-        "//systems/controllers/footstep_planning:alip_miqp",
-        "//systems/controllers/footstep_planning:alip_multiqp",
+        "//systems/controllers/footstep_planning:alip_s2s_mpfc",
         "@drake//:drake_shared_library",
     ],
 )

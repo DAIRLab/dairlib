@@ -1,5 +1,5 @@
-
 //dairlib
+#include "dairlib/lcmt_contact.hpp"
 #include "multibody/multibody_utils.h"
 #include "systems/perception/elevation_mapping_system.h"
 #include "systems/perception/perceptive_locomotion_preprocessor.h"
@@ -31,9 +31,11 @@ ElevationMappingSystem::ElevationMappingSystem(
     const MultibodyPlant<double>& plant,
     Context<double>* context,
     elevation_mapping_params params) :
-    plant_(plant), context_(context),
+    plant_(plant),
     robot_base_(plant.GetBodyByName(params.base_frame_name)),
-    track_point_(params.track_point) {
+    context_(context),
+    track_point_(params.track_point),
+    params_(params) {
 
   // configure sensors
   drake::Vector1d prev_time_model_vector{-1};
@@ -50,6 +52,12 @@ ElevationMappingSystem::ElevationMappingSystem(
     );
   }
 
+  // configure contacts
+  for (const auto& [k, v]: params.contacts) {
+    DRAKE_DEMAND(plant_.HasBodyNamed(v.first));
+    contacts_.insert({k, v});
+  }
+
   // state input
   input_port_state_ = DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(
@@ -59,14 +67,15 @@ ElevationMappingSystem::ElevationMappingSystem(
   // covariance of the floating base pose in column major order
   input_port_pose_covariance_ = DeclareVectorInputPort("cov", 36).get_index();
 
-  // create the elevation map
-  // TODO (@Brian-Acosta) expose the elevation mapping parameters
-  grid_map::Length length(2.0, 2.0);
-  double resolution = 0.025;
-  ElevationMap map;
-  map.setGeometry(length, resolution, track_point_.head<2>());
+  if (not contacts_.empty()) {
+    input_port_contact_ = DeclareAbstractInputPort(
+        "lcmt_contact", drake::Value<lcmt_contact>()
+    ).get_index();
+  }
 
-  //TODO (@Brian-Acosta) how to handle map and motion updater initialization?
+  // create the elevation map
+  ElevationMap map;
+  map.setGeometry(params.map_length, params.resolution, track_point_.head<2>());
 
   auto model_value_map = drake::Value<ElevationMap>(map);
   auto model_value_updater = drake::Value<RobotMotionMapUpdater>();
@@ -135,7 +144,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     )->get_value<PointCloudType::Ptr>();
 
     // Only do anything if the timestamp has been updated
-    if (pointcloud->header.stamp * 1e-6 > prev_pointcloud_stamp) {
+    if (pointcloud->header.stamp * 1e-6 > prev_pointcloud_stamp and pointcloud->size() > 0) {
       new_pointclouds.insert({name, pointcloud});
 
       // update the timestamp of the previous point cloud seen from this sensor
@@ -179,8 +188,60 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
   // 3. Apply prediction step
   motion_updater.update(map, base_pose, pose_covariance, timestamp);
 
-  // 4. cleanup the map
-  //  map.clear();
+  // 4. If contact information is provided, update the map using contact points
+  //    as a reference
+  double map_offset = 0;
+
+  if (has_contacts()) {
+    const auto& contact_msg = EvalAbstractInput(
+        context, input_port_contact_)->get_value<lcmt_contact>();
+    int n_valid_contacts = 0;
+
+    for (int i = 0; i < contact_msg.num_contacts; i++) {
+      if (contact_msg.contact[i]) {
+        const auto& grid_map = map.getRawGridMap();
+
+        const auto& contact = contacts_.at(contact_msg.contact_names[i]);
+        const Vector3d stance_pos = plant_.EvalBodyPoseInWorld(
+            *context_,
+            plant_.GetBodyByName(contact.first)
+        ) * contact.second;
+        try {
+
+          double sub_map_length = 4.0 * grid_map.getResolution();
+          grid_map::Position center_sub_map = stance_pos.head<2>();
+          grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
+          bool success;
+
+          // Getting the submap of where the foot location is
+          auto sub_map = grid_map.getSubmap(
+              center_sub_map, length_sub_map, success
+          );
+
+          if (success) {
+            // Retrieving the data and making the median of the values
+            const auto& mat = sub_map.get("elevation");
+            std::vector<double> zvals(mat.data(), mat.data() + mat.rows() * mat.cols());
+            std::sort(zvals.begin(), zvals.end());
+            int n = zvals.size() / 2;
+            double map_z = (zvals.size() % 2 == 0) ?
+                0.5 * (zvals.at(n-1) + zvals.at(n)) : zvals.at(n);
+
+            if (not std::isnan(map_z)) {
+              map_offset += stance_pos(2) - map_z;
+              ++n_valid_contacts;
+            }
+          }
+        } catch (std::out_of_range& ex) {
+          drake::log()->warn("{}", ex.what());
+        }
+      }
+    }
+    map_offset = (n_valid_contacts > 0) ? map_offset / n_valid_contacts : 0;
+    map.shift_map_z(map_offset);
+  }
+
+
 
   // 5. add the point clouds to the map
   for (const auto& [name, cloud] : new_pointclouds) {
@@ -188,9 +249,11 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     Eigen::VectorXf measurement_variances;
     PointCloudType::Ptr pc_processed(new PointCloudType);
 
+    const auto X_bias = RigidTransformd(params_.point_cloud_bias);
+
     // TODO (@Brian-Acosta) does it make sense to propogate the base variance
-    //  when we add non-base parent frames?
-    const auto X_WP = plant_.EvalBodyPoseInWorld(
+    //  if we add non-base parent frames?
+    const auto X_WP = X_bias * plant_.EvalBodyPoseInWorld(
         *context_,
         plant_.GetBodyByName(sensor_poses_.at(name).sensor_parent_body_)
     );
@@ -205,13 +268,73 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         X_PS, X_WP
     );
 
-    // add points to the map
+
     map.add(pc_processed, measurement_variances, timestamp, X_WP * X_PS);
   }
 
   // TODO (@Brian-Acosta) decide how to go about fusing if needed
   //  map.fuseAll();
   return drake::systems::EventStatus::Succeeded();
+}
+
+void ElevationMappingSystem::InitializeFlatTerrain(
+    const VectorXd& robot_state,
+    std::vector<std::pair<const Eigen::Vector3d,
+                const drake::multibody::Frame<double>&>> contacts,
+    Context<double>& context) const {
+
+  multibody::SetPositionsAndVelocitiesIfNew<double>(
+      plant_, robot_state, context_
+  );
+  auto& map = context.get_mutable_abstract_state<ElevationMap>(
+      elevation_map_state_index_
+  );
+  auto& motion_updater = context.get_mutable_abstract_state<RobotMotionMapUpdater>(
+      motion_updater_state_index_
+  );
+  PointCloudType::Ptr init_pc = std::make_shared<PointCloudType>();
+
+  double resolution = map.getRawGridMap().getResolution();
+  int npoints =  2 * std::ceil(params_.initialization_radius / resolution);
+  float half_len = static_cast<float>(params_.initialization_radius);
+
+  for (const auto& contact : contacts) {
+
+    Vector3d point_pos;
+    plant_.CalcPointsPositions(
+        *context_, contact.second, contact.first, plant_.world_frame(),
+        &point_pos
+    );
+
+    for (int xi = 0; xi < npoints; ++xi) {
+      for (int yi = 0; yi < npoints; ++yi) {
+        Eigen::Vector4f pt_xyzw(
+            xi * resolution - half_len, yi * resolution - half_len, 0, 1.0
+        );
+        pt_xyzw.head<3>() += point_pos.cast<float>();
+        pt_xyzw.z() += static_cast<float>(params_.initialization_offset);
+
+        pcl::PointXYZRGBConfidenceRatio pt;
+        pt.getArray4fMap() = Eigen::Map<Eigen::Array4f>(pt_xyzw.data());
+        init_pc->push_back(pt);
+      }
+    }
+  }
+  Eigen::VectorXf variances = Eigen::VectorXf::Constant(init_pc->size(), 0.01);
+
+  MatrixXd pose_covariance = MatrixXd::Identity(6,6);
+  multibody::SetPositionsAndVelocitiesIfNew<double>(plant_, robot_state, context_);
+  const auto base_pose = plant_.EvalBodyPoseInWorld(*context_, robot_base_);
+
+  // Update the map location
+  Vector3d track_point_in_world = base_pose * track_point_;
+  map.move(track_point_in_world.head<2>());
+
+  // Apply prediction step
+  motion_updater.update(map, base_pose, pose_covariance, 0);
+
+  // apply measurement step
+  map.add(init_pc, variances, 0, RigidTransformd());
 }
 
 void ElevationMappingSystem::CopyGridMap(

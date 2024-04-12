@@ -15,6 +15,7 @@ pybind_py_library(
     name = "perception_py",
     cc_deps = [
         "//systems/perception:camera_utils",
+        "//systems/perception:grid_map_lcm_systems",
         "//systems/perception:grid_map_visualizer",
         "@drake//:drake_shared_library",
     ],
@@ -30,9 +31,8 @@ pybind_py_library(
 pybind_py_library(
     name = "footstep_planning_py",
     cc_deps = [
-        "//systems/controllers/footstep_planning:alip_miqp",
-        "//systems/controllers/footstep_planning:alip_mpfc_system",
-        "//systems/controllers/footstep_planning:alip_multiqp",
+        "//systems/controllers/footstep_planning:alip_mpfc_s2s_system",
+        "//systems/controllers/footstep_planning:swing_foot_traj_solver",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "footstep_planning",
@@ -57,6 +57,22 @@ pybind_py_library(
         ":module_py",
     ],
     py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "ros_py",
+    cc_deps = [
+        "//systems/ros:ros_interface_system",
+        "//systems/ros:ros_pubsub_systems",
+    ],
+    cc_so_name = "ros",
+    cc_srcs = ["ros_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+    tags = ["ros"],
 )
 
 pybind_py_library(
@@ -93,6 +109,7 @@ pybind_py_library(
     name = "framework_py",
     cc_deps = [
         "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
         "//systems/framework:lcm_driven_loop",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",

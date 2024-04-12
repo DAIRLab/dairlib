@@ -105,6 +105,17 @@ cc_test(
 )
 
 cc_library(
+    name = "bipedal_walking_impact_info",
+    srcs = ["bipedal_walking_impact_info.cc"],
+    hdrs = ["bipedal_walking_impact_info.h"],
+    deps = [
+        "//common:blending_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "time_based_fsm",
     srcs = ["time_based_fsm.cc"],
     hdrs = ["time_based_fsm.h"],
@@ -156,26 +167,13 @@ cc_library(
 )
 
 cc_library(
-    name = "alip_traj_gen",
-    srcs = ["alip_traj_gen.cc"],
-    hdrs = ["alip_traj_gen.h"],
+    name = "alip_com_trajectory_generator",
+    srcs = ["alip_com_trajectory_generator.cc"],
+    hdrs = ["alip_com_trajectory_generator.h"],
     deps = [
-        ":control_utils",
         "//multibody:utils",
         "//systems/controllers/footstep_planning:alip_utils",
         "//systems/filters:s2s_kalman_filter",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
-    name = "alip_swing_ft_traj_gen",
-    srcs = ["alip_swing_ft_traj_gen.cc"],
-    hdrs = ["alip_swing_ft_traj_gen.h"],
-    deps = [
-        ":control_utils",
-        "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],

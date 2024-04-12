@@ -72,38 +72,58 @@ using multibody::KinematicEvaluatorSet;
 using multibody::MakeNameToVelocitiesMap;
 using multibody::MakeNameToPositionsMap;
 
+enum MpfcOscDiagramInputType {
+  kFootstepCommand,
+  kLcmtAlipMpcOutput
+};
+
 class MpfcOscDiagram : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(MpfcOscDiagram)
 
   // TODO (@Brian-Acosta) Add factory method for getting the plant
-  MpfcOscDiagram(drake::multibody::MultibodyPlant<double>& plant,
+  MpfcOscDiagram(const drake::multibody::MultibodyPlant<double>& plant,
                  const string& osc_gains_filename,
                  const string& mpc_gains_filename,
-                 const string& osqp_settings_filename);
+                 const string& osqp_settings_filename,
+                 MpfcOscDiagramInputType input_type);
 
-  const InputPort<double>& get_input_port_state() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_state() const {
     return get_input_port(input_port_state_);
   }
-  const InputPort<double>& get_input_port_footstep_command() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_footstep_command()
+  const {
+    DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kFootstepCommand);
     return get_input_port(input_port_footstep_command_);
   }
-  const InputPort<double>& get_input_port_radio() const {
+  [[nodiscard]] const InputPort<double>& get_input_port_alip_mpc_output()
+  const {
+    DRAKE_DEMAND(input_type_ == MpfcOscDiagramInputType::kLcmtAlipMpcOutput);
+    return get_input_port(input_port_alip_mpc_output_);
+  }
+  [[nodiscard]] const InputPort<double>& get_input_port_radio() const {
     return get_input_port(input_port_radio_);
   }
-  const OutputPort<double>& get_output_port_actuation() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_actuation() const {
     return get_output_port(output_port_u_cmd_);
   }
-  const OutputPort<double>& get_output_port_fsm() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_fsm() const {
     return get_output_port(output_port_fsm_);
   }
-  const OutputPort<double>& get_output_port_alip() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_alip() const {
     return get_output_port(output_port_alip_);
   }
-  const OutputPort<double>& get_output_port_switching_time() const {
+  [[nodiscard]] const OutputPort<double>& get_output_port_switching_time()
+  const {
     return get_output_port(output_port_switching_time_);
   }
-  drake::multibody::MultibodyPlant<double>& get_plant() {
+  [[nodiscard]] const OutputPort<double>& get_output_port_u_lcm() const {
+    return get_output_port(output_port_u_lcm_);
+  }
+  [[nodiscard]] const OutputPort<double>& get_output_port_osc_debug() const {
+    return get_output_port(output_port_osc_debug_);
+  }
+  const drake::multibody::MultibodyPlant<double>& get_plant() {
     return *plant_;
   }
   void SetSwingFootPositionAtLiftoff(
@@ -112,7 +132,8 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
  private:
 
-  drake::multibody::MultibodyPlant<double>* plant_;
+  const MpfcOscDiagramInputType input_type_;
+  const drake::multibody::MultibodyPlant<double>* plant_;
   std::unique_ptr<drake::systems::Context<double>> plant_context;
 
   std::pair<const Vector3d, const Frame<double>&> left_toe;
@@ -145,8 +166,8 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   vector<double> left_right_support_state_durations;
   vector<pair<const Vector3d, const Frame<double>&>> left_right_foot;
 
-  systems::controllers::SwingFootInterfaceSystemParams swing_params;
-  systems::controllers::ComTrajInterfaceParams com_params;
+  systems::controllers::SwingFootTrajectoryGeneratorParams swing_params;
+  systems::controllers::AlipComTrajGeneratorParams com_params;
 
   // Swing toe joint trajectory
   map<string, int> pos_map;
@@ -156,7 +177,6 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
 
   // Constraints in OSC
-  KinematicEvaluatorSet<double> evaluators;
   DistanceEvaluator<double> left_loop;
   DistanceEvaluator<double> right_loop;
   FixedJointEvaluator<double> left_fixed_knee_spring;
@@ -165,10 +185,6 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
   FixedJointEvaluator<double> right_fixed_ankle_spring;
 
   WorldYawViewFrame<double> view_frame;
-  WorldPointEvaluator<double> left_toe_evaluator;
-  WorldPointEvaluator<double> left_heel_evaluator;
-  WorldPointEvaluator<double> right_toe_evaluator;
-  WorldPointEvaluator<double> right_heel_evaluator;
 
   // gain multipliers
   std::shared_ptr<PiecewisePolynomial<double>> swing_ft_gain_multiplier_gain_multiplier;
@@ -190,9 +206,12 @@ class MpfcOscDiagram : public drake::systems::Diagram<double> {
 
   drake::systems::InputPortIndex input_port_state_;
   drake::systems::InputPortIndex input_port_footstep_command_;
+  drake::systems::InputPortIndex input_port_alip_mpc_output_;
   drake::systems::InputPortIndex input_port_radio_;
 
   drake::systems::OutputPortIndex output_port_u_cmd_;
+  drake::systems::OutputPortIndex output_port_u_lcm_;
+  drake::systems::OutputPortIndex output_port_osc_debug_;
   drake::systems::OutputPortIndex output_port_fsm_;
   drake::systems::OutputPortIndex output_port_switching_time_;
   drake::systems::OutputPortIndex output_port_alip_;

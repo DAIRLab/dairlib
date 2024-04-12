@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.23.0"
+DRAKE_COMMIT = "v1.24.0"
 
-DRAKE_CHECKSUM = "2e64bca9d5fe942170617d8109ec7ffe5df095d821743c9a619d38599229d03f"
+DRAKE_CHECKSUM = "35874238af2c0305525a6f32c28692e3fdbed0581055b0b491669f7534cf6cae"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -71,14 +71,14 @@ load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repo
 
 signal_scope_repository(name = "signal_scope")
 
-load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
+#load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 
-pydrake_repository(name = "pydrake_pegged")
+#pydrake_repository(name = "pydrake_pegged")
 
 # elevation mapping dependencies
 ELEVATION_MAPPING_COMMIT = "bazel"
 
-ELEVATION_MAPPING_CHECKSUM = "5e815dfc83c6fd7ab1fea7f9fa45985c60dd5030deeac5d8c03f247524f8a992"
+ELEVATION_MAPPING_CHECKSUM = "fc526a61dcf19dd6b03d3d4202cbc13103f2262a739ccdf430acf87d47fa7b8c"
 
 http_archive(
     name = "elevation_mapping",
@@ -142,7 +142,7 @@ new_local_repository(
 http_archive(
     name = "acd2d",
     build_file = "@//tools/workspace/acd2d:acd2d.bazel",
-    sha256 = "fd0d9a40c08ba77f0099629002ae1d78e55e8b99504da267f920a25b434b84e4",
+    sha256 = "d357ac363a74598c60b2fb05b0222fcc9c874b5f34ff27f83f441d3e8a16a81f",
     strip_prefix = "acd2d-master",
     urls = ["https://github.com/DAIRLab/acd2d/archive/master.tar.gz"],
 )
@@ -270,4 +270,17 @@ http_archive(
     urls = [
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
     ],
+)
+
+environ_repository(
+    name = "environ_home",
+    vars = ["HOME"],
+)
+
+load("@environ_home//:environ.bzl", "HOME")
+
+new_local_repository(
+    name = "fcc_qp",
+    build_file = "tools/workspace/fcc_qp/BUILD.bazel",
+    path = "{}/workspace/sandbox/fcc_qp/".format(HOME),
 )

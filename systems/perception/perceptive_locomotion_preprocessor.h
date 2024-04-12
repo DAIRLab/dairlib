@@ -22,6 +22,12 @@ struct perceptive_locomotion_preprocessor_params {
   };
   std::string sensor_params_yaml_;
   std::vector<cropbox_params> crop_boxes_;
+  double min_x = -std::numeric_limits<double>::infinity();
+  double min_y = -std::numeric_limits<double>::infinity();
+  double min_z = -std::numeric_limits<double>::infinity();
+  double max_x = std::numeric_limits<double>::infinity();
+  double max_y = std::numeric_limits<double>::infinity();
+  double max_z = std::numeric_limits<double>::infinity();
 };
 
 /// Adapts the StereoSensorProcessor from elevation_mapping to include crop boxes
@@ -47,8 +53,9 @@ class PerceptiveLocomotionPreprocessor : public elevation_mapping::StructuredLig
   //! Crop box to mask out robot body parts
   std::map<std::string,
     std::pair<drake::math::RigidTransformd,
-    pcl::CropBox<pcl::PointXYZRGBConfidenceRatio>>> crop_boxes_;
+    pcl::CropBox<pcl::PointXYZRGBConfidenceRatio>>> robot_crop_boxes_;
 
+  perceptive_locomotion_preprocessor_params params_;
 };
 
 }

@@ -126,7 +126,8 @@ AddCassieMultibody(MultibodyPlant<double>* plant,
                   bool add_loop_closure, bool add_reflected_inertia) {
   std::string full_name = FindResourceOrThrow(filename);
   Parser parser(plant, scene_graph);
-  auto model_instance_idx = parser.AddModelFromFile(full_name);
+  auto model_instance_idxs = parser.AddModels(full_name);
+  DRAKE_DEMAND(model_instance_idxs.size() == 1);
 
   if (!floating_base) {
     plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("pelvis"),
@@ -209,7 +210,7 @@ AddCassieMultibody(MultibodyPlant<double>* plant,
       DRAKE_DEMAND(motor_joint_names[i] == joint_actuator.name());
     }
   }
-  return model_instance_idx;
+  return model_instance_idxs.front();
 }
 
 const systems::SimCassieSensorAggregator& AddImuAndAggregator(

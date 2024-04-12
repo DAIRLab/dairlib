@@ -59,6 +59,18 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ideal_landmark_source",
+    srcs = ["ideal_landmark_source.cc"],
+    hdrs = ["ideal_landmark_source.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library"
+    ],
+)
+
 cc_test(
     name = "elevation_mapping_test",
     srcs = ["elevation_mapping_test.cc"],

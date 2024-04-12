@@ -182,13 +182,11 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex contact_output_port_;
   drake::systems::OutputPortIndex pose_covariance_output_port_;
 
-
-  // Below are indices of system states:
-  // A state which stores previous timestamp
-  drake::systems::DiscreteStateIndex time_idx_;
-  // States related to EKF
-  drake::systems::DiscreteStateIndex fb_state_idx_;
+  // systems states
   drake::systems::AbstractStateIndex ekf_idx_;
+  drake::systems::AbstractStateIndex prev_landmarks_idx_;
+  drake::systems::DiscreteStateIndex time_idx_;
+  drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
   drake::systems::DiscreteStateIndex contact_idx_;
 

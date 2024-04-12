@@ -18,6 +18,7 @@ using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+using drake::Value;
 using drake::AbstractValue;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
@@ -30,8 +31,6 @@ using drake::systems::UnrestrictedUpdateEvent;
 
 using multibody::MakeJointPositionOffsetFromMap;
 using systems::OutputVector;
-
-static const int SPACE_DIM = 3;
 
 CassieStateEstimator::CassieStateEstimator(
     const MultibodyPlant<double>& plant,
@@ -136,6 +135,8 @@ CassieStateEstimator::CassieStateEstimator(
     // 2. estimated EKF state (imu frame)
     inekf::InEKF value(initial_state, noise_params);
     ekf_idx_ = DeclareAbstractState(*AbstractValue::Make<inekf::InEKF>(value));
+
+    prev_landmarks_idx_ = DeclareAbstractState(Value<lcmt_landmark_array>{});
 
     // 3. state for previous imu value
     // Measured accelrometer should point toward positive z when the robot rests
@@ -599,9 +600,21 @@ EventStatus CassieStateEstimator::Update(
           .get_mutable_value() << left_contact, right_contact;
 
 
-  // Step 4 - EKF (measurement step)
+  // Step 4 - Measurement step
+  // Kinematic Update
   plant_.SetPositionsAndVelocities(context_.get(), filtered_output.GetState());
   DoKinematicUpdate(left_contact, right_contact, ekf);
+
+  // Landmark Update
+  if (get_input_port_landmark().HasValue(context)) {
+    const auto& landmarks = EvalAbstractInput(
+        context, input_port_landmark_)->get_value<lcmt_landmark_array>();
+    const auto& prev_landmarks = state->get_abstract_state<lcmt_landmark_array>(
+        prev_landmarks_idx_);
+    if (landmarks.utime > 0 and landmarks.utime > prev_landmarks.utime) {
+      DoLandmarkUpdate(landmarks, ekf);
+    }
+  }
 
 
   // Step 5 - Assign values to floating base state (pelvis)

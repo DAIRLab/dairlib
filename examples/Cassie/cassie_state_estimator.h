@@ -11,6 +11,7 @@
 
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/datatypes/cassie_out_t.h"
+#include "examples/Cassie/systems/robot_state_buffer.h"
 #include "multibody/multibody_utils.h"
 #include "src/InEKF.h"
 #include "systems/framework/output_vector.h"
@@ -189,6 +190,10 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex fb_state_idx_;
   drake::systems::DiscreteStateIndex prev_imu_idx_;
   drake::systems::DiscreteStateIndex contact_idx_;
+
+  // state history buffer for use with landmarks
+  mutable RobotStateBuffer state_history_;
+
 
   // Cassie parameters
   std::vector<

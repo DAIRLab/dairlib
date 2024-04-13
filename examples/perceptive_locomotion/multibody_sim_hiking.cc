@@ -19,6 +19,7 @@
 #include "systems/perception/pointcloud/voxel_grid_filter.h"
 #include "systems/framework/geared_motor.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/perception/ideal_landmark_source.h"
 
 
 #ifdef DAIR_ROS_ON
@@ -58,6 +59,7 @@ using perception::DrakeToRosPointCloud;
 #endif
 
 using systems::SubvectorPassThrough;
+using perception::IdealLandmarkSource;
 using perception::VoxelGridFilter;
 using drake::geometry::SceneGraph;
 using drake::multibody::ContactResultsToLcmSystem;
@@ -146,7 +148,8 @@ int do_main(int argc, char* argv[]) {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
-  plant.set_discrete_contact_solver(drake::multibody::DiscreteContactSolver::kSap);
+  plant.set_discrete_contact_approximation(
+      drake::multibody::DiscreteContactApproximation::kSap);
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.set_name("plant");
@@ -196,6 +199,15 @@ int do_main(int argc, char* argv[]) {
   auto sensor_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_cassie_out>(
           "CASSIE_OUTPUT", lcm, 1.0 / FLAGS_publish_rate));
+
+  auto landmark_source = builder.AddSystem<IdealLandmarkSource>(
+      plant, context.get(), plant.GetBodyByName("pelvis").body_frame());
+  auto landmark_delay = builder.AddSystem<
+      drake::systems::DiscreteTimeDelay<double>>(
+          1.0 / 30.0, 1, drake::Value<lcmt_landmark_array>{});
+  auto landmark_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_landmark_array>(
+          "CASSIE_EKF_LANDMARKS", lcm, 1.0 / 30.0));
 
   // ROS interfaces
 #ifdef DAIR_ROS_ON
@@ -319,6 +331,10 @@ int do_main(int argc, char* argv[]) {
                   sensor_aggregator.get_input_port_radio());
   builder.Connect(sensor_aggregator.get_output_port(0),
                   sensor_pub->get_input_port());
+  builder.Connect(plant.get_state_output_port(),
+                  landmark_source->get_input_port());
+  builder.Connect(*landmark_source, *landmark_delay);
+  builder.Connect(*landmark_delay, *landmark_pub);
 
   auto diagram = builder.Build();
   diagram->set_name(("multibody_sim"));

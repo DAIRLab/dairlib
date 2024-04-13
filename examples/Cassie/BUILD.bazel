@@ -79,6 +79,7 @@ cc_library(
         "//examples/Cassie:cassie_state_estimator_settings",
         "//examples/Cassie/datatypes:cassie_names",
         "//examples/Cassie/datatypes:cassie_out_t",
+        "//examples/Cassie/systems:robot_state_buffer",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//multibody/kinematic",
@@ -561,4 +562,3 @@ py_binary(
         "@lcm//:lcm-python",
     ],
 )
-

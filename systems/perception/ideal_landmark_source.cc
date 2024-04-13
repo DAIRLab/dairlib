@@ -1,6 +1,5 @@
 #include "ideal_landmark_source.h"
 #include "multibody/multibody_utils.h"
-#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace perception {
@@ -14,8 +13,6 @@ using drake::math::RigidTransform;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::BodyFrame;
 
-using systems::OutputVector;
-
 IdealLandmarkSource::IdealLandmarkSource(
     const MultibodyPlant<double> &plant, Context<double> *context,
     const BodyFrame<double>& landmark_frame) :
@@ -23,7 +20,7 @@ IdealLandmarkSource::IdealLandmarkSource(
 
   DRAKE_DEMAND(&(landmark_frame.GetParentPlant()) == &plant);
 
-  DeclareVectorInputPort("x, u, t", OutputVector<double>(plant));
+  DeclareVectorInputPort("x", plant.num_positions() + plant.num_velocities());
   DeclareAbstractOutputPort(
       "lcmt_landmark_array", &IdealLandmarkSource::CalcLandmarks);
 }
@@ -37,11 +34,24 @@ void IdealLandmarkSource::CalcLandmarks(
 
   out->num_landmarks = 7;
   out->parent_frame = landmark_frame_.name();
-  out->utime = 1e6 * context.get_time();
+  out->utime = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
   out->landmarks.clear();
 
-  for (int i = 0; i < 7; ++i) {
+  const VectorXd& x = EvalVectorInput(context, 0)->get_value();
 
+  multibody::SetPositionsIfNew<double>(
+      plant_, x.head(plant_.num_positions()), context_);
+
+  const RigidTransform<double> frame_pose =
+      landmark_frame_.CalcPoseInWorld(*context_);
+
+  for (int i = 0; i < 7; ++i) {
+    Vector3d landmark_pos = frame_pose.inverse() * landmarks.col(i);
+    lcmt_landmark landmark{};
+    landmark.id = i;
+    memcpy(landmark.position, landmark_pos.data(), 3 * sizeof(double));
+    out->landmarks.push_back(landmark);
   }
 }
 

@@ -5,6 +5,7 @@
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "dairlib/lcmt_landmark_array.hpp"
 #include "examples/Cassie/cassie_state_estimator.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/networking/cassie_output_receiver.h"
@@ -101,6 +102,8 @@ DEFINE_string(
 DEFINE_bool(publish_ros, false, "whether to publish state to ROS");
 DEFINE_double(ros_pub_period, 0.01, "period to publish to ROS at");
 
+// landmarks
+DEFINE_string(landmark_channel, "", "lcm channel for receiving EKF landmarks");
 // Run inverse kinematics to get initial pelvis height (assume both feet are
 // on the ground), and set the initial state for the EKF.
 // Note that we assume the ground is flat in the IK.
@@ -212,6 +215,14 @@ int do_main(int argc, char* argv[]) {
 
   state_estimator->SetSpringDeflectionThresholds(
       settings.knee_spring_threshold, settings.ankle_spring_threshold);
+
+  if (not FLAGS_landmark_channel.empty()) {
+    auto landmark_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<lcmt_landmark_array>(
+            FLAGS_landmark_channel, lcm));
+    builder.Connect(landmark_sub->get_output_port(),
+                    state_estimator->get_input_port_landmark());
+  }
 
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot

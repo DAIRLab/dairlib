@@ -61,3 +61,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "robot_state_buffer",
+    srcs = ["robot_state_buffer.cc"],
+    hdrs = ["robot_state_buffer.h"],
+    deps = [
+        "@inekf//src:InEKF",
+    ],
+)

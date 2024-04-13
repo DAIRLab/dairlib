@@ -118,6 +118,10 @@ load("@grid_map//tools/workspace/pcl:setup.bzl", "setup_pcl")
 
 setup_pcl()
 
+load("//tools/workspace/opencv:repository.bzl", "opencv_repository")
+
+opencv_repository("opencv")
+
 # Prebuilt ROS workspace
 new_local_repository(
     name = "ros",

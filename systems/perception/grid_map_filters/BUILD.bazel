@@ -8,3 +8,13 @@ cc_library(
         "@grid_map//grid_map_core",
     ],
 )
+
+cc_library(
+    name = "opencv_filters",
+    srcs = ["opencv_filters.cc"],
+    hdrs = ["opencv_filters.h"],
+    deps = [
+        "@grid_map//grid_map_core",
+        "@opencv",
+    ],
+)

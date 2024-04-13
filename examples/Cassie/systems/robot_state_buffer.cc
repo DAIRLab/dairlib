@@ -18,9 +18,13 @@ void RobotStateBuffer::put(long utime, const RobotState &state) {
 }
 
 const inekf::RobotState& RobotStateBuffer::get(uint64_t utime) const {
-  size_t earliest_timestamp = full() ? head_ + 1 % 100 : 0;
+  size_t earliest_timestamp = full() ? (head_ + 1) % kBufSize : 0;
 
-  for (size_t i = head_; i > 0; --i) {
+  std::cout << "searching for " << utime << std::endl;
+
+  size_t start_idx = (head_ == 0) ? head_ : head_ - 1;
+  for (size_t i = start_idx; i > 0; --i) {
+    std::cout << "loop 1, index " << i << std::endl;
     if (timestamps_.at(i) < utime) {
       std::cout << "popping "<< timestamps_.at(i) << std::endl;
       return state_history_.at(i);
@@ -28,7 +32,8 @@ const inekf::RobotState& RobotStateBuffer::get(uint64_t utime) const {
   }
 
   if (full()) {
-    for (size_t i = kBufSize; i > head_; --i) {
+    for (size_t i = kBufSize - 1; i > head_; --i) {
+      std::cout << "loop 2, index " << i << std::endl;
       if (timestamps_.at(i) < utime) {
         std::cout << "popping "<< timestamps_.at(i) << std::endl;
         return state_history_.at(i);
@@ -36,6 +41,7 @@ const inekf::RobotState& RobotStateBuffer::get(uint64_t utime) const {
     }
   }
 
+  std::cout << "Final check, index " <<  earliest_timestamp << std::endl;
   std::cout << "popping "<< timestamps_.at(earliest_timestamp) << std::endl;
   return state_history_.at(earliest_timestamp);
 }

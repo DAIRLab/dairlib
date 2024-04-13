@@ -628,6 +628,8 @@ EventStatus CassieStateEstimator::Update(
     if (landmarks.utime > 0 and landmarks.utime > prev_landmarks.utime) {
       DoLandmarkUpdate(landmarks, ekf);
     }
+    state->get_mutable_abstract_state<lcmt_landmark_array>(
+        prev_landmarks_idx_) = landmarks;
   }
 
   // Save the EKF state to history buffer for later use if needed

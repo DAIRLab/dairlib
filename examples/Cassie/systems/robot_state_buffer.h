@@ -25,7 +25,7 @@ class RobotStateBuffer {
   /// requested time, returns the earliest available time
   [[nodiscard]] const inekf::RobotState& get(uint64_t utime) const;
 
-  static constexpr size_t kBufSize = 100;
+  static constexpr size_t kBufSize = 500;
 
  private:
   std::array<uint64_t, kBufSize> timestamps_{};

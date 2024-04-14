@@ -23,8 +23,12 @@
 #define OPEN_VINS_FEATUREINITIALIZER_H
 
 #include <unordered_map>
+#include <memory>
+
+#include <Eigen/Eigen>
 
 #include "FeatureInitializerOptions.h"
+#include "utils/quat_ops.h"
 
 namespace ov_core {
 

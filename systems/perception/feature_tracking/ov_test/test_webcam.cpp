@@ -38,9 +38,7 @@
 #include "feat/Feature.h"
 #include "feat/FeatureDatabase.h"
 #include "track/TrackAruco.h"
-#include "track/TrackDescriptor.h"
 #include "track/TrackKLT.h"
-#include "utils/opencv_yaml_parse.h"
 #include "utils/print.h"
 
 using namespace ov_core;
@@ -54,21 +52,8 @@ void signal_callback_handler(int signum) { std::exit(signum); }
 // Main function
 int main(int argc, char **argv) {
 
-  // Ensure we have a path, if the user passes it then we should use it
-  std::string config_path = "unset_path.txt";
-  if (argc > 1) {
-    config_path = argv[1];
-  }
-
-  // Load parameters
-  auto parser = std::make_shared<ov_core::YamlParser>(config_path, false);
-#if ROS_AVAILABLE == 1
-  parser->set_node_handler(nh);
-#endif
-
   // Verbosity
   std::string verbosity = "INFO";
-  parser->parse_config("verbosity", verbosity);
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Defaults
@@ -82,21 +67,10 @@ int main(int argc, char **argv) {
   double knn_ratio = 0.85;
   bool do_downsizing = false;
   bool use_stereo = false;
-  parser->parse_config("num_pts", num_pts, false);
-  parser->parse_config("num_aruco", num_aruco, false);
-  parser->parse_config("clone_states", clone_states, false);
-  parser->parse_config("fast_threshold", fast_threshold, false);
-  parser->parse_config("grid_x", grid_x, false);
-  parser->parse_config("grid_y", grid_y, false);
-  parser->parse_config("min_px_dist", min_px_dist, false);
-  parser->parse_config("knn_ratio", knn_ratio, false);
-  parser->parse_config("do_downsizing", do_downsizing, false);
-  parser->parse_config("use_stereo", use_stereo, false);
 
   // Histogram method
   ov_core::TrackBase::HistogramMethod method;
   std::string histogram_method_str = "HISTOGRAM";
-  parser->parse_config("histogram_method", histogram_method_str, false);
   if (histogram_method_str == "NONE") {
     method = ov_core::TrackBase::NONE;
   } else if (histogram_method_str == "HISTOGRAM") {
@@ -131,7 +105,7 @@ int main(int argc, char **argv) {
   }
 
   // Lets make a feature extractor
-  extractor = new TrackKLT(cameras, num_pts, num_aruco, !use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist);
+  extractor = std::make_unique<TrackKLT>(cameras, num_pts, num_aruco, use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist).get();
   // extractor = new TrackDescriptor(cameras, num_pts, num_aruco, !use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist,
   // knn_ratio); extractor = new TrackAruco(cameras, num_aruco, !use_stereo, method, do_downsizing);
 
@@ -154,12 +128,8 @@ int main(int argc, char **argv) {
   double current_time = 0.0;
   std::deque<double> clonetimes;
   signal(SIGINT, signal_callback_handler);
-#if ROS_AVAILABLE == 1
-  while (ros::ok()) {
-#else
-  while (true) {
-#endif
 
+  while (true) {
     // Get the next frame (and fake advance time forward)
     cv::Mat frame;
     cap >> frame;

@@ -76,6 +76,16 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "alip_footstep_controller_test",
+    srcs = ["alip_footstep_controller_test.py"],
+    deps = [
+	"//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
+        "//bindings/grid_map",
+    ],
+)
+
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")

@@ -56,19 +56,20 @@ class AlipFootstepLQROptions:
         disc = {
             'FOH': ResetDiscretization.kFOH,
             'ZOH': ResetDiscretization.kZOH,
+            'SPLIT': ResetDiscretization.kSPLIT,
         }
 
         return AlipFootstepLQROptions(
-            height=data['h_des'],
+            height=data['height'],
             mass=plant.CalcTotalMass(plant_context),
             stance_width=data['stance_width'],
-            single_stance_duration=data['ss_time'],
-            double_stance_duration=data['ds_time'],
-            reset_discretization=disc[data['reset_discretization_method']],
-            Q=np.array(data['q']).reshape((4, 4)),
-            R=np.array(data['w_footstep_reg']).reshape(3, 3)[:2, :2],
+            single_stance_duration=data['single_stance_duration'],
+            double_stance_duration=data['double_stance_duration'],
+            #reset_discretization=disc[data['reset_discretization_method']],
+            reset_discretization=disc['FOH'], # FOH is better for sim
+            Q=np.array(data['Q']).reshape((4, 4)),
+            R=np.array(data['R']).reshape(3, 3)[:2, :2],
         )
-
 
 def calc_collision_cost_grid(X: np.ndarray, Y: np.ndarray, ud) -> np.ndarray:
     assert (X.shape == Y.shape)

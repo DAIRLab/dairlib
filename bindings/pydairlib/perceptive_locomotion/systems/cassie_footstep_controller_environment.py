@@ -9,6 +9,7 @@ from pydairlib.cassie.cassie_utils import AddCassieMultibody
 from pydairlib.perceptive_locomotion.diagrams import (
     HikingSimDiagram,
     MpfcOscDiagram,
+    MpfcOscDiagramInputType,
     PerceptionModuleDiagram
 )
 
@@ -76,16 +77,20 @@ class CassieFootstepControllerEnvironmentOptions:
         params_folder, 'osc_gains.yaml'
     )
     mpfc_gains_yaml: str = path.join(
-        params_folder, 'mpfc_gains.yaml'
+    #    params_folder, 'mpfc_gains.yaml'
+        params_folder, 'alip_s2s_mpfc_gains.yaml'
     )
     osqp_options_yaml: str = path.join(
         params_folder, 'osqp_options_osc.yaml'
     )
     elevation_mapping_params_yaml: str = path.join(
-        params_folder, 'elevation_mapping_params.yaml'
+        params_folder, 'elevation_mapping_params_simulation.yaml'
     )
     urdf: str = "examples/Cassie/urdf/cassie_v2.urdf"
-    simulate_perception: bool = False
+    
+    controller_input_type: MpfcOscDiagramInputType = \
+        MpfcOscDiagramInputType.kFootstepCommand
+    simulate_perception: bool = True
     visualize: bool = True
 
 
@@ -113,7 +118,8 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.controller_plant,
             params.osc_gains_yaml,
             params.mpfc_gains_yaml,
-            params.osqp_options_yaml
+            params.osqp_options_yaml,
+            params.controller_input_type
         )
         self.cassie_sim = HikingSimDiagram(
             params.terrain,
@@ -190,7 +196,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
             if params.simulate_perception:
                 self.grid_map_visualizer = GridMapVisualizer(
-                    self.plant_visualizer.get_meshcat(), 30.0, ["elevation"]
+                    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]  ##
                 )
                 builder.AddSystem(self.grid_map_visualizer)
                 builder.Connect(
@@ -219,6 +225,11 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_input_port_footstep_command(),
                 "footstep_command"
             ),
+        } if self.params.controller_input_type == MpfcOscDiagramInputType.kFootstepCommand else { ###
+            'alip_mpc_output': builder.ExportInput(
+                self.controller.get_input_port_alip_mpc_output(),
+                "alip_mpc_output"
+            ),
         }
         return input_port_indices
 
@@ -237,22 +248,29 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_output_port_switching_time(),
                 'time_until_switch'
             ),
-            'state': builder.ExportOutput(
-                self.cassie_sim.get_output_port_state(),
-                'x, u, t'
-            ),
             'lcmt_cassie_out': builder.ExportOutput(
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
             ),
         }
-
         if self.params.simulate_perception:
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.perception_module.get_output_port_elevation_map(),
                 'elevation_map'
             )
+            output_port_indices['lcmt_robot_output'] = builder.ExportOutput( ###
+                self.perception_module.get_output_port_robot_output(),
+                'lcmt_robot_output'
+            )
+            output_port_indices['state'] = builder.ExportOutput( ###
+                self.perception_module.get_output_port_state(),
+                'x, u, t'
+            )
         else:
+            output_port_indices['state'] = builder.ExportOutput( ###
+                self.cassie_sim.get_output_port_state(),
+                'x, u, t'
+            )
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.height_map_server.get_output_port(),
                 'height_map_query'
@@ -310,6 +328,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
         if self.params.simulate_perception:
             self.perception_module.InitializeEkf(context, q, v)
+            self.perception_module.InitializeElevationMap(np.concatenate([q, v]), context) #
 
     def AddToBuilderWithFootstepController(
             self, builder: DiagramBuilder,

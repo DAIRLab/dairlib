@@ -1,0 +1,19 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    local_defines = ["BOOST_NO_CXX11_SCOPED_ENUMS"],
+    name = "ov_core",
+    srcs = glob(["ov_core/**/*.cpp"]),
+    hdrs = glob(["ov_core/**/*.h"]),
+    strip_include_prefix = "ov_core",
+    deps = [
+        "@eigen",
+        "@opencv",
+    ],
+)
+
+cc_binary(
+    name = "test_webcam",
+    srcs = ["ov_test/test_webcam.cpp"],
+    deps = [":ov_core"],
+)

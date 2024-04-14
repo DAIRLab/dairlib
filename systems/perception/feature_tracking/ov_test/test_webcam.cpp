@@ -43,9 +43,6 @@
 
 using namespace ov_core;
 
-// Our feature extractor
-TrackBase *extractor;
-
 // Define the function to be called when ctrl-c (SIGINT) is sent to process
 void signal_callback_handler(int signum) { std::exit(signum); }
 
@@ -53,7 +50,7 @@ void signal_callback_handler(int signum) { std::exit(signum); }
 int main(int argc, char **argv) {
 
   // Verbosity
-  std::string verbosity = "INFO";
+  std::string verbosity = "DEBUG";
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Defaults
@@ -105,7 +102,7 @@ int main(int argc, char **argv) {
   }
 
   // Lets make a feature extractor
-  extractor = std::make_unique<TrackKLT>(cameras, num_pts, num_aruco, use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist).get();
+  TrackKLT extractor(cameras, num_pts, num_aruco, use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist);
   // extractor = new TrackDescriptor(cameras, num_pts, num_aruco, !use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist,
   // knn_ratio); extractor = new TrackAruco(cameras, num_aruco, !use_stereo, method, do_downsizing);
 
@@ -114,11 +111,8 @@ int main(int argc, char **argv) {
   //===================================================================================
 
   // Open the first webcam (0=laptop cam, 1=usb device)
-  cv::VideoCapture cap;
-  if (!cap.open(0)) {
-    PRINT_ERROR(RED "Unable to open a webcam feed!\n" RESET);
-    return EXIT_FAILURE;
-  }
+  std::string video_file = "/home/brian/Documents/bag_images/rs_demo.mp4";
+  cv::VideoCapture cap(video_file);
 
   //===================================================================================
   //===================================================================================
@@ -129,23 +123,30 @@ int main(int argc, char **argv) {
   std::deque<double> clonetimes;
   signal(SIGINT, signal_callback_handler);
 
-  while (true) {
+  while (cap.isOpened()) {
     // Get the next frame (and fake advance time forward)
     cv::Mat frame;
-    cap >> frame;
-    current_time += 1.0 / 30.0;
+    cap.read(frame);
+
+    std::cout << "grabbed frame for t = " << current_time << std::endl;
 
     // Stop capture if no more image feed
-    if (frame.empty())
+    if (frame.empty()) {
+      std::cout << "Empty frame at t = " << current_time << std::endl;
       break;
+    }
+
 
     // Stop capturing by pressing ESC
     if (cv::waitKey(10) == 27)
       break;
 
     // Convert to grayscale if not
-    if (frame.channels() != 1)
+    if (frame.channels() != 1) {
+      std::cout << "Converting" << std::endl;
       cv::cvtColor(frame, frame, cv::COLOR_RGB2GRAY);
+    }
+
 
     // Else lets track this image
     ov_core::CameraData message;
@@ -153,20 +154,23 @@ int main(int argc, char **argv) {
     message.sensor_ids.push_back(0);
     message.images.push_back(frame);
     message.masks.push_back(cv::Mat::zeros(cv::Size(frame.cols, frame.rows), CV_8UC1));
-    extractor->feed_new_camera(message);
+
+    std::cout << "Inputting image for t = " << current_time << std::endl;
+    extractor.feed_new_camera(message);
+    std::cout << "image for t = " << current_time << "processed" << std::endl;
 
     // Display the resulting tracks
     cv::Mat img_active, img_history;
-    extractor->display_active(img_active, 255, 0, 0, 0, 0, 255);
-    extractor->display_history(img_history, 255, 255, 0, 255, 255, 255);
+    extractor.display_active(img_active, 255, 0, 0, 0, 0, 255);
+    extractor.display_history(img_history, 255, 255, 0, 255, 255, 255);
 
     // Show our image!
     cv::imshow("Active Tracks", img_active);
-    cv::imshow("Track History", img_history);
+//    cv::imshow("Track History", img_history);
     cv::waitKey(1);
 
     // Get lost tracks
-    std::shared_ptr<FeatureDatabase> database = extractor->get_feature_database();
+    std::shared_ptr<FeatureDatabase> database = extractor.get_feature_database();
     std::vector<std::shared_ptr<Feature>> feats_lost = database->features_not_containing_newer(current_time);
 
     // Mark theses feature pointers as deleted
@@ -197,6 +201,10 @@ int main(int argc, char **argv) {
 
     // Tell the feature database to delete old features
     database->cleanup();
+
+    current_time += 1.0 / 30.0;
+
+    usleep(1e3 * 10);
   }
 
   // Done!

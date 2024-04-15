@@ -53,6 +53,12 @@ void IdealLandmarkSource::CalcLandmarks(
     memcpy(landmark.position, landmark_pos.data(), 3 * sizeof(double));
     out->landmarks.push_back(landmark);
   }
+
+  out->num_expired = 1;
+  out->expired_landmark_ids.clear();
+  int to_delete = (int)(context.get_time() * 2) % 7;
+  out->expired_landmark_ids.push_back(to_delete);
+
 }
 
 }

@@ -5,8 +5,10 @@ package dairlib;
 struct lcmt_landmark_array
 {
   int32_t num_landmarks;
+  int32_t num_expired;
   int64_t utime;
   string parent_frame;
 
   lcmt_landmark landmarks[num_landmarks];
+  int64_t expired_landmark_ids[num_expired];
 }

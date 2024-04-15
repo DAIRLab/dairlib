@@ -525,6 +525,7 @@ void CassieStateEstimator::DoLandmarkUpdate(
     landmark_vector.push_back(inekf::Landmark(landmark.id, landmark_pos));
   }
   ekf.CorrectLandmarks(landmark_vector);
+  ekf.RemoveLandmarks(landmarks.expired_landmark_ids);
 }
 
 EventStatus CassieStateEstimator::Update(

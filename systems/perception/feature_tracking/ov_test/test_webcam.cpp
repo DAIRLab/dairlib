@@ -104,8 +104,8 @@ int DoMain(int argc, char **argv) {
   );
 
   // Open the first webcam (0=laptop cam, 1=usb device)
-  std::string video_file = "/Users/brian/Desktop/IMG_8375.mp4";
-//  std::string video_file = "/home/brian/Documents/bag_images/rs_demo.mp4";
+//  std::string video_file = "/Users/brian/Desktop/IMG_8375.mp4";
+  std::string video_file = "/home/brian/Documents/bag_images/rs_demo.mp4";
   cv::VideoCapture cap(video_file);
 
   // Loop forever until we break out
@@ -168,6 +168,7 @@ int DoMain(int argc, char **argv) {
       }
       // Update stats
       feats_lost[i]->to_delete = true;
+      std::cout << "removing feature " <<  feats_lost[i]->featid << std::endl;
     }
 
     // Push back the current time, as a clone time

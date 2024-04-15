@@ -91,7 +91,7 @@ void TrackBase::display_active(cv::Mat &img_out, int r1, int g1, int b1, int r2,
       // Get bounding pts for our boxes
       cv::Point2f pt_l = pts_last_cache[pair.first].at(i).pt;
       // Draw the extracted points and ID
-      cv::circle(img_temp, pt_l, (is_small) ? 1 : 2, cv::Scalar(r1, g1, b1), cv::FILLED);
+      cv::circle(img_temp, pt_l, (is_small) ? 4 : 8, cv::Scalar(r1, g1, b1), 4);
       // cv::putText(img_out, std::to_string(ids_left_last.at(i)), pt_l, cv::FONT_HERSHEY_SIMPLEX,0.5,cv::Scalar(0,0,255),1,cv::LINE_AA);
       // Draw rectangle around the point
       cv::Point2f pt_l_top = cv::Point2f(pt_l.x - 3, pt_l.y - 3);

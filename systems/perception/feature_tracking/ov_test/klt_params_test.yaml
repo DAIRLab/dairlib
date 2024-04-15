@@ -1,0 +1,10 @@
+num_pts: 50
+num_aruco: 1024
+clone_states: 100
+fast_threshold: 20
+grid_x: 5
+grid_y: 4
+min_px_dist: 20
+do_downsizing: false
+use_stereo: false
+histogram_method: 'CLAHE' # Valid values are NONE, CLAHE, or HISTOGRAM

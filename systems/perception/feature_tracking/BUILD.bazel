@@ -1,19 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    local_defines = ["BOOST_NO_CXX11_SCOPED_ENUMS"],
     name = "ov_core",
     srcs = glob(["ov_core/**/*.cpp"]),
     hdrs = glob(["ov_core/**/*.h"]),
+    local_defines = ["BOOST_NO_CXX11_SCOPED_ENUMS"],
     strip_include_prefix = "ov_core",
     deps = [
+        "@boost//:date_time",
         "@eigen",
         "@opencv",
+    ],
+)
+
+cc_library(
+    name = "klt_tracking_params",
+    hdrs = ["klt_tracking_params.h"],
+    deps = [
+        "@drake//:drake_shared_library",
     ],
 )
 
 cc_binary(
     name = "test_webcam",
     srcs = ["ov_test/test_webcam.cpp"],
-    deps = [":ov_core"],
+    deps = [
+        ":klt_tracking_params",
+        ":ov_core",
+    ],
 )

@@ -31,9 +31,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/filesystem.hpp>
-
 #include "cam/CamRadtan.h"
 #include "feat/Feature.h"
 #include "feat/FeatureDatabase.h"
@@ -41,33 +38,36 @@
 #include "track/TrackKLT.h"
 #include "utils/print.h"
 
-using namespace ov_core;
+#include "systems/perception/feature_tracking/klt_tracking_params.h"
+
+namespace dairlib {
+namespace perception {
+
+using ov_core::TrackKLT;
+using ov_core::Feature;
+using ov_core::FeatureDatabase;
+using ov_core::CamBase;
+using ov_core::CamRadtan;
+
 
 // Define the function to be called when ctrl-c (SIGINT) is sent to process
 void signal_callback_handler(int signum) { std::exit(signum); }
 
 // Main function
-int main(int argc, char **argv) {
+int DoMain(int argc, char **argv) {
 
   // Verbosity
   std::string verbosity = "DEBUG";
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Defaults
-  int num_pts = 500;
-  int num_aruco = 1024;
-  int clone_states = 20;
-  int fast_threshold = 10;
-  int grid_x = 5;
-  int grid_y = 4;
-  int min_px_dist = 20;
-  double knn_ratio = 0.85;
-  bool do_downsizing = false;
-  bool use_stereo = false;
+  auto params = drake::yaml::LoadYamlFile<KLTTrackingParams>(
+      "systems/perception/feature_tracking/ov_test/klt_params_test.yaml"
+  );
 
   // Histogram method
   ov_core::TrackBase::HistogramMethod method;
-  std::string histogram_method_str = "HISTOGRAM";
+  std::string histogram_method_str = params.histogram_method;
   if (histogram_method_str == "NONE") {
     method = ov_core::TrackBase::NONE;
   } else if (histogram_method_str == "HISTOGRAM") {
@@ -75,21 +75,10 @@ int main(int argc, char **argv) {
   } else if (histogram_method_str == "CLAHE") {
     method = ov_core::TrackBase::CLAHE;
   } else {
-    printf(RED "invalid feature histogram specified:\n" RESET);
-    printf(RED "\t- NONE\n" RESET);
-    printf(RED "\t- HISTOGRAM\n" RESET);
-    printf(RED "\t- CLAHE\n" RESET);
-    std::exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        "must specify NONE, HISTOGRAM, or CLAHE as a histogram method\n"
+    );
   }
-
-  // Debug print!
-  PRINT_DEBUG("max features: %d\n", num_pts);
-  PRINT_DEBUG("max aruco: %d\n", num_aruco);
-  PRINT_DEBUG("clone states: %d\n", clone_states);
-  PRINT_DEBUG("grid size: %d x %d\n", grid_x, grid_y);
-  PRINT_DEBUG("fast threshold: %d\n", fast_threshold);
-  PRINT_DEBUG("min pixel distance: %d\n", min_px_dist);
-  PRINT_DEBUG("downsize aruco image: %d\n", do_downsizing);
 
   // Fake camera info (we don't need this, as we are not using the normalized coordinates for anything)
   std::unordered_map<size_t, std::shared_ptr<CamBase>> cameras;
@@ -102,21 +91,22 @@ int main(int argc, char **argv) {
   }
 
   // Lets make a feature extractor
-  TrackKLT extractor(cameras, num_pts, num_aruco, use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist);
-  // extractor = new TrackDescriptor(cameras, num_pts, num_aruco, !use_stereo, method, fast_threshold, grid_x, grid_y, min_px_dist,
-  // knn_ratio); extractor = new TrackAruco(cameras, num_aruco, !use_stereo, method, do_downsizing);
-
-  //===================================================================================
-  //===================================================================================
-  //===================================================================================
+  TrackKLT extractor(
+      cameras,
+      params.num_pts,
+      params.num_aruco,
+      params.use_stereo,
+      method,
+      params.fast_threshold,
+      params.grid_x,
+      params.grid_y,
+      params.min_px_dist
+  );
 
   // Open the first webcam (0=laptop cam, 1=usb device)
-  std::string video_file = "/home/brian/Documents/bag_images/rs_demo.mp4";
+  std::string video_file = "/Users/brian/Desktop/IMG_8375.mp4";
+//  std::string video_file = "/home/brian/Documents/bag_images/rs_demo.mp4";
   cv::VideoCapture cap(video_file);
-
-  //===================================================================================
-  //===================================================================================
-  //===================================================================================
 
   // Loop forever until we break out
   double current_time = 0.0;
@@ -127,8 +117,7 @@ int main(int argc, char **argv) {
     // Get the next frame (and fake advance time forward)
     cv::Mat frame;
     cap.read(frame);
-
-    std::cout << "grabbed frame for t = " << current_time << std::endl;
+    current_time += 1.0 / 30.0;
 
     // Stop capture if no more image feed
     if (frame.empty()) {
@@ -143,7 +132,6 @@ int main(int argc, char **argv) {
 
     // Convert to grayscale if not
     if (frame.channels() != 1) {
-      std::cout << "Converting" << std::endl;
       cv::cvtColor(frame, frame, cv::COLOR_RGB2GRAY);
     }
 
@@ -155,9 +143,7 @@ int main(int argc, char **argv) {
     message.images.push_back(frame);
     message.masks.push_back(cv::Mat::zeros(cv::Size(frame.cols, frame.rows), CV_8UC1));
 
-    std::cout << "Inputting image for t = " << current_time << std::endl;
     extractor.feed_new_camera(message);
-    std::cout << "image for t = " << current_time << "processed" << std::endl;
 
     // Display the resulting tracks
     cv::Mat img_active, img_history;
@@ -188,7 +174,7 @@ int main(int argc, char **argv) {
     clonetimes.push_back(current_time);
 
     // Marginalized features if we have reached 5 frame tracks
-    if ((int)clonetimes.size() >= clone_states) {
+    if ((int)clonetimes.size() >= params.clone_states) {
       // Remove features that have reached their max track length
       double margtime = clonetimes.at(0);
       clonetimes.pop_front();
@@ -209,4 +195,11 @@ int main(int argc, char **argv) {
 
   // Done!
   return EXIT_SUCCESS;
+}
+
+}
+}
+
+int main(int argc, char **argv) {
+  dairlib::perception::DoMain(argc, argv);
 }

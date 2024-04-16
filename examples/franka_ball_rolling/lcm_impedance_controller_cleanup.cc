@@ -70,33 +70,6 @@ int DoMain(int argc, char* argv[]){
 
   DiagramBuilder<double> builder;
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-
-  /* -------------------------------------------------------------------------------------------*/
-  // additional plant_contact linked with scene_graph and additional diagram_contact is built
-  // all for the geometry and contact information needed for feedforward force_feedback in the
-  // impedance controller, it's update in impedance controller should be synchronized with the
-  // general plant!
-  /// TODO: in the end should remove this and send the feedforward contact torque from upper level commands
-
-  DiagramBuilder<double> builder_contact;
-  auto [plant_contact, scene_graph] = AddMultibodyPlantSceneGraph(&builder_contact, 0.0);
-  Parser parser_contact(&plant_contact);
-  parser_contact.AddModelFromFile(impedance_param.franka_model);
-  parser_contact.AddModelFromFile(impedance_param.offset_model);
-  parser_contact.AddModelFromFile(impedance_param.ground_model);
-  parser_contact.AddModelFromFile(impedance_param.end_effector_model);
-  parser_contact.AddModelFromFile(impedance_param.ball_model);
-
-  plant_contact.WeldFrames(plant_contact.world_frame(), plant_contact.GetFrameByName("panda_link0"), X_WI);
-  plant_contact.WeldFrames(plant_contact.GetFrameByName("panda_link7"), plant_contact.GetFrameByName("end_effector_base"), X_F_EE);
-  plant_contact.WeldFrames(plant_contact.GetFrameByName("panda_link0"), plant_contact.GetFrameByName("visual_table_offset"), X_WI);
-  plant_contact.WeldFrames(plant_contact.GetFrameByName("panda_link0"), plant_contact.GetFrameByName("ground"), X_F_G);
-  plant_contact.Finalize();
-
-  auto diagram_contact = builder_contact.Build();
-  auto diagram_context_contact = diagram_contact->CreateDefaultContext();
-  auto& context_contact = diagram_contact->GetMutableSubsystemContext(plant_contact, diagram_context_contact.get());
-
   /* -------------------------------------------------------------------------------------------*/
 
   auto context = plant.CreateDefaultContext();
@@ -121,16 +94,15 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B_null = impedance_param.damping_null;
   VectorXd qd_null = impedance_param.q_null_desired;
 
-  drake::geometry::GeometryId sphere_geoms = 
-    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("sphere"))[0];
-  drake::geometry::GeometryId EE_geoms = 
-    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("end_effector_tip"))[0];
-  std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
+//  drake::geometry::GeometryId sphere_geoms =
+//    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("sphere"))[0];
+//  drake::geometry::GeometryId EE_geoms =
+//    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("end_effector_tip"))[0];
+//  std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
 
   int num_friction_directions = impedance_param.num_friction_directions;
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
-          plant, plant_contact, *context, context_contact, K, B, K_null, B_null, qd_null,
-          contact_geoms, num_friction_directions);
+          plant, *context, K, B, K_null, B_null, qd_null);
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
   /* -------------------------------------------------------------------------------------------*/

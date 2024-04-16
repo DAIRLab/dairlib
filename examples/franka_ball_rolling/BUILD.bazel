@@ -286,22 +286,22 @@ cc_binary(
     data = ["@drake//manipulation/models/franka_description:models"]
 )
 
-cc_binary(
-    name = "lcm_impedance_controller",
-    srcs = ["lcm_impedance_controller.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/controllers:impedance_controller",
-        "//examples/franka_ball_rolling:impedance_controller_params",
-        "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
-        "//systems:system_utils",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-    data = ["@drake//manipulation/models/franka_description:models"]
-)
+#cc_binary(
+#    name = "lcm_impedance_controller",
+#    srcs = ["lcm_impedance_controller.cc"],
+#    deps = [
+#        "//systems:robot_lcm_systems",
+#        "//systems/controllers",
+#        "//systems/framework:lcm_driven_loop",
+#        "//systems/controllers:impedance_controller",
+#        "//examples/franka_ball_rolling:impedance_controller_params",
+#        "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
+#        "//systems:system_utils",
+#        "@drake//:drake_shared_library",
+#        "@gflags",
+#    ],
+#    data = ["@drake//manipulation/models/franka_description:models"]
+#)
 
 cc_binary(
     name = "lcm_impedance_controller_cleanup",

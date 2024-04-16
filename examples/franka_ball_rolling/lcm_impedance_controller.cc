@@ -124,9 +124,9 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B_null = impedance_param.damping_null;
   VectorXd qd_null = impedance_param.q_null_desired;
 
-  drake::geometry::GeometryId sphere_geoms = 
+  drake::geometry::GeometryId sphere_geoms =
     plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("sphere"))[0];
-  drake::geometry::GeometryId EE_geoms = 
+  drake::geometry::GeometryId EE_geoms =
     plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("end_effector_tip"))[0];
   std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
 

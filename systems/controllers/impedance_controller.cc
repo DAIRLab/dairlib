@@ -29,27 +29,19 @@ namespace controllers {
 
 ImpedanceController::ImpedanceController(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::multibody::MultibodyPlant<double>& plant_contact,
     drake::systems::Context<double>& context,
-    drake::systems::Context<double>& context_contact,
     const MatrixXd& K,
     const MatrixXd& B,
     const MatrixXd& K_null,
     const MatrixXd& B_null,
-    const VectorXd& qd_null,
-    const std::vector<drake::geometry::GeometryId>& contact_geoms,
-    int num_friction_directions)
+    const VectorXd& qd_null)
     : plant_(plant),
-      plant_contact_(plant_contact),
       context_(context),
-      context_contact_(context_contact),
       K_(K),
       B_(B),
       K_null_(K_null),
       B_null_(B_null),
-      qd_null_(qd_null),
-      contact_geoms_(contact_geoms),
-      num_friction_directions_(num_friction_directions){
+      qd_null_(qd_null){
 
   // plant parameters
   int num_positions = plant_.num_positions();
@@ -100,7 +92,6 @@ ImpedanceController::ImpedanceController(
   I_.block(3,3,3,3) << translational_integral_gain;
 
   // define force feedforward contact setting
-  contact_pairs_.push_back(SortedPair(contact_geoms_[0], contact_geoms_[1])); // EE <-> Sphere
   enable_contact_ = impedance_param_.enable_contact;
 
   // define franka joint torque limits
@@ -163,9 +154,6 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   //update the context_
   plant_.SetPositions(&context_, q);
   plant_.SetVelocities(&context_, v);
-  // synchronize the contact plant and context
-  plant_contact_.SetPositions(&context_contact_, q);
-  plant_contact_.SetVelocities(&context_contact_, v);
 
   // calculate manipulator equation terms and Jacobian
   MatrixXd M(plant_.num_velocities(), plant_.num_velocities());
@@ -231,20 +219,11 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_gen_inv;
   tau += N * (K_null_*(qd_null_ - q_franka) - B_null_ * v_franka);
 
-  // add feedforward force term if contact is desired, need to add options for different contact models
-  MatrixXd Jc(contact_pairs_.size() + 2 * contact_pairs_.size() * num_friction_directions_, n_);
-  if (enable_contact_ && lambda.norm() > impedance_param_.contact_threshold){
-    //std::cout << "here" << std::endl;
-    // compute contact jacobian
-    VectorXd phi(contact_pairs_.size());
-    MatrixXd J_n(contact_pairs_.size(), plant_.num_velocities());
-    MatrixXd J_t(2 * contact_pairs_.size() * num_friction_directions_, plant_.num_velocities());
-    this->CalcContactJacobians(contact_pairs_, phi, J_n, J_t);
-    Jc << J_n.block(0, 0, J_n.rows(), n_),
-          J_t.block(0, 0, J_t.rows(), n_);
+  /// COMMENT OUT FOR NOW ///
 
-    tau = tau - Jc.transpose() * lambda;
-  }
+//  if (enable_contact_ && lambda.norm() > impedance_param_.contact_threshold){
+//    tau = tau
+//  }
 
   // clamp the final output torque to safety limit
   ClampJointTorques(tau);
@@ -269,21 +248,6 @@ Vector3d ImpedanceController::CalcRotationalError(const RotationMatrix<double>& 
   Quaterniond error_quaternion(orientation.inverse() * orientation_d);
   Vector3d error_quaternion_no_w(error_quaternion.x(), error_quaternion.y(), error_quaternion.z());
   return R.matrix() * error_quaternion_no_w;
-}
-
-void ImpedanceController::CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
-                            VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const {
-  for (int i = 0; i < (int) contact_pairs.size(); i++) {
-    multibody::GeomGeomCollider collider(
-            plant_contact_, contact_pairs[i]);
-    auto [phi_i, J_i] = collider.EvalPolytope(context_contact_, num_friction_directions_);
-    phi(i) = phi_i;
-
-    J_n.row(i) = J_i.row(0);
-    J_t.block(2 * i * num_friction_directions_, 0, 2 * num_friction_directions_,
-              plant_contact_.num_velocities()) =
-        J_i.block(1, 0, 2 * num_friction_directions_, plant_contact_.num_velocities());
-  }
 }
 
 void ImpedanceController::ClampJointTorques(VectorXd &tau) const {

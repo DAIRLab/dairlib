@@ -54,16 +54,12 @@ class ImpedanceController : public LeafSystem<double> {
  public:
   ImpedanceController(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const drake::multibody::MultibodyPlant<double>& plant_contact,
       drake::systems::Context<double>& context,
-      drake::systems::Context<double>& context_contact,
       const Eigen::MatrixXd& K,
       const Eigen::MatrixXd& B,
       const Eigen::MatrixXd& K_null,
       const Eigen::MatrixXd& B_null,
-      const Eigen::VectorXd& qd_null,
-      const std::vector<drake::geometry::GeometryId>& contact_geoms,
-      int num_friction_directions);
+      const Eigen::VectorXd& qd_null);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(franka_state_input_port_);
@@ -88,9 +84,6 @@ class ImpedanceController : public LeafSystem<double> {
   // computes the rotational error
   Eigen::Vector3d CalcRotationalError(const drake::math::RotationMatrix<double>& R,
     const Quaterniond& orientation_d) const;
-  // computes the contact jacobians in J_n and J_t
-  void CalcContactJacobians(const std::vector<SortedPair<GeometryId>>& contact_pairs,
-                    VectorXd& phi, MatrixXd& J_n, MatrixXd& J_t) const;
   void ClampJointTorques(VectorXd &tau) const;
   void ClampIntegratorTorque(VectorXd& tau, const VectorXd& clamp) const;
   bool SaturatedClamp(const VectorXd& tau, const VectorXd& clamp) const;
@@ -106,9 +99,7 @@ class ImpedanceController : public LeafSystem<double> {
   // constructor variables
   // plant and context
   const MultibodyPlant<double>& plant_;
-  const MultibodyPlant<double>& plant_contact_;
   drake::systems::Context<double>& context_;
-  drake::systems::Context<double>& context_contact_;
 
   // stiffness and damping
   const Eigen::MatrixXd K_;
@@ -127,9 +118,6 @@ class ImpedanceController : public LeafSystem<double> {
 
   // contact force feedforward settings
   int enable_contact_;
-  const int num_friction_directions_;
-  std::vector<drake::geometry::GeometryId> contact_geoms_;
-  std::vector<SortedPair<GeometryId>> contact_pairs_;
 
   // clamp torque limit settings
   Eigen::VectorXd torque_limits_;

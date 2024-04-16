@@ -341,11 +341,11 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_curr){
     auto object_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr_", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
+        meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_traj_jack_model),
         "object_position_target", "object_orientation_target", 5, false);
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_curr = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "curr_", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
+        meshcat, "curr_planned", FindResourceOrThrow(sim_params.visualizer_curr_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_curr->get_output_port(),
@@ -356,11 +356,11 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_params.visualize_pose_trace_best){
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best_", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
+        meshcat, "best_planned", FindResourceOrThrow(sim_params.visualizer_best_sample_traj_jack_model),
         "object_position_target", "object_orientation_target");
     // TODO: We might want this to be end_effector_simple_model
     auto end_effector_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, "best_", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
+        meshcat, "best_planned", FindResourceOrThrow(sim_params.visualizer_best_sample_end_effector_model),
         "end_effector_position_target", "end_effector_orientation_target", 5, false);
 
     builder.Connect(trajectory_sub_object_best->get_output_port(),

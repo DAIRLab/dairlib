@@ -4,8 +4,14 @@ franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/jacktoy/urdf/end_effector_full.urdf
 # TODO maybe this should stay as end_effector_base?
 end_effector_name: end_effector_tip 
+ground_model: examples/jacktoy/urdf/ground.urdf
+platform_model: examples/jacktoy/urdf/platform.urdf
 
 tool_attachment_frame: [0, 0, 0.107]
+ground_franka_frame: [0, 0, -0.0745]
+platform_franka_frame: [0, 0, -0.01225]
+# This is the z value of the base of the franka wrt the surface of the table.  
+franka_origin: [0, 0, 0.0245]
 
 neutral_position: [0.33, 0.43, 0.15]
 x_scale: 0.1

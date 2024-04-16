@@ -124,6 +124,8 @@ class C3 {
   const int m_;
   const int k_;
 
+  const C3Options options_;
+
  private:
   mutable LCS lcs_;
   std::vector<Eigen::MatrixXd> A_;
@@ -139,7 +141,6 @@ class C3 {
   const std::vector<Eigen::MatrixXd> U_;
   const std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
-  const C3Options options_;
 
   bool h_is_zero_;
 

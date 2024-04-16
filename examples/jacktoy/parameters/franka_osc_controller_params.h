@@ -7,9 +7,14 @@
 struct FrankaControllerParams : OSCGains {
   std::string franka_model;
   std::string end_effector_model;
+  std::string ground_model;
+  std::string platform_model;
   std::string end_effector_name;
 
   Eigen::VectorXd tool_attachment_frame;
+  Eigen::VectorXd ground_franka_frame;
+  Eigen::VectorXd platform_franka_frame;
+  Eigen::VectorXd franka_origin;
   double end_effector_acceleration;
   bool track_end_effector_orientation;
   bool cancel_gravity_compensation;
@@ -50,6 +55,8 @@ struct FrankaControllerParams : OSCGains {
 
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
+    a->Visit(DRAKE_NVP(ground_model));
+    a->Visit(DRAKE_NVP(platform_model));
     a->Visit(DRAKE_NVP(end_effector_name));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(track_end_effector_orientation));
@@ -67,6 +74,9 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(elbow_kp));
     a->Visit(DRAKE_NVP(elbow_kd));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
+    a->Visit(DRAKE_NVP(ground_franka_frame));
+    a->Visit(DRAKE_NVP(platform_franka_frame));
+    a->Visit(DRAKE_NVP(franka_origin));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));

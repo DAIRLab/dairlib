@@ -80,11 +80,11 @@ SamplingC3Controller::SamplingC3Controller(
   solve_time_filter_constant_ = c3_options_.solve_time_filter_alpha;
   if (c3_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts[c3_options_.is_nearest_contacts] +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.is_nearest_contacts];
+        2 * c3_options_.num_contacts[c3_options_.num_contacts_index] +
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
   } else if (c3_options_.contact_model == "anitescu") {
     n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.is_nearest_contacts];
+        2 * c3_options_.num_friction_directions * c3_options_.num_contacts[c3_options_.num_contacts_index];
   } else {
     std::cerr << ("Unknown contact model") << std::endl;
     DRAKE_THROW_UNLESS(false);
@@ -105,9 +105,6 @@ SamplingC3Controller::SamplingC3Controller(
                                         x_desired_placeholder, c3_options_);
 
   } else if (c3_options_.projection_type == "QP") {
-    // std::cout<<"Q in controller: "<<Q_[0]<<std::endl;
-    // std::cout<<"R in controller: "<<R_[0]<<std::endl;
-
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                       C3::CostMatrices(Q_, R_, G_, U_),
                                       x_desired_placeholder, c3_options_);
@@ -359,7 +356,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Generate multiple samples and include current location as first item.
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
-  // std::cout<<"state size: "<<candidate_states[0].size()<<std::endl;
 
   // Add the previous best repsositioning target to the candidate states at the 
   // first index always.
@@ -372,15 +368,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Insert the current location at the beginning of the candidate states.
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
   int num_total_samples = candidate_states.size();
-  // std::cout<<"candidate states size after: "<<candidate_states.size()<<std::endl;
-  if(is_doing_c3_){
-    // print candidate state size
-    std::cout<<"num samples during C3: "<<num_total_samples<<std::endl;
-  }
-  else{
-    // print candidate state size
-    std::cout<<"num samples during repositioning: "<<num_total_samples<<std::endl;
-  }
 
   // Update the set of sample locations under consideration.
   for (int i = 0; i < num_total_samples; i++) {
@@ -410,21 +397,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // Create an LCS object.
     // Preprocessing the contact pairs
     vector<SortedPair<GeometryId>> resolved_contact_pairs;
-    if(c3_options_.is_nearest_contacts == 0){
+    if(c3_options_.num_contacts_index == 0){
       // Find closest ee-obj contact pairs
       resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
           plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-          c3_options_.num_contacts[c3_options_.is_nearest_contacts], true);
+          c3_options_.num_contacts[c3_options_.num_contacts_index], true);
     }
-    else if(c3_options_.is_nearest_contacts == 1){
+    else if(c3_options_.num_contacts_index == 1){
       // Use all contact pairs
       resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
           plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-          c3_options_.num_contacts[c3_options_.is_nearest_contacts], false);
+          c3_options_.num_contacts[c3_options_.num_contacts_index], false);
     }
     auto sample_system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.is_nearest_contacts], 
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], 
       c3_options_.planning_dt, N_, contact_model);
     solvers::LCS lcs_object_sample = sample_system_scaling_pair.first;
 
@@ -483,15 +470,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       all_sample_costs_[i] = c3_cost + 
         sampling_params_.travel_cost_per_meter*xy_travel_distance;
       // Add additional costs based on repositioning progress.
-      // TODO: Currently this is never satisfied because we never set the
-      // finished_reposition_flag_ to true. If we see an issue with the spline,
-      // then we might have to look into this.
       if ((i==CURRENT_REPOSITION_INDEX) & (finished_reposition_flag_==true)) {
-        std::cout<<"Finished repositioning. Adding a large cost to get out of this state."<<std::endl;
         all_sample_costs_[i] += sampling_params_.finished_reposition_cost;
       }
-      // Print the cost for each sample.
-      std::cout << "Cost for sample " << i << ": " << c3_cost << std::endl;
     }
   // End of parallelization
 
@@ -531,7 +512,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (is_doing_c3_ == true) { // Currently doing C3.
     // Switch to repositioning if one of the other samples is better, with
     // hysteresis.
-    std::cout<<"best_additional_sample_cost: "<<best_additional_sample_cost<<std::endl;
     if (all_sample_costs_[CURRENT_LOCATION_INDEX] > 
         best_additional_sample_cost + sampling_params_.c3_to_repos_hysteresis) {
       is_doing_c3_ = false;
@@ -865,21 +845,21 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  if(c3_options_.is_nearest_contacts == 0){
+  if(c3_options_.num_contacts_index == 0){
     // Find closest ee-obj contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.is_nearest_contacts], true);
+        c3_options_.num_contacts[c3_options_.num_contacts_index], true);
   }
-  else if(c3_options_.is_nearest_contacts == 1){
+  else if(c3_options_.num_contacts_index == 1){
     // Use all contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.is_nearest_contacts], false);
+        c3_options_.num_contacts[c3_options_.num_contacts_index], false);
   }
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.is_nearest_contacts], c3_options_.dt,
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], c3_options_.dt,
       c3_options_.N, contact_model);
 }
 
@@ -949,21 +929,21 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  if(c3_options_.is_nearest_contacts == 0){
+  if(c3_options_.num_contacts_index == 0){
     // Find closest ee-obj contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.is_nearest_contacts], true);
+        c3_options_.num_contacts[c3_options_.num_contacts_index], true);
   }
-  else if(c3_options_.is_nearest_contacts == 1){
+  else if(c3_options_.num_contacts_index == 1){
     // Use all contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
-        c3_options_.num_contacts[c3_options_.is_nearest_contacts], false);
+        c3_options_.num_contacts[c3_options_.num_contacts_index], false);
   }
   *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.is_nearest_contacts], c3_options_.dt,
+      c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], c3_options_.dt,
       c3_options_.N, contact_model);
   // Revert the context.
   UpdateContext(lcs_x->get_data());

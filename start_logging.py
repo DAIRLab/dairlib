@@ -30,8 +30,9 @@ def main(log_type):
             f.write(str(commit_tag))
             f.write("\n\ngit diff:\n\n")
             f.write(codecs.getdecoder("unicode_escape")(git_diff)[0])
-
-    subprocess.run(['lcm-logger', '-f', log_type + 'log-%s' % log_num])
+    
+    logname = f'{log_type}log-{log_num}'
+    subprocess.run(['/opt/lcm/1.4.0/bin/lcm-logger', '-f', logname])
 
 
 if __name__ == '__main__':

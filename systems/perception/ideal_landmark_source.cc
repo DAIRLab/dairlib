@@ -57,7 +57,7 @@ void IdealLandmarkSource::CalcLandmarks(
     out->landmarks.push_back(landmark);
   }
 
-  out->num_expired = 4;
+  out->num_expired = 3;
   out->expired_landmark_ids.clear();
   for (int i = 0; i < out->num_expired ; ++i) {
     int to_delete = ((int)(context.get_time() * 2) + i) % num_landmarks;

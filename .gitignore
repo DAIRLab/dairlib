@@ -11,5 +11,10 @@ attic/multibody/solver_log/
 .vscode
 *.csv
 /examples/Cassie/saved_trajectories/
+*.zip
+*.npz
+*.npy
+*.pth
+wandb/
 
 /venv/

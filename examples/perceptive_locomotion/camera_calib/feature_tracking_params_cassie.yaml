@@ -1,5 +1,5 @@
-num_pts: 50
-num_aruco: 1024
+num_pts: 10
+num_aruco: 0
 clone_states: 100
 fast_threshold: 20
 grid_x: 5

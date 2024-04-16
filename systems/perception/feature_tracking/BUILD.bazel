@@ -17,7 +17,7 @@ cc_library(
     name = "klt_tracking_params",
     hdrs = ["klt_tracking_params.h"],
     deps = [
-        "@drake//:drake_shared_library",
+        "@drake//common/yaml",
     ],
 )
 
@@ -28,4 +28,19 @@ cc_binary(
         ":klt_tracking_params",
         ":ov_core",
     ],
+)
+
+
+cc_library(
+    name = "feature_tracking_node",
+    hdrs = ["feature_tracking_node.h"],
+    srcs = ["feature_tracking_node.cc"],
+    deps = [
+        ":klt_tracking_params",
+        ":ov_core",
+        "//lcmtypes:lcmt_robot",
+        "@ros",
+        "@lcm"
+    ],
+    tags = ["ros"]
 )

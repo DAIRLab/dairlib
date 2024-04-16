@@ -61,7 +61,7 @@ int DoMain(int argc, char **argv) {
   ov_core::Printer::setPrintLevel(verbosity);
 
   // Defaults
-  auto params = drake::yaml::LoadYamlFile<KLTTrackingParams>(
+  auto params = drake::yaml::LoadYamlFile<klt_tracking_params>(
       "systems/perception/feature_tracking/ov_test/klt_params_test.yaml"
   );
 

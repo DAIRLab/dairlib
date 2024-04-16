@@ -44,14 +44,14 @@ from pydrake.systems.all import (
     ConstantVectorSource
 )
 
-from pydairlib.perceptive_locomotion.systems.alip_lqr import (
+from pydairlib.perceptive_locomotion.systems.alip_lqr_rl import (
     AlipFootstepLQROptions,
     AlipFootstepLQR,
     calc_collision_cost_grid
 )
 
 from pydairlib.perceptive_locomotion.systems. \
-cassie_footstep_controller_environment import (
+cassie_footstep_controller_gym_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
     InitialConditionsServer
@@ -68,8 +68,13 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     builder = DiagramBuilder()
     sim_env = CassieFootstepControllerEnvironment(sim_params)    
     controller = sim_env.AddToBuilderWithFootstepController(builder, AlipFootstepLQR)
+    ####
+    observation = sim_env.AddToBuilderObservations(builder)
+    reward = sim_env.AddToBuilderRewards(builder)
+    builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
+    ####
     diagram = builder.Build()
-    #DrawAndSaveDiagramGraph(diagram, '../ALIPLQR')
+    #DrawAndSaveDiagramGraph(diagram, '../ALIPLQR_RL')
     return sim_env, controller, diagram
 
 
@@ -335,31 +340,18 @@ def main(save_file: str, visualize: bool):
         perception_learning_base_folder,
         'params/wavy_terrain.yaml'
     )
-
+    
     flat = os.path.join(
         perception_learning_base_folder,
         'params/flat.yaml'
     )
 
-    testing = False
+    testing = True
     if testing:
-        data_process(0, job_queue, True, flat)
+        data_process(0, job_queue, True, wavy)
 
     for group in range(groups):
-        rand = np.random.randint(1, 11)
-        #if rand in [1, 2,]:
-        #    terrain = 'params/wavy_terrain.yaml'
-        if rand in [1, 2, 3, 4]:
-            terrain = stairs
-            print('stair')
-        elif rand in [5, 6, 7, 8]:
-            terrain = wavy
-            print('flat')
-        else:
-            terrain = flat
-            print('flat')
-        #terrain = stairs if group % 4 == 0 else wavy
-        #terrain = flat
+        terrain = stairs if group % 4 == 0 else wavy
         for i in range(jobs_per_group):
             process = multiprocessing.Process(
                 target=data_process, args=(i, job_queue, visualize, terrain)

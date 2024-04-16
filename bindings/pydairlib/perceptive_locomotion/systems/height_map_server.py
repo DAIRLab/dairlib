@@ -53,7 +53,7 @@ class HeightMapQueryObject:
     def __init__(self):
         self.height_map_server = None
         self.context = None
-
+ 
     def set(self, context: Context, server):
         self.height_map_server = server
         self.context = context
@@ -64,12 +64,24 @@ class HeightMapQueryObject:
 
     def calc_height_map_stance_frame(self, query_point):
         if self.context is None:
-            raise RuntimeError(
+            raise RuntimeError( 
                 'Heightmap Queries are one-time use objects'
                 'that must be set from inside the HeightMapServer. '
                 'Context has not been set or is out-of-date')
         hmap = \
             self.height_map_server .get_height_map_in_stance_frame_from_inputs(
+                self.context, query_point
+            )
+        return hmap
+
+    def calc_z_stance_frame(self, query_point):
+        if self.context is None:
+            raise RuntimeError( 
+                'Heightmap Queries are one-time use objects'
+                'that must be set from inside the HeightMapServer. '
+                'Context has not been set or is out-of-date')
+        hmap = \
+            self.height_map_server .get_z_in_stance_frame_from_inputs(
                 self.context, query_point
             )
         return hmap
@@ -204,6 +216,20 @@ class HeightMapServer(LeafSystem):
             self.map_opts.meshcat.Flush()
         return self.get_heightmap_3d(x, stance, center)
     
+    def get_z_in_stance_frame_from_inputs(
+            self, context: Context, center: np.ndarray
+        ) -> np.ndarray:
+        fsm = self.EvalVectorInput(
+            context, self.input_port_indices['fsm']
+        ).value().ravel()[0]
+        fsm = int(fsm)
+        x = self.EvalVectorInput(
+            context, self.input_port_indices['x']
+        ).value().ravel()[:self.plant.num_positions() + self.plant.num_velocities()]
+
+        stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
+        return self.get_heightmap_z(x, stance, center)
+
     def get_height_map_in_world_frame_from_inputs(
             self, context: Context, center: np.ndarray
         ) -> np.ndarray:
@@ -219,7 +245,6 @@ class HeightMapServer(LeafSystem):
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
 
         hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, center)
-        
         return hmap_xyz
 
     def get_height_at_point(self, query_point: np.ndarray) -> float:
@@ -248,6 +273,9 @@ class HeightMapServer(LeafSystem):
 
     def get_heightmap_3d_world_frame(self, robot_state: np.ndarray,
                                      stance: Stance, center: np.ndarray = None):
+        """
+        X Y Z in world frame (3, 64, 64)
+        """
         stance_pos = self.stance_pos_in_world(robot_state, stance)
         xyz = self.get_heightmap_3d(robot_state, stance, center)
         for i in range(xyz.shape[1]):
@@ -262,17 +290,27 @@ class HeightMapServer(LeafSystem):
 
     def get_heightmap_3d(self, robot_state: np.ndarray, stance: Stance,
                          center: np.ndarray = None) -> np.ndarray:
+        """
+        Stack X Y Z values (3, 64, 64)
+        """                 
         center = np.zeros((3,)) if center is None else center
         X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1])
-
         # Heightmap has X axis along the 0 dimension while meshgrid has
         # X axis on the 1 dimensions
         Z = self.get_heightmap(robot_state, stance, center).transpose()
-
         return np.stack([X, Y, Z])
+
+    def get_heightmap_z(self, robot_state: np.ndarray, stance: Stance,
+                         center: np.ndarray = None) -> np.ndarray:
+        center = np.zeros((3,)) if center is None else center
+        Z = self.get_heightmap(robot_state, stance, center).transpose()
+        return Z
 
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance,
                       center: np.ndarray = np.zeros((3,))) -> np.ndarray:
+        """
+        Get height values of 64x64 map and save to heightmap -> (64, 64)
+        """
         stance_pos = self.stance_pos_in_world(robot_state, stance)
         heightmap = np.zeros((self.map_opts.nx, self.map_opts.ny))
         for i, x in enumerate(self.xgrid):
@@ -285,5 +323,4 @@ class HeightMapServer(LeafSystem):
                 )
                 query_point = stance_pos + offset
                 heightmap[i, j] = self.get_height_at_point(query_point) - stance_pos[2]
-
         return heightmap

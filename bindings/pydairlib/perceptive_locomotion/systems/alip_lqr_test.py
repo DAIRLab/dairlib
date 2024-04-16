@@ -30,7 +30,6 @@ import numpy as np
 from grid_map import GridMap
 from pydairlib.perceptive_locomotion import vision_utils
 
-#mpfc_gains = 'bindings/pydairlib/perceptive_locomotion/params/mpfc_gains.yaml'
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
@@ -40,7 +39,6 @@ def main():
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
-        #mpfc_gains,
         sim_params.mpfc_gains_yaml,
         sim_env.controller_plant,
         sim_env.controller_plant.CreateDefaultContext(),
@@ -99,7 +97,7 @@ def main():
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
     t_next = 0.05
-    while t_next < 5:#np.inf:
+    while t_next < np.inf:
         simulator.AdvanceTo(t_next)
         elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
         elevation_map.convertToDefaultStartIndex()

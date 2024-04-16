@@ -20,12 +20,12 @@ from pydrake.systems.all import (
     ConstantVectorSource,
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.alip_lqr import (
+from pydairlib.perceptive_locomotion.systems.alip_lqr import (
     AlipFootstepLQROptions,
     AlipFootstepLQR
 )
 
-from pydairlib.perceptive_locomotion.perception_learning. \
+from pydairlib.perceptive_locomotion.systems. \
     cassie_footstep_controller_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,

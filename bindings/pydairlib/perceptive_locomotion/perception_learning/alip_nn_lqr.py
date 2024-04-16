@@ -19,7 +19,9 @@ from pydrake.geometry import Rgba
 from pydrake.common.value import Value
 from pydrake.systems.all import (
     Context,
-    BasicVector
+    BasicVector,
+    InputPort,
+    OutputPort
 )
 
 # import network related packages and set path
@@ -116,7 +118,6 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         )
         _, H, W = hmap.shape
         collision_cost = calc_collision_cost_grid(hmap[0], hmap[1], ud)
-
         with torch.inference_mode():
             combined_input = tile_and_concatenate_inputs(
                 hmap[-1], x - xd, self.ue_grid
@@ -138,10 +139,10 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
         # sum up the grid values, add select the minimum value index
-        final_grid_tmp = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
+        #final_grid_tmp = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
         # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
-
+        
         color_mappable = ScalarMappable(cmap='jet')
         colors = color_mappable.to_rgba(residual_grid)
 

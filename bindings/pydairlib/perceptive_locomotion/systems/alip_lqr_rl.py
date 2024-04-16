@@ -71,6 +71,7 @@ class AlipFootstepLQROptions:
             R=np.array(data['R']).reshape(3, 3)[:2, :2],
         )
 
+
 def calc_collision_cost_grid(X: np.ndarray, Y: np.ndarray, ud) -> np.ndarray:
     assert (X.shape == Y.shape)
 
@@ -116,7 +117,12 @@ class AlipFootstepLQR(LeafSystem):
             ).get_index(),
             'state': self.DeclareVectorInputPort(
                 "alip_state", 4
+            ).get_index(),
+            ##############################################
+            'action_ue': self.DeclareVectorInputPort(
+                "action_ue", 3
             ).get_index()
+            ##############################################
         }
         self.output_port_indices = {
             'footstep_command': self.DeclareVectorOutputPort(
@@ -128,11 +134,11 @@ class AlipFootstepLQR(LeafSystem):
             'x': self.DeclareVectorOutputPort(
                 'x', 4, self.calc_discrete_alip_state
             ).get_index(),
+            'vdes': self.DeclareVectorOutputPort(
+                'vdes', 2, self.desired_velocity
+            ).get_index(),
             'x_xd': self.DeclareVectorOutputPort(
                 'x_xd', 4, self.calc_discrete_alip_state_xd
-            ).get_index(),
-            'action': self.DeclareVectorOutputPort(
-                'action', 3, self.action
             ).get_index(),
         }
 
@@ -144,6 +150,16 @@ class AlipFootstepLQR(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
+    def desired_velocity(self, context: Context, vdes: BasicVector) -> None:
+        """
+            Sends the Desired Velocity to an output port
+        """
+        desired_velocity = self.EvalVectorInput(
+            context,
+            self.input_port_indices['desired_velocity']
+        ).value().ravel()
+        vdes.set_value(desired_velocity)
+
     def calc_lqr_reference(self, context: Context, xd_ud: BasicVector) -> None:
         """
             Calculates the LQR reference trajectory for an output port
@@ -152,6 +168,8 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['desired_velocity']
         ).value().ravel()
+        #vdes = np.array([0.4, 0])
+
         fsm = self.EvalVectorInput(
             context,
             self.input_port_indices['fsm']
@@ -186,34 +204,31 @@ class AlipFootstepLQR(LeafSystem):
         x = CalcMassNormalizedAd(
             self.params.height, time_until_switch
         ) @ current_alip_state
-        
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        #print(x-xd)
+
         x_disc.set_value(x)
 
     def calc_discrete_alip_state_xd(self, context: Context,
-                                 xd_disc: BasicVector) -> None:
-        current_alip_state = np.copy(self.EvalVectorInput(
-            context,
-            self.input_port_indices['state']
-        ).value().ravel())
+                                    xd_disc: BasicVector) -> None:
+            current_alip_state = np.copy(self.EvalVectorInput(
+                context,
+                self.input_port_indices['state']
+            ).value().ravel())
 
-        # mass normalized alip state
-        current_alip_state[2:] /= self.params.mass
+            # mass normalized alip state
+            current_alip_state[2:] /= self.params.mass
 
-        time_until_switch = self.EvalVectorInput(
-            context,
-            self.input_port_indices['time_until_switch']
-        ).value().ravel()[0]
+            time_until_switch = self.EvalVectorInput(
+                context,
+                self.input_port_indices['time_until_switch']
+            ).value().ravel()[0]
 
-        x = CalcMassNormalizedAd(
-            self.params.height, time_until_switch
-        ) @ current_alip_state
-        
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        xd_disc.set_value(x-xd)
+            x = CalcMassNormalizedAd(
+                self.params.height, time_until_switch
+            ) @ current_alip_state
+            
+            xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+            xd = xd_ud[:4]
+            xd_disc.set_value(x-xd)
 
     def calculate_optimal_footstep(
             self, context: Context, footstep: BasicVector) -> None:
@@ -228,20 +243,19 @@ class AlipFootstepLQR(LeafSystem):
         xd = xd_ud[:4]
         ud = xd_ud[4:]
         x = self.get_output_port_by_name('x').Eval(context)
-
         # LQR feedback - for now assume the height of the ground is zero
         footstep_command = np.zeros((3,))
-        footstep_command[:2] = ud - self.K @ (x - xd)
-        footstep.set_value(footstep_command)
-    
-    def action(self, context: Context, action: BasicVector) -> None:
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        ud = xd_ud[4:]
-        x = self.get_output_port_by_name('x').Eval(context)
-        ac = np.zeros((3,))
-        ac[:2] = self.K @ (x - xd)
-        action.set_value(ac)
+        #footstep_command[:2] = ud - self.K @ (x - xd) ##### <--- self.K @ (x - xd)
+
+        ue = self.EvalVectorInput(
+            context,
+            self.input_port_indices['action_ue']
+        ).value().ravel()
+        #footstep_command[:2] = ud + ue[:2]
+        #footstep_command[:2] = ud - ue[:2]
+        #footstep.set_value(footstep_command)
+
+        footstep.set_value(ue)
 
     def make_lqr_reference(self, stance: Stance, vdes: np.ndarray) -> \
             Tuple[np.ndarray, np.ndarray]:

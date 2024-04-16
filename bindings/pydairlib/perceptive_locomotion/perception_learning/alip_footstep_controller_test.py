@@ -30,6 +30,7 @@ from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 
 import numpy as np
+from grid_map import GridMap
 
 # controller_type = 'mpfc'
 
@@ -52,7 +53,7 @@ def main():
     #sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
     sim_params.visualize = True
     sim_params.simulate_perception = True
-    sim_params.elevation_mapping_params_yaml = elevation_mapping_yaml
+    #sim_params.elevation_mapping_params_yaml = elevation_mapping_yaml
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -122,14 +123,18 @@ def main():
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
+    sim_context = sim_env.GetMyMutableContextFromRoot(context)
     sim_env.initialize_state(context, diagram)
 
     simulator.reset_context(context)
     simulator.Initialize()
     simulator.set_target_realtime_rate(1.0)
-
-    simulator.AdvanceTo(np.inf)
-
+    t_next = 0.05
+    while t_next < 20:
+        simulator.AdvanceTo(t_next)
+        elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
+        print(elevation_map)
+        t_next += 0.05
 
 if __name__ == "__main__":
     main()

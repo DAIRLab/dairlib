@@ -91,7 +91,9 @@ def train_validate_test_split(dataset, split_ratio=(0.7, 0.15, 0.15)):
 def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
     checkpoint_path = default_checkpoint_path
     if use_wandb:
-        wandb.init(project="alip-lqr-residual", entity="alip-lqr-residuals")
+        #wandb.init(project="alip-lqr-residual", entity="alip-lqr-residuals")
+        wandb.init(project="alip-lqr-residual", entity="minkukim")
+
         params.log_to_wandb()
         checkpoint_path = os.path.join(
             perception_learning_base_folder,

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from os import path
 from typing import Dict, Union, Type
+from matplotlib.cm import ScalarMappable
 
 import numpy as np
 
@@ -16,16 +17,23 @@ from pydairlib.perceptive_locomotion.diagrams import (
 from pydairlib.systems.footstep_planning import Stance
 from pydairlib.systems.plant_visualizer import PlantVisualizer
 from pydairlib.systems.perception import GridMapVisualizer
-from pydairlib.perceptive_locomotion.systems.alip_lqr import \
+from pydairlib.perceptive_locomotion.systems.alip_lqr_rl import \
     AlipFootstepLQROptions
 from pydairlib.perceptive_locomotion.systems.height_map_server \
-    import HeightMapServer, HeightMapOptions
+    import HeightMapServer, HeightMapOptions, HeightMapQueryObject
 from pydairlib.multibody import SquareSteppingStoneList
 
+from pydrake.systems.analysis import SimulatorStatus
+from pydrake.geometry import Rgba
 from pydrake.multibody.plant import MultibodyPlant
+from pydrake.systems.framework import (
+    DiscreteValues,
+)
+from pydrake.common.value import Value, AbstractValue
 from pydrake.systems.all import (
     State,
     Diagram,
+    EventStatus,
     Context,
     Simulator,
     InputPort,
@@ -39,6 +47,169 @@ from pydrake.systems.all import (
 
 params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
+class ObservationPublisher(LeafSystem):
+    def __init__(self, plant, noise=False):
+        LeafSystem.__init__(self)
+        self.ns = 4
+        self.noise = noise
+        #self.color_mappable = ScalarMappable(cmap='jet')
+        self.input_port_indices = {
+            'lqr_reference': self.DeclareVectorInputPort(
+                "xd_ud", 6
+            ).get_index(),
+            'obs_states' : self.DeclareVectorInputPort(
+                "obs_states", self.ns
+            ).get_index(),
+            'height_map' : self.DeclareAbstractInputPort(
+            "height_map_query",
+            model_value=Value(HeightMapQueryObject())
+            ).get_index()
+        }
+        self.output_port_indices = {
+            'observations': self.DeclareVectorOutputPort(
+                "observations", 3*64*64+4, self.calculate_hmap
+            ).get_index()
+        }
+
+    def get_input_port_by_name(self, name: str) -> InputPort:
+        assert (name in self.input_port_indices)
+        return self.get_input_port(self.input_port_indices[name])
+
+    def get_output_port_by_name(self, name: str) -> OutputPort:
+        assert (name in self.output_port_indices)
+        return self.get_output_port(self.output_port_indices[name])
+
+    def CalcObs(self, context, output):
+        plant_state = self.get_input_port(0).Eval(context)
+        if self.noise:
+            plant_state += np.random.uniform(low=-0.01,
+                                                high=0.01,
+                                                size=self.ns)
+        output.set_value(plant_state)
+
+    def calculate_hmap(self, context: Context, output):
+        xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
+        ud = xd_ud.value()[4:]
+        hmap_query = self.EvalAbstractInput(
+            context, self.input_port_indices['height_map']
+        ).get_value()
+        hmap = hmap_query.calc_height_map_stance_frame(
+            np.array([ud[0], ud[1], 0])
+        )
+        #hmap = hmap_query.calc_z_stance_frame(
+        #    np.array([ud[0], ud[1], 0])
+        #)
+
+        #residual_grid_world = hmap_query.calc_height_map_world_frame(
+        #    np.array([ud[0], ud[1], 0])
+        #)
+        #hmap_query.plot_surface(
+        #    "residual", residual_grid_world[0], residual_grid_world[1],
+        #    residual_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
+        
+        flat = hmap.reshape(-1)
+        flat[np.isneginf(flat)] = -1
+        alip = self.EvalVectorInput(context, self.input_port_indices['obs_states']).get_value()
+        out = np.hstack((flat, alip))
+        output.set_value(out)
+
+class RewardSystem(LeafSystem):
+    def __init__(self, alip_params: AlipFootstepLQROptions, sim_env):
+        super().__init__()
+
+        self.params = alip_params
+        self.cassie_sim = sim_env
+
+        self.input_port_indices = {
+            'lqr_reference': self.DeclareVectorInputPort(
+                "xd_ud[x,y]", 6
+            ).get_index(),
+            'x': self.DeclareVectorInputPort(
+                'x', 4
+            ).get_index(),
+            'fsm': self.DeclareVectorInputPort(
+                "fsm", 1
+            ).get_index(),
+            'time_until_switch': self.DeclareVectorInputPort(
+                "time_until_switch", 1
+            ).get_index(),
+            'footstep_command': self.DeclareVectorInputPort(
+                'footstep_command', 3
+            ).get_index(),
+            'state': self.DeclareVectorInputPort(
+                'x_u_t', 59
+            ).get_index(),
+            'vdes': self.DeclareVectorInputPort(
+                'vdes', 2
+            ).get_index()
+        }
+
+        self.output_port_indices = {
+            'reward': self.DeclareVectorOutputPort(
+                "reward", 1, self.calc_reward
+            ).get_index()
+        }
+
+    def get_input_port_by_name(self, name: str) -> InputPort:
+        assert (name in self.input_port_indices)
+        return self.get_input_port(self.input_port_indices[name])
+
+    def get_output_port_by_name(self, name: str) -> OutputPort:
+        assert (name in self.output_port_indices)
+        return self.get_output_port(self.output_port_indices[name])
+
+    def calc_reward(self, context: Context, output) -> None:
+        x = self.EvalVectorInput(context, self.input_port_indices['x']).value()
+        u = self.EvalVectorInput(context, self.input_port_indices['footstep_command']).value()[:2]
+        xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
+        xd = xd_ud.value()[:4]
+        ud = xd_ud.value()[4:]
+        LQRreward = (x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud)
+        LQRreward = np.exp(-5*LQRreward)
+
+        x_u_t = self.EvalVectorInput(context, self.input_port_indices['state']).value()
+        pos_vel = x_u_t[:45]
+        
+        plant = self.cassie_sim.get_plant()
+        plant_context = plant.CreateDefaultContext()
+        plant.SetPositionsAndVelocities(plant_context, pos_vel)
+        
+        # Body Frame Velocity
+        fb_frame = plant.GetBodyByName("pelvis").body_frame()
+        bf_velocity = fb_frame.CalcSpatialVelocity(
+            plant_context, plant.world_frame(), fb_frame)
+        bf_vel = bf_velocity.translational()
+        bf_ang = bf_velocity.rotational()
+
+        vdes = self.EvalVectorInput(
+            context,
+            self.input_port_indices['vdes']
+        ).value().ravel()
+        
+        #velocity_reward = np.exp(-5*np.linalg.norm(vdes[0]-bf_vel[0])) + np.exp(-5*np.linalg.norm(vdes[1]-bf_vel[1]))
+        velocity_reward = np.exp(-5*np.linalg.norm(vdes[:2] - bf_vel[:2]))
+        
+        # penalize angular velocity about the z axis
+        angular_reward = np.exp(-5*np.linalg.norm(bf_ang))
+
+        # penalize toe angle
+        front_contact_pt = np.array((-0.0457, 0.112, 0))
+        rear_contact_pt = np.array((0.088, 0, 0))
+
+        toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+        left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+        
+        toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+        right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+        
+        left_angle_reward = np.exp(-5*left_angle)
+        right_angle_reward = np.exp(-5*right_angle)
+        
+        # reward normalize to 0~1
+        reward = 0.5*LQRreward + 0.2*velocity_reward + 0.1*left_angle_reward + 0.1*right_angle_reward + 0.1*angular_reward
+        output[0] = reward
 
 class InitialConditionsServer:
     def __init__(self, fname: str):
@@ -63,7 +234,6 @@ class InitialConditionsServer:
         self.idx = idx
         data = self.data[self.idx]
         return data
-
 
 @dataclass
 class CassieFootstepControllerEnvironmentOptions:
@@ -92,7 +262,6 @@ class CassieFootstepControllerEnvironmentOptions:
         MpfcOscDiagramInputType.kFootstepCommand
     simulate_perception: bool = False
     visualize: bool = True
-
 
 class CassieFootstepControllerEnvironment(Diagram):
 
@@ -331,7 +500,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         if self.params.simulate_perception:
             self.perception_module.InitializeEkf(context, q, v)
             self.perception_module.InitializeElevationMap(np.concatenate([q, v]), context) #
-
+            
     def AddToBuilderWithFootstepController(
             self, builder: DiagramBuilder,
             footstep_controller_type: Type, **controller_kwargs):
@@ -353,7 +522,48 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.get_output_port_by_name("alip_state"),
             footstep_controller.get_input_port_by_name("state")
         )
+        self.ALIPfootstep_controller = footstep_controller
         return footstep_controller
+
+    def AddToBuilderObservations(self, builder: DiagramBuilder):
+        obs_pub = ObservationPublisher(self.controller_plant, False)
+        builder.AddSystem(obs_pub)
+        builder.Connect(
+            self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
+            obs_pub.get_input_port_by_name("obs_states")
+        )
+        builder.Connect(
+            self.get_output_port_by_name('height_map'),
+            obs_pub.get_input_port_by_name("height_map")
+        )
+        builder.Connect(
+            self.ALIPfootstep_controller.get_output_port_by_name('lqr_reference'), #xd_ud
+            obs_pub.get_input_port_by_name("lqr_reference")
+        )
+        builder.ExportOutput(obs_pub.get_output_port_by_name("observations"), "observations")
+        #builder.ExportOutput(obs_pub.get_output_port_by_name("heightmap"), "heightmap")
+        return obs_pub
+        
+
+    def AddToBuilderRewards(self, builder: DiagramBuilder):
+        footstep_controller = self.ALIPfootstep_controller
+        sim_env = self.cassie_sim
+        reward = RewardSystem(footstep_controller.params, sim_env)
+        builder.AddSystem(reward)
+
+        for controller_port in ['lqr_reference', 'x', 'footstep_command', 'vdes']:
+            builder.Connect(
+                footstep_controller.get_output_port_by_name(controller_port),
+                reward.get_input_port_by_name(controller_port)
+            )
+        for sim_port in ['fsm', 'time_until_switch', 'state']:
+            builder.Connect(
+                self.get_output_port_by_name(sim_port),
+                reward.get_input_port_by_name(sim_port)
+            )
+
+        builder.ExportOutput(reward.get_output_port(), "reward")
+        return reward
 
     def make_my_controller_options(self):
         return AlipFootstepLQROptions.calculate_default_options(

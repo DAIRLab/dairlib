@@ -58,6 +58,17 @@ py_binary(
 )
 
 py_binary(
+    name = "alip_nn_data_collection",
+    srcs = ["alip_nn_data_collection.py"],
+    deps = [
+        ":alip_nn_lqr",
+        ":terrain_utils",
+        ":true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
+    ],
+)
+
+py_binary(
     name = "alip_lqr_data_collection",
     srcs = ["alip_lqr_data_collection.py"],
     deps = [
@@ -66,6 +77,67 @@ py_binary(
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
+
+py_binary(
+    name = "alip_rl_data_collection",
+    srcs = ["alip_rl_data_collection.py"],
+    deps = [
+        ":terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+    ],
+)
+
+py_library(
+    name = "DrakeCassieEnv",
+    srcs = ["DrakeCassieEnv.py"],
+    deps = [
+        ":terrain_utils",
+        ":true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeGymEnv",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "DrakeGymEnv",
+    srcs = ["DrakeGymEnv.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "train",
+    srcs = ["train.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/PPO:ppo",
+    ],
+)
+
+py_binary(
+    name = "run_sample",
+    srcs = ["run_sample.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    ],
+)
+
+py_binary(
+    name = "imitation",
+    srcs = ["imitation.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/PPO:ppo",
+    ],
+)
+
 
 py_binary(
     name = "alip_lqr_cost_experiment",
@@ -105,6 +177,7 @@ PY_LIBRARIES = [
     ":alip_nn_lqr",
     ":true_cost_system",
     ":terrain_utils",
+    ":DrakeCassieEnv"
 ]
 
 # Package roll-up (for Bazel dependencies).

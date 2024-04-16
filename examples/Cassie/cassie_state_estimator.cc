@@ -500,8 +500,12 @@ void CassieStateEstimator::DoKinematicUpdate(
     inekf::Kinematics front_frame(2 * i + 1, front_toe_pose, front_covariance);
     measured_kinematics.push_back(front_frame);
   }
-
+  auto corr_start = std::chrono::high_resolution_clock::now();
   ekf.CorrectKinematics(measured_kinematics);
+  auto corr_end = std::chrono::high_resolution_clock::now();
+//  std::cout << "Correct Kinematics took "
+//            << std::chrono::duration_cast<std::chrono::microseconds>(
+//                corr_end - corr_start).count() << " us\n";
 }
 
 void CassieStateEstimator::DoLandmarkUpdate(
@@ -557,6 +561,8 @@ EventStatus CassieStateEstimator::Update(
 
   // Estimated floating base state (pelvis)
   const auto& ekf_state = ekf.getState();
+
+
   const auto& R_WB = ekf_state.getRotation();
 
   VectorXd estimated_fb_state(13);

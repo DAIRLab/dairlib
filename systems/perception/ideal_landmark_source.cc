@@ -28,11 +28,11 @@ IdealLandmarkSource::IdealLandmarkSource(
 void IdealLandmarkSource::CalcLandmarks(
     const Context<double> &context, lcmt_landmark_array *out) const {
 
-  int num_landmarks = 25;
+  int num_landmarks = 10;
 
   Matrix3Xd landmarks = Matrix3Xd::Zero(3, num_landmarks);
   for (int i = 0; i < num_landmarks; ++i) {
-    landmarks.col(i) = Vector3d(0.1 * i * cos(i), 0.1 * i * sin(i), 0.3 * cos(i));
+    landmarks.col(i) = Vector3d(i * cos(i), i * sin(i), cos(i));
   }
 
   out->num_landmarks = num_landmarks;

@@ -514,14 +514,16 @@ void CassieStateEstimator::DoLandmarkUpdate(
 
   drake::math::RigidTransformd X_CP{};
   if (not state_history_.empty()) {
+    // 500 us compensation for filter time
     const auto& prev_robot_state = state_history_.get(landmarks.utime);
     const auto& curr_robot_state = ekf.getState();
 
     // X_CP = X_CW * X_WP = X_WC^-1 * X_WP
-    const MatrixXd R_rel = curr_robot_state.getRotation().transpose() * prev_robot_state.getRotation();
-    const Vector3d t_rel = prev_robot_state.getPosition() - curr_robot_state.getPosition();
-    drake::math::RotationMatrixd R_CP(R_rel);
-    X_CP = drake::math::RigidTransformd(R_CP, t_rel);
+    drake::math::RotationMatrixd R_WC(curr_robot_state.getRotation());
+    drake::math::RotationMatrixd R_WP(prev_robot_state.getRotation());
+    drake::math::RigidTransformd X_WC(R_WC, curr_robot_state.getPosition());
+    drake::math::RigidTransformd X_WP(R_WP, prev_robot_state.getPosition());
+    X_CP = X_WC.inverse() * X_WP;
   }
 
   for (const auto& landmark: landmarks.landmarks) {

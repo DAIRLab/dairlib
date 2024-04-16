@@ -52,20 +52,14 @@ int DoMain(int argc, char* argv[]){
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
   parser.AddModels(impedance_param.franka_model);
-  parser.AddModels(impedance_param.offset_model);
-  parser.AddModels(impedance_param.ground_model);
   parser.AddModels(impedance_param.end_effector_model);
-  parser.AddModels(impedance_param.ball_model);
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_EE = RigidTransform<double>(impedance_param.tool_attachment_frame);
-  RigidTransform<double> X_F_G = RigidTransform<double>(impedance_param.ground_offset_frame);
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("visual_table_offset"), X_WI);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("ground"), X_F_G);
   plant.Finalize();
 
   DiagramBuilder<double> builder;
@@ -80,6 +74,7 @@ int DoMain(int argc, char* argv[]){
   MatrixXd rotational_damping = impedance_param.rotational_damping.asDiagonal();
 
   /// TODO: should remove the hard coded dimension in the future, possibly using model indices
+  /// TODO: or maybe done in load parameter file
   MatrixXd K = MatrixXd::Zero(6,6);
   MatrixXd B = MatrixXd::Zero(6,6);
   K.block(0,0,3,3) << rotational_stiffness;
@@ -94,13 +89,6 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B_null = impedance_param.damping_null;
   VectorXd qd_null = impedance_param.q_null_desired;
 
-//  drake::geometry::GeometryId sphere_geoms =
-//    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("sphere"))[0];
-//  drake::geometry::GeometryId EE_geoms =
-//    plant_contact.GetCollisionGeometriesForBody(plant_contact.GetBodyByName("end_effector_tip"))[0];
-//  std::vector<drake::geometry::GeometryId> contact_geoms = {EE_geoms, sphere_geoms};
-
-  int num_friction_directions = impedance_param.num_friction_directions;
   auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
           plant, *context, K, B, K_null, B_null, qd_null);
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);

@@ -59,11 +59,10 @@ int DoMain(int argc, char* argv[]){
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
-  parser.AddModelFromFile(sim_param.franka_model);
-  parser.AddModelFromFile(sim_param.offset_model);
-  parser.AddModelFromFile(sim_param.ground_model);
-  parser.AddModelFromFile(sim_param.end_effector_model);
-  parser.AddModelFromFile(sim_param.ball_model);
+  drake::multibody::ModelInstanceIndex franka_index = parser.AddModels(sim_param.franka_model)[0];
+  drake::multibody::ModelInstanceIndex ground_index = parser.AddModels(sim_param.ground_model)[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(sim_param.end_effector_model)[0];
+  drake::multibody::ModelInstanceIndex ball_index = parser.AddModels(sim_param.ball_model)[0];
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -72,19 +71,19 @@ int DoMain(int argc, char* argv[]){
 
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("visual_table_offset"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("ground"), X_F_G);
   plant.Finalize();
 
   DiagramBuilder<double> builder;
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
+  auto franka_state_reciver =builder.AddSystem<systems::RobotOutputReceiver>(plant, franka_index);
+
 
   /* -------------------------------------------------------------------------------------------*/
-
   auto initial_sender = builder.AddSystem<dairlib::systems::MoveToInitial>(sim_param,heuristic_param);
   auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
 
-  builder.Connect(state_receiver->get_output_port(0), initial_sender->get_input_port(0));
+  builder.Connect(franka_state_reciver->get_output_port(0), initial_sender->get_input_port(0));
+
   builder.Connect(initial_sender->get_output_port(), state_force_sender->get_input_port(0));
   /* -------------------------------------------------------------------------------------------*/
   // determine if ttl 0 or 1 should be used for publishing
@@ -111,7 +110,7 @@ int DoMain(int argc, char* argv[]){
 
   auto context_d = diagram->CreateDefaultContext();
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-            &drake_lcm, std::move(diagram), state_receiver, "FRANKA_STATE_ESTIMATE", true);
+            &drake_lcm, std::move(diagram), franka_state_reciver, "FRANKA_STATE_ESTIMATE_NEW", true);
 
   loop.Simulate(std::numeric_limits<double>::infinity());
 

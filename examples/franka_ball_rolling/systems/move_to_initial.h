@@ -25,7 +25,7 @@ class MoveToInitial
 
   /// the first input port take in lcs state (i.e. state for simplified model)
   const drake::systems::InputPort<double>& get_input_port_state() const {
-    return this->get_input_port(state_input_port_);
+    return this->get_input_port(franka_input_port_);
   }
 
   /// the output port send out y_des (tracking target of simplified model) to the Heuristic planning block
@@ -57,7 +57,7 @@ class MoveToInitial
             double curr_time, double stabilize_time,
             double move_time) const;
 
-  drake::systems::InputPortIndex state_input_port_;
+  drake::systems::InputPortIndex franka_input_port_;
   drake::systems::OutputPortIndex target_port_;
 
   int first_message_time_idx_;

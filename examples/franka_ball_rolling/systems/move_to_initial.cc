@@ -21,11 +21,10 @@ MoveToInitial::MoveToInitial(
     const HeuristicGaitParams& heuristic_param) {
     // INPUT PORTS
     // TODO:: make dimension not hardcoded, and future clean up for newer impedacne ports
-    state_input_port_ =
-            this->DeclareVectorInputPort(
-                    "x, u, t",
-                    OutputVector<double>(14, 13, 7))
-            .get_index();
+    franka_input_port_ = this->DeclareVectorInputPort(
+            "x_franka,u_franka,t", OutputVector<double>(7, 7,
+                                                7)).get_index();
+
     // OUTPUT PORTS
     // TODO:: make dimension not hardcoded
     target_port_ =
@@ -52,7 +51,7 @@ EventStatus MoveToInitial::UpdateFirstMessageTime(const Context<double>& context
     auto& first_message_time = state->get_mutable_abstract_state<double>(first_message_time_idx_);
 
     if (!received_first_message){
-        auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+        auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, franka_input_port_);
         double timestamp = robot_output->get_timestamp();
         received_first_message = true;
         first_message_time = timestamp;
@@ -82,7 +81,7 @@ void MoveToInitial::CalcTarget(
     const Context<double>& context,
     TimestampedVector<double>* output) const {
 
-    auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, state_input_port_);
+    auto robot_output = (OutputVector<double>*)this->EvalVectorInput(context, franka_input_port_);
     double timestamp = robot_output->get_timestamp();
 
     auto first_message_time = context.get_abstract_state<double>(first_message_time_idx_);

@@ -12,6 +12,7 @@
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
 #include <drake/systems/primitives/multiplexer.h>
+#include <drake/systems/lcm/lcm_publisher_system.h>
 #include <drake/systems/primitives/vector_log_sink.h>
 #include <drake/visualization/visualization_config_functions.h>
 #include <gflags/gflags.h>
@@ -33,9 +34,11 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::systems::DiagramBuilder;
 using drake::systems::Context;
 using drake::systems::VectorLogSink;
+using drake::systems::lcm::LcmPublisherSystem;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
+
 
 using Eigen::VectorXd;
 using Eigen::Vector3d;
@@ -55,20 +58,27 @@ int DoMain(int argc, char* argv[]){
 
   // load urdf models
   Parser parser(&plant);
-  parser.AddModelFromFile(sim_param.franka_model);
+  parser.SetAutoRenaming(true);
+  drake::multibody::ModelInstanceIndex franka_index = parser.AddModels(sim_param.franka_model)[0];
+  drake::multibody::ModelInstanceIndex ground_index = parser.AddModels(sim_param.ground_model)[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(sim_param.end_effector_model)[0];
+  drake::multibody::ModelInstanceIndex ball_index = parser.AddModels(sim_param.ball_model)[0];
+
+  // visually give a offset stage model, not important
   parser.AddModels(sim_param.offset_model);
-  parser.AddModels(sim_param.ground_model);
-  parser.AddModels(sim_param.end_effector_model);
-  parser.AddModels(sim_param.ball_model);
   
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);
   RigidTransform<double> X_F_G = RigidTransform<double>(sim_param.ground_offset_frame);
 
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"), X_WI);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"), plant.GetFrameByName("end_effector_base"), X_F_EE);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("visual_table_offset"), X_WI);
-  plant.WeldFrames(plant.GetFrameByName("panda_link0"), plant.GetFrameByName("ground"), X_F_G);
+  plant.WeldFrames(plant.world_frame(),
+                   plant.GetFrameByName("panda_link0"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
+                   plant.GetFrameByName("end_effector_base", end_effector_index), X_F_EE);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
+                   plant.GetFrameByName("visual_table_offset"), X_WI);
+  plant.WeldFrames(plant.GetFrameByName("panda_link0"),
+                   plant.GetFrameByName("ground", ground_index), X_F_G);
 
   plant.Finalize();
 
@@ -76,9 +86,25 @@ int DoMain(int argc, char* argv[]){
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
 
+//  auto passthrough = AddActuationRecieverAndStateSenderLcm(
+//          &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
+//          1 / publish_dt, true, 0.0);
+
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
-          &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
-          1 / publish_dt, true, 0.0);
+            &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT",
+            1 / publish_dt, franka_index, true, 0.0);
+
+  auto ball_state_sender =
+            builder.AddSystem<systems::ObjectStateSender>(plant, ball_index);
+  auto ball_state_pub =
+            builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+                    "BALL_STATE", lcm,
+                    1.0 / 80));
+
+  builder.Connect(plant.get_state_output_port(ball_index),
+                    ball_state_sender->get_input_port_state());
+  builder.Connect(ball_state_sender->get_output_port(),
+                    ball_state_pub->get_input_port());
 
   /// meshcat visualizer
     drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
@@ -124,6 +150,8 @@ int DoMain(int argc, char* argv[]){
 
   // TODO:: find a more elegant way to assign these, possibly using model indices
   // initialize franka configurations
+//  q.head(plant.num_positions(franka_index)) = sim_param.q_init_franka;
+
   q[q_map["panda_joint1"]] = sim_param.q_init_franka(0);
   q[q_map["panda_joint2"]] = sim_param.q_init_franka(1);
   q[q_map["panda_joint3"]] = sim_param.q_init_franka(2);
@@ -134,6 +162,7 @@ int DoMain(int argc, char* argv[]){
 
   // initialize ball positions
   double traj_radius = sim_param.traj_radius;
+//  VectorXd q_ball = VectorXd::Zero(plant.num_positions(ball_index));
   q[q_map["sphere_qw"]] = sim_param.q_init_ball(0);
   q[q_map["sphere_qx"]] = sim_param.q_init_ball(1);
   q[q_map["sphere_qy"]] = sim_param.q_init_ball(2);

@@ -132,9 +132,12 @@ class TrueBallToEstimatedBall : public LeafSystem<double> {
   int p_idx_;
   int id_idx_;
   int utime_idx_;
+  int true_ball_input_port_;
 
   const double stddev_;
   const double period_;
+  const int num_ball_positions_{7};
+  const int num_ball_velocities{6};
 };
 
 }  // namespace systems

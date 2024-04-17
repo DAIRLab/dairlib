@@ -1,4 +1,4 @@
-num_pts: 15
+num_pts: 12
 num_aruco: 0
 clone_states: 1000
 fast_threshold: 20
@@ -7,5 +7,5 @@ grid_y: 4
 min_px_dist: 20
 do_downsizing: false
 use_stereo: false
-display: true
+display: false
 histogram_method: 'CLAHE' # Valid values are NONE, CLAHE, or HISTOGRAM

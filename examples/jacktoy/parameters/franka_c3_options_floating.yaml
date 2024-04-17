@@ -14,7 +14,9 @@ contact_model: 'anitescu'
 # The contact pairs are ordered as ee_jack, capsule1_ground, capsule2_ground,
 # and capsule3_ground.
 mu: [[0.4615, 0.4615, 0.4615, 0.4615],
-    [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615]]
+    [0.4615, 0.4615, 0.4615, 0.4615, 0.4615, 0.4615],
+    [0.4615, 1, 0.4615, 0.4615, 0.4615],
+    [0.4615, 0.4615, 0.4615, 1, 0.4615, 0.4615, 0.4615]]
 dt: 0.05    # This is used by the radio input currently but we don't use it.
 planning_dt: 0.1
 execution_dt: 0.03
@@ -23,9 +25,13 @@ num_friction_directions: 2
 # ee-jack contact.
 # If num_contacts_index is 1, then we use 6 contacts without resolving 
 # ee-jack contact.
-num_contacts_index: 1
+# If num_contacts_index is 2, then we use 4 closest ee-jack contacts with an 
+# additional contact between ee and ground.
+# If num_contacts_index is 3, then we use 6 ee-jack contacts with an additional
+#  contact between ee and ground.
+num_contacts_index: 3
 # num_contacts changes based on the num_contacts_index.
-num_contacts: [4,6]
+num_contacts: [4,6,5,7]
 N: 5
 # This param has to do with the xbox input?
 use_predicted_x0: false
@@ -47,7 +53,9 @@ g_lambda_n: [[1, 1, 1, 1],
 g_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_lambda: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+           [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_u: [1, 1, 1]
 
 # Penalty on matching the QP variables
@@ -59,7 +67,9 @@ u_lambda_n: [[1, 1, 1, 1],
 u_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 u_lambda: [[100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
-            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]]
+            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+            [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]]
 u_u: [30, 30, 30]
 
 
@@ -69,14 +79,14 @@ warm_start: false     # TODO: Check if we use this. Delete otherwise.
 w_Q: 50
 w_R: 50
 # Penalty on all decision variables, assuming scalar
-w_G: 0.1
+w_G: 65
 # Penalty on all decision variables, assuming scalar
 w_U: 0.1
 
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity 
 # constraints also approaches 0. 
-qp_projection_alpha: 0.01
-qp_projection_scaling: 1000
+qp_projection_alpha: 0.4
+qp_projection_scaling: 20000
 
 # n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
 # size = n_x ( 7 + 3 + 6 + 3 ) + n_lambda (2 * 3  + 2 * 3 * 2) + n_u (3) = 40 for stewart and trinkle
@@ -89,9 +99,9 @@ qp_projection_scaling: 1000
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
-q_vector: [0.25, 0.25, 0.25,        # end effector position
-           0, 0, 0, 0,              # object orientation
-           1500, 1500, 1500,    # object position
+q_vector: [50, 50, 50,        # end effector position
+           0, 1, 1, 0,              # object orientation
+           15000, 15000, 15000,    # object position
            0.001, 0.001, 0.001,              # end effector linear velocity
            0, 0, 0,                 # object angular velocity
            10, 10, 10]           # object linear velocity
@@ -112,5 +122,5 @@ q_vector: [0.25, 0.25, 0.25,        # end effector position
 #           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 # Penalty on end effector (x,y,z) force efforts, assuming diagonal
-r_vector: [0.0015, 0.0015, 0.015]
+r_vector: [0.0015, 0.0015, 0.0015]
 

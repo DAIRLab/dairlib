@@ -236,9 +236,19 @@ int DoMain(int argc, char* argv[]) {
       contact_pairs;  // will have [[(ee,cap1), (ee,cap2), (ee_cap3)],
                       // [(ground,cap1)], [(ground,cap2)], [(ground,cap3)]]
   contact_pairs.push_back(ee_contact_pairs);
+
+  if(c3_options.num_contacts_index == 2 || c3_options.num_contacts_index == 3){
+    // If num_contacts_index is 2 or 3, we add an additional contact pair 
+    // between the end effector and the ground.
+    std::vector<SortedPair<GeometryId>> ee_ground_contact{
+      SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
+    contact_pairs.push_back(ee_ground_contact);
+  }
+
   contact_pairs.push_back(ground_contact1);
   contact_pairs.push_back(ground_contact2);
   contact_pairs.push_back(ground_contact3);
+
 
   DiagramBuilder<double> builder;
 

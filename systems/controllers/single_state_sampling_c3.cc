@@ -362,13 +362,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Create an LCS object.
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  if(c3_options_.num_contacts_index == 0){
+  if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
     // Find closest ee-obj contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
         c3_options_.num_contacts[c3_options_.num_contacts_index], true);
   }
-  else if(c3_options_.num_contacts_index == 1){
+  else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
     // Use all contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
@@ -796,13 +796,13 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  if(c3_options_.num_contacts_index == 0){
+  if(c3_options_.num_contacts_index == 0 || c3_options_.num_contacts_index == 2){
     // Find closest ee-obj contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
         c3_options_.num_contacts[c3_options_.num_contacts_index], true);
   }
-  else if(c3_options_.num_contacts_index == 1){
+  else if(c3_options_.num_contacts_index == 1 || c3_options_.num_contacts_index == 3){
     // Use all contact pairs
     resolved_contact_pairs = LCSFactoryPreProcessor::PreProcessor(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,

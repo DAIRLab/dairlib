@@ -133,7 +133,7 @@ def main():
     while t_next < 20:
         simulator.AdvanceTo(t_next)
         elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
-        print(elevation_map)
+        #print(elevation_map)
         t_next += 0.05
 
 if __name__ == "__main__":

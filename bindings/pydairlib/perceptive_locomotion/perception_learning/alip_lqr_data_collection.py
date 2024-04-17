@@ -310,7 +310,7 @@ def get_residual(sim_env: CassieFootstepControllerEnvironment,
 
 
 def data_process(i, q, visualize, terrain):
-    num_data = 200
+    num_data = 100
     sim_params = CassieFootstepControllerEnvironmentOptions(
         terrain=terrain, visualize=visualize
     )
@@ -346,20 +346,18 @@ def main(save_file: str, visualize: bool):
         data_process(0, job_queue, True, flat)
 
     for group in range(groups):
-        rand = np.random.randint(1, 11)
-        #if rand in [1, 2,]:
-        #    terrain = 'params/wavy_terrain.yaml'
-        if rand in [1, 2, 3, 4]:
-            terrain = stairs
-            print('stair')
-        elif rand in [5, 6, 7, 8]:
-            terrain = wavy
-            print('flat')
-        else:
-            terrain = flat
-            print('flat')
+        #rand = np.random.randint(1, 11)
+        #if rand in [1, 2, 3, 4]:
+        #    terrain = stairs
+        #    print('stair')
+        #elif rand in [5, 6, 7, 8]:
+        #    terrain = wavy
+        #    print('flat')
+        #else:
+        #    terrain = flat
+        #    print('flat')
         #terrain = stairs if group % 4 == 0 else wavy
-        #terrain = flat
+        terrain = stairs
         for i in range(jobs_per_group):
             process = multiprocessing.Process(
                 target=data_process, args=(i, job_queue, visualize, terrain)

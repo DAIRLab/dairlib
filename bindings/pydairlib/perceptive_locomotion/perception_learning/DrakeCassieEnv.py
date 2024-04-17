@@ -124,11 +124,11 @@ def reset_handler(simulator, seed):
     #v_norm = np.random.uniform(0.2, v_des_norm)
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
 
-    datapoint = ic_generator.choose(0)
-    #datapoint = ic_generator.random()
-    v_des_norm = 0.8
+    #datapoint = ic_generator.choose(0)
+    datapoint = ic_generator.random()
+    v_des_norm = 1.0
     v_norm = np.random.uniform(0.2, v_des_norm)
-    #coeff = np.random.uniform(0., 0.1)
+    coeff = np.random.uniform(0., 0.1)
     datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     # timing aliases
@@ -181,20 +181,20 @@ def simulate_init(sim_params):
         
         if context.get_time() > time_limit:
             print("Time Limit")
-            print(context.get_time())
-            print(cost_logger.FindLog(context).data()[-1][-1])
+            #print(context.get_time())
+            #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
 
         if z1 < 0.2:
-            print("Left Toe")
-            print(context.get_time())
-            print(cost_logger.FindLog(context).data()[-1])
+            #print("Left Toe")
+            #print(context.get_time())
+            #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
-            print("Right Toe")
-            print(context.get_time())
-            print(cost_logger.FindLog(context).data()[-1])
+            #print("Right Toe")
+            #print(context.get_time())
+            #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
         return EventStatus.Succeeded()

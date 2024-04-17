@@ -78,10 +78,10 @@ def run_play(sim_params):
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 1e4
-    test_folder = "rl/tmp/DrakeCassie/eval_logs/test/"
-    model_path = path.join(test_folder, 'best_model.zip')
-    #model_path = 'logs/rl_model_576000_steps.zip'
-    model = PPO.load(model_path, env, verbose=1)#, tensorboard_log=log)
+    #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/"
+    #model_path = path.join(test_folder, 'best_model.zip')
+    model_path = 'PPO_studentNN.zip'
+    model = PPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
     input("Start..")

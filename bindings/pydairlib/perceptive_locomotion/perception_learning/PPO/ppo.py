@@ -218,13 +218,10 @@ class PPO(OnPolicyAlgorithm):
                 values = values.flatten()
                 # Normalize advantage
                 advantages = rollout_data.advantages
-                #print(advantages)
 
                 # Clip advantages by 5th and 95th percentiles
                 adv_low = th.kthvalue(advantages, int(len(advantages) * 0.05)).values
                 adv_high = th.kthvalue(advantages, int(len(advantages) * 0.95)).values
-                #print(adv_low)
-                #print(adv_high)
                 advantages = th.clamp(advantages, adv_low, adv_high)
 
                 # Normalization does not make sense if mini batchsize == 1, see GH issue #325

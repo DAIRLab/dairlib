@@ -226,10 +226,11 @@ class InitialConditionsServer:
         return data
 
     def random(self):
-        return self.rng.choice(self.data)
+        rand = self.rng.choice(self.data)
+        return rand
 
     def choose(self, idx):
-        if idx >= len(self.data):
+        if idx >= len(self.data): # 157869
             return None
         self.idx = idx
         data = self.data[self.idx]

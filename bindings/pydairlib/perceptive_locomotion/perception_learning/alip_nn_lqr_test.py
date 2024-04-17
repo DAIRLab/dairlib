@@ -108,10 +108,10 @@ def check_termination(sim_env, diagram_context) -> bool:
 
 def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
 
-    checkpoint_path = os.path.join(
-        perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
     #checkpoint_path = os.path.join(
-    #    perception_learning_base_folder, 'tmp/fine-aardvark-2.pth')
+    #    perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
+    checkpoint_path = os.path.join(
+        perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
 
     sim_env, controller, cost_logger, diagram = build_diagram(sim_params, checkpoint_path)
     simulator = Simulator(diagram)
@@ -122,8 +122,8 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
             'tmp/initial_conditions_2.npz'
         )
     )
-    # datapoint = ic_generator.random()
-    datapoint = ic_generator.choose(0)
+    #datapoint = ic_generator.random()
+    #datapoint = ic_generator.choose(0)
     #datapoint['desired_velocity'] = np.array([0.4, 0])
     #datapoint = ic_generator.random()
     #v_des_theta = np.pi / 6
@@ -131,7 +131,12 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     #v_norm = np.random.uniform(0.2, v_des_norm)
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    datapoint['desired_velocity'] = np.array([0.8, 0])
+    
+    datapoint = ic_generator.random()
+    #v_des_norm = 0.8
+    #v_norm = np.random.uniform(0.2, v_des_norm)
+    #datapoint['desired_velocity'] = np.array([v_norm, 0])
+    datapoint['desired_velocity'] = np.array([0.9, 0])
     context = diagram.CreateDefaultContext()
 
     # timing aliases
@@ -160,12 +165,18 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
         value=datapoint['desired_velocity']
     )
 
+    Terminate = False
     simulator.reset_context(context)
-    simulator.AdvanceTo(t_init + 25)
-    terminate = check_termination(sim_env, context)
+    for i in range(1, 500):
+        if check_termination(sim_env, context):
+            print(context.get_time()-t_init)
+            print('terminate')
+            Terminate = True
+            break
+        simulator.AdvanceTo(t_init + 0.05*i)
 
     cost_log = cost_logger.FindLog(context).data()
-    return cost_log, t_init, terminate
+    return cost_log, t_init, Terminate
 
 
 def main():

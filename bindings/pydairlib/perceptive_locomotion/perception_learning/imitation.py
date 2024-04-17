@@ -105,30 +105,34 @@ class CustomNetwork(nn.Module):
         # MLP for ALIP state
         alip_state_dim = 4
         self.alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(alip_state_dim, 128)),
-            nn.ReLU(),  # Using ReLU activation for ALIP MLP
-            layer_init(nn.Linear(128, 64)),
-            nn.ReLU(),  # Using ReLU activation for ALIP MLP
+            layer_init(nn.Linear(alip_state_dim, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 64)),
+            nn.Tanh(),
         )
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),  # Updated input size
-            nn.ReLU(),  # Using ReLU activation
+            layer_init(nn.Linear(320, 256)),
+            nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
-            nn.ReLU(),  # Using ReLU activation
-            layer_init(nn.Linear(256, self.latent_dim_pi), std = 0.03),
-            nn.ReLU(),  # Using ReLU activation
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, self.latent_dim_pi), std = 0.1),
+            nn.Tanh(),
         )
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),  # Updated input size
-            nn.ReLU(),  # Using ReLU activation
-            layer_init(nn.Linear(256, 256)),
-            nn.ReLU(),  # Using ReLU activation
-            layer_init(nn.Linear(256, self.latent_dim_vf), std = 1.),
-            nn.ReLU(),  # Using ReLU activation
+            layer_init(nn.Linear(320, 128)),
+            nn.Tanh(),
+            layer_init(nn.Linear(128, 128)),
+            nn.Tanh(),
+            layer_init(nn.Linear(128, self.latent_dim_vf), std = 1.),
+            nn.Tanh(),
         )
         # Initialize the weights using Xavier initialization
         #self._initialize_weights()
@@ -168,12 +172,11 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        #optimizer_kwargs = { 'weight_decay': 1e-4 },
         *args,
         **kwargs,
     ):
 
-        kwargs["ortho_init"] = True #False
+        kwargs["ortho_init"] = True
         super().__init__(
             observation_space,
             action_space,
@@ -302,7 +305,6 @@ def pretrain_agent(
 
     # Define an Optimizer and a learning rate schedule.
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
-    #optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
 
     # Now we are finally ready to train the policy model.
@@ -325,10 +327,11 @@ def _main():
                 sim_params = sim_params,
                 )
 
-    student = PPO(CustomActorCriticPolicy, env, verbose=1,) # use_sde=True
+    student = PPO(CustomActorCriticPolicy, env, verbose=1)#, use_sde=True)
 
-    obs_data = "state_action_pairNN/observationsNN_test3.npy"
-    action_data = "state_action_pairNN/actionsNN_test3.npy"
+    obs_data = path.join(perception_learning_base_folder, 'tmp/observationsNN.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/actionsNN.npy')
+    
     expert_observations = np.load(obs_data)
     print(len(expert_observations))
     expert_actions = np.load(action_data)
@@ -347,13 +350,13 @@ def _main():
         learning_rate=0.7,
         log_interval=100,
         no_cuda=False,
-        seed=23,
-        batch_size=16,
-        test_batch_size=16,
+        seed=222,
+        batch_size=64,
+        test_batch_size=64,
     )
 
-    student.save("PPO_studentNN_separate_new2")
-    mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
+    student.save("PPO_studentNN_newdata")
+    mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=2)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 
 if __name__ == '__main__':

@@ -92,7 +92,7 @@ def train_and_test(params: Hyperparams, use_wandb: bool = False) -> None:
     checkpoint_path = default_checkpoint_path
     if use_wandb:
         #wandb.init(project="alip-lqr-residual", entity="alip-lqr-residuals")
-        wandb.init(project="alip-lqr-residual", entity="minkukim")
+        wandb.init(project="alip", entity="minkukim")
 
         params.log_to_wandb()
         checkpoint_path = os.path.join(
@@ -193,11 +193,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '--use_wandb',
         type=bool,
-        default=True,
+        default=False,
     )
     args = parser.parse_args()
 
     train_and_test(
         Hyperparams(data_path=args.data_path),
-        use_wandb=True
+        use_wandb=False
     )

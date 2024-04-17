@@ -78,7 +78,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
         sim_env.get_input_port_by_name('footstep_command')
     )
     diagram = builder.Build()
-    DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
+    #DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
     return sim_env, controller, diagram
 
 def check_termination(sim_env, diagram_context) -> bool:
@@ -107,18 +107,18 @@ def run(sim_env, controller, diagram):
         )
     )
 
-    #datapoint = ic_generator.random()
-    #v_des_theta = np.pi / 6
-    #v_des_norm = 1.0
-    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    
     datapoint = ic_generator.random()
-    v_des_norm = 1.2
+    v_des_theta = np.pi / 6
+    v_des_norm = 1.0
+    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
+    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    
+    #datapoint = ic_generator.random()
+    #v_des_norm = 1.0
+    #v_norm = np.random.uniform(0.2, v_des_norm)
     #coeff = np.random.uniform(0., 0.2)
-    datapoint['desired_velocity'] = np.array([v_norm, 0])
+    #datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
@@ -154,7 +154,7 @@ def run(sim_env, controller, diagram):
     HMAPtmp = []
     COST_GRIDtmp = []
     Terminate = False
-    for i in range(1, 400):
+    for i in range(1, 500):
         if check_termination(sim_env, context):
             print(context.get_time()-t_init)
             print('terminate')
@@ -181,22 +181,26 @@ def run(sim_env, controller, diagram):
         ALIPtmp.append(alip)
         FOOTSTEPtmp.append(footstep)
         HMAPtmp.append(hmap)
+        time = context.get_time()-t_init
 
-    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, Terminate
+    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, Terminate, time
 
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
+    #checkpoint_path = os.path.join(
+    #    perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
     checkpoint_path = os.path.join(
-        perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
-    
+        perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
     sim_params.visualize = False
     ALIP = []
     FOOTSTEP = []
     HMAP = []
-    #COST_GRID = []
+    terrain = 'params/stair_curriculum.yaml'
+    sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+    sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path)
 
-    for i in range(200):
+    for i in range(100):
         #rand = np.random.randint(1, 11)
         #if rand in [1, 2, 3, 4,]:
         #    terrain = 'params/wavy_terrain.yaml'
@@ -204,16 +208,17 @@ def main():
         #else:
         #    terrain = 'params/wavy_test.yaml'
         #    print('wavy test')
-        terrain = 'params/stair_curriculum.yaml'
-        sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-        sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path)
         print(i)
-        alip, footstep, hmap, Terminate = run(sim_env, controller, diagram)
-        if not Terminate:
+        alip, footstep, hmap, Terminate, time = run(sim_env, controller, diagram)
+        print(time)
+        if time > 15:
             ALIP.extend(alip)
             FOOTSTEP.extend(footstep)
             HMAP.extend(hmap)
-
+        #if not Terminate:
+        #    ALIP.extend(alip)
+        #    FOOTSTEP.extend(footstep)
+        #    HMAP.extend(hmap)
 
     print(np.array(ALIP).shape)
     print(np.array(FOOTSTEP).shape)

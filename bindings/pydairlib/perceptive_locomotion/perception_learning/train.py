@@ -84,43 +84,47 @@ class CustomNetwork(nn.Module):
         n_input_channels = 3
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
+            nn.RReLU(),
             nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
+            nn.RReLU(),
             nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
+            nn.RReLU(),
             nn.Conv2d(128, 64, kernel_size=4, stride=2, padding=0),
-            nn.ReLU(),
+            nn.RReLU(),
             nn.Flatten(),
         )
 
         # MLP for ALIP state
         alip_state_dim = 4
         self.alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(alip_state_dim, 128)),
-            nn.ReLU(),  # Using ReLU activation for ALIP MLP
-            layer_init(nn.Linear(128, 64)),
-            nn.ReLU(),  # Using ReLU activation for ALIP MLP
+            layer_init(nn.Linear(alip_state_dim, 256)),
+            nn.RReLU(),
+            layer_init(nn.Linear(256, 256)),
+            nn.RReLU(),
+            layer_init(nn.Linear(256, 64)),
+            nn.RReLU(),
         )
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),  # Updated input size
-            nn.ReLU(),  # Using ReLU activation
+            layer_init(nn.Linear(320, 256)),
+            nn.RReLU(),
             layer_init(nn.Linear(256, 256)),
-            nn.ReLU(),  # Using ReLU activation
-            layer_init(nn.Linear(256, self.latent_dim_pi), std = 0.03),
-            nn.ReLU(),  # Using ReLU activation
+            nn.RReLU(),
+            layer_init(nn.Linear(256, 256)),
+            nn.RReLU(),
+            layer_init(nn.Linear(256, self.latent_dim_pi), std = 0.1),
+            nn.RReLU(),
         )
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),  # Updated input size
-            nn.ReLU(),  # Using ReLU activation
-            layer_init(nn.Linear(256, 256)),
-            nn.ReLU(),  # Using ReLU activation
-            layer_init(nn.Linear(256, self.latent_dim_vf), std = 1.),
-            nn.ReLU(),  # Using ReLU activation
+            layer_init(nn.Linear(320, 128)),
+            nn.RReLU(),
+            layer_init(nn.Linear(128, 128)),
+            nn.RReLU(),
+            layer_init(nn.Linear(128, self.latent_dim_vf), std = 1.),
+            nn.RReLU(),
         )
         # Initialize the weights using Xavier initialization
         #self._initialize_weights()
@@ -130,7 +134,7 @@ class CustomNetwork(nn.Module):
     #        if isinstance(m, nn.Linear):
     #            nn.init.xavier_uniform_(m.weight)
     #            nn.init.constant_(m.bias, 0.0)
-        
+          
     def forward(self, observations: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         return self.forward_actor(observations), self.forward_critic(observations)
 
@@ -224,8 +228,8 @@ def _run_training(config, args):
     else:
         tensorboard_log = f"{log_dir}runs/test"        
         #model = PPO(
-        #    policy_type, env, learning_rate = linear_schedule(0.003), n_steps=int(2048/num_env), n_epochs=10,
-        #    batch_size=64*num_env, ent_coef=0.03,
+        #    policy_type, env, learning_rate = linear_schedule(0.005), n_steps=int(2048/num_env), n_epochs=10,
+        #    batch_size=256*num_env, #ent_coef=0.03,
         #    verbose=1,
         #    tensorboard_log=tensorboard_log,)
         
@@ -233,11 +237,11 @@ def _run_training(config, args):
         #model_path = path.join(test_folder, 'best_model.zip')
         #model_path = 'PPO_studentNN_stair_imitation.zip'
 
-        model_path = 'PPO_studentNN_Relu'
-        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.15,
-                        clip_range = linear_schedule(0.15), target_kl = 0.02, ent_coef=0.01,
-                        n_steps=int(256*num_env/num_env), n_epochs=6,
-                        batch_size=256*num_env, seed=42, device='auto',
+        model_path = 'PPO_studentNN_tanh.zip'
+        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-6), max_grad_norm = 0.1,
+                        clip_range = linear_schedule(0.15), target_kl = 0.03, ent_coef=0.01,
+                        n_steps=int(500*num_env/num_env), n_epochs=5,
+                        batch_size=500*num_env, seed=42, device='auto',
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via "
@@ -296,7 +300,7 @@ def _main():
     elif args.train_single_env:
         num_env = 1
     else:
-        num_env = 16
+        num_env = 8
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
@@ -305,7 +309,7 @@ def _main():
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 500,
+        "model_save_freq": 1000,
         #"policy_kwargs": {'activation_fn': ReLUSquared, #th.nn.Tanh,        # activation function | th.nn.ReLU,
         #                  'net_arch': {'pi': [64, 64, 64, 64], # policy and value networks
         #                               'vf': [64, 64, 64, 64]}},

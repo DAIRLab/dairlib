@@ -1,0 +1,8 @@
+tracker_params_yaml: "examples/perceptive_locomotion/camera_calib/feature_tracking_params_cassie.yaml"
+sensor_extrinsics_yaml: "examples/perceptive_locomotion/camera_calib/cassie_hardware.yaml"
+sensor_intrinsics_yaml: "examples/perceptive_locomotion/camera_calib/d455_intrinsics.yaml"
+rgb_topic: "/camera/color/image_raw"
+depth_topic: "/camera/aligned_depth_to_color/image_raw"
+landmark_channel: "CASSIE_EKF_LANDMARKS"
+max_depth: 2.5
+min_depth: 0.4

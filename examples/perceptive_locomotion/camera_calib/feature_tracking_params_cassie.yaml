@@ -1,6 +1,6 @@
-num_pts: 10
+num_pts: 15
 num_aruco: 0
-clone_states: 100
+clone_states: 1000
 fast_threshold: 20
 grid_x: 5
 grid_y: 4

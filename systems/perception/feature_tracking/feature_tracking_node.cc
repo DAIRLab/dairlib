@@ -1,4 +1,5 @@
 #include "feature_tracking_node.h"
+#include "systems/perception/feature_tracking/ov_core/feat/Feature.h"
 
 namespace dairlib {
 namespace perception {
@@ -64,33 +65,67 @@ FeatureTrackingNode::FeatureTrackingNode(
 
 }
 
-Eigen::Vector3d FeatureTrackingNode::Reproject3d(
-    const cv::KeyPoint& point, const cv::Mat& depth) const {
-  int u = point.x;
-  int v = point.y;
+// Reference:
+// https://github.com/IntelRealSense/librealsense/blob/4673a37d981164af8eeb8e296e430fc1427e008d/src/rs.cpp#L3576
+Eigen::Vector3d FeatureTrackingNode::DeprojectLatest3d(
+  const ov_core::Feature &feature, const cv::Mat& depth) const {
+  const Eigen::VectorXf& uv = feature.uvs.at(cam_id_).back();
 
   // Extracting depth from depth map
-  float z = depth.at<float>(v, u);
+  int u = static_cast<int>(uv(0));
+  int v = static_cast<int>(uv(1));
+  ushort z_int = depth.at<ushort>(u, v);
+  float z = static_cast<float>(z_int) * params_.intrinsics.at("depth_scale");
+
+  if (z > params_.max_depth || z < params_.min_depth) {
+    return Vector3d::Constant(std::nan(""));
+  }
 
   float cx = params_.intrinsics.at("center_x");
   float cy = params_.intrinsics.at("center_y");
   float fx = params_.intrinsics.at("focal_x");
   float fy = params_.intrinsics.at("focal_y");
+  float c0 = params_.intrinsics.at("dc0");
+  float c1 = params_.intrinsics.at("dc1");
+  float c2 = params_.intrinsics.at("dc2");
+  float c3 = params_.intrinsics.at("dc3");
+  float c4 = params_.intrinsics.at("dc4");
 
-  // TODO (@Brian-Acosta) check chat-gpt's work here
   // Reprojecting into 3D space
-  float x = (u - cx) * depth / fx;
-  float y = (v - cy) * depth / fy;
+  float x = (uv(0) - cx) / fx;
+  float y = (uv(1) - cy) / fy;
 
-  return Vector3d(x, y, z);
+  float xo = x;
+  float yo = y;
+
+  // need to loop until convergence
+  for (int i = 0; i < 10; i++) {
+    float r2 = x * x + y * y;
+    float icdist = (float)1 / (float)(1 + ((c4 * r2 + c1) * r2 + c0) * r2);
+    float xq = x / icdist;
+    float yq = y / icdist;
+    float delta_x = 2 * c2 * xq * yq + c3 * (r2 + 2 * xq * xq);
+    float delta_y = 2 * c3 * xq * yq + c2 * (r2 + 2 * yq * yq);
+    x = (xo - delta_x) * icdist;
+    y = (yo - delta_y) * icdist;
+  }
+  
+  Vector3d xyz(z * x, z * y, z);
+//  std::cout << xyz.transpose() << std::endl;
+  return params_.sensor_orientation * xyz + params_.sensor_translation;
 }
 
 void FeatureTrackingNode::ImagePairCallback(
     const sensor_msgs::ImageConstPtr& color,
     const sensor_msgs::ImageConstPtr& depth) {
 
-  cv_bridge::CvImageConstPtr img_ptr = cv_bridge::toCvShare(
-      color, sensor_msgs::image_encodings::MONO8);
+  cv_bridge::CvImageConstPtr img_ptr = cv_bridge::toCvCopy(
+      color, sensor_msgs::image_encodings::RGB8);
+
+  cv::Mat frame = img_ptr->image;
+  cv::cvtColor(frame, frame, cv::COLOR_RGB2GRAY);
+
+  cv_bridge::CvImageConstPtr depth_ptr = cv_bridge::toCvShare(depth);
 
   double timestamp = img_ptr->header.stamp.toSec();
 
@@ -98,7 +133,7 @@ void FeatureTrackingNode::ImagePairCallback(
   CameraData data;
   data.timestamp = timestamp;
   data.sensor_ids.push_back(cam_id_);
-  data.images.push_back(img_ptr->image);
+  data.images.push_back(frame);
   data.masks.push_back(mask_);
   tracker_->feed_new_camera(data);
 
@@ -107,9 +142,10 @@ void FeatureTrackingNode::ImagePairCallback(
     cv::Mat img_active;
     tracker_->display_active(img_active, 255, 0, 0, 0, 0, 255);
     cv::imshow("Active Tracks", img_active);
+    cv::waitKey(10);
   }
 
-  // Delete lost and expired features
+  // Delete lost features
   std::shared_ptr<FeatureDatabase> features = tracker_->get_feature_database();
   std::vector<std::shared_ptr<Feature>> lost =
       features->features_not_containing_newer(timestamp);
@@ -119,30 +155,33 @@ void FeatureTrackingNode::ImagePairCallback(
     ids_to_delete_.push_back(feat->featid);
   }
 
-  timestamps_.push(timestamp);
+  // Delete expired features
+  features->cleanup();
 
-  if (timestamps_.size() > params_.tracker_params.clone_states) {
-    std::vector<std::shared_ptr<Feature>> feats_marg =
-        features->features_containing(timestamps_.front());
-    for (auto& feat: feats_marg) {
+  // Get 3d coords of valid features
+  lcmt_landmark_array landmarks{};
+  for (const auto& feat: features->features_containing(timestamp)) {
+    Vector3d xyz = DeprojectLatest3d(*feat, depth_ptr->image);
+    lcmt_landmark landmark;
+    if (not xyz.hasNaN()) {
+      landmark.id = feat->featid;
+      memcpy(landmark.position, xyz.data(), 3 * sizeof(double));
+      landmarks.landmarks.push_back(landmark);
+    } else {
       feat->to_delete = true;
       ids_to_delete_.push_back(feat->featid);
     }
-    timestamps_.pop();
   }
   features->cleanup();
 
   // publish feature message
-  lcmt_landmark_array landmarks;
-  landmarks.num_landmarks = features->size();
+  landmarks.num_landmarks = landmarks.landmarks.size();
   landmarks.num_expired = ids_to_delete_.size();
   landmarks.utime = color->header.stamp.toNSec() / 1e3;
   landmarks.expired_landmark_ids.clear();
   for (const auto & id : ids_to_delete_) {
     landmarks.expired_landmark_ids.push_back(id);
   }
-  // TODO (@Brian-Acosta) do the depth re-projection here - handle edge case of
-  //  bad depth info
   lcm_.publish(params_.landmark_channel, &landmarks);
 
   // finally, cleanup the deletion list

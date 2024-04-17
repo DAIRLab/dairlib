@@ -36,6 +36,8 @@ struct feature_tracking_node_params {
   std::string rgb_topic;
   std::string depth_topic;
   std::string landmark_channel;
+  double max_depth;
+  double min_depth;
   klt_tracking_params tracker_params;
   Eigen::Matrix3d sensor_orientation;
   Eigen::Vector3d sensor_translation;
@@ -51,6 +53,8 @@ struct feature_tracking_node_params {
     a->Visit(DRAKE_NVP(rgb_topic));
     a->Visit(DRAKE_NVP(depth_topic));
     a->Visit(DRAKE_NVP(landmark_channel));
+    a->Visit(DRAKE_NVP(max_depth));
+    a->Visit(DRAKE_NVP(min_depth));
 
     tracker_params = drake::yaml::LoadYamlFile<klt_tracking_params>(
         tracker_params_yaml);
@@ -90,8 +94,8 @@ class FeatureTrackingNode {
       const sensor_msgs::ImageConstPtr& color,
       const sensor_msgs::ImageConstPtr& depth);
 
-  Eigen::Vector3d Reproject3d(
-      const cv::KeyPoint& point, const cv::Mat& depth) const;
+  Eigen::Vector3d DeprojectLatest3d(
+      const ov_core::Feature& feature, const cv::Mat& depth) const;
 
   // ROS
   ros::NodeHandle& node_handle_;

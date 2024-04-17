@@ -90,6 +90,9 @@ class FeatureTrackingNode {
       const sensor_msgs::ImageConstPtr& color,
       const sensor_msgs::ImageConstPtr& depth);
 
+  Eigen::Vector3d Reproject3d(
+      const cv::KeyPoint& point, const cv::Mat& depth) const;
+
   // ROS
   ros::NodeHandle& node_handle_;
 

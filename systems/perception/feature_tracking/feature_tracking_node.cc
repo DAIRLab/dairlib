@@ -13,6 +13,7 @@ using ov_core::CamRadtan;
 using ov_core::CamBase;
 
 using Eigen::VectorXd;
+using Eigen::Vector3d;
 using Eigen::MatrixXd;
 
 FeatureTrackingNode::FeatureTrackingNode(
@@ -61,6 +62,27 @@ FeatureTrackingNode::FeatureTrackingNode(
   img_pair_sub_.connectInput(color_img_sub_, depth_img_sub_);
   img_pair_sub_.registerCallback(&FeatureTrackingNode::ImagePairCallback, this);
 
+}
+
+Eigen::Vector3d FeatureTrackingNode::Reproject3d(
+    const cv::KeyPoint& point, const cv::Mat& depth) const {
+  int u = point.x;
+  int v = point.y;
+
+  // Extracting depth from depth map
+  float z = depth.at<float>(v, u);
+
+  float cx = params_.intrinsics.at("center_x");
+  float cy = params_.intrinsics.at("center_y");
+  float fx = params_.intrinsics.at("focal_x");
+  float fy = params_.intrinsics.at("focal_y");
+
+  // TODO (@Brian-Acosta) check chat-gpt's work here
+  // Reprojecting into 3D space
+  float x = (u - cx) * depth / fx;
+  float y = (v - cy) * depth / fy;
+
+  return Vector3d(x, y, z);
 }
 
 void FeatureTrackingNode::ImagePairCallback(
@@ -116,10 +138,10 @@ void FeatureTrackingNode::ImagePairCallback(
   landmarks.num_expired = ids_to_delete_.size();
   landmarks.utime = color->header.stamp.toNSec() / 1e3;
   landmarks.expired_landmark_ids.clear();
-  for(const auto & id : ids_to_delete_) {
+  for (const auto & id : ids_to_delete_) {
     landmarks.expired_landmark_ids.push_back(id);
   }
-  // TODO (@Brian-Acosta) do the depth reprojection here - handle edge case of
+  // TODO (@Brian-Acosta) do the depth re-projection here - handle edge case of
   //  bad depth info
   lcm_.publish(params_.landmark_channel, &landmarks);
 

@@ -17,9 +17,10 @@ cc_library(
 cc_binary(
     name = "run_feature_tracking",
     srcs = ["run_feature_tracking.cc"],
+    tags = ["ros"],
     deps = [
         "//systems/perception/feature_tracking:feature_tracking_node",
-        "@gflags"
+        "@gflags",
     ],
 )
 

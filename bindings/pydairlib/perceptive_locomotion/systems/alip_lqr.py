@@ -10,6 +10,7 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+from pydrake.common.value import Value
 from pydrake.systems.all import (
     DiscreteTimeLinearQuadraticRegulator,
     BasicVector,
@@ -33,6 +34,8 @@ from pydairlib.systems.footstep_planning import (
     Stance,
 )
 
+from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
+    import ElevationMappingConverter, ElevationMapQueryObject, ElevationMapOptions
 
 # parameters needed to define the discrete time ALIP model
 @dataclass
@@ -84,7 +87,7 @@ def calc_collision_cost_grid(X: np.ndarray, Y: np.ndarray, ud) -> np.ndarray:
 
 class AlipFootstepLQR(LeafSystem):
 
-    def __init__(self, alip_params: AlipFootstepLQROptions):
+    def __init__(self, alip_params: AlipFootstepLQROptions, elevation: bool=False):
         super().__init__()
 
         # DLQR params
@@ -116,8 +119,14 @@ class AlipFootstepLQR(LeafSystem):
             ).get_index(),
             'state': self.DeclareVectorInputPort(
                 "alip_state", 4
-            ).get_index()
+            ).get_index(),
         }
+        if elevation:
+            self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
+                "height_map_query",
+                model_value=Value(ElevationMapQueryObject())
+            ).get_index()
+
         self.output_port_indices = {
             'footstep_command': self.DeclareVectorOutputPort(
                 "footstep_command", 3, self.calculate_optimal_footstep

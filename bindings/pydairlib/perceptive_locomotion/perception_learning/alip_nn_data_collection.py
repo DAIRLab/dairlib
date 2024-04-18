@@ -172,7 +172,7 @@ def run(sim_env, controller, diagram):
         hmap_query = controller.EvalAbstractInput(
             controller_context, controller.input_port_indices['height_map']
         ).get_value()
-
+        print(hmap_query)
         # query for cropped height map at nominal footstep location
         hmap = hmap_query.calc_height_map_stance_frame(
             np.array([ud[0], ud[1], 0])

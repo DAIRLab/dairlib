@@ -32,11 +32,90 @@ from pydairlib.multibody import (
 )
 
 from pydairlib.systems.footstep_planning import Stance
-from pydairlib.perceptive_locomotion.height_map_server import (
-    HeightMapQueryObject, HeightMapOptions
-)
+#from pydairlib.perceptive_locomotion.height_map_server import (
+#    HeightMapQueryObject, HeightMapOptions
+#)
 
 from grid_map import GridMap, InterpolationMethods
+
+@dataclass
+class ElevationMapOptions:
+    nx: int = 64
+    ny: int = 64
+    resolution: float = 0.025
+    meshcat = None
+
+# In order to request an up-to-date heightmap from within the
+# LQR controller, we need to be able to pass the query point
+# from the LQR controller back to the height map.
+#
+# The query object lets us do that without creating an algebraic
+# loop, similar to Drake's SceneGraph implementation
+class ElevationMapQueryObject:
+    def __init__(self):
+        self.height_map_server = None
+        self.context = None
+ 
+    def set(self, context: Context, server):
+        self.height_map_server = server
+        self.context = context
+
+    def unset(self):
+        self.context = None
+        self.height_map_server = None
+
+    def calc_height_map_stance_frame(self, query_point):
+        if self.context is None:
+            raise RuntimeError( 
+                'Heightmap Queries are one-time use objects'
+                'that must be set from inside the HeightMapServer. '
+                'Context has not been set or is out-of-date')
+        hmap = \
+            self.height_map_server .get_height_map_in_stance_frame_from_inputs(
+                self.context, query_point
+            )
+        return hmap
+
+    def calc_z_stance_frame(self, query_point):
+        if self.context is None:
+            raise RuntimeError( 
+                'Heightmap Queries are one-time use objects'
+                'that must be set from inside the HeightMapServer. '
+                'Context has not been set or is out-of-date')
+        hmap = \
+            self.height_map_server .get_z_in_stance_frame_from_inputs(
+                self.context, query_point
+            )
+        return hmap
+    
+    def calc_height_map_world_frame(self, query_point):
+        # get height map in world frame
+        if self.context is None:
+            raise RuntimeError(
+                'Heightmap Queries are one-time use objects'
+                'that must be set from inside the HeightMapServer. '
+                'Context has not been set or is out-of-date')
+        # grab original hmap in world frame
+        hmap = \
+            self.height_map_server .get_height_map_in_world_frame_from_inputs(
+                self.context, query_point
+            )
+        return hmap
+
+    def plot_surface(self, path, X, Y, Z, rgba):
+        if self.height_map_server.map_opts.meshcat is not None:
+            self.height_map_server.map_opts.meshcat.PlotSurface(
+                path, X, Y, Z, rgba
+            )
+            self.height_map_server.map_opts.meshcat.Flush()
+
+    def plot_colored_surface(self, path, X, Y, Z, R, G, B):
+        if self.height_map_server.map_opts.meshcat is not None:
+            PlotColoredSurface(path,
+                self.height_map_server.map_opts.meshcat,
+                X, Y, Z, R, G, B, False, 1.0
+            )
+            self.height_map_server.map_opts.meshcat.Flush()
 
 
 class ElevationMappingConverter(LeafSystem):
@@ -45,7 +124,7 @@ class ElevationMappingConverter(LeafSystem):
         and calculates a height map in the stance frame
     """
     def __init__(
-        self, urdf: str, map_opts: HeightMapOptions = HeightMapOptions()):
+        self, urdf: str, map_opts: ElevationMapOptions = ElevationMapOptions()):
 
         super().__init__()
         self.map_opts = map_opts
@@ -94,11 +173,11 @@ class ElevationMappingConverter(LeafSystem):
 
         self.input_port_indices['elevation'] = self.DeclareAbstractInputPort(
             'elevation', Value(GridMap())
-        )
+        ).get_index()
 
         self.output_port_indices['query_object'] = self.DeclareAbstractOutputPort(
             name="height_map_stance_frame",
-            alloc=lambda: Value(HeightMapQueryObject()),
+            alloc=lambda: Value(ElevationMapQueryObject()),
             calc=self.output_query_object
         )
 
@@ -126,7 +205,7 @@ class ElevationMappingConverter(LeafSystem):
         grid_map = self.EvalAbstractInput(
             context, self.input_port_indices['elevation']).get_value()
 
-        return self.get_heightmap_3d(x, stance, center, grid_map)
+        return self.get_heightmap_3d(x, stance, grid_map, center)
 
     def get_height_map_in_world_frame_from_inputs(
         self, context: Context, center: np.ndarray
@@ -145,13 +224,13 @@ class ElevationMappingConverter(LeafSystem):
         grid_map = self.EvalAbstractInput(
             context, self.input_port_indices['elevation']).get_value()
 
-        hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, center, grid_map)
+        hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, grid_map, center)
 
         return hmap_xyz
 
     def get_height_at_point(self, query_point: np.ndarray, grid_map) -> float:
         return grid_map.atPosition(
-            query_point[:2], 'elevation', InterpolationMethods.INTER_LINEAR
+            'elevation', query_point[:2], InterpolationMethods.INTER_LINEAR
         )
 
     def stance_pos_in_world(self, x: np.ndarray, stance: Stance) -> np.ndarray:

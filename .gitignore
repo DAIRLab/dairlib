@@ -16,5 +16,7 @@ attic/multibody/solver_log/
 *.npy
 *.pth
 wandb/
+logs/
+rl/
 
 /venv/

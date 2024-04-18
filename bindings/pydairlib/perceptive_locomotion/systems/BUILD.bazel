@@ -17,6 +17,8 @@ py_library(
     deps = [
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
+        "//bindings/grid_map",
+        ":elevation_map_converter",
     ],
 )
 
@@ -26,6 +28,19 @@ py_library(
     deps = [
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "elevation_map_converter",
+    srcs = ["elevation_map_converter.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/geometry:meshcat_utils_py",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+        "//bindings/grid_map",
     ],
 )
 
@@ -47,6 +62,7 @@ py_library(
     deps = [
         ":alip_lqr",
         ":height_map_server",
+        ":elevation_map_converter",
         "//bindings/pydairlib/cassie:cassie_utils_py",
         "//bindings/pydairlib/common",
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",

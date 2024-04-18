@@ -237,11 +237,12 @@ def _run_training(config, args):
         #model_path = path.join(test_folder, 'best_model.zip')
         #model_path = 'PPO_studentNN_stair_imitation.zip'
 
+        #model_path = 'rl_model_168000_steps.zip' # using tanh
         model_path = 'PPO_studentNN_tanh.zip'
-        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-6), max_grad_norm = 0.1,
-                        clip_range = linear_schedule(0.15), target_kl = 0.03, ent_coef=0.01,
-                        n_steps=int(500*num_env/num_env), n_epochs=5,
-                        batch_size=500*num_env, seed=42, device='auto',
+        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-6), max_grad_norm = 0.2,
+                        clip_range = linear_schedule(0.2), target_kl = 0.05, ent_coef=0.01,
+                        n_steps=int(500*num_env/num_env), n_epochs=10,
+                        batch_size=128*num_env, seed=22, device='auto',
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via "
@@ -300,16 +301,16 @@ def _main():
     elif args.train_single_env:
         num_env = 1
     else:
-        num_env = 8
+        num_env = 12
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 2e6 if not args.test else 5, # 2e6
+        "total_timesteps": 1e6 if not args.test else 5, # 2e6
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 1000,
+        "model_save_freq": 2000,
         #"policy_kwargs": {'activation_fn': ReLUSquared, #th.nn.Tanh,        # activation function | th.nn.ReLU,
         #                  'net_arch': {'pi': [64, 64, 64, 64], # policy and value networks
         #                               'vf': [64, 64, 64, 64]}},

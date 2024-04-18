@@ -32,8 +32,8 @@ from pydairlib.geometry.convex_polygon import ConvexPolygon, ConvexPolygonSet
 import numpy as np
 from grid_map import GridMap
 
+from pydrake.geometry import Rgba
 # controller_type = 'mpfc'
-
 
 controller_type = 'lqr'
 elevation_mapping_yaml = 'bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params_simulation.yaml'
@@ -64,7 +64,7 @@ def main():
     )
     builder = DiagramBuilder()
 
-    controller = AlipFootstepLQR(controller_params) if (
+    controller = AlipFootstepLQR(controller_params, True) if (
         controller_type == 'lqr') else AlipMPFC(
         controller_params, sim_env.controller_plant
     )
@@ -108,6 +108,11 @@ def main():
         sim_env.get_output_port_by_name("alip_state"),
         controller.get_input_port_by_name("state")
     )
+    if sim_params.simulate_perception:    
+        builder.Connect(
+            sim_env.get_output_port_by_name("height_map"),
+            controller.get_input_port_by_name("height_map")
+        )
     #if controller_type == 'mpfc':
     #    builder.Connect(
     #        sim_env.get_output_port_by_name('state'),
@@ -123,6 +128,7 @@ def main():
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
+    controller_context = controller.GetMyMutableContextFromRoot(context)
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
     sim_env.initialize_state(context, diagram)
 
@@ -132,7 +138,25 @@ def main():
     t_next = 0.05
     while t_next < 20:
         simulator.AdvanceTo(t_next)
-        elevation_map = sim_env.get_output_port_by_name('height_map').Eval(sim_context)
+
+        hmap_query = controller.EvalAbstractInput(
+            controller_context, controller.input_port_indices['height_map']
+        ).get_value()
+        #print(hmap_query)
+        xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
+        xd = xd_ud[:4]
+        ud = xd_ud[4:]
+        x = controller.get_output_port_by_name('x').Eval(controller_context)
+        hmap = hmap_query.calc_height_map_stance_frame(
+            np.array([ud[0], ud[1], 0])
+        )
+        residual_grid_world = hmap_query.calc_height_map_world_frame(
+            np.array([ud[0], ud[1], 0])
+        )
+        hmap_query.plot_surface(
+            "residual", residual_grid_world[0], residual_grid_world[1],
+            residual_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
+        #print(hmap)
         #print(elevation_map)
         t_next += 0.05
 

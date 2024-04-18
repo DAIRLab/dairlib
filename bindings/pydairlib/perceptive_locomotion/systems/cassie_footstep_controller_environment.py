@@ -20,6 +20,8 @@ from pydairlib.perceptive_locomotion.systems.alip_lqr import \
     AlipFootstepLQROptions
 from pydairlib.perceptive_locomotion.systems.height_map_server \
     import HeightMapServer, HeightMapOptions
+from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
+    import ElevationMappingConverter, ElevationMapOptions
 from pydairlib.multibody import SquareSteppingStoneList
 
 from pydrake.multibody.plant import MultibodyPlant
@@ -158,6 +160,31 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_depth_image(),
                 self.perception_module.get_input_port_depth_image("pelvis_depth")
             )
+###############################
+            hmap_options = ElevationMapOptions()
+            hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
+            self.height_map_server = ElevationMappingConverter(
+                params.urdf,
+                hmap_options
+            )
+            builder.AddSystem(self.height_map_server)
+            builder.Connect(
+                self.perception_module.get_output_port_elevation_map(),
+                self.height_map_server.get_input_port_by_name('elevation'),
+            )
+            #builder.Connect(
+            #    self.cassie_sim.get_output_port_state_lcm(),
+            #    self.controller.get_input_port_state(),
+            #)
+            builder.Connect(
+                self.controller.get_output_port_fsm(),
+                self.height_map_server.get_input_port_by_name('fsm')
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_state(),
+                self.height_map_server.get_input_port_by_name('x')
+            )
+##############################
         else:
             hmap_options = HeightMapOptions()
             hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
@@ -257,7 +284,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         }
         if self.params.simulate_perception:
             output_port_indices['height_map'] = builder.ExportOutput(
-                self.perception_module.get_output_port_elevation_map(),
+                self.height_map_server.get_output_port(),
                 'elevation_map'
             )
             output_port_indices['lcmt_robot_output'] = builder.ExportOutput( ###

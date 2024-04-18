@@ -77,7 +77,7 @@ Eigen::Vector3d FeatureTrackingNode::DeprojectLatest3d(
   ushort z_int = depth.at<ushort>(u, v);
   float z = static_cast<float>(z_int) * params_.intrinsics.at("depth_scale");
 
-  if (z > params_.max_depth || z < params_.min_depth) {
+  if (z > params_.max_depth or z < params_.min_depth) {
     return Vector3d::Constant(std::nan(""));
   }
 

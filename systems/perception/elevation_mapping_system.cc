@@ -208,7 +208,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
         ) * contact.second;
         try {
 
-          double sub_map_length = 4.0 * grid_map.getResolution();
+          double sub_map_length = 3.0 * grid_map.getResolution();
           grid_map::Position center_sub_map = stance_pos.head<2>();
           grid_map::Length length_sub_map = {sub_map_length, sub_map_length};
           bool success;

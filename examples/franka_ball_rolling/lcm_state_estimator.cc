@@ -8,7 +8,6 @@
 #include <drake/lcm/drake_lcm.h>
 
 #include "examples/franka_ball_rolling/systems/c3_state_estimator.h"
-#include "examples/franka_ball_rolling/systems/robot_output_passthrough.h"
 #include "systems/robot_lcm_systems.h"
 #include <drake/multibody/tree/multibody_element.h>
 #include <drake/multibody/parsing/parser.h>

@@ -8,22 +8,18 @@ cc_library(
         "move_to_initial.cc",
         "track_target_generator.cc",
         "heuristic_generator.cc",
-        "c3_ball_rolling_controller.cc",
         "control_refine_sender.cc",
         "gravity_compensator.cc",
         "c3_state_estimator.cc",
-        "robot_output_passthrough.cc",
         "c3_state_sender.cc"
     ],
     hdrs = [
         "move_to_initial.h",
         "track_target_generator.h",
         "heuristic_generator.h",
-        "c3_ball_rolling_controller.h",
         "control_refine_sender.h",
         "gravity_compensator.h",
         "c3_state_estimator.h",
-        "robot_output_passthrough.h",
         "c3_state_sender.h"
     ],
     deps = [

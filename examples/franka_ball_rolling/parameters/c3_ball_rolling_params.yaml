@@ -1,10 +1,10 @@
 # --------------------------  URDF Model Path Settings  -----------------------------#
 # full model urdfs
-franka_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/panda_arm.urdf
-end_effector_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_full.urdf
-ball_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf
-ground_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf
-offset_model: examples/franka_ball_rolling/robot_properties_fingers/urdf/table_offset.urdf
+franka_model: examples/franka_ball_rolling/robot_properties/urdf/panda_arm.urdf
+end_effector_model: examples/franka_ball_rolling/robot_properties/urdf/end_effector_full.urdf
+ball_model: examples/franka_ball_rolling/robot_properties/urdf/sphere.urdf
+ground_model: examples/franka_ball_rolling/robot_properties/urdf/ground.urdf
+offset_model: examples/franka_ball_rolling/robot_properties/urdf/table_offset.urdf
 
 # simple model urdfs
 

@@ -144,9 +144,9 @@ int DoMain(int argc, char* argv[]){
   Parser parser_lcs(&plant_lcs);
   // TODO: create a high level planning parameter yaml file to save the simplified model urdf path
   // (maybe can integrate with HeuristicGaitParameters)
-  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties_fingers/urdf/end_effector_simple.urdf");
-  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties_fingers/urdf/sphere.urdf");
-  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties_fingers/urdf/ground.urdf");
+  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties/urdf/end_effector_simple.urdf");
+  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties/urdf/sphere.urdf");
+  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties/urdf/ground.urdf");
   RigidTransform<double> X_WI_lcs = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_G_lcs = RigidTransform<double>(sim_param.ground_offset_frame);
 

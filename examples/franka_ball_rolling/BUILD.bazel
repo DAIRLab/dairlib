@@ -238,22 +238,6 @@ cc_binary(
 )
 
 cc_binary(
-    name = "lcm_simulate_franka",
-    srcs = ["lcm_simulate_franka.cc"],
-    deps = [
-        "//systems:robot_lcm_systems",
-        "//systems:system_utils",
-        "//systems/controllers",
-        "//systems/framework:lcm_driven_loop",
-        "//examples/franka_ball_rolling:simulate_franka_params",
-        "//common",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-    data = ["@drake//manipulation/models/franka_description:models"]
-)
-
-cc_binary(
     name = "lcm_simulate_franka_cleanup",
     srcs = ["lcm_simulate_franka_cleanup.cc"],
     deps = [
@@ -301,22 +285,6 @@ cc_binary(
         "@gflags",
     ],
     data = ["@drake//manipulation/models/franka_description:models"]
-)
-
-cc_binary(
-  name = "lcm_state_estimator",
-  srcs = ["lcm_state_estimator.cc"],
-  deps = ["//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
-          "//examples/franka_ball_rolling:c3_parameters",
-          "//examples/franka_ball_rolling:c3_state_estimator_params",
-          "//systems:robot_lcm_systems",
-          "//systems:system_utils",
-          "//systems/framework:lcm_driven_loop",
-          "@drake//:drake_shared_library",
-          "@gflags"
-  ],
-  data = ["@drake//manipulation/models/franka_description:models"
-  ],
 )
 
 cc_binary(

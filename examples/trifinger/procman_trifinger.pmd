@@ -28,7 +28,7 @@ group "4. Controllers" {
 
 group "5. ROS-LCM Bridge" {
     cmd "ROS-to-LCM" {
-        exec = "ROS_LOCALHOST_ONLY=0 bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge";
+        exec = "bazel-bin/examples/trifinger/trifinger_ros_lcm_bridge";
         host = "localhost";
     }
     cmd "LCM-to-ROS" {

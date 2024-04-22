@@ -15,7 +15,6 @@ services:
       - ~/git/Trifinger/workspace:/home
     environment:
       - DISPLAY=${DISPLAY}
-      #- RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - ROS_LOCALHOST_ONLY=0
       - ROS_DOMAIN_ID=0
     cap_add:

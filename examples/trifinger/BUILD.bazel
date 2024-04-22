@@ -118,7 +118,7 @@ ros_cc_binary(
     data = [
         ":trifinger_urdf",
     ],
-    rmw_implementation = "rmw_cyclonedds_cpp",
+    rmw_implementation = "rmw_fastrtps_cpp",
     deps = [
         "//common",
         "//examples/trifinger/parameters:trifinger_lcm_channels",
@@ -141,7 +141,7 @@ ros_cc_binary(
     data = [
         ":trifinger_urdf",
     ],
-    rmw_implementation = "rmw_cyclonedds_cpp",
+    rmw_implementation = "rmw_fastrtps_cpp",
     deps = [
         "//common",
         "//examples/trifinger/parameters:trifinger_lcm_channels",

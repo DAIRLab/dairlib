@@ -11,7 +11,6 @@ struct ImpedanceControllerParams {
   std::string end_effector_model;
 
   Vector3d tool_attachment_frame;
-  Vector3d ground_offset_frame;
 
   Vector3d translational_stiffness;
   Vector3d rotational_stiffness;
@@ -33,15 +32,6 @@ struct ImpedanceControllerParams {
 
   VectorXd q_init_franka;
   VectorXd initial_start;
-  VectorXd q_init_ball;
-
-  double traj_radius;
-  double phase;
-  double x_c;
-  double y_c;
-  double ball_radius;
-
-  int num_friction_directions;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -49,7 +39,6 @@ struct ImpedanceControllerParams {
     a->Visit(DRAKE_NVP(end_effector_model));
 
     a->Visit(DRAKE_NVP(tool_attachment_frame));
-    a->Visit(DRAKE_NVP(ground_offset_frame));
 
     a->Visit(DRAKE_NVP(translational_stiffness));
     a->Visit(DRAKE_NVP(rotational_stiffness));
@@ -71,14 +60,5 @@ struct ImpedanceControllerParams {
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(initial_start));
-    a->Visit(DRAKE_NVP(q_init_ball));
-
-    a->Visit(DRAKE_NVP(traj_radius));
-    a->Visit(DRAKE_NVP(phase));
-    a->Visit(DRAKE_NVP(x_c));
-    a->Visit(DRAKE_NVP(y_c));
-    a->Visit(DRAKE_NVP(ball_radius));
-
-    a->Visit(DRAKE_NVP(num_friction_directions));
   }
 };

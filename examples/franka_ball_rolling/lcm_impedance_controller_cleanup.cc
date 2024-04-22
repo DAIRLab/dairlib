@@ -51,8 +51,8 @@ int DoMain(int argc, char* argv[]){
 
   MultibodyPlant<double> plant(0.0);
   Parser parser(&plant);
-  parser.AddModels(impedance_param.franka_model);
-  parser.AddModels(impedance_param.end_effector_model);
+  drake::multibody::ModelInstanceIndex franka_index = parser.AddModels(impedance_param.franka_model)[0];
+  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(impedance_param.end_effector_model)[0];
   
   /// Fix base of finger to world
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
@@ -149,9 +149,6 @@ int DoMain(int argc, char* argv[]){
   msg_data[8] = 0;
   msg_data[9] = 0;
   msg_data[10] = 0;
-  msg_data[11] = impedance_param.traj_radius * sin(M_PI * impedance_param.phase / 180.0) + impedance_param.x_c;
-  msg_data[12] = impedance_param.traj_radius * cos(M_PI * impedance_param.phase / 180.0) + impedance_param.y_c;
-  msg_data[13] = impedance_param.ball_radius + impedance_param.ground_offset_frame(2);;
   msg_data[32] = msg_data[7];
   msg_data[33] = msg_data[8];
   msg_data[34] = msg_data[9];

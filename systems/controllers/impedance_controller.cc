@@ -56,7 +56,7 @@ ImpedanceController::ImpedanceController(
           .get_index();
 
   // xee: 7D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 29D + visuals)
-  c3_state_input_port_ =
+  planner_state_input_port_ =
       this->DeclareVectorInputPort(
               "xee, xball, xee_dot, xball_dot, lambda, visualization",
               TimestampedVector<double>(38))
@@ -79,7 +79,7 @@ ImpedanceController::ImpedanceController(
   EE_frame_ = &plant_.GetBodyByName("end_effector_tip").body_frame();
   world_frame_ = &plant_.world_frame();
   // franka joint number
-  n_ = 7;
+  n_ = plant.num_positions();
 
   // define integral term settings
   enable_integral_ = impedance_param_.enable_integral;
@@ -125,6 +125,9 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   // integrator internal drake state, to replace the original mutable class variable, we also make
   // final impedance output torque tau a drake state, so that in CalControl we directly set control
   // torque by accessing the context and drake_state
+
+
+  // get franka state
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_input_port_);
   double timestamp = robot_output->get_timestamp();
@@ -132,26 +135,18 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
-  // get values from c3
+  // get planner command (desired franka state)
   auto c3_output =
-      (TimestampedVector<double>*) this->EvalVectorInput(context, c3_state_input_port_);
-
-
-  // get state estimation
+      (TimestampedVector<double>*) this->EvalVectorInput(context, planner_state_input_port_);
   VectorXd state = c3_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
-  VectorXd lambda = VectorXd::Zero(5); // does not contain the slack variable
-  Vector3d ball_xyz_d(state(25), state(26), state(27));
-  Vector3d ball_xyz(state(28), state(29), state(30));
-
 
   xd.tail(3) << state.head(3);
   Quaterniond orientation_d(state(3), state(4), state(5), state(6));
   xd_dot.tail(3) << state.segment(14, 3);
-  lambda << state.segment(24, 5);
 
-  //update the context_
+  // update the context_
   plant_.SetPositions(&context_, q);
   plant_.SetVelocities(&context_, v);
 
@@ -168,42 +163,33 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
       *EE_frame_, VectorXd::Zero(3),
       *world_frame_, *world_frame_, &J);
 
-  // perform all truncations, since the plant contains the franka and the ball
-  VectorXd q_franka = q.head(n_);
-  VectorXd v_franka = v.head(n_);
-  MatrixXd M_franka = M.block(0 ,0, n_, n_);
-  VectorXd C_franka = C.head(n_);
-  VectorXd tau_g_franka = tau_g.head(n_);
-  MatrixXd J_franka = J.block(0, 0, 6, n_);
-
-  // forward kinematics
+  // forward kinematics to get the task space target pose (state)
   const drake::math::RigidTransform<double> H_W_EE =
     plant_.EvalBodyPoseInWorld(context_, plant_.GetBodyByName("end_effector_tip"));
   const RotationMatrix<double> R_W_EE = H_W_EE.rotation();
-//  Vector3d p = H_W_EE.translation() + R_W_EE * EE_offset_;
   Vector3d p = H_W_EE.translation();
 
   // build task space state vectors, task space state is the end-effecot [orientation, position]
   VectorXd x = VectorXd::Zero(6);
   x.tail(3) << p;
-  VectorXd x_dot = J_franka * v_franka;
+  VectorXd x_dot = J * v;
 
   VectorXd xtilde = xd - x;
   xtilde.head(3) << this->CalcRotationalError(R_W_EE, orientation_d);
   VectorXd xtilde_dot = xd_dot - x_dot;
 
   // M_task_space is the task space intertia matrix, also is the capital Lambda in the appendix of the paper
-  MatrixXd M_inv = M_franka.inverse();
-  MatrixXd M_task_space = (J_franka * M_inv * J_franka.transpose()).inverse(); // apparent task space mass matrix
+  MatrixXd M_inv = M.inverse();
+  MatrixXd M_task_space = (J * M_inv * J.transpose()).inverse(); // apparent task space mass matrix
 
   // use integral term if it is helping, to turn down just set all integral gain to be zero
-  VectorXd tau_int = VectorXd::Zero(7);
+  VectorXd tau_int = VectorXd::Zero(n_);
   VectorXd integrator = VectorXd::Zero(6);
   if (timestamp > 1 && enable_integral_) {
     double dt = timestamp - context.get_abstract_state<double>(prev_time_);
     VectorXd integrator_temp = context.get_discrete_state(integrator_).value();
     integrator = integrator_temp + xtilde * dt;
-    tau_int = J_franka.transpose() * M_task_space * I_ * integrator;
+    tau_int = J.transpose() * M_task_space * I_ * integrator;
     if (SaturatedClamp(tau_int, impedance_param_.integrator_clamp)){
         std::cout << "clamped integrator torque" << std::endl;
         integrator = integrator_temp;
@@ -211,13 +197,13 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
     }
   }
 
-  VectorXd tau = J_franka.transpose() * M_task_space * (K_ * xtilde + B_ * xtilde_dot) + tau_int + C_franka;
+  VectorXd tau = J.transpose() * M_task_space * (K_ * xtilde + B_ * xtilde_dot) + tau_int + C;
 
   // compute nullspace projection, J_gen_inv means generalized inverse of J_franka, used to define the null-space
   // projector, here we use the dynamical consistent generalized inverse, i.e. inverse weighted by the mass matrix
-  MatrixXd J_gen_inv = (J_franka * M_inv * J_franka.transpose()).inverse() * J_franka * M_inv;
-  MatrixXd N = MatrixXd::Identity(7, 7) - J_franka.transpose() * J_gen_inv;
-  tau += N * (K_null_*(qd_null_ - q_franka) - B_null_ * v_franka);
+  MatrixXd J_gen_inv = (J * M_inv * J.transpose()).inverse() * J * M_inv;
+  MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_gen_inv;
+  tau += N * (K_null_* (qd_null_ - q) - B_null_ * v);
 
   /// COMMENT OUT FOR NOW ///
 

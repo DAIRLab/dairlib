@@ -79,9 +79,8 @@ def run_play(sim_params):
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 1e4
     #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/"
-    test_folder = "test/"
-    model_path = path.join(test_folder, 'PPO_studentNN_separate_new1_267.6.zip')
-    #model_path = 'PPO_studentNN.zip'
+    #model_path = path.join(test_folder, 'best_model.zip')
+    model_path = 'latest_model.zip'
     model = PPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()

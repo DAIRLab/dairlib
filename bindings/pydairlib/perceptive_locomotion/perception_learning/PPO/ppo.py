@@ -220,9 +220,9 @@ class PPO(OnPolicyAlgorithm):
                 advantages = rollout_data.advantages
 
                 # Clip advantages by 5th and 95th percentiles
-                adv_low = th.kthvalue(advantages, int(len(advantages) * 0.05)).values
-                adv_high = th.kthvalue(advantages, int(len(advantages) * 0.95)).values
-                advantages = th.clamp(advantages, adv_low, adv_high)
+                #adv_low = th.kthvalue(advantages, int(len(advantages) * 0.05)).values
+                #adv_high = th.kthvalue(advantages, int(len(advantages) * 0.95)).values
+                #advantages = th.clamp(advantages, adv_low, adv_high)
 
                 # Normalization does not make sense if mini batchsize == 1, see GH issue #325
                 if self.normalize_advantage and len(advantages) > 1:
@@ -262,8 +262,13 @@ class PPO(OnPolicyAlgorithm):
                     entropy_loss = -th.mean(entropy)
 
                 entropy_losses.append(entropy_loss.item())
-
+                #print(f'policy_loss = {policy_loss}')
+                #print(f'entropy_loss = {entropy_loss}')
+                #print(f'ent_coeff*entropy_loss = {self.ent_coef * entropy_loss}')
+                #print(f'value_loss = {value_loss}')
+                #print(f'self.vf_coef * value_loss = {self.vf_coef * value_loss}')
                 loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+                #print(f'loss = {loss}')
 
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417

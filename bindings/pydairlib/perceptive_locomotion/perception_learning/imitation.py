@@ -65,6 +65,14 @@ class ReLUSquared(nn.Module):
     def forward(self, input):
         return th.relu(input) ** 2
 
+class QReLU(nn.Module):
+    def __init__(self, a=0.1):
+        super(QReLU, self).__init__()
+        self.a = a
+
+    def forward(self, x):
+        return th.max(0, x) + self.a * th.max(0, -x)**2
+
 class ExpertDataSet(Dataset):
     def __init__(self, expert_observations, expert_actions):
         self.observations = expert_observations
@@ -90,7 +98,18 @@ class CustomNetwork(nn.Module):
 
         # CNN for heightmap observations
         n_input_channels = 3
-        self.cnn = nn.Sequential(
+        self.actor_cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(128, 64, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+        self.critic_cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
             nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
@@ -104,7 +123,17 @@ class CustomNetwork(nn.Module):
 
         # MLP for ALIP state
         alip_state_dim = 4
-        self.alip_mlp = nn.Sequential(
+        self.actor_alip_mlp = nn.Sequential(
+            layer_init(nn.Linear(alip_state_dim, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 64)),
+            nn.Tanh(),
+        )
+
+        alip_state_dim = 4
+        self.critic_alip_mlp = nn.Sequential(
             layer_init(nn.Linear(alip_state_dim, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
@@ -127,7 +156,9 @@ class CustomNetwork(nn.Module):
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 128)),
+            layer_init(nn.Linear(320, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 128)),
             nn.Tanh(),
             layer_init(nn.Linear(128, 128)),
             nn.Tanh(),
@@ -149,9 +180,9 @@ class CustomNetwork(nn.Module):
     def forward_actor(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
         image_obs = observations[:, 0:3 * 64 * 64].reshape(batch_size, 3, 64, 64)
-        actor_cnn_output = self.cnn(image_obs)  # Shape: (batch_size, 2304)
+        actor_cnn_output = self.actor_cnn(image_obs)  # Shape: (batch_size, 2304)
         alip_state = observations[:, 3 * 64 * 64:]
-        actor_alip_mlp_output = self.alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)  # Shape: (batch_size, 64)
         actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)  # Concatenate along feature dimension
         actor_actions = self.actor_combined_mlp(actor_combined_features)
         return actor_actions
@@ -159,9 +190,9 @@ class CustomNetwork(nn.Module):
     def forward_critic(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
         image_obs = observations[:, 0:3 *64 * 64].reshape(batch_size, 3, 64, 64)
-        critic_cnn_output = self.cnn(image_obs)  # Shape: (batch_size, 2304)
+        critic_cnn_output = self.critic_cnn(image_obs)  # Shape: (batch_size, 2304)
         alip_state = observations[:, 3 *64 * 64:]
-        critic_alip_mlp_output = self.alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)  # Shape: (batch_size, 64)
         critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)  # Concatenate along feature dimension
         critic_actions = self.critic_combined_mlp(critic_combined_features)
         return critic_actions
@@ -191,7 +222,7 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 def split(expert_observations, expert_actions):
     expert_dataset = ExpertDataSet(expert_observations, expert_actions)
 
-    train_size = int(0.9 * len(expert_dataset))
+    train_size = int(0.95 * len(expert_dataset))
 
     test_size = len(expert_dataset) - train_size
 
@@ -329,8 +360,8 @@ def _main():
 
     student = PPO(CustomActorCriticPolicy, env, verbose=1)#, use_sde=True)
 
-    obs_data = path.join(perception_learning_base_folder, 'tmp/observationsNN.npy')
-    action_data = path.join(perception_learning_base_folder, 'tmp/actionsNN.npy')
+    obs_data = path.join(perception_learning_base_folder, 'tmp/data/observationsNN_new.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/data/actionsNN_new.npy')
     
     expert_observations = np.load(obs_data)
     print(len(expert_observations))
@@ -345,12 +376,12 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=15,
+        epochs=25,
         scheduler_gamma=0.8,
-        learning_rate=0.7,
+        learning_rate=1.5,
         log_interval=100,
         no_cuda=False,
-        seed=222,
+        seed=64,
         batch_size=64,
         test_batch_size=64,
     )

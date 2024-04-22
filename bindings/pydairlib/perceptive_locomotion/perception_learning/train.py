@@ -84,13 +84,13 @@ class CustomNetwork(nn.Module):
         n_input_channels = 3
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
-            nn.RReLU(),
+            nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
-            nn.RReLU(),
+            nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
-            nn.RReLU(),
+            nn.ReLU(),
             nn.Conv2d(128, 64, kernel_size=4, stride=2, padding=0),
-            nn.RReLU(),
+            nn.ReLU(),
             nn.Flatten(),
         )
 
@@ -98,33 +98,35 @@ class CustomNetwork(nn.Module):
         alip_state_dim = 4
         self.alip_mlp = nn.Sequential(
             layer_init(nn.Linear(alip_state_dim, 256)),
-            nn.RReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
-            nn.RReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(256, 64)),
-            nn.RReLU(),
+            nn.Tanh(),
         )
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
             layer_init(nn.Linear(320, 256)),
-            nn.RReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
-            nn.RReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
-            nn.RReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(256, self.latent_dim_pi), std = 0.1),
-            nn.RReLU(),
+            nn.Tanh(),
         )
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 128)),
-            nn.RReLU(),
+            layer_init(nn.Linear(320, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 128)),
+            nn.Tanh(),
             layer_init(nn.Linear(128, 128)),
-            nn.RReLU(),
+            nn.Tanh(),
             layer_init(nn.Linear(128, self.latent_dim_vf), std = 1.),
-            nn.RReLU(),
+            nn.Tanh(),
         )
         # Initialize the weights using Xavier initialization
         #self._initialize_weights()
@@ -164,8 +166,8 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        optimizer_class= th.optim.AdamW,
-        optimizer_kwargs = { 'weight_decay': 1e-3, 'epsilon': 1e-5},
+        optimizer_class= th.optim.Adam,
+        optimizer_kwargs = {'weight_decay': 1e-5, 'betas': (0.997, 0.997), 'epsilon': 1e-5}, #'epsilon': 1e-5, 'weight_decay': 1e-4, #'betas': (0.997, 0.997)
         *args,
         **kwargs,
     ):
@@ -210,7 +212,7 @@ def _run_training(config, args):
                            env_kwargs={
                                'sim_params': sim_params,
                            })
-        #env = VecNormalize(env)
+        env = VecNormalize(venv=env, norm_obs=False)
         #env = VecMonitor(env)
     else:
         input("Starting...")
@@ -229,20 +231,20 @@ def _run_training(config, args):
         tensorboard_log = f"{log_dir}runs/test"        
         #model = PPO(
         #    policy_type, env, learning_rate = linear_schedule(0.005), n_steps=int(2048/num_env), n_epochs=10,
-        #    batch_size=256*num_env, #ent_coef=0.03,
+        #    batch_size=256*num_env, ent_coef=0.01,
         #    verbose=1,
         #    tensorboard_log=tensorboard_log,)
         
-        #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/"
-        #model_path = path.join(test_folder, 'best_model.zip')
-        #model_path = 'PPO_studentNN_stair_imitation.zip'
+        #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/good"
+        #model_path = path.join(test_folder, 'best_model.zip')        
+        #model_path = 'PPO_tanh.zip'
+        model_path = 'PPO_separate_tanh.zip'
+        #model_path = 'rl_model_1448000_steps.zip'
 
-        #model_path = 'rl_model_168000_steps.zip' # using tanh
-        model_path = 'PPO_studentNN_tanh.zip'
-        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-6), max_grad_norm = 0.2,
-                        clip_range = linear_schedule(0.2), target_kl = 0.05, ent_coef=0.01,
-                        n_steps=int(500*num_env/num_env), n_epochs=10,
-                        batch_size=128*num_env, seed=22, device='auto',
+        model = PPO.load(model_path, env, learning_rate = linear_schedule(3e-5), max_grad_norm = 0.2,
+                        clip_range = linear_schedule(0.1), target_kl = 0.1, ent_coef=0, 
+                        n_steps=int(256*num_env/num_env), n_epochs=10,
+                        batch_size=64*num_env, seed=121,
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via "
@@ -255,6 +257,7 @@ def _run_training(config, args):
                         )
 
     eval_env = DummyVecEnv([lambda: eval_env])
+    eval_env = VecNormalize(venv=eval_env, norm_obs=False)
     #eval_env = VecMonitor(eval_env)
     eval_callback = EvalCallback(
         eval_env,
@@ -265,7 +268,7 @@ def _run_training(config, args):
         render=False)
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=eval_freq*3,
+        save_freq=eval_freq*0.5,
         save_path="./logs/",
         name_prefix="rl_model",
     )
@@ -301,16 +304,16 @@ def _main():
     elif args.train_single_env:
         num_env = 1
     else:
-        num_env = 12
+        num_env = 16
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 1e6 if not args.test else 5, # 2e6
+        "total_timesteps": 2e6 if not args.test else 5, # 2e6
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 2000,
+        "model_save_freq": 3000,
         #"policy_kwargs": {'activation_fn': ReLUSquared, #th.nn.Tanh,        # activation function | th.nn.ReLU,
         #                  'net_arch': {'pi': [64, 64, 64, 64], # policy and value networks
         #                               'vf': [64, 64, 64, 64]}},

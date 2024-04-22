@@ -40,8 +40,8 @@ from grid_map import GridMap, InterpolationMethods
 
 @dataclass
 class ElevationMapOptions:
-    nx: int = 64
-    ny: int = 64
+    nx: int = 80
+    ny: int = 80
     resolution: float = 0.025
     meshcat = None
 
@@ -148,8 +148,8 @@ class ElevationMappingConverter(LeafSystem):
             self.map_opts.nx
         )
         self.ygrid = np.linspace(
-            -self.map_opts.resolution * self.map_opts.ny / 2,
-            self.map_opts.resolution * self.map_opts.ny / 2,
+            -(self.map_opts.resolution * self.map_opts.ny / 2),
+            (self.map_opts.resolution * self.map_opts.ny / 2),
             self.map_opts.ny
         )
         self.contact_point = \
@@ -276,7 +276,7 @@ class ElevationMappingConverter(LeafSystem):
                          grid_map: GridMap,
                          center: np.ndarray = None) -> np.ndarray:
         center = np.zeros((3,)) if center is None else center
-        X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1])
+        X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1]) + np.array([.4, 0]).reshape(2,1,1)
 
         # Heightmap has X axis along the 0 dimension while meshgrid has
         # X axis on the 1 dimensions
@@ -296,9 +296,16 @@ class ElevationMappingConverter(LeafSystem):
                     plant=self.plant,
                     context=self.plant_context,
                     body_name="pelvis",
-                    vec=np.array([x, y, 0.0]) + center
+                    vec=np.array([x, y, 0.0]) + center + np.array([.4, 0, 0])
                 )
                 query_point = stance_pos + offset
-                heightmap[i, j] = self.get_height_at_point(query_point, grid_map) - stance_pos[2]
-
+                if grid_map.isInside(query_point[:2]):
+                    z = self.get_height_at_point(query_point, grid_map) - stance_pos[2]
+                    if z > 1:
+                        z = 1
+                    elif z < -1:
+                        z = -1
+                    heightmap[i, j] = z
+                else:
+                    heightmap[i, j] = np.nan
         return heightmap

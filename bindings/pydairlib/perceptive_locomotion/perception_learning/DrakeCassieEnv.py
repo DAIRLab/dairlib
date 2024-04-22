@@ -128,7 +128,7 @@ def reset_handler(simulator, seed):
     datapoint = ic_generator.random()
     v_des_norm = 1.0
     v_norm = np.random.uniform(0.2, v_des_norm)
-    coeff = np.random.uniform(0., 0.1)
+    #coeff = np.random.uniform(0., 0.1)
     datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     # timing aliases
@@ -181,19 +181,19 @@ def simulate_init(sim_params):
         
         if context.get_time() > time_limit:
             print("Time Limit")
-            #print(context.get_time())
+            print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
 
         if z1 < 0.2:
-            #print("Left Toe")
-            #print(context.get_time())
+            print("Left Toe")
+            print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
-            #print("Right Toe")
-            #print(context.get_time())
+            print("Right Toe")
+            print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 

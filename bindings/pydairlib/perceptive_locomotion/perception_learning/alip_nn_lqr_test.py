@@ -119,12 +119,9 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/initial_conditions_2.npz'
+            'tmp/index/initial_conditions_2.npz'
         )
     )
-    #datapoint = ic_generator.random()
-    #datapoint = ic_generator.choose(0)
-    #datapoint['desired_velocity'] = np.array([0.4, 0])
     #datapoint = ic_generator.random()
     #v_des_theta = np.pi / 6
     #v_des_norm = 1.0
@@ -132,11 +129,10 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     #v_norm = np.random.uniform(0.2, v_des_norm)
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
     
-    datapoint = ic_generator.random()
-    #v_des_norm = 0.8
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm, 0])
-    datapoint['desired_velocity'] = np.array([0.9, 0])
+    datapoint = ic_generator.choose(i)
+    v_des_norm = 1.0
+    v_norm = np.random.uniform(0.2, v_des_norm)
+    datapoint['desired_velocity'] = np.array([v_norm, 0])
     context = diagram.CreateDefaultContext()
 
     # timing aliases
@@ -166,17 +162,18 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     )
 
     Terminate = False
+    time = 0
     simulator.reset_context(context)
-    for i in range(1, 500):
+    for i in range(1, 100):
         if check_termination(sim_env, context):
-            print(context.get_time()-t_init)
+            print(time)
             print('terminate')
             Terminate = True
             break
         simulator.AdvanceTo(t_init + 0.05*i)
-
+        time = context.get_time()-t_init
     cost_log = cost_logger.FindLog(context).data()
-    return cost_log, t_init, Terminate
+    return cost_log, t_init, Terminate, time
 
 
 def main():
@@ -184,17 +181,27 @@ def main():
     sim_params.terrain = os.path.join(
         perception_learning_base_folder, 'params/stair_curriculum.yaml'#'params/stair_curriculum.yaml'#'params/wavy_test.yaml' #'params/wavy_terrain.yaml' # 'params/flat.yaml'
     )
-    sim_params.visualize = True
+    sim_params.visualize = False
     cost_list = []
     t_list = []
-    for i in range(10):
-        cost, t_init, terminate = run(sim_params, 20000 + 1000 * i)
-        print(terminate)
-        print(cost)
-        cost_list.append(cost)
-        t_list.append(t_init)
-    cost = np.array(cost_list)
-    
+    init = []
+    for _ in range(100):
+        i = np.random.randint(0, 157870)
+        print(i)
+        cost, t_init, terminate, time = run(sim_params, i)
+        #print(time)
+        if time > 4.5:
+            print(i)
+            #init.append(i)
+        #print(cost)
+        #cost_list.append(cost)
+        #t_list.append(t_init)
+    #cost = np.array(cost_list)
+    #init = np.array(init)
+    #np.save(
+    #    f'{perception_learning_base_folder}/tmp/index'
+    #    f'/index.npy', init
+    #)
     #np.save(
     #    f'{perception_learning_base_folder}/tmp'
     #    f'/accumulated_cost_with_time.npy', cost

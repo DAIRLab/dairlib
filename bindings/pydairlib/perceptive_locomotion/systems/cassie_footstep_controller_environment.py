@@ -152,10 +152,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_cassie_out(),
                 self.perception_module.get_input_port_cassie_out()
             )
-            builder.Connect(
-                self.perception_module.get_output_port_robot_output(),
-                self.controller.get_input_port_state()
-            )
+            #builder.Connect(
+            #    self.perception_module.get_output_port_robot_output(),
+            #    self.controller.get_input_port_state()
+            #)
             builder.Connect(
                 self.cassie_sim.get_output_port_depth_image(),
                 self.perception_module.get_input_port_depth_image("pelvis_depth")
@@ -172,10 +172,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.perception_module.get_output_port_elevation_map(),
                 self.height_map_server.get_input_port_by_name('elevation'),
             )
-            #builder.Connect(
-            #    self.cassie_sim.get_output_port_state_lcm(),
-            #    self.controller.get_input_port_state(),
-            #)
+            builder.Connect(
+                self.cassie_sim.get_output_port_state_lcm(),
+                self.controller.get_input_port_state(),
+            )
             builder.Connect(
                 self.controller.get_output_port_fsm(),
                 self.height_map_server.get_input_port_by_name('fsm')
@@ -224,18 +224,18 @@ class CassieFootstepControllerEnvironment(Diagram):
             # self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
             if params.simulate_perception:
-                self.grid_map_visualizer = GridMapVisualizer(
-                    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]  ##
-                )
-                builder.AddSystem(self.grid_map_visualizer)
+                #self.grid_map_visualizer = GridMapVisualizer(
+                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]  ##
+                #)
+                #builder.AddSystem(self.grid_map_visualizer)
                 builder.Connect(
                     self.perception_module.get_output_port_state(),
                     self.plant_visualizer.get_input_port()
                 )
-                builder.Connect(
-                    self.perception_module.get_output_port_elevation_map(),
-                    self.grid_map_visualizer.get_input_port()
-                )
+                #builder.Connect(
+                #    self.perception_module.get_output_port_elevation_map(),
+                #    self.grid_map_visualizer.get_input_port()
+                #)
             else:
                 builder.Connect(
                     self.cassie_sim.get_output_port_state(),

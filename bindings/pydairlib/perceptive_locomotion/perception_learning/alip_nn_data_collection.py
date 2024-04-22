@@ -107,18 +107,18 @@ def run(sim_env, controller, diagram):
         )
     )
 
-    datapoint = ic_generator.random()
-    v_des_theta = np.pi / 6
-    v_des_norm = 1.0
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    
     #datapoint = ic_generator.random()
+    #v_des_theta = np.pi / 6
     #v_des_norm = 1.0
+    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     #v_norm = np.random.uniform(0.2, v_des_norm)
-    #coeff = np.random.uniform(0., 0.2)
-    #datapoint['desired_velocity'] = np.array([v_norm, 0])
+    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    
+    datapoint = ic_generator.random()
+    v_des_norm = 1.0
+    v_norm = np.random.uniform(0.2, v_des_norm)
+    coeff = np.random.uniform(0., 0.1)
+    datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
@@ -156,7 +156,7 @@ def run(sim_env, controller, diagram):
     Terminate = False
     for i in range(1, 500):
         if check_termination(sim_env, context):
-            print(context.get_time()-t_init)
+            #print(context.get_time()-t_init)
             print('terminate')
             Terminate = True
             break
@@ -172,7 +172,7 @@ def run(sim_env, controller, diagram):
         hmap_query = controller.EvalAbstractInput(
             controller_context, controller.input_port_indices['height_map']
         ).get_value()
-        print(hmap_query)
+
         # query for cropped height map at nominal footstep location
         hmap = hmap_query.calc_height_map_stance_frame(
             np.array([ud[0], ud[1], 0])
@@ -182,7 +182,6 @@ def run(sim_env, controller, diagram):
         FOOTSTEPtmp.append(footstep)
         HMAPtmp.append(hmap)
         time = context.get_time()-t_init
-
     return ALIPtmp, FOOTSTEPtmp, HMAPtmp, Terminate, time
 
 
@@ -200,7 +199,7 @@ def main():
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path)
 
-    for i in range(100):
+    for i in range(50):
         #rand = np.random.randint(1, 11)
         #if rand in [1, 2, 3, 4,]:
         #    terrain = 'params/wavy_terrain.yaml'
@@ -211,7 +210,7 @@ def main():
         print(i)
         alip, footstep, hmap, Terminate, time = run(sim_env, controller, diagram)
         print(time)
-        if time > 15:
+        if time > 10:
             ALIP.extend(alip)
             FOOTSTEP.extend(footstep)
             HMAP.extend(hmap)
@@ -226,15 +225,15 @@ def main():
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP.npy', ALIP
+        f'/ALIP2.npy', ALIP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/FOOTSTEP.npy', FOOTSTEP
+        f'/FOOTSTEP2.npy', FOOTSTEP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/HMAP.npy', HMAP
+        f'/HMAP2.npy', HMAP
     )
 
 if __name__ == '__main__':

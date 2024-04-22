@@ -149,17 +149,6 @@ cc_library(
 )
 
 cc_library(
-    name = "c3_ball_rolling_params",
-    hdrs = ["parameters/c3_ball_rolling_params.h"],
-    data = [
-        "parameters/c3_ball_rolling_params.yaml",
-    ],
-    deps = [
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "simulate_franka_params",
     hdrs = ["parameters/simulate_franka_params.h"],
     data = [
@@ -223,7 +212,6 @@ cc_binary(
         "//examples/franka_ball_rolling/systems:franka_kinematics",
         "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
         "//examples/franka_ball_rolling:c3_parameters",
-        "//examples/franka_ball_rolling:c3_ball_rolling_params",
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//examples/franka_ball_rolling:trajectory_params",
         "//examples/franka_ball_rolling:heuristic_gait_params",

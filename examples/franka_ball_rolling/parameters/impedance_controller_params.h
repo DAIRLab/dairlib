@@ -9,9 +9,6 @@ using Eigen::Vector3d;
 struct ImpedanceControllerParams {
   std::string franka_model;
   std::string end_effector_model;
-  std::string ball_model;
-  std::string ground_model;
-  std::string offset_model;
 
   Vector3d tool_attachment_frame;
   Vector3d ground_offset_frame;
@@ -51,13 +48,8 @@ struct ImpedanceControllerParams {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(franka_model));
     a->Visit(DRAKE_NVP(end_effector_model));
-    a->Visit(DRAKE_NVP(ball_model));
-    a->Visit(DRAKE_NVP(ground_model));
-    a->Visit(DRAKE_NVP(offset_model));
 
     a->Visit(DRAKE_NVP(tool_attachment_frame));
-    a->Visit(DRAKE_NVP(ground_offset_frame));
-    a->Visit(DRAKE_NVP(end_effector_offset));
 
     a->Visit(DRAKE_NVP(translational_stiffness));
     a->Visit(DRAKE_NVP(rotational_stiffness));

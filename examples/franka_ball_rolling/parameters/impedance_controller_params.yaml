@@ -2,18 +2,12 @@
 # full model urdfs
 franka_model: examples/franka_ball_rolling/robot_properties/urdf/panda_arm.urdf
 end_effector_model: examples/franka_ball_rolling/robot_properties/urdf/end_effector_full.urdf
-ball_model: examples/franka_ball_rolling/robot_properties/urdf/sphere.urdf
-ground_model: examples/franka_ball_rolling/robot_properties/urdf/ground.urdf
-offset_model: examples/franka_ball_rolling/robot_properties/urdf/table_offset.urdf
 
 # -----------------------  Extra Model Fixed Frame Settings  ------------------------#
 # the tranlsation vector of end effector base frame to panda link 7
 tool_attachment_frame: [0, 0, 0.1118] # should match real measurement
 # the tranlsation vector of ground to panda link 0 (world frame)
 ground_offset_frame: [0, 0, -0.0245] # should match real measurement table height calibration
-# the end-effector offset should match urdf definition and real measurement, the offset is
-# the distance from end of cylinder (link frame) to end effector (spherical) center
-end_effector_offset: [0, 0, 0.0153]
 
 
 # -------------------------  impedance controller parameters  ------------------------#

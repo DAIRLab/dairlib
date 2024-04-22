@@ -12,7 +12,6 @@ struct ImpedanceControllerParams {
 
   Vector3d tool_attachment_frame;
   Vector3d ground_offset_frame;
-  Vector3d end_effector_offset;
 
   Vector3d translational_stiffness;
   Vector3d rotational_stiffness;
@@ -50,6 +49,7 @@ struct ImpedanceControllerParams {
     a->Visit(DRAKE_NVP(end_effector_model));
 
     a->Visit(DRAKE_NVP(tool_attachment_frame));
+    a->Visit(DRAKE_NVP(ground_offset_frame));
 
     a->Visit(DRAKE_NVP(translational_stiffness));
     a->Visit(DRAKE_NVP(rotational_stiffness));

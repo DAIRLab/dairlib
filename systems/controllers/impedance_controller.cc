@@ -75,7 +75,7 @@ ImpedanceController::ImpedanceController(
           "examples/franka_ball_rolling/parameters/impedance_controller_params.yaml");
 
   // define end effector, joint and kinematics settings
-  EE_offset_ << impedance_param_.end_effector_offset;
+//  EE_offset_ << impedance_param_.end_effector_offset;
   EE_frame_ = &plant_.GetBodyByName("end_effector_tip").body_frame();
   world_frame_ = &plant_.world_frame();
   // franka joint number

@@ -18,7 +18,7 @@ namespace systems {
 
 MoveToInitial::MoveToInitial(
     const SimulateFrankaParams& sim_param,
-    const HeuristicGaitParams& heuristic_param) {
+    const HeuristicPlannerParams& heuristic_param) {
     // INPUT PORTS
     // TODO:: make dimension not hardcoded, and future clean up for newer impedacne ports
     franka_input_port_ = this->DeclareVectorInputPort(
@@ -61,7 +61,7 @@ EventStatus MoveToInitial::UpdateFirstMessageTime(const Context<double>& context
 }
 
 void MoveToInitial::SetParameters(const SimulateFrankaParams& sim_param,
-                                              const HeuristicGaitParams heuristic_param) {
+                                              const HeuristicPlannerParams heuristic_param) {
   // Set parameters
   stabilize_time1_ = heuristic_param.stabilize_time1;
   move_time_ = heuristic_param.move_time;

@@ -1,3 +1,9 @@
+# --------------------------  URDF Model Path Settings  -----------------------------#
+# simple reduced order model in the high-level planner
+end_effector_simple_model: examples/franka_ball_rolling/robot_properties/urdf/end_effector_simple.urdf
+ball_model: examples/franka_ball_rolling/robot_properties/urdf/sphere.urdf
+ground_model: examples/franka_ball_rolling/robot_properties/urdf/ground.urdf
+
 # --------------------------  Time-based Heuristic Phase  -----------------------------#
 roll_phase: 1  # time duration of the rolling phase
 return_phase: 0.5 # time duration of the return phase (upward, sideway, reposition)

@@ -138,10 +138,10 @@ cc_library(
 )
 
 cc_library(
-    name = "heuristic_gait_params",
-    hdrs = ["parameters/heuristic_gait_params.h"],
+    name = "heuristic_planner_params",
+    hdrs = ["parameters/heuristic_planner_params.h"],
     data = [
-        "parameters/heuristic_gait_params.yaml",
+        "parameters/heuristic_planner_params.yaml",
     ],
     deps = [
         "@drake//:drake_shared_library",
@@ -192,7 +192,7 @@ cc_binary(
         "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
         "//systems/framework:lcm_driven_loop",
         "//examples/franka_ball_rolling:simulate_franka_params",
-        "//examples/franka_ball_rolling:heuristic_gait_params",
+        "//examples/franka_ball_rolling:heuristic_planner_params",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -214,7 +214,7 @@ cc_binary(
         "//examples/franka_ball_rolling:c3_parameters",
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//examples/franka_ball_rolling:trajectory_params",
-        "//examples/franka_ball_rolling:heuristic_gait_params",
+        "//examples/franka_ball_rolling:heuristic_planner_params",
         "//examples/franka_ball_rolling:c3_state_estimator_params",
         "//systems:system_utils",
         "//systems/controllers:c3_controller",

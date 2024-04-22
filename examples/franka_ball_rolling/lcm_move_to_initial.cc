@@ -19,7 +19,7 @@
 
 
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
-#include "examples/franka_ball_rolling/parameters/heuristic_gait_params.h"
+#include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 
 
 #include "examples/franka_ball_rolling/systems/move_to_initial.h"
@@ -50,8 +50,8 @@ int DoMain(int argc, char* argv[]){
 
   SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<SimulateFrankaParams>(
           "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
-  HeuristicGaitParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicGaitParams>(
-            "examples/franka_ball_rolling/parameters/heuristic_gait_params.yaml");
+  HeuristicPlannerParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicPlannerParams>(
+            "examples/franka_ball_rolling/parameters/heuristic_planner_params.yaml");
 
 
   drake::lcm::DrakeLcm drake_lcm;

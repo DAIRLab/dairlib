@@ -20,7 +20,7 @@ namespace systems {
 HeuristicGenerator::HeuristicGenerator(
     const MultibodyPlant<double>& lcs_plant,
     const SimulateFrankaParams& sim_param,
-    const HeuristicGaitParams& heuristic_param,
+    const HeuristicPlannerParams& heuristic_param,
     const BallRollingTrajectoryParams& trajectory_param,
     const C3Options& c3_param) {
     // INPUT PORTS 1, get current simplified plant (i.e. plant to generate lcs) state
@@ -86,7 +86,7 @@ EventStatus HeuristicGenerator::UpdateFirstMessageTime(const Context<double>& co
 }
 
 void HeuristicGenerator::SetHeuristicParameters( const SimulateFrankaParams& sim_param,
-                                                 const HeuristicGaitParams& heuristic_param,
+                                                 const HeuristicPlannerParams& heuristic_param,
                                                  const BallRollingTrajectoryParams& trajectory_param,
                                                  const C3Options& c3_param) {
     roll_phase_ = heuristic_param.roll_phase;

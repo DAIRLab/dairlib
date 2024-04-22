@@ -4,7 +4,12 @@
 
 using Eigen::VectorXd;
 
-struct HeuristicGaitParams {
+struct HeuristicPlannerParams {
+
+  std::string end_effector_simple_model;
+  std::string ball_model;
+  std::string ground_model;
+
   double roll_phase;
   double return_phase;
   VectorXd gait_parameters;
@@ -27,6 +32,11 @@ struct HeuristicGaitParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
+
+    a->Visit(DRAKE_NVP(end_effector_simple_model));
+    a->Visit(DRAKE_NVP(ball_model));
+    a->Visit(DRAKE_NVP(ground_model));
+
     a->Visit(DRAKE_NVP(roll_phase));
     a->Visit(DRAKE_NVP(return_phase));
     a->Visit(DRAKE_NVP(gait_parameters));

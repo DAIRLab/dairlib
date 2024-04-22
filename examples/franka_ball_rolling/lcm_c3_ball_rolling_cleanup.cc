@@ -18,7 +18,7 @@
 #include "systems/system_utils.h"
 
 
-#include "examples/franka_ball_rolling/parameters/heuristic_gait_params.h"
+#include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 #include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
@@ -69,8 +69,8 @@ int DoMain(int argc, char* argv[]){
           "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
   BallRollingTrajectoryParams traj_param = drake::yaml::LoadYamlFile<BallRollingTrajectoryParams>(
           "examples/franka_ball_rolling/parameters/trajectory_params.yaml");
-  HeuristicGaitParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicGaitParams>(
-            "examples/franka_ball_rolling/parameters/heuristic_gait_params.yaml");
+  HeuristicPlannerParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicPlannerParams>(
+            "examples/franka_ball_rolling/parameters/heuristic_planner_params.yaml");
   C3StateEstimatorParams estimation_param = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
           "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
   C3Options c3_param = drake::yaml::LoadYamlFile<C3Options>(
@@ -144,9 +144,9 @@ int DoMain(int argc, char* argv[]){
   Parser parser_lcs(&plant_lcs);
   // TODO: create a high level planning parameter yaml file to save the simplified model urdf path
   // (maybe can integrate with HeuristicGaitParameters)
-  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties/urdf/end_effector_simple.urdf");
-  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties/urdf/sphere.urdf");
-  parser_lcs.AddModels("examples/franka_ball_rolling/robot_properties/urdf/ground.urdf");
+  parser_lcs.AddModels(heuristic_param.end_effector_simple_model);
+  parser_lcs.AddModels(heuristic_param.ball_model);
+  parser_lcs.AddModels(heuristic_param.ground_model);
   RigidTransform<double> X_WI_lcs = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_G_lcs = RigidTransform<double>(sim_param.ground_offset_frame);
 

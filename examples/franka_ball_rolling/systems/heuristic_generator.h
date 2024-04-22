@@ -7,7 +7,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
-#include "examples/franka_ball_rolling/parameters/heuristic_gait_params.h"
+#include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 #include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 
 #include "solvers/c3_options.h"
@@ -28,7 +28,7 @@ class HeuristicGenerator
   HeuristicGenerator(
       const drake::multibody::MultibodyPlant<double>& lcs_plant,
       const SimulateFrankaParams& sim_param,
-      const HeuristicGaitParams& heuristic_param,
+      const HeuristicPlannerParams& heuristic_param,
       const BallRollingTrajectoryParams& trajectory_param,
       const C3Options& c3_param);
 
@@ -63,7 +63,7 @@ class HeuristicGenerator
   }
 
   void SetHeuristicParameters(const SimulateFrankaParams& sim_param,
-                              const HeuristicGaitParams& heuristic_param,
+                              const HeuristicPlannerParams& heuristic_param,
                               const BallRollingTrajectoryParams& trajectory_param,
                               const C3Options& c3_param);
 

@@ -7,7 +7,7 @@
 #include "drake/systems/framework/leaf_system.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
-#include "examples/franka_ball_rolling/parameters/heuristic_gait_params.h"
+#include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 #define PI 3.14159265359
 
 namespace dairlib {
@@ -21,7 +21,7 @@ class MoveToInitial
  public:
   MoveToInitial(
       const SimulateFrankaParams& sim_param,
-      const HeuristicGaitParams& heuristic_param);
+      const HeuristicPlannerParams& heuristic_param);
 
   /// the first input port take in lcs state (i.e. state for simplified model)
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -35,7 +35,7 @@ class MoveToInitial
   }
 
   void SetParameters(const SimulateFrankaParams& sim_param,
-                               const HeuristicGaitParams heuristic_param);
+                               const HeuristicPlannerParams heuristic_param);
 
  private:
 

@@ -29,14 +29,13 @@ DEFINE_string(sim_parameters,
               "Filepath to simulation configs");
 
 DEFINE_string(lcm_channels,
-              "examples/trifinger/parameters/lcm_channels_simulation.yaml",
+              "examples/trifinger/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
 
 namespace dairlib {
 using dairlib::systems::ObjectStateReceiver;
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
-using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::math::RigidTransformd;
 using drake::multibody::MultibodyPlant;
@@ -118,8 +117,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
-
-  DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph, lcm);
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / sim_params.visualizer_publish_rate;

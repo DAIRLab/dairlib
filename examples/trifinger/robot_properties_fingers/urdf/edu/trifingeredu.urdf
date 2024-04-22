@@ -47,40 +47,40 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_back.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_back.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_front.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_front.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_side_left.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_side_left.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- Disable this part.  It is not very relevant for collisions but
@@ -94,14 +94,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_top.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_top.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -116,14 +116,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/upper_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/upper_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -139,14 +139,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/middle_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/middle_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -159,14 +159,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- TODO: these are the interial values from the Solo lower leg
@@ -220,40 +220,40 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_back.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_back.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_front.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_front.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_side_left.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_side_left.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- Disable this part.  It is not very relevant for collisions but
@@ -267,14 +267,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_top.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_top.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -289,14 +289,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/upper_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/upper_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -312,14 +312,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/middle_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/middle_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -332,14 +332,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_120_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- TODO: these are the interial values from the Solo lower leg
@@ -393,40 +393,40 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_back.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_back.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_front.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_front.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_side_left.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_side_left.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- Disable this part.  It is not very relevant for collisions but
@@ -440,14 +440,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_top.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/base_top.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -462,14 +462,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/upper_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/upper_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -485,14 +485,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/middle_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/middle_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <inertial>
@@ -505,14 +505,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/edu/lower_link.obj" scale="1 1 1"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- TODO: these are the interial values from the Solo lower leg
@@ -574,4 +574,52 @@
     <child link="finger_base_link_240"/>
     <origin rpy="0 0 -4.1887902047863905" xyz="0.02275000000000002 -0.03940415587219195 0"/>
   </joint>
+
+  <transmission name="finger_base_to_upper_joint_0_trans" type="SimpleTransmission">
+    <actuator name="finger_base_to_upper_joint_0_torque"/>
+    <joint name="finger_base_to_upper_joint_0"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="finger_upper_to_middle_joint_0_trans" type="SimpleTransmission">
+    <actuator name="finger_upper_to_middle_joint_0_torque"/>
+    <joint name="finger_upper_to_middle_joint_0"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="finger_middle_to_lower_joint_0_trans" type="SimpleTransmission">
+    <actuator name="finger_middle_to_lower_joint_0_torque"/>
+    <joint name="finger_middle_to_lower_joint_0"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+  <transmission name="finger_base_to_upper_joint_120_trans" type="SimpleTransmission">
+    <actuator name="finger_base_to_upper_joint_120_torque"/>
+    <joint name="finger_base_to_upper_joint_120"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="finger_upper_to_middle_joint_120_trans" type="SimpleTransmission">
+    <actuator name="finger_upper_to_middle_joint_120_torque"/>
+    <joint name="finger_upper_to_middle_joint_120"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="finger_middle_to_lower_joint_120_trans" type="SimpleTransmission">
+    <actuator name="finger_middle_to_lower_joint_120_torque"/>
+    <joint name="finger_middle_to_lower_joint_120"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+  <transmission name="finger_base_to_upper_joint_240_trans" type="SimpleTransmission">
+    <actuator name="finger_base_to_upper_joint_240_torque"/>
+    <joint name="finger_base_to_upper_joint_240"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="finger_upper_to_middle_joint_240_trans" type="SimpleTransmission">
+    <actuator name="finger_upper_to_middle_joint_240_torque"/>
+    <joint name="finger_upper_to_middle_joint_240"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+  <transmission name="finger_middle_to_lower_joint_240_trans" type="SimpleTransmission">
+    <actuator name="finger_middle_to_lower_joint_240_torque"/>
+    <joint name="finger_middle_to_lower_joint_240"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
 </robot>

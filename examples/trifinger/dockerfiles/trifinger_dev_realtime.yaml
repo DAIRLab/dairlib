@@ -1,10 +1,10 @@
 services:
   trifinger-env:
     init: true
-    image: trifinger_dev:1.0
+    image: xuanhien070594/trifinger_dev:1.0
     container_name: trifinger_dev
     stop_signal: SIGINT
-    command: ['sleep', 'infinity']
+    command: ["sleep", "infinity"]
     privileged: true
     network_mode: host
     working_dir: /home
@@ -13,8 +13,12 @@ services:
       - ~/git/Trifinger/workspace:/home
     environment:
       - DISPLAY=${DISPLAY}
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - ROS_LOCALHOST_ONLY=0
+      - ROS_DOMAIN_ID=0
     cap_add:
       - SYS_NICE
+      - SYS_PTRACE
     ulimits:
       rtprio: 99
       rttime: -1 # corresponds to 'unlimited'

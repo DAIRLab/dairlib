@@ -111,12 +111,10 @@ int DoMain(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("trifinger_lcm_ros_bridge"));
   const auto& diagram = *owned_diagram;
-  DrawAndSaveDiagramGraph(diagram);
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
       &drake_lcm, std::move(owned_diagram), robot_input_receiver,
       lcm_channel_params.trifinger_input_channel, true);
-  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

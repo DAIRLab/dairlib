@@ -5,8 +5,8 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # Core Linux tools
 RUN apt-get update && apt-get install -y --no-install-recommends\
-    apt-utils lsb-release sudo unzip wget less ssh vim curl\
-    software-properties-common python3-dev python3-pip clang-12 \
+    apt-utils net-tools lsb-release sudo unzip wget less ssh vim curl\
+    software-properties-common python3-dev python3-pip clang-12 rsync\
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 12 \
@@ -35,7 +35,8 @@ RUN apt-get update && apt-get install -y \
     ros-${ROS_DISTRO}-eigenpy \
     ros-${ROS_DISTRO}-pinocchio \
     ros-${ROS_DISTRO}-xacro \
-    ros-${ROS_DISTRO}-yaml-cpp-vendor
+    ros-${ROS_DISTRO}-yaml-cpp-vendor \
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
 
 # Install packages for code formatting and documentation.
 RUN apt-get update && apt-get install -y doxygen clang-format \
@@ -71,6 +72,12 @@ RUN python3 -m pip install line-profiler \
     gym \
     namegenerator
 
+# Install dependencies for pose estimation.
+RUN python3 -m pip install xgboost \
+    scikit-learn \
+    opencv-python \
+    opencv-contrib-python
+
 # Install Pylon Camera SDK
 ARG pkgarch="amd64"
 ARG version="5.2.0.13457"
@@ -90,3 +97,9 @@ RUN echo ". /opt/ros/${ROS_DISTRO}/setup.bash \
     source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash \
     source /usr/share/colcon_cd/function/colcon_cd.sh" > /setup.bash
 
+# Install Clion
+RUN wget https://download.jetbrains.com/cpp/CLion-2024.1.tar.gz
+RUN sudo tar xvzf CLion-2024.1.tar.gz -C /opt/
+RUN sudo rm CLion-2024.1.tar.gz
+
+COPY ros_entrypoint.sh /usr/local/bin/ros_build

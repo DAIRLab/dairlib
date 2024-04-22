@@ -4,7 +4,7 @@
 
 #include "multibody/multibody_utils.h"
 #include "nav_msgs/msg/odometry.hpp"
-#include "trifinger_ros2_msgs/msg/trifinger_state.hpp"
+#include "trifinger_msgs/msg/trifinger_state.hpp"
 
 namespace dairlib {
 namespace systems {
@@ -44,7 +44,7 @@ RosToLcmRobotState::RosToLcmRobotState(int num_positions, int num_velocities,
       num_efforts_(num_efforts) {
   this->DeclareAbstractInputPort(
       "Franka JointState topic",
-      drake::Value<trifinger_ros2_msgs::msg::TrifingerState>());
+      drake::Value<trifinger_msgs::msg::TrifingerState>());
   this->DeclareAbstractOutputPort("lcmt_robot_output",
                                   &RosToLcmRobotState::ConvertToLCM);
 }
@@ -55,7 +55,7 @@ void RosToLcmRobotState::ConvertToLCM(
   const drake::AbstractValue* const input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& msg =
-      input->get_value<trifinger_ros2_msgs::msg::TrifingerState>();
+      input->get_value<trifinger_msgs::msg::TrifingerState>();
 
   output->num_positions = num_positions_;
   output->num_velocities = num_velocities_;

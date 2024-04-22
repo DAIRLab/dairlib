@@ -105,7 +105,7 @@ int DoMain(int argc, char* argv[]) {
   auto sys_ros_interface = builder.AddSystem<RosInterfaceSystem>(
       std::make_unique<DrakeRos>("run_ros_lcm_node"));
   auto trifinger_joint_state_ros_subscriber = builder.AddSystem(
-      RosSubscriberSystem::Make<trifinger_ros2_msgs::msg::TrifingerState>(
+      RosSubscriberSystem::Make<trifinger_msgs::msg::TrifingerState>(
           ros_channel_params.trifinger_state_channel, qos,
           sys_ros_interface->get_ros_interface()));
   auto ros_to_lcm_robot_state = builder.AddSystem(
@@ -163,7 +163,9 @@ int DoMain(int argc, char* argv[]) {
   DrawAndSaveDiagramGraph(diagram);
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& simulator_context = simulator.get_mutable_context();
-  int cur_received_message_count = 0;
+  int cur_trifinger_state_msg_count = 0;
+  int cur_cube_state_msg_count = 0;
+  int cur_delta_pos_msg_count = 0;
   simulator.Initialize();
 
   constexpr double kStep{0.1};
@@ -173,10 +175,19 @@ int DoMain(int argc, char* argv[]) {
     simulator.AdvanceTo(next_time);
 
     // ros-driven loop
-    int actual_count =
+    int actual_trifinger_state_msg_count =
+        trifinger_joint_state_ros_subscriber->GetReceivedMessageCount();
+    int actual_cube_state_msg_count =
+        cube_object_state_ros_subscriber->GetReceivedMessageCount();
+    int actual_delta_pos_msg_count =
         fingertips_delta_position_ros_subscriber->GetReceivedMessageCount();
-    if (actual_count > cur_received_message_count) {
-      cur_received_message_count = actual_count;
+    if ((actual_trifinger_state_msg_count > cur_trifinger_state_msg_count) ||
+        (actual_cube_state_msg_count > cur_cube_state_msg_count) ||
+        (actual_delta_pos_msg_count > cur_delta_pos_msg_count)) {
+      cur_trifinger_state_msg_count = actual_trifinger_state_msg_count;
+      cur_cube_state_msg_count = actual_cube_state_msg_count;
+      cur_delta_pos_msg_count = actual_delta_pos_msg_count;
+
       // Force-publish via the diagram
       diagram.CalcForcedUnrestrictedUpdate(
           simulator_context, &simulator_context.get_mutable_state());

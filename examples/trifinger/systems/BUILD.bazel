@@ -30,7 +30,7 @@ cc_library(
     hdrs = ["trifinger_ros_lcm_msgs_conversions.h"],
     deps = [
         "//common",
-        "//examples/trifinger/trifinger_ros2_msgs:trifinger_ros2_msgs_cc",
+        "//examples/trifinger/trifinger_msgs:trifinger_msgs_cc",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/primitives",

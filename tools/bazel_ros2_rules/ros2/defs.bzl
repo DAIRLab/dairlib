@@ -176,7 +176,7 @@ def base_ros2_repository_attrs():
         "default_localhost_only": attr.bool(
             doc = "Whether ROS communication should be restricted to " +
                   "localhost by default. Defaults to True",
-            default = True,
+            default = False,
         ),
         "_common_files": attr.label_list(
             default = [_label(path) for path in COMMON_FILES_MANIFEST],

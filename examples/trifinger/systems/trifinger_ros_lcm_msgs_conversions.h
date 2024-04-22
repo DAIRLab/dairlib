@@ -10,8 +10,8 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/timestamped_vector.h"
-#include "trifinger_ros2_msgs/msg/trifinger_action.hpp"
-#include "trifinger_ros2_msgs/msg/trifinger_state.hpp"
+#include "trifinger_msgs/msg/trifinger_action.hpp"
+#include "trifinger_msgs/msg/trifinger_state.hpp"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"

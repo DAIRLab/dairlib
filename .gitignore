@@ -21,3 +21,4 @@ attic/multibody/solver_log/
 /.cache/
 
 /tools/bazel_ros2_rules/bazel-*
+*.swp

@@ -4,7 +4,7 @@
 load("@ros2//:rosidl.bzl", "rosidl_interfaces_group")
 
 rosidl_interfaces_group(
-    name = "trifinger_ros2_msgs",
+    name = "trifinger_msgs",
     interfaces = [
         "msg/TrifingerState.msg",
         "msg/TrifingerAction.msg",

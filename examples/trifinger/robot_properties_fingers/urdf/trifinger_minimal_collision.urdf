@@ -64,7 +64,7 @@
   <!-- TODO inertia parameters don't look correct, they cant be same for upper and middle! -->
   <link name="finger_upper_link_0">
     <visual>
-      <origin rpy="0 0 0" xyz="0 -0.02695 0"/>
+      <origin rpy="0 3.14 0" xyz="0 -0.02695 0"/>
       <geometry>
         <mesh filename="meshes/SIM__BL-Finger_Proximal.obj" scale="1 1 1"/>
       </geometry>

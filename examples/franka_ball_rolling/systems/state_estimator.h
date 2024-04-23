@@ -20,7 +20,7 @@
 #include <drake/systems/framework/vector_base.h>
 #include <drake/math/rotation_matrix.h>
 
-#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
+#include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 
@@ -41,10 +41,10 @@ namespace systems {
 // A class that estimates the balls position and velocity
 // from noisy position data and appends it to the robot output
 // of the franka arm.  Intended use case is for C3 experiments.
-class C3StateEstimator : public LeafSystem<double> {
+class StateEstimator : public LeafSystem<double> {
  public:
-  C3StateEstimator(const std::vector<double>& p_FIR_values,
-                   const std::vector<double>& v_FIR_values);
+  StateEstimator(const std::vector<double>& p_FIR_values,
+                 const std::vector<double>& v_FIR_values);
 
   const drake::systems::OutputPort<double>& get_output_port_franka_state()
       const {
@@ -72,7 +72,7 @@ class C3StateEstimator : public LeafSystem<double> {
                     BasicVector<double>* output) const;
   drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis, double theta) const;
 
-  C3StateEstimatorParams state_estimate_param_;
+  StateEstimatorParams state_estimate_param_;
 
   // deques for tracking history, use drake state (indices)
   int p_idx_;
@@ -126,7 +126,7 @@ class TrueBallToEstimatedBall : public LeafSystem<double> {
   void ConvertOutput(const drake::systems::Context<double>& context,
                     dairlib::lcmt_ball_position* output) const;
 
-  C3StateEstimatorParams state_estimate_param_;
+  StateEstimatorParams state_estimate_param_;
 
   // tracking position, time and id history, use drake state (indices)
   int p_idx_;

@@ -80,7 +80,7 @@ int DoMain(ros::NodeHandle& node_handle) {
   std::vector<double> v_FIR_values(v_filter_length, 1.0 / v_filter_length);
 
   auto state_estimator = 
-    builder.AddSystem<dairlib::systems::C3StateEstimator>(p_FIR_values, v_FIR_values);
+    builder.AddSystem<dairlib::systems::StateEstimator>(p_FIR_values, v_FIR_values);
   builder.Connect(to_robot_output->get_output_port(0), state_estimator->get_input_port(0));
   builder.Connect(to_ball_position->get_output_port(0), state_estimator->get_input_port(1));
 

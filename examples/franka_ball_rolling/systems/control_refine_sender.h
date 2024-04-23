@@ -1,7 +1,6 @@
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
-//#include "systems/framework/state_vector.h"
 #include "solvers/c3_output.h"
 #include <drake/common/yaml/yaml_io.h>
 #include "systems/framework/output_vector.h"

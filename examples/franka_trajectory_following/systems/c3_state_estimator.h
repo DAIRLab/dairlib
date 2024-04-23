@@ -39,10 +39,10 @@ namespace systems {
 // A class that estimates the balls position and velocity
 // from noisey position data and appends it to the robot output
 // of the franka arm.  Intended use case is for C3 experiments.
-class C3StateEstimator : public LeafSystem<double> {
+class StateEstimator : public LeafSystem<double> {
  public:
-  C3StateEstimator(const std::vector<double>& p_FIR_values,
-                   const std::vector<double>& v_FIR_values);
+  StateEstimator(const std::vector<double>& p_FIR_values,
+                 const std::vector<double>& v_FIR_values);
   
  private: 
   // update discrete states

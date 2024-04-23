@@ -21,7 +21,7 @@
 #include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 #include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
-#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
+#include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
 
 #include "solvers/c3_options.h"
 
@@ -71,8 +71,8 @@ int DoMain(int argc, char* argv[]){
           "examples/franka_ball_rolling/parameters/trajectory_params.yaml");
   HeuristicPlannerParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicPlannerParams>(
             "examples/franka_ball_rolling/parameters/heuristic_planner_params.yaml");
-  C3StateEstimatorParams estimation_param = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
-          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
+  StateEstimatorParams estimation_param = drake::yaml::LoadYamlFile<StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
   C3Options c3_param = drake::yaml::LoadYamlFile<C3Options>(
           "examples/franka_ball_rolling/parameters/c3_options_ball_rolling.yaml");
 

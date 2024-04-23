@@ -11,13 +11,13 @@
 
 #include "dairlib/lcmt_robot_output.hpp"
 
-#include "examples/franka_ball_rolling/systems/c3_state_estimator.h"
+#include "examples/franka_ball_rolling/systems/state_estimator.h"
 
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
-#include "examples/franka_ball_rolling/parameters/c3_state_estimator_params.h"
+#include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
 
 namespace dairlib {
 
@@ -36,8 +36,8 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   /* -------------------------------------------------------------------------------------------*/
-  C3StateEstimatorParams state_estimator_param = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
-          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
+  StateEstimatorParams state_estimator_param = drake::yaml::LoadYamlFile<StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
 
   DiagramBuilder<double> builder;
   drake::lcm::DrakeLcm drake_lcm;
@@ -77,7 +77,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> v_FIR_values = state_estimator_param.v_FIR_value;
 
   auto state_estimator = 
-    builder.AddSystem<systems::C3StateEstimator>(p_FIR_values, v_FIR_values);
+    builder.AddSystem<systems::StateEstimator>(p_FIR_values, v_FIR_values);
   builder.Connect(franka_state_reciver->get_output_port(0),
     state_estimator->get_input_port(0));
 

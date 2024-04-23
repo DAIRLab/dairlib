@@ -1,4 +1,4 @@
-#include "c3_state_estimator.h"
+#include "state_estimator.h"
 
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -14,14 +14,14 @@ using Eigen::Quaternion;
 namespace dairlib {
 namespace systems {
 
-C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
-    const std::vector<double>& v_FIR_values) :
+StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
+                               const std::vector<double>& v_FIR_values) :
     p_FIR_values_(p_FIR_values), v_FIR_values_(v_FIR_values), 
     p_filter_length_(p_FIR_values.size()), v_filter_length_(v_FIR_values.size()) {
 
 
-  state_estimate_param_ = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
-          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
+  state_estimate_param_ = drake::yaml::LoadYamlFile<StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
 
   /// declare discrete states
   Vector3d initial_position;
@@ -55,7 +55,7 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
 //    &C3StateEstimator::UpdateHistory);
 
   this->DeclareForcedUnrestrictedUpdateEvent(
-            &C3StateEstimator::UpdateHistory);
+            &StateEstimator::UpdateHistory);
 
   /// declare I/O ports
 //  franka_input_port_ = this->DeclareAbstractInputPort("franka_port",
@@ -73,19 +73,19 @@ C3StateEstimator::C3StateEstimator(const std::vector<double>& p_FIR_values,
   franka_state_output_port_ = this->DeclareVectorOutputPort(
       "x_franka",
       BasicVector<double>(num_franka_positions_ + num_franka_velocities_),
-      &C3StateEstimator::EstimateFrankaState).get_index();
+      &StateEstimator::EstimateFrankaState).get_index();
   this->DeclareVectorOutputPort(
             "u_franka",
             BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
-            &C3StateEstimator::OutputEfforts);
+            &StateEstimator::OutputEfforts);
   ball_state_output_port_ = this->DeclareVectorOutputPort(
       "x_object",
       BasicVector<double>(num_ball_positions_ + num_ball_velocities_),
-      &C3StateEstimator::EstimateObjectState).get_index();
+      &StateEstimator::EstimateObjectState).get_index();
 }
 
-EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
-    State<double>* state) const {
+EventStatus StateEstimator::UpdateHistory(const Context<double>& context,
+                                          State<double>* state) const {
   
   /// Extract mutable abstract states
   // newest entries go to back of deque, oldest entries popped off the front
@@ -163,8 +163,8 @@ EventStatus C3StateEstimator::UpdateHistory(const Context<double>& context,
   return EventStatus::Succeeded();
 }
 
-void C3StateEstimator::EstimateState(const drake::systems::Context<double>& context,
-                  BasicVector<double>* output) const {
+void StateEstimator::EstimateState(const drake::systems::Context<double>& context,
+                                   BasicVector<double>* output) const {
 
   /// parse inputs
   const OutputVector<double>* franka_output =
@@ -201,8 +201,8 @@ void C3StateEstimator::EstimateState(const drake::systems::Context<double>& cont
   output->SetFromVector(value);
 }
 
-void C3StateEstimator::EstimateFrankaState(const drake::systems::Context<double>& context,
-                  BasicVector<double>* output) const {
+void StateEstimator::EstimateFrankaState(const drake::systems::Context<double>& context,
+                                         BasicVector<double>* output) const {
 
     /// parse inputs
     const OutputVector<double>* franka_output =
@@ -227,8 +227,8 @@ void C3StateEstimator::EstimateFrankaState(const drake::systems::Context<double>
   output->SetFromVector(franka_state);
 }
 
-void C3StateEstimator::EstimateObjectState(const drake::systems::Context<double>& context,
-                  BasicVector<double>* output) const {
+void StateEstimator::EstimateObjectState(const drake::systems::Context<double>& context,
+                                         BasicVector<double>* output) const {
 
   /// read in estimates froms states
   Vector3d ball_position = context.get_discrete_state(p_idx_).value();
@@ -244,8 +244,8 @@ void C3StateEstimator::EstimateObjectState(const drake::systems::Context<double>
   output->SetFromVector(ball_state);
 }
 
-void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& context,
-                  BasicVector<double>* output) const {
+void StateEstimator::OutputEfforts(const drake::systems::Context<double>& context,
+                                   BasicVector<double>* output) const {
 
   /// parse inputs
   const OutputVector<double>* franka_output =
@@ -263,7 +263,7 @@ void C3StateEstimator::OutputEfforts(const drake::systems::Context<double>& cont
   output->SetFromVector(efforts);  
 }
 
-RotationMatrix<double> C3StateEstimator::RodriguesFormula(const Vector3d& axis, double theta) const {
+RotationMatrix<double> StateEstimator::RodriguesFormula(const Vector3d& axis, double theta) const {
   double w1 = axis(0);
   double w2 = axis(1);
   double w3 = axis(2);
@@ -282,8 +282,8 @@ TrueBallToEstimatedBall::TrueBallToEstimatedBall(
   double stddev, double period) : 
   stddev_(stddev), period_(period) {
 
-  state_estimate_param_ = drake::yaml::LoadYamlFile<C3StateEstimatorParams>(
-          "examples/franka_ball_rolling/parameters/c3_state_estimator_params.yaml");
+  state_estimate_param_ = drake::yaml::LoadYamlFile<StateEstimatorParams>(
+          "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
 
   /// declare discrete states
   Vector3d initial_position;

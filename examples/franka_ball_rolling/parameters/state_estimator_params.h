@@ -6,7 +6,7 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
 
-struct C3StateEstimatorParams {
+struct StateEstimatorParams {
   std::string franka_model;
   std::string end_effector_model;
   std::string ball_model;

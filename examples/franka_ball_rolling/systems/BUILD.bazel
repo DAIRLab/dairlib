@@ -4,38 +4,87 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
     name = "c3_ball_rolling_systems",
-    srcs = [
-        "move_to_initial.cc",
-        "track_target_generator.cc",
-        "heuristic_generator.cc",
-        "control_refine_sender.cc",
-        "c3_state_estimator.cc",
-        "c3_state_sender.cc"
-    ],
-    hdrs = [
-        "move_to_initial.h",
-        "track_target_generator.h",
-        "heuristic_generator.h",
-        "control_refine_sender.h",
-        "c3_state_estimator.h",
-        "c3_state_sender.h"
-    ],
+    srcs = [],
+    hdrs = [],
     deps = [
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
-        "@lcm",
+        ":move_to_initial",
+        ":track_target_generator",
+        ":high_level_planner",
+        "//systems/controllers:impedance_controller",
+        ":state_estimator",
+        ":c3_state_sender"
+    ],
+)
+cc_library(
+    name = "high_level_planner",
+    srcs = [],
+    hdrs = [],
+    deps = [
+        ":heuristic_generator",
         "franka_kinematics",
-        "//multibody:utils",
+        "//systems/controllers:c3_controller",
+        "//systems/controllers:lcs_factory_system",
+        ":control_refine_sender",
+    ],
+)
+
+##################### each of the sub-blocks #########################
+# move to initialization
+cc_library(
+    name = "move_to_initial",
+    srcs = ["move_to_initial.cc"],
+    hdrs = ["move_to_initial.h"],
+    deps = [
         "//lcmtypes:lcmt_robot",
-        "//multibody:geom_geom_collider",
-        "//multibody/kinematic:kinematic",
-        "//solvers:lcs",
-        "//solvers:c3",
-        "//solvers:c3_output",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "//examples/franka_ball_rolling:simulate_franka_params",
+        "//examples/franka_ball_rolling:heuristic_planner_params",
+    ],
+)
+
+# target generator
+cc_library(
+    name = "track_target_generator",
+    srcs = ["track_target_generator.cc"],
+    hdrs = ["track_target_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "//examples/franka_ball_rolling:simulate_franka_params",
+        "//examples/franka_ball_rolling:trajectory_params",
+    ],
+)
+
+# high-level heuristic based planner (heuristic + FK + refinement)
+cc_library(
+    name = "heuristic_generator",
+    srcs = ["heuristic_generator.cc"],
+    hdrs = ["heuristic_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
         "//examples/franka_ball_rolling:trajectory_params",
         "//examples/franka_ball_rolling:heuristic_planner_params",
         "//examples/franka_ball_rolling:simulate_franka_params",
-        "//examples/franka_ball_rolling:c3_state_estimator_params",
+        "//solvers:c3",
+    ],
+)
+
+cc_library(
+    name = "control_refine_sender",
+    srcs = ["control_refine_sender.cc"],
+    hdrs = ["control_refine_sender.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "//examples/franka_ball_rolling:trajectory_params",
+        "//examples/franka_ball_rolling:simulate_franka_params",
+        "//solvers:c3",
+        "//solvers:c3_output"
     ],
 )
 
@@ -45,9 +94,7 @@ cc_library(
     hdrs = ["franka_kinematics.h"],
     deps = [
         ":franka_kinematics_vector",
-        "//common",
         "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "//examples/franka_ball_rolling:simulate_franka_params",
@@ -60,8 +107,31 @@ cc_library(
     srcs = ["franka_kinematics_vector.cc"],
     hdrs = ["franka_kinematics_vector.h"],
     deps = [
-        "//common",
-        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+# state estimator
+cc_library(
+    name = "state_estimator",
+    srcs = ["state_estimator.cc"],
+    hdrs = ["state_estimator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "//examples/franka_ball_rolling:state_estimator_params",
+    ],
+)
+
+# visualization tools
+cc_library(
+    name = "c3_state_sender",
+    srcs = ["c3_state_sender.cc"],
+    hdrs = ["c3_state_sender.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
     ],

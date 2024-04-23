@@ -72,7 +72,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> v_FIR_values = {(1-alpha), alpha};
 
   auto state_estimator = 
-    builder.AddSystem<dairlib::systems::C3StateEstimator>(p_FIR_values, v_FIR_values);
+    builder.AddSystem<dairlib::systems::StateEstimator>(p_FIR_values, v_FIR_values);
   builder.Connect(passthrough->get_output_port(0),
     state_estimator->get_input_port(0));
 

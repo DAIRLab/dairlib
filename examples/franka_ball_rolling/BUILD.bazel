@@ -55,10 +55,10 @@ cc_library(
 )
 
 cc_library(
-    name = "c3_state_estimator_params",
-    hdrs = ["parameters/c3_state_estimator_params.h"],
+    name = "state_estimator_params",
+    hdrs = ["parameters/state_estimator_params.h"],
     data = [
-        "parameters/c3_state_estimator_params.yaml",
+        "parameters/state_estimator_params.yaml",
     ],
     deps = [
         "@drake//:drake_shared_library",
@@ -71,16 +71,13 @@ cc_binary(
     srcs = ["lcm_move_to_initial.cc"],
     deps = [
         "//systems:robot_lcm_systems",
-        "//systems/controllers",
         "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
         "//systems/framework:lcm_driven_loop",
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//examples/franka_ball_rolling:heuristic_planner_params",
-        "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = ["@drake//manipulation/models/franka_description:models"]
 )
 
 cc_binary(
@@ -88,22 +85,17 @@ cc_binary(
     srcs = ["lcm_c3_ball_rolling_cleanup.cc"],
     deps = [
         "//systems:robot_lcm_systems",
-        "//systems/controllers",
-        "//systems/controllers:lcs_factory_system",
         "//systems/framework:lcm_driven_loop",
         "//examples/franka_ball_rolling/systems:franka_kinematics",
         "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//examples/franka_ball_rolling:trajectory_params",
         "//examples/franka_ball_rolling:heuristic_planner_params",
-        "//examples/franka_ball_rolling:c3_state_estimator_params",
         "//systems:system_utils",
-        "//systems/controllers:c3_controller",
-        "//solvers:c3",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = ["@drake//manipulation/models/franka_description:models"]
+    data = ["@drake//manipulation/models/franka_description:models"],
 )
 
 cc_binary(
@@ -112,14 +104,13 @@ cc_binary(
     deps = [
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
-        "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//common",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = ["@drake//manipulation/models/franka_description:models"]
+    data = ["@drake//manipulation/models/franka_description:models"],
 )
 
 cc_binary(
@@ -127,29 +118,24 @@ cc_binary(
     srcs = ["lcm_impedance_controller_cleanup.cc"],
     deps = [
         "//systems:robot_lcm_systems",
-        "//systems/controllers",
         "//systems/framework:lcm_driven_loop",
-        "//systems/controllers:impedance_controller",
-        "//examples/franka_ball_rolling:impedance_controller_params",
         "//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
+        "//examples/franka_ball_rolling:impedance_controller_params",
         "//systems:system_utils",
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    data = ["@drake//manipulation/models/franka_description:models"]
 )
 
 cc_binary(
   name = "lcm_state_estimator_cleanup",
   srcs = ["lcm_state_estimator_cleanup.cc"],
   deps = ["//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
-          "//examples/franka_ball_rolling:c3_state_estimator_params",
+          "//examples/franka_ball_rolling:state_estimator_params",
           "//systems:robot_lcm_systems",
           "//systems:system_utils",
           "//systems/framework:lcm_driven_loop",
           "@drake//:drake_shared_library",
           "@gflags"
-  ],
-  data = ["@drake//manipulation/models/franka_description:models"
   ],
 )

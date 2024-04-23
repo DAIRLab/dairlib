@@ -39,10 +39,17 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
     return this->get_output_port(lcs_state_port_);
   }
 
+  const drake::systems::OutputPort<double>& get_output_port_kinematics_jacobian() const {
+    return this->get_output_port(kinematic_jacobian_port_);
+  }
+
  private:
   void ComputeLCSState(
       const drake::systems::Context<double>& context,
       FrankaKinematicsVector<double>* output_traj) const;
+  void ComputeKinematicsJacobian(
+          const drake::systems::Context<double>& context,
+          MatrixXd* Cost_matrices) const;
 
   /// special function only for ball rolling example
   /// project the state estimation of the ball out from large penetration
@@ -53,6 +60,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex franka_state_port_;
   drake::systems::InputPortIndex object_state_port_;
   drake::systems::OutputPortIndex lcs_state_port_;
+  drake::systems::OutputPortIndex kinematic_jacobian_port_;
 
   int num_end_effector_positions_;
   int num_object_positions_;

@@ -6,6 +6,7 @@
 namespace dairlib {
 
 using drake::multibody::MultibodyPlant;
+using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using Eigen::Vector3d;
@@ -59,6 +60,10 @@ FrankaKinematics::FrankaKinematics(const drake::multibody::MultibodyPlant<double
                   num_end_effector_velocities_, num_object_velocities_),
               &FrankaKinematics::ComputeLCSState)
           .get_index();
+
+  kinematic_jacobian_port_ =
+          this->DeclareAbstractOutputPort("kinematics_jacobian", &FrankaKinematics::ComputeKinematicsJacobian)
+                  .get_index();
 
   end_effector_radius_ = sim_param.ee_radius;
   object_radius_ = sim_param.ball_radius;
@@ -125,6 +130,27 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_object);
   lcs_state->set_timestamp(franka_output->get_timestamp());
+}
+
+void FrankaKinematics::ComputeKinematicsJacobian(
+    const drake::systems::Context<double>& context,
+    MatrixXd* kinematics_jacobian) const {
+  const OutputVector<double>* franka_output =
+      (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
+
+  VectorXd q_franka = franka_output->GetPositions();
+  VectorXd v_franka = franka_output->GetVelocities();
+  multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
+                                       franka_context_);
+  multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
+                                        franka_context_);
+  MatrixXd J_franka(6, franka_plant_.num_velocities());
+  franka_plant_.CalcJacobianSpatialVelocity(
+            *franka_context_, JacobianWrtVariable::kV,
+            franka_plant_.GetBodyByName(end_effector_name_).body_frame(), VectorXd::Zero(3),
+            franka_plant_.world_frame(), franka_plant_.world_frame(), &J_franka);
+
+  *kinematics_jacobian = J_franka;
 }
 
 Eigen::VectorXd FrankaKinematics::ProjectStateEstimate(

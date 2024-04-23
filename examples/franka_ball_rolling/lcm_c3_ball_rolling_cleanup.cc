@@ -208,51 +208,9 @@ int DoMain(int argc, char* argv[]){
                     c3_controller->get_input_port_lcs());
 
   /* ------------------------------------- ControlRefinement Block  -----------------------------------------*/
-  /// temporarily create full contact plant ///
-  DiagramBuilder<double> builder_contact_full;
-  auto [plant_contact_full, scene_graph_full] = AddMultibodyPlantSceneGraph(&builder_contact_full, 0.0);
-  Parser parser_contact_full(&plant_contact_full);
-  parser_contact_full.AddModels(sim_param.franka_model);
-  parser_contact_full.AddModels(sim_param.end_effector_model);
-  parser_contact_full.AddModels(sim_param.ball_model);
-  parser_contact_full.AddModels(sim_param.ground_model);
-
-  RigidTransform<double> X_WI_full = RigidTransform<double>::Identity();
-  RigidTransform<double> X_F_EE_full = RigidTransform<double>(sim_param.tool_attachment_frame);
-  RigidTransform<double> X_F_G = RigidTransform<double>(sim_param.ground_offset_frame);
-
-  plant_contact_full.WeldFrames(plant_contact_full.world_frame(),
-                                  plant_contact_full.GetFrameByName("panda_link0"), X_WI_full);
-  plant_contact_full.WeldFrames(plant_contact_full.GetFrameByName("panda_link7"),
-                                  plant_contact_full.GetFrameByName("end_effector_base"), X_F_EE_full);
-  plant_contact_full.WeldFrames(plant_contact_full.GetFrameByName("panda_link0"),
-                                  plant_contact_full.GetFrameByName("ground"), X_F_G);
-  plant_contact_full.Finalize();
-
-  auto diagram_contact_full = builder_contact_full.Build();
-  std::unique_ptr<Context<double>> diagram_context_contact_full = diagram_contact_full->CreateDefaultContext();
-  auto& context_contact_full = diagram_contact_full->GetMutableSubsystemContext(plant_contact_full,
-                                                                                diagram_context_contact_full.get());
-
-  GeometryId end_effector_geoms_full =
-          plant_contact_full.GetCollisionGeometriesForBody(plant_contact_full.GetBodyByName("end_effector_tip"))[0];
-  GeometryId ball_geoms_full =
-          plant_contact_full.GetCollisionGeometriesForBody(plant_contact_full.GetBodyByName("sphere"))[0];
-  GeometryId ground_geoms_full =
-          plant_contact_full.GetCollisionGeometriesForBody(plant_contact_full.GetBodyByName("ground"))[0];
-  std::vector<GeometryId> contact_geoms_full =
-            {end_effector_geoms_full, ball_geoms_full, ground_geoms_full};
-
-  std::vector<SortedPair<GeometryId>> contact_pairs_full;
-  contact_pairs_full.push_back(SortedPair(contact_geoms_full[0], contact_geoms_full[1]));
-  contact_pairs_full.push_back(SortedPair(contact_geoms_full[1], contact_geoms_full[2]));
-
   auto control_refinement = builder.AddSystem<systems::ControlRefineSender>(plant_lcs,context_lcs,
                                                                               *plant_ad_lcs,*context_ad_lcs,
-                                                                              contact_pairs,c3_param,
-                                                                              plant_contact_full,
-                                                                              context_contact_full,
-                                                                              contact_pairs_full);
+                                                                              contact_pairs,c3_param);
 
   /* ----------------------------------- ControlRefinement port connection --------------------------------*/
   builder.Connect(heuristic_generator->get_output_port_orientation(),
@@ -261,6 +219,7 @@ int DoMain(int argc, char* argv[]){
                     control_refinement->get_input_port_c3_solution());
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                     control_refinement->get_input_port_lcs_state());
+
 
   // TODO: try not to make the dimension hard coded
   auto planner_command_sender = builder.AddSystem<systems::BallRollingCommandSender>(13, 7, 1);

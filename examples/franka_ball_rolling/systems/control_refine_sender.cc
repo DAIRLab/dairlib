@@ -28,20 +28,14 @@ ControlRefineSender::ControlRefineSender(
         const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
         drake::systems::Context<drake::AutoDiffXd>& context_ad,
         const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
-        C3Options c3_options,
-        const drake::multibody::MultibodyPlant<double>& plant_full_contact,
-        drake::systems::Context<double>& context_full_contact,
-        const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms_full):
+        C3Options c3_options):
         plant_(plant),
         context_(context),
         plant_ad_(plant_ad),
         context_ad_(context_ad),
         contact_pairs_(contact_geoms),
         c3_options_(std::move(c3_options)),
-        N_(c3_options_.N),
-        plant_full_contact_(plant_full_contact),
-        context_full_contact_(context_full_contact),
-        contact_pairs_full_(contact_geoms_full){
+        N_(c3_options_.N){
 
     this->set_name("control_refine_system");
     n_q_ = plant_.num_positions();
@@ -230,15 +224,10 @@ void ControlRefineSender::CalcTrackTarget(
 void ControlRefineSender::CalcFeedForwardTorque(const Context<double> &context,
                                                 BasicVector<double> *torque_force) const {
     // all other calculations are done in EventStatus Update
-    // TODO: NEED TO FIGURE OUT THE CORRECT CONTACT JACOBIAN! NOW IS WRONG BUT USE TO PASS INTERFACE TEST
-    VectorXd force = context.get_discrete_state(force_idx_).value();
-    MatrixXd contact_jacobian = context.get_abstract_state<MatrixXd>(contact_jacobian_idx);
-    std::cout<< "rows: "<< contact_jacobian.rows()<<std::endl;
-    std::cout<< "columns: "<< contact_jacobian.cols()<<std::endl;
-
-    VectorXd torque_target = contact_jacobian.transpose() * force;
     VectorXd torque_force_target = VectorXd::Zero(8);
-    torque_force_target << torque_target.head(7), force(2);
+
+
+    torque_force_target << torque_force_target ;
     torque_force->SetFromVector(torque_force_target);
 }
 }  // namespace systems

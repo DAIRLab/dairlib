@@ -255,12 +255,9 @@ std::pair<Eigen::MatrixXd, std::vector<VectorXd>>
 LCSFactory::ComputeContactJacobian(
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::systems::Context<double>& context,
-    const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    const drake::systems::Context<drake::AutoDiffXd>& context_ad,
-    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
-        contact_geoms,
-    int num_friction_directions, const std::vector<double>& mu, double dt,
-    int N, dairlib::solvers::ContactModel contact_model) {
+    const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&contact_geoms,
+    int num_friction_directions, const std::vector<double>& mu,
+    dairlib::solvers::ContactModel contact_model) {
   int n_contacts = contact_geoms.size();
 
   int n_v = plant.num_velocities();

@@ -166,9 +166,9 @@ int DoMain(int argc, char* argv[]){
   std::vector<GeometryId> contact_geoms =
     {end_effector_geoms, ball_geoms, ground_geoms};
 
-    std::vector<SortedPair<GeometryId>> contact_pairs;
-    contact_pairs.push_back(SortedPair(contact_geoms[0], contact_geoms[1]));
-    contact_pairs.push_back(SortedPair(contact_geoms[1], contact_geoms[2]));
+  std::vector<SortedPair<GeometryId>> contact_pairs;
+  contact_pairs.push_back(SortedPair(contact_geoms[0], contact_geoms[1]));
+  contact_pairs.push_back(SortedPair(contact_geoms[1], contact_geoms[2]));
 
   /* --------------------------------- Target and Heuristic Generator Blocks  -----------------------------------------*/
   auto target_generator =

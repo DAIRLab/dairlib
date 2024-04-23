@@ -161,9 +161,8 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
                 c3_options_.num_friction_directions, c3_options_.mu, dt,
                 c3_options_.N, contact_model);
         auto jacobian_point_pair= LCSFactory::ComputeContactJacobian(
-                plant_, context_, plant_ad_, context_ad_, contact_pairs_,
-                c3_options_.num_friction_directions, c3_options_.mu, dt,
-                c3_options_.N, contact_model);
+                plant_, context_, contact_pairs_,
+                c3_options_.num_friction_directions, c3_options_.mu, contact_model);
 
         LCS lcs_system = system_scaling_pair.first;
         double scaling = system_scaling_pair.second;
@@ -228,6 +227,8 @@ void ControlRefineSender::CalcFeedForwardTorque(const Context<double> &context,
     // TODO: NEED TO FIGURE OUT THE CORRECT CONTACT JACOBIAN! NOW IS WRONG BUT USE TO PASS INTERFACE TEST
     VectorXd force = context.get_discrete_state(force_idx_).value();
     MatrixXd contact_jacobian = context.get_abstract_state<MatrixXd>(contact_jacobian_idx);
+    std::cout<< "rows: "<< contact_jacobian.rows()<<std::endl;
+    std::cout<< "columns: "<< contact_jacobian.cols()<<std::endl;
 
     VectorXd torque_target = contact_jacobian.transpose() * force;
     VectorXd torque_force_target = VectorXd::Zero(8);

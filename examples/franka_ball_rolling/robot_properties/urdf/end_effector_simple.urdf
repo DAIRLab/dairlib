@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 
-<robot name="finger_with_stage">
+<robot name="end_effector_simple">
   <!--
     Frames are defined such that they all align with the base frame when all
     joints are at position zero.
@@ -80,8 +80,8 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
-  <drake:collision_filter_group name="finger_0_group">
+  <drake:collision_filter_group name="end_effector_simple_group">
   <drake:member link="end_effector_simple"/>
-  <drake:ignored_collision_filter_group name="finger_0_group"/>
+  <drake:ignored_collision_filter_group name="end_effector_simple_group"/>
   </drake:collision_filter_group>
 </robot>

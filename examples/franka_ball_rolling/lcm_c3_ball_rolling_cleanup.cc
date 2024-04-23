@@ -81,41 +81,55 @@ int DoMain(int argc, char* argv[]){
   drake::lcm::DrakeLcm lcm;
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
+  /* ----------------------- Create full plant for Forward Kinematics  --------------------------*/
+  DiagramBuilder<double> builder_full_model;
+  auto [plant_full_model, scene_graph_full_model] = AddMultibodyPlantSceneGraph(&builder_full_model, 0.0);
+  Parser parser_full_model(&plant_full_model);
+  drake::multibody::ModelInstanceIndex franka_index_full = parser_full_model.AddModels(sim_param.franka_model)[0];
+  drake::multibody::ModelInstanceIndex ground_index_full = parser_full_model.AddModels(sim_param.ground_model)[0];
+  drake::multibody::ModelInstanceIndex end_effector_index_full = parser_full_model.AddModels(sim_param.end_effector_model)[0];
+  drake::multibody::ModelInstanceIndex ball_index_full = parser_full_model.AddModels(sim_param.ball_model)[0];
 
-  /* ----------------------- Create plants for Forward Kinematics  --------------------------*/
-  // Forward kinematics need single franka plant and sigle object plant
-  // Franka plant
-  MultibodyPlant<double> plant_franka(0.0);
-  Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.AddModels(sim_param.franka_model);
-  drake::multibody::ModelInstanceIndex end_effector_index =
-            parser_franka.AddModels(sim_param.end_effector_model)[0];
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);
+  RigidTransform<double> X_WI_full = RigidTransform<double>::Identity();
+  RigidTransform<double> X_F_EE_full = RigidTransform<double>(sim_param.tool_attachment_frame);
+  RigidTransform<double> X_F_G_full = RigidTransform<double>(sim_param.ground_offset_frame);
 
-  plant_franka.WeldFrames(plant_franka.world_frame(),
-                            plant_franka.GetFrameByName("panda_link0"), X_WI);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
-                          plant_franka.GetFrameByName("end_effector_base"), X_F_EE);
-  plant_franka.Finalize();
-  auto franka_context = plant_franka.CreateDefaultContext();
+  plant_full_model.WeldFrames(plant_full_model.world_frame(),
+                              plant_full_model.GetFrameByName("panda_link0"), X_WI_full);
+  plant_full_model.WeldFrames(plant_full_model.GetFrameByName("panda_link7"),
+                              plant_full_model.GetFrameByName("end_effector_base",
+                                                              end_effector_index_full), X_F_EE_full);
+  plant_full_model.WeldFrames(plant_full_model.GetFrameByName("panda_link0"),
+                              plant_full_model.GetFrameByName("ground",
+                                                              ground_index_full), X_F_G_full);
+  plant_full_model.Finalize();
 
-  // Ball plant
-  MultibodyPlant<double> plant_ball(0.0);
-  Parser parser_ball(&plant_ball, nullptr);
-  parser_ball.AddModels(sim_param.ball_model);
-  plant_ball.Finalize();
-  auto ball_context = plant_ball.CreateDefaultContext();
+  auto diagram_full_model = builder_full_model.Build();
+  std::unique_ptr<Context<double>> diagram_context_full_model = diagram_full_model->CreateDefaultContext();
+  auto& context_full_model = diagram_full_model->GetMutableSubsystemContext(plant_full_model, diagram_context_full_model.get());
 
-  DiagramBuilder<double> builder;
+  GeometryId end_effector_geoms_full =
+          plant_full_model.GetCollisionGeometriesForBody(plant_full_model.GetBodyByName("end_effector_tip"))[0];
+  GeometryId ball_geoms_full =
+          plant_full_model.GetCollisionGeometriesForBody(plant_full_model.GetBodyByName("sphere"))[0];
+  GeometryId ground_geoms_full =
+          plant_full_model.GetCollisionGeometriesForBody(plant_full_model.GetBodyByName("ground"))[0];
+  std::vector<GeometryId> contact_geoms_full =
+    {end_effector_geoms_full, ball_geoms_full, ground_geoms_full};
+
+  std::vector<SortedPair<GeometryId>> contact_pairs_full;
+  contact_pairs_full.push_back(SortedPair(contact_geoms_full[0], contact_geoms_full[1]));
+  contact_pairs_full.push_back(SortedPair(contact_geoms_full[1], contact_geoms_full[2]));
+
   /* ----------------------------- State Subscriber/Receiver --------------------------------*/
+  DiagramBuilder<double> builder;
   auto ball_state_sub =
             builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
                     "BALL_STATE_ESTIMATE_NEW", &lcm));
   auto franka_state_receiver =
-            builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+            builder.AddSystem<systems::RobotOutputReceiver>(plant_full_model, franka_index_full);
   auto ball_state_receiver =
-            builder.AddSystem<systems::ObjectStateReceiver>(plant_ball);
+            builder.AddSystem<systems::ObjectStateReceiver>(plant_full_model,ball_index_full);
   // franka_state receiver and subsription is declared in lcm driven loop
   builder.Connect(ball_state_sub->get_output_port(),
                     ball_state_receiver->get_input_port());
@@ -124,9 +138,9 @@ int DoMain(int argc, char* argv[]){
   // TODO: think which yaml should put include_end_effector (now hardcoded false)
   auto simplified_model_generator =
             builder.AddSystem<systems::FrankaKinematics>(
-                    plant_franka, franka_context.get(), plant_ball, ball_context.get(),
+                    plant_full_model, context_full_model, franka_index_full, ball_index_full,
                     "end_effector_tip", "sphere",
-                    false, sim_param, false);
+                    false, contact_pairs_full, c3_param, sim_param, false);
 
   /* ----------------------- State Receiver to Forward Kinematics port connection --------------------------*/
   builder.Connect(franka_state_receiver->get_output_port(),
@@ -219,6 +233,8 @@ int DoMain(int argc, char* argv[]){
                     control_refinement->get_input_port_c3_solution());
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                     control_refinement->get_input_port_lcs_state());
+  builder.Connect(simplified_model_generator->get_output_port_contact_jacobian_full(),
+                    control_refinement->get_input_port_contact_jacobian());
 
 
   // TODO: try not to make the dimension hard coded

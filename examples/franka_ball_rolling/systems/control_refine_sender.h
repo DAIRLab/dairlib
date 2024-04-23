@@ -33,7 +33,7 @@ class ControlRefineSender
           drake::systems::Context<double>& context,
           const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
           drake::systems::Context<drake::AutoDiffXd>& context_ad,
-          const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
+          const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs,
           C3Options c3_options);
 
   /// the first input port take in c3 solution (only need to u part)
@@ -47,6 +47,10 @@ class ControlRefineSender
 
   const drake::systems::InputPort<double>& get_input_port_ee_orientation() const {
       return this->get_input_port(ee_orientation_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_contact_jacobian() const {
+      return this->get_input_port(contact_jacobian_port_);
   }
 
   /// the first output port send out desired state of the impedance controller to track
@@ -75,6 +79,7 @@ class ControlRefineSender
   drake::systems::InputPortIndex c3_solution_port_;
   drake::systems::InputPortIndex lcs_state_port_;
   drake::systems::InputPortIndex ee_orientation_port_;
+  drake::systems::InputPortIndex contact_jacobian_port_;
 
 
 
@@ -100,8 +105,6 @@ class ControlRefineSender
   // do all the calculation in event status to avoid code duplication
   int x_next_idx_;
   int force_idx_;
-  int contact_jacobian_idx;
-
 
   // solve_time_filter
   int dt_history_idx_;

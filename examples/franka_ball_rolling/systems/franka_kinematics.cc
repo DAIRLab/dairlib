@@ -17,36 +17,40 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-FrankaKinematics::FrankaKinematics(const drake::multibody::MultibodyPlant<double> &franka_plant,
-                                   drake::systems::Context<double> *franka_context,
-                                   const drake::multibody::MultibodyPlant<double> &object_plant,
-                                   drake::systems::Context<double> *object_context,
+FrankaKinematics::FrankaKinematics(const drake::multibody::MultibodyPlant<double> &full_model_plant,
+                                   drake::systems::Context<double> &full_model_context,
+                                   const drake::multibody::ModelInstanceIndex franka_index,
+                                   const drake::multibody::ModelInstanceIndex object_index,
                                    const std::string &end_effector_name,
                                    const std::string &object_name,
                                    bool include_end_effector_orientation,
+                                   const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs,
+                                   C3Options c3_options,
                                    const SimulateFrankaParams &sim_param,
                                    bool project_state_option)
-    : franka_plant_(franka_plant),
-      franka_context_(franka_context),
-      object_plant_(object_plant),
-      object_context_(object_context),
-      world_(franka_plant_.world_frame()),
+    : full_model_plant_(full_model_plant),
+      full_model_context_(full_model_context),
+      franka_index_(franka_index),
+      object_index_(object_index),
+      world_(full_model_plant_.world_frame()),
       end_effector_name_(end_effector_name),
       object_name_(object_name),
       include_end_effector_orientation_(include_end_effector_orientation),
+      contact_pairs_(contact_pairs),
+      c3_options_(std::move(c3_options)),
       project_state_option_(project_state_option){
   this->set_name("franka_kinematics");
   franka_state_port_ =
       this->DeclareVectorInputPort(
-              "x_franka", OutputVector<double>(franka_plant.num_positions(),
-                                               franka_plant.num_velocities(),
-                                               franka_plant.num_actuators()))
+              "x_franka", OutputVector<double>(full_model_plant.num_positions(franka_index),
+                                               full_model_plant.num_velocities(franka_index),
+                                               full_model_plant.num_actuators(franka_index)))
           .get_index();
 
   object_state_port_ =
       this->DeclareVectorInputPort(
-              "x_object", StateVector<double>(object_plant.num_positions(),
-                                               object_plant.num_velocities()))
+              "x_object", StateVector<double>(full_model_plant.num_positions(object_index),
+                                              full_model_plant.num_velocities(object_index)))
           .get_index();
   num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
   num_object_positions_ = 7;
@@ -61,8 +65,8 @@ FrankaKinematics::FrankaKinematics(const drake::multibody::MultibodyPlant<double
               &FrankaKinematics::ComputeLCSState)
           .get_index();
 
-  kinematic_jacobian_port_ =
-          this->DeclareAbstractOutputPort("kinematics_jacobian", &FrankaKinematics::ComputeKinematicsJacobian)
+  contact_jacobian_port_ =
+          this->DeclareAbstractOutputPort("contact_jacobian_full", &FrankaKinematics::ComputeFullContactJacobian)
                   .get_index();
 
   end_effector_radius_ = sim_param.ee_radius;
@@ -81,22 +85,18 @@ void FrankaKinematics::ComputeLCSState(
   VectorXd v_franka = franka_output->GetVelocities();
   VectorXd q_object = object_output->GetPositions();
   VectorXd v_object = object_output->GetVelocities();
-  multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
-                                       franka_context_);
-  multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
-                                        franka_context_);
-  multibody::SetPositionsIfNew<double>(object_plant_, q_object,
-                                       object_context_);
-  multibody::SetVelocitiesIfNew<double>(object_plant_, v_object,
-                                        object_context_);
+  full_model_plant_.SetPositions(&full_model_context_, franka_index_, q_franka);
+  full_model_plant_.SetVelocities(&full_model_context_, franka_index_, v_franka);
+  full_model_plant_.SetPositions(&full_model_context_, object_index_, q_object);
+  full_model_plant_.SetVelocities(&full_model_context_, object_index_, v_object);
 
-  auto end_effector_pose = franka_plant_.EvalBodyPoseInWorld(
-      *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
-  auto object_pose = object_plant_.EvalBodyPoseInWorld(
-      *object_context_, object_plant_.GetBodyByName(object_name_));
+  auto end_effector_pose = full_model_plant_.EvalBodyPoseInWorld(
+          full_model_context_, full_model_plant_.GetBodyByName(end_effector_name_));
+  auto object_pose = full_model_plant_.EvalBodyPoseInWorld(
+      full_model_context_, full_model_plant_.GetBodyByName(object_name_));
   auto end_effector_spatial_velocity =
-      franka_plant_.EvalBodySpatialVelocityInWorld(
-          *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
+      full_model_plant_.EvalBodySpatialVelocityInWorld(
+              full_model_context_, full_model_plant_.GetBodyByName(end_effector_name_));
   auto end_effector_rotation_rpy =
       end_effector_pose.rotation().ToRollPitchYaw().vector();
   VectorXd end_effector_positions = VectorXd::Zero(num_end_effector_positions_);
@@ -132,25 +132,42 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->set_timestamp(franka_output->get_timestamp());
 }
 
-void FrankaKinematics::ComputeKinematicsJacobian(
+void FrankaKinematics::ComputeFullContactJacobian(
     const drake::systems::Context<double>& context,
-    MatrixXd* kinematics_jacobian) const {
+    MatrixXd* contact_jacobian) const {
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
+  const StateVector<double>* object_output =
+            (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
 
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();
-  multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
-                                       franka_context_);
-  multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
-                                        franka_context_);
-  MatrixXd J_franka(6, franka_plant_.num_velocities());
-  franka_plant_.CalcJacobianSpatialVelocity(
-            *franka_context_, JacobianWrtVariable::kV,
-            franka_plant_.GetBodyByName(end_effector_name_).body_frame(), VectorXd::Zero(3),
-            franka_plant_.world_frame(), franka_plant_.world_frame(), &J_franka);
+  VectorXd q_object = object_output->GetPositions();
+  VectorXd v_object = object_output->GetVelocities();
 
-  *kinematics_jacobian = J_franka;
+  full_model_plant_.SetPositions(&full_model_context_, franka_index_, q_franka);
+  full_model_plant_.SetVelocities(&full_model_context_, franka_index_, v_franka);
+  full_model_plant_.SetPositions(&full_model_context_, object_index_, q_object);
+  full_model_plant_.SetVelocities(&full_model_context_, object_index_, v_object);
+
+  multibody::SetInputsIfNew<double>(full_model_plant_,VectorXd::Zero(full_model_plant_.num_actuators()),
+                                    &full_model_context_);
+
+  dairlib::solvers::ContactModel contact_model;
+    if (c3_options_.contact_model == "stewart_and_trinkle") {
+        contact_model = solvers::ContactModel::kStewartAndTrinkle;
+    } else if (c3_options_.contact_model == "anitescu") {
+        contact_model = solvers::ContactModel::kAnitescu;
+    } else {
+        throw std::runtime_error("unknown or unsupported contact model");
+    }
+
+  auto jacobian_point_pair= solvers::LCSFactory::ComputeContactJacobian(
+          full_model_plant_, full_model_context_, contact_pairs_,
+            c3_options_.num_friction_directions, c3_options_.mu, contact_model);
+
+  MatrixXd J_contact_full = jacobian_point_pair.first;
+  *contact_jacobian = J_contact_full;
 }
 
 Eigen::VectorXd FrankaKinematics::ProjectStateEstimate(

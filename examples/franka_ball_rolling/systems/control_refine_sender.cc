@@ -27,13 +27,13 @@ ControlRefineSender::ControlRefineSender(
         drake::systems::Context<double>& context,
         const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
         drake::systems::Context<drake::AutoDiffXd>& context_ad,
-        const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
+        const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs,
         C3Options c3_options):
         plant_(plant),
         context_(context),
         plant_ad_(plant_ad),
         context_ad_(context_ad),
-        contact_pairs_(contact_geoms),
+        contact_pairs_(contact_pairs),
         c3_options_(std::move(c3_options)),
         N_(c3_options_.N){
 
@@ -64,6 +64,10 @@ ControlRefineSender::ControlRefineSender(
             this->DeclareVectorInputPort("ee_orientation", BasicVector<double>(4))
                     .get_index();
 
+    contact_jacobian_port_ =
+            this->DeclareAbstractInputPort("contact_jacobian_full", drake::Value<MatrixXd>{})
+                    .get_index();
+
     // OUTPUT PORTS
     target_port_ =
       this->DeclareVectorOutputPort(
@@ -86,9 +90,6 @@ ControlRefineSender::ControlRefineSender(
 
     x_next_idx_ = this->DeclareDiscreteState(n_x_);
     force_idx_ = this->DeclareDiscreteState(n_lambda_);
-    MatrixXd contact_jacobian_holder = MatrixXd::Zero(n_lambda_, n_v_);
-    contact_jacobian_idx = this->DeclareAbstractState(
-            drake::Value<MatrixXd>(contact_jacobian_holder));
 
     this->DeclareForcedUnrestrictedUpdateEvent(
             &ControlRefineSender::UpdateSolveTimeHistory);
@@ -160,13 +161,9 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
                 plant_, context_, plant_ad_, context_ad_, contact_pairs_,
                 c3_options_.num_friction_directions, c3_options_.mu, dt,
                 c3_options_.N, contact_model);
-        auto jacobian_point_pair= LCSFactory::ComputeContactJacobian(
-                plant_, context_, contact_pairs_,
-                c3_options_.num_friction_directions, c3_options_.mu, contact_model);
 
         LCS lcs_system = system_scaling_pair.first;
         double scaling = system_scaling_pair.second;
-        MatrixXd jacobian = jacobian_point_pair.first;
 
         drake::solvers::MobyLCPSolver<double> LCPSolver;
         VectorXd x = q_v_u.head(n_x_);
@@ -179,13 +176,11 @@ EventStatus ControlRefineSender::UpdateSolveTimeHistory(
         // set state value, directly call these in Calc functions
         auto& x_next = state->get_mutable_discrete_state(x_next_idx_);
         auto& force = state->get_mutable_discrete_state(force_idx_);
-        auto& contact_jacobian = state->get_mutable_abstract_state<MatrixXd>(contact_jacobian_idx);
 
 //        std::cout << dt << std::endl;
 
         x_next.SetFromVector(lcs_system.A_[0] * x + lcs_system.B_[0] * u_C3 + lcs_system.D_[0] * lambda / scaling + lcs_system.d_[0]);
         force.SetFromVector(lambda);
-        contact_jacobian = jacobian;
         prev_time = timestamp;
 
         return EventStatus::Succeeded();
@@ -224,10 +219,13 @@ void ControlRefineSender::CalcTrackTarget(
 void ControlRefineSender::CalcFeedForwardTorque(const Context<double> &context,
                                                 BasicVector<double> *torque_force) const {
     // all other calculations are done in EventStatus Update
+    auto contact_jacobian = EvalAbstractInput(context, contact_jacobian_port_)->get_value<MatrixXd>();
+
+    VectorXd force = context.get_discrete_state(force_idx_).value();
+    VectorXd contact_torque = (contact_jacobian.transpose() * force).head(7);
     VectorXd torque_force_target = VectorXd::Zero(8);
 
-
-    torque_force_target << torque_force_target ;
+    torque_force_target << contact_torque, force(2);
     torque_force->SetFromVector(torque_force_target);
 }
 }  // namespace systems

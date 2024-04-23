@@ -34,7 +34,10 @@ class ControlRefineSender
           const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
           drake::systems::Context<drake::AutoDiffXd>& context_ad,
           const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
-          C3Options c3_options);
+          C3Options c3_options,
+          const drake::multibody::MultibodyPlant<double>& plant_full_contact,
+          drake::systems::Context<double>& context_full_contact,
+          const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms_full);
 
   /// the first input port take in c3 solution (only need to u part)
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
@@ -85,6 +88,10 @@ class ControlRefineSender
   const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>& context_ad_;
   const std::vector<drake::SortedPair<drake::geometry::GeometryId>>contact_pairs_;
+
+  const drake::multibody::MultibodyPlant<double>& plant_full_contact_;
+  drake::systems::Context<double>& context_full_contact_;
+  const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_pairs_full_;
 
   C3Options c3_options_;
 

@@ -28,14 +28,20 @@ ControlRefineSender::ControlRefineSender(
         const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
         drake::systems::Context<drake::AutoDiffXd>& context_ad,
         const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms,
-        C3Options c3_options):
+        C3Options c3_options,
+        const drake::multibody::MultibodyPlant<double>& plant_full_contact,
+        drake::systems::Context<double>& context_full_contact,
+        const std::vector<drake::SortedPair<drake::geometry::GeometryId>> contact_geoms_full):
         plant_(plant),
         context_(context),
         plant_ad_(plant_ad),
         context_ad_(context_ad),
         contact_pairs_(contact_geoms),
         c3_options_(std::move(c3_options)),
-        N_(c3_options_.N)  {
+        N_(c3_options_.N),
+        plant_full_contact_(plant_full_contact),
+        context_full_contact_(context_full_contact),
+        contact_pairs_full_(contact_geoms_full){
 
     this->set_name("control_refine_system");
     n_q_ = plant_.num_positions();

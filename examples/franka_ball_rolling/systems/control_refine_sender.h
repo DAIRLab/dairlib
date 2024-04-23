@@ -66,7 +66,7 @@ class ControlRefineSender
                        TimestampedVector<double>* target) const;
 
   void CalcFeedForwardTorque(const drake::systems::Context<double>& context,
-                         drake::systems::BasicVector<double>* torque) const;
+                         drake::systems::BasicVector<double>* torque_force) const;
 
   // update discrete states to get the filtered approximate solve time
   drake::systems::EventStatus UpdateSolveTimeHistory(const drake::systems::Context<double>& context,

@@ -89,7 +89,7 @@ int DoMain(int argc, char* argv[]){
   MatrixXd B_null = impedance_param.damping_null;
   VectorXd qd_null = impedance_param.q_null_desired;
 
-  auto controller = builder.AddSystem<systems::controllers::ImpedanceController>(
+  auto impedance_controller = builder.AddSystem<systems::controllers::ImpedanceController>(
           plant, *context, K, B, K_null, B_null, qd_null);
   auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
 
@@ -97,23 +97,24 @@ int DoMain(int argc, char* argv[]){
   /// get trajectory info from c3
   /// TODO: in the end should make the interface easier and not hard code dimension and port index
   /// TODO: make gravity compensation an option in the impedance controller, not a seperate system
-  auto c3_subscriber = builder.AddSystem(
-    LcmSubscriberSystem::Make<dairlib::lcmt_c3>(
+  auto planner_command_subscriber = builder.AddSystem(
+    LcmSubscriberSystem::Make<dairlib::lcmt_ball_rolling_command>(
       "CONTROLLER_INPUT", &drake_lcm));
-  auto c3_receiver = 
-    builder.AddSystem<systems::RobotC3Receiver>(14, 9, 6, 9);
-  builder.Connect(c3_subscriber->get_output_port(0),
-    c3_receiver->get_input_port(0));
-  builder.Connect(c3_receiver->get_output_port(0),
-    controller->get_input_port(1));
+  auto planner_command_receiver =
+    builder.AddSystem<systems::BallRollingCommandReceiver>(13, 7, 1);
+  builder.Connect(planner_command_subscriber->get_output_port(0),
+                  planner_command_receiver->get_input_port(0));
+  builder.Connect(planner_command_receiver->get_output_port(0),
+                  impedance_controller->get_input_port(1));
+  builder.Connect(planner_command_receiver->get_output_port(1),
+                  impedance_controller->get_input_port(2));
 
   /* -------------------------------------------------------------------------------------------*/
-
-  builder.Connect(state_receiver->get_output_port(0), 
-    controller->get_input_port(0));
+  builder.Connect(state_receiver->get_output_port(0),
+                  impedance_controller->get_input_port(0));
 
   auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
-  builder.Connect(controller->get_output_port(), gravity_compensator->get_input_port());
+  builder.Connect(impedance_controller->get_output_port(), gravity_compensator->get_input_port());
   builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
 
   auto control_publisher = builder.AddSystem(
@@ -137,40 +138,47 @@ int DoMain(int argc, char* argv[]){
   
   /// initialize message
   /// TODO: in the end should find a more elegant way to do this, align with CONTROLLER_INPUT settings
-  std::vector<double> msg_data(38, 0);
-  msg_data[0] = impedance_param.initial_start(0);
-  msg_data[1] = impedance_param.initial_start(1);
-  msg_data[2] = impedance_param.initial_start(2);
-  msg_data[3] = 0;
-  msg_data[4] = 1;
-  msg_data[5] = 0;
-  msg_data[6] = 0;
-  msg_data[7] = 1;
-  msg_data[8] = 0;
-  msg_data[9] = 0;
-  msg_data[10] = 0;
-  msg_data[32] = msg_data[7];
-  msg_data[33] = msg_data[8];
-  msg_data[34] = msg_data[9];
-  msg_data[35] = msg_data[7];
-  msg_data[36] = msg_data[8];
-  msg_data[37] = msg_data[9];
+  std::vector<double> target_state_initial(13, 0);
+  std::vector<double> feedforward_torque_initial(7, 0);
+  std::vector<double> contact_force_initial(1, 0);
 
-  dairlib::lcmt_c3 init_msg;
-  init_msg.data = msg_data;
-  init_msg.data_size = 38;
+//  msg_data[0] = impedance_param.initial_start(0);
+//  msg_data[1] = impedance_param.initial_start(1);
+//  msg_data[2] = impedance_param.initial_start(2);
+//  msg_data[3] = 0;
+//  msg_data[4] = 1;
+//  msg_data[5] = 0;
+//  msg_data[6] = 0;
+//  msg_data[7] = 1;
+//  msg_data[8] = 0;
+//  msg_data[9] = 0;
+//  msg_data[10] = 0;
+//  msg_data[32] = msg_data[7];
+//  msg_data[33] = msg_data[8];
+//  msg_data[34] = msg_data[9];
+//  msg_data[35] = msg_data[7];
+//  msg_data[36] = msg_data[8];
+//  msg_data[37] = msg_data[9];
+
+  dairlib::lcmt_ball_rolling_command init_msg;
+  init_msg.target_state = target_state_initial;
+  init_msg.feedforward_torque = feedforward_torque_initial;
+  init_msg.contact_force = contact_force_initial;
+  init_msg.num_target_state_variables = 13;
+  init_msg.num_feedforward_torque_variables = 7;
+  init_msg.num_contact_force_variables = 1;
   init_msg.utime = 0.0;
 
   /// assign initial message
   auto& diagram_context = loop.get_diagram_mutable_context();
   auto& ik_subscriber_context =
-      loop.get_diagram()->GetMutableSubsystemContext(*c3_subscriber,
+      loop.get_diagram()->GetMutableSubsystemContext(*planner_command_subscriber,
                                                       &diagram_context);
   // Note that currently the LcmSubscriber stores the lcm message in the first
   // state of the leaf system (we hard coded index 0 here)
   auto& mutable_state =
       ik_subscriber_context
-          .get_mutable_abstract_state<dairlib::lcmt_c3>(0);
+          .get_mutable_abstract_state<dairlib::lcmt_ball_rolling_command>(0);
   mutable_state = init_msg;
 
   loop.Simulate(std::numeric_limits<double>::infinity());

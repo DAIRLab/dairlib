@@ -29,9 +29,15 @@ MoveToInitial::MoveToInitial(
     // TODO:: make dimension not hardcoded
     target_port_ =
             this->DeclareVectorOutputPort(
-                    "xee, xball, xee_dot, xball_dot, lambda, visualization",
-                    TimestampedVector<double>(38), &MoveToInitial::CalcTarget)
+                    "xee, xee_dot",
+                    TimestampedVector<double>(13), &MoveToInitial::CalcTarget)
             .get_index();
+
+    contact_torque_port_ =
+            this->DeclareVectorOutputPort(
+                            "contact_torque, lambda", BasicVector<double>(7 + 1),
+                            &MoveToInitial::CalcFeedForwardTorque)
+                    .get_index();
 
     // Set Trajectory Patameters
     SetParameters(sim_param, heuristic_param);
@@ -72,7 +78,6 @@ void MoveToInitial::SetParameters(const SimulateFrankaParams& sim_param,
   y_c_= sim_param.y_c;
   traj_radius_ = sim_param.traj_radius;
   initial_phase_ = sim_param.phase;
-  object_height_ = sim_param.ball_radius + sim_param.ground_offset_frame(2);
 
   tilt_degrees_ = heuristic_param.tilt_degrees;
 }
@@ -93,23 +98,26 @@ void MoveToInitial::CalcTarget(
 
     finish(0) = x_c_ + traj_radius_ * sin(initial_phase_ * PI/ 180) + finish(0);
     finish(1) = y_c_ + traj_radius_ * cos(initial_phase_ * PI / 180) + finish(1);
+    // linear interpolate position of the end-effector
     std::vector<Vector3d> target = move_to_initial_position(start, finish, curr_time,stabilize_time1_,
                                                                    move_time_);
+    // linear interpolate orientation of the end-effector
     Quaterniond orientation_d = move_to_initial_orientation(start_orientation, tilt_degrees_, curr_time,
                                                             stabilize_time1_, move_time_);
 
-    // linear interpolate orientation of the end-effector
-
-    VectorXd st_desired = VectorXd::Zero(38);
-    st_desired.head(3) << target[0];
-    st_desired.segment(3, 4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
-    st_desired.segment(11, 3) << finish(0), finish(1), object_height_;
-    st_desired.segment(14, 3) << target[1];
-    st_desired.segment(32, 3) << finish(0), finish(1), object_height_;
-    st_desired.tail(3) << finish(0), finish(1), object_height_;
+    VectorXd st_desired = VectorXd::Zero(13);
+    st_desired.head(4) << orientation_d.w(), orientation_d.x(), orientation_d.y(), orientation_d.z();
+    st_desired.segment(4, 3) << target[0];
 
     output->SetDataVector(st_desired);
     output->set_timestamp(timestamp);
+}
+
+void MoveToInitial::CalcFeedForwardTorque(const Context<double> &context,
+                                                BasicVector<double> *torque) const {
+    // set zero vector
+    VectorXd torque_target = VectorXd::Zero(7 + 1);
+    torque->SetFromVector(torque_target);
 }
 
 std::vector<Vector3d> MoveToInitial::move_to_initial_position(

@@ -23,7 +23,7 @@ rotational_integral_gain: [0, 0, 0]
 integrator_clamp: [30, 30, 30, 30, 8, 8, 8]
 torque_limits: [87, 87, 87, 87, 12, 12, 12]
 
-enable_contact: 1
+enable_contact: 0
 contact_threshold: 0.01
 
 # ---------------------------  Initial Condition Settings  ---------------------------#

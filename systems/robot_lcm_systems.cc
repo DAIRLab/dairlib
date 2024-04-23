@@ -634,6 +634,124 @@ void RobotC3Sender::OutputC3(
   }
 }
 
+/*--------------------------------------------------------------------------*/
+// methods implementation for BallRollingCommandReceiver.
+
+BallRollingCommandReceiver::BallRollingCommandReceiver(int num_target_state, int num_feedforward_torque,
+                                                       int num_contact_force) {
+
+  target_state_size_ = num_target_state;
+  feedforward_torque_size_ = num_feedforward_torque;
+  contact_force_size_ = num_contact_force;
+
+  this->DeclareAbstractInputPort("lcmt_ball_rolling_command",
+                                 drake::Value<dairlib::lcmt_ball_rolling_command>{});
+  this->DeclareVectorOutputPort("x_ee, xee_dot",
+                                TimestampedVector<double>(num_target_state),
+                                &BallRollingCommandReceiver::CopyTargetOut);
+  this->DeclareVectorOutputPort("contact_torque, lambda",
+                                  BasicVector<double>(num_feedforward_torque + num_contact_force),
+                                  &BallRollingCommandReceiver::CopyContactFeedforwardOut);
+}
+
+void BallRollingCommandReceiver::CopyTargetOut(const Context<double>& context,
+                                      TimestampedVector<double>* output) const {
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& input_msg = input->get_value<dairlib::lcmt_ball_rolling_command>();
+  DRAKE_ASSERT(input_msg.target_state.size() == target_state_size_);
+
+  VectorXd target_state_vector = VectorXd::Zero(target_state_size_);
+  for (int i = 0; i < target_state_size_; i++) {
+      target_state_vector(i) = input_msg.target_state[i];
+  }
+  output->SetDataVector(target_state_vector);
+  output->set_timestamp(input_msg.utime * 1.0e-6);
+}
+
+void BallRollingCommandReceiver::CopyContactFeedforwardOut(const Context<double>& context,
+                                      BasicVector<double>* output) const {
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& input_msg = input->get_value<dairlib::lcmt_ball_rolling_command>();
+  DRAKE_ASSERT(input_msg.contact_force.size() == contact_force_size_);
+  DRAKE_ASSERT(input_msg.feedforward_torque.size() == feedforward_torque_size_);
+
+  VectorXd feedfoward_torque_vector = VectorXd::Zero(feedforward_torque_size_);
+  VectorXd contact_force_vector = VectorXd::Zero(contact_force_size_);
+  VectorXd output_vector = VectorXd::Zero(feedforward_torque_size_ + contact_force_size_);
+
+  for (int i = 0; i < feedforward_torque_size_; i++) {
+      feedfoward_torque_vector(i) = input_msg.feedforward_torque[i];
+  }
+  for (int i = 0; i < contact_force_size_; i++) {
+      contact_force_vector(i) = input_msg.contact_force[i];
+  }
+  output_vector << feedfoward_torque_vector, contact_force_vector;
+  output->SetFromVector(output_vector);
+}
+
+/*--------------------------------------------------------------------------*/
+// methods implementation for BallRollingCommandSender.
+BallRollingCommandSender::BallRollingCommandSender(int num_target_state, int num_feedforward_torque,
+                                                   int num_contact_force) {
+
+  target_state_size_ = num_target_state;
+  feedforward_torque_size_ = num_feedforward_torque;
+  contact_force_size_ = num_contact_force;
+
+  target_state_port_ =
+          this->DeclareVectorInputPort("x_ee, xee_dot",
+                               TimestampedVector<double>(num_target_state))
+                               .get_index();
+  contact_feedforward_port_ =
+          this->DeclareVectorInputPort("contact_torque, lambda",
+                                       BasicVector<double>(num_feedforward_torque + num_contact_force))
+                                 .get_index();
+  this->DeclareAbstractOutputPort("lcmt_ball_rolling_command",
+                                  &BallRollingCommandSender::OutputCommand);
+}
+
+void BallRollingCommandSender::OutputCommand(const Context<double>& context,
+                                             dairlib::lcmt_ball_rolling_command* command_msg) const {
+  const TimestampedVector<double>* target_state =
+      (TimestampedVector<double>*)this->EvalVectorInput(context, target_state_port_);
+  const BasicVector<double>* contact_feedforward =
+            (BasicVector<double>*)this->EvalVectorInput(context, contact_feedforward_port_);
+
+  command_msg->utime = target_state->get_timestamp() * 1e6;
+
+  command_msg->num_target_state_variables = target_state_size_;
+  command_msg->target_state.resize(target_state_size_);
+  for (int i = 0; i < target_state_size_; i++) {
+    if (std::isnan(target_state->GetAtIndex(i))) {
+        command_msg->target_state[i] = 0;
+    } else {
+        command_msg->target_state[i] = target_state->GetAtIndex(i);
+    }
+  }
+
+  command_msg->num_feedforward_torque_variables = feedforward_torque_size_;
+  command_msg->feedforward_torque.resize(feedforward_torque_size_);
+  for (int i = 0; i < feedforward_torque_size_; i++) {
+      if (std::isnan(contact_feedforward->GetAtIndex(i))) {
+            command_msg->feedforward_torque[i] = 0;
+      } else {
+            command_msg->feedforward_torque[i] = contact_feedforward->GetAtIndex(i);
+      }
+  }
+
+  command_msg->num_contact_force_variables = contact_force_size_;
+  command_msg->contact_force.resize(contact_force_size_);
+  for (int i = feedforward_torque_size_; i < feedforward_torque_size_ + contact_force_size_; i++) {
+      if (std::isnan(contact_feedforward->GetAtIndex(i))) {
+          command_msg->contact_force[i - feedforward_torque_size_] = 0;
+      } else {
+          command_msg->contact_force[i - feedforward_torque_size_] = contact_feedforward->GetAtIndex(i);
+      }
+  }
+}
+
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,

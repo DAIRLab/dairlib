@@ -15,6 +15,7 @@ using drake::multibody::JacobianWrtVariable;
 using drake::systems::Context;
 using drake::systems::EventStatus;
 using drake::systems::State;
+using drake::systems::BasicVector;
 
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
@@ -55,11 +56,18 @@ ImpedanceController::ImpedanceController(
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
 
-  // xee: 7D, xball: 7D, xee_dot: 3D, xball_dot: 6D, lambda: 6D (Total: 29D + visuals)
+  // xee: 7D, xee_dot: 6D (though angular velocity is not really used)
   planner_state_input_port_ =
       this->DeclareVectorInputPort(
-              "xee, xball, xee_dot, xball_dot, lambda, visualization",
-              TimestampedVector<double>(38))
+              "xee, xee_dot",
+              TimestampedVector<double>(13))
+          .get_index();
+
+  // contact_torque: 7D, lambda: 1D (temporary, only normal direction)
+  contact_feedforward_input_port_ =
+     this->DeclareVectorInputPort(
+             "contact_torque, lambda",
+             BasicVector<double>(7 + 1))
           .get_index();
 
   control_output_port_ = this->DeclareVectorOutputPort(
@@ -75,7 +83,6 @@ ImpedanceController::ImpedanceController(
           "examples/franka_ball_rolling/parameters/impedance_controller_params.yaml");
 
   // define end effector, joint and kinematics settings
-//  EE_offset_ << impedance_param_.end_effector_offset;
   EE_frame_ = &plant_.GetBodyByName("end_effector_tip").body_frame();
   world_frame_ = &plant_.world_frame();
   // franka joint number
@@ -135,16 +142,24 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   VectorXd v = robot_output->GetVelocities();
   VectorXd u = robot_output->GetEfforts();
 
-  // get planner command (desired franka state)
-  auto c3_output =
+  // get planner command (desired task-space pose (state))
+  auto planner_output =
       (TimestampedVector<double>*) this->EvalVectorInput(context, planner_state_input_port_);
-  VectorXd state = c3_output->get_data();
+  VectorXd state = planner_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);
 
-  xd.tail(3) << state.head(3);
-  Quaterniond orientation_d(state(3), state(4), state(5), state(6));
-  xd_dot.tail(3) << state.segment(14, 3);
+  // get feedforward contact torqueVectorXd
+  auto feedforward_command =
+            (BasicVector<double>*) this->EvalVectorInput(context, contact_feedforward_input_port_);
+  VectorXd feedforward_term = feedforward_command->get_value();
+  VectorXd tau_contact = feedforward_term.head(n_);
+  VectorXd lambda = feedforward_term.segment(n_, 1);
+
+
+  Quaterniond orientation_d(state(0), state(1), state(2), state(3));
+  xd.tail(3) << state.segment(4, 3);
+  xd_dot.tail(3) << state.segment(10, 3);
 
   // update the context_
   plant_.SetPositions(&context_, q);
@@ -206,10 +221,9 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   tau += N * (K_null_* (qd_null_ - q) - B_null_ * v);
 
   /// COMMENT OUT FOR NOW ///
-
-//  if (enable_contact_ && lambda.norm() > impedance_param_.contact_threshold){
-//    tau = tau
-//  }
+  if (enable_contact_ && lambda.norm() > impedance_param_.contact_threshold){
+    tau += tau_contact;
+  }
 
   // clamp the final output torque to safety limit
   ClampJointTorques(tau);

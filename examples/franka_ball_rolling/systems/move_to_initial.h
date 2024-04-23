@@ -45,6 +45,9 @@ class MoveToInitial
 
   void CalcTarget(const drake::systems::Context<double>& context,
                   TimestampedVector<double>* output) const;
+  void CalcFeedForwardTorque(const drake::systems::Context<double>& context,
+                               drake::systems::BasicVector<double>* torque) const;
+
   std::vector<Eigen::Vector3d> move_to_initial_position(
           const Eigen::Vector3d& start,
           const Eigen::Vector3d& finish,
@@ -59,6 +62,7 @@ class MoveToInitial
 
   drake::systems::InputPortIndex franka_input_port_;
   drake::systems::OutputPortIndex target_port_;
+  drake::systems::OutputPortIndex  contact_torque_port_;
 
   int first_message_time_idx_;
   int received_first_message_idx_;
@@ -72,7 +76,6 @@ class MoveToInitial
   double y_c_;
   double traj_radius_;
   double initial_phase_;
-  double object_height_;
 
   // TODO:: add initial end-effector orientation parameter
   double tilt_degrees_;

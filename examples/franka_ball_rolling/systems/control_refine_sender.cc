@@ -67,13 +67,13 @@ ControlRefineSender::ControlRefineSender(
     // OUTPUT PORTS
     target_port_ =
       this->DeclareVectorOutputPort(
-              "track_target", TimestampedVector<double>(38),
+              "track_target", TimestampedVector<double>(13),
               &ControlRefineSender::CalcTrackTarget)
           .get_index();
 
     contact_torque_port_ =
             this->DeclareVectorOutputPort(
-                            "contact_torque", BasicVector<double>(7),
+                            "contact_torque, lambda", BasicVector<double>(7 + 1),
                             &ControlRefineSender::CalcFeedForwardTorque)
                     .get_index();
 
@@ -211,8 +211,10 @@ void ControlRefineSender::CalcTrackTarget(
 
     VectorXd x_next = context.get_discrete_state(x_next_idx_).value();
 
-    VectorXd track_target = VectorXd::Zero(38);
-    track_target << x_next.head(3), ee_orientation_target, VectorXd::Zero(7), x_next.segment(10,3), VectorXd::Zero(21);
+    // trake target is the end-effector pose
+    // using drake convention x = [q; v] where for q and v, it is [orientation, position]
+    VectorXd track_target = VectorXd::Zero(13);
+    track_target << ee_orientation_target, x_next.head(3), VectorXd::Zero(3), x_next.segment(10,3);
 
     // TODO:: need to add parameters and clamp on final output
     // temporarily hack to test on old interface
@@ -221,13 +223,16 @@ void ControlRefineSender::CalcTrackTarget(
 }
 
 void ControlRefineSender::CalcFeedForwardTorque(const Context<double> &context,
-                                                BasicVector<double> *torque) const {
+                                                BasicVector<double> *torque_force) const {
     // all other calculations are done in EventStatus Update
+    // TODO: NEED TO FIGURE OUT THE CORRECT CONTACT JACOBIAN! NOW IS WRONG BUT USE TO PASS INTERFACE TEST
     VectorXd force = context.get_discrete_state(force_idx_).value();
     MatrixXd contact_jacobian = context.get_abstract_state<MatrixXd>(contact_jacobian_idx);
 
     VectorXd torque_target = contact_jacobian.transpose() * force;
-    torque->SetFromVector(torque_target);
+    VectorXd torque_force_target = VectorXd::Zero(8);
+    torque_force_target << torque_target.head(7), force(2);
+    torque_force->SetFromVector(torque_force_target);
 }
 }  // namespace systems
 }  // namespace dairlib

@@ -1,0 +1,13 @@
+package dairlib;
+
+struct lcmt_ball_rolling_command
+{
+  int64_t utime;
+  int32_t num_target_state_variables;
+  int32_t num_feedforward_torque_variables;
+   int32_t num_contact_force_variables;
+
+  double target_state[num_target_state_variables];
+   double feedforward_torque[num_feedforward_torque_variables];
+  double contact_force[num_contact_force_variables];
+}

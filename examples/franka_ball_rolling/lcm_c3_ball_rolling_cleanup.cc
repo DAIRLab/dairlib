@@ -83,24 +83,20 @@ int DoMain(int argc, char* argv[]){
 
 
   /* ----------------------- Create plants for Forward Kinematics  --------------------------*/
-  // Forward kinematics need single franka plant and signle object plant
+  // Forward kinematics need single franka plant and sigle object plant
   // Franka plant
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
   parser_franka.AddModels(sim_param.franka_model);
   drake::multibody::ModelInstanceIndex end_effector_index =
             parser_franka.AddModels(sim_param.end_effector_model)[0];
-  parser_franka.AddModels(sim_param.ground_model);
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);
-  RigidTransform<double> X_F_G = RigidTransform<double>(sim_param.ground_offset_frame);
 
   plant_franka.WeldFrames(plant_franka.world_frame(),
                             plant_franka.GetFrameByName("panda_link0"), X_WI);
   plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link7"),
                           plant_franka.GetFrameByName("end_effector_base"), X_F_EE);
-  plant_franka.WeldFrames(plant_franka.GetFrameByName("panda_link0"),
-                          plant_franka.GetFrameByName("ground"), X_F_G);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 
@@ -224,9 +220,12 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                     control_refinement->get_input_port_lcs_state());
 
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
-  builder.Connect(control_refinement->get_output_port_target(),
-                  state_force_sender->get_input_port(0));
+  // TODO: try not to make the dimension hard coded
+  auto planner_command_sender = builder.AddSystem<systems::BallRollingCommandSender>(13, 7, 1);
+
+  // TODO: make port index not hard coded
+  builder.Connect(control_refinement->get_output_port(0), planner_command_sender->get_input_port(0));
+  builder.Connect(control_refinement->get_output_port(1), planner_command_sender->get_input_port(1));
 
   /* ----------------------- Determine if TTL 0 or 1 should be used for publishing  --------------------------*/
   drake::lcm::DrakeLcm* pub_lcm;
@@ -241,10 +240,10 @@ int DoMain(int argc, char* argv[]){
 
   /* ----------------------------------- Final command publisher --------------------------------*/
   auto control_publisher = builder.AddSystem(
-            LcmPublisherSystem::Make<dairlib::lcmt_c3>(
+            LcmPublisherSystem::Make<dairlib::lcmt_ball_rolling_command>(
                     "CONTROLLER_INPUT", pub_lcm,
                     {drake::systems::TriggerType::kForced}));
-  builder.Connect(state_force_sender->get_output_port(),
+  builder.Connect(planner_command_sender->get_output_port(),
                     control_publisher->get_input_port());
 
 

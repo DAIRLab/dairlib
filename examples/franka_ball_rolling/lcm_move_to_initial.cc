@@ -80,11 +80,15 @@ int DoMain(int argc, char* argv[]){
 
   /* -------------------------------------------------------------------------------------------*/
   auto initial_sender = builder.AddSystem<dairlib::systems::MoveToInitial>(sim_param,heuristic_param);
-  auto state_force_sender = builder.AddSystem<systems::RobotC3Sender>(14, 9, 6, 9);
+  // TODO: try not to make the dimension hard coded
+  auto planner_command_sender = builder.AddSystem<systems::BallRollingCommandSender>(13, 7, 1);
 
   builder.Connect(franka_state_reciver->get_output_port(0), initial_sender->get_input_port(0));
 
-  builder.Connect(initial_sender->get_output_port(), state_force_sender->get_input_port(0));
+  // TODO: make port index not hard coded
+  builder.Connect(initial_sender->get_output_port(0), planner_command_sender->get_input_port(0));
+  builder.Connect(initial_sender->get_output_port(1), planner_command_sender->get_input_port(1));
+
   /* -------------------------------------------------------------------------------------------*/
   // determine if ttl 0 or 1 should be used for publishing
   drake::lcm::DrakeLcm* pub_lcm;
@@ -97,11 +101,11 @@ int DoMain(int argc, char* argv[]){
     pub_lcm = &drake_lcm_network;
   }
   auto control_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_c3>(
+      LcmPublisherSystem::Make<dairlib::lcmt_ball_rolling_command>(
         "CONTROLLER_INPUT", pub_lcm,
         {drake::systems::TriggerType::kForced}, 0.0));
-  builder.Connect(state_force_sender->get_output_port(),
-      control_publisher->get_input_port());
+  builder.Connect(planner_command_sender->get_output_port(),
+                  control_publisher->get_input_port());
   /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();

@@ -34,7 +34,7 @@ group "3.[SIM] New Blocks Test Valgrind" {
         host = "localhost";
     }
     cmd "b.[SIM] move to initial" {
-        exec = "bazel-bin/examples/franka_ball_rolling/lcm_move_to_initial --TTL 0";
+        exec = "valgrind --leak-check=yes bazel-bin/examples/franka_ball_rolling/lcm_move_to_initial --TTL 0";
         host = "localhost";
     }
     cmd "c.[SIM] franka" {

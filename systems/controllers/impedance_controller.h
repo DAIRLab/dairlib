@@ -94,6 +94,8 @@ class ImpedanceController : public LeafSystem<double> {
   // ports
   int franka_state_input_port_;
   int planner_state_input_port_;
+  int contact_feedforward_input_port_;
+
   int control_output_port_;
   
   // constructor variables
@@ -126,10 +128,10 @@ class ImpedanceController : public LeafSystem<double> {
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
   Eigen::Vector3d EE_offset_;
-  int n_; // franka DoF = 7
+  int n_; // franka DoF (would be 7D, derived from num_positions)
 
   // final control output, used for being accessed by context in CalControl
-  int tau_; // final control torque (7D drake state)
+  int tau_; // final control torque (would be 7D drake state)
 };
 
 }  // namespace controller

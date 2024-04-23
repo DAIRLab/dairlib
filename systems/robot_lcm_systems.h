@@ -6,6 +6,7 @@
 
 #include <dairlib/lcmt_object_state.hpp>
 #include <dairlib/lcmt_c3.hpp>
+#include <dairlib/lcmt_ball_rolling_command.hpp>
 
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -235,6 +236,46 @@ class RobotC3Sender : public drake::systems::LeafSystem<double> {
                      dairlib::lcmt_c3* c3_msg) const;
 
   int data_size_;
+};
+
+/// ------------ LCM system for ball rolling experiments -------------- ///
+/// Receives the output of an LcmSubsriberSystem that subsribes to the
+/// C3 output channel with LCM type lcmt_robot_c3 and outputs the
+/// state and force information as a TimestampedVector.
+class BallRollingCommandReceiver : public drake::systems::LeafSystem<double> {
+ public:
+  explicit BallRollingCommandReceiver(int num_target_state, int num_feedforward_torque,
+                                      int num_contact_force);
+
+ private:
+  void CopyTargetOut(const drake::systems::Context<double>& context,
+                    TimestampedVector<double>* output) const;
+  void CopyContactFeedforwardOut(const drake::systems::Context<double>& context,
+                       drake::systems::BasicVector<double>* output) const;
+
+  int target_state_size_;
+  int feedforward_torque_size_;
+  int contact_force_size_;
+};
+
+/// Receives the output of a C3 controller, and outputs it as an LCM
+/// message with type lcm_robot_c3. Its output port is usually connected to
+/// an LcmPublisherSystem to publish the messages it generates.
+class BallRollingCommandSender : public drake::systems::LeafSystem<double> {
+ public:
+  explicit BallRollingCommandSender(int num_target_state, int num_feedforward_torque,
+                                    int num_contact_force);
+
+ private:
+  void OutputCommand(const drake::systems::Context<double>& context,
+                     dairlib::lcmt_ball_rolling_command* command_msg) const;
+
+  drake::systems::InputPortIndex target_state_port_;
+  drake::systems::InputPortIndex contact_feedforward_port_;
+
+  int target_state_size_;
+  int feedforward_torque_size_;
+  int contact_force_size_;
 };
 
 

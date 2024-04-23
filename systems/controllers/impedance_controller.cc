@@ -35,14 +35,16 @@ ImpedanceController::ImpedanceController(
     const MatrixXd& B,
     const MatrixXd& K_null,
     const MatrixXd& B_null,
-    const VectorXd& qd_null)
+    const VectorXd& qd_null,
+    bool gravity_compensation_flag)
     : plant_(plant),
       context_(context),
       K_(K),
       B_(B),
       K_null_(K_null),
       B_null_(B_null),
-      qd_null_(qd_null){
+      qd_null_(qd_null),
+      gravity_compensation_flag_(gravity_compensation_flag){
 
   // plant parameters
   int num_positions = plant_.num_positions();
@@ -213,6 +215,11 @@ EventStatus ImpedanceController::UpdateIntegralTerm(const Context<double> &conte
   }
 
   VectorXd tau = J.transpose() * M_task_space * (K_ * xtilde + B_ * xtilde_dot) + tau_int + C;
+
+  // decide whether to apply gravity compensation or not, note the gravity sign in drake
+  if (gravity_compensation_flag_){
+      tau -= tau_g;
+  }
 
   // compute nullspace projection, J_gen_inv means generalized inverse of J_franka, used to define the null-space
   // projector, here we use the dynamical consistent generalized inverse, i.e. inverse weighted by the mass matrix

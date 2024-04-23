@@ -30,7 +30,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
-#include "examples/franka_ball_rolling/c3_parameters.h"
+#include "examples/franka_trajectory_following/c3_parameters.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
 #include <random>

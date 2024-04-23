@@ -21,6 +21,8 @@ struct ImpedanceControllerParams {
   VectorXd damping_null;
   VectorXd q_null_desired;
 
+  bool gravity_compensation_flag;
+
   int enable_integral;
   Vector3d translational_integral_gain;
   Vector3d rotational_integral_gain;
@@ -48,6 +50,8 @@ struct ImpedanceControllerParams {
     a->Visit(DRAKE_NVP(stiffness_null));
     a->Visit(DRAKE_NVP(damping_null));
     a->Visit(DRAKE_NVP(q_null_desired));
+
+    a->Visit(DRAKE_NVP(gravity_compensation_flag));
 
     a->Visit(DRAKE_NVP(enable_integral));
     a->Visit(DRAKE_NVP(translational_integral_gain));

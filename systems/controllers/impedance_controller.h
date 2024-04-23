@@ -26,7 +26,6 @@
 #include <drake/math/rigid_transform.h>
 #include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
-#include "examples/franka_ball_rolling/c3_parameters.h"
 #include "examples/franka_ball_rolling/parameters/impedance_controller_params.h"
 #include "yaml-cpp/yaml.h"
 #include "drake/common/yaml/yaml_io.h"
@@ -59,7 +58,8 @@ class ImpedanceController : public LeafSystem<double> {
       const Eigen::MatrixXd& B,
       const Eigen::MatrixXd& K_null,
       const Eigen::MatrixXd& B_null,
-      const Eigen::VectorXd& qd_null);
+      const Eigen::VectorXd& qd_null,
+      bool gravity_compensation_flag);
 
   const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(franka_state_input_port_);
@@ -111,6 +111,9 @@ class ImpedanceController : public LeafSystem<double> {
   const MatrixXd K_null_;
   const MatrixXd B_null_;
   const VectorXd qd_null_;
+
+  // whether or not to do gravity compensation (since Franka itself has internal gravity compensation)
+  const bool gravity_compensation_flag_;
 
   // integral control and time recording settings
   int prev_time_; // this is the index for prev_time (Double type abstract state)

@@ -17,6 +17,8 @@ stiffness_null: [4, 4, 4, 4, 4, 4, 4]
 damping_null: [4, 4, 4, 4, 4, 4, 4]
 q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]
 
+gravity_compensation_flag: true
+
 enable_integral: 1
 translational_integral_gain: [0, 0, 0]
 rotational_integral_gain: [0, 0, 0]

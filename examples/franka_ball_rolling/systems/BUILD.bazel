@@ -9,7 +9,6 @@ cc_library(
         "track_target_generator.cc",
         "heuristic_generator.cc",
         "control_refine_sender.cc",
-        "gravity_compensator.cc",
         "c3_state_estimator.cc",
         "c3_state_sender.cc"
     ],
@@ -18,7 +17,6 @@ cc_library(
         "track_target_generator.h",
         "heuristic_generator.h",
         "control_refine_sender.h",
-        "gravity_compensator.h",
         "c3_state_estimator.h",
         "c3_state_sender.h"
     ],
@@ -36,7 +34,6 @@ cc_library(
         "//solvers:c3_output",
         "//examples/franka_ball_rolling:trajectory_params",
         "//examples/franka_ball_rolling:heuristic_planner_params",
-        "//examples/franka_ball_rolling:c3_parameters",
         "//examples/franka_ball_rolling:simulate_franka_params",
         "//examples/franka_ball_rolling:c3_state_estimator_params",
     ],

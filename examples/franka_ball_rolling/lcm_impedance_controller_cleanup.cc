@@ -21,7 +21,6 @@
 #include "systems/system_utils.h"
 
 #include "examples/franka_ball_rolling/parameters/impedance_controller_params.h"
-#include "examples/franka_ball_rolling/systems/gravity_compensator.h"
 
 
 namespace dairlib {
@@ -88,15 +87,14 @@ int DoMain(int argc, char* argv[]){
   MatrixXd K_null = impedance_param.stiffness_null;
   MatrixXd B_null = impedance_param.damping_null;
   VectorXd qd_null = impedance_param.q_null_desired;
+  bool gravity_compensation = impedance_param.gravity_compensation_flag;
 
   auto impedance_controller = builder.AddSystem<systems::controllers::ImpedanceController>(
-          plant, *context, K, B, K_null, B_null, qd_null);
-  auto gravity_compensator = builder.AddSystem<systems::GravityCompensator>(plant, *context);
+          plant, *context, K, B, K_null, B_null, qd_null, gravity_compensation);
 
   /* -------------------------------------------------------------------------------------------*/
   /// get trajectory info from c3
   /// TODO: in the end should make the interface easier and not hard code dimension and port index
-  /// TODO: make gravity compensation an option in the impedance controller, not a seperate system
   auto planner_command_subscriber = builder.AddSystem(
     LcmSubscriberSystem::Make<dairlib::lcmt_ball_rolling_command>(
       "CONTROLLER_INPUT", &drake_lcm));
@@ -114,8 +112,7 @@ int DoMain(int argc, char* argv[]){
                   impedance_controller->get_input_port(0));
 
   auto control_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
-  builder.Connect(impedance_controller->get_output_port(), gravity_compensator->get_input_port());
-  builder.Connect(gravity_compensator->get_output_port(), control_sender->get_input_port());
+  builder.Connect(impedance_controller->get_output_port(), control_sender->get_input_port());
 
   auto control_publisher = builder.AddSystem(
         LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -141,24 +138,6 @@ int DoMain(int argc, char* argv[]){
   std::vector<double> target_state_initial(13, 0);
   std::vector<double> feedforward_torque_initial(7, 0);
   std::vector<double> contact_force_initial(1, 0);
-
-//  msg_data[0] = impedance_param.initial_start(0);
-//  msg_data[1] = impedance_param.initial_start(1);
-//  msg_data[2] = impedance_param.initial_start(2);
-//  msg_data[3] = 0;
-//  msg_data[4] = 1;
-//  msg_data[5] = 0;
-//  msg_data[6] = 0;
-//  msg_data[7] = 1;
-//  msg_data[8] = 0;
-//  msg_data[9] = 0;
-//  msg_data[10] = 0;
-//  msg_data[32] = msg_data[7];
-//  msg_data[33] = msg_data[8];
-//  msg_data[34] = msg_data[9];
-//  msg_data[35] = msg_data[7];
-//  msg_data[36] = msg_data[8];
-//  msg_data[37] = msg_data[9];
 
   dairlib::lcmt_ball_rolling_command init_msg;
   init_msg.target_state = target_state_initial;

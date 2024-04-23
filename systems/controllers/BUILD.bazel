@@ -79,7 +79,7 @@ cc_library(
         "c3_controller_franka.h",
     ],
     deps = [
-        "//examples/franka_ball_rolling:c3_parameters",
+        "//examples/franka_trajectory_following:c3_parameters",
         "//systems/framework:vector",
         "//solvers:c3",
         "//solvers:lcs",
@@ -130,7 +130,6 @@ cc_library(
     ],
     deps = [
         "//systems/framework:vector",
-        "//examples/franka_ball_rolling:c3_parameters",
         "//examples/franka_ball_rolling:impedance_controller_params",
         "//solvers:c3",
         "//solvers:lcs",

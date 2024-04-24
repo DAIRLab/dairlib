@@ -42,4 +42,20 @@ group "debug" {
     }
 }
 
+script "start_experiment"{
+    restart cmd "start_logging";
+    restart cmd "franka_sim";
+    restart cmd "franka_osc";
+    wait ms 50;
+    restart cmd "franka_c3";
+}
+
+script "end_experiment"{
+    stop cmd "franka_c3";
+    stop cmd "franka_osc";
+    stop cmd "franka_sim";
+    wait ms 10;
+    stop cmd "start_logging";
+}
+
 

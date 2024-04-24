@@ -123,6 +123,9 @@ py_library(
 
 PY_LIBRARIES = [
     ":cassie_footstep_controller_environment",
+    ":cassie_footstep_controller_gym_environment",
+    ":height_map_server",
+    ":elevation_map_converter",
     ":alip_lqr",
     ":alip_lqr_rl",
 ]

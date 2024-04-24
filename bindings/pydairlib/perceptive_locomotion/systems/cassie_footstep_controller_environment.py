@@ -161,11 +161,11 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.perception_module.get_input_port_depth_image("pelvis_depth")
             )
 ###############################
-            hmap_options = ElevationMapOptions()
-            hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
+            elevation_options = ElevationMapOptions()
+            elevation_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
             self.height_map_server = ElevationMappingConverter(
                 params.urdf,
-                hmap_options
+                elevation_options
             )
             builder.AddSystem(self.height_map_server)
             builder.Connect(
@@ -183,6 +183,23 @@ class CassieFootstepControllerEnvironment(Diagram):
             builder.Connect(
                 self.cassie_sim.get_output_port_state(),
                 self.height_map_server.get_input_port_by_name('x')
+            )
+            # Height_map server for data_collection
+            hmap_options = HeightMapOptions()
+            hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
+            self.height_map_query_server = HeightMapServer(
+                params.terrain,
+                params.urdf,
+                hmap_options
+            )
+            builder.AddSystem(self.height_map_query_server)
+            builder.Connect(
+                self.controller.get_output_port_fsm(),
+                self.height_map_query_server.get_input_port_by_name('fsm')
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_state(),
+                self.height_map_query_server.get_input_port_by_name('x')
             )
 ##############################
         else:
@@ -286,6 +303,10 @@ class CassieFootstepControllerEnvironment(Diagram):
             output_port_indices['height_map'] = builder.ExportOutput(
                 self.height_map_server.get_output_port(),
                 'elevation_map'
+            )
+            output_port_indices['height_map_query'] = builder.ExportOutput(
+                self.height_map_query_server.get_output_port(),
+                'height_map_query'
             )
             output_port_indices['lcmt_robot_output'] = builder.ExportOutput( ###
                 self.perception_module.get_output_port_robot_output(),

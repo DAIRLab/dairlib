@@ -65,7 +65,7 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   // state estimator
   // TODO: Add option to set joint offsets in state estimator
   state_estimator_ = builder.AddSystem<systems::CassieStateEstimator>(
-      *plant_, joint_offsets_, 2
+      *plant_, joint_offsets_, -1 //2 flag for the contact modes
   );
   state_estimator_->MakeDrivenBySimulator(ekf_update_period_);
 

@@ -1,4 +1,7 @@
 import numpy as np
+from scipy.interpolate import griddata
+from scipy.ndimage import gaussian_filter, median_filter
+import pywt
 from typing import Union
 from dataclasses import dataclass
 
@@ -37,6 +40,8 @@ from pydairlib.systems.footstep_planning import Stance
 #)
 
 from grid_map import GridMap, InterpolationMethods
+from grid_map_filters import InpaintWithMinimumValues
+#InterpolationMethods.INTER_NEAREST | INTER_LINEAR | INTER_CUBIC_CONVOLUTION | INTER_CUBIC
 
 @dataclass
 class ElevationMapOptions:
@@ -202,8 +207,11 @@ class ElevationMappingConverter(LeafSystem):
 
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
 
+        #grid_map = self.EvalAbstractInput(
+        #    context, self.input_port_indices['elevation']).get_value()
         grid_map = self.EvalAbstractInput(
             context, self.input_port_indices['elevation']).get_value()
+        InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
 
         return self.get_heightmap_3d(x, stance, grid_map, center)
 
@@ -221,16 +229,22 @@ class ElevationMappingConverter(LeafSystem):
 
         stance = Stance.kLeft if fsm == 0 or fsm == 3 else Stance.kRight
 
+        #grid_map = self.EvalAbstractInput(
+        #    context, self.input_port_indices['elevation']).get_value()
         grid_map = self.EvalAbstractInput(
             context, self.input_port_indices['elevation']).get_value()
+        InpaintWithMinimumValues(grid_map, "elevation", "elevation_inpainted")
 
         hmap_xyz = self.get_heightmap_3d_world_frame(x, stance, grid_map, center)
 
         return hmap_xyz
 
     def get_height_at_point(self, query_point: np.ndarray, grid_map) -> float:
+        #return grid_map.atPosition(
+        #    'elevation', query_point[:2], InterpolationMethods.INTER_NEAREST
+        #)
         return grid_map.atPosition(
-            'elevation', query_point[:2], InterpolationMethods.INTER_LINEAR
+            'elevation_inpainted', query_point[:2], InterpolationMethods.INTER_NEAREST
         )
 
     def stance_pos_in_world(self, x: np.ndarray, stance: Stance) -> np.ndarray:
@@ -276,7 +290,7 @@ class ElevationMappingConverter(LeafSystem):
                          grid_map: GridMap,
                          center: np.ndarray = None) -> np.ndarray:
         center = np.zeros((3,)) if center is None else center
-        X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1]) + np.array([.4, 0]).reshape(2,1,1)
+        X, Y = np.meshgrid(self.xgrid + center[0], self.ygrid + center[1])
 
         # Heightmap has X axis along the 0 dimension while meshgrid has
         # X axis on the 1 dimensions
@@ -296,7 +310,7 @@ class ElevationMappingConverter(LeafSystem):
                     plant=self.plant,
                     context=self.plant_context,
                     body_name="pelvis",
-                    vec=np.array([x, y, 0.0]) + center + np.array([.4, 0, 0])
+                    vec=np.array([x, y, 0.0]) + center
                 )
                 query_point = stance_pos + offset
                 if grid_map.isInside(query_point[:2]):
@@ -308,4 +322,35 @@ class ElevationMappingConverter(LeafSystem):
                     heightmap[i, j] = z
                 else:
                     heightmap[i, j] = np.nan
+    
+        coordinates = np.argwhere(~np.isnan(heightmap)) # Coordinates of known values
+        values = heightmap[~np.isnan(heightmap)] # Known values from the map
+        grid_x, grid_y = np.mgrid[0:heightmap.shape[0], 0:heightmap.shape[1]] # Grid of coordinates for interpolation
+        filled_map = griddata(coordinates, values, (grid_x, grid_y), method='nearest') # Interpolate using linear, nearest or cubic
+        #heightmap = gaussian_filter(filled_map, sigma=1)
+        heightmap = median_filter(filled_map, size=3)
+        heightmap = np.nan_to_num(heightmap, nan=-1)
+        
+        # Wavelet
+        #heightmap, nan_mask = self.preprocess_heightmap(heightmap)
+        #denoised_heightmap = self.denoise_heightmap(heightmap)
+        #denoised_heightmap[nan_mask] = np.nan
         return heightmap
+    
+    def preprocess_heightmap(self, heightmap):
+        nan_mask = np.isnan(heightmap)
+        median_value = np.nanmedian(heightmap)
+        heightmap[nan_mask] = median_value
+        return heightmap, nan_mask
+
+    def denoise_heightmap(self, heightmap, wavelet='db1', level=2, mode='soft'):
+        coeffs = pywt.wavedec2(heightmap, wavelet=wavelet, level=level)
+        sigma = np.median(np.abs(coeffs[-1][-1])) / 0.6745
+        uthresh = sigma * np.sqrt(2 * np.log(heightmap.size))
+        def threshold_coeffs(data):
+            return pywt.threshold(data, value=uthresh, mode=mode)
+        new_coeffs = [coeffs[0]]
+        for level in coeffs[1:]:
+            # Each 'level' is a tuple of three arrays (horizontal, vertical, diagonal)
+            new_coeffs.append(tuple(threshold_coeffs(detail) for detail in level))
+        return pywt.waverec2(new_coeffs, wavelet=wavelet)

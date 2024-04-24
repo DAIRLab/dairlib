@@ -40,7 +40,7 @@ perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perc
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    #sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
+    sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
     #sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/perception_learning/params/stair_curriculum.yaml'
     sim_params.visualize = True
     sim_params.simulate_perception = True
@@ -54,13 +54,13 @@ def main():
     )
     builder = DiagramBuilder()
 
-    controller = AlipFootstepLQR(controller_params, elevation = True)
+    controller = AlipFootstepLQR(controller_params, elevation = sim_params.simulate_perception)
 
     footstep_zoh = ZeroOrderHold(1.0 / 50.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.AddSystem(sim_env)
 
-    desired_velocity = ConstantVectorSource(np.array([0.1, 0]))
+    desired_velocity = ConstantVectorSource(np.array([0.4, 0]))
 
     builder.AddSystem(controller)
     builder.AddSystem(desired_velocity)
@@ -101,8 +101,11 @@ def main():
         )
 
     diagram = builder.Build()
-    DrawAndSaveDiagramGraph(diagram, '../alip_footstep_controller_test')
-
+    if sim_params.simulate_perception: 
+        DrawAndSaveDiagramGraph(diagram, '../alip_footstep_controller_test_elevation')
+    else:
+        DrawAndSaveDiagramGraph(diagram, '../alip_footstep_controller_test')
+    
     simulator = Simulator(diagram)
 
     ic_generator = InitialConditionsServer(
@@ -113,6 +116,7 @@ def main():
     )
 
     datapoint = ic_generator.choose(0)
+    #datapoint = ic_generator.random()
     context = diagram.CreateDefaultContext()
 
     # timing aliases
@@ -162,9 +166,11 @@ def main():
             )
             hmap_query.plot_surface(
                 "residual", residual_grid_world[0], residual_grid_world[1],
-                residual_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
-            
+                residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+        
+        grid.append(hmap)
         t_next += 0.05
+    np.save('grid.npy', grid)
 
 if __name__ == "__main__":
     main()

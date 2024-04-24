@@ -36,12 +36,14 @@ from matplotlib.colors import LogNorm
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
+# If elevation map is ON = True
+elevation = True
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
 
     def __init__(self, alip_params: AlipFootstepLQROptions,
                  model_path: str = ''):
-        super().__init__(alip_params)
+        super().__init__(alip_params, elevation = elevation)
 
         if model_path == '':
             raise RuntimeError('AlipNNLQRFootstepController model path cannot be empty\n')
@@ -55,11 +57,16 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             torch.load(model_path)
         )
         self.residual_unet.eval()
-
-        self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
-            "height_map_query",
-            model_value=Value(HeightMapQueryObject())
-        ).get_index()
+        if elevation:
+            self.input_port_indices['height_map_query'] = self.DeclareAbstractInputPort(
+                "height_map_query",
+                model_value=Value(HeightMapQueryObject())
+            ).get_index()
+        else:
+            self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
+                "height_map_query",
+                model_value=Value(HeightMapQueryObject())
+            ).get_index()
 
         # input error coordinate ue grid precomputation
         self.map_opts = HeightMapOptions()
@@ -108,9 +115,14 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         x = self.get_output_port_by_name('x').Eval(context)
 
         # get heightmap query object
-        hmap_query = self.EvalAbstractInput(
-            context, self.input_port_indices['height_map']
-        ).get_value()
+        if elevation:
+            hmap_query = self.EvalAbstractInput(
+                context, self.input_port_indices['height_map_query']
+            ).get_value()
+        else:
+            hmap_query = self.EvalAbstractInput(
+                context, self.input_port_indices['height_map']
+            ).get_value()
 
         # query for cropped height map at nominal footstep location
         hmap = hmap_query.calc_height_map_stance_frame(
@@ -126,30 +138,27 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
 
             residual_grid = self.residual_unet(combined_input).squeeze(0)
             residual_grid = residual_grid.detach().cpu().numpy().reshape(H, W)
-        # hmap_edges = edges_blurred(hmap[2], 3.0)
-        # residual_grid = 100 * hmap_edges / np.max(hmap_edges)
 
         # display residual map on meshcat
         residual_grid_world = hmap_query.calc_height_map_world_frame(
             np.array([ud[0], ud[1], 0])
         )
-        # residual_grid_world[2] = residual_grid
 
         # tensor algebra (batch operation) for calculating linear term grid
         linear_term_grid = np.einsum('n,nhw->hw', (x - xd), self.linear_coeff_grid)
 
         # sum up the grid values, add select the minimum value index
-        #final_grid_tmp = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid
         final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + residual_grid + collision_cost
-        # final_grid = self.u_cost_grid + self.u_next_value_grid + linear_term_grid + collision_cost
         
-        color_mappable = ScalarMappable(cmap='jet')
-        colors = color_mappable.to_rgba(residual_grid)
 
-        hmap_query.plot_colored_surface(
-            "residual", residual_grid_world[0], residual_grid_world[1],
-            residual_grid_world[2], colors[:, :, 0], colors[:, :, 1], colors[:, :, 2]
-        )
+        # Plot heat map!!
+        #color_mappable = ScalarMappable(cmap='jet')
+        #colors = color_mappable.to_rgba(residual_grid)
+
+        #hmap_query.plot_colored_surface(
+        #    "residual", residual_grid_world[0], residual_grid_world[1],
+        #    residual_grid_world[2], colors[:, :, 0], colors[:, :, 1], colors[:, :, 2]
+        #)
 
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape

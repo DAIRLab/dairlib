@@ -123,7 +123,7 @@ class AlipFootstepLQR(LeafSystem):
         }
         if elevation:
             self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
-                "height_map_query",
+                "elevation_map",
                 model_value=Value(ElevationMapQueryObject())
             ).get_index()
 

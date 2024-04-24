@@ -130,9 +130,10 @@ def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
     
     datapoint = ic_generator.choose(i)
-    v_des_norm = 1.0
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm, 0])
+    #v_des_norm = 1.0
+    #v_norm = np.random.uniform(0.2, v_des_norm)
+    #datapoint['desired_velocity'] = np.array([v_norm, 0])
+    datapoint['desired_velocity'] = np.array([0.4, 0])
     context = diagram.CreateDefaultContext()
 
     # timing aliases
@@ -185,23 +186,22 @@ def main():
     cost_list = []
     t_list = []
     init = []
-    for _ in range(100):
+    for _ in range(400):
         i = np.random.randint(0, 157870)
         print(i)
         cost, t_init, terminate, time = run(sim_params, i)
-        #print(time)
         if time > 4.5:
-            print(i)
-            #init.append(i)
+            #print("append")
+            init.append(i)
         #print(cost)
         #cost_list.append(cost)
         #t_list.append(t_init)
     #cost = np.array(cost_list)
-    #init = np.array(init)
-    #np.save(
-    #    f'{perception_learning_base_folder}/tmp/index'
-    #    f'/index.npy', init
-    #)
+    init = np.array(init)
+    np.save(
+        f'{perception_learning_base_folder}/tmp/index'
+        f'/index999.npy', init
+    )
     #np.save(
     #    f'{perception_learning_base_folder}/tmp'
     #    f'/accumulated_cost_with_time.npy', cost

@@ -6,6 +6,7 @@ from tqdm import tqdm
 from typing import Dict, Tuple
 import argparse
 import multiprocessing
+from pydrake.geometry import Rgba
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -52,7 +53,7 @@ perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perc
 
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
-                  checkpoint_path) \
+                  checkpoint_path, simulate_perception=False) \
         -> Tuple[CassieFootstepControllerEnvironment, AlipFootstepNNLQR, Diagram, LogVectorOutput]:
     builder = DiagramBuilder()
     sim_env = CassieFootstepControllerEnvironment(sim_params)
@@ -64,11 +65,20 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
 
     builder.AddSystem(footstep_zoh)
-
-    builder.Connect(
-        sim_env.get_output_port_by_name('height_map'),
-        controller.get_input_port_by_name('height_map')
-    )
+    if simulate_perception:
+        builder.Connect(
+            sim_env.get_output_port_by_name("height_map"),
+            controller.get_input_port_by_name("height_map")
+        )
+        builder.Connect(
+            sim_env.get_output_port_by_name("height_map_query"),
+            controller.get_input_port_by_name("height_map_query")
+        )
+    else:    
+        builder.Connect(
+            sim_env.get_output_port_by_name('height_map'),
+            controller.get_input_port_by_name('height_map')
+        )
     builder.Connect(
         controller.get_output_port_by_name('footstep_command'),
         footstep_zoh.get_input_port()
@@ -78,7 +88,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
         sim_env.get_input_port_by_name('footstep_command')
     )
     diagram = builder.Build()
-    #DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
+    DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
     return sim_env, controller, diagram
 
 def check_termination(sim_env, diagram_context) -> bool:
@@ -98,12 +108,12 @@ def check_termination(sim_env, diagram_context) -> bool:
     z2 = com[2] - right_toe_pos[2]
     return z1 < 0.2 or z2 < 0.2
 
-def run(sim_env, controller, diagram):
+def run(sim_env, controller, diagram, simulate_perception=False):
     
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/initial_conditions_2.npz'
+            'tmp/initial_conditions.npz'
         )
     )
 
@@ -115,9 +125,9 @@ def run(sim_env, controller, diagram):
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
     
     datapoint = ic_generator.random()
-    v_des_norm = 1.0
+    v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
-    coeff = np.random.uniform(0., 0.1)
+    #coeff = np.random.uniform(0., 0.1)
     datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     simulator = Simulator(diagram)
@@ -152,37 +162,58 @@ def run(sim_env, controller, diagram):
     ALIPtmp = []
     FOOTSTEPtmp = []
     HMAPtmp = []
-    COST_GRIDtmp = []
-    Terminate = False
+    terminate = False
     for i in range(1, 500):
         if check_termination(sim_env, context):
-            #print(context.get_time()-t_init)
             print('terminate')
-            Terminate = True
+            terminate = True
             break
         simulator.AdvanceTo(t_init + 0.05*i)
-        footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
-        alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
-        xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
-        xd = xd_ud[:4]
-        ud = xd_ud[4:]
-        x = controller.get_output_port_by_name('x').Eval(controller_context)
+        if simulate_perception:
+            footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
+            alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
+            xd = xd_ud[:4]
+            ud = xd_ud[4:]
+            x = controller.get_output_port_by_name('x').Eval(controller_context)
 
-        # get heightmap query object
-        hmap_query = controller.EvalAbstractInput(
-            controller_context, controller.input_port_indices['height_map']
-        ).get_value()
+            hmap_query = controller.EvalAbstractInput(
+                controller_context, controller.input_port_indices['height_map']
+            ).get_value()
 
-        # query for cropped height map at nominal footstep location
-        hmap = hmap_query.calc_height_map_stance_frame(
-            np.array([ud[0], ud[1], 0])
-        )
+            hmap = hmap_query.calc_height_map_stance_frame(
+                np.array([ud[0], ud[1], 0])
+            )
+            # Plot depth image
+            #residual_grid_world = hmap_query.calc_height_map_world_frame(
+            #    np.array([ud[0], ud[1], 0])
+            #)
+            #hmap_query.plot_surface(
+            #    "residual", residual_grid_world[0], residual_grid_world[1],
+            #    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+        else:
+            footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
+            alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
+            xd = xd_ud[:4]
+            ud = xd_ud[4:]
+            x = controller.get_output_port_by_name('x').Eval(controller_context)
+
+            # get heightmap query object
+            hmap_query = controller.EvalAbstractInput(
+                controller_context, controller.input_port_indices['height_map']
+            ).get_value()
+
+            # query for cropped height map at nominal footstep location
+            hmap = hmap_query.calc_height_map_stance_frame(
+                np.array([ud[0], ud[1], 0])
+            )
         
         ALIPtmp.append(alip)
         FOOTSTEPtmp.append(footstep)
         HMAPtmp.append(hmap)
         time = context.get_time()-t_init
-    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, Terminate, time
+    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, terminate, time
 
 
 def main():
@@ -192,32 +223,22 @@ def main():
     checkpoint_path = os.path.join(
         perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
     sim_params.visualize = False
+    sim_params.simulate_perception = True
     ALIP = []
     FOOTSTEP = []
     HMAP = []
     terrain = 'params/stair_curriculum.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-    sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path)
+    sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
 
-    for i in range(50):
-        #rand = np.random.randint(1, 11)
-        #if rand in [1, 2, 3, 4,]:
-        #    terrain = 'params/wavy_terrain.yaml'
-        #    print('wavy terrain')
-        #else:
-        #    terrain = 'params/wavy_test.yaml'
-        #    print('wavy test')
+    for i in range(100):
         print(i)
-        alip, footstep, hmap, Terminate, time = run(sim_env, controller, diagram)
+        alip, footstep, hmap, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception)
         print(time)
         if time > 10:
             ALIP.extend(alip)
             FOOTSTEP.extend(footstep)
             HMAP.extend(hmap)
-        #if not Terminate:
-        #    ALIP.extend(alip)
-        #    FOOTSTEP.extend(footstep)
-        #    HMAP.extend(hmap)
 
     print(np.array(ALIP).shape)
     print(np.array(FOOTSTEP).shape)
@@ -225,15 +246,15 @@ def main():
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP2.npy', ALIP
+        f'/ALIP.npy', ALIP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/FOOTSTEP2.npy', FOOTSTEP
+        f'/FOOTSTEP.npy', FOOTSTEP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/HMAP2.npy', HMAP
+        f'/HMAP.npy', HMAP
     )
 
 if __name__ == '__main__':

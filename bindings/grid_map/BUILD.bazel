@@ -62,6 +62,7 @@ py_binary(
 PY_LIBRARIES = [
     ":module_py",
     ":grid_map_py",
+    ":grid_map_filters_py",
 ]
 
 # Package roll-up (for Bazel dependencies).

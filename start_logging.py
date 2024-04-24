@@ -24,12 +24,18 @@ def main(log_type):
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
 
     os.chdir(logdir)
-    current_logs = sorted(glob.glob('*'))
+    # current_logs = sorted(glob.glob('*'))
+    # try:
+    #     last_log = int(current_logs[-1].split('-')[-1])
+
+
     try:
-        last_log = int(current_logs[-1].split('-')[-1])
-        log_num = f'{last_log+1:02}'
+        directories = glob.glob(os.path.join(logdir, "*"))    
+        directory_names = [os.path.basename(d) for d in directories if os.path.isdir(d)]
+        last_log = max([int(name) for name in directory_names if name.isdigit()])
+        log_num = str(last_log+1).zfill(6)
     except:
-        log_num = '00'
+        log_num = str(0).zfill(6)
 
     if log_type == 'hw':
         with open('commit_tag%s' % log_num, 'w') as f:

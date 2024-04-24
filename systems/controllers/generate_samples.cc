@@ -59,13 +59,16 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     }
   }
   else if(sampling_params.sampling_strategy == FIXED_SAMPLE){
-    if (num_samples != 0){
-      candidate_states[0] = generate_fixed_sample(
-        n_q, n_v, x_lcs, sampling_params.sampling_height, 
-        sampling_params.fixed_sample_location);
+    if(num_samples > sampling_params.fixed_sample_locations.size()){
+      std::cout << "Error:  More fixed samples requested than provided." << std::endl;
     }
-  }
-  for (int i = 0; i < candidate_states.size(); i++){
+    else if (num_samples != 0){
+      for (int i = 0; i < num_samples; i++){
+        candidate_states[i] = generate_fixed_sample(
+          n_q, n_v, x_lcs, sampling_params.sampling_height, 
+          sampling_params.fixed_sample_locations[i]);
+      }
+    }
   }
   return candidate_states;
 }

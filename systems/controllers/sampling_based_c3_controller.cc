@@ -223,16 +223,16 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Execution trajectory output ports.
   c3_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "c3_traj_execute", lcm_traj, // TODO don't use class vars for port types
+    "c3_traj_execute", lcm_traj, 
     &SamplingC3Controller::OutputC3TrajExecute
   ).get_index();
   repos_traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "repos_traj_execute", lcm_traj, // TODO don't use class vars for port types
+    "repos_traj_execute", lcm_traj, 
     &SamplingC3Controller::OutputReposTrajExecute
   ).get_index();
   // NOTE: We reuse c3_execution_lcm_traj_ to set the right type for the port.
   traj_execute_port_ = this->DeclareAbstractOutputPort(
-    "traj_execute", lcm_traj, // TODO don't use class vars for port types
+    "traj_execute", lcm_traj, 
     &SamplingC3Controller::OutputTrajExecute
   ).get_index();
   is_c3_mode_port_ = this->DeclareVectorOutputPort(
@@ -245,13 +245,13 @@ SamplingC3Controller::SamplingC3Controller(
   // all_sample_locations_port_ does not include the current location. So 
   // index 0 is the first sample.
   all_sample_locations_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_locations", vector<Vector3d>(num_samples, Vector3d::Zero()), // TODO don't use class vars for port types
+    "all_sample_locations", vector<Vector3d>(num_samples, Vector3d::Zero()), 
     &SamplingC3Controller::OutputAllSampleLocations
   ).get_index();
   // all_sample_costs_port_ does include the current location. So index 0 is
   // the current location cost.
   all_sample_costs_port_ = this->DeclareAbstractOutputPort(
-    "all_sample_costs", std::vector<double>(num_samples + 1, -1), // TODO don't use class vars for port types
+    "all_sample_costs", std::vector<double>(num_samples + 1, -1), 
     &SamplingC3Controller::OutputAllSampleCosts
   ).get_index();
 

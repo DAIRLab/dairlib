@@ -18,7 +18,8 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const Eigen::VectorXd& neutral_pose) {
+EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(
+  const Eigen::VectorXd& neutral_pose) {
   // Input/Output Setup
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
@@ -28,7 +29,7 @@ EndEffectorTrajectoryGenerator::EndEffectorTrajectoryGenerator(const Eigen::Vect
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
   radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
-                                    drake::Value<dairlib::lcmt_radio_out>{}).get_index();
+      drake::Value<dairlib::lcmt_radio_out>{}).get_index();
 
 
   PiecewisePolynomial<double> empty_pp_traj(neutral_pose);

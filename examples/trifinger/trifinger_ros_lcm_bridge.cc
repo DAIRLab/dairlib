@@ -18,7 +18,7 @@
 #include "common/find_resource.h"
 #include "examples/trifinger/parameters/trifinger_lcm_channels.h"
 #include "examples/trifinger/parameters/trifinger_sim_params.h"
-#include "nav_msgs/msg/odometry.hpp"
+#include "geometry_msgs/msg/pose.hpp"
 #include "parameters/trifinger_ros2_channels.h"
 #include "rclcpp/rclcpp.hpp"
 #include "systems/robot_lcm_systems.h"
@@ -139,7 +139,7 @@ int DoMain(int argc, char* argv[]) {
 
   /// convert cube state ros msgs to lcm
   auto cube_object_state_ros_subscriber =
-      builder.AddSystem(RosSubscriberSystem::Make<nav_msgs::msg::Odometry>(
+      builder.AddSystem(RosSubscriberSystem::Make<geometry_msgs::msg::Pose>(
           ros_channel_params.cube_state_channel, qos,
           sys_ros_interface->get_ros_interface()));
   auto ros_to_lcm_object_state =

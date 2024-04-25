@@ -21,6 +21,8 @@ from pydairlib.perceptive_locomotion.systems.alip_lqr_rl import \
     AlipFootstepLQROptions
 from pydairlib.perceptive_locomotion.systems.height_map_server \
     import HeightMapServer, HeightMapOptions, HeightMapQueryObject
+from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
+    import ElevationMappingConverter, ElevationMapOptions, ElevationMapQueryObject
 from pydairlib.multibody import SquareSteppingStoneList
 
 from pydrake.systems.analysis import SimulatorStatus
@@ -61,13 +63,13 @@ class ObservationPublisher(LeafSystem):
                 "obs_states", self.ns
             ).get_index(),
             'height_map' : self.DeclareAbstractInputPort(
-            "height_map_query",
-            model_value=Value(HeightMapQueryObject())
+            "elevation_map",
+            model_value=Value(ElevationMapQueryObject())
             ).get_index()
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*64*64+4, self.calculate_hmap
+                "observations", 3*80*80+4, self.calculate_hmap
             ).get_index()
         }
 
@@ -96,10 +98,8 @@ class ObservationPublisher(LeafSystem):
         hmap = hmap_query.calc_height_map_stance_frame(
             np.array([ud[0], ud[1], 0])
         )
-        #hmap = hmap_query.calc_z_stance_frame(
-        #    np.array([ud[0], ud[1], 0])
-        #)
-
+        
+        # Visualize grid map @ stance frame
         #residual_grid_world = hmap_query.calc_height_map_world_frame(
         #    np.array([ud[0], ud[1], 0])
         #)
@@ -108,7 +108,7 @@ class ObservationPublisher(LeafSystem):
         #    residual_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
         
         flat = hmap.reshape(-1)
-        flat[np.isneginf(flat)] = -1
+        #flat[np.isneginf(flat)] = -1
         alip = self.EvalVectorInput(context, self.input_port_indices['obs_states']).get_value()
         out = np.hstack((flat, alip))
         output.set_value(out)
@@ -186,29 +186,28 @@ class RewardSystem(LeafSystem):
             self.input_port_indices['vdes']
         ).value().ravel()
         
-        #velocity_reward = np.exp(-5*np.linalg.norm(vdes[0]-bf_vel[0])) + np.exp(-5*np.linalg.norm(vdes[1]-bf_vel[1]))
         velocity_reward = np.exp(-5*np.linalg.norm(vdes[:2] - bf_vel[:2]))
         
         # penalize angular velocity about the z axis
         angular_reward = np.exp(-5*np.linalg.norm(bf_ang))
 
         # penalize toe angle
-        front_contact_pt = np.array((-0.0457, 0.112, 0))
-        rear_contact_pt = np.array((0.088, 0, 0))
+        #front_contact_pt = np.array((-0.0457, 0.112, 0))
+        #rear_contact_pt = np.array((0.088, 0, 0))
 
-        toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
-        left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+        #toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        #left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+        #left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
         
-        toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
-        right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+        #toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        #right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+        #right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
         
-        left_angle_reward = np.exp(-5*left_angle)
-        right_angle_reward = np.exp(-5*right_angle)
+        #left_angle_reward = np.exp(-5*left_angle)
+        #right_angle_reward = np.exp(-5*right_angle)
         
         # reward normalize to 0~1
-        reward = 0.5*LQRreward + 0.2*velocity_reward + 0.1*left_angle_reward + 0.1*right_angle_reward + 0.1*angular_reward
+        reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward#+ 0.1*left_angle_reward + 0.1*right_angle_reward + 0.1*angular_reward
         output[0] = reward
 
 class InitialConditionsServer:
@@ -248,7 +247,6 @@ class CassieFootstepControllerEnvironmentOptions:
         params_folder, 'osc_gains.yaml'
     )
     mpfc_gains_yaml: str = path.join(
-    #    params_folder, 'mpfc_gains.yaml'
         params_folder, 'alip_s2s_mpfc_gains.yaml'
     )
     osqp_options_yaml: str = path.join(
@@ -261,7 +259,7 @@ class CassieFootstepControllerEnvironmentOptions:
     
     controller_input_type: MpfcOscDiagramInputType = \
         MpfcOscDiagramInputType.kFootstepCommand
-    simulate_perception: bool = False
+    simulate_perception: bool = True
     visualize: bool = True
 
 class CassieFootstepControllerEnvironment(Diagram):
@@ -320,13 +318,54 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_cassie_out(),
                 self.perception_module.get_input_port_cassie_out()
             )
-            builder.Connect(
-                self.perception_module.get_output_port_robot_output(),
-                self.controller.get_input_port_state()
-            )
+            #builder.Connect(
+            #    self.perception_module.get_output_port_robot_output(),
+            #    self.controller.get_input_port_state()
+            #)
             builder.Connect(
                 self.cassie_sim.get_output_port_depth_image(),
                 self.perception_module.get_input_port_depth_image("pelvis_depth")
+            )
+            elevation_options = ElevationMapOptions()
+            elevation_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
+            self.height_map_server = ElevationMappingConverter(
+                params.urdf,
+                elevation_options
+            )
+            builder.AddSystem(self.height_map_server)
+            builder.Connect(
+                self.perception_module.get_output_port_elevation_map(),
+                self.height_map_server.get_input_port_by_name('elevation'),
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_state_lcm(),
+                self.controller.get_input_port_state(),
+            )
+            builder.Connect(
+                self.controller.get_output_port_fsm(),
+                self.height_map_server.get_input_port_by_name('fsm')
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_state(),
+                self.height_map_server.get_input_port_by_name('x')
+            )
+
+            # Height_map server for data_collection
+            hmap_options = HeightMapOptions()
+            hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
+            self.height_map_query_server = HeightMapServer(
+                params.terrain,
+                params.urdf,
+                hmap_options
+            )
+            builder.AddSystem(self.height_map_query_server)
+            builder.Connect(
+                self.controller.get_output_port_fsm(),
+                self.height_map_query_server.get_input_port_by_name('fsm')
+            )
+            builder.Connect(
+                self.cassie_sim.get_output_port_state(),
+                self.height_map_query_server.get_input_port_by_name('x')
             )
         else:
             hmap_options = HeightMapOptions()
@@ -367,18 +406,19 @@ class CassieFootstepControllerEnvironment(Diagram):
             # self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
             if params.simulate_perception:
-                self.grid_map_visualizer = GridMapVisualizer(
-                    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]  ##
-                )
-                builder.AddSystem(self.grid_map_visualizer)
+                # Visualize depth sensor grid map
+                #self.grid_map_visualizer = GridMapVisualizer(
+                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
+                #)
+                #builder.AddSystem(self.grid_map_visualizer)
                 builder.Connect(
                     self.perception_module.get_output_port_state(),
                     self.plant_visualizer.get_input_port()
                 )
-                builder.Connect(
-                    self.perception_module.get_output_port_elevation_map(),
-                    self.grid_map_visualizer.get_input_port()
-                )
+                #builder.Connect(
+                #    self.perception_module.get_output_port_elevation_map(),
+                #    self.grid_map_visualizer.get_input_port()
+                #)
             else:
                 builder.Connect(
                     self.cassie_sim.get_output_port_state(),
@@ -427,8 +467,12 @@ class CassieFootstepControllerEnvironment(Diagram):
         }
         if self.params.simulate_perception:
             output_port_indices['height_map'] = builder.ExportOutput(
-                self.perception_module.get_output_port_elevation_map(),
+                self.height_map_server.get_output_port(),
                 'elevation_map'
+            )
+            output_port_indices['height_map_query'] = builder.ExportOutput(
+                self.height_map_query_server.get_output_port(),
+                'height_map_query'
             )
             output_port_indices['lcmt_robot_output'] = builder.ExportOutput( ###
                 self.perception_module.get_output_port_robot_output(),
@@ -500,7 +544,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.cassie_sim.SetPlantInitialCondition(diagram, context, q, v)
         if self.params.simulate_perception:
             self.perception_module.InitializeEkf(context, q, v)
-            self.perception_module.InitializeElevationMap(np.concatenate([q, v]), context) #
+            self.perception_module.InitializeElevationMap(np.concatenate([q, v]), context)
             
     def AddToBuilderWithFootstepController(
             self, builder: DiagramBuilder,
@@ -534,15 +578,14 @@ class CassieFootstepControllerEnvironment(Diagram):
             obs_pub.get_input_port_by_name("obs_states")
         )
         builder.Connect(
-            self.get_output_port_by_name('height_map'),
+            self.get_output_port_by_name("height_map"),
             obs_pub.get_input_port_by_name("height_map")
         )
         builder.Connect(
-            self.ALIPfootstep_controller.get_output_port_by_name('lqr_reference'), #xd_ud
+            self.ALIPfootstep_controller.get_output_port_by_name("lqr_reference"), #xd_ud
             obs_pub.get_input_port_by_name("lqr_reference")
         )
         builder.ExportOutput(obs_pub.get_output_port_by_name("observations"), "observations")
-        #builder.ExportOutput(obs_pub.get_output_port_by_name("heightmap"), "heightmap")
         return obs_pub
         
 

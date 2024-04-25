@@ -49,6 +49,18 @@ from pydairlib.perceptive_locomotion.systems.cassie_footstep_controller_gym_envi
 
 from typing import Callable
 
+class ReLUSquared(nn.Module):
+    def forward(self, input):
+        return th.relu(input) ** 2
+
+class LeakyReLUSquared(nn.Module):
+    def __init__(self, negative_slope=0.01):
+        super(LeakyReLUSquared, self).__init__()
+        self.negative_slope = negative_slope
+
+    def forward(self, input):
+        return th.where(input > 0, input ** 2, self.negative_slope * input ** 2)
+
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
     """
     Linear learning rate schedule.
@@ -82,7 +94,18 @@ class CustomNetwork(nn.Module):
 
         # CNN for heightmap observations
         n_input_channels = 3
-        self.cnn = nn.Sequential(
+        self.actor_cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(128, 64, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+        self.critic_cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
             nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
@@ -96,7 +119,17 @@ class CustomNetwork(nn.Module):
 
         # MLP for ALIP state
         alip_state_dim = 4
-        self.alip_mlp = nn.Sequential(
+        self.actor_alip_mlp = nn.Sequential(
+            layer_init(nn.Linear(alip_state_dim, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 256)),
+            nn.Tanh(),
+            layer_init(nn.Linear(256, 64)),
+            nn.Tanh(),
+        )
+
+        alip_state_dim = 4
+        self.critic_alip_mlp = nn.Sequential(
             layer_init(nn.Linear(alip_state_dim, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
@@ -107,7 +140,7 @@ class CustomNetwork(nn.Module):
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),
+            layer_init(nn.Linear(640, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
             nn.Tanh(),
@@ -119,7 +152,7 @@ class CustomNetwork(nn.Module):
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),
+            layer_init(nn.Linear(640, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 128)),
             nn.Tanh(),
@@ -136,30 +169,30 @@ class CustomNetwork(nn.Module):
     #        if isinstance(m, nn.Linear):
     #            nn.init.xavier_uniform_(m.weight)
     #            nn.init.constant_(m.bias, 0.0)
-          
+        
     def forward(self, observations: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         return self.forward_actor(observations), self.forward_critic(observations)
 
     def forward_actor(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
-        image_obs = observations[:, 0:3 * 64 * 64].reshape(batch_size, 3, 64, 64)
-        actor_cnn_output = self.cnn(image_obs)  # Shape: (batch_size, 2304)
-        alip_state = observations[:, 3 * 64 * 64:]
-        actor_alip_mlp_output = self.alip_mlp(alip_state)  # Shape: (batch_size, 64)
-        actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)  # Concatenate along feature dimension
+        image_obs = observations[:, :3 * 80 * 80].reshape(batch_size, 3, 80, 80)
+        actor_cnn_output = self.actor_cnn(image_obs)  # Shape: (batch_size, 2304)
+        alip_state = observations[:, 3 * 80 * 80:]
+        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)
         actor_actions = self.actor_combined_mlp(actor_combined_features)
         return actor_actions
 
     def forward_critic(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
-        image_obs = observations[:, 0:3 *64 * 64].reshape(batch_size, 3, 64, 64)
-        critic_cnn_output = self.cnn(image_obs)  # Shape: (batch_size, 2304)
-        alip_state = observations[:, 3 *64 * 64:]
-        critic_alip_mlp_output = self.alip_mlp(alip_state)  # Shape: (batch_size, 64)
-        critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)  # Concatenate along feature dimension
+        image_obs = observations[:, :3 * 80 * 80].reshape(batch_size, 3, 80, 80)
+        critic_cnn_output = self.critic_cnn(image_obs)  # Shape: (batch_size, 2304)
+        alip_state = observations[:, 3 * 80 * 80:]
+        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)
         critic_actions = self.critic_combined_mlp(critic_combined_features)
         return critic_actions
-
+    
 class CustomActorCriticPolicy(ActorCriticPolicy):
     def __init__(
         self,
@@ -213,38 +246,37 @@ def _run_training(config, args):
                                'sim_params': sim_params,
                            })
         env = VecNormalize(venv=env, norm_obs=False)
-        #env = VecMonitor(env)
+
     else:
         input("Starting...")
         sim_params.visualize = False
         if args.test:
-            sim_params.visualize = True
+            sim_params.visualize = False
         env = gym.make(env_name,
                        sim_params = sim_params,
                        )
-        #env = Monitor(env)
+        env = VecNormalize(venv=env, norm_obs=False)
 
     if args.test:
         model = PPO(policy_type, env, n_steps=128, n_epochs=2,
-                    batch_size=32,)# policy_kwargs=policy_kwargs,)
+                    batch_size=32,)
     else:
         tensorboard_log = f"{log_dir}runs/test"        
         #model = PPO(
-        #    policy_type, env, learning_rate = linear_schedule(0.005), n_steps=int(2048/num_env), n_epochs=10,
-        #    batch_size=256*num_env, ent_coef=0.01,
+        #    policy_type, env, learning_rate = linear_schedule(0.005), n_steps=int(512/num_env), n_epochs=10,
+        #    batch_size=16*num_env, ent_coef=0.01,
         #    verbose=1,
         #    tensorboard_log=tensorboard_log,)
         
         #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/good"
-        #model_path = path.join(test_folder, 'best_model.zip')        
-        #model_path = 'PPO_tanh.zip'
-        model_path = 'PPO_separate_tanh.zip'
-        #model_path = 'rl_model_1448000_steps.zip'
-
-        model = PPO.load(model_path, env, learning_rate = linear_schedule(3e-5), max_grad_norm = 0.2,
+        #model_path = path.join(test_folder, 'best_model.zip')
+        #model_path = 'PPO_separate_tanh.zip'
+        model_path = 'PPO_depth.zip'
+        
+        model = PPO.load(model_path, env, learning_rate = linear_schedule(3e-6), max_grad_norm = 0.2,
                         clip_range = linear_schedule(0.1), target_kl = 0.1, ent_coef=0, 
-                        n_steps=int(256*num_env/num_env), n_epochs=10,
-                        batch_size=64*num_env, seed=121,
+                        n_steps=int(500*num_env/num_env), n_epochs=10,
+                        batch_size=128*num_env, seed=111,
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via "
@@ -284,10 +316,6 @@ def _run_training(config, args):
     model.save("latest_model")
     eval_env.close()
 
-class ReLUSquared(nn.Module):
-    def forward(self, input):
-        return th.relu(input) ** 2
-
 def _main():
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
@@ -315,8 +343,8 @@ def _main():
         "local_log_dir": args.log_path,
         "model_save_freq": 3000,
         #"policy_kwargs": {'activation_fn': ReLUSquared, #th.nn.Tanh,        # activation function | th.nn.ReLU,
-        #                  'net_arch': {'pi': [64, 64, 64, 64], # policy and value networks
-        #                               'vf': [64, 64, 64, 64]}},
+        #                  'net_arch': {'pi': [64, 64, 64, 64], # policy networks
+        #                               'vf': [64, 64, 64, 64]}}, # value networks
         "sim_params" : sim_params
     }
     _run_training(config, args)

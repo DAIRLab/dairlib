@@ -126,7 +126,7 @@ def reset_handler(simulator, seed):
 
     #datapoint = ic_generator.choose(0)
     datapoint = ic_generator.random()
-    v_des_norm = 1.0
+    v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
     #coeff = np.random.uniform(0., 0.1)
     datapoint['desired_velocity'] = np.array([v_norm, 0])
@@ -258,7 +258,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     #    'heightmap': map_observation_space,
     #})
     
-    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*64*64+4,), dtype=np.float64)
+    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*80*80+4,), dtype=np.float64)
 
     
     # Define observation space. <- Full state + observation matrix

@@ -18,5 +18,6 @@ attic/multibody/solver_log/
 wandb/
 logs/
 rl/
+Tanh_trained/
 
 /venv/

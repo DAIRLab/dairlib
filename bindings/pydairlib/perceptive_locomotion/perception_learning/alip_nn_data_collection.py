@@ -113,7 +113,7 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/initial_conditions.npz'
+            'tmp/index/initial_conditions_2.npz'
         )
     )
 
@@ -231,7 +231,7 @@ def main():
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
 
-    for i in range(100):
+    for i in range(50):
         print(i)
         alip, footstep, hmap, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception)
         print(time)
@@ -246,15 +246,15 @@ def main():
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP.npy', ALIP
+        f'/ALIP2.npy', ALIP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/FOOTSTEP.npy', FOOTSTEP
+        f'/FOOTSTEP2.npy', FOOTSTEP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/HMAP.npy', HMAP
+        f'/HMAP2.npy', HMAP
     )
 
 if __name__ == '__main__':

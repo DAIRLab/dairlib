@@ -168,9 +168,9 @@ def main():
                 "residual", residual_grid_world[0], residual_grid_world[1],
                 residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
         
-        grid.append(hmap)
+        #grid.append(hmap)
         t_next += 0.05
-    np.save('grid.npy', grid)
+    #np.save('grid.npy', grid)
 
 if __name__ == "__main__":
     main()

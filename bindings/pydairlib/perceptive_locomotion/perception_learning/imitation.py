@@ -65,13 +65,13 @@ class ReLUSquared(nn.Module):
     def forward(self, input):
         return th.relu(input) ** 2
 
-class QReLU(nn.Module):
-    def __init__(self, a=0.1):
-        super(QReLU, self).__init__()
-        self.a = a
+class LeakyReLUSquared(nn.Module):
+    def __init__(self, negative_slope=0.01):
+        super(LeakyReLUSquared, self).__init__()
+        self.negative_slope = negative_slope
 
-    def forward(self, x):
-        return th.max(0, x) + self.a * th.max(0, -x)**2
+    def forward(self, input):
+        return th.where(input > 0, input ** 2, self.negative_slope * input ** 2)
 
 class ExpertDataSet(Dataset):
     def __init__(self, expert_observations, expert_actions):
@@ -144,7 +144,7 @@ class CustomNetwork(nn.Module):
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),
+            layer_init(nn.Linear(640, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
             nn.Tanh(),
@@ -156,7 +156,7 @@ class CustomNetwork(nn.Module):
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(320, 256)),
+            layer_init(nn.Linear(640, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 128)),
             nn.Tanh(),
@@ -179,21 +179,21 @@ class CustomNetwork(nn.Module):
 
     def forward_actor(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
-        image_obs = observations[:, 0:3 * 64 * 64].reshape(batch_size, 3, 64, 64)
+        image_obs = observations[:, :3 * 80 * 80].reshape(batch_size, 3, 80, 80)
         actor_cnn_output = self.actor_cnn(image_obs)  # Shape: (batch_size, 2304)
-        alip_state = observations[:, 3 * 64 * 64:]
+        alip_state = observations[:, 3 * 80 * 80:]
         actor_alip_mlp_output = self.actor_alip_mlp(alip_state)  # Shape: (batch_size, 64)
-        actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)  # Concatenate along feature dimension
+        actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)
         actor_actions = self.actor_combined_mlp(actor_combined_features)
         return actor_actions
 
     def forward_critic(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
-        image_obs = observations[:, 0:3 *64 * 64].reshape(batch_size, 3, 64, 64)
+        image_obs = observations[:, :3 * 80 * 80].reshape(batch_size, 3, 80, 80)
         critic_cnn_output = self.critic_cnn(image_obs)  # Shape: (batch_size, 2304)
-        alip_state = observations[:, 3 *64 * 64:]
+        alip_state = observations[:, 3 * 80 * 80:]
         critic_alip_mlp_output = self.critic_alip_mlp(alip_state)  # Shape: (batch_size, 64)
-        critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)  # Concatenate along feature dimension
+        critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)
         critic_actions = self.critic_combined_mlp(critic_combined_features)
         return critic_actions
 
@@ -360,8 +360,10 @@ def _main():
 
     student = PPO(CustomActorCriticPolicy, env, verbose=1)#, use_sde=True)
 
-    obs_data = path.join(perception_learning_base_folder, 'tmp/data/observationsNN_new.npy')
-    action_data = path.join(perception_learning_base_folder, 'tmp/data/actionsNN_new.npy')
+    #obs_data = path.join(perception_learning_base_folder, 'tmp/data/observationsNN_new.npy')
+    #action_data = path.join(perception_learning_base_folder, 'tmp/data/actionsNN_new.npy')
+    obs_data = path.join(perception_learning_base_folder, 'tmp/observationsNN.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/actionsNN.npy')
     
     expert_observations = np.load(obs_data)
     print(len(expert_observations))
@@ -382,8 +384,8 @@ def _main():
         log_interval=100,
         no_cuda=False,
         seed=64,
-        batch_size=64,
-        test_batch_size=64,
+        batch_size=16,
+        test_batch_size=16,
     )
 
     student.save("PPO_studentNN_newdata")

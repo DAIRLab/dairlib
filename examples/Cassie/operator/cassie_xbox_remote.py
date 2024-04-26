@@ -3,7 +3,7 @@ import pygame
 import dairlib.lcmt_radio_out
 import lcm
 import numpy as np
-from pygame_utils import TextPrint
+from examples.Cassie.operator.pygame_utils import TextPrint
 
 # colors
 cassie_blue = (6, 61, 128)
@@ -27,8 +27,9 @@ def main():
     radio_channel_6_pos = 0
     radio_channel_6_delta = 0.05
 
+    pygame.joystick.init()
     if (pygame.joystick.get_count() != 1):
-        raise RuntimeError("Please connect exactly one controller")
+        import pdb; pdb.set_trace()
 
     joystick = pygame.joystick.Joystick(0)
     joystick.init()

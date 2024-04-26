@@ -273,9 +273,10 @@ ConvexPolygon MakeInscribedConvexPolygon(
   return MakeFootholdFromFacetList(facet_list, X_WP);
 }
 
-
-std::vector<MatrixXd> GetAcdComponents(std::pair<MatrixXd, std::vector<MatrixXd>> planar_region) {
-  std::unique_ptr<acd2d::IConcavityMeasure> measure = std::make_unique<acd2d::HybridMeasurement1>();
+std::vector<MatrixXd> GetAcdComponents(
+    std::pair<MatrixXd, std::vector<MatrixXd>> planar_region) {
+  std::unique_ptr<acd2d::IConcavityMeasure> measure =
+      std::make_unique<acd2d::HybridMeasurement1>();
   acd2d::cd_2d cd;
 
   if (is_degenerate(planar_region.first)) {

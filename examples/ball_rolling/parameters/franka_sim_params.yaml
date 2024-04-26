@@ -1,0 +1,73 @@
+#franka_model: examples/ball_rolling/urdf/franka_no_collision.urdf
+franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf    #This franka model is the one from drake. It contains the latest version with the little button as link 8.
+end_effector_model: examples/ball_rolling/urdf/end_effector_full.urdf
+end_effector_name: end_effector_tip
+ground_model: examples/ball_rolling/urdf/ground.urdf
+platform_model: examples/ball_rolling/urdf/platform.urdf
+# jack_model: examples/ball_rolling/urdf/jack.urdf
+jack_model: examples/ball_rolling/urdf/sphere.urdf
+# Note:  Use capsule_1 body name as representative of the pose of the entire
+# jack model.  This works because capsule_1's origin is the same as the jack's.
+object_body_name: sphere
+
+franka_publish_rate: 1000
+object_publish_rate: 10
+visualizer_publish_rate: 10
+actuator_delay: 0.000
+
+visualize_drake_sim: true
+publish_efforts: true
+
+camera_pose: [1.5, 0, 0.6]
+camera_target: [0.5, 0, 0.5]
+
+tool_attachment_frame: [0, 0, 0.107]
+# This is the z value of the base of the franka wrt the surface of the table.  
+franka_origin: [0, 0, 0.0245]
+ground_franka_frame: [0, 0, -0.0745]
+# This is the z value of the platform wrt to the base of the franka.
+platform_franka_frame: [0, 0, -0.01225]
+# This is the z value of the ground wrt to the world frame. This is used for the 
+# plant_for_lcs in the c3_controller which does not have a full franka model.
+ground_world_frame: [0, 0, -0.05]   
+
+# Workspace Limits
+world_x_limits: [-2, 2]
+world_y_limits: [-2, 2]
+world_z_limits: [-2, 2]
+
+dt: 0.0001
+realtime_rate: 1
+
+# TODO: Set the initial locations to something sensical
+# q_init_franka: [2.48, 1.6, -2.4, -1.77, 1.38, 0.72, 0.638]
+q_init_franka: [2.39, 1.5, -1.48, -1.84, 1.62, 1.64, 0.54]
+# q_init_franka: [-0.12, 1.6, 1.48, -1.8, -1.62, 1.64, 1.69]
+# q_init_franka: [-0.39, 1.6, 1.53, -2.13, -1.61, 1.58, 1.73]
+
+# Check the dependencies and clear/clean this line up.
+q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.35, 0.45, 0.1]
+
+# TODO: maybe there needs to be some more of these for visualizing other samples
+visualizer_sample_locations_model: examples/ball_rolling/urdf/sample_locations.urdf
+visualizer_c3_mode_model: examples/ball_rolling/urdf/c3_mode_visualization.urdf
+visualize_workspace: false
+visualize_c3_state: true
+visualize_is_c3_mode: true
+
+visualize_sample_locations: false
+
+visualize_execution_plan: true
+
+visualizer_curr_sample_end_effector_model: examples/ball_rolling/urdf/ee_curr_traj_visualization_model.urdf
+visualizer_curr_sample_traj_jack_model: examples/ball_rolling/urdf/ball_curr_traj_visualization_model.urdf
+visualize_pose_trace_curr: true
+visualize_center_of_mass_plan_curr: false
+visualize_c3_forces_curr: true
+
+
+visualizer_best_sample_end_effector_model: examples/ball_rolling/urdf/ee_best_traj_visualization_model.urdf
+visualizer_best_sample_traj_jack_model: examples/ball_rolling/urdf/ball_best_traj_visualization_model.urdf
+visualize_pose_trace_best: true
+visualize_center_of_mass_plan_best: false
+visualize_c3_forces_best: false

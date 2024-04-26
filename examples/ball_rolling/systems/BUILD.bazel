@@ -1,0 +1,232 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "franka_systems",
+    srcs = [],
+    deps = [
+        ":end_effector_force_trajectory",
+        ":end_effector_orientation",
+        ":end_effector_trajectory",
+        ":franka_kinematics",
+        ":control_target_generator",
+        ":c3_state_sender",
+        ":c3_trajectory_generator",
+        ":is_c3_mode_sender",
+        ":tracking_trajectory_generator",
+        ":sample_cost_sender",
+        ":sample_location_sender",
+        ":c3_mode_visualizer",
+    ],
+)
+
+cc_library(
+    name = "end_effector_trajectory",
+    srcs = ["end_effector_trajectory.cc"],
+    hdrs = ["end_effector_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_force_trajectory",
+    srcs = ["end_effector_force_trajectory.cc"],
+    hdrs = ["end_effector_force_trajectory.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "end_effector_orientation",
+    srcs = ["end_effector_orientation.cc"],
+    hdrs = ["end_effector_orientation.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "control_target_generator",
+    srcs = ["control_target_generator.cc"],
+    hdrs = ["control_target_generator.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "is_c3_mode_sender",
+    srcs = ["is_c3_mode_sender.cc"],
+    hdrs = ["is_c3_mode_sender.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "c3_mode_visualizer",
+    srcs = ["c3_mode_visualizer.cc"],
+    hdrs = ["c3_mode_visualizer.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "@lcm",
+    ],
+)
+
+cc_library(
+    name = "c3_trajectory_generator",
+    srcs = [
+        "c3_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "c3_trajectory_generator.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//solvers:c3",
+        "//solvers:c3_output",
+        "//solvers:solver_options_io",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "tracking_trajectory_generator",
+    srcs = [
+        "tracking_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "tracking_trajectory_generator.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//solvers:c3",
+    ],
+)
+
+cc_library(
+    name = "sample_location_sender",
+    srcs = [
+        "sample_location_sender.cc",
+    ],
+    hdrs = [
+        "sample_location_sender.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sample_cost_sender",
+    srcs = [
+        "sample_cost_sender.cc",
+    ],
+    hdrs = [
+        "sample_cost_sender.h",
+    ],
+    deps = [
+        ":franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "c3_state_sender",
+    srcs = [
+        "c3_state_sender.cc",
+    ],
+    hdrs = [
+        "c3_state_sender.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics",
+    srcs = ["franka_kinematics.cc"],
+    hdrs = ["franka_kinematics.h"],
+    deps = [
+        ":franka_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_sim_controls",
+    srcs = ["franka_sim_controls.cc"],
+    hdrs = ["franka_sim_controls.h"],
+    deps = [
+        ":franka_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics_vector",
+    srcs = ["franka_kinematics_vector.cc"],
+    hdrs = ["franka_kinematics_vector.h"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

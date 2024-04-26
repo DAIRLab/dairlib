@@ -1,0 +1,23 @@
+c3_options_file: examples/ball_rolling/parameters/franka_c3_options_floating.yaml
+osqp_settings_file: examples/ball_rolling/parameters/franka_c3_qp_settings.yaml
+
+franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+end_effector_model: examples/ball_rolling/urdf/end_effector_full.urdf
+end_effector_name: end_effector_tip
+end_effector_simple_model: examples/ball_rolling/urdf/end_effector_simple_model.urdf
+end_effector_simple_name: end_effector_simple
+jack_model: examples/ball_rolling/urdf/sphere.urdf
+ground_model: examples/ball_rolling/urdf/ground.urdf
+platform_model: examples/ball_rolling/urdf/platform.urdf
+
+# Note:  Use capsule_1 body name as representative of the pose of the entire
+# jack model.  This works because capsule_1's origin is the same as the jack's.
+object_body_name: sphere
+
+tool_attachment_frame: [0, 0, 0.107]
+ground_franka_frame: [0, 0, -0.0745]
+
+include_end_effector_orientation: false
+# Note: C3 is set to update much faster than this number. This is just to reduce preempting of the current plan
+target_frequency: 0 #unused  # TODO delete
+

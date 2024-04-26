@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<robot name="sphere">
+    <link name="sphere">
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <sphere radius="0.0315"/>
+            </geometry>
+            <material>
+                <!-- <mesh filename="sphere_with_texture.obj"/> -->
+                <color rgba="1 0.64 0 1"/> red color for visualization
+            </material>
+        </visual>
+    </link>
+</robot>

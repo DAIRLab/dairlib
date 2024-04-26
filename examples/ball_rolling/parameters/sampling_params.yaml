@@ -1,0 +1,49 @@
+# Sampling strategy.  These should match the names in sampling_params.h.
+# 0 means radially symmetric sampling on a circle.
+# 1 means random sampling on a 2D circle.
+# 2 means random sampling on a 3D sphere.
+# 3 means a fixed sample location. Currently allows for 3 fixed sample.
+control_loop_delay_ms: 0
+sampling_strategy: 2
+
+# This is the fixed sample location for sampling strategy 3.
+fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
+
+# Size of sampling circle; used for both circle perimeter (0, 1) and spherical
+# surface sampling (2).
+sampling_radius: 0.052
+
+# Height of sampling circle; used for circle perimeter (0, 1).
+sampling_height: 0.02
+
+# Radians minimum and maximum angles from vertical (i.e. closest to top of
+# sphere) used for spherical surface sampling (2).
+min_angle_from_vertical: 0  #0.785
+max_angle_from_vertical: 1.822
+
+# Number of additional samples to consider in each mode (repositioning or C3).
+# In repositioning mode, we automatically store the current location and the 
+# previous best sample location, so num_additional_samples_repos is in addition 
+# to those two. In C3 mode, we automatically store the current location, so
+# num_additional_samples_c3 is in addition to that one.
+# NOTE: IF YOU SET NUM ADDITIONAL SAMPLES TO 0, REMEMBER TO NOT VISUALIZE THE 
+#       SAMPLE LOCATIONS IN THE VISUALIZER. 
+num_additional_samples_repos: 2
+num_additional_samples_c3: 1
+
+# Repositioning parameters.
+spline_width: 0.062
+reposition_speed: 0.25    # m/s
+
+# Parameters for the cost function.
+# 0 means simulate dynamics for both ee and object positions to compute cost.
+# 1 means use z_fin from C3 solution for both ee and object positions to compute cost.
+# 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
+cost_type: 2
+
+# Cost associated with traveling.
+travel_cost_per_meter: 100
+c3_to_repos_hysteresis: 3500
+finished_reposition_cost: 10000000
+repos_to_c3_hysteresis: 2500
+hysterisis_between_repos_targets: 500

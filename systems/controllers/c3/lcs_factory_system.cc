@@ -110,8 +110,7 @@ void LCSFactorySystem::OutputLCS(const drake::systems::Context<double>& context,
     throw std::runtime_error("unknown or unsupported contact model");
   }
 
-  double scale;
-  std::tie(*output_lcs, scale) = LCSFactory::LinearizePlantToLCS(
+  *output_lcs = LCSFactory::LinearizePlantToLCS(
       plant_, context_, plant_ad_, context_ad_, contact_pairs_,
       c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
       c3_options_.N, contact_model);

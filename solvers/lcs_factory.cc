@@ -28,7 +28,7 @@ using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
+LCS LCSFactory::LinearizePlantToLCS(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const MultibodyPlant<AutoDiffXd>& plant_ad,
     const Context<AutoDiffXd>& context_ad,
@@ -236,19 +236,9 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
         E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
   }
 
-  auto Dn = D.squaredNorm();
-  auto An = A.squaredNorm();
-  auto AnDn = An / Dn;
-
-  D *= AnDn;
-  E /= AnDn;
-  c /= AnDn;
-  H /= AnDn;
-
   LCS system(A, B, D, d, E, F, H, c, N, dt);
 
-  std::pair<LCS, double> ret(system, AnDn);
-  return ret;
+  return system;
 }
 
 std::pair<Eigen::MatrixXd, std::vector<VectorXd>>

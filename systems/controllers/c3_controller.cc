@@ -149,10 +149,10 @@ C3Controller::C3Controller(
 }
 
 LCS C3Controller::CreatePlaceholderLCS() const {
-  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
   MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);

@@ -93,6 +93,17 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     }
   }
 
+  auto Dn = D_.at(0).squaredNorm();
+  auto An = A_.at(0).squaredNorm();
+  double AnDn_ = An / Dn;
+
+  for (int i = 0 ; i < N_; ++i){
+    D_.at(i) *= AnDn_;
+    E_.at(i) /= AnDn_;
+    c_.at(i) /= AnDn_;
+    H_.at(i) /= AnDn_;
+  }
+
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -169,6 +180,17 @@ void C3::UpdateLCS(const LCS& lcs) {
   MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
 
+  auto Dn = D_[0].squaredNorm();
+  auto An = A_[0].squaredNorm();
+  double AnDn_ = An / Dn;
+
+  for (int i = 0 ; i < N_; ++i){
+    D_.at(i) *= AnDn_;
+    E_.at(i) /= AnDn_;
+    c_.at(i) /= AnDn_;
+    H_.at(i) /= AnDn_;
+  }
+
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_, n_) = A_.at(i);
     LinEq.block(0, n_, n_, m_) = D_.at(i);
@@ -222,7 +244,9 @@ void C3::Solve(const VectorXd& x0) {
     *w_sol_ = w;
     *delta_sol_ = delta;
   }
-
+  for (int i = 0; i < N_; ++i){
+    lambda_sol_->at(i) *= AnDn_;
+  }
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,

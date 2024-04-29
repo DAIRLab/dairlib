@@ -142,9 +142,8 @@ void LCSFactorySystem::OutputLCSContactJacobian(const drake::systems::Context<do
 
   std::vector<Eigen::VectorXd> contact_points;
   *output = LCSFactory::ComputeContactJacobian(
-      plant_, context_, plant_ad_, context_ad_, contact_pairs_,
-      c3_options_.num_friction_directions, c3_options_.mu, c3_options_.dt,
-      c3_options_.N, contact_model);
+      plant_, context_, contact_pairs_,
+      c3_options_.num_friction_directions, c3_options_.mu, contact_model);
 }
 
 }  // namespace systems

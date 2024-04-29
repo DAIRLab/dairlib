@@ -65,7 +65,7 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
  private:
   void DoPublish(const drake::systems::Context<double>& context,
                  const std::vector<const drake::systems::PublishEvent<double>*>&
-                     events) const override {
+                     events) const {
     const TimestampedVector<double>* input =
       dynamic_cast<const TimestampedVector<double>*>(
         EvalVectorInput(context, 0));

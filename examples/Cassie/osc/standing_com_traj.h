@@ -58,7 +58,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
 
   int state_port_;
   int target_height_port_;

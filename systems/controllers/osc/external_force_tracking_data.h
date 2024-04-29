@@ -45,11 +45,11 @@ class ExternalForceTrackingData {
   const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
   // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+  const drake::multibody::RigidBodyFrame<double>& world_w_spr_;
+  const drake::multibody::RigidBodyFrame<double>& world_wo_spr_;
 
-  const drake::multibody::BodyFrame<double>* body_frame_w_spr_;
-  const drake::multibody::BodyFrame<double>* body_frame_wo_spr_;
+  const drake::multibody::RigidBodyFrame<double>* body_frame_w_spr_;
+  const drake::multibody::RigidBodyFrame<double>* body_frame_wo_spr_;
   const Eigen::Vector3d pt_on_body_;
 
   int n_lambda_ = 3;

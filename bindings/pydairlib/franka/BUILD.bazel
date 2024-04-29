@@ -32,7 +32,7 @@ py_binary(
     srcs = ["franka_env.py"],
     data = [
         "//examples/franka:urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         "//bindings/pydairlib/franka",

@@ -51,7 +51,7 @@ class PelvisTransTrajGenerator : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
 
   // A list of pairs of contact body frame and contact point

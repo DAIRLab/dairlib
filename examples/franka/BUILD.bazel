@@ -15,7 +15,7 @@ cc_binary(
     srcs = ["full_diagram.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -32,7 +32,7 @@ cc_binary(
     srcs = ["franka_sim.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -53,7 +53,7 @@ cc_binary(
     srcs = ["franka_osc_controller.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -77,7 +77,7 @@ cc_binary(
     srcs = ["franka_c3_controller.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -103,7 +103,7 @@ cc_binary(
     srcs = ["franka_c3_controller_two_objects.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -129,7 +129,7 @@ cc_binary(
     srcs = ["forward_kinematics_for_lcs.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -155,7 +155,7 @@ cc_binary(
     srcs = ["franka_visualizer.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     deps = [
         ":parameters",
@@ -177,7 +177,7 @@ cc_binary(
     srcs = ["franka_ros_lcm_bridge.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     tags = ["ros"],
     deps = [
@@ -200,7 +200,7 @@ cc_binary(
     srcs = ["franka_lcm_ros_bridge.cc"],
     data = [
         ":urdfs",
-        "@drake//manipulation/models/franka_description:models",
+        "@drake_models//:franka_description",
     ],
     tags = ["ros"],
     deps = [

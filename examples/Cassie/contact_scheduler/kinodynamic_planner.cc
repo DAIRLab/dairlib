@@ -1,7 +1,7 @@
 #include "kinodynamic_planner.h"
 
 using drake::AbstractValue;
-using drake::multibody::BodyFrame;
+using drake::multibody::RigidBodyFrame;
 using drake::multibody::JacobianWrtVariable;
 using drake::systems::BasicVector;
 using drake::systems::Context;

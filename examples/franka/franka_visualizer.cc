@@ -83,7 +83,7 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+      parser.AddModelsFromUrl(sim_params.franka_model)[0];
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =

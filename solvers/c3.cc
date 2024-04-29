@@ -95,7 +95,7 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
 
   auto Dn = D_.at(0).squaredNorm();
   auto An = A_.at(0).squaredNorm();
-  double AnDn_ = An / Dn;
+  AnDn_ = An / Dn;
 
   for (int i = 0 ; i < N_; ++i){
     D_.at(i) *= AnDn_;
@@ -182,7 +182,7 @@ void C3::UpdateLCS(const LCS& lcs) {
 
   auto Dn = D_[0].squaredNorm();
   auto An = A_[0].squaredNorm();
-  double AnDn_ = An / Dn;
+  AnDn_ = An / Dn;
 
   for (int i = 0 ; i < N_; ++i){
     D_.at(i) *= AnDn_;
@@ -244,8 +244,10 @@ void C3::Solve(const VectorXd& x0) {
     *w_sol_ = w;
     *delta_sol_ = delta;
   }
+
   for (int i = 0; i < N_; ++i){
     lambda_sol_->at(i) *= AnDn_;
+    z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
 }
 

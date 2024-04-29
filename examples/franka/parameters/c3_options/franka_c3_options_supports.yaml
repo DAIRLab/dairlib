@@ -39,12 +39,12 @@ gamma: 1.0 # discount factor on MPC costs
 w_Q: 50
 w_R: 50
 #Penalty on all decision variables, assuming scalar
-w_G: 0.15
+w_G: 0.2
 #Penalty on all decision variables, assuming scalar
 w_U: 0.1
 
 #State Tracking Error, assuming diagonal
-q_vector: [150, 150, 150, 0, 1, 1, 0, 15000, 3000000, 15000,
+q_vector: [150, 150, 150, 0, 1, 1, 0, 15000, 15000, 15000,
            5, 5, 15, 10, 10, 1, 5, 5, 5]
 #Penalty on efforts, assuming diagonal
 r_vector: [0.15, 0.15, 0.1]

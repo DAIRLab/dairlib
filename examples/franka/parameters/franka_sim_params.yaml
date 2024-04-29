@@ -9,7 +9,7 @@ visualizer_publish_rate: 30
 actuator_delay: 0.000
 
 scene_index: 1
-visualize_drake_sim: false
+visualize_drake_sim: true
 publish_efforts: true
 
 tool_attachment_frame: [0, 0, 0.107]
@@ -36,7 +36,7 @@ world_z_limits: [[0.35, 0.7],
 external_force_scaling: [10.0, 10.0, 10.0]
 
 dt: 0.0005
-realtime_rate: 0.9
+realtime_rate: 1.0
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
 q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.465],

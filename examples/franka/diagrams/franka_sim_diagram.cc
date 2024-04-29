@@ -44,7 +44,7 @@ FrankaSimDiagram::FrankaSimDiagram(std::unique_ptr<drake::multibody::MultibodyPl
 //  lcs_diagram_builder.parser() lcs_diagram_builder.parser()(&plant);
   parser.SetAutoRenaming(true);
   drake::multibody::ModelInstanceIndex franka_index =
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+      parser.AddModelsFromUrl(sim_params.franka_model)[0];
   drake::multibody::ModelInstanceIndex c3_end_effector_index =
       parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   drake::multibody::ModelInstanceIndex tray_index =

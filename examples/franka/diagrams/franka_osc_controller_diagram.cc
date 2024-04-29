@@ -75,7 +75,7 @@ FrankaOSCControllerDiagram::FrankaOSCControllerDiagram(
 
   plant_ = new drake::multibody::MultibodyPlant<double>(0.0);
   Parser parser(plant_, nullptr);
-  parser.AddModels(drake::FindResourceOrThrow(controller_params.franka_model));
+  parser.AddModelsFromUrl(controller_params.franka_model);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant_->WeldFrames(plant_->world_frame(),

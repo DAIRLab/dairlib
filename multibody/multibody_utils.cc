@@ -329,7 +329,7 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
   auto floating_bodies = plant.GetFloatingBaseBodies();
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
-    int start = body.floating_velocities_start_in_v() - plant.num_positions();
+    int start = body.floating_velocities_start_in_v();
     std::string name = body.name();
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;
@@ -395,7 +395,7 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant,
 
   if (plant.HasUniqueFreeBaseBody(model_instance)) {
     const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance);
-    int start = body.floating_velocities_start_in_v() - plant.num_positions();
+    int start = body.floating_velocities_start_in_v();
     std::string name = body.name();
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;

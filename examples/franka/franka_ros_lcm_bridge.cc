@@ -83,7 +83,7 @@ int DoMain(int argc, char* argv[]) {
 
   Parser parser(&plant);
   auto franka_index =
-      parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+      parser.AddModelsFromUrl(sim_params.franka_model)[0];
   auto tray_index =
       parser.AddModels(FindResourceOrThrow(sim_params.tray_model))[0];
   Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);

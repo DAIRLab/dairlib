@@ -81,7 +81,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-  parser.AddModels(drake::FindResourceOrThrow(sim_params.franka_model))[0];
+  parser.AddModelsFromUrl(sim_params.franka_model)[0];
   Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);

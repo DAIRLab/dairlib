@@ -1,4 +1,4 @@
-franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
+franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
 end_effector_name: plate
 end_effector_lcs_model: examples/franka/urdf/plate_end_effector_translation.urdf

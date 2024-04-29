@@ -10,7 +10,7 @@
         <collision name="collision">
             <origin rpy="0 0 0" xyz="0 0 0.0"/>
             <geometry>
-              <cylinder radius="0.1" length="0.01"/>
+              <cylinder radius="0.01" length="0.01"/>
             </geometry>
             <drake:proximity_properties>
                 <drake:rigid_hydroelastic/>
@@ -22,7 +22,7 @@
         <visual>
             <origin rpy="0 0 0" xyz="0 0 0.0"/>
             <geometry>
-              <cylinder radius="0.1" length="0.01"/>
+              <cylinder radius="0.01" length="0.01"/>
             </geometry>
         </visual>
     </link>

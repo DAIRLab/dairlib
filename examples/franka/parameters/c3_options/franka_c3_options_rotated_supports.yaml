@@ -1,6 +1,6 @@
 admm_iter: 2
 rho: 0 # does not do anything
-rho_scale: 4
+rho_scale: 3.9
 num_threads: 5
 delta_option: 1
 # options are 'MIQP' or 'QP'
@@ -16,8 +16,8 @@ solve_time_filter_alpha: 0.95 # \bar{dt} = (1 - alpha) dt + (alpha) * \bar{dt}
 publish_frequency: 0
 
 # Workspace Limits (specified as Linear Constraints on the end effector position)
-workspace_limits: [[0.866, 0.5, 0.0, 0.3, 0.5],
-                   [-0.5, 0.866, 0.0, -0.1932, -0.1532],
+workspace_limits: [[0.866, 0.5, 0.0, 0.3, 0.49],
+                   [-0.5, 0.866, 0.0, -0.1782, -0.1682],
                    [0.0, 0.0, 1.0, 0.35, 0.7]]
 workspace_margins: 0.05
 
@@ -37,7 +37,7 @@ gamma: 1.0 # discount factor on MPC costs
 w_Q: 50
 w_R: 50
 #Penalty on all decision variables, assuming scalar
-w_G: 0.1
+w_G: 0.15
 #Penalty on all decision variables, assuming scalar
 w_U: 0.1
 

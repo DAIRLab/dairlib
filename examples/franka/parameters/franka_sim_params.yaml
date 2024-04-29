@@ -1,6 +1,6 @@
 franka_model: drake/manipulation/models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/franka/urdf/plate_end_effector.urdf
-tray_model: examples/franka/urdf/tray_lcs.sdf # rigid contact model does not do sticking well
+tray_model: examples/franka/urdf/tray.sdf # rigid contact model does not do sticking well
 object_model: examples/franka/urdf/cylinder_object.urdf
 franka_publish_rate: 1000
 tray_publish_rate: 1000
@@ -8,7 +8,7 @@ object_publish_rate: 1000
 visualizer_publish_rate: 30
 actuator_delay: 0.000
 
-scene_index: 3
+scene_index: 1
 visualize_drake_sim: false
 publish_efforts: true
 
@@ -36,23 +36,23 @@ world_z_limits: [[0.35, 0.7],
 external_force_scaling: [10.0, 10.0, 10.0]
 
 dt: 0.0005
-realtime_rate: 1.0
+realtime_rate: 0.9
 q_init_franka: [-1.3, 1.6, 1.6, -2.1, 1.57, 1.62, -0.81]
 
 q_init_plate: [[1, 0, 0, 0, 0.55, 0.0, 0.465],
                [1, 0, 0, 0, 0.7, 0.00, 0.485],
-               [1.    , 0.    , 0.    , 0.    , 0.6062, 0.15  , 0.485 ],
+               [1.    , 0.    , 0.    , 0.    , 0.5889, 0.14  , 0.485],
                [0.8775826, 0, 0, 0.4794255, 0.55, 0.02, 0.46]]
 #               [1, 0, 0, 0, 0.55, 0.0, 0.46]]
 
-q_init_object: [[1, 0, 0, 0, 0.55, 0.0, 0.48],
+q_init_object: [[1, 0, 0, 0, 0.55, 0.0, 0.0],
                [1, 0, 0, 0, 0.7, 0.00, 0.0],
                [1.    , 0.    , 0.    , 0.    , -0.55, 0.0, 0.0 ],
                [1.    , 0.    , 0.    , 0.    , -1.55, 0.0, 0.0 ]]
 
 visualize_workspace: false
 visualize_pose_trace: true
-visualize_center_of_mass_plan: true
+visualize_center_of_mass_plan: false
 visualize_c3_forces: true
 visualize_c3_object_state: true
-visualize_c3_end_effector_state: true
+visualize_c3_end_effector_state: false

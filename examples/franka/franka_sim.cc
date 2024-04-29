@@ -130,6 +130,7 @@ int DoMain(int argc, char* argv[]) {
           &plant.GetBodyByName("panda_link4"),
           &plant.GetBodyByName("panda_link5"),
           &plant.GetBodyByName("panda_link6"),
+          &plant.GetBodyByName("panda_link7"),
           &plant.GetBodyByName("panda_link8"),
       });
   auto tray_collision_set = GeometrySet(

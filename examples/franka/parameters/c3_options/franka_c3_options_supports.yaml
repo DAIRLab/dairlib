@@ -39,7 +39,7 @@ gamma: 1.0 # discount factor on MPC costs
 w_Q: 50
 w_R: 50
 #Penalty on all decision variables, assuming scalar
-w_G: 0.2
+w_G: 0.1
 #Penalty on all decision variables, assuming scalar
 w_U: 0.1
 

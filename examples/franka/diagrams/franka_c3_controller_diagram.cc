@@ -81,8 +81,7 @@ FrankaC3ControllerDiagram::FrankaC3ControllerDiagram(
 
   plant_franka_ = new drake::multibody::MultibodyPlant<double>(0.0);
   Parser parser_franka(plant_franka_, nullptr);
-  parser_franka.AddModels(
-      drake::FindResourceOrThrow(scene_params.franka_model));
+  parser_franka.AddModelsFromUrl(scene_params.franka_model);
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
           FindResourceOrThrow(scene_params.end_effector_model))[0];

@@ -13,8 +13,7 @@ from pydrake.systems.framework import DiagramBuilder
 from pydrake.all import MultibodyPlant, Parser, RigidTransform, \
     FindResourceOrThrow
 
-franka_urdf = FindResourceOrThrow(
-    "drake/manipulation/models/franka_description/urdf/panda_arm.urdf")
+franka_urdf = "package://drake_models/franka_description/urdf/panda_arm.urdf"
 end_effector_model = "examples/franka/urdf/plate_end_effector.urdf"
 tray_model = "examples/franka/urdf/tray.sdf"
 tool_attachment_frame = np.array([0, 0, 0.107])
@@ -42,7 +41,7 @@ def make_plant_and_context():
 
     franka_plant = MultibodyPlant(0.0)
     franka_parser = Parser(franka_plant)
-    franka_parser.AddModels(franka_urdf)
+    franka_parser.AddModelsFromUrl(franka_urdf)
     end_effector_index = \
         franka_parser.AddModels(end_effector_model)[0]
     T_EE_W = RigidTransform(tool_attachment_frame)

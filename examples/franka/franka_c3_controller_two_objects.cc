@@ -83,8 +83,7 @@ int DoMain(int argc, char* argv[]) {
 
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka, nullptr);
-  parser_franka.AddModels(
-      drake::FindResourceOrThrow(scene_params.franka_model));
+  parser_franka.AddModelsFromUrl(scene_params.franka_model);
   drake::multibody::ModelInstanceIndex end_effector_index =
       parser_franka.AddModels(
           FindResourceOrThrow(scene_params.end_effector_model))[0];

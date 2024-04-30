@@ -111,6 +111,12 @@ cc_library(
         ":sampling_params",
         "//solvers:lcs",
     ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
 )
 
 cc_library(
@@ -129,6 +135,12 @@ cc_library(
         ":generate_samples",
         ":sampling_params",
         "//solvers:lcs",
+    ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
     ],
 )
 

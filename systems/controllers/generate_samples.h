@@ -23,7 +23,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
     const SamplingC3SamplingParams sampling_params);
 
 // Private function signatures.
-static Eigen::VectorXd generate_radially_symmetric_sample_location(
+Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -32,14 +32,14 @@ static Eigen::VectorXd generate_radially_symmetric_sample_location(
     const double& sampling_radius,
     const double& sampling_height);
 
-static Eigen::VectorXd generate_random_sample_location_on_circle(
+Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
     const double& sampling_radius,
     const double& sampling_height);
 
-static Eigen::VectorXd generate_random_sample_location_on_sphere(
+Eigen::VectorXd generate_random_sample_location_on_sphere(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -47,7 +47,7 @@ static Eigen::VectorXd generate_random_sample_location_on_sphere(
     const double& min_angle_from_vertical,
     const double& max_angle_from_vertical);
 
-static Eigen::VectorXd generate_fixed_sample(
+Eigen::VectorXd generate_fixed_sample(
   const int& n_q,
   const int& n_v,
   const Eigen::VectorXd& x_lcs,

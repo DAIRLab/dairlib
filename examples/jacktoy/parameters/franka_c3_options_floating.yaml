@@ -1,11 +1,11 @@
-admm_iter: 10
+admm_iter: 3
 rho: 0  #This isn't used anywhere!
-rho_scale: 5
-num_threads: 6
+rho_scale: 3
+num_threads: 5
 num_outer_threads: 4
 # delta_option: 1
 # options are 'MIQP' or 'QP'
-projection_type: 'QP'
+projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 contact_model: 'anitescu'
 # These mu values are the effective friction coefficients for the represented 
@@ -34,12 +34,12 @@ num_contacts_index: 0
 num_contacts: [4,6,5,7]
 N: 5
 # This param has to do with the xbox input?
-use_predicted_x0: false
+use_predicted_x0: true
 solve_time_filter_alpha: 0.95
 # Workspace Limits
-world_x_limits: [-2, 2]
-world_y_limits: [-2, 2]
-world_z_limits: [-2, 2]
+world_x_limits: [0, 1]
+world_y_limits: [-1, 1]
+world_z_limits: [0, 1]
 workspace_margins: 0.05
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [0, 50]
@@ -52,11 +52,11 @@ g_lambda_n: [[1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1]]
 g_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_lambda: [[0.2, 0.2, 0.2, 0.2, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006, 0.0006],
+g_lambda: [[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
            [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-g_u: [3,3,3]
+g_u: [0.1,0.1,0.1]
 
 # Penalty on matching the QP variables
 u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -67,7 +67,7 @@ u_lambda_n: [[1, 1, 1, 1],
 u_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 # This is not used for the QP projection. It gets overwritten by alpha*F.
-u_lambda: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+u_lambda: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
@@ -77,12 +77,12 @@ u_u: [30, 30, 30]
 warm_start: false     # TODO: Check if we use this. Delete otherwise.
 
 # matrix scaling
-w_Q: 70
+w_Q: 25
 w_R: 1
 # Penalty on all decision variables, assuming scalar
-w_G: 1
+w_G: 0.15
 # Penalty on all decision variables, assuming scalar
-w_U: 1
+w_U: 0.25
 
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity 
 # constraints also approaches 0. 
@@ -100,12 +100,12 @@ qp_projection_scaling: 1
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
-q_vector: [0, 0, 0,        # end effector position
+q_vector: [1, 1, 1,        # end effector position
            0, 0, 0, 0,              # object orientation
-           20000, 20000, 30000,    # object position
-           15, 15, 15,              # end effector linear velocity
-           0, 0, 0,                 # object angular velocity
-           5, 5, 5]           # object linear velocity
+           1500, 1500, 1500,    # object position
+           0.01, 0.01, 0.01,              # end effector linear velocity
+           0.01, 0.01, 0.01,                 # object angular velocity
+           1, 1, 1]           # object linear velocity
 # q_vector: [150, 150, 150, 0, 1, 1, 0, 1000000, 1000000, 100000000,
 #            5, 5, 15, 10, 10, 1, 5, 5, 5]
 # q_vector: [100, 100, 500, 0, 0, 0, 0, 1000000, 1000000, 100000000,
@@ -123,4 +123,4 @@ q_vector: [0, 0, 0,        # end effector position
 #           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
 # Penalty on end effector (x,y,z) force efforts, assuming diagonal
-r_vector: [0.015, 0.015, 0.01]
+r_vector: [0.01, 0.01, 0.01]

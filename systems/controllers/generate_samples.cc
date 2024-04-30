@@ -76,7 +76,7 @@ std::vector<Eigen::VectorXd> generate_sample_states(
 
 // Sampling strategy 0:  Equally spaced on perimeter of circle of fixed radius
 // and height. This generates angle offsets from world frame. 
-static Eigen::VectorXd generate_radially_symmetric_sample_location(
+Eigen::VectorXd generate_radially_symmetric_sample_location(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -118,7 +118,7 @@ static Eigen::VectorXd generate_radially_symmetric_sample_location(
 
 // Sampling strategy 1:  Random on perimeter of circle of fixed radius and
 // height.
-static Eigen::VectorXd generate_random_sample_location_on_circle(
+Eigen::VectorXd generate_random_sample_location_on_circle(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -163,7 +163,7 @@ static Eigen::VectorXd generate_random_sample_location_on_circle(
 
 // Sampling strategy 2:  Random on surface of sphere of fixed radius,
 // constrained to band defined by elevation angles.
-static Eigen::VectorXd generate_random_sample_location_on_sphere(
+Eigen::VectorXd generate_random_sample_location_on_sphere(
     const int& n_q,
     const int& n_v,
     const Eigen::VectorXd& x_lcs,
@@ -216,7 +216,7 @@ static Eigen::VectorXd generate_random_sample_location_on_sphere(
 }
 
 // Sampling strategy 3: This generates a fixed sample. 
-static Eigen::VectorXd generate_fixed_sample(
+Eigen::VectorXd generate_fixed_sample(
   const int& n_q,
   const int& n_v,
   const Eigen::VectorXd& x_lcs,

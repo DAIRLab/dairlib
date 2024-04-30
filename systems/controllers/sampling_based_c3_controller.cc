@@ -379,7 +379,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Make LCS objects for each sample.
   std::vector<solvers::LCS> candidate_lcs_objects;
-  for (int i; i < num_total_samples; i++) {
+  for (int i = 0; i < num_total_samples; i++) {
     // Context needs to be updated to create the LCS objects.
     UpdateContext(candidate_states[i]);
 
@@ -715,7 +715,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // When it is 0, it is the current location. When it is 1, it is the goal.
     double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
 
-    if (i == 1 & t_spline >= 1 & !is_doing_c3_){
+    if (i == 1 && t_spline >= 1 && !is_doing_c3_){
       // If it can get there in one step, then set finished_reposition_flag_ to
       // true.
       finished_reposition_flag_ = true;

@@ -250,6 +250,12 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
         A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
         D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
   }
+  // Unscale lambda before output for better visualizationa and interpretation.
+  // These values will now be in Newtons.
+  for (int i = 0; i < N_; ++i){
+    lambda_sol_->at(i) *= AnDn_;
+    z_sol_->at(i).segment(n_, m_) *= AnDn_;
+  }
 }
 
 // This function relies on the previously computed zfin_ from the Solve function.
@@ -374,12 +380,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
     Gv->at(i) = Gv->at(i) * options_.rho_scale;
-  }
-
-  // Unscale lambda before output for better visualizationa and interpretation.
-  // These values will now be in Newtons.
-  for (int i = 0; i < N_; ++i){
-    lambda_sol_->at(i) *= AnDn_;
   }
 }
 

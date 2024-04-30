@@ -94,6 +94,17 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     }
   }
 
+  auto Dn = D_.at(0).norm();
+  auto An = A_.at(0).norm();
+  AnDn_ = An / Dn;
+
+  for (int i = 0 ; i < N_; ++i){
+    D_.at(i) *= AnDn_;
+    E_.at(i) /= AnDn_;
+    c_.at(i) /= AnDn_;
+    H_.at(i) /= AnDn_;
+  }
+
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
   u_ = vector<drake::solvers::VectorXDecisionVariable>();
   lambda_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -139,6 +150,13 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
             .get();
     //    prog_.AddLinearConstraint(lambda_.at(i) >= VectorXd::Zero(m_));
   }
+
+  // Adding constraint for x[2] corresponding to end effector z to always be 
+  // above the ground at every time step.
+  for (int i = 0; i < N_; i++) {
+    prog_.AddLinearConstraint(x_.at(i)[2] >= 0);
+  }
+
   input_costs_.resize(N_);
   for (int i = 0; i < N_ + 1; i++) {
     target_cost_[i] =
@@ -173,6 +191,18 @@ void C3::UpdateLCS(const LCS& lcs) {
 
   MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
+
+  auto Dn = D_.at(0).norm();
+  auto An = A_.at(0).norm();
+  AnDn_ = An / Dn;
+  // Scale the D, E, c, and H matrices by AnDn_ to have a better conditioned
+  // optimization problem.
+  for (int i = 0 ; i < N_; ++i){
+    D_.at(i) *= AnDn_;
+    E_.at(i) /= AnDn_;
+    c_.at(i) /= AnDn_;
+    H_.at(i) /= AnDn_;
+  }
 
   for (int i = 0; i < N_; i++) {
     LinEq.block(0, 0, n_, n_) = A_.at(i);
@@ -327,7 +357,6 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     WD.at(i) = delta->at(i) - w->at(i);
   }
 
-  
   vector<VectorXd> z = SolveQP(x0, *Gv, WD, admm_iteration, true);
 
   vector<VectorXd> ZW(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -345,6 +374,12 @@ void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
     w->at(i) = w->at(i) + z[i] - delta->at(i);
     w->at(i) = w->at(i) / options_.rho_scale;
     Gv->at(i) = Gv->at(i) * options_.rho_scale;
+  }
+
+  // Unscale lambda before output for better visualizationa and interpretation.
+  // These values will now be in Newtons.
+  for (int i = 0; i < N_; ++i){
+    lambda_sol_->at(i) *= AnDn_;
   }
 }
 

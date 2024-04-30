@@ -14,11 +14,13 @@ def main(log_type):
     if not os.path.isdir(logdir):
         os.mkdir(logdir)
 
-    osc_gains = dair + "examples/jacktoy/parameters/franka_osc_controller_params.yaml"
-    sim_params = dair + "examples/jacktoy/parameters/franka_sim_params.yaml"
-    c3_gains = dair + "examples/jacktoy/parameters/franka_c3_options_floating.yaml"
-    sampling_params = dair + "examples/jacktoy/parameters/sampling_params.yaml"
-    trajectory_params = dair + "examples/jacktoy/parameters/trajectory_params.yaml"
+    osc_gains = dair + "examples/ball_rolling/parameters/franka_osc_controller_params.yaml"
+    sim_params = dair + "examples/ball_rolling/parameters/franka_sim_params.yaml"
+    c3_gains = dair + "examples/ball_rolling/parameters/franka_c3_options_floating.yaml"
+    sampling_params = dair + "examples/ball_rolling/parameters/sampling_params.yaml"
+    trajectory_params = dair + "examples/ball_rolling/parameters/trajectory_params.yaml"
+    ee_simple_model_urdf = dair + "examples/ball_rolling/urdf/end_effector_simple_model.urdf"
+    jack_sdf = dair + "examples/ball_rolling/urdf/jack.sdf"
 
     git_diff = subprocess.check_output(['git', 'diff'], cwd=dair)
     commit_tag = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=dair)
@@ -52,6 +54,8 @@ def main(log_type):
     subprocess.run(['cp', c3_gains, f'c3_gains_{log_num}.yaml'])
     subprocess.run(['cp', sampling_params, f'sampling_params_{log_num}.yaml'])
     subprocess.run(['cp', trajectory_params, f'trajectory_params_{log_num}.yaml'])
+    subprocess.run(['cp', ee_simple_model_urdf, f'ee_simple_model_urdf_{log_num}.urdf'])
+    subprocess.run(['cp', jack_sdf, f'jack_sdf_{log_num}.sdf'])
     subprocess.run(['/opt/lcm/1.4.0/bin/lcm-logger', '-f', logname])
 
 

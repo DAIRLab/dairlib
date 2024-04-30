@@ -268,10 +268,10 @@ SamplingC3Controller::SamplingC3Controller(
 }
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
-  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
   MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
@@ -297,15 +297,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Store the current LCS state.
   VectorXd x_lcs_des(n_x_);
-           x_lcs_des << 0.2268,
-                        0.4950,
-                        0.1410,
+           x_lcs_des << 0.32360554,
+                        0.44212407,
+                        0.12097146,
                         1.0,
                         0.0,
                         0.0,
                         0.0,
-                        0.4405,
-                        0.1783,
+                        0.46919885,
+                        0.16059774,
                         0.0625,
                         0.0,
                         0.0,
@@ -318,19 +318,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                         0.0;
 
   VectorXd x_lcs_curr(n_x_);
-          x_lcs_curr << 0.1948,
-                        0.4805,
-                        0.1845,
-                        0.9136,
-                        0.3196,
-                        -0.3491,
-                        -0.0402,
-                        0.2268,
-                        0.4950,
-                        0.0610,
-                        -0.3978,
-                        0.1356,
-                        0.0199,
+          x_lcs_curr << 0.33000305,
+                        0.53,
+                        0.1,
+                        0.8591146,
+                        0.4290843,
+                        0.1998299,
+                        -0.313168,
+                        0.32360554,
+                        0.44212407,
+                        0.060971465,
+                        0.0000,
+                        0.0000,
+                        0.0000,
                         0.0,
                         0.0,
                         0.0,

@@ -13,7 +13,7 @@ C3MIQP::C3MIQP(const LCS& LCS, const CostMatrices& costs,
   // Create an environment
   //  env_.set("LogToConsole", "0");
   env_.set("OutputFlag", "0");
-  env_.set("Threads", "0");
+  env_.set("Threads", "5");
   env_.start();
 }
 

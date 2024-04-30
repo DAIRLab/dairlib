@@ -275,10 +275,10 @@ SamplingC3Controller::SamplingC3Controller(
 }
 
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
-  MatrixXd A = MatrixXd::Zero(n_x_, n_x_);
+  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Zero(n_x_, n_lambda_);
+  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
   MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
@@ -627,7 +627,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     knots.col(i) = x_sol[i];
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
-  
+
   LcmTrajectory::Trajectory c3_execution_traj;
   c3_execution_traj.traj_name = "end_effector_position_target";
   c3_execution_traj.datatypes =

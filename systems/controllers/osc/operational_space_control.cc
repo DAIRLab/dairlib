@@ -125,6 +125,7 @@ OperationalSpaceControl::OperationalSpaceControl(
   u_min_ = u_min;
   u_max_ = u_max;
 
+  // Get joint acceleration limits
   VectorXd ddq_min = VectorXd::Zero(n_q_);
   VectorXd ddq_max = VectorXd::Zero(n_q_);
   for (JointIndex i(0); i < n_q_; ++i) {
@@ -143,6 +144,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       n_revolute_joints_ += 1;
     }
   }
+
+  // Get joint position limits
   VectorXd q_min(n_revolute_joints_);
   VectorXd q_max(n_revolute_joints_);
   int floating_base_offset = n_v_ - n_revolute_joints_;

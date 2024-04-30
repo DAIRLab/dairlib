@@ -33,7 +33,7 @@ class LCSFactory {
   /// @param mu
   /// @oaram dt The timestep for discretization
   /// @param N
-  static std::pair<LCS, double> LinearizePlantToLCS(
+  static LCS LinearizePlantToLCS(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,

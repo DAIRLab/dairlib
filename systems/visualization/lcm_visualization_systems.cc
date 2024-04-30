@@ -383,7 +383,7 @@ drake::systems::EventStatus LcmForceDrawer::DrawForces(
     auto force_norm = force.norm();
     const std::string& force_path_root =
         force_path_ + "/lcs_force_" + std::to_string(i) + "/";
-    if (force_norm >= 0.5) {
+    if (force_norm >= 0.01) {
       if (!meshcat_->HasPath(force_path_root + "arrow/")) {
         meshcat_->SetObject(force_path_root + "arrow/cylinder", cylinder_,
                             contact_force_color_);

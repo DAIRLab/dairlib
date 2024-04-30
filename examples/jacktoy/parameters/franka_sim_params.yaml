@@ -41,8 +41,10 @@ realtime_rate: 1
 
 # TODO: Set the initial locations to something sensical
 # q_init_franka: [2.48, 1.6, -2.4, -1.77, 1.38, 0.72, 0.638]
-# q_init_franka: [2.39, 1.5, -1.48, -1.84, 1.62, 1.64, 0.54]
-q_init_franka: [-0.12, 1.6, 1.48, -1.8, -1.62, 1.64, 1.69]
+q_init_franka: [2.39, 1.5, -1.48, -1.84, 1.62, 1.64, 0.54]
+# q_init_franka: [-0.12, 1.6, 1.48, -1.8, -1.62, 1.64, 1.69]
+# q_init_franka: [-0.39, 1.6, 1.53, -2.13, -1.61, 1.58, 1.73]
+# q_init_franka: [0.0845, 1.6, -1.547, -1.446,1.597, 1.598, -1.362]
 
 # Check the dependencies and clear/clean this line up.
 q_init_object: [0.847410781, 0.310617894, 0.311017672, -0.385788646, 0.35, 0.45, 0.1]
@@ -54,7 +56,7 @@ visualize_workspace: false
 visualize_c3_state: true
 visualize_is_c3_mode: true
 
-visualize_sample_locations: false
+visualize_sample_locations: true
 
 visualize_execution_plan: true
 

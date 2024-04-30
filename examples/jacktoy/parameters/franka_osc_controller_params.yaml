@@ -13,7 +13,11 @@ platform_franka_frame: [0, 0, -0.01225]
 # This is the z value of the base of the franka wrt the surface of the table.  
 franka_origin: [0, 0, 0.0245]
 
-neutral_position: [0.33, 0.43, 0.15]
+# neutral_position: [0.31, 0.4, 0.15]
+neutral_position: [0.33, 0.53, 0.10]
+#neutral_position: [0.38, 0.46, 0.10]
+# EE in a far off position beyond c3 target
+# neutral_position: [0.50, -0.50, 0.10]
 x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1
@@ -25,7 +29,7 @@ w_soft_constraint: 0.0
 w_lambda: 0.0
 impact_threshold: 0.000
 impact_tau: 0.000
-mu: 1.0 # unused
+mu: 0.4615 # unused
 end_effector_acceleration: 10
 track_end_effector_orientation: false
 cancel_gravity_compensation: false
@@ -45,6 +49,7 @@ w_elbow: 1
 elbow_kp: 200
 elbow_kd: 10
 
+# This is the weight matrix for the end effector position tracking.
 EndEffectorW:
   [1, 0, 0,
    0, 1, 0,
@@ -69,6 +74,9 @@ EndEffectorRotKd:
   [ 40, 0, 0,
     0, 40, 0,
     0, 0, 40]
+# This is the weight matrix for the end effector force tracking. 
+# The end effector forces in the osc are called lambdas but are really tracking
+# the forces at the end effector or the u_sol we get in c3.
 LambdaEndEffectorW:
   [ 1, 0, 0,
     0, 1, 0,

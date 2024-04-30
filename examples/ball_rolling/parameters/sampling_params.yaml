@@ -28,8 +28,8 @@ max_angle_from_vertical: 1.822
 # num_additional_samples_c3 is in addition to that one.
 # NOTE: IF YOU SET NUM ADDITIONAL SAMPLES TO 0, REMEMBER TO NOT VISUALIZE THE 
 #       SAMPLE LOCATIONS IN THE VISUALIZER. 
-num_additional_samples_repos: 2
-num_additional_samples_c3: 1
+num_additional_samples_repos: 0
+num_additional_samples_c3: 0
 
 # Repositioning parameters.
 spline_width: 0.062

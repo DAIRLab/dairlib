@@ -82,6 +82,7 @@ struct FrankaControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(y_scale));
     a->Visit(DRAKE_NVP(z_scale));
 
+    // Weight matrix for end effector position tracking.
     W_end_effector = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorW.data(), 3, 3);
@@ -103,6 +104,7 @@ struct FrankaControllerParams : OSCGains {
     K_d_end_effector_rot = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorRotKd.data(), 3, 3);
+    // Weight matrix for ee force tracking.
     W_ee_lambda = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->LambdaEndEffectorW.data(), 3, 3);

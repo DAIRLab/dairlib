@@ -1,4 +1,4 @@
-admm_iter: 4
+admm_iter: 5
 rho: 0.1
 rho_scale: 2.5
 num_threads: 6
@@ -43,27 +43,28 @@ u_horizontal_limits: [-50, 50]
 u_vertical_limits: [0, 50]
 gamma: 1.0  # discount factor on MPC costs
 # Penalty on matching projected variables
-g_x: [0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005]
+g_x: [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000]
 g_gamma: [[0.0005, 0.0000001],
           [0.0005, 0.0000001, 0.0000001]]
 g_lambda_n: [[0.0005, 0.0000001],
              [0.0005, 0.0000001, 0.0000001]]
 g_lambda_t: [[0.0005, 0.0005, 0.0005, 0.0005, 0.0000001, 0.0000001, 0.0000001, 0.0000001],
              [0.0005, 0.0005, 0.0005, 0.0005, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001, 0.0000001]]
-g_lambda: [[0.0005, 0.0005, 0.0005, 0.0005, 0.000000, 0.000000, 0.000000, 0.000000],
-           [0.0005, 0.0005, 0.0005, 0.0005, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000]]
-g_u: [0.0005, 0.0005, 0.0005]
+g_lambda: [[5, 5, 5, 5, 0.55, 0.55, 0.55, 0.55],
+           [5, 5, 5, 5, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55]]
+g_u: [50, 50, 50]
 
 # Penalty on matching the QP variables
-u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+u_x: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 u_gamma: [[1, 1],
           [1, 1, 1]]
 u_lambda_n: [[1, 1],
              [1, 1, 1]]
 u_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-u_lambda: [[1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+# This is not used for the QP projection. It gets overwritten by alpha*F.
+u_lambda: [[0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 u_u: [1, 1, 1]
 
 
@@ -73,13 +74,13 @@ warm_start: false     # TODO: Check if we use this. Delete otherwise.
 w_Q: 1
 w_R: 1
 # Penalty on all decision variables, assuming scalar
-w_G: 100000
+w_G: 2
 # Penalty on all decision variables, assuming scalar
 w_U: 1
 
 # alpha value for qp projection. As alpha -> 0, any error in complimentarity 
 # constraints also approaches 0. 
-qp_projection_alpha: 0.0001
+qp_projection_alpha: 0.01
 qp_projection_scaling: 1000
 
 # n_lambda = 2 * n_contacts + 2 * n_contacts * num_friction_directions
@@ -93,7 +94,7 @@ qp_projection_scaling: 1000
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
-q_vector: [500, 500, 500,        # end effector position
+q_vector: [100, 100, 100,        # end effector position
            0, 0, 0, 0,              # object orientation
            800000, 800000, 20000,    # object position
            10, 10, 10,              # end effector linear velocity

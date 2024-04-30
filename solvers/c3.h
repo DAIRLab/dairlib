@@ -137,7 +137,8 @@ class C3 {
   const std::vector<Eigen::MatrixXd> G_;
   std::vector<Eigen::VectorXd> x_desired_;
   const C3Options options_;
-
+  double dt_ = 0;
+  double solve_time_ = 0;
   bool h_is_zero_;
 
   drake::solvers::MathematicalProgram prog_;

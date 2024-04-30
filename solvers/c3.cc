@@ -93,8 +93,8 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     }
   }
 
-  auto Dn = D_.at(0).squaredNorm();
-  auto An = A_.at(0).squaredNorm();
+  auto Dn = D_.at(0).norm();
+  auto An = A_.at(0).norm();
   AnDn_ = An / Dn;
 
   for (int i = 0 ; i < N_; ++i){
@@ -175,13 +175,14 @@ void C3::UpdateLCS(const LCS& lcs) {
   F_ = lcs.F_;
   H_ = lcs.H_;
   c_ = lcs.c_;
+  dt_ = lcs.dt_;
   h_is_zero_ = H_[0].isZero(0);
 
   MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
 
-  auto Dn = D_[0].squaredNorm();
-  auto An = A_[0].squaredNorm();
+  auto Dn = D_[0].norm();
+  auto An = A_[0].norm();
   AnDn_ = An / Dn;
 
   for (int i = 0 ; i < N_; ++i){
@@ -209,6 +210,9 @@ void C3::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 }
 
 void C3::Solve(const VectorXd& x0) {
+  auto start = std::chrono::high_resolution_clock::now();
+
+
   VectorXd delta_init = VectorXd::Zero(n_ + m_ + k_);
   if (options_.delta_option == 1){
     delta_init.head(n_) = x0;
@@ -249,6 +253,12 @@ void C3::Solve(const VectorXd& x0) {
     lambda_sol_->at(i) *= AnDn_;
     z_sol_->at(i).segment(n_, m_) *= AnDn_;
   }
+
+  auto finish = std::chrono::high_resolution_clock::now();
+  auto elapsed = finish - start;
+  solve_time_ =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
+          1e6;
 }
 
 void C3::ADMMStep(const VectorXd& x0, vector<VectorXd>* delta,
@@ -322,13 +332,17 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   //  /// initialize decision variables to warm start
   if (warm_start_) {
-    prog_.SetInitialGuess(x_[0], x0);
+    int index = solve_time_ / dt_;
+    double weight = (solve_time_ - index * dt_) / dt_;
     for (int i = 0; i < N_ - 1; i++) {
-      prog_.SetInitialGuess(x_[i], warm_start_x_[admm_iteration][i + 1]);
-      prog_.SetInitialGuess(lambda_[i],
-                            warm_start_lambda_[admm_iteration][i + 1]);
-      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(x_[i], (1 - weight) * warm_start_x_[admm_iteration][i] + weight * warm_start_x_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration][i] + weight * warm_start_lambda_[admm_iteration][i + 1]);
+      prog_.SetInitialGuess(u_[i], (1 - weight) * warm_start_u_[admm_iteration][i] + weight * warm_start_u_[admm_iteration][i + 1]);
+//      prog_.SetInitialGuess(lambda_[i],
+//                            warm_start_lambda_[admm_iteration][i + 1]);
+//      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i + 1]);
     }
+    prog_.SetInitialGuess(x_[0], x0);
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
   }
 

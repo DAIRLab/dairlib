@@ -374,11 +374,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         plant_, *context_, contact_pairs_, c3_options_.num_friction_directions,
         c3_options_.num_contacts[c3_options_.num_contacts_index], false);
   }
-  auto sample_system_scaling_pair = solvers::LCSFactory::LinearizePlantToLCS(
+  auto sample_system = solvers::LCSFactory::LinearizePlantToLCS(
     plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
     c3_options_.num_friction_directions, c3_options_.mu[c3_options_.num_contacts_index], 
     c3_options_.planning_dt, N_, contact_model);
-  solvers::LCS lcs_object_sample = sample_system_scaling_pair.first;
+  solvers::LCS lcs_object_sample = sample_system;
 
   // Store LCS object.
   candidate_lcs_objects.push_back(lcs_object_sample);

@@ -23,7 +23,7 @@ def plotter_main(plot_config, log1, log2):
     use_floating_base = plot_config.use_floating_base
     use_springs = plot_config.use_springs
 
-    channel_x = plot_config.channel_x
+    channel_x = "CASSIE_STATE_DISPATCHER"
     channel_u = plot_config.channel_u
     channel_osc = plot_config.channel_osc
 

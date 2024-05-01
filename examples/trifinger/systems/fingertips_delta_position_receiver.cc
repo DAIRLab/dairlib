@@ -62,12 +62,6 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
       this->EvalInputValue<dairlib::lcmt_fingertips_delta_position>(
           context, fingertips_delta_position_port_);
 
-  // check if the obtained message from lcm input port is still old one,
-  // if so, no update is performed on the discrete states.
-  if (fingertips_delta_pos_lcm_msg->utime ==
-      context.get_discrete_state(prev_target_timestamp_idx_)[0]) {
-    return drake::systems::EventStatus::Succeeded();
-  }
   Eigen::VectorXd q_trifinger = trifinger_state->GetPositions();
   multibody::SetPositionsIfNew<double>(plant_, q_trifinger, context_);
 
@@ -89,8 +83,19 @@ FingertipDeltaPositionReceiver::DiscreteVariableUpdate(
   Eigen::VectorXd fingertips_target_pos(9);
   fingertips_target_pos << fingertip_0_pos, fingertip_120_pos,
       fingertip_240_pos;
-  fingertips_target_pos +=
-      Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
+
+  // check if the obtained message from lcm input port is still old one,
+  // if so, no update is performed on the discrete states.
+  if (fingertips_delta_pos_lcm_msg->utime ==
+      context.get_discrete_state(prev_target_timestamp_idx_)[0]) {
+    // message not yet coming, maintain fingertip targets at current state.
+    if (fingertips_delta_pos_lcm_msg->utime > 0)
+      return drake::systems::EventStatus::Succeeded();
+    fingertips_target_pos += Eigen::VectorXd::Zero(9);
+  } else {
+    fingertips_target_pos +=
+        Eigen::VectorXd::Map(fingertips_delta_pos_lcm_msg->deltaPos, 9);
+  }
   discrete_state->get_mutable_vector(fingertips_target_idx_)
       .set_value(fingertips_target_pos);
   discrete_state->get_mutable_vector(prev_target_timestamp_idx_)

@@ -6,8 +6,12 @@ group "1.director" {
 }
 
 group "2. Visualizer" {
-    cmd "state-visualizer-floating (from simulation)" {
+    cmd "state-visualizer-floating (from hardware)" {
         exec = "bazel-bin/examples/trifinger/trifinger_visualizer";
+        host = "localhost";
+    }
+    cmd "state-visualizer-floating (from simulation)" {
+        exec = "bazel-bin/examples/trifinger/trifinger_visualizer --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
         host = "localhost";
     }
 }
@@ -33,6 +37,10 @@ group "5. ROS-LCM Bridge" {
     }
     cmd "LCM-to-ROS" {
         exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge";
+        host = "localhost";
+    }
+    cmd "LCM-to-ROS (simulation)" {
+        exec = "bazel-bin/examples/trifinger/trifinger_lcm_ros_bridge --lcm_channels=examples/trifinger/parameters/lcm_channels_simulation.yaml";
         host = "localhost";
     }
 }

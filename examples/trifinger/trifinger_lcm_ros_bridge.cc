@@ -19,7 +19,6 @@
 #include "common/find_resource.h"
 #include "examples/trifinger/parameters/trifinger_lcm_channels.h"
 #include "examples/trifinger/parameters/trifinger_sim_params.h"
-#include "nav_msgs/msg/odometry.hpp"
 #include "parameters/trifinger_ros2_channels.h"
 #include "std_msgs/msg/float64_multi_array.h"
 #include "systems/framework/lcm_driven_loop.h"

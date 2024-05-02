@@ -20,6 +20,7 @@ struct FrankaSimParams {
   int scene_index;
   bool visualize_drake_sim;
   bool publish_efforts;
+  bool publish_object_velocities;
 
   Eigen::VectorXd q_init_franka;
   std::vector<Eigen::VectorXd> q_init_plate;
@@ -58,6 +59,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(scene_index));
     a->Visit(DRAKE_NVP(visualize_drake_sim));
     a->Visit(DRAKE_NVP(publish_efforts));
+    a->Visit(DRAKE_NVP(publish_object_velocities));
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(q_init_plate));

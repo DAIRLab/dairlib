@@ -28,6 +28,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -149,13 +150,13 @@ int DoMain(int argc, char* argv[]) {
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
   auto tray_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, tray_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, sim_params.publish_object_velocities, tray_index);
   auto tray_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.tray_state_channel, lcm,
           1.0 / sim_params.tray_publish_rate));
   auto object_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, object_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, sim_params.publish_object_velocities, object_index);
   auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
           lcm_channel_params.object_state_channel, lcm,

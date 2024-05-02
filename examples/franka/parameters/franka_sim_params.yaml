@@ -11,6 +11,7 @@ actuator_delay: 0.000
 scene_index: 1
 visualize_drake_sim: true
 publish_efforts: true
+publish_object_velocities: true
 
 tool_attachment_frame: [0, 0, 0.107]
 

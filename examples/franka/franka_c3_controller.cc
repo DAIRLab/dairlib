@@ -3,14 +3,12 @@
 #include <drake/common/find_resource.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/multibody/parsing/parser.h>
-#include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_publisher_system.h>
 #include <drake/systems/lcm/lcm_subscriber_system.h>
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
-#include "common/eigen_utils.h"
 #include "examples/franka/parameters/franka_c3_controller_params.h"
 #include "examples/franka/parameters/franka_c3_scene_params.h"
 #include "examples/franka/parameters/franka_lcm_channels.h"

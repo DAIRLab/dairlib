@@ -121,7 +121,6 @@ class PlotStyler():
         self.axes[subplot_index].add_artist(legend)
         return
 
-
     def annotate(self, text, x, y, x_text, y_text, arrowprops=None,
                  subplot_index=0):
         if not arrowprops:
@@ -131,13 +130,11 @@ class PlotStyler():
                 x_text, y_text), arrowprops=arrowprops
         )
 
-
     def set_subplot_options(self, sharex=None, sharey=None):
         if sharex is not None:
             plt.setp(self.axes, sharex=sharex)
         if sharey is not None:
             plt.setp(self.axes, sharex=sharey)
-
 
     def tight_layout(self):
         self.axes[0].autoscale(enable=True, axis='x', tight=True)

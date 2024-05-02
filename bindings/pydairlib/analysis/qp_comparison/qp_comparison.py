@@ -65,13 +65,18 @@ def plotter_main(plot_config, log1, log2):
     print('Log start time: ', robot_output['t_x'][0])
 
     plot = mbp_plots.plot_qp_solve_time(osc_debug, t_osc_slice)
-    plot.plot(osc_debug2['t_osc'], osc_debug2['qp_solve_time'])
-    plot.add_legend(['FCCQP', 'OSQP'])
+    plot.plot(
+        osc_debug2['t_osc'], osc_debug2['qp_solve_time'],
+        ylim=[0, 0.0008]
+    )
+    plot.plot([0, 4], [0.0005, 0.0005], color='black', linestyle='--')
+    plot.add_legend(['FCCQP', 'OSQP', '2 kHz'])
 
     mbp_plots.add_fsm_to_plot(
         plot,
         osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names
     )
+    plot.tight_layout()
 
     ps = PlotStyler()
     u1 = robot_input['u'][:, 6:8]
@@ -80,17 +85,26 @@ def plotter_main(plot_config, log1, log2):
     tu2 = robot_input2['t_u'] - robot_input2['t_u'][0]
     plt.gca().set_prop_cycle(plt.cycler(color=[ps.red, ps.blue]))
     ps.plot(tu1, u1, linestyle='--')
-    ps.plot(tu2, u2, linestyle='-')
+    ps.plot(
+        tu2, u2, linestyle='-', ylim=[-60, 140], title='Knee Effort Solution',
+        xlabel='Timestamp (s)',
+        ylabel='Knee Torque (Nm)'
+    )
     ps.add_legend([
         'Knee Torque (left) - FCCQP',
         'Knee Torque (right) - FCCQP',
         'Knee Torque (left) - OSQP',
-        'Knee Torque (right) - OSQP'])
+        'Knee Torque (right) - OSQP'],
+        loc='upper right'
+    )
+    ps.tight_layout()
 
     mbp_plots.add_fsm_to_plot(
         ps,
         osc_debug['t_osc'], osc_debug['fsm'], plot_config.fsm_state_names
     )
+
+    ps = PlotStyler()
 
 
 def main():

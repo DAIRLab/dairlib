@@ -534,8 +534,8 @@ def plot_qp_solve_time(osc_debug, time_slice):
         ['qp_solve_time'],
         {},
         {},
-        {'xlabel': 'Timestamp',
-         'ylabel': 'Solve Time ',
+        {'xlabel': 'Timestamp (s)',
+         'ylabel': 'Solve Time (s)',
          'title': 'OSC QP Solve Time'}, ps)
     return ps
 
@@ -584,6 +584,6 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
             legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
 
     if len(legend_elements) > 0:
-        legend = ax.legend(handles=legend_elements, loc=4)
+        legend = ax.legend(handles=legend_elements, loc='upper left')
         # ax.add_artist(legend)
         ax.relim()

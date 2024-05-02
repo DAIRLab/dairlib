@@ -355,7 +355,8 @@ def load_force_channels(data, contact_force_channel):
     return contact_info
 
 def load_c3_debug(data, c3_debug_channel, c3_target_channel, c3_actual_channel):
-    c3_debug = process_c3_debug(data[c3_debug_channel])
+    # c3_debug = process_c3_debug(data[c3_debug_channel])
+    c3_debug = None
     c3_tracking_target = process_c3_tracking(data[c3_target_channel])
     c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
     return c3_debug, c3_tracking_target, c3_tracking_actual

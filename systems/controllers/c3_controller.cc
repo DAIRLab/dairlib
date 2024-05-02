@@ -1,8 +1,6 @@
 #include "c3_controller.h"
+#include <Eigen/Dense>
 
-#include <utility>
-
-#include "multibody/multibody_utils.h"
 #include "solvers/c3_miqp.h"
 #include "solvers/c3_qp.h"
 #include "solvers/lcs_factory.h"
@@ -124,8 +122,9 @@ C3Controller::C3Controller(
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
   auto c3_intermediates = C3Output::C3Intermediates();
-  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
   c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
+  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
@@ -263,13 +262,15 @@ void C3Controller::OutputC3Intermediates(
     C3Output::C3Intermediates* c3_intermediates) const {
   double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
   double t = context.get_discrete_state(plan_start_time_index_)[0] + solve_time;
+  auto z = c3_->GetFullSolution();
   auto delta = c3_->GetDualDeltaSolution();
   auto w = c3_->GetDualWSolution();
 
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = solve_time + t + i * dt_;
-    c3_intermediates->w_.col(i) = delta[i].cast<float>();
-    c3_intermediates->delta_.col(i) = w[i].cast<float>();
+    c3_intermediates->z_.col(i) = z[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta[i].cast<float>();
+    c3_intermediates->w_.col(i) = w[i].cast<float>();
   }
 }
 

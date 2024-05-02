@@ -64,8 +64,8 @@ def main():
         c3_output, c3_tracking_target, c3_tracking_actual = get_log_data(log, default_channels, plot_config.start_time,
                                  plot_config.duration, mbp_plots.load_c3_debug, True,
                                  channel_c3,  channel_c3_target, channel_c3_actual)
-        solve_times = np.diff(c3_output['t'], prepend=[c3_output['t'][0]])
-        print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_output['t'])))
+        solve_times = np.diff(c3_tracking_target['t'], prepend=[c3_tracking_target['t'][0]])
+        print('Average C3 frequency: ', 1 / np.mean(np.diff(c3_tracking_target['t'])))
 
 
     # processing callback arguments
@@ -99,23 +99,6 @@ def main():
         plot = mbp_plots.plot_positions_by_name(robot_output,
                                                 plot_config.pos_names,
                                                 t_x_slice, pos_map)
-
-    # import pdb; pdb.set_trace()
-    if plot_config.plot_c3_debug:
-        # t_c3_slice = slice(c3_output['t'].size)
-        # mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 0)
-
-        t_c3_slice = slice(c3_output['t'].size)
-        plot = mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 1)
-        plot.axes[0].axhline(y=8.06, color='r', linestyle='-')
-        plot.axes[0].axhline(y=-8.06, color='r', linestyle='-')
-        # plot.save_fig('c3_inputs_' + filename.split('/')[-1])
-
-
-
-
-        # t_c3_slice = slice(c3_output['t'].size)
-        # mbp_plots.plot_c3_inputs(c3_output, t_c3_slice, 2)
 
     if plot_config.plot_c3_tracking:
         # plot = plot_styler.PlotStyler(nrows=2)

@@ -15,8 +15,8 @@ namespace systems {
 using drake::multibody::JointActuatorIndex;
 using drake::multibody::JointIndex;
 using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
 using drake::systems::BasicVector;
+using drake::systems::Context;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::VectorXd;
@@ -208,8 +208,7 @@ RobotOutputSender::RobotOutputSender(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance,
     const bool publish_efforts, const bool publish_imu)
-    : publish_efforts_(publish_efforts),
-      publish_imu_(publish_imu) {
+    : publish_efforts_(publish_efforts), publish_imu_(publish_imu) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
   num_efforts_ = plant.num_actuators();
@@ -342,7 +341,7 @@ ObjectStateReceiver::ObjectStateReceiver(
   this->DeclareVectorOutputPort(
       "x, t",
       StateVector<double>(plant.num_positions(model_instance),
-                           plant.num_velocities(model_instance)),
+                          plant.num_velocities(model_instance)),
       &ObjectStateReceiver::CopyOutput);
 }
 
@@ -418,7 +417,7 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputSender.
 ObjectStateSender::ObjectStateSender(
-    const drake::multibody::MultibodyPlant<double>& plant){
+    const drake::multibody::MultibodyPlant<double>& plant) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
 
@@ -445,8 +444,9 @@ ObjectStateSender::ObjectStateSender(
 
 ObjectStateSender::ObjectStateSender(
     const drake::multibody::MultibodyPlant<double>& plant,
+    bool publish_velocities,
     drake::multibody::ModelInstanceIndex model_instance)
-    : model_instance_(model_instance){
+    : publish_velocities_(publish_velocities), model_instance_(model_instance) {
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
 
@@ -462,11 +462,10 @@ ObjectStateSender::ObjectStateSender(
       plant.get_joint(plant.GetJointIndices(model_instance).front())
           .velocity_start();
 
-  ordered_position_names_ =
-      multibody::ExtractOrderedNamesFromMap(position_index_map_, positions_start_idx_);
-  ordered_velocity_names_ =
-      multibody::ExtractOrderedNamesFromMap(velocity_index_map_, velocities_start_idx_);
-
+  ordered_position_names_ = multibody::ExtractOrderedNamesFromMap(
+      position_index_map_, positions_start_idx_);
+  ordered_velocity_names_ = multibody::ExtractOrderedNamesFromMap(
+      velocity_index_map_, velocities_start_idx_);
 
   state_input_port_ =
       this->DeclareVectorInputPort(
@@ -501,8 +500,10 @@ void ObjectStateSender::Output(const Context<double>& context,
     }
   }
   for (int i = 0; i < num_velocities_; i++) {
-//    state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
     state_msg->velocity[i] = 0;
+    if (publish_velocities_) {
+      state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
+    }
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
   }
 }

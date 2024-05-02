@@ -245,9 +245,9 @@ void C3::Solve(const VectorXd& x0) {
           A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
               D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
     }
-    *w_sol_ = w;
-    *delta_sol_ = delta;
   }
+  *w_sol_ = w;
+  *delta_sol_ = delta;
 
   for (int i = 0; i < N_; ++i){
     lambda_sol_->at(i) *= AnDn_;

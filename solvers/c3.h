@@ -157,12 +157,13 @@ class C3 {
 
   // Solutions
 
-  std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
-  std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
+
+  std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
 };
 
 }  // namespace solvers

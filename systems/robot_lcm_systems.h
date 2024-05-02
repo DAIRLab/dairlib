@@ -145,7 +145,7 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 class ObjectStateSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities = true,
       drake::multibody::ModelInstanceIndex model_instance_index =
       drake::multibody::default_model_instance());
 
@@ -169,7 +169,8 @@ class ObjectStateSender : public drake::systems::LeafSystem<double> {
   std::vector<std::string> ordered_velocity_names_;
   std::map<std::string, int> position_index_map_;
   std::map<std::string, int> velocity_index_map_;
-  int state_input_port_ = -1;
+  drake::systems::InputPortIndex state_input_port_;
+  bool publish_velocities_;
 };
 
 /// Receives the output of an LcmSubscriberSystem that subscribes to the

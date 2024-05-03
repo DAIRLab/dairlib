@@ -11,6 +11,7 @@ cc_library(
         ":end_effector_trajectory",
         ":external_force_generator",
         ":franka_kinematics",
+        ":franka_state_translator",
         ":plate_balancing_target",
     ],
 )
@@ -109,6 +110,21 @@ cc_library(
     ],
     hdrs = [
         "c3_state_sender.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_state_translator",
+    srcs = [
+        "franka_state_translator.cc",
+    ],
+    hdrs = [
+        "franka_state_translator.h",
     ],
     deps = [
         "//lcmtypes:lcmt_robot",

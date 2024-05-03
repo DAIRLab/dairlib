@@ -53,7 +53,6 @@ build --action_env=LD_LIBRARY_PATH=
 
 # build with snopt
 build --define=WITH_SNOPT=ON
-build --define=WITH_GUROBI=OFF
 build --define=NO_CLARABEL=ON
 
 build:omp --copt=-DEIGEN_DONT_PARALLELIZE

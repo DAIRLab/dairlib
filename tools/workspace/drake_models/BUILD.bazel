@@ -1,0 +1,10 @@
+load("@drake//doc:defs.bzl", "enumerate_filegroup")
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+#load("//tools/skylark:drake_py.bzl", "drake_py_unittest")
+
+enumerate_filegroup(
+    name = "inventory.txt",
+    data = ["@drake_models"],
+)
+
+add_lint_tests()

@@ -19,14 +19,13 @@ DRAKE_CHECKSUM = "78cf62c177c41f8415ade172c1e6eb270db619f07c4b043d5148e1f35be8da
 #DRAKE_CHECKSUM = "0" * 64
 
 # Load an environment variable.
-load("//:environ.bzl", "environ_repository")
+load("//:environ.bzl", "drake_repository")
+load("//:environ.bzl", "inekf_repository")
 
-environ_repository(
-    name = "environ",
-    vars = ["DAIRLIB_LOCAL_DRAKE_PATH"],
-)
-
-load("@environ//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+drake_repository(name="drake_path")
+inekf_repository(name="inekf_path")
+load("@drake_path//:environ.bzl", "DAIRLIB_LOCAL_DRAKE_PATH")
+load("@inekf_path//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named
@@ -67,13 +66,9 @@ load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
 
 osqp_repository(name = "osqp")
 
-load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
+load("@dairlib//tools/workspace/drake_models:repository.bzl", "drake_models_repository")
 
-signal_scope_repository(name = "signal_scope")
-
-load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
-
-pydrake_repository(name = "pydrake_pegged")
+drake_models_repository(name = "drake_models")
 
 # Prebuilt ROS workspace
 new_local_repository(
@@ -116,14 +111,6 @@ INEKF_CHECKSUM = "f87e3262b0c9c9237881fcd539acd1c60000f97dfdfa47b0ae53cb7a0f3256
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 # INEKF_CHECKSUM = "0" * 64
-
-# Load an environment variable.
-environ_repository(
-    name = "environ_inekf",
-    vars = ["DAIRLIB_LOCAL_INEKF_PATH"],
-)
-
-load("@environ_inekf//:environ.bzl", "DAIRLIB_LOCAL_INEKF_PATH")
 
 # The WORKSPACE file does not permit `if` statements, so we handle the local
 # option by toying with the repository names.  The selected repository is named

@@ -309,7 +309,7 @@ int DoMain(int argc, char* argv[]) {
   drake::multibody::MultibodyPlant<double> plant(0);
   drake::multibody::Parser parser(&plant);
   std::string full_name = FindResourceOrThrow(filename);
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.Finalize();
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);

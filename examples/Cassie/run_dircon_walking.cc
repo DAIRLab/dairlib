@@ -206,7 +206,7 @@ vector<VectorXd> GetInitGuessForQ(int N, double stride_length,
       Parser parser(&plant_ik, &scene_graph_ik);
       string full_name =
           FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-      parser.AddModelFromFile(full_name);
+      parser.AddModels(full_name);
       plant_ik.Finalize();
 
       // Visualize
@@ -298,7 +298,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   string full_name =
       FindResourceOrThrow("examples/Cassie/urdf/cassie_fixed_springs.urdf");
-  parser.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
   plant.Finalize();
 
   // Create maps for joints

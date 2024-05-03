@@ -117,11 +117,19 @@ void TargetGenerator::CalcObjectTarget(
     fixed_goal(1) = fixed_goal_y_;
     fixed_goal(2) = object_half_width_; 
 
-    // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
-    VectorXd next_target = obj_curr_position + step_size_ * (fixed_goal - obj_curr_position); 
-    target_obj_position(0) = next_target[0];
-    target_obj_position(1) = next_target[1];
-    target_obj_position(2) = next_target[2]; 
+    if ((fixed_goal - obj_curr_position).norm() < step_size_){
+      // if the jack is within one step size of the fixed goal, set the target to be the fixed goal.
+      target_obj_position(0) = fixed_goal[0];
+      target_obj_position(1) = fixed_goal[1];
+      target_obj_position(2) = fixed_goal[2];
+    }
+    else{
+      // compute and set next target location for jack to be one step_size in the direction of the fixed goal.
+      VectorXd next_target = obj_curr_position + step_size_ * (fixed_goal - obj_curr_position); 
+      target_obj_position(0) = next_target[0];
+      target_obj_position(1) = next_target[1];
+      target_obj_position(2) = next_target[2];
+    } 
   }
    // Use a straight line trajectory with adaptive next goal if trajectory type is 3.
   else if(trajectory_type_ == 3){

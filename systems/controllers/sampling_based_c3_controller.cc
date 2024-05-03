@@ -14,6 +14,8 @@
 #include "solvers/lcs_factory_preprocessor.h"
 #include "generate_samples.h"
 
+#include <Eigen/Dense>
+
 namespace dairlib {
 
 using drake::multibody::ModelInstanceIndex;
@@ -180,6 +182,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
   auto c3_intermediates = C3Output::C3Intermediates();
+  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
   c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
   c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
@@ -624,7 +627,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   for (int i = 0; i < N_; i++) {
     // Set up matrices for LCMTrajectory object.
     // Manually simulate forward using the dynamics.
-    knots.col(i) = x_sol[i];
+    knots.col(i) = x_sol[1];
     timestamps[i] = t + filtered_solve_time_ + (i)*c3_options_.planning_dt;
   }
 
@@ -713,7 +716,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   for (int i = 0; i < N_+1; i++) {
     // This is a curve_fraction and is not in the units of time or distance. 
     // When it is 0, it is the current location. When it is 1, it is the goal.
-    double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
+    double t_spline = (1)*c3_options_.planning_dt/total_travel_time;
 
     if (i == 1 && t_spline >= 1 && !is_doing_c3_){
       // If it can get there in one step, then set finished_reposition_flag_ to
@@ -816,11 +819,15 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
     C3Output::C3Intermediates* c3_intermediates) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0] +
              filtered_solve_time_;
+  auto z_sol_curr_plan = c3_curr_plan_->GetFullSolution();
+  auto delta_curr_plan = c3_curr_plan_->GetDualDeltaSolution();
+  auto w_curr_plan = c3_curr_plan_->GetDualWSolution();
 
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.planning_dt;
-    c3_intermediates->w_.col(i) = w_curr_plan_[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta_curr_plan_[i].cast<float>();
+    c3_intermediates->z_.col(i) = z_sol_curr_plan[i].cast<float>();
+    c3_intermediates->w_.col(i) = w_curr_plan[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_curr_plan[i].cast<float>();
   }
 }
 
@@ -897,11 +904,15 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
     C3Output::C3Intermediates* c3_intermediates) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0] +
              filtered_solve_time_;
+  auto z_sol_best_plan = c3_best_plan_->GetFullSolution();
+  auto delta_best_plan = c3_best_plan_->GetDualDeltaSolution();
+  auto w_best_plan = c3_best_plan_->GetDualWSolution();
 
   for (int i = 0; i < N_; i++) {
     c3_intermediates->time_vector_(i) = t + i * c3_options_.planning_dt;
-    c3_intermediates->w_.col(i) = w_best_plan_[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta_best_plan_[i].cast<float>();
+    c3_intermediates->z_.col(i) = z_sol_best_plan[i].cast<float>();
+    c3_intermediates->w_.col(i) = w_best_plan[i].cast<float>();
+    c3_intermediates->delta_.col(i) = delta_best_plan[i].cast<float>();
   }
 }
 

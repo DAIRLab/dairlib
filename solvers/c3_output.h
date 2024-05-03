@@ -32,6 +32,7 @@ class C3Output {
 
     // Shape is (variable_vector_size, knot_points)
     Eigen::VectorXf time_vector_;
+    Eigen::MatrixXf z_;
     Eigen::MatrixXf delta_;
     Eigen::MatrixXf w_;
   };

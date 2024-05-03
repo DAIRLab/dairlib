@@ -107,7 +107,9 @@ class C3 {
   std::vector<Eigen::VectorXd> GetStateSolution() { return *x_sol_; }
   std::vector<Eigen::VectorXd> GetForceSolution() { return *lambda_sol_; }
   std::vector<Eigen::VectorXd> GetInputSolution() { return *u_sol_; }
-
+  std::vector<Eigen::VectorXd> GetDualDeltaSolution() { return *delta_sol_; }
+  std::vector<Eigen::VectorXd> GetDualWSolution() { return *w_sol_; }
+  
  public:
   void UpdateLCS(const LCS& lcs);
   void UpdateTarget(const std::vector<Eigen::VectorXd>& x_des);
@@ -163,10 +165,13 @@ class C3 {
 
   mutable std::vector<Eigen::VectorXd> zfin_;
 
-  std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;
+
+  std::unique_ptr<std::vector<Eigen::VectorXd>> z_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> delta_sol_;
+  std::unique_ptr<std::vector<Eigen::VectorXd>> w_sol_;
 };
 
 }  // namespace solvers

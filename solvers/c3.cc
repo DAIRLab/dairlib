@@ -113,11 +113,15 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   x_sol_ = std::make_unique<std::vector<VectorXd>>();
   lambda_sol_ = std::make_unique<std::vector<VectorXd>>();
   u_sol_ = std::make_unique<std::vector<VectorXd>>();
+  w_sol_ = std::make_unique<std::vector<VectorXd>>();
+  delta_sol_ = std::make_unique<std::vector<VectorXd>>();
   for (int i = 0; i < N_; ++i) {
     z_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
     x_sol_->push_back(Eigen::VectorXd::Zero(n_));
     lambda_sol_->push_back(Eigen::VectorXd::Zero(m_));
     u_sol_->push_back(Eigen::VectorXd::Zero(k_));
+    w_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
+    delta_sol_->push_back(Eigen::VectorXd::Zero(n_ + m_ + k_));
   }
 
   for (int i = 0; i < N_ + 1; i++) {
@@ -250,6 +254,10 @@ void C3::Solve(const VectorXd& x0, vector<VectorXd>& delta,
         A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
         D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
   }
+
+  *w_sol_ = w;
+  *delta_sol_ = delta;
+
   // Unscale lambda before output for better visualizationa and interpretation.
   // These values will now be in Newtons.
   for (int i = 0; i < N_; ++i){
@@ -299,6 +307,34 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     for (int i = 0; i < N_; i++){
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
     }
+  }
+  else if(cost_type == 3){
+    // If cost_type is 3, try to emulate the real cost of the system associated 
+    // not only applying the u from the zfin_[0] but also the u associated with 
+    // tracking the position plan over time.
+    // u = zfin_[0].segment(n_ + m_, k_) + Kp*(x_desired_[0] - zfin_[0].segment(0, 3));
+    vector<VectorXd> UU_new(N_, VectorXd::Zero(k_));
+    std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_)); 
+
+    Eigen::MatrixXd Kp = Eigen::MatrixXd::Identity(3,3);
+    Eigen::MatrixXd Kd = Eigen::MatrixXd::Identity(3,3);
+
+    XX_new[0] = zfin_[0].segment(0, n_);
+    // This will just be the original u from zfin_[0] for the first time step.
+    UU_new[0] = UU[0] + 
+      Kp*(XX_new[0].segment(0, 3) - XX[0].segment(0, 3)) + 
+      Kd*(XX_new[0].segment(10, 3) - XX[0].segment(10, 3));
+
+    for (int i = 0; i < N_; i++){
+      XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
+      UU_new[i] = UU[i] + 
+        Kp*(XX_new[i].segment(10, 3) - XX[i].segment(0, 3)) +
+        Kd*(XX_new[i].segment(10, 3) - XX[i].segment(10, 3));
+    }
+    // Replace the original state and control sequences with the new ones for 
+    // the cost calculation.
+    XX = XX_new;
+    UU = UU_new;   
   }
 
   // Declare Q_eff and R_eff as the Q and R to use for cost computation.

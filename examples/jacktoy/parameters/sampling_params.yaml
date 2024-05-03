@@ -28,22 +28,24 @@ max_angle_from_vertical: 1.822
 # num_additional_samples_c3 is in addition to that one.
 # NOTE: IF YOU SET NUM ADDITIONAL SAMPLES TO 0, REMEMBER TO NOT VISUALIZE THE 
 #       SAMPLE LOCATIONS IN THE VISUALIZER. 
-num_additional_samples_repos: 0
+num_additional_samples_repos: 1
 num_additional_samples_c3: 2
 
 # Repositioning parameters.
-spline_width: 0.13
-reposition_speed: 0.75    # m/s
+spline_width: 0.20
+reposition_speed: 0.50    # m/s
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
 # 1 means use z_fin from C3 solution for both ee and object positions to compute cost.
 # 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
-cost_type: 2
+# 3 means use U from C3 solution and add cost associated with tracking the ee
+# trajectory in c3 and simulate the object trajectory.
+cost_type: 3
 
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 3000000000000000
+c3_to_repos_hysteresis: 1000
 finished_reposition_cost: 100000000
-repos_to_c3_hysteresis: 200000000
-hysterisis_between_repos_targets: 100000000000000
+repos_to_c3_hysteresis: 2000
+hysterisis_between_repos_targets: 100000

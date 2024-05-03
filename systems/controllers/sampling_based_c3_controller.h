@@ -244,6 +244,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // C3 solutions for current location.
   // TODO: to be updated in ComputePlan
   mutable std::shared_ptr<solvers::C3> c3_curr_plan_;
+  mutable std::vector<Eigen::VectorXd> z_sol_curr_plan_;
   mutable std::vector<Eigen::VectorXd> delta_curr_plan_;
   mutable std::vector<Eigen::VectorXd> w_curr_plan_;
   mutable Eigen::VectorXd x_pred_curr_plan_;
@@ -251,6 +252,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // C3 solutions for best sample location.
   // TODO: to be updated in ComputePlan
   mutable std::shared_ptr<solvers::C3> c3_best_plan_;
+  mutable std::vector<Eigen::VectorXd> z_sol_best_plan_;
   mutable std::vector<Eigen::VectorXd> delta_best_plan_;
   mutable std::vector<Eigen::VectorXd> w_best_plan_;
   mutable Eigen::VectorXd x_pred_best_plan_;

@@ -241,8 +241,13 @@ int DoMain(int argc, char* argv[]) {
   Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
   orientation_target(0) = 1;
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
+  // This 1.1 value is trying to track the panda_joint_2 so that we avoid the
+  // null space associated with trying to control 7 joints with 6 DOF. 
+  // The value is currently set to 1.1 to have it be more vertical for the jack
+  // example but not enough that it hits a singularity or ends up with too small 
+  // a workspace. 
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            1.6 * VectorXd::Ones(1));
+                            1.1 * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
   osc->SetAccelerationCostWeights(gains.W_acceleration);

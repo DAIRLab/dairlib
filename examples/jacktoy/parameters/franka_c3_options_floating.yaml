@@ -29,7 +29,7 @@ num_friction_directions: 2
 # additional contact between ee and ground.
 # If num_contacts_index is 3, then we use 6 ee-jack contacts with an additional
 #  contact between ee and ground.
-num_contacts_index: 0
+num_contacts_index: 1
 # num_contacts changes based on the num_contacts_index.
 num_contacts: [4,6,5,7]
 N: 5
@@ -37,9 +37,9 @@ N: 5
 use_predicted_x0: true
 solve_time_filter_alpha: 0.95
 # Workspace Limits
-world_x_limits: [0, 1]
-world_y_limits: [-1, 1]
-world_z_limits: [0, 1]
+world_x_limits: [0, 0.75]
+world_y_limits: [-0.5, 0.5]
+world_z_limits: [0, 0.5]
 workspace_margins: 0.05
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [0, 50]
@@ -53,7 +53,7 @@ g_lambda_n: [[1, 1, 1, 1],
 g_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_lambda: [[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
-           [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+           [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_u: [0.1,0.1,0.1]
@@ -68,7 +68,7 @@ u_lambda_t: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 # This is not used for the QP projection. It gets overwritten by alpha*F.
 u_lambda: [[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 u_u: [30, 30, 30]
@@ -80,7 +80,7 @@ warm_start: false     # TODO: Check if we use this. Delete otherwise.
 w_Q: 25
 w_R: 1
 # Penalty on all decision variables, assuming scalar
-w_G: 0.15
+w_G: 0.16
 # Penalty on all decision variables, assuming scalar
 w_U: 0.25
 
@@ -100,10 +100,10 @@ qp_projection_scaling: 1
 # State Tracking Error, assuming diagonal
 # state ordering: [xee, yee, zee, qbw, qbx, qby, qbz, xb, yb, zb, 
 #                  veex, veey, veez, wbx, wby, wbz, vbx, vby, vbz]
-q_vector: [1, 1, 1,        # end effector position
+q_vector: [0, 0, 0,        # end effector position
            0, 0, 0, 0,              # object orientation
            1500, 1500, 1500,    # object position
-           0.01, 0.01, 0.01,              # end effector linear velocity
+           0.1, 0.1, 0.1,              # end effector linear velocity
            0.01, 0.01, 0.01,                 # object angular velocity
            1, 1, 1]           # object linear velocity
 # q_vector: [150, 150, 150, 0, 1, 1, 0, 1000000, 1000000, 100000000,

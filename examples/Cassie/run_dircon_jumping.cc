@@ -442,9 +442,9 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
   auto& prog = trajopt->prog();
   // position constraints
   prog.AddBoundingBoxConstraint(0 - midpoint, 0 - midpoint,
-                                    x_0(pos_map.at("base_x")));
-  prog.AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("base_y")));
-  prog.AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("base_y")));
+                                    x_0(pos_map.at("pelvis_x")));
+  prog.AddBoundingBoxConstraint(0, 0, x_0(pos_map.at("pelvis_y")));
+  prog.AddBoundingBoxConstraint(0, 0, x_f(pos_map.at("pelvis_y")));
 
   // initial fb orientation constraint
   VectorXd quat_identity(4);
@@ -472,13 +472,13 @@ void SetKinematicConstraints(Dircon<double>* trajopt,
 
   // Jumping height constraints
   prog.AddBoundingBoxConstraint(rest_height - eps, rest_height + eps,
-                                    x_0(pos_map.at("base_z")));
+                                    x_0(pos_map.at("pelvis_z")));
   prog.AddBoundingBoxConstraint(0.5 * FLAGS_height + rest_height - eps,
                                     FLAGS_height + rest_height + eps,
-                                    x_top(pos_map.at("base_z")));
+                                    x_top(pos_map.at("pelvis_z")));
   prog.AddBoundingBoxConstraint(0.8 * FLAGS_height + rest_height - eps,
                                     0.8 * FLAGS_height + rest_height + eps,
-                                    x_f(pos_map.at("base_z")));
+                                    x_f(pos_map.at("pelvis_z")));
 
   // Zero starting and final velocities
   prog.AddLinearConstraint(VectorXd::Zero(n_v) == x_0.tail(n_v));

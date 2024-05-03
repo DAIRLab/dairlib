@@ -53,10 +53,13 @@ DirconDynamicConstraint<T>::DirconDynamicConstraint(
   // is located at the first four element of the generalized position
   if (is_quaternion) {
     map<string, int> positions_map = multibody::MakeNameToPositionsMap(plant);
-    DRAKE_DEMAND(positions_map.at("base_qw") == 0);
-    DRAKE_DEMAND(positions_map.at("base_qx") == 1);
-    DRAKE_DEMAND(positions_map.at("base_qy") == 2);
-    DRAKE_DEMAND(positions_map.at("base_qz") == 3);
+    auto floating_bodies = plant.GetFloatingBaseBodies();
+    const auto& body = plant.get_body(*floating_bodies.begin());
+    std::string name = body.name();
+    DRAKE_DEMAND(positions_map.at(name + "_qw") == 0);
+    DRAKE_DEMAND(positions_map.at(name + "_qx") == 1);
+    DRAKE_DEMAND(positions_map.at(name + "_qy") == 2);
+    DRAKE_DEMAND(positions_map.at(name + "_qz") == 3);
   }
 }
 

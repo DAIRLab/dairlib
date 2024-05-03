@@ -114,13 +114,13 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   map<string, int> velocities_map = multibody::MakeNameToVelocitiesMap(plant);
   map<string, int> actuators_map = multibody::MakeNameToActuatorsMap(plant);
 
-  int base_qw_idx = positions_map.at("base_qw");
-  int base_qx_idx = positions_map.at("base_qx");
-  int base_qy_idx = positions_map.at("base_qy");
-  int base_qz_idx = positions_map.at("base_qz");
-  int base_x_idx = positions_map.at("base_x");
-  int base_y_idx = positions_map.at("base_y");
-  int base_z_idx = positions_map.at("base_z");
+  int pelvis_qw_idx = positions_map.at("pelvis_qw");
+  int pelvis_qx_idx = positions_map.at("pelvis_qx");
+  int pelvis_qy_idx = positions_map.at("pelvis_qy");
+  int pelvis_qz_idx = positions_map.at("pelvis_qz");
+  int pelvis_x_idx = positions_map.at("pelvis_x");
+  int pelvis_y_idx = positions_map.at("pelvis_y");
+  int pelvis_z_idx = positions_map.at("pelvis_z");
   int hip_roll_left_idx = positions_map.at("hip_roll_left");
   int hip_roll_right_idx = positions_map.at("hip_roll_right");
   int hip_yaw_left_idx = positions_map.at("hip_yaw_left");
@@ -134,12 +134,12 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   int toe_left_idx = positions_map.at("toe_left");
   int toe_right_idx = positions_map.at("toe_right");
 
-  int base_wx_idx = velocities_map.at("base_wx");
-  int base_wy_idx = velocities_map.at("base_wy");
-  int base_wz_idx = velocities_map.at("base_wz");
-  int base_vx_idx = velocities_map.at("base_vx");
-  int base_vy_idx = velocities_map.at("base_vy");
-  int base_vz_idx = velocities_map.at("base_vz");
+  int pelvis_wx_idx = velocities_map.at("pelvis_wx");
+  int pelvis_wy_idx = velocities_map.at("pelvis_wy");
+  int pelvis_wz_idx = velocities_map.at("pelvis_wz");
+  int pelvis_vx_idx = velocities_map.at("pelvis_vx");
+  int pelvis_vy_idx = velocities_map.at("pelvis_vy");
+  int pelvis_vz_idx = velocities_map.at("pelvis_vz");
   int hip_roll_leftdot_idx = velocities_map.at("hip_roll_leftdot");
   int hip_roll_rightdot_idx = velocities_map.at("hip_roll_rightdot");
   int hip_yaw_leftdot_idx = velocities_map.at("hip_yaw_leftdot");
@@ -238,8 +238,8 @@ void DoMain(double duration, int max_iter, const string& data_directory,
     double s_dyn_2 = (FLAGS_scale_variable) ? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_scale_variable) ? 85.0 : 1.0;
     double_support.SetDynamicsScale(
-        {base_qw_idx, base_qx_idx, base_qy_idx, base_qz_idx, base_x_idx,
-         base_y_idx, base_z_idx, hip_roll_left_idx, hip_roll_right_idx,
+        {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx, pelvis_x_idx,
+         pelvis_y_idx, pelvis_z_idx, hip_roll_left_idx, hip_roll_right_idx,
          hip_yaw_left_idx, hip_yaw_right_idx, hip_pitch_left_idx,
          hip_pitch_right_idx, knee_left_idx, knee_right_idx},
         1.0 / 150.0);
@@ -248,8 +248,8 @@ void DoMain(double duration, int max_iter, const string& data_directory,
         1.0 / 150.0 / 3.33 / s_dyn_1);
     double_support.SetDynamicsScale({toe_left_idx, toe_right_idx}, 1.0 / 150.0);
     double_support.SetDynamicsScale(
-        {base_wx_idx, base_wy_idx, base_wz_idx, base_vx_idx, base_vy_idx,
-         base_vz_idx, hip_roll_leftdot_idx, hip_roll_rightdot_idx},
+        {pelvis_wx_idx, pelvis_wy_idx, pelvis_wz_idx, pelvis_vx_idx, pelvis_vy_idx,
+         pelvis_vz_idx, hip_roll_leftdot_idx, hip_roll_rightdot_idx},
         1.0 / 150.0 / s_dyn_1);
     double_support.SetDynamicsScale({hip_yaw_leftdot_idx, hip_yaw_rightdot_idx},
                                     1.0 / 150.0 / s_dyn_2);
@@ -338,20 +338,20 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   auto xmid = trajopt.state_vars(0, (num_knotpoints - 1) / 2);
 
   // height constraint
-  prog.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("base_z")));
-  prog.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("base_z")));
+  prog.AddBoundingBoxConstraint(1, 1, x0(positions_map.at("pelvis_z")));
+  prog.AddBoundingBoxConstraint(1.1, 1.1, xf(positions_map.at("pelvis_z")));
 
   // initial pelvis position
-  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_x")));
-  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("base_y")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("pelvis_x")));
+  prog.AddBoundingBoxConstraint(0, 0, x0(positions_map.at("pelvis_y")));
 
   // pelvis pose constraints
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    prog.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("base_qw")));
-    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qx")));
-    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qy")));
-    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("base_qz")));
+    prog.AddBoundingBoxConstraint(1, 1, xi(positions_map.at("pelvis_qw")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("pelvis_qx")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("pelvis_qy")));
+    prog.AddBoundingBoxConstraint(0, 0, xi(positions_map.at("pelvis_qz")));
   }
 
   // start/end velocity constraints
@@ -449,9 +449,9 @@ void DoMain(double duration, int max_iter, const string& data_directory,
     trajopt.ScaleTimeVariables(0.015);
     // state
     std::vector<int> idx_list = {
-        n_q + base_wx_idx,          n_q + base_wy_idx,
-        n_q + base_wz_idx,          n_q + base_vx_idx,
-        n_q + base_vy_idx,          n_q + base_vz_idx,
+        n_q + pelvis_wx_idx,          n_q + pelvis_wy_idx,
+        n_q + pelvis_wz_idx,          n_q + pelvis_vx_idx,
+        n_q + pelvis_vy_idx,          n_q + pelvis_vz_idx,
         n_q + hip_roll_leftdot_idx, n_q + hip_roll_rightdot_idx,
         n_q + hip_yaw_leftdot_idx,  n_q + hip_yaw_rightdot_idx};
     trajopt.ScaleStateVariables(idx_list, 6);
@@ -546,13 +546,13 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   // produces NAN value in some calculation.
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
-    if ((prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm() == 0) ||
+    if ((prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm() == 0) ||
         std::isnan(
-            prog.GetInitialGuess(xi.segment<4>(base_qw_idx)).norm())) {
-      prog.SetInitialGuess(xi(base_qw_idx), 1);
-      prog.SetInitialGuess(xi(base_qx_idx), 0);
-      prog.SetInitialGuess(xi(base_qy_idx), 0);
-      prog.SetInitialGuess(xi(base_qz_idx), 0);
+            prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm())) {
+      prog.SetInitialGuess(xi(pelvis_qw_idx), 1);
+      prog.SetInitialGuess(xi(pelvis_qx_idx), 0);
+      prog.SetInitialGuess(xi(pelvis_qy_idx), 0);
+      prog.SetInitialGuess(xi(pelvis_qz_idx), 0);
     }
   }
 

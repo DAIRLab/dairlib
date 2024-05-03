@@ -74,12 +74,12 @@ void GeomGeomColliderTest() {
   q(q_map.at("finger_base_to_upper_joint_240")) = 0;
   q(q_map.at("finger_upper_to_middle_joint_240")) = -1;
   q(q_map.at("finger_middle_to_lower_joint_240")) = -1.5;
-  q(q_map.at("base_qw")) = 1;
-  q(q_map.at("base_qx")) = 0;
-  q(q_map.at("base_qz")) = 0;
-  q(q_map.at("base_x")) = 0;
-  q(q_map.at("base_y")) = 0;
-  q(q_map.at("base_z")) = .05;
+  q(q_map.at("cube_qw")) = 1;
+  q(q_map.at("cube_qx")) = 0;
+  q(q_map.at("cube_qz")) = 0;
+  q(q_map.at("cube_x")) = 0;
+  q(q_map.at("cube_y")) = 0;
+  q(q_map.at("cube_z")) = .05;
 
   plant.SetPositions(&context, q);
 

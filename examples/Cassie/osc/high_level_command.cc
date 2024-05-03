@@ -99,7 +99,7 @@ HighLevelCommand::HighLevelCommand(
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
           .get_index();
   // Declare update event
-  DeclarePerStepDiscreteUpdateEvent(&HighLevelCommand::DiscreteVariableUpdate);
+  DeclareForcedDiscreteUpdateEvent(&HighLevelCommand::DiscreteVariableUpdate);
 
   // Discrete state which stores the desired yaw velocity
   des_vel_idx_ = DeclareDiscreteState(VectorXd::Zero(3));

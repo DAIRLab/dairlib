@@ -3,10 +3,22 @@ channel_x: "FRANKA_STATE_SIMULATION"
 channel_u: "OSC_FRANKA"
 channel_osc: "OSC_DEBUG_FRANKA"
 # channel_c3: "C3_DEBUG"
-channel_c3: "C3_DEBUG_BEST"
+# channel_c3: "C3_DEBUG_BEST"
 channel_tray: "OBJECT_STATE_SIMULATION"
 channel_c3_target: "C3_TARGET"
 channel_c3_actual: "C3_ACTUAL"
+
+c3_actor_curr_plan_channel: "C3_TRAJECTORY_ACTOR_CURR_PLAN" # lcmt_timestamped_saved_traj
+c3_object_curr_plan_channel: "C3_TRAJECTORY_OBJECT_CURR_PLAN" # lcmt_timestamped_saved_traj
+c3_force_curr_channel: "C3_FORCES_CURR"
+c3_debug_output_curr_channel: "C3_DEBUG_CURR"
+
+c3_actor_best_plan_channel: "C3_TRAJECTORY_ACTOR_BEST_PLAN" # lcmt_timestamped_saved_traj
+c3_object_best_plan_channel: "C3_TRAJECTORY_OBJECT_BEST_PLAN" # lcmt_timestamped_saved_traj
+c3_force_best_channel: "C3_FORCES_BEST"
+c3_debug_output_best_channel: "C3_DEBUG_BEST"
+
+
 plot_style: 'compact' # compact, paper, default
 
 # Give a start and end for how long you want to plot the data. 

@@ -4,7 +4,7 @@
 # 2 means random sampling on a 3D sphere.
 # 3 means a fixed sample location. Currently allows for 3 fixed sample.
 control_loop_delay_ms: 0
-sampling_strategy: 3
+sampling_strategy: 2
 
 # This is the fixed sample location for sampling strategy 3.
 fixed_sample_locations: [[0.45, 0.34],[0.27, 0.455],[0.27,0.225]]
@@ -32,8 +32,8 @@ num_additional_samples_repos: 1
 num_additional_samples_c3: 2
 
 # Repositioning parameters.
-spline_width: 0.20
-reposition_speed: 0.50    # m/s
+spline_width: 0.17
+reposition_speed: 0.30    # m/s
 
 # Parameters for the cost function.
 # 0 means simulate dynamics for both ee and object positions to compute cost.
@@ -41,11 +41,11 @@ reposition_speed: 0.50    # m/s
 # 2 means use z_fin from C3 solution for ee and simulate dynamics for object positions to compute cost.
 # 3 means use U from C3 solution and add cost associated with tracking the ee
 # trajectory in c3 and simulate the object trajectory.
-cost_type: 3
+cost_type: 2
 
 # Cost associated with traveling.
 travel_cost_per_meter: 0
-c3_to_repos_hysteresis: 1000
-finished_reposition_cost: 100000000
-repos_to_c3_hysteresis: 2000
-hysterisis_between_repos_targets: 100000
+c3_to_repos_hysteresis: 2000
+finished_reposition_cost: 1000000000
+repos_to_c3_hysteresis: 3000
+hysterisis_between_repos_targets: 100000000

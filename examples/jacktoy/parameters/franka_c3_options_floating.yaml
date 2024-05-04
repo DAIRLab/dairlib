@@ -29,7 +29,7 @@ num_friction_directions: 2
 # additional contact between ee and ground.
 # If num_contacts_index is 3, then we use 6 ee-jack contacts with an additional
 #  contact between ee and ground.
-num_contacts_index: 1
+num_contacts_index: 0
 # num_contacts changes based on the num_contacts_index.
 num_contacts: [4,6,5,7]
 N: 5

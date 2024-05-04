@@ -360,7 +360,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::vector<Eigen::VectorXd> candidate_states = generate_sample_states(
     n_q_, n_v_, x_lcs_curr, is_doing_c3_, sampling_params_);
 
-  // Add the previous best repsositioning target to the candidate states at the 
+  // Add the previous best repositioning target to the candidate states at the 
   // first index always.
   if (!is_doing_c3_){
     // Add the prev best repositioning target to the candidate states.
@@ -716,7 +716,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   for (int i = 0; i < N_+1; i++) {
     // This is a curve_fraction and is not in the units of time or distance. 
     // When it is 0, it is the current location. When it is 1, it is the goal.
-    double t_spline = (1)*c3_options_.planning_dt/total_travel_time;
+    double t_spline = (i)*c3_options_.planning_dt/total_travel_time;
 
     if (i == 1 && t_spline >= 1 && !is_doing_c3_){
       // If it can get there in one step, then set finished_reposition_flag_ to

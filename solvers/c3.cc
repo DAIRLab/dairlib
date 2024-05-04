@@ -280,19 +280,19 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
   if (cost_type == 0){
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++){
-      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       UU[i] = zfin_[i].segment(n_ + m_, k_);
+      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
     }
   }
   else if(cost_type == 1){
     // If cost_type is 1, use the provided zfin_ trajectory for the full state.
     for (int i = 0; i < N_; i++){
-      XX[i] = zfin_[i].segment(0, n_);
       UU[i] = zfin_[i].segment(n_ + m_, k_);
+      XX[i] = zfin_[i].segment(0, n_);
+      if(i == N_-1){
+        XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      }
     }
-    // Set the final state to the state at N_-1 because it only contains the 
-    // traj for N_ time steps instead of N_+1.
-    XX[N_] = zfin_[N_ - 1].segment(0, n_);
   }
   else if(cost_type == 2){
     // If cost_type is 2, use z_fin for ee trajectory but simulate forward for 
@@ -300,12 +300,20 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     // Simulate the object trajectory.
     XX[0] = zfin_[0].segment(0, n_);
     for (int i = 0; i < N_; i++){
-      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
       UU[i] = zfin_[i].segment(n_ + m_, k_);
+      XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
     }
     // Replace ee traj with those from zfin_.
     for (int i = 0; i < N_; i++){
       XX[i].segment(0,3) = zfin_[i].segment(0,3);
+      // This is replacing the XX[N_] state of the end effector to a state
+      // simulated from the last control input in UU and last end effector state
+      // from the C3 plan. This is different from what is already set in the 
+      // previous loop because the [N_-1] states of the end effector are not
+      // the same.
+      if(i == N_-1){
+        XX[i+1].segment(0,3) = lcs_.Simulate(XX[i], UU[i]).segment(0,3);
+      }
     }
   }
   else if(cost_type == 3){
@@ -314,22 +322,31 @@ std::pair<double,std::vector<Eigen::VectorXd>> C3::CalcCost(int cost_type) const
     // tracking the position plan over time.
     // u = zfin_[0].segment(n_ + m_, k_) + Kp*(x_desired_[0] - zfin_[0].segment(0, 3));
     vector<VectorXd> UU_new(N_, VectorXd::Zero(k_));
-    std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_)); 
+    std::vector<Eigen::VectorXd> XX_new(N_+1, VectorXd::Zero(n_));
+    // Set the UU and XX values to the z_fin values first for the emulated PD 
+    // controller to have for error computation in place of all 0s.
+    for (int i = 0; i < N_; i++){
+      UU[i] = zfin_[i].segment(n_ + m_, k_);
+      XX[i] = zfin_[i].segment(0, n_);
+      if(i == N_-1){
+        XX[i+1] = lcs_.Simulate(XX[i], UU[i]);
+      }
+    }
 
+    // Set the PD gains for the emulated tracking controller.
     Eigen::MatrixXd Kp = Eigen::MatrixXd::Identity(3,3);
     Eigen::MatrixXd Kd = Eigen::MatrixXd::Identity(3,3);
 
     XX_new[0] = zfin_[0].segment(0, n_);
+    std::cout<<"XX_new[0]: "<<XX_new[0].transpose()<<std::endl;
     // This will just be the original u from zfin_[0] for the first time step.
-    UU_new[0] = UU[0] + 
-      Kp*(XX_new[0].segment(0, 3) - XX[0].segment(0, 3)) + 
-      Kd*(XX_new[0].segment(10, 3) - XX[0].segment(10, 3));
 
     for (int i = 0; i < N_; i++){
-      XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
       UU_new[i] = UU[i] + 
-        Kp*(XX_new[i].segment(10, 3) - XX[i].segment(0, 3)) +
-        Kd*(XX_new[i].segment(10, 3) - XX[i].segment(10, 3));
+        Kp*(XX[i].segment(0, 3) - XX_new[i].segment(0, 3)) + 
+        Kd*(XX[i].segment(10, 3) - XX_new[i].segment(10, 3));
+      XX_new[i+1] = lcs_.Simulate(XX_new[i], UU_new[i]);
+      std::cout<<"XX_new["<<i+1<<"]: "<<XX_new[i+1].transpose()<<std::endl;
     }
     // Replace the original state and control sequences with the new ones for 
     // the cost calculation.

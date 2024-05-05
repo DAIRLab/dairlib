@@ -532,6 +532,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_params_.hysterisis_between_repos_targets){
           best_sample_index_ = CURRENT_REPOSITION_INDEX;
           best_additional_sample_cost = all_sample_costs_[CURRENT_REPOSITION_INDEX];
+          finished_reposition_flag_ = false;
       }
     }
     if (best_additional_sample_cost > 

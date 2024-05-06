@@ -65,7 +65,7 @@ int do_main(int argc, char* argv[]) {
   }
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base,
-                     "examples/Cassie/urdf/cassie_v2_shells.urdf");
+                     "examples/Cassie/urdf/cassie_v2_self_collision.urdf");
   plant.Finalize();
 
   /// Set visualizer lcm url to ttl=0 to avoid sending DrakeViewerDraw

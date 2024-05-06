@@ -147,6 +147,76 @@ def make_stair_curriculum(n: int, length: float):
     plt.show()
 
 
+def sine_wave(n: int, length: float, x_start: float, a: float):
+    x = []
+    y = []
+    z = []
+    normal = []
+    lx = []
+    ly = []
+    lz = []
+    yaw = []
+
+    dx = length / n
+
+    print_block_list(
+        [0], [0], [0], [[0, 0, 1]], [2 * x_start], [3], [0.15], [0]
+    )
+
+    for i in range(n):
+        x.append(dx * (i + 0.5) + x_start)
+        y.append(0)
+        x0 = dx * i
+        x1 = dx * (i + 1)
+        z0 = a * np.cos(x0) - a
+        z1 = a * np.cos(x1) - a
+        slope = (z1 - z0) / dx
+        n = np.array([1, 0, -1 / slope])
+        n *= np.sign(n[2])
+        n = n / np.linalg.norm(n)
+        z.append(0.5 * (z0 + z1))
+        normal.append(n)
+        lx.append(np.sqrt(dx ** 2 + (z0 - z1) ** 2))
+        ly.append(3)
+        lz.append(0.15)
+        yaw.append(0)
+
+    print_block_list(x, y, z, normal, lx, ly, lz, yaw)
+
+
+def simple_stairs(start_xyz, n, depth, rise):
+    x = []
+    y = []
+    z = []
+    normal = []
+    lx = []
+    ly = []
+    lz = []
+    yaw = []
+
+    dx = depth
+    for i in range(n):
+        x.append(dx * (i + 0.5) + start_xyz[0])
+        y.append(start_xyz[1])
+        z.append(start_xyz[2] + rise * i)
+        normal.append(np.array([0, 0, 1]))
+        lx.append(depth)
+        ly.append(3)
+        lz.append(rise)
+        yaw.append(0)
+
+    print_block_list(x, y, z, normal, lx, ly, lz, yaw)
+
+
+def print_block_list(x, y, z, normal, lx, ly, lz, yaw):
+    for i in range(len(x)):
+        n = normal[i]
+        print(
+            f'- [[{x[i]}, {y[i]}, {z[i]}], [{n[0]}, {n[1]}, {n[2]}], '
+            f'[{lx[i]}, {ly[i]}, {lz[i]}], [{yaw[i]}]]'
+        )
+
+
 def make_block_perlin(grid_size, bins):
     assert (bins % 2 == 1)  # need an odd number of bins
 
@@ -179,7 +249,9 @@ def make_block_perlin(grid_size, bins):
 
 
 if __name__ == '__main__':
-    make_block_perlin(25.0, 27)
+    sine_wave(50, 6.29, 1.0, 0.4)
+    simple_stairs([7.29, 0, 0], 8, 0.5, 0.12)
+    # make_block_perlin(25.0, 27)
     # make_stair_curriculum(81, 40)
     # def hfun(t):
     #     return 0.2 * np.sin(2 * t)

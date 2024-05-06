@@ -198,7 +198,7 @@ drake::systems::EventStatus ElevationMappingSystem::ElevationMapUpdateEvent(
     int n_valid_contacts = 0;
 
     for (int i = 0; i < contact_msg.num_contacts; i++) {
-      if (contact_msg.contact[i]) {
+      if (contact_msg.contact[i] and contacts_.count(contact_msg.contact_names[i]) > 0) {
         const auto& grid_map = map.getRawGridMap();
 
         const auto& contact = contacts_.at(contact_msg.contact_names[i]);

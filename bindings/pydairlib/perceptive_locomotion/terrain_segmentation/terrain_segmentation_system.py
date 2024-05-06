@@ -53,9 +53,10 @@ class TerrainSegmentationSystem(LeafSystem):
         # gaussian blur in meters
         self.variance_blur = self.kernel_size / 2
         self.laplacian_blur = self.kernel_size / 4
-        self.var_safety_margin = self.kernel_size / 2
+        self.var_safety_margin = self.kernel_size / 2.0
         self.safe_inf_norm = 0.04  # maximum difference between map and smoothed map
-        self.below_edge_factor = 6.0
+
+        self.below_edge_factor = 5.0
         self.safety_threshold = 0.7
 
     def get_raw_safety_score(self, elevation: np.ndarray,
@@ -158,7 +159,7 @@ class TerrainSegmentationSystem(LeafSystem):
         erosion_ksize_int = int(
             self.var_safety_margin /
             elevation_map.getResolution() + 0.5
-        )
+        ) + 2
         erosion_kernel = cv2.getStructuringElement(
             cv2.MORPH_ELLIPSE, (erosion_ksize_int, erosion_ksize_int)
         )

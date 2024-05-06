@@ -338,9 +338,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
       prog_.SetInitialGuess(x_[i], (1 - weight) * warm_start_x_[admm_iteration][i] + weight * warm_start_x_[admm_iteration][i + 1]);
       prog_.SetInitialGuess(lambda_[i], (1 - weight) * warm_start_lambda_[admm_iteration][i] + weight * warm_start_lambda_[admm_iteration][i + 1]);
       prog_.SetInitialGuess(u_[i], (1 - weight) * warm_start_u_[admm_iteration][i] + weight * warm_start_u_[admm_iteration][i + 1]);
-//      prog_.SetInitialGuess(lambda_[i],
-//                            warm_start_lambda_[admm_iteration][i + 1]);
-//      prog_.SetInitialGuess(u_[i], warm_start_u_[admm_iteration][i + 1]);
     }
     prog_.SetInitialGuess(x_[0], x0);
     prog_.SetInitialGuess(x_[N_], warm_start_x_[admm_iteration][N_]);
@@ -433,18 +430,6 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
   }
 
   return deltaProj;
-}
-
-std::vector<Eigen::VectorXd> C3::GetWarmStartX() const {
-  return warm_start_x_[0];
-}
-
-std::vector<Eigen::VectorXd> C3::GetWarmStartLambda() const {
-  return warm_start_lambda_[0];
-}
-
-std::vector<Eigen::VectorXd> C3::GetWarmStartU() const {
-  return warm_start_u_[0];
 }
 
 }  // namespace solvers

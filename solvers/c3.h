@@ -49,8 +49,7 @@ class C3 {
   /// @param G A pointer to the G variables from previous step
   void ADMMStep(const Eigen::VectorXd& x0, std::vector<Eigen::VectorXd>* delta,
                 std::vector<Eigen::VectorXd>* w,
-                std::vector<Eigen::MatrixXd>* G,
-                int admm_iteration);
+                std::vector<Eigen::MatrixXd>* G, int admm_iteration);
 
   /// Solve a single QP
   /// @param x0 The initial state of the system
@@ -78,11 +77,6 @@ class C3 {
   /// allow user to remove all constraints
   void RemoveConstraints();
 
-  /// Get QP warm start
-  std::vector<Eigen::VectorXd> GetWarmStartX() const;
-  std::vector<Eigen::VectorXd> GetWarmStartLambda() const;
-  std::vector<Eigen::VectorXd> GetWarmStartU() const;
-
   /// Solve a single projection step
   /// @param E, F, H, c LCS parameters
   /// @param U A pointer to the U variables
@@ -91,8 +85,7 @@ class C3 {
       const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
       const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
-      const int admm_iteration,
-      const int& warm_start_index) = 0;
+      const int admm_iteration, const int& warm_start_index) = 0;
 
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
@@ -142,21 +135,26 @@ class C3 {
   bool h_is_zero_;
 
   drake::solvers::MathematicalProgram prog_;
+  // QP step variables
   drake::solvers::OsqpSolver osqp_;
   std::vector<drake::solvers::VectorXDecisionVariable> x_;
   std::vector<drake::solvers::VectorXDecisionVariable> u_;
   std::vector<drake::solvers::VectorXDecisionVariable> lambda_;
+  // QP step constraints
   std::vector<drake::solvers::LinearEqualityConstraint*> dynamics_constraints_;
-  std::vector<drake::solvers::QuadraticCost*> target_cost_;
-  std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
-  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       constraints_;
   std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       user_constraints_;
 
-  // Solutions
+  /// Projection step variables are defined outside of the MathematicalProgram
+  /// interface
 
+  std::vector<drake::solvers::QuadraticCost*> target_cost_;
+  std::vector<drake::solvers::Binding<drake::solvers::QuadraticCost>> costs_;
+  std::vector<std::shared_ptr<drake::solvers::QuadraticCost>> input_costs_;
+
+  // Solutions
   std::unique_ptr<std::vector<Eigen::VectorXd>> x_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> lambda_sol_;
   std::unique_ptr<std::vector<Eigen::VectorXd>> u_sol_;

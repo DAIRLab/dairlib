@@ -182,11 +182,11 @@ cc_binary(
     deps = [
         ":parameters",
         "//common",
-        "//multibody:utils",
         "//examples/franka/systems:franka_state_translator",
+        "//multibody:utils",
         "//systems:robot_lcm_systems",
-        "//systems/framework:lcm_driven_loop",
         "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
         "//systems/primitives",
         "@drake//:drake_shared_library",
         "@gflags",
@@ -244,10 +244,10 @@ cc_library(
     hdrs = [
         "parameters/franka_c3_controller_params.h",
         "parameters/franka_c3_scene_params.h",
+        "parameters/franka_drake_lcm_driver_channels.h",
         "parameters/franka_lcm_channels.h",
         "parameters/franka_osc_controller_params.h",
         "parameters/franka_sim_params.h",
-        "parameters/franka_drake_lcm_driver_channels.h",
         "parameters/franka_sim_scene_params.h",
     ],
     data = glob([

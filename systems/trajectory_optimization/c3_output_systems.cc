@@ -88,13 +88,5 @@ void C3OutputSender::OutputC3Forces(
   c3_forces_output->utime = context.get_time() * 1e6;
 }
 
-// void C3OutputSender::OutputNextC3Input(const drake::systems::Context<double>&
-// context,
-//                  drake::systems::BasicVector<double>* u_next) const {
-//  const auto& c3_solution =
-//      this->EvalInputValue<C3Output::C3Solution>(context, c3_solution_port_);
-//  u_next->SetFromVector(c3_solution->u_sol_.col(0).cast<double>());
-//}
-
 }  // namespace systems
 }  // namespace dairlib

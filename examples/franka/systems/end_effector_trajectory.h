@@ -22,10 +22,6 @@ class EndEffectorTrajectoryGenerator
                                   double z_scale);
 
  private:
-  drake::systems::EventStatus DiscreteVariableUpdate(
-      const drake::systems::Context<double>& context,
-      drake::systems::DiscreteValues<double>* discrete_state) const;
-
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
 

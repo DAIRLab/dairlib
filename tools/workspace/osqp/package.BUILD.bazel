@@ -1,12 +1,12 @@
 # -*- bazel -*-
 
 load(
-    "@drake//tools/workspace:cmake_configure_file.bzl",
-    "cmake_configure_file",
-)
-load(
     "@drake//tools/install:install.bzl",
     "install",
+)
+load(
+    "@drake//tools/workspace:cmake_configure_file.bzl",
+    "cmake_configure_file",
 )
 
 licenses(["notice"])  # Apache-2.0

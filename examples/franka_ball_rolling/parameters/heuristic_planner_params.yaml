@@ -37,7 +37,7 @@ g_new_u: [0.001, 0.001, 0.001]
 # --------------------------  Move to Initial parameters  -----------------------------#
 initial_start: [0.55, 0, 0.12]
 initial_finish: [0, 0, 0.07]
-stabilize_time1: 2
+stabilize_time: 2
 move_time: 2.5
 
 # --------------------------  Solve time filter parameters  -----------------------------#

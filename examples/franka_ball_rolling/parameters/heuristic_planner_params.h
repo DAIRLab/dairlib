@@ -27,7 +27,7 @@ struct HeuristicPlannerParams {
 
   VectorXd initial_start;
   VectorXd initial_finish;
-  double stabilize_time1;
+  double stabilize_time;
   double move_time;
 
   template <typename Archive>
@@ -53,7 +53,7 @@ struct HeuristicPlannerParams {
 
     a->Visit(DRAKE_NVP(initial_start));
     a->Visit(DRAKE_NVP(initial_finish));
-    a->Visit(DRAKE_NVP(stabilize_time1));
+    a->Visit(DRAKE_NVP(stabilize_time));
     a->Visit(DRAKE_NVP(move_time));
 
     // TODO:: consider different contact model

@@ -106,21 +106,13 @@ int DoMain(int argc, char* argv[]){
   builder.Connect(ball_state_sender->get_output_port(),
                     ball_state_pub->get_input_port());
 
-  /// meshcat visualizer
-    drake::geometry::DrakeVisualizer<double>::AddToBuilder(&builder, scene_graph);
-    drake::geometry::MeshcatVisualizerParams params;
-    params.publish_period = 1.0/30.0;
-    auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-    auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-        &builder, scene_graph, meshcat, std::move(params));
-
   int nq = plant.num_positions();
   int nv = plant.num_velocities();
   int nu = plant.num_actuators();
   auto logger = builder.AddSystem<VectorLogSink<double>>(nq+nv+nu, publish_dt);
 
   // default visualizer that shows everything
-  if (true) {
+  if (sim_param.visualize_defualt_drake) {
         drake::visualization::AddDefaultVisualization(&builder);
   }
   

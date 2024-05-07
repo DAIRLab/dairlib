@@ -26,6 +26,10 @@ group "2.[SIM] New Blocks Test" {
         exec = "bazel-bin/examples/franka_ball_rolling/lcm_state_estimator_cleanup";
         host = "localhost";
     }
+    cmd "f.[SIM] visualizer" {
+        exec = "bazel-bin/examples/franka_ball_rolling/lcm_plant_visualizer";
+        host = "localhost";
+    }
 }
 
 group "3.[SIM] New Blocks Test Valgrind" {

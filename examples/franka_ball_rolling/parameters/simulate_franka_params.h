@@ -16,6 +16,7 @@ struct SimulateFrankaParams {
   double sim_dt;
   double publish_dt;
   double realtime_rate;
+  double visualizer_publish_rate;
 
   Vector3d tool_attachment_frame;
   Vector3d ground_offset_frame;
@@ -30,10 +31,15 @@ struct SimulateFrankaParams {
   double ball_radius;
   double ee_radius;
 
+  bool visualize_defualt_drake;
+  bool visualize_pose_trace;
+  bool visualize_plan;
+  bool visualize_c3_forces;
+  bool visualize_c3_object_state;
+  bool visualize_c3_end_effector_state;
 
-  double stabilize_time1;
-  double move_time;
-  double stabilize_time2;
+  Eigen::VectorXd camera_pose;
+  Eigen::VectorXd camera_target;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -46,6 +52,8 @@ struct SimulateFrankaParams {
     a->Visit(DRAKE_NVP(sim_dt));
     a->Visit(DRAKE_NVP(publish_dt));
     a->Visit(DRAKE_NVP(realtime_rate));
+    a->Visit(DRAKE_NVP(visualizer_publish_rate));
+
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ground_offset_frame));
 
@@ -59,9 +67,15 @@ struct SimulateFrankaParams {
     a->Visit(DRAKE_NVP(ball_radius));
     a->Visit(DRAKE_NVP(ee_radius));
 
+    a->Visit(DRAKE_NVP(visualize_defualt_drake));
+    a->Visit(DRAKE_NVP(visualize_pose_trace));
+    a->Visit(DRAKE_NVP(visualize_plan));
+    a->Visit(DRAKE_NVP(visualize_c3_forces));
+    a->Visit(DRAKE_NVP(visualize_c3_object_state));
+    a->Visit(DRAKE_NVP(visualize_c3_end_effector_state));
 
-    a->Visit(DRAKE_NVP(stabilize_time1));
-    a->Visit(DRAKE_NVP(move_time));
-    a->Visit(DRAKE_NVP(stabilize_time2));
+    a->Visit(DRAKE_NVP(camera_pose));
+    a->Visit(DRAKE_NVP(camera_target));
+
   }
 };

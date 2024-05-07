@@ -47,7 +47,7 @@ MoveToInitial::MoveToInitial(
     received_first_message_idx_ = this->DeclareAbstractState(
             drake::Value<bool>(false));
 
-    this->DeclarePerStepUnrestrictedUpdateEvent(
+    this->DeclareForcedUnrestrictedUpdateEvent(
             &MoveToInitial::UpdateFirstMessageTime);
 }
 
@@ -69,7 +69,7 @@ EventStatus MoveToInitial::UpdateFirstMessageTime(const Context<double>& context
 void MoveToInitial::SetParameters(const SimulateFrankaParams& sim_param,
                                               const HeuristicPlannerParams heuristic_param) {
   // Set parameters
-  stabilize_time1_ = heuristic_param.stabilize_time1;
+  stabilize_time1_ = heuristic_param.stabilize_time;
   move_time_ = heuristic_param.move_time;
 
   initial_start_ = heuristic_param.initial_start;

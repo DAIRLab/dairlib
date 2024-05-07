@@ -62,7 +62,7 @@ HeuristicGenerator::HeuristicGenerator(
     received_first_message_idx_ = this->DeclareAbstractState(
             drake::Value<bool>(false));
 
-    this->DeclarePerStepUnrestrictedUpdateEvent(
+    this->DeclareForcedUnrestrictedUpdateEvent(
             &HeuristicGenerator::UpdateFirstMessageTime);
 
     n_q = lcs_plant.num_positions();
@@ -101,7 +101,7 @@ void HeuristicGenerator::SetHeuristicParameters( const SimulateFrankaParams& sim
     q_new_vector_ = heuristic_param.q_new_vector;
     g_new_vector_ = heuristic_param.g_new_vector;
 
-    settling_time_ = sim_param.stabilize_time1 + sim_param.move_time + sim_param.stabilize_time2;
+    settling_time_ = heuristic_param.stabilize_time + heuristic_param.move_time;
     ee_default_height = sim_param.ee_radius + 2 * sim_param.ball_radius + table_offset_;
 
     c3_param_ = c3_param;

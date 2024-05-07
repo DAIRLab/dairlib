@@ -10,6 +10,7 @@ offset_model: examples/franka_ball_rolling/robot_properties/urdf/table_offset.ur
 sim_dt: 0.0001
 publish_dt: 0.0001
 realtime_rate: 1.0
+visualizer_publish_rate: 30
 
 # -----------------------  Extra Model Fixed Frame Settings  ------------------------#
 # the tranlsation vector of end effector base frame to panda link 7
@@ -31,7 +32,13 @@ y_c: 0
 ball_radius: 0.0315
 ee_radius: 0.0195
 
-# ---------------------------  Move to Initial Settings  --------------------------#
-stabilize_time1: 0.5
-move_time: 0.75
-stabilize_time2: 0.75
+# ---------------------------  Visualizer Settings  --------------------------#
+visualize_defualt_drake: true
+visualize_pose_trace: true
+visualize_plan: true
+visualize_c3_forces: true
+visualize_c3_object_state: true
+visualize_c3_end_effector_state: false
+
+camera_pose: [ 1.2, 0, 0.6 ]
+camera_target: [ 0, 0, 0 ]

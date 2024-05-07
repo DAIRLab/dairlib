@@ -65,6 +65,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "lcm_channels_params",
+    hdrs = ["parameters/lcm_channels_params.h"],
+    data = [
+        "parameters/lcm_channels_sim_params.yaml",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
 ## lcm controller and system library (_cleanup for final verision and framework)##
 cc_binary(
     name = "lcm_move_to_initial",
@@ -138,4 +149,29 @@ cc_binary(
           "@drake//:drake_shared_library",
           "@gflags"
   ],
+)
+
+cc_binary(
+    name = "lcm_plant_visualizer",
+    srcs = ["lcm_plant_visualizer.cc"],
+    data = [
+        "ball_rolling_urdf",
+        "@drake//manipulation/models/franka_description:models",
+#        "@drake_models//:franka_description",
+    ],
+    deps = [
+#        ":parameters",
+        "//examples/franka_ball_rolling:simulate_franka_params",
+        "//examples/franka_ball_rolling:lcm_channels_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
 )

@@ -14,7 +14,7 @@ y_c: 0
 lead_angle: 20 # angle in degrees
 
 # time based circular specific setting
-velocity_circle: 5 # angular velocity in degrees/s
+velocity_circle: 10 # angular velocity in degrees/s
 
 # --------------------------  straight line trajectory parameter  ------------------------#
 # straight line path parameters (general)

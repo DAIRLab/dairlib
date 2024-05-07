@@ -13,4 +13,6 @@ impedance_input_channel: CONTROLLER_INPUT
 # franka and ball state estimation channels
 franka_output_channel: FRANKA_OUTPUT # lcmt_robot_output
 franka_state_channel: FRANKA_STATE_ESTIMATE_NEW # lcmt_robot_output
-ball_state_channel: BALL_STATE # lcmt_object_state
+true_ball_state_channel: BALL_STATE # lcmt_object_state
+estimated_ball_state_channel: BALL_STATE_ESTIMATE_NEW # lcmt_object_state
+

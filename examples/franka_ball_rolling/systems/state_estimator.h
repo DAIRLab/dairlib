@@ -1,39 +1,36 @@
 #pragma once
 
-#include <vector>
-#include <utility>
-#include <iostream>
-#include <deque>
 #include <cmath>
+#include <deque>
+#include <iostream>
+#include <utility>
+#include <vector>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/Geometry> 
-
-#include "systems/framework/output_vector.h"
-#include "systems/framework/state_vector.h"
-#include "drake/systems/framework/leaf_system.h"
-
-#include "drake/systems/framework/context.h"
-
+#include <Eigen/Geometry>
+#include <drake/math/rotation_matrix.h>
 #include <drake/systems/framework/continuous_state.h>
 #include <drake/systems/framework/vector_base.h>
-#include <drake/math/rotation_matrix.h>
 
-#include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
-#include "yaml-cpp/yaml.h"
-#include "drake/common/yaml/yaml_io.h"
-
-#include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_ball_position.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
+#include "systems/framework/output_vector.h"
+#include "systems/framework/state_vector.h"
+#include "yaml-cpp/yaml.h"
 
+#include "drake/common/yaml/yaml_io.h"
+#include "drake/systems/framework/context.h"
+#include "drake/systems/framework/leaf_system.h"
+
+using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::LeafSystem;
-using drake::systems::BasicVector;
 
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 namespace dairlib {
 namespace systems {
@@ -54,23 +51,24 @@ class StateEstimator : public LeafSystem<double> {
       const {
     return this->get_output_port(ball_state_output_port_);
   }
-  
- private: 
+
+ private:
   // update discrete states
   drake::systems::EventStatus UpdateHistory(
-    const Context<double>& context,
-    drake::systems::State<double>* state) const;
+      const Context<double>& context,
+      drake::systems::State<double>* state) const;
 
   // estimates state
   void EstimateState(const drake::systems::Context<double>& context,
-                    BasicVector<double>* output) const;
+                     BasicVector<double>* output) const;
   void EstimateFrankaState(const drake::systems::Context<double>& context,
-                       BasicVector<double>* output) const;
+                           BasicVector<double>* output) const;
   void EstimateObjectState(const drake::systems::Context<double>& context,
                            BasicVector<double>* output) const;
   void OutputEfforts(const drake::systems::Context<double>& context,
-                    BasicVector<double>* output) const;
-  drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis, double theta) const;
+                     BasicVector<double>* output) const;
+  drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis,
+                                                       double theta) const;
 
   StateEstimatorParams state_estimate_param_;
 
@@ -109,22 +107,22 @@ class StateEstimator : public LeafSystem<double> {
 };
 
 // A class that converts robot output lcm messages
-// from simulation of the franka-ball plant to a 
+// from simulation of the franka-ball plant to a
 // ball position lcm message.
 // This is designed to mimic the behaviour of the true camera system
 // i.e. it only outputs updated ball positions every 'period' seconds
 // and adds random guassian noise to the x and y positions
 class TrueBallToEstimatedBall : public LeafSystem<double> {
  public:
-   TrueBallToEstimatedBall(double stddev, double period);
- 
+  TrueBallToEstimatedBall(double stddev, double period);
+
  private:
   drake::systems::EventStatus UpdateBallPosition(
       const Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void ConvertOutput(const drake::systems::Context<double>& context,
-                    dairlib::lcmt_ball_position* output) const;
+                     dairlib::lcmt_ball_position* output) const;
 
   StateEstimatorParams state_estimate_param_;
 

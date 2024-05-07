@@ -3,8 +3,8 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 struct StateEstimatorParams {
   std::string franka_model;
@@ -47,7 +47,6 @@ struct StateEstimatorParams {
     a->Visit(DRAKE_NVP(ball_noise_stddev));
     a->Visit(DRAKE_NVP(estimation_rate));
     a->Visit(DRAKE_NVP(project_state_option));
-
 
     a->Visit(DRAKE_NVP(ground_offset_frame));
     a->Visit(DRAKE_NVP(q_init_ball));

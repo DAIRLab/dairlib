@@ -44,9 +44,9 @@ PYBIND11_MODULE(controllers_franka, m) {
            py::arg("context_ad"),  py::arg("context_ad_f"), py::arg("scene_graph"), py::arg("diagram"),  py::arg("contact_geoms"),
            py::arg("num_friction_directions"), py::arg("mu"), py::arg("Q"),
            py::arg("R"), py::arg("G"), py::arg("U"), py::arg("xdesired"), py::arg("pp"))
-      .def("get_input_port_config", &C3Controller_franka::get_input_port_config,
+      .def("get_input_port_franka_state", &C3Controller_franka::get_input_port_config,
            py_rvp::reference_internal)
-      .def("get_input_port_output", &C3Controller_franka::get_input_port_output,
+      .def("get_output_port_torque", &C3Controller_franka::get_input_port_output,
            py_rvp::reference_internal);
 }
 }  // namespace pydairlib

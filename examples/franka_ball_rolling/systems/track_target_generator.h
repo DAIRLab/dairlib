@@ -1,13 +1,15 @@
 #pragma once
 
-#include <drake/multibody/plant/multibody_plant.h>
 #include <drake/common/yaml/yaml_io.h>
-#include "systems/framework/state_vector.h"
-#include "systems/framework/output_vector.h"
-#include "drake/systems/framework/leaf_system.h"
+#include <drake/multibody/plant/multibody_plant.h>
+
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "examples/franka_ball_rolling/parameters/trajectory_params.h"
+#include "systems/framework/output_vector.h"
+#include "systems/framework/state_vector.h"
+
+#include "drake/systems/framework/leaf_system.h"
 #define PI 3.14159265359
 
 namespace dairlib {
@@ -16,23 +18,21 @@ namespace systems {
 /// A class that generates tracking target for franka ball rolling example
 /// Modified and simplified from plate balancing example for ball rolling
 
-class TargetGenerator
-    : public drake::systems::LeafSystem<double> {
+class TargetGenerator : public drake::systems::LeafSystem<double> {
  public:
-  TargetGenerator(
-      const drake::multibody::MultibodyPlant<double>& lcs_plant,
-      const SimulateFrankaParams& sim_param,
-      const BallRollingTrajectoryParams& traj_param);
+  TargetGenerator(const drake::multibody::MultibodyPlant<double>& lcs_plant,
+                  const SimulateFrankaParams& sim_param,
+                  const BallRollingTrajectoryParams& traj_param);
 
   /// the first input port take in lcs state (i.e. state for simplified model)
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(plant_state_port_);
   }
 
-  /// the output port send out y_des (tracking target of simplified model) to the Heuristic planning block
-  /// y_d contain the object position, first 4 quaternion and position xyz
-  const drake::systems::OutputPort<double>&
-  get_output_port_target() const {
+  /// the output port send out y_des (tracking target of simplified model) to
+  /// the Heuristic planning block y_d contain the object position, first 4
+  /// quaternion and position xyz
+  const drake::systems::OutputPort<double>& get_output_port_target() const {
     return this->get_output_port(target_port_);
   }
 
@@ -40,10 +40,9 @@ class TargetGenerator
                                const BallRollingTrajectoryParams& traj_param);
 
  private:
-
   drake::systems::EventStatus UpdateFirstMessageTime(
-            const drake::systems::Context<double>& context,
-            drake::systems::State<double>* state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::State<double>* state) const;
 
   void CalcTrackTarget(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* target) const;

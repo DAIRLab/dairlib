@@ -43,9 +43,9 @@ PYBIND11_MODULE(impedance_controllers, m) {
            py::arg("num_friction_directions"),
            py::arg("moving_offset"),
            py::arg("pushing_offset"))
-      .def("get_input_port_config", &ImpedanceController::get_input_port_config,
+      .def("get_input_port_franka_state", &ImpedanceController::get_input_port_franka_state,
            py_rvp::reference_internal)
-      .def("get_input_port_output", &ImpedanceController::get_input_port_output,
+      .def("get_output_port_torque", &ImpedanceController::get_output_port_torque,
            py_rvp::reference_internal);
 
 }

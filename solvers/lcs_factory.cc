@@ -200,9 +200,6 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
 
-    // TODO(yangwill): check gap function to make sure it makes sense. Potential
-    // source of uncertainty
-    //  std::cout << "phi: " << phi << std::endl;
     c.segment(n_contacts, n_contacts) = phi + dt * dt * J_n * d_v  - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
         J_t * dt * d_v;
@@ -212,10 +209,10 @@ std::pair<LCS, double> LCSFactory::LinearizePlantToLCS(
     VectorXd anitescu_mu_vec = VectorXd::Zero(n_lambda);
     for (int i = 0; i < mu_vec.rows(); i++) {
       double cur = mu_vec(i);
-      anitescu_mu_vec(4 * i) = cur;
-      anitescu_mu_vec(4 * i + 1) = cur;
-      anitescu_mu_vec(4 * i + 2) = cur;
-      anitescu_mu_vec(4 * i + 3) = cur;
+      anitescu_mu_vec(2 * num_friction_directions * i) = cur;
+      anitescu_mu_vec(2 * num_friction_directions * i + 1) = cur;
+      anitescu_mu_vec(2 * num_friction_directions * i + 2) = cur;
+      anitescu_mu_vec(2 * num_friction_directions * i + 3) = cur;
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;

@@ -5,7 +5,6 @@
 using Eigen::VectorXd;
 
 struct HeuristicPlannerParams {
-
   std::string end_effector_simple_model;
   std::string ball_model;
   std::string ground_model;
@@ -32,7 +31,6 @@ struct HeuristicPlannerParams {
 
   template <typename Archive>
   void Serialize(Archive* a) {
-
     a->Visit(DRAKE_NVP(end_effector_simple_model));
     a->Visit(DRAKE_NVP(ball_model));
     a->Visit(DRAKE_NVP(ground_model));
@@ -60,12 +58,13 @@ struct HeuristicPlannerParams {
     g_new_list = std::vector<double>();
     g_new_list.insert(g_new_list.end(), g_new_x.begin(), g_new_x.end());
     g_new_list.insert(g_new_list.end(), g_new_gamma.begin(), g_new_gamma.end());
-    g_new_list.insert(g_new_list.end(), g_new_lambda_n.begin(), g_new_lambda_n.end());
-    g_new_list.insert(g_new_list.end(), g_new_lambda_t.begin(), g_new_lambda_t.end());
+    g_new_list.insert(g_new_list.end(), g_new_lambda_n.begin(),
+                      g_new_lambda_n.end());
+    g_new_list.insert(g_new_list.end(), g_new_lambda_t.begin(),
+                      g_new_lambda_t.end());
     g_new_list.insert(g_new_list.end(), g_new_u.begin(), g_new_u.end());
 
-
     g_new_vector = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
-              this->g_new_list.data(), this->g_new_list.size());
+        this->g_new_list.data(), this->g_new_list.size());
   }
 };

@@ -1,11 +1,12 @@
 #include "examples/franka_ball_rolling//systems/c3_state_sender.h"
+
 #include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 
 using drake::systems::BasicVector;
-using systems::TimestampedVector;
 using drake::systems::Context;
+using systems::TimestampedVector;
 
 namespace systems {
 
@@ -17,8 +18,8 @@ C3StateSender::C3StateSender(int state_size,
   target_state_ = this->DeclareVectorInputPort("target_state",
                                                BasicVector<double>(state_size))
                       .get_index();
-  actual_state_ = this->DeclareVectorInputPort("actual_state",
-                                               TimestampedVector<double>(state_size))
+  actual_state_ = this->DeclareVectorInputPort(
+                          "actual_state", TimestampedVector<double>(state_size))
                       .get_index();
 
   lcmt_c3_state default_c3_state = dairlib::lcmt_c3_state();
@@ -50,7 +51,8 @@ void C3StateSender::OutputTargetState(
 void C3StateSender::OutputActualState(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_c3_state* output) const {
-  const auto actual_state = (TimestampedVector<double>*)this->EvalVectorInput(context, actual_state_);
+  const auto actual_state =
+      (TimestampedVector<double>*)this->EvalVectorInput(context, actual_state_);
   DRAKE_DEMAND(actual_state->get_data().size() == n_x_);
   output->utime = context.get_time() * 1e6;
   for (int i = 0; i < n_x_; ++i) {

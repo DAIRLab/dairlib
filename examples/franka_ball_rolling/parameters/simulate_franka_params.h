@@ -3,8 +3,8 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
-using Eigen::VectorXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 struct SimulateFrankaParams {
   std::string franka_model;
@@ -76,6 +76,5 @@ struct SimulateFrankaParams {
 
     a->Visit(DRAKE_NVP(camera_pose));
     a->Visit(DRAKE_NVP(camera_target));
-
   }
 };

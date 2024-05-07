@@ -1,7 +1,8 @@
 #pragma once
 
-#include "drake/common/yaml/yaml_read_archive.h"
 #include "yaml-cpp/yaml.h"
+
+#include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -70,7 +71,7 @@ struct C3Parameters {
     a->Visit(DRAKE_NVP(hold_order));
     a->Visit(DRAKE_NVP(lead_angle));
     a->Visit(DRAKE_NVP(enable_adaptive_path));
-    
+
     // geometry parameters
     a->Visit(DRAKE_NVP(ball_radius));
     a->Visit(DRAKE_NVP(finger_radius));
@@ -171,7 +172,7 @@ struct C3Parameters {
   double roll_phase;
   double return_phase;
   VectorXd gait_parameters;
-  
+
   // test parameters
   double lead_angle;
   int enable_adaptive_path;

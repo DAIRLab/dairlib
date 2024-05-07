@@ -113,7 +113,7 @@ int do_main(int argc, char* argv[]) {
           lcm_channel_params.franka_state_channel, lcm));
   auto ball_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.ball_state_channel, lcm));
+          lcm_channel_params.true_ball_state_channel, lcm));
   auto franka_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
   auto ball_state_receiver =

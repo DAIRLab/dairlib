@@ -20,6 +20,7 @@
 
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
+#include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
 
 
 #include "examples/franka_ball_rolling/systems/move_to_initial.h"
@@ -52,6 +53,8 @@ int DoMain(int argc, char* argv[]){
           "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
   HeuristicPlannerParams heuristic_param = drake::yaml::LoadYamlFile<HeuristicPlannerParams>(
             "examples/franka_ball_rolling/parameters/heuristic_planner_params.yaml");
+  BallRollingLcmChannels lcm_channel_param = drake::yaml::LoadYamlFile<BallRollingLcmChannels>(
+            "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
 
 
   drake::lcm::DrakeLcm drake_lcm;
@@ -102,19 +105,16 @@ int DoMain(int argc, char* argv[]){
   }
   auto control_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_ball_rolling_command>(
-        "CONTROLLER_INPUT", pub_lcm,
+        lcm_channel_param.impedance_input_channel, pub_lcm,
         {drake::systems::TriggerType::kForced}, 0.0));
   builder.Connect(planner_command_sender->get_output_port(),
                   control_publisher->get_input_port());
   /* -------------------------------------------------------------------------------------------*/
 
   auto diagram = builder.Build();
-//  DrawAndSaveDiagramGraph(*diagram, "examples/franka_ball_rolling/lcm_impedance_controller");
-//  DrawAndSaveDiagramGraph(*diagram_contact, "examples/franka_ball_rolling/lcm_impedance_controller_contact");
-
   auto context_d = diagram->CreateDefaultContext();
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-            &drake_lcm, std::move(diagram), franka_state_reciver, "FRANKA_STATE_ESTIMATE_NEW", true);
+            &drake_lcm, std::move(diagram), franka_state_reciver, lcm_channel_param.franka_state_channel, true);
 
   loop.Simulate(std::numeric_limits<double>::infinity());
 

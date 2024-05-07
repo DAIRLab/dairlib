@@ -69,9 +69,6 @@ int do_main(int argc, char* argv[]) {
       "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
   BallRollingLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<BallRollingLcmChannels>(FLAGS_lcm_channels);
-//  FrankaSimSceneParams scene_params =
-//      drake::yaml::LoadYamlFile<FrankaSimSceneParams>(
-//          sim_params.sim_scene_file[sim_params.scene_index]);
 
   drake::systems::DiagramBuilder<double> builder;
 

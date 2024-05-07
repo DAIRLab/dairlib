@@ -18,6 +18,7 @@
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
+#include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
@@ -48,6 +49,9 @@ int DoMain(int argc, char* argv[]) {
   SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<
       SimulateFrankaParams>(
       "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
+  BallRollingLcmChannels lcm_channel_param = drake::yaml::LoadYamlFile<
+      BallRollingLcmChannels>(
+      "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
 
   // set plant, simulation step and publish time rates
   DiagramBuilder<double> builder;
@@ -98,14 +102,15 @@ int DoMain(int argc, char* argv[]) {
   //          1 / publish_dt, true, 0.0);
 
   auto passthrough = AddActuationRecieverAndStateSenderLcm(
-      &builder, plant, lcm, "FRANKA_INPUT", "FRANKA_OUTPUT", 1 / publish_dt,
-      franka_index, true, 0.0);
+      &builder, plant, lcm, lcm_channel_param.franka_input_channel,
+      lcm_channel_param.franka_output_channel, 1 / publish_dt, franka_index,
+      true, 0.0);
 
   auto ball_state_sender =
       builder.AddSystem<systems::ObjectStateSender>(plant, ball_index);
   auto ball_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-          "BALL_STATE", lcm, 1.0 / 80));
+          lcm_channel_param.true_ball_state_channel, lcm, 1.0 / 80));
 
   builder.Connect(plant.get_state_output_port(ball_index),
                   ball_state_sender->get_input_port_state());

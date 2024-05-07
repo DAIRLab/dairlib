@@ -6,6 +6,7 @@
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
 #include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
 #include "examples/franka_ball_rolling/systems/state_estimator.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -35,6 +36,9 @@ int DoMain(int argc, char* argv[]) {
   StateEstimatorParams state_estimator_param = drake::yaml::LoadYamlFile<
       StateEstimatorParams>(
       "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
+  BallRollingLcmChannels lcm_channel_param = drake::yaml::LoadYamlFile<
+      BallRollingLcmChannels>(
+      "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
 
   DiagramBuilder<double> builder;
   drake::lcm::DrakeLcm drake_lcm;
@@ -69,7 +73,7 @@ int DoMain(int argc, char* argv[]) {
   /// subscribe to franka state and ball state
   auto ball_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-          "BALL_STATE", &drake_lcm));
+          lcm_channel_param.true_ball_state_channel, &drake_lcm));
   auto franka_state_reciver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant, franka_index);
   auto true_ball_state_receiver =
@@ -129,7 +133,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::RobotOutputSender>(plant_franka, true);
   auto franka_output_pub =
       builder.AddSystem(LcmPublisherSystem::Make<lcmt_robot_output>(
-          "FRANKA_STATE_ESTIMATE_NEW", pub_lcm,
+          lcm_channel_param.franka_state_channel, pub_lcm,
           {drake::systems::TriggerType::kForced}));
   // hard code port index for now
   builder.Connect(state_estimator->get_output_port(0),
@@ -147,7 +151,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::ObjectStateSender>(plant_object, object_index);
   auto object_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<lcmt_object_state>(
-          "BALL_STATE_ESTIMATE_NEW", pub_lcm,
+          lcm_channel_param.estimated_ball_state_channel, pub_lcm,
           {drake::systems::TriggerType::kForced}));
   // hard code port index for now
   builder.Connect(state_estimator->get_output_port(2),
@@ -162,9 +166,9 @@ int DoMain(int argc, char* argv[]) {
   DrawAndSaveDiagramGraph(
       *diagram, "examples/franka_ball_rolling/diagram_lcm_state_estimator");
 
-  systems::LcmDrivenLoop<lcmt_robot_output> loop(&drake_lcm, std::move(diagram),
-                                                 franka_state_reciver,
-                                                 "FRANKA_OUTPUT", true);
+  systems::LcmDrivenLoop<lcmt_robot_output> loop(
+      &drake_lcm, std::move(diagram), franka_state_reciver,
+      lcm_channel_param.franka_output_channel, true);
   loop.Simulate(std::numeric_limits<double>::infinity());
 
   return 0;

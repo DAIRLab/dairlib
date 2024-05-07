@@ -93,8 +93,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "lcm_c3_ball_rolling_cleanup",
-    srcs = ["lcm_c3_ball_rolling_cleanup.cc"],
+    name = "lcm_c3_ball_rolling",
+    srcs = ["lcm_c3_ball_rolling.cc"],
     deps = [
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
@@ -112,8 +112,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "lcm_simulate_franka_cleanup",
-    srcs = ["lcm_simulate_franka_cleanup.cc"],
+    name = "lcm_simulate_franka",
+    srcs = ["lcm_simulate_franka.cc"],
     deps = [
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -128,8 +128,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "lcm_impedance_controller_cleanup",
-    srcs = ["lcm_impedance_controller_cleanup.cc"],
+    name = "lcm_impedance_controller",
+    srcs = ["lcm_impedance_controller.cc"],
     deps = [
         "//systems:robot_lcm_systems",
         "//systems/framework:lcm_driven_loop",
@@ -143,8 +143,8 @@ cc_binary(
 )
 
 cc_binary(
-  name = "lcm_state_estimator_cleanup",
-  srcs = ["lcm_state_estimator_cleanup.cc"],
+  name = "lcm_state_estimator",
+  srcs = ["lcm_state_estimator.cc"],
   deps = ["//examples/franka_ball_rolling/systems:c3_ball_rolling_systems",
           "//examples/franka_ball_rolling:state_estimator_params",
           "//examples/franka_ball_rolling:lcm_channels_params",

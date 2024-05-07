@@ -23,6 +23,9 @@ DEFINE_string(channel_convex_polygons, "FOOTHOLDS_PROCESSED",
 DEFINE_string(layer_to_visualize, "elevation", "grid map layer to visualize");
 DEFINE_double(fps, 20.0, "visualizer update rate");
 
+DEFINE_bool(track_pelvis, false, "whether to track the pelvis with the meshcat"
+                                 "camera");
+
 using systems::RobotOutputReceiver;
 using systems::SubvectorPassThrough;
 using systems::PlantVisualizer;
@@ -40,7 +43,9 @@ int do_main(int argc, char* argv[]) {
   drake::systems::DiagramBuilder<double> builder;
 
   const std::string urdf{"examples/Cassie/urdf/cassie_v2_shells.urdf"};
-  auto plant_visualizer = builder.AddSystem<PlantVisualizer>(urdf);
+
+  std::string track_frame = FLAGS_track_pelvis ? "pelvis" : "";
+  auto plant_visualizer = builder.AddSystem<PlantVisualizer>(urdf, track_frame);
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
       "udpm://239.255.76.67:7667?ttl=0");

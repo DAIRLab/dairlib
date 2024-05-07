@@ -49,6 +49,20 @@ namespace controllers {
 
 class ImpedanceController : public LeafSystem<double> {
  public:
+  /// (Cartesian) Impedance Controller Class, given desired end-effector state
+  /// (task space state) and (potential) desired force, calculate the joint
+  /// toque for the robot
+  /// @param plant The standard <double> MultibodyPlant which includes the robot
+  /// @param context The context (double)
+  /// @param K The stiffness matrix for the task space target
+  /// @param B The damping matrix for the task space target
+  /// @param K_null The stiffness matrix for null space target
+  /// @param B_null The damping matrix for for null space target
+  /// @param qd_null The desired null space target (TODO: maybe should be made
+  /// as an external input?)
+  /// @param gravity_compensation_flag Whether or not to apply gravity
+  /// compensation, exist since franka automatically do gravity compensation
+
   ImpedanceController(const drake::multibody::MultibodyPlant<double>& plant,
                       drake::systems::Context<double>& context,
                       const Eigen::MatrixXd& K, const Eigen::MatrixXd& B,
@@ -70,70 +84,86 @@ class ImpedanceController : public LeafSystem<double> {
   }
 
  private:
-  // computes the control input
+  /// Output the calculated torque for the robot, the actual calculation process
+  /// is mainly done together with other calculation in UpdateControl Event
+  /// Update function
+  /// @param context The context (double)
   void CalcControl(const drake::systems::Context<double>& context,
                    TimestampedVector<double>* output) const;
-  // updates the integral term
-  drake::systems::EventStatus UpdateIntegralTerm(
+
+  /// Update the integral term recorded as drake state and do the main
+  /// calculation for impedance control torque
+  /// @param context The context (double)
+  drake::systems::EventStatus UpdateControl(
       const Context<double>& context,
       drake::systems::State<double>* drake_state) const;
 
-  // computes the rotational error
+  /// Computes the rotational error, grabbed from libfranka source code
+  /// @param R The current orientation parameterized by 3*3 rotation matrix
+  /// @param orientation_d The desired orientation parameterized by quaternion
   Eigen::Vector3d CalcRotationalError(
       const drake::math::RotationMatrix<double>& R,
       const Quaterniond& orientation_d) const;
-  void ClampJointTorques(VectorXd& tau) const;
-  void ClampIntegratorTorque(VectorXd& tau, const VectorXd& clamp) const;
-  bool SaturatedClamp(const VectorXd& tau, const VectorXd& clamp) const;
 
-  // parameters
+  /// Clamp the final calculated torque into safety margin
+  /// @param tau the calculated joint torque
+  void ClampJointTorques(VectorXd& tau) const;
+
+  /// Do integral windup for the integral term
+  /// @param tau the calculated joint torque
+  void ClampIntegratorTorque(VectorXd& tau) const;
+
+  /// Judge whether the integral term is saturated
+  /// @param tau the calculated joint torque
+  bool SaturatedClamp(const VectorXd& tau) const;
+
+  /// Impedacne parameters
   ImpedanceControllerParams impedance_param_;
 
-  // ports
+  /// Input and output ports
   int franka_state_input_port_;
   int planner_state_input_port_;
   int contact_feedforward_input_port_;
 
   int control_output_port_;
 
-  // constructor variables
+  /// Constructor variables
   // plant and context
   const MultibodyPlant<double>& plant_;
   drake::systems::Context<double>& context_;
 
-  // stiffness and damping
+  /// Stiffness and damping for task space (end-effector)
   const Eigen::MatrixXd K_;
   const Eigen::MatrixXd B_;
 
-  // stiffness and damping (null space)
+  /// Stiffness and damping for null space
   const MatrixXd K_null_;
   const MatrixXd B_null_;
   const VectorXd qd_null_;
 
-  // whether or not to do gravity compensation (since Franka itself has internal
-  // gravity compensation)
+  /// Whether or not to do gravity compensation (since Franka itself has internal
+  /// gravity compensation)
   const bool gravity_compensation_flag_;
 
-  // integral control and time recording settings
-  int prev_time_;  // this is the index for prev_time (Double type abstract
-                   // state)
+  /// integral control and time recording settings
+  int prev_time_;  // Index for prev_time (Double type abstract state)
   int enable_integral_;
-  int integrator_;  // this is the index for integrator (6D drake state)
+  int integrator_;  // Index for integrator (6D drake state)
   Eigen::MatrixXd I_;
 
-  // contact force feedforward settings
+  /// contact force feedforward settings
   int enable_contact_;
 
-  // clamp torque limit settings
+  /// clamp torque limit settings
   Eigen::VectorXd torque_limits_;
+  Eigen::VectorXd integral_limits_;
 
-  // frame, joint numbers and kinematics settings
+  /// frame, joint numbers and kinematics settings
   const drake::multibody::BodyFrame<double>* EE_frame_;
   const drake::multibody::BodyFrame<double>* world_frame_;
-  Eigen::Vector3d EE_offset_;
   int n_;  // franka DoF (would be 7D, derived from num_positions)
 
-  // final control output, used for being accessed by context in CalControl
+  /// final control output, used for being accessed by context in CalControl
   int tau_;  // final control torque (would be 7D drake state)
 };
 

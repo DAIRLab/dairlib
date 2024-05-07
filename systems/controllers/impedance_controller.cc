@@ -41,25 +41,25 @@ ImpedanceController::ImpedanceController(
       B_null_(B_null),
       qd_null_(qd_null),
       gravity_compensation_flag_(gravity_compensation_flag) {
-  // plant parameters
+  /// plant parameters
   int num_positions = plant_.num_positions();
   int num_velocities = plant_.num_velocities();
   int num_inputs = plant_.num_actuators();
 
-  // set up input and output ports
+  /// set up input and output ports
   franka_state_input_port_ =
       this->DeclareVectorInputPort(
               "x, u, t",
               OutputVector<double>(num_positions, num_velocities, num_inputs))
           .get_index();
 
-  // xee: 7D, xee_dot: 6D (though angular velocity is not really used)
+  /// xee: 7D, xee_dot: 6D (though angular velocity is not really used)
   planner_state_input_port_ =
       this->DeclareVectorInputPort("xee, xee_dot",
                                    TimestampedVector<double>(13))
           .get_index();
 
-  // contact_torque: 7D, lambda: 1D (temporary, only normal direction)
+  /// TODO: contact_torque: 7D, lambda: 1D (temporary, only normal direction)
   contact_feedforward_input_port_ =
       this->DeclareVectorInputPort("contact_torque, lambda",
                                    BasicVector<double>(7 + 1))
@@ -70,23 +70,23 @@ ImpedanceController::ImpedanceController(
                                  &ImpedanceController::CalcControl)
                              .get_index();
 
-  // setup event update for previous time recording and accumulating integral
-  // term
+  /// setup event update for previous time recording, accumulating integral
+  /// term and calculate torque
   this->DeclarePerStepUnrestrictedUpdateEvent(
-      &ImpedanceController::UpdateIntegralTerm);
+      &ImpedanceController::UpdateControl);
 
-  // get c3_parameters
+  /// get impdeance_parameters
   impedance_param_ = drake::yaml::LoadYamlFile<ImpedanceControllerParams>(
       "examples/franka_ball_rolling/parameters/"
       "impedance_controller_params.yaml");
 
-  // define end effector, joint and kinematics settings
+  /// define end effector, joint and kinematics settings
   EE_frame_ = &plant_.GetBodyByName("end_effector_tip").body_frame();
   world_frame_ = &plant_.world_frame();
   // franka joint number
   n_ = plant.num_positions();
 
-  // define integral term settings
+  /// define integral term settings
   enable_integral_ = impedance_param_.enable_integral;
   integrator_ = this->DeclareDiscreteState(6);
   I_ = MatrixXd::Zero(6, 6);
@@ -98,20 +98,26 @@ ImpedanceController::ImpedanceController(
   I_.block(0, 0, 3, 3) << rotational_integral_gain;
   I_.block(3, 3, 3, 3) << translational_integral_gain;
 
-  // define force feedforward contact setting
+  /// define force feedforward contact setting
   enable_contact_ = impedance_param_.enable_contact;
 
-  // define franka joint torque limits
+  /// define franka joint torque limits and integral term limits
   torque_limits_ = impedance_param_.torque_limits;
+  integral_limits_ = impedance_param_.integrator_clamp;
 
-  // timestamp recording settings
+  /// timestamp recording settings
   prev_time_ = this->DeclareAbstractState(drake::Value<double>(0));
 
-  // final control torque
+  /// final control torque
   tau_ = this->DeclareDiscreteState(n_);
 }
 
-// CARTESIAN IMPEDANCE CONTROLLER
+/// Note the actual impedance control torque calculation is done in the even
+/// status, it is because this way can avoid duplicating code for setting
+/// integral torque term, we make previous time integrator internal drake
+/// state, to replace the original mutable class variable, we also make final
+/// impedance output torque tau a drake state, so that in CalControl we
+/// directly set control torque by accessing the context and drake_state
 void ImpedanceController::CalcControl(
     const Context<double>& context, TimestampedVector<double>* control) const {
   // grab the computed torque from the drake state and set timestamp
@@ -123,15 +129,9 @@ void ImpedanceController::CalcControl(
   control->set_timestamp(timestamp);
 }
 
-EventStatus ImpedanceController::UpdateIntegralTerm(
-    const Context<double>& context, State<double>* drake_state) const {
-  // note the actual impedance control torque calculation is done in the even
-  // status, it is because this way can avoid duplicating code for setting
-  // integral torque term, we make previous time integrator internal drake
-  // state, to replace the original mutable class variable, we also make final
-  // impedance output torque tau a drake state, so that in CalControl we
-  // directly set control torque by accessing the context and drake_state
-
+EventStatus ImpedanceController::UpdateControl(
+    const Context<double>& context,
+    drake::systems::State<double>* drake_state) const {
   // get franka state
   auto robot_output = (OutputVector<double>*)this->EvalVectorInput(
       context, franka_state_input_port_);
@@ -205,10 +205,10 @@ EventStatus ImpedanceController::UpdateIntegralTerm(
     VectorXd integrator_temp = context.get_discrete_state(integrator_).value();
     integrator = integrator_temp + xtilde * dt;
     tau_int = J.transpose() * M_task_space * I_ * integrator;
-    if (SaturatedClamp(tau_int, impedance_param_.integrator_clamp)) {
+    if (SaturatedClamp(tau_int)) {
       std::cout << "clamped integrator torque" << std::endl;
       integrator = integrator_temp;
-      ClampIntegratorTorque(tau_int, impedance_param_.integrator_clamp);
+      ClampIntegratorTorque(tau_int);
     }
   }
 
@@ -230,7 +230,7 @@ EventStatus ImpedanceController::UpdateIntegralTerm(
   MatrixXd N = MatrixXd::Identity(7, 7) - J.transpose() * J_gen_inv;
   tau += N * (K_null_ * (qd_null_ - q) - B_null_ * v);
 
-  /// COMMENT OUT FOR NOW ///
+  // contact feedforward compensation
   if (enable_contact_ && lambda.norm() > impedance_param_.contact_threshold) {
     tau += tau_contact;
   }
@@ -275,21 +275,21 @@ void ImpedanceController::ClampJointTorques(VectorXd& tau) const {
   }
 }
 
-void ImpedanceController::ClampIntegratorTorque(VectorXd& tau,
-                                                const VectorXd& clamp) const {
+void ImpedanceController::ClampIntegratorTorque(VectorXd& tau) const {
+  VectorXd thresholds = integral_limits_;
   for (int i = 0; i < tau.size(); i++) {
     int sign = 1;
     if (tau(i) < 0) sign = -1;
-    if (abs(tau(i)) > clamp(i)) {
-      tau(i) = sign * clamp(i);
+    if (abs(tau(i)) > thresholds(i)) {
+      tau(i) = sign * thresholds(i);
     }
   }
 }
 
-bool ImpedanceController::SaturatedClamp(const VectorXd& tau,
-                                         const VectorXd& clamp) const {
+bool ImpedanceController::SaturatedClamp(const VectorXd& tau) const {
+  VectorXd thresholds = integral_limits_;
   for (int i = 0; i < tau.size(); i++) {
-    if (abs(tau(i)) > clamp(i)) {
+    if (abs(tau(i)) > thresholds(i)) {
       return true;
     }
   }

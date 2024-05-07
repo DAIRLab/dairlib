@@ -38,12 +38,6 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   Mcons2 << MM1, MM2, MM3;
 
   GRBModel model = GRBModel(env_);
-  //  model.set(GRB_IntParam_LogToConsole, 1);
-  //  model.set(GRB_StringParam_LogFile, "grb_debug");
-  //  model.set("Cutoff", "0.001");
-  //  model.set("FeasibilityTol", "0.00001");
-  //  model.set("FeasibilityTol", "0.01");
-  //  model.set("IterationLimit", "40");
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];
@@ -73,7 +67,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
-  int M = 100000;  // big M variable
+  int M = 1000;  // big M variable
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
 

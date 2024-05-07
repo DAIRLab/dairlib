@@ -171,8 +171,8 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const drake::geometry::Cylinder cylinder_for_ee_ =
       drake::geometry::Cylinder(0.0025, 0.05);
   const std::string c3_state_path_ = "c3_state";
-  const std::string c3_target_tray_path_ = "c3_state/c3_target_tray";
-  const std::string c3_actual_tray_path_ = "c3_state/c3_actual_tray";
+  const std::string c3_target_object_path_ = "c3_state/c3_target_object";
+  const std::string c3_actual_object_path_ = "c3_state/c3_actual_object";
   const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";
   const std::string c3_actual_ee_path_ = "c3_state/c3_actual_ee";
 };

@@ -19,3 +19,14 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "meshcat_dynamic_camera",
+    srcs = ["meshcat_dynamic_camera.cc"],
+    hdrs = ["meshcat_dynamic_camera.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

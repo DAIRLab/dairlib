@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "drake/geometry/scene_graph.h"
 #include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
@@ -45,18 +45,19 @@ class MultiposeVisualizer {
   /// @param alpha_scale Vector, of same length as num_poses. Provideas variable
   /// scaling of the transparency alpha field of all bodies, indexed by pose
   /// @param weld_frame_to_world Welds the frame of the given name to the world
-  /// @param meshcat Pointer to meshcat visualizer for option to attach to an existing meshcat instance
-  MultiposeVisualizer(std::string model_file, int num_poses,
-                      const Eigen::VectorXd& alpha_scale,
-                      std::string weld_frame_to_world = "",
-                      std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr);
+  /// @param meshcat Pointer to meshcat visualizer for option to attach to an
+  /// existing meshcat instance
+  MultiposeVisualizer(
+      std::string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
+      std::string weld_frame_to_world = "",
+      std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr);
 
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be
   /// ignored.
   void DrawPoses(Eigen::MatrixXd poses);
 
-  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat(){
+  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat() {
     return meshcat_;
   }
 

@@ -10,7 +10,6 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/c3.h"
-
 #include "solvers/c3_options.h"
 #include "solvers/c3_output.h"
 #include "solvers/lcs.h"
@@ -24,9 +23,8 @@ namespace systems {
 
 class C3Controller : public drake::systems::LeafSystem<double> {
  public:
-  explicit C3Controller(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      C3Options c3_options);
+  explicit C3Controller(const drake::multibody::MultibodyPlant<double>& plant,
+                        C3Options c3_options);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);

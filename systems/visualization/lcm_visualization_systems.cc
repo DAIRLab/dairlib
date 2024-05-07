@@ -360,17 +360,17 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
 
   // TODO(yangwill): Clean up all this visualization, move to separate
   // visualization directory1
-  meshcat_->SetObject(c3_target_tray_path_ + "/x-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_target_object_path_ + "/x-axis", cylinder_for_tray_,
                       {1, 0, 0, 1});
-  meshcat_->SetObject(c3_target_tray_path_ + "/y-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_target_object_path_ + "/y-axis", cylinder_for_tray_,
                       {0, 1, 0, 1});
-  meshcat_->SetObject(c3_target_tray_path_ + "/z-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_target_object_path_ + "/z-axis", cylinder_for_tray_,
                       {0, 0, 1, 1});
-  meshcat_->SetObject(c3_actual_tray_path_ + "/x-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_actual_object_path_ + "/x-axis", cylinder_for_tray_,
                       {1, 0, 0, 1});
-  meshcat_->SetObject(c3_actual_tray_path_ + "/y-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_actual_object_path_ + "/y-axis", cylinder_for_tray_,
                       {0, 1, 0, 1});
-  meshcat_->SetObject(c3_actual_tray_path_ + "/z-axis", cylinder_for_tray_,
+  meshcat_->SetObject(c3_actual_object_path_ + "/z-axis", cylinder_for_tray_,
                       {0, 0, 1, 1});
   if (draw_ee_){
     meshcat_->SetObject(c3_target_ee_path_ + "/x-axis", cylinder_for_ee_,
@@ -404,12 +404,12 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   auto z_axis_transform_ee =
       RigidTransformd(Eigen::AngleAxis(0.5 * M_PI, Vector3d::UnitZ()),
                       0.5 * Vector3d{0.0, 0.0, 0.05});
-  meshcat_->SetTransform(c3_target_tray_path_ + "/x-axis", x_axis_transform);
-  meshcat_->SetTransform(c3_target_tray_path_ + "/y-axis", y_axis_transform);
-  meshcat_->SetTransform(c3_target_tray_path_ + "/z-axis", z_axis_transform);
-  meshcat_->SetTransform(c3_actual_tray_path_ + "/x-axis", x_axis_transform);
-  meshcat_->SetTransform(c3_actual_tray_path_ + "/y-axis", y_axis_transform);
-  meshcat_->SetTransform(c3_actual_tray_path_ + "/z-axis", z_axis_transform);
+  meshcat_->SetTransform(c3_target_object_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_target_object_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_target_object_path_ + "/z-axis", z_axis_transform);
+  meshcat_->SetTransform(c3_actual_object_path_ + "/x-axis", x_axis_transform);
+  meshcat_->SetTransform(c3_actual_object_path_ + "/y-axis", y_axis_transform);
+  meshcat_->SetTransform(c3_actual_object_path_ + "/z-axis", z_axis_transform);
   if (draw_ee_){
     meshcat_->SetTransform(c3_target_ee_path_ + "/x-axis", x_axis_transform_ee);
     meshcat_->SetTransform(c3_target_ee_path_ + "/y-axis", y_axis_transform_ee);
@@ -448,14 +448,14 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
       context, c3_state_actual_input_port_);
   if (draw_tray_) {
     meshcat_->SetTransform(
-        c3_target_tray_path_,
+        c3_target_object_path_,
         RigidTransformd(
             Eigen::Quaterniond(c3_target->state[3], c3_target->state[4],
                                c3_target->state[5], c3_target->state[6]),
             Vector3d{c3_target->state[7], c3_target->state[8],
                      c3_target->state[9]}));
     meshcat_->SetTransform(
-        c3_actual_tray_path_,
+        c3_actual_object_path_,
         RigidTransformd(
             Eigen::Quaterniond(c3_actual->state[3], c3_actual->state[4],
                                c3_actual->state[5], c3_actual->state[6]),

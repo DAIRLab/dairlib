@@ -139,7 +139,6 @@ class ElevationMappingSystem : public drake::systems::LeafSystem<double> {
     return get_input_port(input_port_pose_covariance_);
   }
   const drake::systems::InputPort<double>& get_input_port_contact() const {
-    DRAKE_DEMAND(not contacts_.empty());
     return get_input_port(input_port_contact_);
   }
   const drake::systems::OutputPort<double>& get_output_port_map() const {

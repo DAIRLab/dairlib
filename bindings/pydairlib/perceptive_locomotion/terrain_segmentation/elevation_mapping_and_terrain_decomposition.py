@@ -1,4 +1,6 @@
 import signal
+import sys
+
 from dairlib import lcmt_robot_output, lcmt_foothold_set, lcmt_grid_map, \
     lcmt_contact
 
@@ -40,8 +42,15 @@ import numpy as np
 
 points_topic = "/camera/depth/color/points"
 cassie_state_channel = "NETWORK_CASSIE_STATE_DISPATCHER"
+
 elevation_mapping_params = (
-    "bindings/pydairlib/perceptive_locomotion/params/elevation_mapping_params"
+    "bindings/pydairlib/perceptive_locomotion/params"
+    "/elevation_mapping_params.yaml"
+)
+
+elevation_mapping_params_sim = (
+    "bindings/pydairlib/perceptive_locomotion/params"
+    "/elevation_mapping_params_sim"
     ".yaml"
 )
 
@@ -55,8 +64,12 @@ def main():
     signal.signal(signal.SIGINT, stop)
     builder = DiagramBuilder()
 
+    params_to_use = elevation_mapping_params_sim \
+        if len(sys.argv) > 1 and sys.argv[1] == 'sim' else \
+        elevation_mapping_params
+
     elevation_mapping = CassieElevationMappingRosDiagram(
-        elevation_mapping_params,
+        params_to_use,
         points_topic
     )
     plant = elevation_mapping.plant()

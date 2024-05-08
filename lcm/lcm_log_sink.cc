@@ -87,8 +87,8 @@ void LcmLogSink::Publish(const std::string& channel, const void* data,
   if (!overwrite_publish_time_with_system_clock_) {
     timestamp = second_to_timestamp(time_sec.value_or(0.0));
   } else {
-    timestamp = std::chrono::steady_clock::now().time_since_epoch() /
-        std::chrono::microseconds(1);
+    timestamp = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
   }
   impl_->Append(channel, data, data_size, timestamp);
 }

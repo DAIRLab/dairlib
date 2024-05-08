@@ -36,7 +36,7 @@ namespace lcm {
   ~LcmLogSink() override;
 
   /**
-   * Writes an entry occurred at @p timestamp with content @p data to the
+   * Writes an entry that occurred at @p timestamp with content @p data to the
    * internal event log buffer.
    * @param channel Channel name.
    * @param data Pointer to raw bytes.

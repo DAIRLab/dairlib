@@ -143,13 +143,13 @@ int do_main(int argc, char* argv[]) {
 
   std::string urdf;
   if (FLAGS_spring_model) {
-    urdf = "examples/Cassie/urdf/cassie_v2.urdf";
+    urdf = "examples/Cassie/urdf/cassie_v2_self_collision.urdf";
   } else {
     urdf = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   }
 
   plant.set_discrete_contact_approximation(
-      drake::multibody::DiscreteContactApproximation::kSap);
+      drake::multibody::DiscreteContactApproximation::kSimilar);
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
   plant.set_name("plant");

@@ -272,7 +272,7 @@ void Alips2sMPFCSystem::CopyMpcOutput(
       double height = grid_map.atPosition(
           "interpolated",
           next_footstep_in_world.head<2>(),
-          grid_map::InterpolationMethods::INTER_LINEAR);
+          grid_map::InterpolationMethods::INTER_NEAREST);
       height -= mpc_sol.pp.front().z();
       mpc_output->next_footstep_in_stance_frame[2] = height;
     }

@@ -41,6 +41,7 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   GRBVar delta_k[n_ + m_ + k_];
   GRBVar binary[m_];
+  GRBVar reduced_friction_cone_binary[m_ / 2];
 
   for (int i = 0; i < m_; i++) {
     binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
@@ -72,28 +73,57 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   double coeff2[n_ + m_ + k_];
 
   for (int i = 0; i < m_; i++) {
-    GRBLinExpr cexpr = 0;
+    GRBLinExpr lambda_expr = 0;
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
       coeff[j] = Mcons2(i, j);
     }
 
-    cexpr.addTerms(coeff, delta_k, n_ + m_ + k_);
-    model.addConstr(cexpr >= 0);
-    model.addConstr(cexpr <= M * (1 - binary[i]));
+    lambda_expr.addTerms(coeff, delta_k, n_ + m_ + k_);
+    model.addConstr(lambda_expr >= 0);
+    model.addConstr(lambda_expr <= M * (1 - binary[i]));
 
-    GRBLinExpr cexpr2 = 0;
+    GRBLinExpr activation_expr = 0;
 
     /// convert VectorXd to double
     for (int j = 0; j < n_ + m_ + k_; j++) {
       coeff2[j] = Mcons1(i, j);
     }
 
-    cexpr2.addTerms(coeff2, delta_k, n_ + m_ + k_);
-    model.addConstr(cexpr2 + c(i) >= 0);
-    model.addConstr(cexpr2 + c(i) <= M * binary[i]);
+    activation_expr.addTerms(coeff2, delta_k, n_ + m_ + k_);
+    model.addConstr(activation_expr + c(i) >= 0);
+    model.addConstr(activation_expr + c(i) <= M * binary[i]);
   }
+
+  DRAKE_DEMAND(m_ % 2 == 0); // only works for Anitescu Model
+  double subtraction_coeffs[n_ + m_ + k_];
+  double addition_coeffs[n_ + m_ + k_];
+  MatrixXd addition_of_aligned_forces = MatrixXd::Zero(m_ / 2, n_ + m_ + k_);
+  MatrixXd subtraction_of_aligned_forces = MatrixXd::Zero(m_ / 2, n_ + m_ + k_);
+  for (int i = 0; i < m_ / 2; ++i){
+    addition_of_aligned_forces(i, n_ + 2 * i + 0) = 1;
+    addition_of_aligned_forces(i, n_ + 2 * i + 1) = 1;
+    subtraction_of_aligned_forces(i, n_ + 2 * i + 0) = 1;
+    subtraction_of_aligned_forces(i, n_ + 2 * i + 1) = -1;
+  }
+
+  for (int i = 0; i < m_ / 2; ++i){
+    GRBLinExpr subtraction_constraint_expr = 0;
+    GRBLinExpr addition_constraint_expr = 0;
+
+    /// convert VectorXd to double
+    for (int j = 0; j < n_ + m_ + k_; j++) {
+      addition_coeffs[j] = addition_of_aligned_forces(i, j);
+      subtraction_coeffs[j] = subtraction_of_aligned_forces(i, j);
+    }
+
+    subtraction_constraint_expr.addTerms(subtraction_coeffs, delta_k, n_ + m_ + k_);
+    addition_constraint_expr.addTerms(addition_coeffs, delta_k, n_ + m_ + k_);
+    model.addConstr(subtraction_constraint_expr <= 0.75 * (addition_constraint_expr) + M * (1 - binary[2 * i]));
+  }
+
+
 
   model.optimize();
 

@@ -99,6 +99,9 @@ LCS LCSFactory::LinearizePlantToLCS(
         contact_geoms[i]);  // deleted num_friction_directions (check with
     // Michael about changes in geomgeom)
     auto [phi_i, J_i] = collider.EvalPolytope(context, num_friction_directions);
+    // J_i is 3 x n_v
+    // row (0) is contact normal
+    // rows (1-num_friction directions) are the contact tangents
 
     phi(i) = phi_i;
     J_n.row(i) = J_i.row(0);

@@ -3,10 +3,306 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "cgal",
-    srcs = [],
-    hdrs = [],
-    strip_include_prefix = ,
+    name = "Kernel_23",
+    hdrs = glob(["Kernel_23/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Kernel_23/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Number_types",
+        ":Cartesian_kernel",
+        ":Algebraic_foundations",
+        ":Distance_2",
+        ":Distance_3",
+        ":Intersections_2",
+        ":Intersections_3",
+        ":Filtered_kernel",
+        ":Homogeneous_kernel"
+    ],
+)
+
+cc_library(
+    name = "Shape_detection",
+    hdrs = glob(["Shape_detection/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Shape_detection/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Kernel_23",
+        ":Random_numbers",
+        ":Spatial_searching",
+        ":Orthtree",
+        ":Principal_component_analysis_LGPL"
+    ],
+)
+
+cc_library(
+    name = "Point_set_processing_3",
+    hdrs = glob(["Point_set_processing_3/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Point_set_processing_3/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Kernel_23",
+        ":Property_map"
+    ],
+)
+
+cc_library(
+    name = "Polyline_simplification_2",
+    hdrs = glob(["Polyline_simplification_2/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Polyline_simplification_2/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Kernel_23",
+        ":Polygon",
+        ":Triangulation_2"
+    ],
+)
+
+cc_library(
+    name = "Property_map",
+    hdrs = glob(["Property_map/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Property_map/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Cartesian_kernel",
+    hdrs = glob(["Cartesian_kernel/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Cartesian_kernel/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Number_types",
+        ":CGAL_install",
+        ":Algebraic_foundations"
+    ],
+)
+
+cc_library(
+    name = "Filtered_kernel",
+    hdrs = glob(["Filtered_kernel/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Filtered_kernel/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Homogeneous_kernel",
+    hdrs = glob(["Homogeneous_kernel/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Homogeneous_kernel/include",
+    visibility = ["//visibility:public"],
+    deps = [":Kernel_d"],
+)
+
+cc_library(
+    name = "Arithmetic_kernel",
+    hdrs = glob(["Arithmetic_kernel/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Arithmetic_kernel/include",
+    visibility = ["//visibility:public"],
+    deps = [":Kernel_d"],
+)
+
+cc_library(
+    name = "Kernel_d",
+    hdrs = glob(["Kernel_d/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Kernel_d/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+
+cc_library(
+    name = "CGAL_install",
+    hdrs = glob(["Installation/include/CGAL/**/*.h", "Installation/include/CGAL/**/*.hpp"]),
+    strip_include_prefix = "Installation/include",
+    visibility = ["//visibility:public"],
+    deps = [':STL_Extension'],
+)
+
+cc_library(
+    name = "STL_Extension",
+    hdrs = glob(["STL_Extension/include/CGAL/**/*.h", "STL_Extension/include/CGAL/**/*.hpp"]),
+    strip_include_prefix = "STL_Extension/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Profiling_tools",
+        ":Stream_support",
+        ":Circulator"
+    ],
+)
+
+cc_library(
+    name = "Circulator",
+    hdrs = glob(["Circulator/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Circulator/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Orthtree",
+    hdrs = glob(["Orthtree/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Orthtree/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Profiling_tools",
+    hdrs = glob(["Profiling_tools/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Profiling_tools/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Stream_support",
+    hdrs = glob(["Stream_support/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Stream_support/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Number_types",
+    hdrs = glob(["Number_types/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Number_types/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":Interval_support",
+        ":Modular_arithmetic",
+        ":Arithmetic_kernel"
+    ],
+)
+
+cc_library(
+    name = "Algebraic_foundations",
+    hdrs = glob(["Algebraic_foundations/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Algebraic_foundations/include",
+    visibility = ["//visibility:public"],
+    deps = [":CGAL_install"],
+)
+
+cc_library(
+    name = "Interval_support",
+    hdrs = glob(["Interval_support/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Interval_support/include",
+    visibility = ["//visibility:public"],
+    deps = [":CGAL_install"],
+)
+
+cc_library(
+    name = "Modular_arithmetic",
+    hdrs = glob(["Modular_arithmetic/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Modular_arithmetic/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Distance_2",
+    hdrs = glob(["Distance_2/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Distance_2/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Polygon",
+    hdrs = glob(["Polygon/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Polygon/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Random_numbers",
+    hdrs = glob(["Random_numbers/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Random_numbers/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Spatial_searching",
+    hdrs = glob(["Spatial_searching/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Spatial_searching/include",
+    visibility = ["//visibility:public"],
+    deps = [":Orthtree"],
+)
+
+cc_library(
+    name = "Spatial_sorting",
+    hdrs = glob(["Spatial_sorting/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Spatial_sorting/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Distance_3",
+    hdrs = glob(["Distance_3/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Distance_3/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Intersections_2",
+    hdrs = glob(["Intersections_2/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Intersections_2/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Intersections_3",
+    hdrs = glob(["Intersections_3/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Intersections_3/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Triangulation_2",
+    hdrs = glob(["Triangulation_2/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Triangulation_2/include",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":TDS_2",
+        ":Hash_map",
+        ":BGL",
+        ":Spatial_sorting"
+    ],
+)
+
+cc_library(
+    name = "TDS_2",
+    hdrs = glob(["TDS_2/include/CGAL/**/*.h"]),
+    strip_include_prefix = "TDS_2/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "BGL",
+    hdrs = glob(["BGL/include/CGAL/**/*.h"]),
+    strip_include_prefix = "BGL/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Hash_map",
+    hdrs = glob(["Hash_map/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Hash_map/include",
+    visibility = ["//visibility:public"],
+    deps = [],
+)
+
+cc_library(
+    name = "Principal_component_analysis_LGPL",
+    hdrs = glob(["Principal_component_analysis_LGPL/include/CGAL/**/*.h"]),
+    strip_include_prefix = "Principal_component_analysis_LGPL/include",
     visibility = ["//visibility:public"],
     deps = [],
 )

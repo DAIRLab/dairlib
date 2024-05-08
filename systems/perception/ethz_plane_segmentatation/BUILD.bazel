@@ -1,1 +1,32 @@
 package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "ethz_plane_segmentation",
+    srcs = [
+        "src/ransac/RansacPlaneExtractor.cpp",
+        "src/sliding_window_plane_extraction/SlidingWindowPlaneExtractor.cpp",
+        "src/GridMapPreprocessing.cpp",
+        "src/PlanarRegion.cpp",
+    ],
+    hdrs = [
+        "include/convex_plane_decomposition/ransac/RansacPlaneExtractorParameters.h",
+        "include/convex_plane_decomposition/ransac/RansacPlaneExtractor.hpp",
+        "include/convex_plane_decomposition/GridMapPreprocessing.h",
+        "include/convex_plane_decomposition/SegmentedPlanesMap.h",
+        "include/convex_plane_decomposition/PlanarRegion.h",
+        "include/convex_plane_decomposition/PolygonTypes.h",
+        "include/convex_plane_decomposition/sliding_window_plane_extraction/SlidingWindowPlaneExtractor.h",
+        "include/convex_plane_decomposition/sliding_window_plane_extraction/SlidingWindowPlaneExtractorParameters.h"
+    ],
+    strip_include_prefix = "include",
+    deps = [
+        "//systems/perception/grid_map_filters:grid_map_filters_rsl",
+        "@cgal//:Kernel_23",
+        "@cgal//:Point_set_processing_3",
+        "@cgal//:Shape_detection",
+        "@cgal//:Polygon",
+        "@cgal//:Polyline_simplification_2",
+        "@grid_map//grid_map_core",
+        "@opencv"
+    ],
+)

@@ -13,7 +13,7 @@ def cgal_repository(
         When updating this commit, see drake/tools/workspace/qdldl/README.md.
         """,
         commit = "v5.6.1",
-        sha256 = "0" * 64,  # noqa
+        sha256 = "46f3054a8afd1cf49969f4fd7324ba2c8f552b1aef6ecea72e862cbeb3b4a8eb",  # noqa
         build_file = "//tools/workspace/cgal:package.BUILD.bazel",
         mirrors = mirrors,
     )

@@ -29,7 +29,7 @@ from pydairlib.perceptive_locomotion.terrain_segmentation. \
     ConvexTerrainDecompositionSystem
 
 from pydairlib.geometry.convex_polygon import ConvexPolygonSender
-from pydairlib.systems.perception import GridMapSender
+from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem
 
 
 from argparse import ArgumentParser

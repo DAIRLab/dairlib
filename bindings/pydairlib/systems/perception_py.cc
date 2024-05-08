@@ -6,6 +6,7 @@
 #include "systems/perception/camera_utils.h"
 #include "systems/perception/grid_map_visualizer.h"
 #include "systems/perception/grid_map_lcm_systems.h"
+#include "systems/perception/ethz_plane_segmentatation/plane_segmentation_system.h"
 
 namespace py = pybind11;
 using py_rvp = py::return_value_policy;
@@ -16,6 +17,7 @@ namespace dairlib::pydairlib {
 using perception::GridMapVisualizer;
 using perception::GridMapSender;
 using perception::GridMapReceiver;
+using perception::PlaneSegmentationSystem;
 
 PYBIND11_MODULE(perception, m) {
   m.doc() = "Binding camera utilities";
@@ -25,6 +27,10 @@ PYBIND11_MODULE(perception, m) {
       .def(py::init<std::shared_ptr<drake::geometry::Meshcat>, double,
           const std::vector<std::string>&>(),
           py::arg("meshcat"), py::arg("update_rate"), py::arg("layers"));
+
+  py::class_<PlaneSegmentationSystem, drake::systems::LeafSystem<double>>(
+      m, "PlaneSegmentationSystem")
+      .def(py::init<>());
 
   py::class_<GridMapSender, drake::systems::LeafSystem<double>>(
       m, "GridMapSender")

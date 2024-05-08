@@ -1,6 +1,16 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "plane_segmentation_system",
+    srcs = ["plane_segmentation_system.cc"],
+    hdrs = ["plane_segmentation_system.h"],
+    deps = [
+        ":ethz_plane_segmentation",
+        "@drake//:drake_shared_library"
+    ],
+)
+
+cc_library(
     name = "ethz_plane_segmentation",
     srcs = [
         "src/ransac/RansacPlaneExtractor.cpp",

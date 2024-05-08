@@ -1,0 +1,12 @@
+# -*- python -*-
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "cgal",
+    srcs = [],
+    hdrs = [],
+    strip_include_prefix = ,
+    visibility = ["//visibility:public"],
+    deps = [],
+)

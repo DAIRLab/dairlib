@@ -67,6 +67,10 @@ load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
 
 osqp_repository(name = "osqp")
 
+load("@dairlib//tools/workspace/cgal:repository.bzl", "cgal_repository")
+
+cgal_repository(name = "cgal")
+
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
 
 signal_scope_repository(name = "signal_scope")

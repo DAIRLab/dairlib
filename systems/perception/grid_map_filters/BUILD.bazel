@@ -10,10 +10,21 @@ cc_library(
 )
 
 cc_library(
-    name = "opencv_filters",
-    srcs = ["opencv_filters.cc"],
-    hdrs = ["opencv_filters.h"],
+    name = "grid_map_cv_converter",
+    hdrs = ["grid_map_cv_converter.h"],
     deps = [
+        "@grid_map//grid_map_core",
+        "@opencv",
+    ],
+)
+
+cc_library(
+    name = "grid_map_filters_rsl",
+    srcs = glob(["grid_map_filters_rsl/src/*.cpp"]),
+    hdrs = glob(["grid_map_filters_rsl/include/grid_map_filters_rsl/*.hpp"]),
+    strip_include_prefix = "grid_map_filters_rsl/include",
+    deps = [
+        ":grid_map_cv_converter",
         "@grid_map//grid_map_core",
         "@opencv",
     ],

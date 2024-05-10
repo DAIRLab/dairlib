@@ -115,7 +115,15 @@ cc_library(
     hdrs = glob(["Installation/include/CGAL/**/*.h", "Installation/include/CGAL/**/*.hpp"]),
     strip_include_prefix = "Installation/include",
     visibility = ["//visibility:public"],
-    deps = [':STL_Extension'],
+    deps = [
+        ":STL_Extension",
+        "@boost//:config",
+        "@boost//:predef",
+        "@boost//:mpl",
+        "@boost//:iterator",
+        "@boost//:operators",
+        "@boost//:variant"
+    ],
 )
 
 cc_library(
@@ -126,7 +134,16 @@ cc_library(
     deps = [
         ":Profiling_tools",
         ":Stream_support",
-        ":Circulator"
+        ":Circulator",
+        "@boost//:config",
+        "@boost//:predef",
+        "@boost//:mpl",
+        "@boost//:iterator",
+        "@boost//:operators",
+        "@boost//:variant",
+        "@boost//:any",
+        "@boost//:random",
+        "@boost//:heap"
     ],
 )
 
@@ -170,7 +187,8 @@ cc_library(
     deps = [
         ":Interval_support",
         ":Modular_arithmetic",
-        ":Arithmetic_kernel"
+        ":Arithmetic_kernel",
+        "@boost//:multiprecision"
     ],
 )
 
@@ -243,7 +261,7 @@ cc_library(
     hdrs = glob(["Distance_3/include/CGAL/**/*.h"]),
     strip_include_prefix = "Distance_3/include",
     visibility = ["//visibility:public"],
-    deps = [],
+    deps = ["@boost//:algorithm"],
 )
 
 cc_library(
@@ -280,7 +298,9 @@ cc_library(
     hdrs = glob(["TDS_2/include/CGAL/**/*.h"]),
     strip_include_prefix = "TDS_2/include",
     visibility = ["//visibility:public"],
-    deps = [],
+    deps = [
+        "@boost//:graph"
+    ],
 )
 
 cc_library(

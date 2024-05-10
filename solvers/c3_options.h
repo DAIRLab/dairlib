@@ -15,6 +15,7 @@ struct C3Options {
   bool warm_start;
   bool use_predicted_x0;
   bool end_on_qp_step;
+  bool use_robust_formulation;
   double solve_time_filter_alpha;
   double publish_frequency;
 
@@ -78,6 +79,7 @@ struct C3Options {
     a->Visit(DRAKE_NVP(warm_start));
     a->Visit(DRAKE_NVP(use_predicted_x0));
     a->Visit(DRAKE_NVP(end_on_qp_step));
+    a->Visit(DRAKE_NVP(use_robust_formulation));
     a->Visit(DRAKE_NVP(solve_time_filter_alpha));
     a->Visit(DRAKE_NVP(publish_frequency));
 

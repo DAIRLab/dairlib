@@ -39,28 +39,21 @@ C3::CostMatrices::CostMatrices(const std::vector<Eigen::MatrixXd>& Q,
   this->U = U;
 }
 
-C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
+C3::C3(const LCS& lcs, const C3::CostMatrices& costs,
        const vector<VectorXd>& x_desired, const C3Options& options)
     : warm_start_(options.warm_start),
-      N_((LCS.A_).size()),
-      n_((LCS.A_)[0].cols()),
-      m_((LCS.D_)[0].cols()),
-      k_((LCS.B_)[0].cols()),
-      A_(LCS.A_),
-      B_(LCS.B_),
-      D_(LCS.D_),
-      d_(LCS.d_),
-      E_(LCS.E_),
-      F_(LCS.F_),
-      H_(LCS.H_),
-      c_(LCS.c_),
+      lcs_(lcs),
+      N_((lcs.A_).size()),
+      n_((lcs.A_)[0].cols()),
+      m_((lcs.D_)[0].cols()),
+      k_((lcs.B_)[0].cols()),
       Q_(costs.Q),
       R_(costs.R),
       U_(costs.U),
       G_(costs.G),
       x_desired_(x_desired),
       options_(options),
-      h_is_zero_(H_[0].isZero(0)),
+      h_is_zero_(lcs.H_[0].isZero(0)),
       prog_(MathematicalProgram()),
       osqp_(OsqpSolver()) {
   if (warm_start_) {
@@ -93,15 +86,15 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
     }
   }
 
-  auto Dn = D_.at(0).norm();
-  auto An = A_.at(0).norm();
+  auto Dn = lcs.D_.at(0).norm();
+  auto An = lcs.A_.at(0).norm();
   AnDn_ = An / Dn;
 
   for (int i = 0 ; i < N_; ++i){
-    D_.at(i) *= AnDn_;
-    E_.at(i) /= AnDn_;
-    c_.at(i) /= AnDn_;
-    H_.at(i) /= AnDn_;
+    lcs_.D_.at(i) *= AnDn_;
+    lcs_.E_.at(i) /= AnDn_;
+    lcs_.c_.at(i) /= AnDn_;
+    lcs_.H_.at(i) /= AnDn_;
   }
 
   x_ = vector<drake::solvers::VectorXDecisionVariable>();
@@ -137,14 +130,14 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
   dynamics_constraints_.resize(N_);
   target_cost_.resize(N_ + 1);
   for (int i = 0; i < N_; i++) {
-    LinEq.block(0, 0, n_, n_) = A_.at(i);
-    LinEq.block(0, n_, n_, m_) = D_.at(i);
-    LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
+    LinEq.block(0, 0, n_, n_) = lcs.A_.at(i);
+    LinEq.block(0, n_, n_, m_) = lcs.D_.at(i);
+    LinEq.block(0, n_ + m_, n_, k_) = lcs.B_.at(i);
 
     dynamics_constraints_[i] =
         prog_
             .AddLinearEqualityConstraint(
-                LinEq, -d_.at(i),
+                LinEq, -lcs.d_.at(i),
                 {x_.at(i), lambda_.at(i), u_.at(i), x_.at(i + 1)})
             .evaluator()
             .get();
@@ -167,35 +160,26 @@ C3::C3(const LCS& LCS, const C3::CostMatrices& costs,
 
 void C3::UpdateLCS(const LCS& lcs) {
   // first 4 lines are unnecessary
-  A_ = lcs.A_;
-  B_ = lcs.B_;
-  D_ = lcs.D_;
-  d_ = lcs.d_;
-  E_ = lcs.E_;
-  F_ = lcs.F_;
-  H_ = lcs.H_;
-  c_ = lcs.c_;
-  dt_ = lcs.dt_;
-  h_is_zero_ = H_[0].isZero(0);
+  lcs_ = lcs;
+  h_is_zero_ = lcs_.H_[0].isZero(0);
 
   MatrixXd LinEq = MatrixXd::Zero(n_, 2 * n_ + m_ + k_);
   LinEq.block(0, n_ + k_ + m_, n_, n_) = -1 * MatrixXd::Identity(n_, n_);
-
-  auto Dn = D_[0].norm();
-  auto An = A_[0].norm();
+  auto Dn = lcs_.D_[0].norm();
+  auto An = lcs_.A_[0].norm();
   AnDn_ = An / Dn;
 
   for (int i = 0 ; i < N_; ++i){
-    D_.at(i) *= AnDn_;
-    E_.at(i) /= AnDn_;
-    c_.at(i) /= AnDn_;
-    H_.at(i) /= AnDn_;
+    lcs_.D_.at(i) *= AnDn_;
+    lcs_.E_.at(i) /= AnDn_;
+    lcs_.c_.at(i) /= AnDn_;
+    lcs_.H_.at(i) /= AnDn_;
   }
 
   for (int i = 0; i < N_; i++) {
-    LinEq.block(0, 0, n_, n_) = A_.at(i);
-    LinEq.block(0, n_, n_, m_) = D_.at(i);
-    LinEq.block(0, n_ + m_, n_, k_) = B_.at(i);
+    LinEq.block(0, 0, n_, n_) = lcs_.A_.at(i);
+    LinEq.block(0, n_, n_, m_) = lcs_.D_.at(i);
+    LinEq.block(0, n_ + m_, n_, k_) = lcs_.B_.at(i);
 
     dynamics_constraints_[i]->UpdateCoefficients(LinEq, -lcs.d_.at(i));
   }
@@ -242,8 +226,8 @@ void C3::Solve(const VectorXd& x0) {
     z_sol_->at(0).segment(0, n_) = x0;
     for (int i = 1; i < N_; ++i) {
       z_sol_->at(i).segment(0, n_) =
-          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
-              D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+          lcs_.A_.at(i - 1) * x_sol_->at(i - 1) + lcs_.B_.at(i - 1) * u_sol_->at(i - 1) +
+              lcs_.D_.at(i - 1) * lambda_sol_->at(i - 1) + lcs_.d_.at(i - 1);
     }
   }
   *w_sol_ = w;
@@ -300,10 +284,10 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   constraints_.clear();
   constraints_.push_back(prog_.AddLinearConstraint(x_[0] == x0));
 
-  if (h_is_zero_ == 1) {
+  if (h_is_zero_ == 1) { // No dependence on u, so just simulate passive system
     drake::solvers::MobyLCPSolver<double> LCPSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemke(F_[0], E_[0] * x0 + c_[0], &lambda0);
+    LCPSolver.SolveLcpLemke(lcs_.F_[0], lcs_.E_[0] * x0 + lcs_.c_[0], &lambda0);
     constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
   }
 
@@ -415,17 +399,34 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
-    if (warm_start_) {
-      if (i == N_ - 1) {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                             c_[i], admm_iteration, -1);
+    if (options_.use_robust_formulation){
+      DRAKE_DEMAND(lcs_.has_tangent_linearization_);
+      if (warm_start_) {
+        if (i == N_ - 1) {
+          deltaProj[i] = SolveRobustSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                               lcs_.c_[i], lcs_.W_x_,lcs_.W_l_,lcs_.W_u_, lcs_.w_, admm_iteration, -1);
+        } else {
+          deltaProj[i] = SolveRobustSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                               lcs_.c_[i], lcs_.W_x_,lcs_.W_l_,lcs_.W_u_, lcs_.w_,  admm_iteration, i + 1);
+        }
       } else {
-        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                             c_[i], admm_iteration, i + 1);
+        deltaProj[i] = SolveRobustSingleProjection(
+            G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i], lcs_.c_[i],
+            lcs_.W_x_, lcs_.W_l_, lcs_.W_u_, lcs_.w_, admm_iteration, -1);
       }
-    } else {
-      deltaProj[i] = SolveSingleProjection(G[i], WZ[i], E_[i], F_[i], H_[i],
-                                           c_[i], admm_iteration, -1);
+    }else{
+      if (warm_start_) {
+        if (i == N_ - 1) {
+          deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                               lcs_.c_[i], admm_iteration, -1);
+        } else {
+          deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                               lcs_.c_[i], admm_iteration, i + 1);
+        }
+      } else {
+        deltaProj[i] = SolveSingleProjection(G[i], WZ[i], lcs_.E_[i], lcs_.F_[i], lcs_.H_[i],
+                                             lcs_.c_[i], admm_iteration, -1);
+      }
     }
   }
 

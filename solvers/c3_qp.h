@@ -38,6 +38,14 @@ class C3QP final : public C3 {
                                         const Eigen::VectorXd& c,
                                         const int admm_iteration,
                                         const int& warm_start_index = -1) override;
+  /// Robust projection method
+  Eigen::VectorXd SolveRobustSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
+      const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
+      const int admm_iteration, const int& warm_start_index = -1) override;
   std::vector<Eigen::VectorXd> GetWarmStartDelta() const;
   std::vector<Eigen::VectorXd> GetWarmStartBinary() const;
 

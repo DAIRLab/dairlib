@@ -87,6 +87,18 @@ class C3 {
       const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
       const int admm_iteration, const int& warm_start_index) = 0;
 
+  /// Solve a robust single projection step
+  /// @param E, F, H, c LCS parameters
+  /// @param U A pointer to the U variables
+  /// @param delta_c A pointer to the copy of (z + w) variables
+  virtual Eigen::VectorXd SolveRobustSingleProjection(
+      const Eigen::MatrixXd& U, const Eigen::VectorXd& delta_c,
+      const Eigen::MatrixXd& E, const Eigen::MatrixXd& F,
+      const Eigen::MatrixXd& H, const Eigen::VectorXd& c,
+      const Eigen::MatrixXd& W_x, const Eigen::MatrixXd& W_l,
+      const Eigen::MatrixXd& W_u, const Eigen::VectorXd& w,
+      const int admm_iteration, const int& warm_start_index) = 0;
+
   void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
     prog_.SetSolverOptions(options);
   }
@@ -115,14 +127,7 @@ class C3 {
   const int k_;
 
  private:
-  std::vector<Eigen::MatrixXd> A_;
-  std::vector<Eigen::MatrixXd> B_;
-  std::vector<Eigen::MatrixXd> D_;
-  std::vector<Eigen::VectorXd> d_;
-  std::vector<Eigen::MatrixXd> E_;
-  std::vector<Eigen::MatrixXd> F_;
-  std::vector<Eigen::MatrixXd> H_;
-  std::vector<Eigen::VectorXd> c_;
+  LCS lcs_;
   double AnDn_ = 1.0;
   const std::vector<Eigen::MatrixXd> Q_;
   const std::vector<Eigen::MatrixXd> R_;

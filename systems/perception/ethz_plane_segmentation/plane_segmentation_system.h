@@ -11,6 +11,7 @@ namespace perception {
 
 using convex_plane_decomposition::sliding_window_plane_extractor::SlidingWindowPlaneExtractor;
 using convex_plane_decomposition::GridMapPreprocessing;
+using convex_plane_decomposition::PlaneDecompositionParams;
 
 class PlaneSegmentationSystem : public drake::systems::LeafSystem<double> {
  public:
@@ -23,6 +24,8 @@ class PlaneSegmentationSystem : public drake::systems::LeafSystem<double> {
 
   std::unique_ptr<GridMapPreprocessing> preprocessor_ = nullptr;
   std::unique_ptr<SlidingWindowPlaneExtractor> plane_extractor_ = nullptr;
+
+  PlaneDecompositionParams params_;
 
 };
 

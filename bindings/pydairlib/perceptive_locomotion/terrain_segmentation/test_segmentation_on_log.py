@@ -4,7 +4,7 @@ from time import sleep
 
 import lcm
 import numpy as np
-from dairlib import lcmt_grid_map, lcmt_foothold_set
+from dairlib import lcmt_grid_map, lcmt_foothold_set, lcmt_robot_output
 
 from pydrake.systems.all import (
     Diagram,
@@ -35,8 +35,13 @@ from pydairlib.systems.perception import GridMapSender, PlaneSegmentationSystem
 from argparse import ArgumentParser
 
 
+state_channel = 'NETWORK_CASSIE_STATE_DISPATCHER'
+
+
 def process_grid_maps(data_dict):
     map_msgs = data_dict['CASSIE_ELEVATION_MAP']
+    robot_output_msgs = data_dict[state_channel]
+
     layers = map_msgs[0].layer_names
     grid_maps = [GridMap(layers) for _ in range(len(map_msgs))]
     for i, msg in enumerate(map_msgs):
@@ -55,14 +60,18 @@ def process_grid_maps(data_dict):
         for layer in msg.layers:
             data = np.array(layer.data).transpose()  # convert to column major
             grid_maps[i][layer.name][:] = data
-    return grid_maps
+    return grid_maps, robot_output_msgs
 
 
-def build_diagram(lcm: DrakeLcm) -> Diagram:
+def build_diagram(mode: str, lcm: DrakeLcm) -> Diagram:
 
     builder = DiagramBuilder()
 
-    terrain_segmentation = TerrainSegmentationSystem()
+    terrain_segmentation = PlaneSegmentationSystem(
+        'systems/perception/ethz_plane_segmentation/params.yaml'
+    ) \
+        if mode == 'planar' else TerrainSegmentationSystem()
+
     convex_decomposition = ConvexTerrainDecompositionSystem()
     foothold_sender = ConvexPolygonSender()
 
@@ -126,12 +135,15 @@ def main():
     args = parser.parse_args()
 
     lcm_interface = DrakeLcm()
-    diagram = build_diagram(lcm_interface)
+    diagram = build_diagram('curvature', lcm_interface)
 
     log = lcm.EventLog(args.logfile, "r")
-    grid_maps = get_log_data(
+    grid_maps, robot_output = get_log_data(
         lcm_log=log,
-        lcm_channels={'CASSIE_ELEVATION_MAP': lcmt_grid_map},
+        lcm_channels={
+            'CASSIE_ELEVATION_MAP': lcmt_grid_map,
+            state_channel: lcmt_robot_output
+        },
         start_time=3,
         duration=-1,
         data_processing_callback=process_grid_maps
@@ -139,8 +151,9 @@ def main():
 
     context = diagram.CreateDefaultContext()
 
+    states_per_gm = round(len(robot_output) / len(grid_maps))
+    s = 0
     for map in grid_maps:
-
         diagram.get_input_port().FixValue(context, map)
         start = time.time()
         diagram.CalcForcedUnrestrictedUpdate(
@@ -150,7 +163,13 @@ def main():
         diagram.ForcedPublish(context)
         end = time.time()
         print(end - start)
-        sleep(0.03)
+        for i in range(states_per_gm):
+            lcm_interface.Publish(
+                state_channel,
+                robot_output[s].encode()
+            )
+            s += 1
+        sleep(0.1)
 
 
 if __name__ == '__main__':

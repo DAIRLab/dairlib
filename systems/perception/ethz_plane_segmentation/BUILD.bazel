@@ -32,6 +32,7 @@ cc_library(
     strip_include_prefix = "include",
     deps = [
         "//common:find_resource",
+        "//systems/perception/grid_map_filters:inpainting",
         "//systems/perception/grid_map_filters:grid_map_filters_rsl",
         "@cgal//:Kernel_23",
         "@cgal//:Point_set_processing_3",

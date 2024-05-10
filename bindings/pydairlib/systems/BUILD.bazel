@@ -17,7 +17,7 @@ pybind_py_library(
         "//systems/perception:camera_utils",
         "//systems/perception:grid_map_lcm_systems",
         "//systems/perception:grid_map_visualizer",
-        "//systems/perception/ethz_plane_segmentatation:plane_segmentation_system",
+        "//systems/perception/ethz_plane_segmentation:plane_segmentation_system",
         "@drake//:drake_shared_library",
     ],
     cc_so_name = "perception",

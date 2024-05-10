@@ -6,7 +6,7 @@
 #include "systems/perception/camera_utils.h"
 #include "systems/perception/grid_map_visualizer.h"
 #include "systems/perception/grid_map_lcm_systems.h"
-#include "systems/perception/ethz_plane_segmentatation/plane_segmentation_system.h"
+#include "systems/perception/ethz_plane_segmentation/plane_segmentation_system.h"
 
 namespace py = pybind11;
 using py_rvp = py::return_value_policy;

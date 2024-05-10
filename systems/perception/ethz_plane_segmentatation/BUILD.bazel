@@ -6,37 +6,40 @@ cc_library(
     hdrs = ["plane_segmentation_system.h"],
     deps = [
         ":ethz_plane_segmentation",
-        "@drake//:drake_shared_library"
+        "@drake//:drake_shared_library",
     ],
 )
 
 cc_library(
     name = "ethz_plane_segmentation",
     srcs = [
-        "src/ransac/RansacPlaneExtractor.cpp",
-        "src/sliding_window_plane_extraction/SlidingWindowPlaneExtractor.cpp",
         "src/GridMapPreprocessing.cpp",
         "src/PlanarRegion.cpp",
+        "src/ransac/RansacPlaneExtractor.cpp",
+        "src/sliding_window_plane_extraction/SlidingWindowPlaneExtractor.cpp",
     ],
     hdrs = [
-        "include/convex_plane_decomposition/ransac/RansacPlaneExtractorParameters.h",
-        "include/convex_plane_decomposition/ransac/RansacPlaneExtractor.hpp",
         "include/convex_plane_decomposition/GridMapPreprocessing.h",
-        "include/convex_plane_decomposition/SegmentedPlanesMap.h",
         "include/convex_plane_decomposition/PlanarRegion.h",
+        "include/convex_plane_decomposition/PlaneDecompositionParams.h",
         "include/convex_plane_decomposition/PolygonTypes.h",
+        "include/convex_plane_decomposition/SegmentedPlanesMap.h",
+        "include/convex_plane_decomposition/ransac/RansacPlaneExtractor.hpp",
+        "include/convex_plane_decomposition/ransac/RansacPlaneExtractorParameters.h",
         "include/convex_plane_decomposition/sliding_window_plane_extraction/SlidingWindowPlaneExtractor.h",
-        "include/convex_plane_decomposition/sliding_window_plane_extraction/SlidingWindowPlaneExtractorParameters.h"
+        "include/convex_plane_decomposition/sliding_window_plane_extraction/SlidingWindowPlaneExtractorParameters.h",
     ],
     strip_include_prefix = "include",
     deps = [
+        "//common:find_resource",
         "//systems/perception/grid_map_filters:grid_map_filters_rsl",
         "@cgal//:Kernel_23",
         "@cgal//:Point_set_processing_3",
-        "@cgal//:Shape_detection",
         "@cgal//:Polygon",
         "@cgal//:Polyline_simplification_2",
+        "@cgal//:Shape_detection",
+        "@drake//:drake_shared_library",
         "@grid_map//grid_map_core",
-        "@opencv"
+        "@opencv",
     ],
 )

@@ -30,7 +30,7 @@ PYBIND11_MODULE(perception, m) {
 
   py::class_<PlaneSegmentationSystem, drake::systems::LeafSystem<double>>(
       m, "PlaneSegmentationSystem")
-      .def(py::init<>());
+      .def(py::init<std::string>(), py::arg("params_yaml"));
 
   py::class_<GridMapSender, drake::systems::LeafSystem<double>>(
       m, "GridMapSender")

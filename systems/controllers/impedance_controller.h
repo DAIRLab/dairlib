@@ -71,14 +71,18 @@ class ImpedanceController : public LeafSystem<double> {
                       const Eigen::VectorXd& qd_null,
                       bool gravity_compensation_flag);
 
+  /// the first input port take in franka state (and torque)
   const drake::systems::InputPort<double>& get_input_port_franka_state() const {
     return this->get_input_port(franka_state_input_port_);
   }
 
+  /// the second input port take in control commanded from high level planner
+  /// (desired task space target and potential feedforward terms)
   const drake::systems::InputPort<double>& get_input_port_c3_command() const {
     return this->get_input_port(planner_state_input_port_);
   }
 
+  /// the outport send out the joint torque for the robot
   const drake::systems::OutputPort<double>& get_output_port_torque() const {
     return this->get_output_port(control_output_port_);
   }
@@ -120,7 +124,7 @@ class ImpedanceController : public LeafSystem<double> {
   /// Impedacne parameters
   ImpedanceControllerParams impedance_param_;
 
-  /// Input and output ports
+  /// Input and output ports index
   int franka_state_input_port_;
   int planner_state_input_port_;
   int contact_feedforward_input_port_;
@@ -141,14 +145,14 @@ class ImpedanceController : public LeafSystem<double> {
   const MatrixXd B_null_;
   const VectorXd qd_null_;
 
-  /// Whether or not to do gravity compensation (since Franka itself has internal
-  /// gravity compensation)
+  /// Whether or not to do gravity compensation (since Franka itself has
+  /// internal gravity compensation)
   const bool gravity_compensation_flag_;
 
   /// integral control and time recording settings
-  int prev_time_;  // Index for prev_time (Double type abstract state)
+  drake::systems::AbstractStateIndex prev_time_;  // Index for prev_time (Double type abstract state)
   int enable_integral_;
-  int integrator_;  // Index for integrator (6D drake state)
+  drake::systems::DiscreteStateIndex integrator_;  // Index for integrator (6D drake state)
   Eigen::MatrixXd I_;
 
   /// contact force feedforward settings
@@ -164,7 +168,7 @@ class ImpedanceController : public LeafSystem<double> {
   int n_;  // franka DoF (would be 7D, derived from num_positions)
 
   /// final control output, used for being accessed by context in CalControl
-  int tau_;  // final control torque (would be 7D drake state)
+  drake::systems::DiscreteStateIndex tau_;  // final control torque (would be 7D drake state)
 };
 
 }  // namespace controllers

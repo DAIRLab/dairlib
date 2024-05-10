@@ -13,13 +13,13 @@ namespace dairlib {
 namespace systems {
 
 StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
-                               const std::vector<double>& v_FIR_values)
+                               const std::vector<double>& v_FIR_values,
+                               const StateEstimatorParams& state_estimate_param)
     : p_FIR_values_(p_FIR_values),
       v_FIR_values_(v_FIR_values),
       p_filter_length_(p_FIR_values.size()),
       v_filter_length_(v_FIR_values.size()) {
-  state_estimate_param_ = drake::yaml::LoadYamlFile<StateEstimatorParams>(
-      "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
+  state_estimate_param_ = state_estimate_param;
 
   /// declare discrete states
   Vector3d initial_position;
@@ -52,14 +52,9 @@ StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
 
   prev_id_idx_ = this->DeclareAbstractState(drake::Value<int>(-1));
 
-  //  this->DeclarePerStepUnrestrictedUpdateEvent(
-  //    &C3StateEstimator::UpdateHistory);
-
   this->DeclareForcedUnrestrictedUpdateEvent(&StateEstimator::UpdateHistory);
 
   /// declare I/O ports
-  //  franka_input_port_ = this->DeclareAbstractInputPort("franka_port",
-  //                                 drake::Value<dairlib::lcmt_robot_output>{}).get_index();
   franka_input_port_ =
       this->DeclareVectorInputPort(
               "franka_port",
@@ -70,20 +65,17 @@ StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
       this->DeclareAbstractInputPort(
               "ball_port", drake::Value<dairlib::lcmt_ball_position>{})
           .get_index();
-  //  this->DeclareVectorOutputPort(
-  //      "x",
-  //      BasicVector<double>(num_franka_positions_ + num_ball_positions_ +
-  //                          num_franka_velocities_ + num_ball_velocities_),
-  //      &C3StateEstimator::EstimateState);
   franka_state_output_port_ =
       this->DeclareVectorOutputPort("x_franka",
                                     BasicVector<double>(num_franka_positions_ +
                                                         num_franka_velocities_),
                                     &StateEstimator::EstimateFrankaState)
           .get_index();
-  this->DeclareVectorOutputPort(
-      "u_franka", BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
-      &StateEstimator::OutputEfforts);
+  franka_torque_output_port_ =
+      this->DeclareVectorOutputPort("u_franka",
+                                    BasicVector<double>(num_franka_efforts_),
+                                    &StateEstimator::OutputFrankaEfforts)
+          .get_index();
   ball_state_output_port_ =
       this->DeclareVectorOutputPort(
               "x_object",
@@ -177,47 +169,6 @@ EventStatus StateEstimator::UpdateHistory(const Context<double>& context,
   return EventStatus::Succeeded();
 }
 
-void StateEstimator::EstimateState(
-    const drake::systems::Context<double>& context,
-    BasicVector<double>* output) const {
-  /// parse inputs
-  const OutputVector<double>* franka_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, franka_input_port_);
-  DRAKE_ASSERT(franka_output != nullptr);
-
-  /// read in estimates froms states
-  Vector3d ball_position = context.get_discrete_state(p_idx_).value();
-  VectorXd ball_orientation =
-      context.get_discrete_state(orientation_idx_).value();
-  Vector3d ball_velocity = context.get_discrete_state(v_idx_).value();
-  Vector3d angular_velocity = context.get_discrete_state(w_idx_).value();
-
-  VectorXd q_franka = franka_output->GetPositions();
-  VectorXd v_franka = franka_output->GetVelocities();
-
-  /// generate output
-  // NOTE: vector sizes are hard coded for C3 experiments
-  VectorXd positions =
-      VectorXd::Zero(num_franka_positions_ + num_ball_positions_);
-  for (int i = 0; i < num_franka_positions_; i++) {
-    positions(i) = q_franka(i);
-  }
-  positions.tail(num_ball_positions_) << ball_orientation, ball_position;
-
-  VectorXd velocities =
-      VectorXd::Zero(num_franka_velocities_ + num_ball_velocities_);
-  for (int i = 0; i < num_franka_velocities_; i++) {
-    velocities(i) = v_franka(i);
-  }
-  velocities.tail(num_ball_velocities_) << angular_velocity, ball_velocity;
-
-  VectorXd value =
-      VectorXd::Zero(num_franka_positions_ + num_franka_velocities_ +
-                     num_ball_positions_ + num_ball_velocities_);
-  value << positions, velocities;
-  output->SetFromVector(value);
-}
-
 void StateEstimator::EstimateFrankaState(
     const drake::systems::Context<double>& context,
     BasicVector<double>* output) const {
@@ -265,7 +216,7 @@ void StateEstimator::EstimateObjectState(
   output->SetFromVector(ball_state);
 }
 
-void StateEstimator::OutputEfforts(
+void StateEstimator::OutputFrankaEfforts(
     const drake::systems::Context<double>& context,
     BasicVector<double>* output) const {
   /// parse inputs

@@ -86,9 +86,9 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> v_FIR_values = state_estimator_param.v_FIR_value;
 
   auto state_estimator =
-      builder.AddSystem<systems::StateEstimator>(p_FIR_values, v_FIR_values);
+      builder.AddSystem<systems::StateEstimator>(p_FIR_values, v_FIR_values, state_estimator_param);
   builder.Connect(franka_state_reciver->get_output_port(0),
-                  state_estimator->get_input_port(0));
+                  state_estimator->get_input_port_franka());
 
   /// connect state_susbcriber ball position port
   auto to_estimated_ball_position =
@@ -98,7 +98,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(true_ball_state_receiver->get_output_port(0),
                   to_estimated_ball_position->get_input_port(0));
   builder.Connect(to_estimated_ball_position->get_output_port(0),
-                  state_estimator->get_input_port(1));
+                  state_estimator->get_input_port_ball());
 
   drake::lcm::DrakeLcm* pub_lcm;
   pub_lcm = &drake_lcm;
@@ -136,9 +136,9 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_param.franka_state_channel, pub_lcm,
           {drake::systems::TriggerType::kForced}));
   // hard code port index for now
-  builder.Connect(state_estimator->get_output_port(0),
+  builder.Connect(state_estimator->get_output_port_franka_state(),
                   sender_franka->get_input_port(0));
-  builder.Connect(state_estimator->get_output_port(1),
+  builder.Connect(state_estimator->get_output_port_franka_effort(),
                   sender_franka->get_input_port(1));
   builder.Connect(*sender_franka, *franka_output_pub);
 
@@ -154,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_param.estimated_ball_state_channel, pub_lcm,
           {drake::systems::TriggerType::kForced}));
   // hard code port index for now
-  builder.Connect(state_estimator->get_output_port(2),
+  builder.Connect(state_estimator->get_output_port_object_state(),
                   sender_object->get_input_port(0));
   builder.Connect(*sender_object, *object_state_pub);
 

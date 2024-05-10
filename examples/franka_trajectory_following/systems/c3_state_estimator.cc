@@ -68,7 +68,7 @@ StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
   this->DeclareVectorOutputPort(
       "u",
       BasicVector<double>(num_franka_efforts_ + num_ball_efforts_),
-      &StateEstimator::OutputEfforts);
+      &StateEstimator::OutputFrankaEfforts);
 }
 
 EventStatus StateEstimator::UpdateHistory(const Context<double>& context,
@@ -179,8 +179,8 @@ void StateEstimator::EstimateState(const drake::systems::Context<double>& contex
   output->SetFromVector(value);
 }
 
-void StateEstimator::OutputEfforts(const drake::systems::Context<double>& context,
-                                   BasicVector<double>* output) const {
+void StateEstimator::OutputFrankaEfforts(const drake::systems::Context<double>& context,
+                                         BasicVector<double>* output) const {
 
   const drake::AbstractValue* input = this->EvalAbstractInput(context, franka_input_port_);
   DRAKE_ASSERT(input != nullptr);

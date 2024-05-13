@@ -41,10 +41,8 @@ perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perc
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/params/stair_curriculum.yaml'
-    #sim_params.terrain = 'bindings/pydairlib/perceptive_locomotion/perception_learning/params/stair_curriculum.yaml'
     sim_params.visualize = True
     sim_params.simulate_perception = True
-    #sim_params.elevation_mapping_params_yaml = elevation_mapping_yaml
     sim_env = CassieFootstepControllerEnvironment(sim_params)
 
     controller_params = AlipFootstepLQROptions.calculate_default_options(
@@ -145,7 +143,9 @@ def main():
     simulator.set_target_realtime_rate(1.0)
     t_next = 0.05
     grid = []
+    
     input("Start..")
+
     while t_next < 20:
         simulator.AdvanceTo(t_init + t_next)
         if sim_params.simulate_perception:
@@ -168,9 +168,7 @@ def main():
                 "residual", residual_grid_world[0], residual_grid_world[1],
                 residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
         
-        #grid.append(hmap)
         t_next += 0.05
-    #np.save('grid.npy', grid)
 
 if __name__ == "__main__":
     main()

@@ -68,11 +68,9 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     builder = DiagramBuilder()
     sim_env = CassieFootstepControllerEnvironment(sim_params)    
     controller = sim_env.AddToBuilderWithFootstepController(builder, AlipFootstepLQR)
-    ####
     observation = sim_env.AddToBuilderObservations(builder)
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
-    ####
     diagram = builder.Build()
     #DrawAndSaveDiagramGraph(diagram, '../ALIPLQR_RL')
     return sim_env, controller, diagram
@@ -90,10 +88,8 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
         )
     )
 
-    # New: parametrize the desired velocity to be a sector (theta and |v|) forward
     v_des_theta = np.pi / 6
     v_des_norm = 1.0
-
     # initialize data list
     data = []
 
@@ -150,7 +146,6 @@ def initialize_sim(sim_env: CassieFootstepControllerEnvironment,
 def get_noisy_footstep_command_indices(
         footstep_command: np.ndarray, hmap: np.ndarray,
         collision_cost: np.ndarray, variance: float) -> Tuple[int, int]:
-    # New: the input should be LQR reference (ud) + noise
     wx = np.random.normal(loc=0, scale=np.sqrt(variance))
     wy = np.random.normal(loc=0, scale=np.sqrt(variance))
 

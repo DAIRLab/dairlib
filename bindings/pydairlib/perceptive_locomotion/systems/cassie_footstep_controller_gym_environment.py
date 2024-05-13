@@ -221,16 +221,14 @@ class RewardSystem(LeafSystem):
         toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
         right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
         right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
-        
-        #left_angle_reward = np.exp(-5*left_angle)
-        #right_angle_reward = np.exp(-5*right_angle)
+
         if left_angle > 0.4:
             left_penalty = -1
         if right_angle > 0.4:
             right_penalty = -1
 
-        # reward normalize to 0~1
-        reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward + left_penalty + right_penalty#+ 0.1*left_angle_reward + 0.1*right_angle_reward + 0.1*angular_reward
+        # reward normalize to 0 ~ 1
+        reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward + left_penalty + right_penalty
         output[0] = reward
 
 class InitialConditionsServer:

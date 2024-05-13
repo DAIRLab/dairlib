@@ -61,18 +61,6 @@ def bazel_chdir():
     if 'BUILD_WORKSPACE_DIRECTORY' in os.environ:
         os.chdir(os.environ['BUILD_WORKSPACE_DIRECTORY'])
 
-class ReLUSquared(nn.Module):
-    def forward(self, input):
-        return th.relu(input) ** 2
-
-class LeakyReLUSquared(nn.Module):
-    def __init__(self, negative_slope=0.01):
-        super(LeakyReLUSquared, self).__init__()
-        self.negative_slope = negative_slope
-
-    def forward(self, input):
-        return th.where(input > 0, input ** 2, self.negative_slope * input ** 2)
-
 class ExpertDataSet(Dataset):
     def __init__(self, expert_observations, expert_actions):
         self.observations = expert_observations
@@ -164,14 +152,6 @@ class CustomNetwork(nn.Module):
             layer_init(nn.Linear(256, self.latent_dim_vf), std = 1.),
             nn.Tanh(),
         )
-        # Initialize the weights using Xavier initialization
-        #self._initialize_weights()
-
-    #def _initialize_weights(self):
-    #    for m in self.modules():
-    #        if isinstance(m, nn.Linear):
-    #            nn.init.xavier_uniform_(m.weight)
-    #            nn.init.constant_(m.bias, 0.0)
         
     def forward(self, observations: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         return self.forward_actor(observations), self.forward_critic(observations)
@@ -179,9 +159,9 @@ class CustomNetwork(nn.Module):
     def forward_actor(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
         image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-        actor_cnn_output = self.actor_cnn(image_obs)  # Shape: (batch_size, 2304)
+        actor_cnn_output = self.actor_cnn(image_obs)
         alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
-        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)
         actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)
         actor_actions = self.actor_combined_mlp(actor_combined_features)
         return actor_actions
@@ -189,9 +169,9 @@ class CustomNetwork(nn.Module):
     def forward_critic(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
         image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-        critic_cnn_output = self.critic_cnn(image_obs)  # Shape: (batch_size, 2304)
+        critic_cnn_output = self.critic_cnn(image_obs)
         alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
-        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)
         critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)
         critic_actions = self.critic_combined_mlp(critic_combined_features)
         return critic_actions
@@ -324,9 +304,8 @@ def pretrain_agent(
 
                 test_loss = criterion(action_prediction, target)
         test_loss /= len(test_loader.dataset)
-        print(test_loss)
-
-    # Here, we use PyTorch `DataLoader` to our load previously created `ExpertDataset` for training and testing
+        #print(test_loss)
+    
     train_loader = th.utils.data.DataLoader(
         dataset=train_expert_dataset, batch_size=batch_size, shuffle=True, **kwargs
     )
@@ -334,11 +313,10 @@ def pretrain_agent(
         dataset=test_expert_dataset, batch_size=test_batch_size, shuffle=True, **kwargs,
     )
 
-    # Define an Optimizer and a learning rate schedule.
+    # Optimizer and a learning rate schedule.
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
 
-    # Now we are finally ready to train the policy model.
     for epoch in range(1, epochs + 1):
         train(model, device, train_loader, optimizer)
         test(model, device, test_loader)
@@ -348,7 +326,11 @@ def _main():
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'#'params/stair_curriculum.yaml'#'params/wavy_test.yaml' #'params/wavy_terrain.yaml' # 'params/flat.yaml'
+        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        #'params/stair_curriculum.yaml'
+        #'params/wavy_test.yaml'
+        #'params/wavy_terrain.yaml'
+        #'params/flat.yaml'
     )
     gym.envs.register(
         id="DrakeCassie-v0",
@@ -358,12 +340,10 @@ def _main():
                 sim_params = sim_params,
                 )
 
-    student = PPO(CustomActorCriticPolicy, env, verbose=1)#, use_sde=True)
+    student = PPO(CustomActorCriticPolicy, env, verbose=1)
 
-    #obs_data = path.join(perception_learning_base_folder, 'tmp/data/observationsNN_new.npy')
-    #action_data = path.join(perception_learning_base_folder, 'tmp/data/actionsNN_new.npy')
-    obs_data = path.join(perception_learning_base_folder, 'tmp/vdes_data/observationsDMAPNN.npy')
-    action_data = path.join(perception_learning_base_folder, 'tmp/vdes_data/actionsNN.npy')
+    obs_data = path.join(perception_learning_base_folder, 'tmp/observations.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/actions.npy')
     
     expert_observations = np.load(obs_data)
     print(len(expert_observations))
@@ -388,7 +368,7 @@ def _main():
         test_batch_size=128,
     )
 
-    student.save("PPO_studentNN_newdata")
+    student.save("PPO_initial")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=2)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

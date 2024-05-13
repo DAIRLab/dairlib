@@ -133,7 +133,7 @@ def reset_handler(simulator, seed):
     v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm, 0])
-    #datapoint['desired_velocity'] = np.array([0.3, 0])
+    #datapoint['desired_velocity'] = np.array([0.4, 0])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -222,7 +222,8 @@ def make_sim(sim_params=sim_params):
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'#'params/flat_stair.yaml'
+        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        #'params/flat_stair.yaml'
         #'params/stair_curriculum.yaml'
         #'params/wavy_test.yaml'
         #'params/wavy_terrain.yaml'

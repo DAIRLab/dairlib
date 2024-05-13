@@ -117,19 +117,11 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             'tmp/initial_conditions_2.npz'
         )
     )
-
-    #datapoint = ic_generator.random()
-    #v_des_theta = np.pi / 6
-    #v_des_norm = 1.0
-    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
     
     datapoint = ic_generator.random()
-    #datapoint = ic_generator.choose(35)
+    #datapoint = ic_generator.choose(0)
     v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
-    #coeff = np.random.uniform(0., 0.1)
     #datapoint['desired_velocity'] = np.array([v_norm, 0])
     datapoint['desired_velocity'] = np.array([0.4, 0])
 
@@ -225,7 +217,6 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             hmap = hmap_query.calc_height_map_stance_frame(
                 np.array([ud[0], ud[1], 0])
             )
-        #print(hmap.shape)
         ALIPtmp.append(alip)
         FOOTSTEPtmp.append(footstep)
         HMAPtmp.append(hmap)
@@ -250,8 +241,6 @@ def main():
     DMAP = []
     VDES = []
     terrain = 'params/stair_curriculum.yaml'
-    #terrain = 'params/wavy_terrain.yaml'
-    #terrain = 'params/flat_stair.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
 
@@ -274,23 +263,23 @@ def main():
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP1.npy', ALIP
+        f'/ALIP.npy', ALIP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/FOOTSTEP1.npy', FOOTSTEP
+        f'/FOOTSTEP.npy', FOOTSTEP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/HMAP1.npy', HMAP
+        f'/HMAP.npy', HMAP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/DMAP1.npy', DMAP
+        f'/DMAP.npy', DMAP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/VDES1.npy', VDES
+        f'/VDES.npy', VDES
     )
 
 if __name__ == '__main__':

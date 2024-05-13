@@ -85,10 +85,8 @@ def run_experiment(sim_params: CassieFootstepControllerEnvironmentOptions,
         )
     )
 
-    # New: parametrize the desired velocity to be a sector (theta and |v|) forward
     v_des_theta = np.pi / 6
     v_des_norm = 1.0
-
     # initialize data list
     data = []
 
@@ -346,17 +344,6 @@ def main(save_file: str, visualize: bool):
         data_process(0, job_queue, True, flat)
 
     for group in range(groups):
-        #rand = np.random.randint(1, 11)
-        #if rand in [1, 2, 3, 4]:
-        #    terrain = stairs
-        #    print('stair')
-        #elif rand in [5, 6, 7, 8]:
-        #    terrain = wavy
-        #    print('flat')
-        #else:
-        #    terrain = flat
-        #    print('flat')
-        #terrain = stairs if group % 4 == 0 else wavy
         terrain = stairs
         for i in range(jobs_per_group):
             process = multiprocessing.Process(

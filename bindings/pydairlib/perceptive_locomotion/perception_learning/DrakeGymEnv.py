@@ -111,8 +111,6 @@ class DrakeGymEnv(gym.Env):
         else:
             raise ValueError("Invalid simulator argument")
         
-        #self.diagram = diagram
-        
         assert time_step > 0
         self.time_step = time_step
 

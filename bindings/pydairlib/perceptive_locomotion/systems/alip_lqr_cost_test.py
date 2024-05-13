@@ -135,10 +135,6 @@ def main():
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint = ic_generator.choose(0)
-    #datapoint['desired_velocity'] = np.array([ 1.2, 0. ])
-    #datapoint['desired_velocity'] = np.array([ 0.8, -0.2 ])
-    #print(datapoint['desired_velocity'])
     
     context = diagram.CreateDefaultContext()
 
@@ -200,14 +196,7 @@ def main():
     cost_log = cost_logger.FindLog(context).data()
     foot_log = footstep_logger.FindLog(context).data()
     state_log = state_logger.FindLog(context).data()
-    #print(context.get_time())
-    #np.save('foot5', foot_log)
-    #np.save('state5', state_log)
     print(cost_logger.FindLog(context).data()[-1][-1])
-    #print(foot_log.shape)
-    #print(foot_log)
-    #print(state_log.shape)
-    #print(state_log)
 
 if __name__ == "__main__":
     main()

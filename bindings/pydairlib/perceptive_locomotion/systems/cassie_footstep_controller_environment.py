@@ -166,7 +166,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_depth_image(),
                 self.perception_module.get_input_port_depth_image("pelvis_depth")
             )
-###############################
+
             elevation_options = ElevationMapOptions()
             elevation_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
             self.height_map_server = ElevationMappingConverter(
@@ -207,7 +207,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_state(),
                 self.height_map_query_server.get_input_port_by_name('x')
             )
-##############################
+
         else:
             hmap_options = HeightMapOptions()
             hmap_options.meshcat = self.plant_visualizer.get_meshcat() if params.visualize else None
@@ -248,7 +248,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
             if params.simulate_perception:
                 #self.grid_map_visualizer = GridMapVisualizer(
-                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]  ##
+                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]  #
                 #)
                 #builder.AddSystem(self.grid_map_visualizer)
                 builder.Connect(
@@ -277,7 +277,7 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.controller.get_input_port_footstep_command(),
                 "footstep_command"
             ),
-        } if self.params.controller_input_type == MpfcOscDiagramInputType.kFootstepCommand else { ###
+        } if self.params.controller_input_type == MpfcOscDiagramInputType.kFootstepCommand else {
             'alip_mpc_output': builder.ExportInput(
                 self.controller.get_input_port_alip_mpc_output(),
                 "alip_mpc_output"
@@ -315,16 +315,16 @@ class CassieFootstepControllerEnvironment(Diagram):
                 'height_map_query'
 
             )
-            output_port_indices['lcmt_robot_output'] = builder.ExportOutput( ###
+            output_port_indices['lcmt_robot_output'] = builder.ExportOutput(
                 self.perception_module.get_output_port_robot_output(),
                 'lcmt_robot_output'
             )
-            output_port_indices['state'] = builder.ExportOutput( ###
+            output_port_indices['state'] = builder.ExportOutput(
                 self.perception_module.get_output_port_state(),
                 'x, u, t'
             )
         else:
-            output_port_indices['state'] = builder.ExportOutput( ###
+            output_port_indices['state'] = builder.ExportOutput(
                 self.cassie_sim.get_output_port_state(),
                 'x, u, t'
             )

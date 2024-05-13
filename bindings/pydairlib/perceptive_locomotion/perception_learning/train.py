@@ -49,18 +49,6 @@ from pydairlib.perceptive_locomotion.systems.cassie_footstep_controller_gym_envi
 
 from typing import Callable
 
-class ReLUSquared(nn.Module):
-    def forward(self, input):
-        return th.relu(input) ** 2
-
-class LeakyReLUSquared(nn.Module):
-    def __init__(self, negative_slope=0.01):
-        super(LeakyReLUSquared, self).__init__()
-        self.negative_slope = negative_slope
-
-    def forward(self, input):
-        return th.where(input > 0, input ** 2, self.negative_slope * input ** 2)
-
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
     """
     Linear learning rate schedule.
@@ -93,7 +81,7 @@ class CustomNetwork(nn.Module):
         self.latent_dim_vf = last_layer_dim_vf
         self.alip_state_dim = 6
         self.heightmap_size = 80
-
+        # CNN for heightmap observations
         n_input_channels = 3
         self.actor_cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
@@ -191,7 +179,7 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
         optimizer_class= th.optim.Adam, #torch.optim.RAdam Try RAdam with decoupled_weight_decay=True
-        optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5}, #'epsilon': 1e-5, 'weight_decay': 1e-5, #'betas': (0.997, 0.997)
+        optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5},
         *args,
         **kwargs,
     ):
@@ -259,8 +247,8 @@ def _run_training(config, args):
         #    verbose=1,
         #    tensorboard_log=tensorboard_log,)
         
-        test_folder = "rl/vdes_gt_angle_penalty"
-        model_path = path.join(test_folder, 'latest_model.zip')
+        #test_folder = "rl/vdes_gt_angle_penalty"
+        #model_path = path.join(test_folder, 'latest_model.zip')
         #model_path = 'PPO_depth_vdes.zip'
         
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
@@ -280,7 +268,6 @@ def _run_training(config, args):
 
     eval_env = DummyVecEnv([lambda: eval_env])
     eval_env = VecNormalize(venv=eval_env, norm_obs=False)
-    #eval_env = VecMonitor(eval_env)
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path=log_dir+f'eval_logs/test',
@@ -298,6 +285,7 @@ def _run_training(config, args):
     callback = CallbackList([checkpoint_callback, eval_callback])
 
     input("Model learning...")
+
     model.learn(
         total_timesteps=total_timesteps,
         callback=callback,
@@ -327,14 +315,11 @@ def _main():
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 5e5 if not args.test else 5, # 2e6
+        "total_timesteps": 2e6 if not args.test else 5,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
         "model_save_freq": 3000,
-        #"policy_kwargs": {'activation_fn': ReLUSquared, #th.nn.Tanh,        # activation function | th.nn.ReLU,
-        #                  'net_arch': {'pi': [64, 64, 64, 64], # policy networks
-        #                               'vf': [64, 64, 64, 64]}}, # value networks
         "sim_params" : sim_params
     }
     _run_training(config, args)

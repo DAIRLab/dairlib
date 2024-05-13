@@ -50,13 +50,10 @@ def bazel_chdir():
 
 def sample(sim_params):
     terrain = 'params/stair_curriculum.yaml'
-    #terrain = 'params/flat_stair.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     env = gym.make("DrakeCassie-v0",
         sim_params = sim_params,
     )
-    #input("Check...")
-    #check_env(env)
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 1000

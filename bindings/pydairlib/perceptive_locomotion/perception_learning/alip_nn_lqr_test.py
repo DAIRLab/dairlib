@@ -201,13 +201,6 @@ def main():
         i = np.random.randint(0, 157870)
         cost, t_init, terminate, time = run(sim_params, i)
         print(time)
-        if time > 4.5:
-            init.append(i)
-    init = np.array(init)
-    #np.save(
-    #    f'{perception_learning_base_folder}/tmp/index'
-    #    f'/index.npy', init
-    #)
 
 if __name__ == '__main__':
     main()

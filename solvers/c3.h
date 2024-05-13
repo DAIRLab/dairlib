@@ -127,7 +127,18 @@ class C3 {
   const int k_;
 
  private:
-  LCS lcs_;
+  std::vector<Eigen::MatrixXd> A_;
+  std::vector<Eigen::MatrixXd> B_;
+  std::vector<Eigen::MatrixXd> D_;
+  std::vector<Eigen::VectorXd> d_;
+  std::vector<Eigen::MatrixXd> E_;
+  std::vector<Eigen::MatrixXd> F_;
+  std::vector<Eigen::MatrixXd> H_;
+  std::vector<Eigen::VectorXd> c_;
+  Eigen::MatrixXd W_x_;
+  Eigen::MatrixXd W_l_;
+  Eigen::MatrixXd W_u_;
+  Eigen::VectorXd w_;
   double AnDn_ = 1.0;
   const std::vector<Eigen::MatrixXd> Q_;
   const std::vector<Eigen::MatrixXd> R_;

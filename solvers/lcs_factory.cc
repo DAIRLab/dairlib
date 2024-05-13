@@ -171,6 +171,7 @@ LCS LCSFactory::LinearizePlantToLCS(
     D.block(0, n_contacts, n_q, n_contacts) = dt * dt * qdotNv * MinvJ_n_T;
 
     D.block(n_q, n_contacts, n_v, n_contacts) = dt * MinvJ_n_T;
+    // Complementarity condition for gamma: mu lambda^n
     E.block(n_contacts, 0, n_contacts, n_q) =
         dt * dt * J_n * AB_v_q + J_n * vNqdot;
     E.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_q) =
@@ -180,26 +181,35 @@ LCS LCSFactory::LinearizePlantToLCS(
     E.block(2 * n_contacts, n_q, 2 * n_contacts * num_friction_directions,
             n_v) = J_t + dt * J_t * AB_v_v;
 
-    F.block(0, n_contacts, n_contacts, n_contacts) =
-        Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(mu.data(),
-                                                            mu.size())
-            .asDiagonal();
+    VectorXd mu_vec = Eigen::Map<const Eigen::VectorXd, Eigen::Unaligned>(
+        mu.data(), mu.size());
+    // Complementarity condition for gamma: mu lambda^n
+    F.block(0, n_contacts, n_contacts, n_contacts) = mu_vec.asDiagonal();
 
+    // Complementarity condition for gamma: lambda^t
     F.block(0, 2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions) = -E_t;
 
+    // Complementarity condition for lambda_n: dt J_n (lambda^n component of
+    // v_{k+1})
     F.block(n_contacts, n_contacts, n_contacts, n_contacts) =
         dt * dt * J_n * MinvJ_n_T;
+    // Complementarity condition for lambda_n: dt J_n (lambda^t component of
+    // v_{k+1})
     F.block(n_contacts, 2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions) =
         dt * dt * J_n * MinvJ_t_T;
-
+    // Complementarity condition for lambda_t: dt J_t (gamma component of
+    // v_{k+1})
     F.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions,
             n_contacts) = E_t.transpose();
-
+    // Complementarity condition for lambda_t: dt J_t (lambda^n component of
+    // v_{k+1})
     F.block(2 * n_contacts, n_contacts,
             2 * n_contacts * num_friction_directions, n_contacts) =
         dt * J_t * MinvJ_n_T;
+    // Complementarity condition for lambda_t: dt J_t (lambda^t component of
+    // v_{k+1})
     F.block(2 * n_contacts, 2 * n_contacts,
             2 * n_contacts * num_friction_directions,
             2 * n_contacts * num_friction_directions) = dt * J_t * MinvJ_t_T;
@@ -207,6 +217,15 @@ LCS LCSFactory::LinearizePlantToLCS(
     H.block(n_contacts, 0, n_contacts, n_u) = dt * dt * J_n * AB_v_u;
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
+
+//    W_x.block(0, 0, n_lambda, n_q) = J_t * AB_v_q;
+//    W_x.block(0, n_q, n_lambda, n_v) = J_t + J_t * AB_v_v;
+//    W_l.block(0, n_contacts, n_contacts, n_contacts) = J_t * (MinvJ_c_T);
+//    W_l.block(0, n_contacts + n_contacts, n_contacts, 2 * n_contacts * num_friction_directions) = J_t * (MinvJ_c_T);
+//    W_l.block(0, 0, n_lambda, ) = J_t * (MinvJ_c_T);
+//    W_l.block(0, 0, n_lambda, ) = J_t * (MinvJ_c_T);
+//    W_u = J_t * (AB_v_u);
+//    w = J_t * (d_v);
 
     c.segment(n_contacts, n_contacts) =
         phi + dt * dt * J_n * d_v - J_n * vNqdot * plant.GetPositions(context);

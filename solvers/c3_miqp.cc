@@ -192,30 +192,36 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
     model.addConstr(activation_expr + c(i) <= M * binary[i]);
   }
 
-  //  DRAKE_DEMAND(m_ % 2 == 0); // only works for Anitescu Model
   double subtraction_coeffs[n_ + m_ + k_];
-  double flipped_subtraction_coeffs[n_ + m_ + k_];
   double addition_coeffs[n_ + m_ + k_];
   double tangential_velocity_coeffs[n_ + m_ + k_];
   double single_lambda_coeffs[n_ + m_ + k_];
   MatrixXd addition_of_aligned_forces = MatrixXd::Zero(m_, n_ + m_ + k_);
   MatrixXd subtraction_of_aligned_forces = MatrixXd::Zero(m_, n_ + m_ + k_);
 
+
   MatrixXd P_t(m_, n_ + m_ + k_);
-  P_t << W_x, W_l, W_u;
-  for (int i = 0; i < m_; ++i) {
-    addition_of_aligned_forces(i, n_ + 2 * (i % 2) + 0) = 1;
-    addition_of_aligned_forces(i, n_ + 2 * (i % 2) + 1) = 1;
-    if (i % 2 == 0){
-      subtraction_of_aligned_forces(i, n_ + i + 0) = 1;
-      subtraction_of_aligned_forces(i, n_ + i + 1) = -1;
+  int constraint_rows = m_;
+//  P_t << W_x, W_l, W_u;
+
+  // stewart and trinkle
+  P_t << E, F, H;
+  MatrixXd P_t2 = P_t.bottomRows(((m_ / 6) * 4) / 7 * 3);
+  P_t = P_t2;
+  constraint_rows = P_t2.rows();
+  for (int i = 0; i < constraint_rows; ++i) {
+    addition_of_aligned_forces(i, n_ + 2 * (i / 2) + 0) = 1;
+    addition_of_aligned_forces(i, n_ + 2 * (i / 2) + 1) = 1;
+    if (i % 2 == 0) {
+      subtraction_of_aligned_forces(i, n_ + i + 0) = -1;
+      subtraction_of_aligned_forces(i, n_ + i + 1) = 1;
     } else {
-      subtraction_of_aligned_forces(i, n_ + i + 0) = 1;
-      subtraction_of_aligned_forces(i, n_ + i - 1) = -1;
+      subtraction_of_aligned_forces(i, n_ + i + 0) = -1;
+      subtraction_of_aligned_forces(i, n_ + i - 1) = 1;
     }
   }
 
-  for (int i = 0; i < m_; ++i) {
+  for (int i = 0; i < constraint_rows; ++i) {
     reduced_friction_cone_binary[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
     GRBLinExpr subtraction_constraint_expr = 0;
     GRBLinExpr addition_constraint_expr = 0;
@@ -235,23 +241,20 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
     addition_constraint_expr.addTerms(addition_coeffs, delta_k, n_ + m_ + k_);
     tangential_velocity_expr.addTerms(tangential_velocity_coeffs, delta_k,
                                       n_ + m_ + k_);
-    single_lambda_expr.addTerms(single_lambda_coeffs, delta_k,
-                                      n_ + m_ + k_);
+    single_lambda_expr.addTerms(single_lambda_coeffs, delta_k, n_ + m_ + k_);
 
-    if (m_ % 2 == 0){
+    if (constraint_rows % 2 == 1) {
       model.addConstr(subtraction_constraint_expr <=
-          (0.4 / 0.6) * (addition_constraint_expr) +
-              M * (reduced_friction_cone_binary[i]));
+                      (0.4 / 0.6) * (addition_constraint_expr) +
+                          M * (reduced_friction_cone_binary[i]));
       model.addConstr(tangential_velocity_expr <=
-          M * (reduced_friction_cone_binary[i]));
-
-    }
-    else if (m_ % 2 == 1){
+                      M * (reduced_friction_cone_binary[i]));
+    } else {
       model.addConstr(subtraction_constraint_expr <=
-          (0.4 / 0.6) * (addition_constraint_expr) +
-              M * (reduced_friction_cone_binary[i]));
+                      (0.4 / 0.6) * (addition_constraint_expr) +
+                          M * (reduced_friction_cone_binary[i]));
       model.addConstr(tangential_velocity_expr <=
-          M * (reduced_friction_cone_binary[i]));
+                      M * (reduced_friction_cone_binary[i]));
     }
     model.addConstr(single_lambda_expr <=
                     M * (1 - reduced_friction_cone_binary[i]));
@@ -272,6 +275,7 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
     warm_start_delta_[admm_iteration][warm_start_index] = delta_kc;
     warm_start_binary_[admm_iteration][warm_start_index] = binaryc;
   }
+
   return delta_kc;
 }
 

@@ -57,6 +57,11 @@ LCS::LCS(const LCS& lcs)
     H_.at(i) = lcs.H_.at(i);
     c_.at(i) = lcs.c_.at(i);
   }
+  W_x_ = lcs.W_x_;
+  W_l_ = lcs.W_l_;
+  W_u_ = lcs.W_u_;
+  w_ = lcs.w_;
+  has_tangent_linearization_ = lcs.has_tangent_linearization_;
 }
 
 LCS& LCS::operator=(const LCS& lcs) {

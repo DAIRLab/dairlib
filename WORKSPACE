@@ -67,6 +67,10 @@ load("@dairlib//tools/workspace/osqp:repository.bzl", "osqp_repository")
 
 osqp_repository(name = "osqp")
 
+load("@dairlib//tools/workspace/fcc_qp:repository.bzl", "fcc_qp_repository")
+
+fcc_qp_repository(name = "fcc_qp")
+
 load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
 
 signal_scope_repository(name = "signal_scope")
@@ -270,17 +274,4 @@ http_archive(
     urls = [
         "https://github.com/bazelbuild/buildtools/archive/refs/tags/4.2.2.tar.gz",
     ],
-)
-
-environ_repository(
-    name = "environ_home",
-    vars = ["HOME"],
-)
-
-load("@environ_home//:environ.bzl", "HOME")
-
-new_local_repository(
-    name = "fcc_qp",
-    build_file = "tools/workspace/fcc_qp/BUILD.bazel",
-    path = "{}/workspace/sandbox/fcc_qp/".format(HOME),
 )

@@ -259,14 +259,14 @@ def _run_training(config, args):
         #    verbose=1,
         #    tensorboard_log=tensorboard_log,)
         
-        test_folder = "rl/"
+        test_folder = "rl/vdes_gt_angle_penalty"
         model_path = path.join(test_folder, 'latest_model.zip')
         #model_path = 'PPO_depth_vdes.zip'
         
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
                         clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
-                        n_steps=int(256*num_env/num_env), n_epochs=10,
-                        batch_size=128*num_env, seed=111,
+                        n_steps=int(500*num_env/num_env), n_epochs=10,
+                        batch_size=256*num_env, seed=111,
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via "

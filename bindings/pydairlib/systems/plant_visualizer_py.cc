@@ -20,8 +20,8 @@ PYBIND11_MODULE(plant_visualizer, m) {
 
   py::class_<PlantVisualizer, drake::systems::Diagram<double>>(
       m, "PlantVisualizer")
-      .def(py::init<const std::string&>(), py::arg("urdf"))
-      .def("get_meshcat", &PlantVisualizer::get_meshcat, py_rvp::reference_internal)
+      .def(py::init<const std::string&, std::shared_ptr<drake::geometry::Meshcat>>(), py::arg("urdf"), py::arg("meshcat"))
+      .def("get_meshcat", &PlantVisualizer::get_meshcat, py_rvp::reference)
       .def("get_plant", &PlantVisualizer::get_plant, py_rvp::reference_internal);
 }
 

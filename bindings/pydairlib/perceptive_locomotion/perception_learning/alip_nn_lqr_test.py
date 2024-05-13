@@ -23,6 +23,8 @@ from pydrake.systems.all import (
     LogVectorOutput,
 )
 
+from pydrake.geometry import Meshcat
+
 from pydairlib.perceptive_locomotion.perception_learning.alip_nn_lqr import (
     AlipFootstepLQROptions,
     AlipFootstepNNLQR
@@ -42,6 +44,7 @@ from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
+
 
 perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
@@ -89,6 +92,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     #DrawAndSaveDiagramGraph(diagram, '../AlipNNLQRTest')
     return sim_env, controller, cost_logger, diagram
 
+
 def check_termination(sim_env, diagram_context) -> bool:
     plant = sim_env.cassie_sim.get_plant()
     plant_context = plant.GetMyContextFromRoot(diagram_context)
@@ -105,6 +109,7 @@ def check_termination(sim_env, diagram_context) -> bool:
     z1 = com[2] - left_toe_pos[2]
     z2 = com[2] - right_toe_pos[2]
     return z1 < 0.2 or z2 < 0.2
+
 
 def run(sim_params: CassieFootstepControllerEnvironmentOptions, i):
 
@@ -187,7 +192,8 @@ def main():
         #'params/wavy_terrain.yaml'
         #'params/flat.yaml'
     )
-    sim_params.visualize = False
+    sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
     cost_list = []
     t_list = []
     init = []

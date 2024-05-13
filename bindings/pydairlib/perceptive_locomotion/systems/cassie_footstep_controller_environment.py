@@ -24,6 +24,7 @@ from pydairlib.perceptive_locomotion.systems.elevation_map_converter \
     import ElevationMappingConverter, ElevationMapOptions
 from pydairlib.multibody import SquareSteppingStoneList
 
+from pydrake.geometry import Meshcat
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.all import (
     State,
@@ -94,12 +95,17 @@ class CassieFootstepControllerEnvironmentOptions:
         MpfcOscDiagramInputType.kFootstepCommand
     simulate_perception: bool = False
     visualize: bool = True
+    meshcat: Meshcat = None
 
 
 class CassieFootstepControllerEnvironment(Diagram):
 
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
         super().__init__()
+
+        if params.visualize:
+            assert params.meshcat is not None
+
         self.params = params
         self.controller_plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
@@ -137,7 +143,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.height_map_server = None
         self.perception_module = None
-        self.plant_visualizer = PlantVisualizer(params.urdf) if params.visualize else None
+        self.plant_visualizer = PlantVisualizer(params.urdf, params.meshcat) if params.visualize else None
 
         if params.simulate_perception:
             self.sensor_info = {
@@ -307,6 +313,7 @@ class CassieFootstepControllerEnvironment(Diagram):
             output_port_indices['height_map_query'] = builder.ExportOutput(
                 self.height_map_query_server.get_output_port(),
                 'height_map_query'
+
             )
             output_port_indices['lcmt_robot_output'] = builder.ExportOutput( ###
                 self.perception_module.get_output_port_robot_output(),

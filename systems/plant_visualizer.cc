@@ -23,8 +23,9 @@ using drake::geometry::Meshcat;
 using drake::geometry::MeshcatVisualizer;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
 
-PlantVisualizer::PlantVisualizer(const std::string& urdf) : plant_(0.0) {
-
+PlantVisualizer::PlantVisualizer(const std::string& urdf,
+                                 std::shared_ptr<Meshcat> meshcat) :
+                                 plant_(0.0), meshcat_(std::move(meshcat)) {
   drake::systems::DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *(builder.AddSystem<SceneGraph>());
   scene_graph.set_name("plant_visualizer_scene_graph");
@@ -46,12 +47,14 @@ PlantVisualizer::PlantVisualizer(const std::string& urdf) : plant_(0.0) {
       scene_graph.get_source_pose_port(plant_.get_source_id().value())
   );
 
-  meshcat_ = std::make_shared<Meshcat>();
   MeshcatVisualizer<double>::AddToBuilder(&builder, scene_graph, meshcat_);
 
   builder.ExportInput(passthrough->get_input_port(), "x, u, t");
   builder.BuildInto(this);
 }
+
+PlantVisualizer::PlantVisualizer(const std::string& urdf) :
+PlantVisualizer(urdf, std::make_shared<Meshcat>()){}
 
 }
 }

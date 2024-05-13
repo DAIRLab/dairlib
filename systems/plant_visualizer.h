@@ -15,7 +15,10 @@ namespace systems {
 class PlantVisualizer : public drake::systems::Diagram<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(PlantVisualizer);
-  PlantVisualizer(const std::string& urdf);
+  explicit PlantVisualizer(const std::string& urdf);
+
+  PlantVisualizer(const std::string& urdf,
+                  std::shared_ptr<drake::geometry::Meshcat> meshcat);
 
   std::shared_ptr<drake::geometry::Meshcat> get_meshcat() {
     return meshcat_;

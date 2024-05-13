@@ -5,6 +5,8 @@ import argparse
 import os
 from os import path
 import numpy as np
+import torch as th
+import torch.nn as nn
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -12,7 +14,6 @@ from typing import Callable, Tuple
 
 import stable_baselines3
 from stable_baselines3.common.env_checker import check_env
-
 from pydairlib.perceptive_locomotion.perception_learning.PPO.ppo import PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
 from stable_baselines3.common.env_util import make_vec_env
@@ -27,9 +28,7 @@ from stable_baselines3.common.vec_env import (
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.policies import ActorCriticPolicy
 
-import torch as th
-import torch.nn as nn
-
+from pydrake.geometry import Meshcat
 from pydrake.systems.all import (
     Diagram,
     Context,
@@ -211,60 +210,57 @@ def _run_training(config, args):
     policy_type = config["policy_type"]
     total_timesteps = config["total_timesteps"]
     eval_freq = config["model_save_freq"]
-    sim_params = config["sim_params"]
-
-    if not args.train_single_env:
+    sim_params_train = config["sim_params"]
+    sim_params_eval = config["sim_params"]
+    
+    if not args.test:
         input("Starting...")
-        sim_params.visualize = False
+        # if visualize is True > TypeError: cannot pickle 'pydrake.geometry.Meshcat' object
+        sim_params_train.visualize = False 
+        sim_params_train.meshcat = None
         env = make_vec_env(
                            env_name,
                            n_envs=num_env,
                            seed=0,
                            vec_env_cls=SubprocVecEnv,
                            env_kwargs={
-                               'sim_params': sim_params,
+                            'sim_params': sim_params_train,
                            })
         env = VecNormalize(venv=env, norm_obs=False)
 
     else:
-        input("Starting...")
-        sim_params.visualize = False
-        if args.test:
-            sim_params.visualize = False
+        input("Testing...")
+        sim_params_train.visualize = False
+        sim_params_train.meshcat = None
         env = gym.make(env_name,
-                       sim_params = sim_params,
+                       sim_params = sim_params_train,
                        )
         env = VecNormalize(venv=env, norm_obs=False)
-
+    
     if args.test:
-        model = PPO(policy_type, env, n_steps=128, n_epochs=2,
-                    batch_size=32,)
+        model = PPO(
+            policy_type, env, learning_rate = linear_schedule(3e-4), n_steps=int(512/num_env), n_epochs=10,
+            batch_size=16*num_env, ent_coef=0.01,
+            verbose=1,
+            tensorboard_log=tensorboard_log,)
     else:
         tensorboard_log = f"{log_dir}runs/test"
-        #model = PPO(
-        #    policy_type, env, learning_rate = linear_schedule(0.005), n_steps=int(512/num_env), n_epochs=10,
-        #    batch_size=16*num_env, ent_coef=0.01,
-        #    verbose=1,
-        #    tensorboard_log=tensorboard_log,)
         
-        #test_folder = "rl/vdes_gt_angle_penalty"
-        #model_path = path.join(test_folder, 'latest_model.zip')
+        test_folder = "rl/vdes_depth_angle_penalty"
+        model_path = path.join(test_folder, 'latest_model.zip')
         #model_path = 'PPO_depth_vdes.zip'
         
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
                         clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
-                        n_steps=int(500*num_env/num_env), n_epochs=10,
-                        batch_size=256*num_env, seed=111,
+                        n_steps=int(256*num_env/num_env), n_epochs=10,
+                        batch_size=128*num_env, seed=111,
                         tensorboard_log=tensorboard_log)
         
-        print("Open tensorboard (optional) via "
-              f"`tensorboard --logdir {tensorboard_log}` "
-              "in another terminal.")
+        print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
 
-    sim_params.visualize = True
-    eval_env = gym.make(env_name,
-                        sim_params = sim_params,
-                        )
+    sim_params_eval.visualize = True
+    sim_params_eval.meshcat = Meshcat()
+    eval_env = gym.make(env_name, sim_params = sim_params_eval,)
 
     eval_env = DummyVecEnv([lambda: eval_env])
     eval_env = VecNormalize(venv=eval_env, norm_obs=False)
@@ -284,7 +280,7 @@ def _run_training(config, args):
 
     callback = CallbackList([checkpoint_callback, eval_callback])
 
-    input("Model learning...")
+    input("Start learning...")
 
     model.learn(
         total_timesteps=total_timesteps,
@@ -299,7 +295,6 @@ def _main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--test', action='store_true')
-    parser.add_argument('--train_single_env', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--log_path', help="path to the logs directory.",
                         default="./rl/tmp/DrakeCassie/")
@@ -307,26 +302,25 @@ def _main():
 
     if args.test:
         num_env = 1
-    elif args.train_single_env:
-        num_env = 1
     else:
-        num_env = 16
+        num_env = 20
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
         "total_timesteps": 2e6 if not args.test else 5,
-        "env_name": "DrakeCassie-v0",
+        "env_name": "DairCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 3000,
+        "model_save_freq": 1500,
         "sim_params" : sim_params
     }
     _run_training(config, args)
 
 gym.envs.register(
-        id="DrakeCassie-v0",
-        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")
+        id="DairCassie-v0",
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv",
+        )
 
 if __name__ == '__main__':
     _main()

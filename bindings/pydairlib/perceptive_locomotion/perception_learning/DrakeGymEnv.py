@@ -15,6 +15,10 @@ from pydrake.systems.framework import (
     System,
 )
 from pydrake.systems.sensors import ImageRgba8U
+from pydairlib.perceptive_locomotion.systems. \
+cassie_footstep_controller_gym_environment import (
+    CassieFootstepControllerEnvironmentOptions
+    )
 
 
 class DrakeGymEnv(gym.Env):
@@ -31,12 +35,14 @@ class DrakeGymEnv(gym.Env):
                  observation_space: gym.spaces.Space,
                  reward: Union[Callable[[System, Context], float],
                                OutputPortIndex, str],
+                 sim_params: CassieFootstepControllerEnvironmentOptions,
                  action_port_id: Union[InputPort, InputPortIndex, str] = None,
                  observation_port_id: Union[OutputPortIndex, str] = None,
                  render_rgb_port_id: Union[OutputPortIndex, str] = None,
                  render_mode: str = 'human',
                  reset_handler: Callable[[Simulator, Context], None] = None,
-                 hardware: bool = False):
+                 hardware: bool = False
+                 ):
         """
         Args:
             simulator: Either a ``drake.systems.analysis.Simulator``, or
@@ -154,10 +160,11 @@ class DrakeGymEnv(gym.Env):
         self.generator = RandomGenerator()
 
         if reset_handler is None or callable(reset_handler):
+            #print("reset handler")
             self.reset_handler = reset_handler
         else:
             raise ValueError("reset_handler is not callable.")
-
+        self.sim_params = sim_params
         self.hardware = hardware
 
         if self.simulator:
@@ -276,7 +283,7 @@ class DrakeGymEnv(gym.Env):
 
         if self.make_simulator:
             #print("make simulator")
-            self.simulator = self.make_simulator()
+            self.simulator = self.make_simulator(self.sim_params)
             self._setup()
 
         context = self.reset_handler(self.simulator, seed)

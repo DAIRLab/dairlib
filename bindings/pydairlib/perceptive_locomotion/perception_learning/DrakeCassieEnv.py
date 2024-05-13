@@ -9,6 +9,7 @@ import multiprocessing
 import gymnasium as gym
 from gymnasium import spaces
 import matplotlib.pyplot as plt
+from pydrake.geometry import Meshcat
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -51,7 +52,7 @@ cassie_footstep_controller_gym_environment import (
 from pydairlib.systems.system_utils import DrawAndSaveDiagramGraph
 
 perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perception_learning"
-sim_params = CassieFootstepControllerEnvironmentOptions()
+#sim_params = CassieFootstepControllerEnvironmentOptions()
 
 def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
         -> Tuple[CassieFootstepControllerEnvironment, AlipFootstepLQR, Diagram]:
@@ -65,7 +66,6 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
 
-    ##
     cost = False
     if cost:
         cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
@@ -97,7 +97,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     diagram = builder.Build()
 
-    #DrawAndSaveDiagramGraph(diagram, '../ALIP_RL_NN_test')
+    #DrawAndSaveDiagramGraph(diagram, '../CassieEnv')
     return sim_env, controller, diagram, cost_logger
 
 def reset_handler(simulator, seed):
@@ -111,29 +111,24 @@ def reset_handler(simulator, seed):
     controller_context = controller.GetMyMutableContextFromRoot(context)
     sim_context = sim_env.GetMyMutableContextFromRoot(context)
 
-    # Generate datapoint
-    # datapoint values set before we get it here:
-    # ['stance', 'desired_velocity', 'phase', 'initial_swing_foot_pos', 'q', 'v']
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            #'tmp/index/initial_conditions_2.npz'
-            'tmp/initial_conditions_2.npz'
+            'tmp/index/initial_conditions_2.npz'
+            #'tmp/initial_conditions_2.npz'
         )
     )
-    #datapoint = ic_generator.random()
-    #v_des_theta = np.pi / 6
-    #v_des_norm = 1.0
-    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-
-    np.random.seed(0)
     datapoint = ic_generator.random()
+    v_des_theta = np.pi / 12
     v_des_norm = 0.8
+    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm, 0])
-    #datapoint['desired_velocity'] = np.array([0.4, 0])
+    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+
+    #datapoint = ic_generator.random()
+    #v_des_norm = 0.8
+    #v_norm = np.random.uniform(0.2, v_des_norm)
+    #datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -160,13 +155,12 @@ def reset_handler(simulator, seed):
     simulator.Initialize()
     return context
 
-
 def simulate_init(sim_params):
     sim_env, controller, diagram, cost_logger= build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     def monitor(context):
-        time_limit = 20
+        time_limit = 25
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -205,34 +199,33 @@ def simulate_init(sim_params):
 
     simulator.set_monitor(monitor)
 
-    return simulator#diagram, simulator
-
-
-def make_sim(sim_params=sim_params):
-        terrain_random = True
-        if terrain_random:
-           rand = np.random.randint(1, 11)
-           if rand in [1, 2, 3, 4, 5, 6]:
-               terrain = 'params/stair_curriculum.yaml'
-           else:
-               terrain = 'params/flat.yaml'
-        sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-        sim_params.visualize = False
-        return simulate_init(sim_params)
+    return simulator
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
-    sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'
-        #'params/flat_stair.yaml'
-        #'params/stair_curriculum.yaml'
-        #'params/wavy_test.yaml'
-        #'params/wavy_terrain.yaml'
-        #'params/flat.yaml'
-    )
-    random = False
-    if random:
-        simulator = make_sim
+    #sim_params.visualize = True
+    #sim_params.meshcat = Meshcat()
+    random_terrain = True
+    
+    if random_terrain:
+        def simulator(sim_params):
+            rand = np.random.randint(1, 11)
+            if rand in [1, 2, 3, 4, 5]:
+                terrain = 'params/stair_curriculum.yaml'
+            elif rand in [6, 7, 8, 9]:
+                terrain = 'params/wavy_terrain.yaml'
+            else:
+                terrain = 'params/flat.yaml'
+            sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+            return simulate_init(sim_params)
     else:
+        sim_params.terrain = os.path.join(
+        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        # 'params/flat_stair.yaml'
+        # 'params/stair_curriculum.yaml'
+        # 'params/wavy_test.yaml'
+        # 'params/wavy_terrain.yaml'
+        # 'params/flat.yaml'
+        )
         simulator = simulate_init(sim_params)
     
     # Define Action space.
@@ -256,6 +249,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
         action_port_id="actions",
         observation_port_id="observations",
         reset_handler = reset_handler,
+        sim_params = sim_params
         )
 
     return env

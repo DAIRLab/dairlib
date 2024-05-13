@@ -27,6 +27,8 @@ from pydairlib.multibody import SquareSteppingStoneList
 
 from pydrake.systems.analysis import SimulatorStatus
 from pydrake.geometry import Rgba
+
+from pydrake.geometry import Meshcat
 from pydrake.multibody.plant import MultibodyPlant
 from pydrake.systems.framework import (
     DiscreteValues,
@@ -236,7 +238,7 @@ class InitialConditionsServer:
         datafile = np.load(fname, allow_pickle=True)
         self.data = datafile['arr_0']
         self.idx = 0
-        self.rng = np.random.default_rng()
+        self.rng = np.random.default_rng(123)
 
     def next(self):
         if self.idx >= len(self.data):
@@ -281,12 +283,17 @@ class CassieFootstepControllerEnvironmentOptions:
     controller_input_type: MpfcOscDiagramInputType = \
         MpfcOscDiagramInputType.kFootstepCommand
     simulate_perception: bool = True
-    visualize: bool = True
+    visualize: bool = False
+    meshcat: Meshcat = None
 
 class CassieFootstepControllerEnvironment(Diagram):
 
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
         super().__init__()
+
+        if params.visualize:
+            assert params.meshcat is not None
+        
         self.params = params
         self.controller_plant = MultibodyPlant(0.0)
         _ = AddCassieMultibody(
@@ -324,7 +331,7 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.height_map_server = None
         self.perception_module = None
-        self.plant_visualizer = PlantVisualizer(params.urdf) if params.visualize else None
+        self.plant_visualizer = PlantVisualizer(params.urdf, params.meshcat) if params.visualize else None
 
         if params.simulate_perception:
             self.sensor_info = {

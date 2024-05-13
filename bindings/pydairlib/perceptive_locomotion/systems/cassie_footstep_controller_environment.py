@@ -94,7 +94,7 @@ class CassieFootstepControllerEnvironmentOptions:
     controller_input_type: MpfcOscDiagramInputType = \
         MpfcOscDiagramInputType.kFootstepCommand
     simulate_perception: bool = False
-    visualize: bool = True
+    visualize: bool = False
     meshcat: Meshcat = None
 
 

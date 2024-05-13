@@ -195,10 +195,6 @@ class AlipFootstepLQR(LeafSystem):
         x = CalcMassNormalizedAd(
             self.params.height, time_until_switch
         ) @ current_alip_state
-        
-        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-        xd = xd_ud[:4]
-        #print(x-xd)
         x_disc.set_value(x)
 
     def calc_discrete_alip_state_xd(self, context: Context,

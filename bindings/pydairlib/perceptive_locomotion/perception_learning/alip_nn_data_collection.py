@@ -113,7 +113,8 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/index/initial_conditions_2.npz'
+            #'tmp/index/initial_conditions_2.npz'
+            'tmp/initial_conditions_2.npz'
         )
     )
 
@@ -125,10 +126,12 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
     
     datapoint = ic_generator.random()
+    #datapoint = ic_generator.choose(35)
     v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
     #coeff = np.random.uniform(0., 0.1)
-    datapoint['desired_velocity'] = np.array([v_norm, 0])
+    #datapoint['desired_velocity'] = np.array([v_norm, 0])
+    datapoint['desired_velocity'] = np.array([0.4, 0])
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
@@ -162,6 +165,8 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     ALIPtmp = []
     FOOTSTEPtmp = []
     HMAPtmp = []
+    DMAPtmp = []
+    VDEStmp = []
     terminate = False
     for i in range(1, 500):
         if check_termination(sim_env, context):
@@ -176,14 +181,25 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             xd = xd_ud[:4]
             ud = xd_ud[4:]
             x = controller.get_output_port_by_name('x').Eval(controller_context)
-
-            hmap_query = controller.EvalAbstractInput(
+            
+            # Depth map
+            dmap_query = controller.EvalAbstractInput(
                 controller_context, controller.input_port_indices['height_map']
+            ).get_value()
+
+            dmap = dmap_query.calc_height_map_stance_frame(
+                np.array([ud[0], ud[1], 0])
+            )
+
+            # Height map
+            hmap_query = controller.EvalAbstractInput(
+                controller_context, controller.input_port_indices['height_map_query']
             ).get_value()
 
             hmap = hmap_query.calc_height_map_stance_frame(
                 np.array([ud[0], ud[1], 0])
             )
+
             # Plot depth image
             #residual_grid_world = hmap_query.calc_height_map_world_frame(
             #    np.array([ud[0], ud[1], 0])
@@ -191,6 +207,7 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             #hmap_query.plot_surface(
             #    "residual", residual_grid_world[0], residual_grid_world[1],
             #    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
             alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
@@ -208,12 +225,15 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             hmap = hmap_query.calc_height_map_stance_frame(
                 np.array([ud[0], ud[1], 0])
             )
-        
+        #print(hmap.shape)
         ALIPtmp.append(alip)
         FOOTSTEPtmp.append(footstep)
         HMAPtmp.append(hmap)
+        if simulate_perception:
+            DMAPtmp.append(dmap)
+        VDEStmp.append(datapoint['desired_velocity'])
         time = context.get_time()-t_init
-    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, terminate, time
+    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, DMAPtmp, VDEStmp, terminate, time
 
 
 def main():
@@ -222,39 +242,55 @@ def main():
     #    perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
     checkpoint_path = os.path.join(
         perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
-    sim_params.visualize = False
-    sim_params.simulate_perception = True
+    sim_params.visualize = True
+    sim_params.simulate_perception = False
     ALIP = []
     FOOTSTEP = []
     HMAP = []
+    DMAP = []
+    VDES = []
     terrain = 'params/stair_curriculum.yaml'
+    #terrain = 'params/wavy_terrain.yaml'
+    #terrain = 'params/flat_stair.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
 
-    for i in range(50):
+    for i in range(100):
         print(i)
-        alip, footstep, hmap, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception)
+        alip, footstep, hmap, dmap, vdes, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception)
         print(time)
-        if time > 10:
+        if time > 20:
             ALIP.extend(alip)
             FOOTSTEP.extend(footstep)
             HMAP.extend(hmap)
+            DMAP.extend(dmap)
+            VDES.extend(vdes)
 
     print(np.array(ALIP).shape)
     print(np.array(FOOTSTEP).shape)
     print(np.array(HMAP).shape)
+    print(np.array(DMAP).shape)
+    print(np.array(VDES).shape)
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP2.npy', ALIP
+        f'/ALIP1.npy', ALIP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/FOOTSTEP2.npy', FOOTSTEP
+        f'/FOOTSTEP1.npy', FOOTSTEP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/HMAP2.npy', HMAP
+        f'/HMAP1.npy', HMAP
+    )
+    np.save(
+        f'{perception_learning_base_folder}/tmp'
+        f'/DMAP1.npy', DMAP
+    )
+    np.save(
+        f'{perception_learning_base_folder}/tmp'
+        f'/VDES1.npy', VDES
     )
 
 if __name__ == '__main__':

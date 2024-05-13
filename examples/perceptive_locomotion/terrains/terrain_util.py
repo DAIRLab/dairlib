@@ -177,10 +177,62 @@ def make_block_perlin(grid_size, bins):
     print(f'max step: {zmax}')
     plt.show()
 
+def make_flat_section(width: float, depth: float, height: float, length: float) -> list:
+    """
+    Creates a flat section starting at the origin extending in the positive x-direction.
+    """
+    stones = []
+    #num_stones = int(length / depth)
+    for i in range(num_stones):
+        x_center = depth * (i + 0.5) - (length / 2)
+        stone = [ 
+            [x_center, 0, height],  # Center XYZ
+            [0., 0., 1.],           # Normal (upwards)
+            [depth, width, 0.1],    # Dimensions XYZ (very thin to represent flat)
+            [0.0]                   # Yaw (alignment)
+        ]
+        stones.append(stone)
+    return stones
+
+def make_stairs(width: float, depth: float, height: float, n: int, direction: str) -> list:
+    """
+    Make a staircase either going 'up' or 'down', starting from the end of a flat section.
+    """
+    assert (direction == 'up' or direction == 'down'), "Direction must be either 'up' or 'down'"
+    signed_height = height if direction == 'up' else -height
+    stones = []
+    for i in range(n):
+        x_center = depth * i + (n * depth)  # Start right after the flat section
+        z_center = signed_height * (i + 1) if direction == 'up' else signed_height * (n - i)
+        stone = [
+            [x_center, 0, z_center],
+            [0., 0., 1.],
+            [depth, width, height],
+            [0.0]
+        ]
+        stones.append(stone)
+    return stones
+
+def create_terrain_section():
+    flat_section = make_flat_section(width = 5.0, depth = 1.0, height = 0.0, length = 10.0)
+    stairs_up = make_stairs(width = 5.0, depth = 1.0, height = 0.5, n = 5, direction = 'up')
+    stairs_down = make_stairs(width = 5.0, depth = 1.0, height = 0.5, n = 5, direction = 'down')
+
+    # Adjust x-coordinate of stairs down to start right after stairs up
+    last_up_x = stairs_up[-1][0][0]  # x-center of last 'up' stone
+    for stone in stairs_down:
+        stone[0][0] += last_up_x + 1.0  # Move down stairs to start right after up stairs
+
+    terrain = flat_section + stairs_up + stairs_down
+    # To match Yaml terrain file
+    print("stones:")
+    for stone in terrain:
+        print(f"  - {stone}")
 
 if __name__ == '__main__':
-    make_block_perlin(25.0, 27)
-    # make_stair_curriculum(81, 40)
+    #make_block_perlin(25.0, 27)
+    #make_stair_curriculum(81, 40)
     # def hfun(t):
     #     return 0.2 * np.sin(2 * t)
     # make_arc(2.5, 8, np.pi/2, 3*np.pi/2, np.array([-1.0, 0, 0]), BoxParams(0.75, 2.0), height_fun=hfun)
+    terrain = create_terrain_section()

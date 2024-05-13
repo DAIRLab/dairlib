@@ -50,10 +50,17 @@ from pydrake.systems.all import (
 params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
 class ObservationPublisher(LeafSystem):
-    def __init__(self, plant, noise=False):
+    def __init__(self, plant, noise=False, simulate_perception=True):
         LeafSystem.__init__(self)
         self.ns = 4
         self.noise = noise
+        self.simulate_perception = simulate_perception
+
+        if self.simulate_perception:
+            self.height = 80
+        else:
+            self.height = 64
+
         #self.color_mappable = ScalarMappable(cmap='jet')
         self.input_port_indices = {
             'lqr_reference': self.DeclareVectorInputPort(
@@ -62,16 +69,25 @@ class ObservationPublisher(LeafSystem):
             'obs_states' : self.DeclareVectorInputPort(
                 "obs_states", self.ns
             ).get_index(),
-            'height_map' : self.DeclareAbstractInputPort(
-            "elevation_map",
-            model_value=Value(ElevationMapQueryObject())
+            'vdes': self.DeclareVectorInputPort(
+                'vdes', 2
             ).get_index()
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*80*80+4, self.calculate_hmap
+                "observations", 3*self.height*self.height+6, self.calculate_hmap
             ).get_index()
         }
+        if self.simulate_perception:
+            self.input_port_indices.update({'height_map' : self.DeclareAbstractInputPort(
+            "elevation_map",
+            model_value=Value(ElevationMapQueryObject())
+            ).get_index()})
+        else:
+            self.input_port_indices.update({'height_map' : self.DeclareAbstractInputPort(
+            "height_map_query",
+            model_value=Value(HeightMapQueryObject())
+            ).get_index()})
 
     def get_input_port_by_name(self, name: str) -> InputPort:
         assert (name in self.input_port_indices)
@@ -100,17 +116,18 @@ class ObservationPublisher(LeafSystem):
         )
         
         # Visualize grid map @ stance frame
-        #residual_grid_world = hmap_query.calc_height_map_world_frame(
-        #    np.array([ud[0], ud[1], 0])
-        #)
-        #hmap_query.plot_surface(
-        #    "residual", residual_grid_world[0], residual_grid_world[1],
-        #    residual_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
+        hmap_grid_world = hmap_query.calc_height_map_world_frame(
+            np.array([ud[0], ud[1], 0])
+        )
+        hmap_query.plot_surface(
+            "residual", hmap_grid_world[0], hmap_grid_world[1],
+            hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
         
         flat = hmap.reshape(-1)
-        #flat[np.isneginf(flat)] = -1
+        
         alip = self.EvalVectorInput(context, self.input_port_indices['obs_states']).get_value()
-        out = np.hstack((flat, alip))
+        vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
+        out = np.hstack((flat, alip, vdes))
         output.set_value(out)
 
 class RewardSystem(LeafSystem):
@@ -189,25 +206,31 @@ class RewardSystem(LeafSystem):
         velocity_reward = np.exp(-5*np.linalg.norm(vdes[:2] - bf_vel[:2]))
         
         # penalize angular velocity about the z axis
-        angular_reward = np.exp(-5*np.linalg.norm(bf_ang))
+        angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
 
+        left_penalty = 0
+        right_penalty = 0
         # penalize toe angle
-        #front_contact_pt = np.array((-0.0457, 0.112, 0))
-        #rear_contact_pt = np.array((0.088, 0, 0))
+        front_contact_pt = np.array((-0.0457, 0.112, 0))
+        rear_contact_pt = np.array((0.088, 0, 0))
 
-        #toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        #left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
-        #left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
+        toe_left_rotation = plant.GetBodyByName("toe_left").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        left_toe_direction = toe_left_rotation @ (front_contact_pt - rear_contact_pt)
+        left_angle = abs(np.arctan2(left_toe_direction[2], np.linalg.norm(left_toe_direction[:2])))
         
-        #toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
-        #right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
-        #right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
+        toe_right_rotation = plant.GetBodyByName("toe_right").body_frame().CalcPoseInWorld(plant_context).rotation().matrix()
+        right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
+        right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
         
         #left_angle_reward = np.exp(-5*left_angle)
         #right_angle_reward = np.exp(-5*right_angle)
-        
+        if left_angle > 0.4:
+            left_penalty = -1
+        if right_angle > 0.4:
+            right_penalty = -1
+
         # reward normalize to 0~1
-        reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward#+ 0.1*left_angle_reward + 0.1*right_angle_reward + 0.1*angular_reward
+        reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward + left_penalty + right_penalty#+ 0.1*left_angle_reward + 0.1*right_angle_reward + 0.1*angular_reward
         output[0] = reward
 
 class InitialConditionsServer:
@@ -571,7 +594,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        obs_pub = ObservationPublisher(self.controller_plant, False)
+        obs_pub = ObservationPublisher(self.controller_plant, noise=False, simulate_perception=self.params.simulate_perception)
         builder.AddSystem(obs_pub)
         builder.Connect(
             self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
@@ -584,6 +607,10 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.Connect(
             self.ALIPfootstep_controller.get_output_port_by_name("lqr_reference"), #xd_ud
             obs_pub.get_input_port_by_name("lqr_reference")
+        )
+        builder.Connect(
+            self.ALIPfootstep_controller.get_output_port_by_name("vdes"), #xd_ud
+            obs_pub.get_input_port_by_name("vdes")
         )
         builder.ExportOutput(obs_pub.get_output_port_by_name("observations"), "observations")
         return obs_pub

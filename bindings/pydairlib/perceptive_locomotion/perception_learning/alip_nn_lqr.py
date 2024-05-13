@@ -37,7 +37,7 @@ perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
 # If elevation map is ON = True
-elevation = True
+elevation = False
 
 class AlipFootstepNNLQR(AlipFootstepLQR):
 
@@ -160,6 +160,10 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         #    residual_grid_world[2], colors[:, :, 0], colors[:, :, 1], colors[:, :, 2]
         #)
 
+        # For Terrain
+        #hmap_query.plot_surface(
+        #    "residual", residual_grid_world[0], residual_grid_world[1],
+        #    residual_grid_world[2], rgba = Rgba(0.004,0.122,0.357,1.0))
         footstep_i, footstep_j = np.unravel_index(
             np.argmin(final_grid), final_grid.shape
         )

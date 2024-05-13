@@ -91,56 +91,55 @@ class CustomNetwork(nn.Module):
 
         self.latent_dim_pi = last_layer_dim_pi
         self.latent_dim_vf = last_layer_dim_vf
+        self.alip_state_dim = 6
+        self.heightmap_size = 80
 
-        # CNN for heightmap observations
         n_input_channels = 3
         self.actor_cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(128, 64, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.Flatten(),
         )
         self.critic_cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 128, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(128, 64, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.Flatten(),
         )
 
-        # MLP for ALIP state
-        alip_state_dim = 4
+        # MLP for ALIP state + Vdes (6,)
         self.actor_alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(alip_state_dim, 256)),
+            layer_init(nn.Linear(self.alip_state_dim, 128)),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            layer_init(nn.Linear(128, 128)),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 64)),
+            layer_init(nn.Linear(128, 64)),
             nn.Tanh(),
         )
 
-        alip_state_dim = 4
         self.critic_alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(alip_state_dim, 256)),
+            layer_init(nn.Linear(self.alip_state_dim, 128)),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            layer_init(nn.Linear(128, 128)),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 64)),
+            layer_init(nn.Linear(128, 64)),
             nn.Tanh(),
         )
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(640, 256)),
+            layer_init(nn.Linear(3264, 256)),
             nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
             nn.Tanh(),
@@ -152,43 +151,35 @@ class CustomNetwork(nn.Module):
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(640, 256)),
+            layer_init(nn.Linear(3264, 256)),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 128)),
+            layer_init(nn.Linear(256, 256)),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 128)),
+            layer_init(nn.Linear(256, 256)),
             nn.Tanh(),
-            layer_init(nn.Linear(128, self.latent_dim_vf), std = 1.),
+            layer_init(nn.Linear(256, self.latent_dim_vf), std = 1.),
             nn.Tanh(),
         )
-        # Initialize the weights using Xavier initialization
-        #self._initialize_weights()
-
-    #def _initialize_weights(self):
-    #    for m in self.modules():
-    #        if isinstance(m, nn.Linear):
-    #            nn.init.xavier_uniform_(m.weight)
-    #            nn.init.constant_(m.bias, 0.0)
         
     def forward(self, observations: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         return self.forward_actor(observations), self.forward_critic(observations)
 
     def forward_actor(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
-        image_obs = observations[:, :3 * 80 * 80].reshape(batch_size, 3, 80, 80)
-        actor_cnn_output = self.actor_cnn(image_obs)  # Shape: (batch_size, 2304)
-        alip_state = observations[:, 3 * 80 * 80:]
-        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
+        actor_cnn_output = self.actor_cnn(image_obs)
+        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
+        actor_alip_mlp_output = self.actor_alip_mlp(alip_state)
         actor_combined_features = th.cat((actor_cnn_output, actor_alip_mlp_output), dim=1)
         actor_actions = self.actor_combined_mlp(actor_combined_features)
         return actor_actions
 
     def forward_critic(self, observations: th.Tensor) -> th.Tensor:
         batch_size = observations.size(0)
-        image_obs = observations[:, :3 * 80 * 80].reshape(batch_size, 3, 80, 80)
-        critic_cnn_output = self.critic_cnn(image_obs)  # Shape: (batch_size, 2304)
-        alip_state = observations[:, 3 * 80 * 80:]
-        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)  # Shape: (batch_size, 64)
+        image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
+        critic_cnn_output = self.critic_cnn(image_obs)
+        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
+        critic_alip_mlp_output = self.critic_alip_mlp(alip_state)
         critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1)
         critic_actions = self.critic_combined_mlp(critic_combined_features)
         return critic_actions
@@ -199,8 +190,8 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        optimizer_class= th.optim.Adam,
-        optimizer_kwargs = {'weight_decay': 1e-5, 'betas': (0.997, 0.997), 'epsilon': 1e-5}, #'epsilon': 1e-5, 'weight_decay': 1e-4, #'betas': (0.997, 0.997)
+        optimizer_class= th.optim.Adam, #torch.optim.RAdam Try RAdam with decoupled_weight_decay=True
+        optimizer_kwargs = {'weight_decay': 1e-3, 'epsilon': 1e-5}, #'epsilon': 1e-5, 'weight_decay': 1e-5, #'betas': (0.997, 0.997)
         *args,
         **kwargs,
     ):
@@ -261,21 +252,20 @@ def _run_training(config, args):
         model = PPO(policy_type, env, n_steps=128, n_epochs=2,
                     batch_size=32,)
     else:
-        tensorboard_log = f"{log_dir}runs/test"        
+        tensorboard_log = f"{log_dir}runs/test"
         #model = PPO(
         #    policy_type, env, learning_rate = linear_schedule(0.005), n_steps=int(512/num_env), n_epochs=10,
         #    batch_size=16*num_env, ent_coef=0.01,
         #    verbose=1,
         #    tensorboard_log=tensorboard_log,)
         
-        #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/good"
-        #model_path = path.join(test_folder, 'best_model.zip')
-        #model_path = 'PPO_separate_tanh.zip'
-        model_path = 'PPO_depth.zip'
+        test_folder = "rl/"
+        model_path = path.join(test_folder, 'latest_model.zip')
+        #model_path = 'PPO_depth_vdes.zip'
         
-        model = PPO.load(model_path, env, learning_rate = linear_schedule(3e-6), max_grad_norm = 0.2,
-                        clip_range = linear_schedule(0.1), target_kl = 0.1, ent_coef=0, 
-                        n_steps=int(500*num_env/num_env), n_epochs=10,
+        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
+                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
+                        n_steps=int(256*num_env/num_env), n_epochs=10,
                         batch_size=128*num_env, seed=111,
                         tensorboard_log=tensorboard_log)
         
@@ -337,7 +327,7 @@ def _main():
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 2e6 if not args.test else 5, # 2e6
+        "total_timesteps": 5e5 if not args.test else 5, # 2e6
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,

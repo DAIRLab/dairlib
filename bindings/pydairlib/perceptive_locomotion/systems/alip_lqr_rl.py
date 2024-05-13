@@ -215,26 +215,26 @@ class AlipFootstepLQR(LeafSystem):
 
     def calc_discrete_alip_state_xd(self, context: Context,
                                     xd_disc: BasicVector) -> None:
-            current_alip_state = np.copy(self.EvalVectorInput(
-                context,
-                self.input_port_indices['state']
-            ).value().ravel())
+        current_alip_state = np.copy(self.EvalVectorInput(
+            context,
+            self.input_port_indices['state']
+        ).value().ravel())
 
-            # mass normalized alip state
-            current_alip_state[2:] /= self.params.mass
+        # mass normalized alip state
+        current_alip_state[2:] /= self.params.mass
 
-            time_until_switch = self.EvalVectorInput(
-                context,
-                self.input_port_indices['time_until_switch']
-            ).value().ravel()[0]
+        time_until_switch = self.EvalVectorInput(
+            context,
+            self.input_port_indices['time_until_switch']
+        ).value().ravel()[0]
 
-            x = CalcMassNormalizedAd(
-                self.params.height, time_until_switch
-            ) @ current_alip_state
-            
-            xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
-            xd = xd_ud[:4]
-            xd_disc.set_value(x-xd)
+        x = CalcMassNormalizedAd(
+            self.params.height, time_until_switch
+        ) @ current_alip_state
+        
+        xd_ud = self.get_output_port_by_name('lqr_reference').Eval(context)
+        xd = xd_ud[:4]
+        xd_disc.set_value(x-xd)
 
     def calculate_optimal_footstep(
             self, context: Context, footstep: BasicVector) -> None:

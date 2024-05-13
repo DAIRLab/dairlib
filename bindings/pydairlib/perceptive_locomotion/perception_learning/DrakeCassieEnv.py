@@ -66,21 +66,24 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
 
     ##
-    cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
-    cost_zoh = ZeroOrderHold(0.05, 1) # only need to log the cost at sparse intervals, since it updates once per stride
-    cost_logger = VectorLogSink(1)
-    builder.AddSystem(cost_zoh)
-    builder.AddSystem(cost_logger)
-    builder.Connect(
-        cost_system.get_output_port(),
-        cost_zoh.get_input_port()
-    )
-    builder.Connect(
-        cost_zoh.get_output_port(),
-        cost_logger.get_input_port()
-    )
+    cost = False
+    if cost:
+        cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
+        cost_zoh = ZeroOrderHold(0.05, 1) # only need to log the cost at sparse intervals, since it updates once per stride
+        cost_logger = VectorLogSink(1)
+        builder.AddSystem(cost_zoh)
+        builder.AddSystem(cost_logger)
+        builder.Connect(
+            cost_system.get_output_port(),
+            cost_zoh.get_input_port()
+        )
+        builder.Connect(
+            cost_zoh.get_output_port(),
+            cost_logger.get_input_port()
+        )
     ##
-
+    else:
+        cost_logger = 0
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.Connect(
@@ -114,6 +117,7 @@ def reset_handler(simulator, seed):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
+            #'tmp/index/initial_conditions_2.npz'
             'tmp/initial_conditions_2.npz'
         )
     )
@@ -124,12 +128,12 @@ def reset_handler(simulator, seed):
     #v_norm = np.random.uniform(0.2, v_des_norm)
     #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
 
-    #datapoint = ic_generator.choose(0)
+    np.random.seed(0)
     datapoint = ic_generator.random()
     v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
-    #coeff = np.random.uniform(0., 0.1)
     datapoint['desired_velocity'] = np.array([v_norm, 0])
+    #datapoint['desired_velocity'] = np.array([0.3, 0])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -162,7 +166,7 @@ def simulate_init(sim_params):
     simulator = Simulator(diagram)
     simulator.Initialize()
     def monitor(context):
-        time_limit = 25
+        time_limit = 20
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -181,18 +185,18 @@ def simulate_init(sim_params):
         
         if context.get_time() > time_limit:
             print("Time Limit")
-            print(context.get_time())
+            #print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
 
         if z1 < 0.2:
-            print("Left Toe")
+            #print("Left Toe")
             print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
-            print("Right Toe")
+            #print("Right Toe")
             print(context.get_time())
             #print(cost_logger.FindLog(context).data()[-1][-1])
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
@@ -208,25 +212,21 @@ def make_sim(sim_params=sim_params):
         terrain_random = True
         if terrain_random:
            rand = np.random.randint(1, 11)
-           #if rand in [1, 2, 3]:
-               #terrain = 'params/wavy_test.yaml'
-               #print('wavy1')
-           #if rand in [1,]:
-           #    terrain = 'params/wavy_terrain.yaml'
-               #print('wavy1')
            if rand in [1, 2, 3, 4, 5, 6]:
                terrain = 'params/stair_curriculum.yaml'
-               #print('stair')
            else:
                terrain = 'params/flat.yaml'
-               #print('flat')
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_params.visualize = False
         return simulate_init(sim_params)
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'#'params/stair_curriculum.yaml'#'params/wavy_test.yaml' #'params/wavy_terrain.yaml' # 'params/flat.yaml'
+        perception_learning_base_folder, 'params/stair_curriculum.yaml'#'params/flat_stair.yaml'
+        #'params/stair_curriculum.yaml'
+        #'params/wavy_test.yaml'
+        #'params/wavy_terrain.yaml'
+        #'params/flat.yaml'
     )
     random = False
     if random:
@@ -240,33 +240,8 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     action_space = spaces.Box(low=np.asarray(la, dtype="float32"),
                                   high=np.asarray(ha, dtype="float32"),
                                   dtype=np.float32)
-
-    # Define the image observation space
-    #map_height = 64
-    #map_width = 64
-    #map_channels = 3
-    #map_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=[self.map_channels, self.map_height, self.map_width], dtype=np.float64)
-
-    # Define the ALIP state observation space
-    #alip_state_dim = 4
-    #alip_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.alip_state_dim,), dtype=np.float64)
-
-    # Define the combined observation space as a dictionary
-    #observation_space = spaces.Dict(
-    #spaces = {
-    #    'alip': alip_observation_space,
-    #    'heightmap': map_observation_space,
-    #})
     
-    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*80*80+4,), dtype=np.float64)
-
-    
-    # Define observation space. <- Full state + observation matrix
-    #lo = np.array([-np.inf, -np.inf, -np.inf, -np.inf])
-    #ho = np.array([np.inf, np.inf, np.inf, np.inf])
-    #observation_space = gym.spaces.Box(low=np.asarray(lo, dtype="float64"),
-    #                              high=np.asarray(ho, dtype="float64"),
-    #                              dtype=np.float64)
+    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*80*80+6,), dtype="float64")
 
     # time_step to match walking
     time_step = 0.05

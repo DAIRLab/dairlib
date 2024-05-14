@@ -85,7 +85,24 @@ pybind_py_library(
     py_imports = ["."],
 )
 
+pybind_py_library(
+    name = "utils_py",
+    cc_deps = [
+        "//multibody:utils",
+        "@drake//:drake_shared_library",
+        "@grid_map//grid_map_core",
+    ],
+    cc_so_name = "utils",
+    cc_srcs = ["utils_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
 PY_LIBRARIES = [
+    ":utils_py",
     ":diagrams_py",
 ]
 

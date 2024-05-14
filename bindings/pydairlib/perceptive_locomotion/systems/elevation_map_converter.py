@@ -34,6 +34,8 @@ from pydairlib.multibody import (
 )
 
 from pydairlib.systems.footstep_planning import Stance
+from pydairlib.perceptive_locomotion.utils import CalcHeightMapInStanceFrame
+
 
 from grid_map import GridMap, InterpolationMethods
 from grid_map_filters import InpaintWithMinimumValues
@@ -72,7 +74,7 @@ class ElevationMapQueryObject:
                 'that must be set from inside the HeightMapServer. '
                 'Context has not been set or is out-of-date')
         hmap = \
-            self.height_map_server .get_height_map_in_stance_frame_from_inputs(
+            self.height_map_server.get_height_map_in_stance_frame_from_inputs(
                 self.context, query_point
             )
         return hmap
@@ -292,26 +294,19 @@ class ElevationMappingConverter(LeafSystem):
                       grid_map: GridMap,
                       center: np.ndarray = np.zeros((3,))) -> np.ndarray:
         stance_pos = self.stance_pos_in_world(robot_state, stance)
-        heightmap = np.zeros((self.map_opts.nx, self.map_opts.ny))
-        for i, x in enumerate(self.xgrid):
-            for j, y in enumerate(self.ygrid):
-                offset = ReExpressBodyYawVector3InWorldFrame(
-                    plant=self.plant,
-                    context=self.plant_context,
-                    body_name="pelvis",
-                    vec=np.array([x, y, 0.0]) + center
-                )
-                query_point = stance_pos + offset
-                if grid_map.isInside(query_point[:2]):
-                    z = self.get_height_at_point(query_point, grid_map) - stance_pos[2]
-                    if z > 1:
-                        z = 1
-                    elif z < -1:
-                        z = -1
-                    heightmap[i, j] = z
-                else:
-                    heightmap[i, j] = np.nan
-    
+
+        heightmap = CalcHeightMapInStanceFrame(
+            grid_map=grid_map,
+            layer="elevation_inpainted",
+            plant=self.plant,
+            plant_context=self.plant_context,
+            floating_base_body_name="pelvis",
+            stance_pos=stance_pos,
+            center=center,
+            xgrid_stance_frame=self.xgrid,
+            ygrid_stance_frame=self.ygrid
+        )
+
         coordinates = np.argwhere(~np.isnan(heightmap)) # Coordinates of known values
         values = heightmap[~np.isnan(heightmap)] # Known values from the map
         grid_x, grid_y = np.mgrid[0:heightmap.shape[0], 0:heightmap.shape[1]] # Grid of coordinates for interpolation

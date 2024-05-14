@@ -39,6 +39,7 @@ py_library(
         "//bindings/pydairlib/geometry:convex_polygon_py",
         "//bindings/pydairlib/geometry:meshcat_utils_py",
         "//bindings/pydairlib/multibody",
+        "//bindings/pydairlib/perceptive_locomotion:utils_py",
         "@drake//bindings/pydrake",
         "//bindings/grid_map",
     ],

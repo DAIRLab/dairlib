@@ -1,0 +1,104 @@
+group "simulations" {
+    cmd "franka_sim" {
+        exec = "bazel-bin/examples/franka/franka_sim";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/franka/franka_visualizer --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/Cassie/cassie_xbox_remote";
+        host = "localhost";
+    }
+    cmd "logger" {
+        exec = "python3 start_logging.py hw";
+        host = "localhost";
+    }
+    cmd "record_video" {
+        exec = "python3 record_video.py";
+        host = "localhost";
+    }
+}
+
+group "controllers (hardware)" {
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/franka/franka_osc_controller --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
+    cmd "franka_c3" {
+        exec = "bazel-bin/examples/franka/franka_c3_controller --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "dispatchers" {
+    cmd "ros_lcm_bridge" {
+        exec = "bazel-bin/examples/franka/franka_ros_lcm_bridge";
+        host = "localhost";
+    }
+    cmd "lcm_ros_bridge" {
+        exec = "bazel-bin/examples/franka/franka_lcm_ros_bridge";
+        host = "localhost";
+    }
+}
+
+group "drivers" {
+    cmd "move_to_start" {
+        exec = "roslaunch franka_example_controllers move_to_start.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "franka_control";
+    }
+    cmd "torque_passthrough_controller" {
+        exec = "roslaunch franka_example_controllers torque_passthrough_controller.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "franka_control";
+    }
+    cmd "move_to_osc_pose" {
+        exec = "roslaunch franka_example_controllers move_to_start_osc.launch robot_ip:=172.16.0.2 load_gripper:=false";
+        host = "franka_control";
+    }
+    cmd "position_driver" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=position";
+        host = "franka_control";
+    }
+    cmd "torque_driver" {
+        exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
+        host = "franka_control";
+    }
+    cmd "cam_sync" {
+        exec = "roslaunch kuka_vision kuka_online_cam_sync.launch";
+        host = "tagslam";
+    }
+}
+
+
+script "start_franka_osc" {
+    stop cmd "lcm_ros_bridge";
+    stop cmd "ros_lcm_bridge";
+    stop cmd "franka_osc";
+    stop cmd "torque_passthrough_controller";
+    start cmd "record_video";
+    start cmd "logger";
+    start cmd "lcm_ros_bridge";
+    start cmd "ros_lcm_bridge";
+    start cmd "franka_osc";
+    wait ms 1000;
+    start cmd "torque_passthrough_controller";
+}
+
+script "stop_experiment" {
+    stop cmd "torque_passthrough_controller" wait "stopped";
+    stop group "controllers (hardware)";
+    stop group "dispatchers";
+    stop cmd "record_video";
+    stop cmd "logger";
+}

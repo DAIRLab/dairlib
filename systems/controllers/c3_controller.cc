@@ -168,6 +168,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
+
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
@@ -234,7 +235,7 @@ drake::systems::EventStatus C3Controller::ComputePlan(
     mutable_x_pred = (1 - weight) * z_sol[index].segment(0, n_x_) +
                      weight * z_sol[index + 1].segment(0, n_x_);
   } else {
-    mutable_x_pred = z_sol[-1].segment(0, n_x_);
+    mutable_x_pred = z_sol[N_ - 1].segment(0, n_x_);
   }
 
   return drake::systems::EventStatus::Succeeded();

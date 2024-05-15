@@ -10,7 +10,7 @@ contact_model : 'stewart_and_trinkle'
 #contact_model: 'anitescu'
 warm_start: true
 use_predicted_x0: true
-use_robust_formulation: true
+use_robust_formulation: false
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 #set to 0 to publish as fast as possible
@@ -26,7 +26,7 @@ workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.6],
 workspace_margins: 0.05
 
 u_horizontal_limits: [-10, 10]
-u_vertical_limits: [0, 30]
+u_vertical_limits: [-200, 200]
 
 mu: [0.6, 0.6, 0.6, 0.1, 0.1, 0.1, 0.1]
 dt: 0.075
@@ -60,7 +60,7 @@ g_u: [1, 1, 1]
 
 #Penalty on matching the QP variables
 u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-u_gamma: [1, 1, 1, 1, 1, 1, 1]
+u_gamma: [10, 10, 10, 10, 10, 10, 10]
 u_lambda_n: [250, 250, 250, 250, 250, 250, 250]
 u_lambda_t: [250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 250]
 u_lambda: [85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85]

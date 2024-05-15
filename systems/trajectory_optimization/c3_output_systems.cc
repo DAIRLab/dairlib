@@ -57,15 +57,27 @@ void C3OutputSender::OutputC3Forces(
   const auto& contact_info =
       this->EvalInputValue<std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>>(context, lcs_contact_info_port_);
   MatrixXd J_c = contact_info->first;
+  int contact_force_start = c3_solution->lambda_sol_.rows() - J_c.rows();
   auto contact_points = contact_info->second;
-  c3_forces_output->num_forces = c3_solution->lambda_sol_.rows();
-  c3_forces_output->forces.resize(c3_forces_output->num_forces);
   int forces_per_contact = contact_info->first.rows() / contact_points.size();
+  c3_forces_output->num_forces = forces_per_contact * contact_points.size();
+  c3_forces_output->forces.resize(c3_forces_output->num_forces);
+
   int contact_var_start;
+  int contact_jacobian_row_start;
   for (int contact_index = 0; contact_index < contact_points.size();
        ++contact_index) {
-    contact_var_start = forces_per_contact * contact_index;
+    contact_var_start = contact_force_start + forces_per_contact * contact_index;
+    contact_jacobian_row_start = forces_per_contact * contact_index;
     for (int i = 0; i < forces_per_contact; ++i) {
+      int force_row = contact_jacobian_row_start + i;
+      if (contact_force_start > 0){
+        if (i == 0){
+          force_row = contact_index;
+        }else{
+          force_row = contact_points.size() + (forces_per_contact - 1) * contact_index + i;
+        }
+      }
       auto force = lcmt_force();
       force.contact_point[0] = contact_points.at(contact_index)[0];
       force.contact_point[1] = contact_points.at(contact_index)[1];
@@ -75,14 +87,14 @@ void C3OutputSender::OutputC3Forces(
       // expressed in the world frame
       force.contact_force[0] =
           c3_solution->lambda_sol_(contact_var_start + i, 0) *
-          J_c.row(contact_var_start + i)(6);
+          J_c.row(force_row)(6);
       force.contact_force[1] =
           c3_solution->lambda_sol_(contact_var_start + i, 0) *
-          J_c.row(contact_var_start + i)(7);
+          J_c.row(force_row)(7);
       force.contact_force[2] =
           c3_solution->lambda_sol_(contact_var_start + i, 0) *
-          J_c.row(contact_var_start + i)(8);
-      c3_forces_output->forces[contact_var_start + i] = force;
+          J_c.row(force_row)(8);
+      c3_forces_output->forces[contact_jacobian_row_start + i] = force;
     }
   }
   c3_forces_output->utime = context.get_time() * 1e6;

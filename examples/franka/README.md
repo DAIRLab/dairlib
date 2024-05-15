@@ -1,5 +1,9 @@
 ## Experiment Instructions
 
+Central repo for C3 and its examples, including:
+- https://arxiv.org/abs/2405.08731
+
+This branch/repo is being constantly updated so examples may be unstable.
 
 ## Simulated Robot
 

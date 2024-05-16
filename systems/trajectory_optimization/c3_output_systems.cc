@@ -93,13 +93,13 @@ void C3OutputSender::OutputC3Forces(
       // 6, 7, 8 are the indices for the x,y,z components of the tray
       // expressed in the world frame
       force.contact_force[0] =
-          c3_solution->lambda_sol_(contact_var_index, 1) *
+          c3_solution->lambda_sol_(contact_var_index, 0) *
           J_c.row(contact_jacobian_row)(6);
       force.contact_force[1] =
-          c3_solution->lambda_sol_(contact_var_index, 1) *
+          c3_solution->lambda_sol_(contact_var_index, 0) *
           J_c.row(contact_jacobian_row)(7);
       force.contact_force[2] =
-          c3_solution->lambda_sol_(contact_var_index, 1) *
+          c3_solution->lambda_sol_(contact_var_index, 0) *
           J_c.row(contact_jacobian_row)(8);
       c3_forces_output->forces[force_index + i] = force;
     }

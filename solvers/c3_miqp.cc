@@ -243,7 +243,12 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
                                       n_ + m_ + k_);
     single_lambda_expr.addTerms(single_lambda_coeffs, delta_k, n_ + m_ + k_);
 
-    if (constraint_rows % 2 == 1) {
+    /// Constraint explanation
+    /// if i % 2 == 0:
+    ///     lambda_1 - lambda_2 <= mu_l / mu * (lambda_1 + lambda_2)
+    /// else:
+    ///     lambda_2 - lambda_1 <= mu_l / mu * (lambda_1 + lambda_2)
+    if (i % 2 == 1) {
       model.addConstr(subtraction_constraint_expr <=
                       (0.4 / 0.6) * (addition_constraint_expr) +
                           M * (reduced_friction_cone_binary[i]));
@@ -256,6 +261,10 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
       model.addConstr(tangential_velocity_expr <=
                       M * (reduced_friction_cone_binary[i]));
     }
+    /// if i % 2 == 0:
+    ///     lambda_1 = 0
+    /// else:
+    ///     lambda_2 = 0
     model.addConstr(single_lambda_expr <=
                     M * (1 - reduced_friction_cone_binary[i]));
   }

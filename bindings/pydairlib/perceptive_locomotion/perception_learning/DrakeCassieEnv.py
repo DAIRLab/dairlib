@@ -118,17 +118,18 @@ def reset_handler(simulator, seed):
             #'tmp/initial_conditions_2.npz'
         )
     )
-    datapoint = ic_generator.random()
-    v_des_theta = np.pi / 12
-    v_des_norm = 0.8
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-
     #datapoint = ic_generator.random()
+    #v_des_theta = 0.1
+    #v_des_norm = 0.8
+    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
+    #v_norm = np.random.uniform(0.2, v_des_norm)
+    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+
+    datapoint = ic_generator.random()
     #v_des_norm = 0.8
     #v_norm = np.random.uniform(0.2, v_des_norm)
     #datapoint['desired_velocity'] = np.array([v_norm, 0])
+    datapoint['desired_velocity'] = np.array([0.5, 0])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -155,12 +156,25 @@ def reset_handler(simulator, seed):
     simulator.Initialize()
     return context
 
-def simulate_init(sim_params):
+def simulate_init(sim_params, random_terrain = False):
+    
+    terrain = 'params/stair_curriculum.yaml'
+    #terrain = 'params/random/flat_stair/flat_stair_55.yaml'
+    if random_terrain:
+        rand = np.random.randint(1, 12)
+        if rand in [1, 2, 3, 4]:
+            terrain = 'params/stair_curriculum.yaml'
+        elif rand in [5, 6, 7, 8, 9]:
+            terrain = 'params/wavy_terrain.yaml'
+        else:
+            terrain = 'params/flat.yaml'
+    sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+
     sim_env, controller, diagram, cost_logger= build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     def monitor(context):
-        time_limit = 25
+        time_limit = 20
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -204,29 +218,8 @@ def simulate_init(sim_params):
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     #sim_params.visualize = True
     #sim_params.meshcat = Meshcat()
-    random_terrain = True
-    
-    if random_terrain:
-        def simulator(sim_params):
-            rand = np.random.randint(1, 11)
-            if rand in [1, 2, 3, 4, 5]:
-                terrain = 'params/stair_curriculum.yaml'
-            elif rand in [6, 7, 8, 9]:
-                terrain = 'params/wavy_terrain.yaml'
-            else:
-                terrain = 'params/flat.yaml'
-            sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-            return simulate_init(sim_params)
-    else:
-        sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'
-        # 'params/flat_stair.yaml'
-        # 'params/stair_curriculum.yaml'
-        # 'params/wavy_test.yaml'
-        # 'params/wavy_terrain.yaml'
-        # 'params/flat.yaml'
-        )
-        simulator = simulate_init(sim_params)
+    random_terrain = False
+    simulator = simulate_init(sim_params, random_terrain=random_terrain)
     
     # Define Action space.
     la = np.array([-1., -1., -1.])

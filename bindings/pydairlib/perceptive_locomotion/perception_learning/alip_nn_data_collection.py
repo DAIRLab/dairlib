@@ -10,6 +10,7 @@ from pydrake.geometry import Rgba
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
+from pydrake.geometry import Meshcat
 from pydrake.systems.all import (
     Diagram,
     Context,
@@ -160,7 +161,7 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     DMAPtmp = []
     VDEStmp = []
     terminate = False
-    for i in range(1, 500):
+    for i in range(1, 400):
         if check_termination(sim_env, context):
             print('terminate')
             terminate = True
@@ -219,7 +220,7 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             )
         ALIPtmp.append(alip)
         FOOTSTEPtmp.append(footstep)
-        HMAPtmp.append(hmap)
+        #HMAPtmp.append(hmap)
         if simulate_perception:
             DMAPtmp.append(dmap)
         VDEStmp.append(datapoint['desired_velocity'])
@@ -233,31 +234,61 @@ def main():
     #    perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
     checkpoint_path = os.path.join(
         perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
-    sim_params.visualize = True
-    sim_params.simulate_perception = False
+    sim_params.visualize = False
+    sim_params.simulate_perception = True
+    #sim_params.visualize = True
+    #sim_params.meshcat = Meshcat()
     ALIP = []
     FOOTSTEP = []
-    HMAP = []
+    #HMAP = []
     DMAP = []
     VDES = []
-    terrain = 'params/stair_curriculum.yaml'
-    sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
-    sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
+
+    random_terrain = True
 
     for i in range(100):
+        if random_terrain:
+            rand = np.random.randint(1, 3)
+            if rand == 1:
+                # Terrain without blocks
+                rand = np.random.randint(1, 8)
+                if rand in [1, 2, 3]:
+                    terrain = 'params/stair_curriculum.yaml'
+                elif rand in [4, 5, 6]:
+                    terrain = 'params/wavy_terrain.yaml'
+                else:
+                    terrain = 'params/flat.yaml'
+            else:
+                # Terrain with blocks
+                rand = np.random.randint(1, 4)
+                if rand == 1: # random flat
+                    rand = np.random.randint(0, 200)
+                    terrain = f'params/random/flat/flat_{rand}.yaml'
+                elif rand == 2: # random stairs
+                    rand = np.random.randint(0, 200)
+                    terrain = f'params/random/stairs/stair_curriculum_{rand}.yaml'
+                else: # random wavy
+                    rand = np.random.randint(0, 200)
+                    terrain = f'params/random/wavy/wavy_terrain_{rand}.yaml'
+        else:
+            terrain = 'params/stair_curriculum.yaml'
+        print(terrain)
+        os.path.join(perception_learning_base_folder, terrain)
+        sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+        sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
         print(i)
         alip, footstep, hmap, dmap, vdes, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception)
         print(time)
-        if time > 20:
+        if not terminate:
             ALIP.extend(alip)
             FOOTSTEP.extend(footstep)
-            HMAP.extend(hmap)
+            #HMAP.extend(hmap)
             DMAP.extend(dmap)
             VDES.extend(vdes)
 
     print(np.array(ALIP).shape)
     print(np.array(FOOTSTEP).shape)
-    print(np.array(HMAP).shape)
+    #print(np.array(HMAP).shape)
     print(np.array(DMAP).shape)
     print(np.array(VDES).shape)
 
@@ -269,10 +300,10 @@ def main():
         f'{perception_learning_base_folder}/tmp'
         f'/FOOTSTEP.npy', FOOTSTEP
     )
-    np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/HMAP.npy', HMAP
-    )
+    #np.save(
+    #    f'{perception_learning_base_folder}/tmp'
+    #    f'/HMAP.npy', HMAP
+    #)
     np.save(
         f'{perception_learning_base_folder}/tmp'
         f'/DMAP.npy', DMAP

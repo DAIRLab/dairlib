@@ -20,6 +20,7 @@ from stable_baselines3.common.vec_env import (
 import torch as th
 _full_sb3_available = True
 
+from pydrake.geometry import Meshcat
 from pydrake.systems.all import (
     Diagram,
     Context,
@@ -68,17 +69,19 @@ def sample(sim_params):
             obs, _ = env.reset()
 
 def run_play(sim_params):
-    terrain = 'params/stair_curriculum.yaml'
-    sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
+    sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
+    #terrain = 'params/stair_curriculum.yaml'
+    #sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
     env = gym.make("DrakeCassie-v0",
                     sim_params = sim_params,
                     )
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 3e4
-    #test_folder = "rl/tmp/DrakeCassie/eval_logs/test/"
-    #model_path = path.join(test_folder, 'best_model.zip')
-    model_path = 'PPO_depth_vdes.zip'
+    test_folder = "rl/vdes_depth_angle_penalty/"
+    model_path = path.join(test_folder, 'best_model.zip')
+    #model_path = 'PPO_depth_vdes.zip'
     model = PPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
@@ -86,7 +89,6 @@ def run_play(sim_params):
     total_reward = 0
     for _ in range(int(max_steps)):
         action, _states = model.predict(obs, deterministic=True)
-        #print(action)
         obs, reward, terminated, truncated, info = env.step(action)
         #print(reward)
         total_reward += reward

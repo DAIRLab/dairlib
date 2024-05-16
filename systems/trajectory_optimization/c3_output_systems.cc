@@ -60,15 +60,15 @@ void C3OutputSender::OutputC3Forces(
   int contact_force_start = c3_solution->lambda_sol_.rows() - J_c.rows();
   bool using_stewart_and_trinkle_model = contact_force_start > 0;
 
-  auto num_contact_points = contact_info->second;
-  int forces_per_contact = contact_info->first.rows() / num_contact_points.size();
+  auto contact_points = contact_info->second;
+  int forces_per_contact = contact_info->first.rows() / contact_points.size();
 
-  c3_forces_output->num_forces = forces_per_contact * num_contact_points.size();
+  c3_forces_output->num_forces = forces_per_contact * contact_points.size();
   c3_forces_output->forces.resize(c3_forces_output->num_forces);
 
   int contact_var_start;
   int force_index;
-  for (int contact_index = 0; contact_index < num_contact_points.size();
+  for (int contact_index = 0; contact_index < contact_points.size();
        ++contact_index) {
     contact_var_start = contact_force_start + forces_per_contact * contact_index;
     force_index = forces_per_contact * contact_index;
@@ -78,25 +78,25 @@ void C3OutputSender::OutputC3Forces(
         if (i == 0){
           contact_jacobian_row = contact_index;
         } else {
-          contact_jacobian_row = num_contact_points.size() + (forces_per_contact - 1) * contact_index + i;
+          contact_jacobian_row = contact_points.size() + (forces_per_contact - 1) * contact_index + i - 1;
         }
       }
       auto force = lcmt_force();
-      force.contact_point[0] = num_contact_points.at(contact_index)[0];
-      force.contact_point[1] = num_contact_points.at(contact_index)[1];
-      force.contact_point[2] = num_contact_points.at(contact_index)[2];
+      force.contact_point[0] = contact_points.at(contact_index)[0];
+      force.contact_point[1] = contact_points.at(contact_index)[1];
+      force.contact_point[2] = contact_points.at(contact_index)[2];
       // TODO(yangwill): find a cleaner way to figure out the equivalent forces
       // VISUALIZING FORCES FOR THE FIRST KNOT POINT
       // 6, 7, 8 are the indices for the x,y,z components of the tray
       // expressed in the world frame
       force.contact_force[0] =
-          c3_solution->lambda_sol_(contact_var_start + i, 0) *
+          c3_solution->lambda_sol_(contact_var_start + i, 1) *
           J_c.row(contact_jacobian_row)(6);
       force.contact_force[1] =
-          c3_solution->lambda_sol_(contact_var_start + i, 0) *
+          c3_solution->lambda_sol_(contact_var_start + i, 1) *
           J_c.row(contact_jacobian_row)(7);
       force.contact_force[2] =
-          c3_solution->lambda_sol_(contact_var_start + i, 0) *
+          c3_solution->lambda_sol_(contact_var_start + i, 1) *
           J_c.row(contact_jacobian_row)(8);
       c3_forces_output->forces[force_index + i] = force;
     }

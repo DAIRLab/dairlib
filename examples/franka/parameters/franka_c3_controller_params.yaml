@@ -1,6 +1,6 @@
 scene_index: 1
 c3_options_file: [examples/franka/parameters/c3_options/franka_c3_options_translation.yaml,
-                  examples/franka/parameters/c3_options/franka_c3_options_supports.yaml,
+                  examples/franka/parameters/c3_options/franka_c3_options_supports_st.yaml,
                   examples/franka/parameters/c3_options/franka_c3_options_rotated_supports.yaml,
                   examples/franka/parameters/c3_options/franka_c3_options_wall.yaml,
                   examples/franka/parameters/c3_options/franka_c3_options_two_objects.yaml]

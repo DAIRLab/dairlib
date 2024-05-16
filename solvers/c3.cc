@@ -378,37 +378,6 @@ vector<VectorXd> C3::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   return *z_sol_;
 }
 
-void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
-                             double upper_bound, int constraint) {
-  if (constraint == 1) {
-    for (int i = 1; i < N_; i++) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
-    }
-  }
-
-  if (constraint == 2) {
-    for (int i = 0; i < N_; i++) {
-      user_constraints_.push_back(
-          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
-    }
-  }
-
-  if (constraint == 3) {
-    for (int i = 0; i < N_; i++) {
-      user_constraints_.push_back(prog_.AddLinearConstraint(
-          A, lower_bound, upper_bound, lambda_.at(i)));
-    }
-  }
-}
-
-void C3::RemoveConstraints() {
-  for (auto& userconstraint : user_constraints_) {
-    prog_.RemoveConstraint(userconstraint);
-  }
-  user_constraints_.clear();
-}
-
 vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
                                      vector<VectorXd>& WZ, int admm_iteration) {
   vector<VectorXd> deltaProj(N_, VectorXd::Zero(n_ + m_ + k_));
@@ -422,7 +391,7 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 
 #pragma omp parallel for num_threads(options_.num_threads)
   for (i = 0; i < N_; i++) {
-    if (options_.use_robust_formulation) {
+    if (options_.use_robust_formulation && admm_iteration == (options_.admm_iter - 1)) { // only on the last iteration
       if (warm_start_) {
         if (i == N_ - 1) {
           deltaProj[i] = SolveRobustSingleProjection(
@@ -456,6 +425,38 @@ vector<VectorXd> C3::SolveProjection(const vector<MatrixXd>& G,
 
   return deltaProj;
 }
+
+void C3::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
+                             double upper_bound, int constraint) {
+  if (constraint == 1) {
+    for (int i = 1; i < N_; i++) {
+      user_constraints_.push_back(
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
+    }
+  }
+
+  if (constraint == 2) {
+    for (int i = 0; i < N_; i++) {
+      user_constraints_.push_back(
+          prog_.AddLinearConstraint(A, lower_bound, upper_bound, u_.at(i)));
+    }
+  }
+
+  if (constraint == 3) {
+    for (int i = 0; i < N_; i++) {
+      user_constraints_.push_back(prog_.AddLinearConstraint(
+          A, lower_bound, upper_bound, lambda_.at(i)));
+    }
+  }
+}
+
+void C3::RemoveConstraints() {
+  for (auto& userconstraint : user_constraints_) {
+    prog_.RemoveConstraint(userconstraint);
+  }
+  user_constraints_.clear();
+}
+
 
 }  // namespace solvers
 }  // namespace dairlib

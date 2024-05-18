@@ -59,7 +59,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
     builder = DiagramBuilder()
     sim_env = CassieFootstepControllerEnvironment(sim_params)
     controller = sim_env.AddToBuilderWithFootstepController(
-        builder, AlipFootstepNNLQR, model_path=checkpoint_path
+        builder, AlipFootstepNNLQR, model_path=checkpoint_path, elevation_map=simulate_perception
     )
     cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
 
@@ -89,7 +89,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
         sim_env.get_input_port_by_name('footstep_command')
     )
     diagram = builder.Build()
-    DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
+    #DrawAndSaveDiagramGraph(diagram, '../AlipNNLQR_DataCollection')
     return sim_env, controller, diagram
 
 def check_termination(sim_env, diagram_context) -> bool:
@@ -109,7 +109,7 @@ def check_termination(sim_env, diagram_context) -> bool:
     z2 = com[2] - right_toe_pos[2]
     return z1 < 0.2 or z2 < 0.2
 
-def run(sim_env, controller, diagram, simulate_perception=False):
+def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
@@ -123,8 +123,7 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     #datapoint = ic_generator.choose(0)
     v_des_norm = 0.8
     v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm, 0])
-    datapoint['desired_velocity'] = np.array([0.4, 0])
+    datapoint['desired_velocity'] = np.array([v_norm, 0])
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
@@ -161,9 +160,9 @@ def run(sim_env, controller, diagram, simulate_perception=False):
     DMAPtmp = []
     VDEStmp = []
     terminate = False
-    for i in range(1, 400):
+
+    for i in range(1, 21): # 15 seconds
         if check_termination(sim_env, context):
-            print('terminate')
             terminate = True
             break
         simulator.AdvanceTo(t_init + 0.05*i)
@@ -194,12 +193,13 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             )
 
             # Plot depth image
-            #residual_grid_world = hmap_query.calc_height_map_world_frame(
-            #    np.array([ud[0], ud[1], 0])
-            #)
-            #hmap_query.plot_surface(
-            #    "residual", residual_grid_world[0], residual_grid_world[1],
-            #    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+            if plot:
+                residual_grid_world = dmap_query.calc_height_map_world_frame(
+                    np.array([ud[0], ud[1], 0])
+                )
+                hmap_query.plot_surface(
+                    "residual", residual_grid_world[0], residual_grid_world[1],
+                    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
@@ -218,6 +218,14 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             hmap = hmap_query.calc_height_map_stance_frame(
                 np.array([ud[0], ud[1], 0])
             )
+            if plot:
+                residual_grid_world = hmap_query.calc_height_map_world_frame(
+                    np.array([ud[0], ud[1], 0])
+                )
+                hmap_query.plot_surface(
+                    "residual", residual_grid_world[0], residual_grid_world[1],
+                    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+
         ALIPtmp.append(alip)
         FOOTSTEPtmp.append(footstep)
         #HMAPtmp.append(hmap)
@@ -225,30 +233,38 @@ def run(sim_env, controller, diagram, simulate_perception=False):
             DMAPtmp.append(dmap)
         VDEStmp.append(datapoint['desired_velocity'])
         time = context.get_time()-t_init
+
     return ALIPtmp, FOOTSTEPtmp, HMAPtmp, DMAPtmp, VDEStmp, terminate, time
 
 
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    #checkpoint_path = os.path.join(
-    #    perception_learning_base_folder, 'tmp/copper-cherry-3.pth')
     checkpoint_path = os.path.join(
-        perception_learning_base_folder, 'tmp/best_model_checkpoint.pth')
-    sim_params.visualize = False
+        perception_learning_base_folder, 'tmp/best_model_checkpoint90epoch.pth') # path of trained U-Net
+    
+    # True if using depth sensor
     sim_params.simulate_perception = True
-    #sim_params.visualize = True
-    #sim_params.meshcat = Meshcat()
+
+    # Visualization is False by default
+    sim_params.visualize = True
+    sim_params.meshcat = Meshcat()
+    
+    DMAP = []
     ALIP = []
+    VDES = []
     FOOTSTEP = []
     #HMAP = []
-    DMAP = []
-    VDES = []
+    actions = []
+    observations = []
 
     random_terrain = True
 
-    for i in range(100):
+    print("Starting...")
+
+    for i in range(50):
         if random_terrain:
-            rand = np.random.randint(1, 3)
+            rand = np.random.randint(1, 2) # TODO @Min-ku Fix the size of random terrain yaml file
+            
             if rand == 1:
                 # Terrain without blocks
                 rand = np.random.randint(1, 8)
@@ -258,6 +274,7 @@ def main():
                     terrain = 'params/wavy_terrain.yaml'
                 else:
                     terrain = 'params/flat.yaml'
+            
             else:
                 # Terrain with blocks
                 rand = np.random.randint(1, 4)
@@ -270,35 +287,30 @@ def main():
                 else: # random wavy
                     rand = np.random.randint(0, 200)
                     terrain = f'params/random/wavy/wavy_terrain_{rand}.yaml'
+        
         else:
             terrain = 'params/stair_curriculum.yaml'
-        print(terrain)
+        
         os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
-        print(i)
-        alip, footstep, hmap, dmap, vdes, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception)
-        print(time)
+        alip, footstep, hmap, dmap, vdes, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
+        print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")
+
         if not terminate:
+            DMAP.extend(dmap)
             ALIP.extend(alip)
+            VDES.extend(vdes)
             FOOTSTEP.extend(footstep)
             #HMAP.extend(hmap)
-            DMAP.extend(dmap)
-            VDES.extend(vdes)
 
-    print(np.array(ALIP).shape)
-    print(np.array(FOOTSTEP).shape)
-    #print(np.array(HMAP).shape)
-    print(np.array(DMAP).shape)
-    print(np.array(VDES).shape)
+        del sim_env, controller, diagram
 
+    print(f"Number of collected datapoints is: {np.array(ALIP).shape[0]}")
+    
     np.save(
         f'{perception_learning_base_folder}/tmp'
         f'/ALIP.npy', ALIP
-    )
-    np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/FOOTSTEP.npy', FOOTSTEP
     )
     #np.save(
     #    f'{perception_learning_base_folder}/tmp'
@@ -312,6 +324,23 @@ def main():
         f'{perception_learning_base_folder}/tmp'
         f'/VDES.npy', VDES
     )
+
+    print("Saving actions and observations...")
+
+    np.save(
+        f'{perception_learning_base_folder}/tmp'
+        f'/actions.npy', FOOTSTEP
+    )
+
+    DMAP = np.asarray(DMAP)
+    ALIP = np.asarray(ALIP)
+    VDES = np.asarray(VDES)
+    DMAP = DMAP.reshape((DMAP.shape[0], -1))
+    np.save(
+        f'{perception_learning_base_folder}/tmp'
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES), axis=1)
+    )
+    #flattened_data = np.concatenate((DMAP, ALIP, VDES), axis=1)
 
 if __name__ == '__main__':
     main()

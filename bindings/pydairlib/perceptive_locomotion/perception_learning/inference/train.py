@@ -42,7 +42,7 @@ def train(params: Hyperparams, use_wandb: bool = False) -> None:
         num_workers=params.num_workers
     )
     device = torch_utils.get_device()
-    model = UNet()
+    model = UNet(7, 1)
 
     model.to(device)
 
@@ -84,4 +84,4 @@ def train(params: Hyperparams, use_wandb: bool = False) -> None:
 
 
 if __name__ == '__main__':
-    train(Hyperparams(), use_wandb=True)
+    train(Hyperparams(), use_wandb=False)

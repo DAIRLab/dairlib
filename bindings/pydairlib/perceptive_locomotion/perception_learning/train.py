@@ -13,20 +13,21 @@ from gymnasium import spaces
 from typing import Callable, Tuple
 
 import stable_baselines3
-from stable_baselines3.common.env_checker import check_env
-from pydairlib.perceptive_locomotion.perception_learning.PPO.ppo import PPO
-from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import VecMonitor
-from stable_baselines3.common.vec_env import (
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_checker import check_env
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.PPO.ppo import PPO
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.RPO.rpo import RPO
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_util import make_vec_env
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.monitor import Monitor
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.vec_env import VecMonitor
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.vec_env import (
     DummyVecEnv,
     SubprocVecEnv,
     VecVideoRecorder,
     VecNormalize,
 )
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from stable_baselines3.common.policies import ActorCriticPolicy
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.policies import ActorCriticPolicy
 
 from pydrake.geometry import Meshcat
 from pydrake.systems.all import (
@@ -235,14 +236,13 @@ def _run_training(config, args):
         env = gym.make(env_name,
                        sim_params = sim_params_train,
                        )
-        env = VecNormalize(venv=env, norm_obs=False)
+        #env = VecNormalize(venv=env, norm_obs=False)
     
     if args.test:
         model = PPO(
             policy_type, env, learning_rate = linear_schedule(3e-4), n_steps=int(512/num_env), n_epochs=10,
-            batch_size=16*num_env, ent_coef=0.01,
-            verbose=1,
-            tensorboard_log=tensorboard_log,)
+            batch_size=16*num_env, ent_coef=0.01, use_sde=True, verbose=1,
+            )
     else:
         tensorboard_log = f"{log_dir}runs/test"
         
@@ -251,7 +251,7 @@ def _run_training(config, args):
         #model_path = 'PPO_depth_vdes.zip'
         
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
-                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
+                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.03, use_sde=True,
                         n_steps=int(256*num_env/num_env), n_epochs=10,
                         batch_size=128*num_env, seed=111,
                         tensorboard_log=tensorboard_log)

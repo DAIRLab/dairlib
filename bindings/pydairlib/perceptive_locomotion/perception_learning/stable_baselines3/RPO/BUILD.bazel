@@ -12,50 +12,19 @@ load(
 )
 
 py_library(
-    name = "torch_utils",
-    srcs = ["torch_utils.py"],
-    imports = [
-        ""
+    name = "rpo",
+    srcs = ["rpo.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
     ]
 )
 
 py_library(
-    name = "unet",
-    srcs = ["unet.py"],
+    name = "policies",
+    srcs = ["policies.py"],
     deps = [
-        ":torch_utils",
-    ],
-    imports = [
-        ""
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
     ]
-)
-
-py_library(
-    name = "learner",
-    srcs = ["learner.py"],
-    deps = [
-        ":torch_utils",
-        ":unet",
-    ],
-    imports = [
-        ""
-    ]
-)
-
-py_binary(
-    name = "train",
-    srcs = ["train.py"],
-    deps = [
-        ":torch_utils",
-    ],
-)
-
-py_binary(
-    name = "train_and_test",
-    srcs = ["train_and_test.py"],
-    deps = [
-        ":torch_utils",
-    ],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -74,11 +43,13 @@ py_library(
 )
 
 PY_LIBRARIES = [
+":policies",
+":rpo"
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "inference",
+    name = "RPO",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

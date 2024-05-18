@@ -14,21 +14,19 @@ import numpy as np
 import torch as th
 import torch.nn as nn
 import torch.nn.utils as nn_utils
-import torch.optim as optim
+#import torch.optim as optim
+from pydairlib.perceptive_locomotion.perception_learning.adadelta import Adadelta
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.dataset import Dataset, random_split
 
-from stable_baselines3 import A2C, SAC, TD3
-
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import (
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.evaluation import evaluate_policy
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_checker import check_env
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.policies import ActorCriticPolicy
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_util import make_vec_env
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.vec_env import (
     DummyVecEnv,
     SubprocVecEnv,
 )
-_full_sb3_available = True
 
 from pydrake.systems.all import (
     Diagram,
@@ -42,7 +40,8 @@ from pydrake.systems.all import (
     ConstantVectorSource
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.PPO.ppo import PPO
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.PPO.ppo import PPO
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.RPO.rpo import RPO
 from pydairlib.perceptive_locomotion.systems.cassie_footstep_controller_gym_environment import (
     CassieFootstepControllerEnvironmentOptions,
     CassieFootstepControllerEnvironment,
@@ -221,11 +220,11 @@ def pretrain_agent(
     clip_grad_max_norm=0.5,
     learning_rate=1.0,
     log_interval=100,
-    no_cuda=True,
+    cuda=False,
     seed=1,
     test_batch_size=64,
 ):
-    use_cuda = not no_cuda and th.cuda.is_available()
+    use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
     device = th.device("cuda" if use_cuda else "cpu")
     kwargs = {"num_workers": 1, "pin_memory": True} if use_cuda else {}
@@ -235,8 +234,9 @@ def pretrain_agent(
     else:
       criterion = nn.CrossEntropyLoss()
 
-    # Extract initial policy
     model = student.policy.to(device)
+    optimizer = Adadelta(model.parameters(), lr=learning_rate)
+    #scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
 
     def train(model, device, train_loader, optimizer):
         model.train()
@@ -246,27 +246,26 @@ def pretrain_agent(
             optimizer.zero_grad()
 
             if isinstance(env.action_space, gym.spaces.Box):
-              # A2C/PPO policy outputs actions, values, log_prob
-              # SAC/TD3 policy outputs actions only
-              if isinstance(student, (A2C, PPO)):
+                # PPO policy outputs actions, values, log_prob
                 action, _, _ = model(data)
-              else:
-                # SAC/TD3:
-                action = model(data)
-              action_prediction = action.double()
+                action_prediction = action.double().to(device)
             else:
-              # Retrieve the logits for A2C/PPO when using discrete actions
+              # Retrieve the logits for PPO when using discrete actions
               dist = model.get_distribution(data)
               action_prediction = dist.distribution.logits
               target = target.long()
 
+            target = target.to(action_prediction.device)
             loss = criterion(action_prediction, target)
-            loss.backward()
-            #loss.backward(retain_graph=True)
+            
+            loss.backward(retain_graph=True)
+
             total_loss.append(loss.item())
             
-            nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+            #nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+
             optimizer.step()
+            
             if batch_idx % log_interval == 0:
                 print(
                     "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -277,8 +276,8 @@ def pretrain_agent(
                         loss.item(),
                     )
                 )
-            if batch_idx == len(train_loader)-1:
-                print(np.sum(total_loss)/(len(train_loader)-1))
+            if batch_idx == len(train_loader)-1 and len(train_loader) > 1:
+                print(f"Average Training Loss: {np.sum(total_loss)/(len(train_loader)-1):.4f}")
 
     def test(model, device, test_loader):
         model.eval()
@@ -288,23 +287,17 @@ def pretrain_agent(
                 data, target = data.to(device), target.to(device)
 
                 if isinstance(env.action_space, gym.spaces.Box):
-                  # A2C/PPO policy outputs actions, values, log_prob
-                  # SAC/TD3 policy outputs actions only
-                  if isinstance(student, (A2C, PPO)):
                     action, _, _ = model(data)
-                  else:
-                    # SAC/TD3:
-                    action = model(data)
-                  action_prediction = action.double()
+                    action_prediction = action.double()
                 else:
-                  # Retrieve the logits for A2C/PPO when using discrete actions
-                  dist = model.get_distribution(data)
-                  action_prediction = dist.distribution.logits
-                  target = target.long()
+                    # Retrieve the logits for PPO when using discrete actions
+                    dist = model.get_distribution(data)
+                    action_prediction = dist.distribution.logits
+                    target = target.long()
 
                 test_loss = criterion(action_prediction, target)
         test_loss /= len(test_loader.dataset)
-        #print(test_loss)
+        print(f"Test loss: {test_loss.item():.4f}")
     
     train_loader = th.utils.data.DataLoader(
         dataset=train_expert_dataset, batch_size=batch_size, shuffle=True, **kwargs
@@ -312,15 +305,11 @@ def pretrain_agent(
     test_loader = th.utils.data.DataLoader(
         dataset=test_expert_dataset, batch_size=test_batch_size, shuffle=True, **kwargs,
     )
-
-    # Optimizer and a learning rate schedule.
-    optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
-    scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
-
+                    
     for epoch in range(1, epochs + 1):
         train(model, device, train_loader, optimizer)
         test(model, device, test_loader)
-        scheduler.step()
+        #scheduler.step()
 
 def _main():
     bazel_chdir()
@@ -340,7 +329,7 @@ def _main():
                 sim_params = sim_params,
                 )
 
-    student = PPO(CustomActorCriticPolicy, env, verbose=1)
+    student = PPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
 
     obs_data = path.join(perception_learning_base_folder, 'tmp/observations.npy')
     action_data = path.join(perception_learning_base_folder, 'tmp/actions.npy')
@@ -362,10 +351,10 @@ def _main():
         scheduler_gamma=0.8,
         learning_rate=1.,
         log_interval=100,
-        no_cuda=False,
+        cuda=True,
         seed=42,
-        batch_size=128,
-        test_batch_size=128,
+        batch_size=1,
+        test_batch_size=1,
     )
 
     student.save("PPO_initial")

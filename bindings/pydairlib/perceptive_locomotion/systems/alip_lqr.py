@@ -87,8 +87,10 @@ def calc_collision_cost_grid(X: np.ndarray, Y: np.ndarray, ud) -> np.ndarray:
 
 class AlipFootstepLQR(LeafSystem):
 
-    def __init__(self, alip_params: AlipFootstepLQROptions, elevation: bool=False):
+    def __init__(self, alip_params: AlipFootstepLQROptions, elevation_map: bool=False):
         super().__init__()
+
+        self.elevation_map = elevation_map
 
         # DLQR params
         self.K = np.zeros((2, 4))
@@ -121,7 +123,7 @@ class AlipFootstepLQR(LeafSystem):
                 "alip_state", 4
             ).get_index(),
         }
-        if elevation:
+        if self.elevation_map:
             self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(
                 "elevation_map",
                 model_value=Value(ElevationMapQueryObject())

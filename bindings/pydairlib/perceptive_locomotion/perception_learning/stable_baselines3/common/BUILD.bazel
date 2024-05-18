@@ -1,0 +1,242 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_library(
+    name = "atari_wrappers",
+    srcs = ["atari_wrappers.py"],
+    deps = [
+     ":type_aliases"
+    ]
+)
+
+py_library(
+    name = "base_class",
+    srcs = ["base_class.py"],
+    deps = [
+    ":utils",
+    ":callbacks",
+    ":env_util",
+    ":logger",
+    ":monitor",
+    ":noise",
+    ":policies",
+    ":preprocessing",
+    ":save_util",
+    ":type_aliases",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env:patch_gym",
+    ]
+)
+
+py_library(
+    name = "buffers",
+    srcs = ["buffers.py"],
+    deps = [
+    ":preprocessing",
+    ":type_aliases",
+    ":utils",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",    
+    ]
+)
+
+py_library(
+    name = "callbacks",
+    srcs = ["callbacks.py"],
+    deps = [
+    ":logger",
+    ":evaluation",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    ]
+)
+
+py_library(
+    name = "distributions",
+    srcs = ["distributions.py"],
+    deps = [
+    ":preprocessing",
+    ]
+)
+
+py_library(
+    name = "env_checker",
+    srcs = ["env_checker.py"],
+    deps = [
+    ":preprocessing",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    ]
+)
+
+py_library(
+    name = "env_util",
+    srcs = ["env_util.py"],
+    deps = [
+    ":atari_wrappers",
+    ":monitor",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",   
+    ]
+)
+
+py_library(
+    name = "evaluation",
+    srcs = ["evaluation.py"],
+    deps = [
+    ":type_aliases",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    ]
+)
+
+py_library(
+    name = "logger",
+    srcs = ["logger.py"],
+    deps = []
+)
+
+py_library(
+    name = "monitor",
+    srcs = ["monitor.py"],
+    deps = []
+)
+
+py_library(
+    name = "noise",
+    srcs = ["noise.py"],
+    deps = []
+)
+
+py_library(
+    name = "on_policy_algorithm",
+    srcs = ["on_policy_algorithm.py"],
+    deps = [
+    ":base_class",
+    ":buffers",
+    ":callbacks",
+    ":policies",
+    ":type_aliases",
+    ":utils",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",    
+    ]
+)
+
+py_library(
+    name = "policies",
+    srcs = ["policies.py"],
+    deps = [
+    ":distributions",
+    ":preprocessing",
+    ":torch_layers",
+    ":type_aliases",
+    ":utils",
+    ]
+)
+
+py_library(
+    name = "preprocessing",
+    srcs = ["preprocessing.py"],
+    deps = []
+)
+
+py_library(
+    name = "results_plotter",
+    srcs = ["results_plotter.py"],
+    deps = [
+    ":monitor",  
+    ]
+)
+
+py_library(
+    name = "running_mean_std",
+    srcs = ["running_mean_std.py"],
+    deps = []
+)
+
+py_library(
+    name = "save_util",
+    srcs = ["save_util.py"],
+    deps = [
+    ":type_aliases",
+    ":utils", 
+    ]
+)
+
+py_library(
+    name = "torch_layers",
+    srcs = ["torch_layers.py"],
+    deps = [
+    ":preprocessing",
+    ":type_aliases",
+    ":utils",   
+    ]
+)
+
+py_library(
+    name = "type_aliases",
+    srcs = ["type_aliases.py"],
+    deps = []
+)
+
+py_library(
+    name = "utils",
+    srcs = ["utils.py"],
+    deps = [
+    ":logger",
+    ":type_aliases",
+    ]
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/sb2_compat",
+"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/envs",
+":atari_wrappers",
+":base_class",
+":buffers",
+":callbacks",
+":distributions",
+":env_checker",
+":env_util",
+":evaluation",
+":logger",
+":monitor",
+":noise",
+":on_policy_algorithm",
+":policies",
+":running_mean_std",
+":preprocessing",
+":results_plotter",
+":save_util",
+":torch_layers",
+":type_aliases",
+":utils",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "common",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

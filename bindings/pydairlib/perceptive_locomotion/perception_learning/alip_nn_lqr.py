@@ -36,14 +36,11 @@ from matplotlib.colors import LogNorm
 perception_learning_base_folder = \
     "bindings/pydairlib/perceptive_locomotion/perception_learning"
 
-# If elevation map is ON = True
-elevation = False
-
 class AlipFootstepNNLQR(AlipFootstepLQR):
 
     def __init__(self, alip_params: AlipFootstepLQROptions,
-                 model_path: str = ''):
-        super().__init__(alip_params, elevation = elevation)
+                 model_path: str = '', elevation_map: bool = False):
+        super().__init__(alip_params, elevation_map = elevation_map)
 
         if model_path == '':
             raise RuntimeError('AlipNNLQRFootstepController model path cannot be empty\n')
@@ -57,7 +54,9 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
             torch.load(model_path)
         )
         self.residual_unet.eval()
-        if elevation:
+        self.elevation_map = elevation_map
+        
+        if self.elevation_map:
             self.input_port_indices['height_map_query'] = self.DeclareAbstractInputPort(
                 "height_map_query",
                 model_value=Value(HeightMapQueryObject())
@@ -115,7 +114,7 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
         x = self.get_output_port_by_name('x').Eval(context)
 
         # get heightmap query object
-        if elevation:
+        if self.elevation_map:
             hmap_query = self.EvalAbstractInput(
                 context, self.input_port_indices['height_map_query']
             ).get_value()

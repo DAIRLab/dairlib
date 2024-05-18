@@ -238,7 +238,7 @@ class InitialConditionsServer:
         datafile = np.load(fname, allow_pickle=True)
         self.data = datafile['arr_0']
         self.idx = 0
-        self.rng = np.random.default_rng(123)
+        self.rng = np.random.default_rng()
 
     def next(self):
         if self.idx >= len(self.data):

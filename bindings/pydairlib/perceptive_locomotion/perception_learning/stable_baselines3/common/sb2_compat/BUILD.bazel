@@ -12,50 +12,11 @@ load(
 )
 
 py_library(
-    name = "torch_utils",
-    srcs = ["torch_utils.py"],
+    name = "rmsprop_tf_like",
+    srcs = ["rmsprop_tf_like.py"],
     imports = [
         ""
     ]
-)
-
-py_library(
-    name = "unet",
-    srcs = ["unet.py"],
-    deps = [
-        ":torch_utils",
-    ],
-    imports = [
-        ""
-    ]
-)
-
-py_library(
-    name = "learner",
-    srcs = ["learner.py"],
-    deps = [
-        ":torch_utils",
-        ":unet",
-    ],
-    imports = [
-        ""
-    ]
-)
-
-py_binary(
-    name = "train",
-    srcs = ["train.py"],
-    deps = [
-        ":torch_utils",
-    ],
-)
-
-py_binary(
-    name = "train_and_test",
-    srcs = ["train_and_test.py"],
-    deps = [
-        ":torch_utils",
-    ],
 )
 
 # This determines how `PYTHONPATH` is configured, and how to install the
@@ -74,11 +35,12 @@ py_library(
 )
 
 PY_LIBRARIES = [
+	":rmsprop_tf_like"
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "inference",
+    name = "sb2_compat",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

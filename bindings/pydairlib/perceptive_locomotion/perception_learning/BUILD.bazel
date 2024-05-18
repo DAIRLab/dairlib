@@ -115,7 +115,9 @@ py_binary(
     deps = [
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/PPO:ppo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
     ],
 )
 
@@ -134,10 +136,28 @@ py_binary(
     deps = [
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/PPO:ppo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    	":adadelta"
     ],
 )
 
+py_binary(
+    name = "adadelta",
+    srcs = ["adadelta.py"],
+    deps = [":optimizer"],
+)
+
+py_binary(
+    name = "optimizer",
+    srcs = ["optimizer.py"],
+    deps = [],
+)
 
 py_binary(
     name = "alip_lqr_cost_experiment",
@@ -177,7 +197,8 @@ PY_LIBRARIES = [
     ":alip_nn_lqr",
     ":true_cost_system",
     ":terrain_utils",
-    ":DrakeCassieEnv"
+    ":DrakeCassieEnv",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3"
 ]
 
 # Package roll-up (for Bazel dependencies).

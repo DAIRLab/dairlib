@@ -1,0 +1,172 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_library(
+    name = "base_vec_env",
+    srcs = ["base_vec_env.py"],
+    deps = []
+)
+
+py_library(
+    name = "patch_gym",
+    srcs = ["patch_gym.py"],
+    deps = []
+)
+
+py_library(
+    name = "dummy_vec_env",
+    srcs = ["dummy_vec_env.py"],
+    deps = [
+    ":base_vec_env",
+    ":patch_gym",
+    ":util"
+    ]
+)
+
+py_library(
+    name = "stacked_observations",
+    srcs = ["stacked_observations.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:preprocessing"
+    ]
+)
+
+py_library(
+    name = "subproc_vec_env",
+    srcs = ["subproc_vec_env.py"],
+    deps = [
+    ":base_vec_env",
+    ":patch_gym"
+    ]
+)
+
+py_library(
+    name = "util",
+    srcs = ["util.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:preprocessing",
+    ":base_vec_env"
+    ]
+)
+
+py_library(
+    name = "vec_check_nan",
+    srcs = ["vec_check_nan.py"],
+    deps = [
+    ":base_vec_env"
+    ]
+)
+
+py_library(
+    name = "vec_extract_dict_obs",
+    srcs = ["vec_extract_dict_obs.py"],
+    deps = [
+    ":base_vec_env"
+    ]
+)
+
+py_library(
+    name = "vec_frame_stack",
+    srcs = ["vec_frame_stack.py"],
+    deps = [
+    ":base_vec_env",
+    ":stacked_observations"
+    ]
+)
+
+py_library(
+    name = "vec_monitor",
+    srcs = ["vec_monitor.py"],
+    deps = [
+    ":base_vec_env"
+    ]
+)
+
+py_library(
+    name = "vec_normalize",
+    srcs = ["vec_normalize.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:preprocessing",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:running_mean_std",
+    ":base_vec_env"
+    ]
+)
+
+py_library(
+    name = "vec_transpose",
+    srcs = ["vec_transpose.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:preprocessing",
+    ":base_vec_env"
+    ]
+)
+
+py_library(
+    name = "vec_video_recorder",
+    srcs = ["vec_video_recorder.py"],
+    deps = [
+    ":base_vec_env",
+    ":dummy_vec_env",
+    ":subproc_vec_env"
+    ]
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+        ":base_vec_env",
+	":dummy_vec_env",
+	":stacked_observations",
+	":subproc_vec_env",
+	":vec_check_nan",
+	":vec_extract_dict_obs",
+	":vec_frame_stack",
+	":vec_monitor",
+	":vec_normalize",
+	":vec_transpose",
+	":vec_video_recorder",
+    ],
+)
+
+PY_LIBRARIES = [
+    	":base_vec_env",
+	":dummy_vec_env",
+	":stacked_observations",
+	":subproc_vec_env",
+	":vec_check_nan",
+	":vec_extract_dict_obs",
+	":vec_frame_stack",
+	":vec_monitor",
+	":vec_normalize",
+	":vec_transpose",
+	":vec_video_recorder",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "vec_env",
+    srcs = ["__init__.py"],
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)
+
+

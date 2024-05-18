@@ -12,18 +12,26 @@ load(
 )
 
 py_library(
-    name = "ppo",
-    srcs = ["ppo.py"],
-    imports = [
-        ""
+    name = "identity_env",
+    srcs = ["identity_env.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:type_aliases",
     ]
 )
 
 py_library(
-    name = "policies",
-    srcs = ["policies.py"],
-    imports = [
-        ""
+    name = "bit_flipping_env",
+    srcs = ["bit_flipping_env.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:type_aliases",
+    ]
+)
+
+py_library(
+    name = "multi_input_envs",
+    srcs = ["multi_input_envs.py"],
+    deps = [
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:type_aliases",
     ]
 )
 
@@ -43,11 +51,14 @@ py_library(
 )
 
 PY_LIBRARIES = [
+	":multi_input_envs",
+	":bit_flipping_env",
+	":identity_env"
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "inference",
+    name = "envs",
     imports = PACKAGE_INFO.py_imports,
     deps = PY_LIBRARIES,
 )

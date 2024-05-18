@@ -11,53 +11,6 @@ load(
     "pybind_py_library",
 )
 
-py_library(
-    name = "torch_utils",
-    srcs = ["torch_utils.py"],
-    imports = [
-        ""
-    ]
-)
-
-py_library(
-    name = "unet",
-    srcs = ["unet.py"],
-    deps = [
-        ":torch_utils",
-    ],
-    imports = [
-        ""
-    ]
-)
-
-py_library(
-    name = "learner",
-    srcs = ["learner.py"],
-    deps = [
-        ":torch_utils",
-        ":unet",
-    ],
-    imports = [
-        ""
-    ]
-)
-
-py_binary(
-    name = "train",
-    srcs = ["train.py"],
-    deps = [
-        ":torch_utils",
-    ],
-)
-
-py_binary(
-    name = "train_and_test",
-    srcs = ["train_and_test.py"],
-    deps = [
-        ":torch_utils",
-    ],
-)
-
 # This determines how `PYTHONPATH` is configured, and how to install the
 # bindings.
 PACKAGE_INFO = get_pybind_package_info("//bindings")
@@ -74,11 +27,15 @@ py_library(
 )
 
 PY_LIBRARIES = [
+"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
+"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO",
+"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO",
 ]
 
 # Package roll-up (for Bazel dependencies).
 py_library(
-    name = "inference",
-    imports = PACKAGE_INFO.py_imports,
+    name = "stable_baselines3",
+    visibility = ["//visibility:public"],
     deps = PY_LIBRARIES,
 )
+

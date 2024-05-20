@@ -451,7 +451,7 @@ class StateDependentNoiseDistribution(Distribution):
         self,
         action_dim: int,
         full_std: bool = True,
-        use_expln: bool = False,
+        use_expln: bool = True,
         squash_output: bool = False,
         learn_features: bool = False,
         epsilon: float = 1e-6,

@@ -56,7 +56,7 @@ def evaluate_policy(
     """
     is_monitor_wrapped = False
     # Avoid circular import
-    from stable_baselines3.common.monitor import Monitor
+    from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.monitor import Monitor
 
     if not isinstance(env, VecEnv):
         env = DummyVecEnv([lambda: env])  # type: ignore[list-item, return-value]

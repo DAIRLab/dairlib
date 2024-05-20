@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 
 import torch
 from torch import Tensor
+from torch.optim import Optimizer
 
 from .optimizer import (
     _capturable_doc,
@@ -14,7 +15,6 @@ from .optimizer import (
     _maximize_doc,
     _use_grad_for_differentiable,
     _view_as_real,
-    Optimizer,
     ParamsT,
 )
 

@@ -74,7 +74,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 128, last_layer_dim_vf: int = 128):
+    def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
         super().__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
@@ -133,7 +133,7 @@ class CustomNetwork(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(256, 256)),
             nn.Tanh(),
-            layer_init(nn.Linear(256, self.latent_dim_pi), std = 0.1),
+            layer_init(nn.Linear(256, self.latent_dim_pi), std = 1.),
             nn.Tanh(),
         )
 
@@ -236,7 +236,6 @@ def _run_training(config, args):
         env = gym.make(env_name,
                        sim_params = sim_params_train,
                        )
-        #env = VecNormalize(venv=env, norm_obs=False)
     
     if args.test:
         model = PPO(
@@ -246,12 +245,12 @@ def _run_training(config, args):
     else:
         tensorboard_log = f"{log_dir}runs/test"
         
-        test_folder = "rl/vdes_depth_angle_penalty"
-        model_path = path.join(test_folder, 'latest_model.zip')
-        #model_path = 'PPO_depth_vdes.zip'
-        
+        #test_folder = "rl/vdes_depth_angle_penalty"
+        #model_path = path.join(test_folder, 'latest_model.zip')
+        model_path = 'PPO_initialize.zip'
+
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
-                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.03, use_sde=True,
+                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
                         n_steps=int(256*num_env/num_env), n_epochs=10,
                         batch_size=128*num_env, seed=111,
                         tensorboard_log=tensorboard_log)

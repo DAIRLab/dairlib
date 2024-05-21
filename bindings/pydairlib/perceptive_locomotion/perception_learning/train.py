@@ -251,7 +251,7 @@ def _run_training(config, args):
 
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
                         clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
-                        n_steps=int(256*num_env/num_env), n_epochs=10,
+                        n_steps=int(400*num_env/num_env), n_epochs=10,
                         batch_size=128*num_env, seed=111,
                         tensorboard_log=tensorboard_log)
         
@@ -302,7 +302,7 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 20
+        num_env = 16
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {

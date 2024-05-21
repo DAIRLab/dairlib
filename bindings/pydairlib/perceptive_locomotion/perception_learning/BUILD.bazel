@@ -127,6 +127,11 @@ py_binary(
     deps = [
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
     ],
 )
 

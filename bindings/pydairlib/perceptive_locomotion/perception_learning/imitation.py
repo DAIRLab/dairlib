@@ -224,7 +224,7 @@ def pretrain_agent(
     cuda=False,
     seed=1,
     test_batch_size=64,
-    patience = 30,
+    patience = 10,
     min_delta=0.0001
 ):
     use_cuda = cuda and th.cuda.is_available()
@@ -292,8 +292,6 @@ def pretrain_agent(
                 test_loss = criterion(action_prediction, target)
                 total_loss.append(test_loss.item())
         
-        #avg_loss = total_loss / len(test_loader)
-        #print(f"Average Test Loss: {avg_loss:.4f}")
         return np.mean(total_loss)
 
     train_loader = th.utils.data.DataLoader(
@@ -328,7 +326,7 @@ def _main():
     sim_params.visualize = True
     sim_params.meshcat = Meshcat()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair_curriculum.yaml'
+        perception_learning_base_folder, 'params/stair/flat_stair_100.yaml'
         #'params/stair_curriculum.yaml'
         #'params/wavy_test.yaml'
         #'params/wavy_terrain.yaml'
@@ -358,7 +356,7 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=100,
+        epochs=20,
         scheduler_gamma=0.8,
         learning_rate=1.,
         log_interval=100,

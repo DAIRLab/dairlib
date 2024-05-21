@@ -6,19 +6,18 @@ import os
 from os import path
 
 import gymnasium as gym
-import stable_baselines3
-from stable_baselines3.common.env_checker import check_env
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import EvalCallback
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import (
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_checker import check_env
+
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.PPO.ppo import PPO
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.callbacks import EvalCallback
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_util import make_vec_env
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.vec_env import (
     DummyVecEnv,
     SubprocVecEnv,
     VecVideoRecorder,
 )
 import torch as th
-_full_sb3_available = True
 
 from pydrake.geometry import Meshcat
 from pydrake.systems.all import (
@@ -68,7 +67,7 @@ def sample(sim_params):
             input("The environment will reset. Press Enter to continue...")
             obs, _ = env.reset()
 
-def run_play(sim_params):
+def run_play(sim_params, model_path=None):
     sim_params.visualize = True
     sim_params.meshcat = Meshcat()
     #terrain = 'params/stair_curriculum.yaml'
@@ -79,9 +78,9 @@ def run_play(sim_params):
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 3e4
-    test_folder = "rl/vdes_depth_angle_penalty/"
-    model_path = path.join(test_folder, 'best_model.zip')
-    #model_path = 'PPO_depth_vdes.zip'
+    #test_folder = "rl/vdes_depth/"
+    #model_path = path.join(test_folder, 'best_model.zip')
+    model_path = 'PPO_depth_vdes.zip'
     model = PPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
@@ -90,14 +89,12 @@ def run_play(sim_params):
     for _ in range(int(max_steps)):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = env.step(action)
-        #print(reward)
         total_reward += reward
         if terminated or truncated:
-            #print(total_reward)
             obs, _ = env.reset()
             total_reward = 0
             
-def _main():
+def _main(model_path=None):
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
     gym.envs.register(
@@ -105,7 +102,16 @@ def _main():
         entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")  # noqa
 
     #sample(sim_params)
-    run_play(sim_params)
+    run_play(sim_params, model_path=None)
 
 if __name__ == '__main__':
-    _main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--model_path',
+        type=str,
+        default=None,
+    )
+    args = parser.parse_args()
+
+    _main(args.model_path)

@@ -225,9 +225,9 @@ class RewardSystem(LeafSystem):
         right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
 
         if left_angle > 0.4:
-            left_penalty = -1
+            left_penalty = -5
         if right_angle > 0.4:
-            right_penalty = -1
+            right_penalty = -5
 
         # reward normalize to 0 ~ 1
         reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward + left_penalty + right_penalty

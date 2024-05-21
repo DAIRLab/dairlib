@@ -21,6 +21,7 @@ wandb/
 logs/
 rl/
 Tanh_trained/
-/params/random
+/params/flat/*.yaml
+/params/stair/*.yaml
 
 /venv/

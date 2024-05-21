@@ -114,22 +114,18 @@ def reset_handler(simulator, seed):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            'tmp/index/initial_conditions_2.npz'
-            #'tmp/initial_conditions_2.npz'
+            #'tmp/index/initial_conditions_2.npz'
+            'tmp/ic.npz'
         )
     )
-    #datapoint = ic_generator.random()
-    #v_des_theta = 0.1
-    #v_des_norm = 0.8
-    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-
+    
     datapoint = ic_generator.random()
-    #v_des_norm = 0.8
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm, 0])
-    datapoint['desired_velocity'] = np.array([0.5, 0])
+    #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
+    v_des_theta = 0.1
+    v_des_norm = 0.8
+    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
+    v_norm = np.random.uniform(0.2, v_des_norm)
+    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -159,22 +155,31 @@ def reset_handler(simulator, seed):
 def simulate_init(sim_params, random_terrain = False):
     
     terrain = 'params/stair_curriculum.yaml'
-    #terrain = 'params/random/flat_stair/flat_stair_55.yaml'
     if random_terrain:
-        rand = np.random.randint(1, 12)
-        if rand in [1, 2, 3, 4]:
-            terrain = 'params/stair_curriculum.yaml'
-        elif rand in [5, 6, 7, 8, 9]:
-            terrain = 'params/wavy_terrain.yaml'
+        rand = np.random.randint(1,3)
+        if rand == 1:
+            rand = np.random.randint(0, 500)
+            terrain = f'params/stair/flat_stair_{rand}.yaml'
         else:
-            terrain = 'params/flat.yaml'
+            rand = np.random.randint(0, 500)
+            terrain = f'params/flat/flat_{rand}.yaml'
+
+        #rand = np.random.randint(1, 12)
+        #if rand in [1, 2, 3, 4]:
+        #    terrain = 'params/stair_curriculum.yaml'
+        #elif rand in [5, 6, 7, 8, 9]:
+        #    terrain = 'params/wavy_terrain.yaml'
+        #else:
+        #    terrain = 'params/flat.yaml'
+
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
 
     sim_env, controller, diagram, cost_logger= build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
+    
     def monitor(context):
-        time_limit = 20
+        time_limit = 100
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -216,12 +221,14 @@ def simulate_init(sim_params, random_terrain = False):
     return simulator
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
+    
     #sim_params.visualize = True
     #sim_params.meshcat = Meshcat()
-    random_terrain = False
+
+    random_terrain = True
     simulator = simulate_init(sim_params, random_terrain=random_terrain)
     
-    # Define Action space.
+    # Define Action and Observation space.
     la = np.array([-1., -1., -1.])
     ha = np.array([1., 1., 1.])
     action_space = spaces.Box(low=np.asarray(la, dtype="float32"),
@@ -230,7 +237,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     
     observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*80*80+6,), dtype="float64")
 
-    # time_step to match walking
+    # Time_step to match walking
     time_step = 0.05
     
     env = DrakeGymEnv(

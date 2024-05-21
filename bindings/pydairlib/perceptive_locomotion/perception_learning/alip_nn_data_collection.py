@@ -115,15 +115,22 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         fname=os.path.join(
             perception_learning_base_folder,
             #'tmp/index/initial_conditions_2.npz'
-            'tmp/initial_conditions_2.npz'
+            'tmp/ic.npz'
         )
     )
     
-    datapoint = ic_generator.random()
+    #datapoint = ic_generator.random()
     #datapoint = ic_generator.choose(0)
+    #v_des_norm = 0.8
+    #v_norm = np.random.uniform(0.2, v_des_norm)
+    #datapoint['desired_velocity'] = np.array([v_norm, 0])
+    
+    datapoint = ic_generator.random()
+    v_des_theta = 0.1
     v_des_norm = 0.8
+    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm, 0])
+    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
 
     simulator = Simulator(diagram)
     context = diagram.CreateDefaultContext()
@@ -161,7 +168,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     VDEStmp = []
     terminate = False
 
-    for i in range(1, 21): # 15 seconds
+    for i in range(1, 301): # 15 seconds
         if check_termination(sim_env, context):
             terminate = True
             break
@@ -240,14 +247,14 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     checkpoint_path = os.path.join(
-        perception_learning_base_folder, 'tmp/best_model_checkpoint90epoch.pth') # path of trained U-Net
+        perception_learning_base_folder, 'tmp/zany-pyramid-3.pth') # path of trained U-Net
     
     # True if using depth sensor
     sim_params.simulate_perception = True
 
     # Visualization is False by default
-    sim_params.visualize = True
-    sim_params.meshcat = Meshcat()
+    #sim_params.visualize = True
+    #sim_params.meshcat = Meshcat()
     
     DMAP = []
     ALIP = []
@@ -263,8 +270,9 @@ def main():
 
     for i in range(50):
         if random_terrain:
-            rand = np.random.randint(1, 2) # TODO @Min-ku Fix the size of random terrain yaml file
-            
+            # TODO @Min-ku Fix the size of random terrain yaml file
+            #rand = np.random.randint(1, 2)
+            rand = 2
             if rand == 1:
                 # Terrain without blocks
                 rand = np.random.randint(1, 8)
@@ -276,17 +284,20 @@ def main():
                     terrain = 'params/flat.yaml'
             
             else:
-                # Terrain with blocks
-                rand = np.random.randint(1, 4)
-                if rand == 1: # random flat
-                    rand = np.random.randint(0, 200)
-                    terrain = f'params/random/flat/flat_{rand}.yaml'
-                elif rand == 2: # random stairs
-                    rand = np.random.randint(0, 200)
-                    terrain = f'params/random/stairs/stair_curriculum_{rand}.yaml'
-                else: # random wavy
-                    rand = np.random.randint(0, 200)
-                    terrain = f'params/random/wavy/wavy_terrain_{rand}.yaml'
+                rand = np.random.randint(0, 500)
+                terrain = f'params/stair/flat_stair_{rand}.yaml'
+            # else:
+            #     # Terrain with blocks
+            #     rand = np.random.randint(1, 4)
+            #     if rand == 1: # random flat
+            #         rand = np.random.randint(0, 200)
+            #         terrain = f'params/random/flat/flat_{rand}.yaml'
+            #     elif rand == 2: # random stairs
+            #         rand = np.random.randint(0, 200)
+            #         terrain = f'params/random/stairs/stair_curriculum_{rand}.yaml'
+            #     else: # random wavy
+            #         rand = np.random.randint(0, 200)
+            #         terrain = f'params/random/wavy/wavy_terrain_{rand}.yaml'
         
         else:
             terrain = 'params/stair_curriculum.yaml'
@@ -310,7 +321,7 @@ def main():
     
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP.npy', ALIP
+        f'/ALIP6.npy', ALIP
     )
     #np.save(
     #    f'{perception_learning_base_folder}/tmp'
@@ -318,18 +329,18 @@ def main():
     #)
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/DMAP.npy', DMAP
+        f'/DMAP6.npy', DMAP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/VDES.npy', VDES
+        f'/VDES6.npy', VDES
     )
 
     print("Saving actions and observations...")
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/actions.npy', FOOTSTEP
+        f'/actions6.npy', FOOTSTEP
     )
 
     DMAP = np.asarray(DMAP)
@@ -338,7 +349,7 @@ def main():
     DMAP = DMAP.reshape((DMAP.shape[0], -1))
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES), axis=1)
+        f'/observations6.npy', np.concatenate((DMAP, ALIP, VDES), axis=1)
     )
     #flattened_data = np.concatenate((DMAP, ALIP, VDES), axis=1)
 

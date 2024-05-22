@@ -695,8 +695,8 @@ class ActorCriticPolicy(BasePolicy):
         mean_actions = self.action_net(latent_pi)
 
         if rpo:
-            z = th.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)
-            mean_actions = mean_actions + z
+            z = th.FloatTensor(mean_actions.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)#.to(device)
+            mean_actions = mean_actions + z.to(mean_actions.device)
 
         if isinstance(self.action_dist, DiagGaussianDistribution):
             return self.action_dist.proba_distribution(mean_actions, self.log_std)

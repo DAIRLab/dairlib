@@ -1,0 +1,333 @@
+import matplotlib.pyplot as plt
+from mpl_interactions import ioff, panhandler, zoom_factory
+from mpl_toolkits.mplot3d import Axes3D
+import yaml
+import numpy as np
+
+def flat_terrain(init_y = 10, init_x = -2.5, end_x = 31):
+    '''
+    Flat terrain which y increase as x increases.
+    init_y : The initial y value
+    init_x : The initial x value (where the terrain starts)
+    end_x  : The end x value (where the terrain ends)
+    '''
+    stones = []
+    y = init_y
+    x_positions = np.arange(init_x, end_x, 1.0)
+
+    for x in x_positions:
+        stone = [[x, 0, 0.0], [0.0, 0.0, 1.0], [1., y, 0.1], [0.0]]
+        y = round(y + 0.3, 2)
+        stones.append(stone)
+
+    output_file_name = f'flat.yaml'
+
+    with open(output_file_name, 'w') as outfile:
+        outfile.write("# Yaml description of rectangular stepping stones\n")
+        outfile.write("stones:\n")
+        outfile.write("#  [ CENTER XYZ      NORMAL       DIMENSIONS XYZ        YAW ]\n")
+        for data in stones:
+            outfile.write(f"  - {data}\n")
+
+
+def flat_random_blocks(num_blocks: int = 250, Gaussian: bool = True):
+    '''
+    To Create random blocks with values up to 4 decimal point
+    '''
+    for i in range(num_blocks):
+        with open('flat.yaml', 'r') as file:
+            data = yaml.safe_load(file)
+
+        # Number of cubes
+        n = np.random.randint(5, 15)
+        cubes = []
+        for stone in data['stones']:
+            center, _, dimensions, _ = stone
+    
+            if Gaussian:
+                dimensions = np.array(dimensions)
+                positions = np.random.normal(loc=center, scale=dimensions / 6, size=(n, 3))
+            else:
+                positions = np.random.uniform(-0.5, 0.5, size=(n, 3)) * dimensions + center
+
+            normals = np.random.uniform(-1, 1, size=(n, 3))
+            normals[:, 2] = np.maximum(normals[:, 2], 0.1)
+            normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+            
+            yaws = np.random.uniform(0, 2*np.pi, size=n)
+            
+            for pos, norm, yaw in zip(positions, normals, yaws):
+                pos = np.round(pos, 4).tolist()
+                norm = np.round(norm, 4).tolist()
+                size = np.round(np.random.uniform(0.25, 0.35, size=3), 4).tolist()
+                yaw = round(yaw, 4)
+
+                # Reject if stones are within [0.5, 0.5]
+                if abs(pos[0]) > 1:
+                    cubes.append([pos, norm, size, [yaw]])
+                    
+        output_file_name = f'flat_{i}.yaml'
+
+        with open(output_file_name, 'w') as outfile:
+            outfile.write("stones:\n")
+            for data in data['stones']:
+                outfile.write(f"  - {data}\n")
+            for cube in cubes:
+                outfile.write(f"  - {cube}\n")
+        print(f'YAML file "{output_file_name}" has been created.')
+        
+
+def make_stairs(width: float, depth: float, height: float, n: int,
+                direction: str) -> SquareSteppingStoneList:
+    """
+        Make a staircase centered at the origin.
+    """
+    assert (n % 2 == 1)  # must have an odd number of steps
+    assert (direction == 'up' or direction == 'down')
+    signed_height = height if direction == 'up' else -height
+    stones = []
+    for i in range(n):
+        steps_from_center = i - ((n - 1) / 2)
+        x_center = depth * steps_from_center
+        y_center = 0
+        z_center = signed_height * steps_from_center
+        stone = [
+            [x_center, y_center, z_center],
+            [0., 0., 1.],
+            [depth, width, height],
+            [0.0]
+        ]
+        stones.append(stone)
+
+    stepping_stone_list = SquareSteppingStoneList([], [], [])
+    stepping_stone_list.stones = stones
+    stepping_stone_list.footholds, stepping_stone_list.cubes = \
+        SquareSteppingStoneList.GetFootholdsWithMargin(stones, 0)
+
+    return stepping_stone_list
+
+def staircase(start_x=-4.5, end_x=30., initial_y_dim = 10., y_increment=0.3):
+    '''
+    Make staircase terrain with random x and z values
+    '''
+
+    initial_z_center = 0.0
+
+    stones = []
+    y_dim = initial_y_dim
+    z_center = initial_z_center
+    x_center = start_x
+    x_dim = 1.
+    z_dim = .1
+
+    while x_center <= end_x:
+        stone = [[round(x_center, 3), 0.0, round(z_center, 3)], [0.0, 0.0, 1.0],
+                [round(x_dim, 3), round(y_dim, 3), round(z_dim, 3)], [0.0]]
+        stones.append(stone)
+        prev_x_dim = x_dim
+        x_dim = round(np.random.uniform(2.0, 3.0), 3)
+        avg_x_dim = (prev_x_dim + x_dim) / 2
+        x_center = round(x_center + avg_x_dim, 3)
+        
+        y_dim = round(y_dim + y_increment, 3)
+        
+        z_dim = round(np.random.uniform(0.2, 0.45), 3)
+        z_center = round(z_center + z_dim/2, 3)
+        
+    output_file_name = f'stair.yaml'
+
+    with open(output_file_name, 'w') as outfile:
+        outfile.write("# Yaml description of rectangular stepping stones\n")
+        outfile.write("stones:\n")
+        outfile.write("#  [ CENTER XYZ      NORMAL       DIMENSIONS XYZ        YAW ]\n")
+        for data in stones:
+            outfile.write(f"  - {data}\n")
+
+def flat_stair(start_x=-3.5, end_x=30., initial_y_dim=10., y_increment=0.3, flat_terrain=4.0):
+    '''
+    Make flat-staircase (up)
+    flat_terrain: Flat terrain phase in meters
+    '''
+    initial_z_center = 0.0
+
+    stones = []
+    y_dim = initial_y_dim
+    z_center = initial_z_center
+    x_center = start_x
+    x_dim = 1.0
+    z_dim = 0.1
+
+    while x_center <= end_x:
+        if x_center <= flat_terrain:
+            z_center = initial_z_center
+            z_dim = 0.1
+        else:
+            z_dim = round(np.random.uniform(0.2, 0.35), 5)
+            z_center = round(z_center + z_dim / 2, 5)
+
+        stone = [
+                [round(x_center, 5), 0.0, round(z_center, 5)],
+                [0.0, 0.0, 1.0],
+                [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                [0.0]
+                ]
+
+        stones.append(stone)
+
+        prev_x_dim = x_dim
+        x_dim = round(np.random.uniform(1.5, 3.0), 5) if x_center > 4.0 else 1.0
+        avg_x_dim = (prev_x_dim + x_dim) / 2
+        x_center = round(x_center + avg_x_dim, 5)
+
+        if x_center > flat_terrain:
+            y_dim = round(y_dim + y_increment, 5)        
+
+    output_file_name = 'flat_stair_flat.yaml'
+    with open(output_file_name, 'w') as outfile:
+        outfile.write("# Yaml description of rectangular stepping stones\n")
+        outfile.write("stones:\n")
+        outfile.write("#  [ CENTER XYZ      NORMAL       DIMENSIONS XYZ        YAW ]\n")
+        for stone in stones:
+            outfile.write(f"  - {stone}\n")
+            
+    print(f'YAML file "{output_file_name}" has been created.')
+
+def flat_stair_flat(num_blocks = 250, start_x=-3.5, end_x=30., initial_y_dim=15.,
+                    y_increment=0.3,start_flat=4., stair_up=15., Gaussian=True):
+    initial_z_center = 0.0
+
+    stones = []
+    y_dim = initial_y_dim
+    z_center = initial_z_center
+    x_center = start_x
+    x_dim = 1.0
+    z_dim = 0.1
+
+    # Flat terrain phase
+    end_flat = end_x - 4.0
+
+    for i in range(num_blocks):
+        while x_center <= end_x:
+            # Flat phase
+            if x_center <= start_flat:
+                z_center = initial_z_center
+                z_dim = 0.1
+
+            # Up phase
+            elif start_flat < x_center <= stair_up:
+                z_dim = round(np.random.uniform(0.2, 0.35), 5)
+                z_center = round(z_center + z_dim / 2, 5)
+
+            # Down phase
+            elif stair_up < x_center <= end_flat:
+                z_dim = round(np.random.uniform(0.2, 0.35), 5)
+                z_center = round(z_center - z_dim / 2, 5)
+
+            # Flat phase
+            else:
+                z_dim = 0.1
+
+            stone = [[round(x_center, 5), 0.0, round(z_center, 5)],
+                    [0.0, 0.0, 1.0],
+                    [round(x_dim, 5), round(y_dim, 5), round(z_dim, 5)],
+                    [0.0]]
+
+            stones.append(stone)
+
+            prev_x_dim = x_dim
+            x_dim = round(np.random.uniform(1., 2.0), 5) if x_center > start_flat else 1.0
+            avg_x_dim = (prev_x_dim + x_dim) / 2
+            x_center = round(x_center + avg_x_dim, 5)
+
+            if x_center > start_flat:
+                y_dim = round(y_dim + y_increment, 5)
+
+        for stone in stones:
+            # Number of cubes
+            n = np.random.randint(5, 15)
+            cubes = []
+            for stone in stones:
+                center, _, dimensions, _ = stone
+
+                if Gaussian:
+                    dimensions = np.array(dimensions)
+                    positions = np.random.normal(loc=center, scale=dimensions / 6, size=(n, 3))\
+                else:
+                    positions = np.random.uniform(-0.5, 0.5, size=(n, 3)) * dimensions + center
+                
+                normals = np.random.uniform(-1, 1, size=(n, 3))
+                normals[:, 2] = np.maximum(normals[:, 2], 0.1)
+                normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+
+                yaws = np.random.uniform(0, 2*np.pi, size=n)
+
+                for pos, norm, yaw in zip(positions, normals, yaws):
+                    pos = np.round(pos, 4).tolist()
+                    norm = np.round(norm, 4).tolist()
+                    size = np.round(np.random.uniform(0.15, 0.35, size=3), 4).tolist()
+                    yaw = round(yaw, 4)
+
+                    # Reject if stones are within [0.5, 0.5]
+                    if abs(pos[0]) > 1:
+                        cubes.append([pos, norm, size, [yaw]])
+
+        output_file_name = f'flat_stair_{i}.yaml'
+
+        with open(output_file_name, 'w') as outfile:
+            outfile.write("stones:\n")
+            for data in stones:
+                outfile.write(f"  - {data}\n")
+            for cube in cubes:
+                outfile.write(f"  - {cube}\n")
+
+        print(f'YAML file "{output_file_name}" has been created.')
+
+def plot_terrain(file_path: str = './flat_stair_flat.yaml'):
+
+    # Load YAML file
+    with open(file_path, 'r') as file:
+        data = yaml.safe_load(file)
+
+    data = data['stones']
+
+    with plt.ioff():
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+
+    min_x, min_y, min_z = np.inf, np.inf, np.inf
+    max_x, max_y, max_z = -np.inf, -np.inf, -np.inf
+
+    # Plot each point in the terrain data
+    for point in data:
+        center, normal, dimensions, yaw = point
+        x, y, z = center
+        dx, dy, dz = dimensions
+        min_x = min(min_x, x - dx/2)
+        max_x = max(max_x, x + dx/2)
+        min_y = min(min_y, y - dy/2)
+        max_y = max(max_y, y + dy/2)
+        min_z = min(min_z, z)
+        max_z = max(max_z, z)
+        ax.plot_surface(np.array([[x-dx/2, x+dx/2], [x-dx/2, x+dx/2]]), 
+                        np.array([[y-dy/2, y-dy/2], [y+dy/2, y+dy/2]]), 
+                        np.array([[z, z], [z, z]]),
+                        alpha=0.8)
+                        
+    # Set axis limits and labels
+    ax.set_xlim(min_x-5, max_x+5)
+    ax.set_ylim(min_y-3, max_y+3)
+    ax.set_zlim(min_z-3, max_z+3)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    # Set the aspect ratio of the plot to be equal
+    ax.set_box_aspect([1,1,1])
+
+    disconnect_zoom = zoom_factory(ax)
+    pan_handler = panhandler(fig)
+    plt.show()
+
+if __name__ == '__main__':
+    file_path = './flat_stair_flat.yaml'
+    plot_terrain(file_path=file_path)

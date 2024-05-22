@@ -104,7 +104,7 @@ py_binary(
     deps = [
         ":alip_lqr",
         ":cassie_footstep_controller_environment",
-        "//bindings/pydairlib/perceptive_locomotion/perception_learning:true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
         "//bindings/grid_map",
         "//bindings/pydairlib/perceptive_locomotion:vision_utils",
     ],

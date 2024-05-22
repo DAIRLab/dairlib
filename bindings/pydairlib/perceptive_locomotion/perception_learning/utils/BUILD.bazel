@@ -1,0 +1,102 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+py_binary(
+    name = "create_terrain",
+    srcs = ["create_terrain.py"],
+    deps = [],
+)
+
+py_library(
+    name = "terrain_utils",
+    srcs = ["terrain_utils.py"],
+    deps = [
+        "//bindings/pydairlib/cassie:cassie_utils_py",
+        "//bindings/pydairlib/geometry:convex_polygon_py",
+        "//bindings/pydairlib/multibody",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "DrakeCassieEnv",
+    srcs = ["DrakeCassieEnv.py"],
+    deps = [
+        ":terrain_utils",
+        ":true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+        ":DrakeGymEnv",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "true_cost_system",
+    srcs = ["true_cost_system.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning:alip_nn_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
+        "//bindings/pydairlib/systems",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "DrakeGymEnv",
+    srcs = ["DrakeGymEnv.py"],
+    deps = [
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "adadelta",
+    srcs = ["adadelta.py"],
+    deps = [":optimizer"],
+)
+
+py_binary(
+    name = "optimizer",
+    srcs = ["optimizer.py"],
+    deps = [],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":terrain_utils",
+    ":true_cost_system",
+    ":DrakeCassieEnv",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3"
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "utils",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

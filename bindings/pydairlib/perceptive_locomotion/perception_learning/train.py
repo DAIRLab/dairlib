@@ -250,9 +250,9 @@ def _run_training(config, args):
         model_path = 'PPO_initialize.zip'
 
         model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
-                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.03,
-                        n_steps=int(400*num_env/num_env), n_epochs=10,
-                        batch_size=128*num_env, seed=111,
+                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.01,
+                        n_steps=int(256*num_env/num_env), n_epochs=10,
+                        batch_size=64*num_env, seed=111,
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")

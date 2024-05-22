@@ -24,35 +24,13 @@ py_library(
     ],
 )
 
-py_library(
-    name = "true_cost_system",
-    srcs = ["true_cost_system.py"],
-    deps = [
-        ":alip_nn_lqr",
-        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
-        "//bindings/pydairlib/systems",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "terrain_utils",
-    srcs = ["terrain_utils.py"],
-    deps = [
-        "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/geometry:convex_polygon_py",
-        "//bindings/pydairlib/multibody",
-        "@drake//bindings/pydrake",
-    ],
-)
-
 py_binary(
     name = "alip_nn_lqr_test",
     srcs = ["alip_nn_lqr_test.py"],
     deps = [
         ":alip_nn_lqr",
-        ":terrain_utils",
-        ":true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
@@ -62,8 +40,8 @@ py_binary(
     srcs = ["alip_nn_data_collection.py"],
     deps = [
         ":alip_nn_lqr",
-        ":terrain_utils",
-        ":true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
 )
@@ -72,7 +50,7 @@ py_binary(
     name = "alip_lqr_data_collection",
     srcs = ["alip_lqr_data_collection.py"],
     deps = [
-        ":terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
         "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
     ],
@@ -82,30 +60,9 @@ py_binary(
     name = "alip_rl_data_collection",
     srcs = ["alip_rl_data_collection.py"],
     deps = [
-        ":terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
         "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    ],
-)
-
-py_library(
-    name = "DrakeCassieEnv",
-    srcs = ["DrakeCassieEnv.py"],
-    deps = [
-        ":terrain_utils",
-        ":true_cost_system",
-        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
-        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-        "//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeGymEnv",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
-    name = "DrakeGymEnv",
-    srcs = ["DrakeGymEnv.py"],
-    deps = [
-        "@drake//bindings/pydrake",
     ],
 )
 
@@ -114,7 +71,7 @@ py_binary(
     srcs = ["train.py"],
     deps = [
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
@@ -126,7 +83,7 @@ py_binary(
     srcs = ["run_sample.py"],
     deps = [
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
@@ -140,7 +97,7 @@ py_binary(
     srcs = ["imitation.py"],
     deps = [
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    	"//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
@@ -148,20 +105,8 @@ py_binary(
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
-    	":adadelta"
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta"
     ],
-)
-
-py_binary(
-    name = "adadelta",
-    srcs = ["adadelta.py"],
-    deps = [":optimizer"],
-)
-
-py_binary(
-    name = "optimizer",
-    srcs = ["optimizer.py"],
-    deps = [],
 )
 
 py_binary(
@@ -200,9 +145,6 @@ py_library(
 
 PY_LIBRARIES = [
     ":alip_nn_lqr",
-    ":true_cost_system",
-    ":terrain_utils",
-    ":DrakeCassieEnv",
     "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3"
 ]
 

@@ -217,12 +217,12 @@ void CassieStateEstimator::solveFourbarLinkage(
         r_ball_joint - r_heel_spring_base;
     Vector3d r_thigh_ball_joint_wrt_heel_spring_base =
         heel_spring_rot_mat.transpose() *
-        r_heel_spring_base_to_thigh_ball_joint;
+            r_heel_spring_base_to_thigh_ball_joint;
 
     // Get the projected rod length in the xy plane of heel spring base
     double projected_rod_length =
         sqrt(pow(rod_length_, 2) -
-             pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
+            pow(r_thigh_ball_joint_wrt_heel_spring_base(2), 2));
 
     // Get the vector of the deflected spring direction
     // Below solves for the intersections of two circles on a plane
@@ -231,17 +231,17 @@ void CassieStateEstimator::solveFourbarLinkage(
 
     double k = -y_tbj_wrt_hb / x_tbj_wrt_hb;
     double c = (pow(spring_length, 2) - pow(projected_rod_length, 2) +
-                pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) /
-               (2 * x_tbj_wrt_hb);
+        pow(x_tbj_wrt_hb, 2) + pow(y_tbj_wrt_hb, 2)) /
+        (2 * x_tbj_wrt_hb);
 
     double y_sol_1 =
         (-k * c + sqrt(pow(k * c, 2) -
-                       (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
-        (pow(k, 2) + 1);
+            (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
+            (pow(k, 2) + 1);
     double y_sol_2 =
         (-k * c - sqrt(pow(k * c, 2) -
-                       (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
-        (pow(k, 2) + 1);
+            (pow(k, 2) + 1) * (pow(c, 2) - pow(spring_length, 2)))) /
+            (pow(k, 2) + 1);
     double x_sol_1 = k * y_sol_1 + c;
     double x_sol_2 = k * y_sol_2 + c;
 
@@ -254,13 +254,13 @@ void CassieStateEstimator::solveFourbarLinkage(
     // could be closer to 1 (the rest spring is (1,0,0) in local frame)
     Vector3d r_sol_wrt_heel_base =
         (sol_2_wrt_heel_base(0) >= sol_1_wrt_heel_base(0))
-            ? sol_2_wrt_heel_base
-            : sol_1_wrt_heel_base;
+        ? sol_2_wrt_heel_base
+        : sol_1_wrt_heel_base;
     // Get the heel spring deflection direction and magnitude
     const Vector3d spring_rest_dir_wrt_spring_base(1, 0, 0);
     double heel_spring_angle = acos(
         r_sol_wrt_heel_base.dot(spring_rest_dir_wrt_spring_base) /
-        (r_sol_wrt_heel_base.norm() * spring_rest_dir_wrt_spring_base.norm()));
+            (r_sol_wrt_heel_base.norm() * spring_rest_dir_wrt_spring_base.norm()));
     Vector3d r_rest_dir_cross_r_hs_to_sol =
         spring_rest_dir_wrt_spring_base.cross(r_sol_wrt_heel_base);
     int spring_deflect_sign = (r_rest_dir_cross_r_hs_to_sol(2) >= 0) ? 1 : -1;
@@ -384,7 +384,7 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
   double right_heel_spring = 0;
   VectorXd q = output->GetPositions() + joint_offsets_;
   output->SetPositions(q);
-
+  
   if (is_floating_base_) {
     // Floating-base state doesn't affect the spring values
     // We assign the floating base of q in case output's floating base is
@@ -403,20 +403,30 @@ void CassieStateEstimator::AssignNonFloatingBaseStateToOutputVector(
 
 void CassieStateEstimator::AssignFloatingBaseStateToOutputVector(
     const VectorXd& est_fb_state, OutputVector<double>* output) const {
-  output->SetPositionAtIndex(position_idx_map_.at("base_qw"), est_fb_state(0));
-  output->SetPositionAtIndex(position_idx_map_.at("base_qx"), est_fb_state(1));
-  output->SetPositionAtIndex(position_idx_map_.at("base_qy"), est_fb_state(2));
-  output->SetPositionAtIndex(position_idx_map_.at("base_qz"), est_fb_state(3));
-  output->SetPositionAtIndex(position_idx_map_.at("base_x"), est_fb_state(4));
-  output->SetPositionAtIndex(position_idx_map_.at("base_y"), est_fb_state(5));
-  output->SetPositionAtIndex(position_idx_map_.at("base_z"), est_fb_state(6));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qw"),
+                             est_fb_state(0));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qx"),
+                             est_fb_state(1));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qy"),
+                             est_fb_state(2));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_qz"),
+                             est_fb_state(3));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_x"), est_fb_state(4));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_y"), est_fb_state(5));
+  output->SetPositionAtIndex(position_idx_map_.at("pelvis_z"), est_fb_state(6));
 
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wx"), est_fb_state(7));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wy"), est_fb_state(8));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_wz"), est_fb_state(9));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vx"), est_fb_state(10));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vy"), est_fb_state(11));
-  output->SetVelocityAtIndex(velocity_idx_map_.at("base_vz"), est_fb_state(12));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wx"),
+                             est_fb_state(7));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wy"),
+                             est_fb_state(8));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_wz"),
+                             est_fb_state(9));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vx"),
+                             est_fb_state(10));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vy"),
+                             est_fb_state(11));
+  output->SetVelocityAtIndex(velocity_idx_map_.at("pelvis_vz"),
+                             est_fb_state(12));
 }
 
 void CassieStateEstimator::EstimateContactForEkf(
@@ -439,9 +449,9 @@ void CassieStateEstimator::EstimateContactForEkf(
   const double& right_heel_spring = output.GetPositionAtIndex(
       position_idx_map_.at("ankle_spring_joint_right"));
   bool left_contact_spring = (left_knee_spring < knee_spring_threshold_ekf_ &&
-                              left_heel_spring < ankle_spring_threshold_ekf_);
+      left_heel_spring < ankle_spring_threshold_ekf_);
   bool right_contact_spring = (right_knee_spring < knee_spring_threshold_ekf_ &&
-                               right_heel_spring < ankle_spring_threshold_ekf_);
+      right_heel_spring < ankle_spring_threshold_ekf_);
 
   // Determine contacts based on both spring deflation and QP cost
   if (left_contact_spring) {
@@ -635,19 +645,19 @@ EventStatus CassieStateEstimator::Update(
   estimated_fb_state.tail(3) =
       ekf.getState().getVelocity() + omega_global.cross(r_imu_to_pelvis_global);
   state->get_mutable_discrete_state()
-          .get_mutable_vector(fb_state_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(fb_state_idx_)
+      .get_mutable_value()
       << estimated_fb_state;
 
   // Store imu measurement
   state->get_mutable_discrete_state()
-          .get_mutable_vector(prev_imu_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(prev_imu_idx_)
+      .get_mutable_value()
       << imu_measurement;
   // Store current time
   state->get_mutable_discrete_state()
-          .get_mutable_vector(time_idx_)
-          .get_mutable_value()
+      .get_mutable_vector(time_idx_)
+      .get_mutable_value()
       << current_time;
   return EventStatus::Succeeded();
 }
@@ -755,19 +765,12 @@ void CassieStateEstimator::DoCalcNextUpdateTime(
     *time = next_message_time_ - eps_;
 
     if (is_floating_base_) {
-      auto callback =
-          [](const System& system,
-             const Context<double>& c,
-             const UnrestrictedUpdateEvent<double>&,
-             drake::systems::State<double>* s) {
-
+      auto callback = [](const System& system, const Context<double>& c,
+                         const UnrestrictedUpdateEvent<double>&,
+                         drake::systems::State<double>* s) {
         const auto& self = dynamic_cast<const CassieStateEstimator&>(system);
         return self.Update(c, s);
       };
-
-      auto& uu_events = events->get_mutable_unrestricted_update_events();
-      uu_events.AddEvent(UnrestrictedUpdateEvent<double>(
-          drake::systems::TriggerType::kTimed, callback));
     } else {
       *time = INFINITY;
     }

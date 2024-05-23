@@ -18,8 +18,8 @@ namespace dairlib {
 namespace solvers {
 
 FastOsqpSolver::FastOsqpSolver()
-    : SolverBase(id(), &is_available, &is_enabled, &ProgramAttributesSatisfied) {
-}
+    : SolverBase(id(), &is_available, &is_enabled,
+                 &ProgramAttributesSatisfied) {}
 
 FastOsqpSolver::~FastOsqpSolver() = default;
 
@@ -32,7 +32,7 @@ bool FastOsqpSolver::is_enabled() { return true; }
 
 namespace {
 bool CheckAttributes(const MathematicalProgram& prog,
-                                     std::string* explanation) {
+                     std::string* explanation) {
   static const drake::never_destroyed<ProgramAttributes> solver_capabilities(
       std::initializer_list<ProgramAttribute>{
           ProgramAttribute::kLinearCost, ProgramAttribute::kQuadraticCost,
@@ -61,16 +61,15 @@ bool CheckAttributes(const MathematicalProgram& prog,
   }
   const drake::solvers::Binding<drake::solvers::QuadraticCost>*
       nonconvex_quadratic_cost =
-          drake::solvers::internal::FindNonconvexQuadraticCost(
-              prog.quadratic_costs()
-      );
+      drake::solvers::internal::FindNonconvexQuadraticCost(
+          prog.quadratic_costs());
   if (nonconvex_quadratic_cost != nullptr) {
     if (explanation) {
       *explanation =
           "OsqpSolver is unable to solve because the quadratic cost " +
-          nonconvex_quadratic_cost->to_string() +
-          " is non-convex. Either change this cost to a convex one, or switch "
-          "to a different solver like SNOPT/IPOPT/NLOPT.";
+              nonconvex_quadratic_cost->to_string() +
+              " is non-convex. Either change this cost to a convex one, or switch "
+              "to a different solver like SNOPT/IPOPT/NLOPT.";
     }
     return false;
   }

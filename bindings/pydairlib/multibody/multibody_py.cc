@@ -6,6 +6,7 @@
 #include "multibody/multibody_utils.h"
 #include "multibody/multipose_visualizer.h"
 #include "multibody/stepping_stone_utils.h"
+#include "multibody/visualization_utils.h"
 
 namespace py = pybind11;
 
@@ -42,9 +43,10 @@ PYBIND11_MODULE(multibody, m) {
         py::arg("filename"));
 
   m.def("MakeNameToPositionsMap",
-        &dairlib::multibody::MakeNameToPositionsMap<double>, py::arg("plant"))
+        py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToPositionsMap<double>),
+        py::arg("plant"))
       .def("MakeNameToVelocitiesMap",
-           &dairlib::multibody::MakeNameToVelocitiesMap<double>,
+           py::overload_cast<const drake::multibody::MultibodyPlant<double>&>(&dairlib::multibody::MakeNameToVelocitiesMap<double>),
            py::arg("plant"))
       .def("MakeNameToActuatorsMap",
            &dairlib::multibody::MakeNameToActuatorsMap<double>,
@@ -55,6 +57,12 @@ PYBIND11_MODULE(multibody, m) {
       .def("CreateActuatorNameVectorFromMap",
            &dairlib::multibody::CreateActuatorNameVectorFromMap<double>,
            py::arg("plant"))
+      .def("CreateWithSpringsToWithoutSpringsMapPos",
+           &dairlib::multibody::CreateWithSpringsToWithoutSpringsMapPos<double>,
+           py::arg("plant_w_spr"), py::arg("plant_wo_spr"))
+      .def("CreateWithSpringsToWithoutSpringsMapVel",
+           &dairlib::multibody::CreateWithSpringsToWithoutSpringsMapVel<double>,
+           py::arg("plant_w_spr"), py::arg("plant_wo_spr"))
       .def("AddFlatTerrain", &dairlib::multibody::AddFlatTerrain<double>,
            py::arg("plant"), py::arg("scene_graph"), py::arg("mu_static"),
            py::arg("mu_kinetic"),

@@ -102,7 +102,7 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   drake::systems::Context<double>* context_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
   const drake::multibody::Body<double>& pelvis_;
   bool use_radio_command_;
 

@@ -176,7 +176,7 @@ void DoMain() {
                      false);
 
   Parser parser_vis(&plant_vis, &scene_graph);
-  parser_vis.AddModelFromFile(file_name);
+  parser_vis.AddModels(file_name);
 
   plant.Finalize();
   plant_vis.Finalize();
@@ -189,7 +189,7 @@ void DoMain() {
   if (FLAGS_use_springs && FLAGS_convert_to_springs) {
     MultibodyPlant<double> plant_wo_spr(0.0);
     Parser parser(&plant_wo_spr);
-    parser.AddModelFromFile(
+    parser.AddModels(
         "examples/Cassie/urdf/cassie_fixed_springs_conservative.urdf");
     plant_wo_spr.Finalize();
     spr_map = CreateWithSpringsToWithoutSpringsMapPos(plant, plant_wo_spr);

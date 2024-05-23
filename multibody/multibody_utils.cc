@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "drake/common/drake_assert.h"
+#include "drake/geometry/proximity_properties.h"
 #include "drake/math/autodiff_gradient.h"
 
 namespace dairlib {
@@ -26,9 +27,9 @@ using drake::multibody::JointIndex;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using Eigen::VectorXd;
-using Eigen::Vector3d;
 using Eigen::Vector2d;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Matrix3d;
 using std::map;
@@ -217,10 +218,11 @@ AddRandomBoxes(drake::multibody::MultibodyPlant<T>* plant,
 }
 
 /// Get the ordered names from a NameTo___Map
-vector<string> ExtractOrderedNamesFromMap(const map<string, int>& map) {
+vector<string> ExtractOrderedNamesFromMap(const map<string, int>& map,
+                                          int index_start) {
   vector<string> names(map.size());
   for (const auto& entry : map) {
-    names[entry.second] = entry.first;
+    names[entry.second - index_start] = entry.first;
   }
   return names;
 }
@@ -261,16 +263,12 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant) {
     }
   }
 
-  // TODO: once RBT fully deprecated, this block can likely be removed, using
-  // default coordinate names from Drake.
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
     DRAKE_ASSERT(body.has_quaternion_dofs());
     int start = body.floating_positions_start();
-    // should be body.name() once RBT is deprecated
-    std::string name = "base";
+    std::string name = body.name();
     name_to_index_map[name + "_qw"] = start;
     name_to_index_map[name + "_qx"] = start + 1;
     name_to_index_map[name + "_qy"] = start + 2;
@@ -292,6 +290,64 @@ map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant) {
 
   return name_to_index_map;
 }
+/// Construct a map between joint names and position indices
+///     <name,index> such that q(index) has the given name
+///  -Only accurately includes joints with a single position and single velocity
+///  -Others are included as "position[ind]""
+///  -Index mapping can also be used as a state mapping (assumes x = [q;v])
+template <typename T>
+map<string, int> MakeNameToPositionsMap(const MultibodyPlant<T>& plant,
+                                        ModelInstanceIndex model_instance) {
+  map<string, int> name_to_index_map;
+  std::set<int> index_set;
+  for (auto i : plant.GetJointIndices(model_instance)) {
+    const drake::multibody::Joint<T>& joint = plant.get_joint(i);
+    auto name = joint.name();
+
+    if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
+      std::vector<JointIndex> index_vector{i};
+      auto selectorMatrix = plant.MakeStateSelectorMatrix(index_vector);
+      // find index and add
+      int selector_index = -1;
+      for (int j = 0; j < selectorMatrix.cols(); ++j) {
+        if (selectorMatrix(0, j) == 1) {
+          if (selector_index == -1) {
+            selector_index = j;
+          } else {
+            throw std::logic_error("Unable to create selector map.");
+          }
+        }
+      }
+      if (selector_index == -1) {
+        std::logic_error("Unable to create selector map.");
+      }
+
+      name_to_index_map[name] = selector_index;
+      index_set.insert(selector_index);
+    }
+  }
+
+  if (plant.HasUniqueFreeBaseBody(model_instance)) {
+    const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance);
+    DRAKE_ASSERT(body.has_quaternion_dofs());
+    int start = body.floating_positions_start();
+    std::string name = body.name();
+    name_to_index_map[name + "_qw"] = start;
+    name_to_index_map[name + "_qx"] = start + 1;
+    name_to_index_map[name + "_qy"] = start + 2;
+    name_to_index_map[name + "_qz"] = start + 3;
+    name_to_index_map[name + "_x"] = start + 4;
+    name_to_index_map[name + "_y"] = start + 5;
+    name_to_index_map[name + "_z"] = start + 6;
+    for (int i = 0; i < 7; i++) {
+      index_set.insert(start + i);
+    }
+  }
+  // if index has not already been captured, throw an error
+  DRAKE_THROW_UNLESS(plant.num_positions(model_instance) == index_set.size());
+
+  return name_to_index_map;
+}
 
 /// Construct a map between joint names and velocity indices
 ///     <name,index> such that v(index) has the given name
@@ -306,8 +362,6 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
 
   for (JointIndex i(0); i < plant.num_joints(); ++i) {
     const drake::multibody::Joint<T>& joint = plant.get_joint(i);
-    // TODO(posa): this "dot" should be removed, it's an anachronism from
-    // RBT
     auto name = joint.name() + "dot";
 
     if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
@@ -334,12 +388,10 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
   }
 
   auto floating_bodies = plant.GetFloatingBaseBodies();
-  // Remove throw once RBT deprecated
-  DRAKE_THROW_UNLESS(floating_bodies.size() <= 1);
   for (auto body_index : floating_bodies) {
     const auto& body = plant.get_body(body_index);
-    int start = body.floating_velocities_start() - plant.num_positions();
-    std::string name = "base";  // should be body.name() once RBT is deprecated
+    int start = body.floating_velocities_start_in_v();
+    std::string name = body.name();
     name_to_index_map[name + "_wx"] = start;
     name_to_index_map[name + "_wy"] = start + 1;
     name_to_index_map[name + "_wz"] = start + 2;
@@ -358,6 +410,67 @@ map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant) {
     }
   }
 
+  // if index has not already been captured, throw an error
+  DRAKE_THROW_UNLESS(plant.num_velocities() == index_set.size());
+  return name_to_index_map;
+}
+
+/// Construct a map between joint names and velocity indices
+///     <name,index> such that v(index) has the given name
+///  -Only accurately includes joints with a single position and single velocity
+///  -Others are included as "state[ind]"
+///  -Index mapping can also be used as a state mapping, AFTER
+///     an offset of num_positions is applied (assumes x = [q;v])
+template <typename T>
+map<string, int> MakeNameToVelocitiesMap(const MultibodyPlant<T>& plant,
+                                         ModelInstanceIndex model_instance) {
+  map<string, int> name_to_index_map;
+  std::set<int> index_set;
+
+  for (auto i : plant.GetJointIndices(model_instance)) {
+    const drake::multibody::Joint<T>& joint = plant.get_joint(i);
+    auto name = joint.name() + "dot";
+
+    if (joint.num_velocities() == 1 && joint.num_positions() == 1) {
+      std::vector<JointIndex> index_vector{i};
+      auto selectorMatrix = plant.MakeStateSelectorMatrix(index_vector);
+      // find index and add
+      int selector_index = -1;
+      for (int j = 0; j < selectorMatrix.cols(); ++j) {
+        if (selectorMatrix(1, j) == 1) {
+          if (selector_index == -1) {
+            selector_index = j;
+          } else {
+            throw std::logic_error("Unable to create selector map.");
+          }
+        }
+      }
+      if (selector_index == -1) {
+        throw std::logic_error("Unable to create selector map.");
+      }
+
+      name_to_index_map[name] = selector_index - plant.num_positions();
+      index_set.insert(selector_index - plant.num_positions());
+    }
+  }
+
+  if (plant.HasUniqueFreeBaseBody(model_instance)) {
+    const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance);
+    int start = body.floating_velocities_start_in_v();
+    std::string name = body.name();
+    name_to_index_map[name + "_wx"] = start;
+    name_to_index_map[name + "_wy"] = start + 1;
+    name_to_index_map[name + "_wz"] = start + 2;
+    name_to_index_map[name + "_vx"] = start + 3;
+    name_to_index_map[name + "_vy"] = start + 4;
+    name_to_index_map[name + "_vz"] = start + 5;
+    for (int i = 0; i < 6; i++) {
+      index_set.insert(start + i);
+    }
+  }
+
+  // if index has not already been captured, throw an error
+  DRAKE_THROW_UNLESS(plant.num_velocities(model_instance) == index_set.size());
   return name_to_index_map;
 }
 
@@ -396,8 +509,7 @@ map<string, int> MakeNameToActuatorsMap(const MultibodyPlant<T>& plant) {
 }
 
 template <typename T>
-vector<string> CreateStateNameVectorFromMap(
-    const MultibodyPlant<T>& plant) {
+vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<T>& plant) {
   map<string, int> pos_map = MakeNameToPositionsMap(plant);
   map<string, int> vel_map = MakeNameToVelocitiesMap(plant);
   vector<string> state_names(pos_map.size() + vel_map.size());
@@ -413,8 +525,7 @@ vector<string> CreateStateNameVectorFromMap(
 }
 
 template <typename T>
-vector<string> CreateActuatorNameVectorFromMap(
-    const MultibodyPlant<T>& plant) {
+vector<string> CreateActuatorNameVectorFromMap(const MultibodyPlant<T>& plant) {
   map<string, int> act_map = MakeNameToActuatorsMap(plant);
   return ExtractOrderedNamesFromMap(act_map);
 }
@@ -585,21 +696,21 @@ Eigen::MatrixXd WToQuatDotMap(const Eigen::Vector4d& q) {
   // clang-format off
   Eigen::MatrixXd ret(4,3);
   ret <<  -q(1), -q(2), -q(3),
-           q(0),  q(3), -q(2),
-          -q(3),  q(0),  q(1),
-           q(2), -q(1),  q(0);
+      q(0),  q(3), -q(2),
+      -q(3),  q(0),  q(1),
+      q(2), -q(1),  q(0);
   ret *= 0.5;
   // clang-format on
   return ret;
 }
 
-Eigen::MatrixXd JwrtqdotToJwrtv(
-    const Eigen::VectorXd& q, const Eigen::MatrixXd& Jwrtqdot) {
+Eigen::MatrixXd JwrtqdotToJwrtv(const Eigen::VectorXd& q,
+                                const Eigen::MatrixXd& Jwrtqdot) {
   //[J_1:4, J_5:end] * [WToQuatDotMap, 0] = [J_1:4 * WToQuatDotMap, J_5:end]
   //                   [      0      , I]
   DRAKE_DEMAND(Jwrtqdot.cols() == q.size());
 
-  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() -1);
+  Eigen::MatrixXd ret(Jwrtqdot.rows(), q.size() - 1);
   ret << Jwrtqdot.leftCols<4>() * WToQuatDotMap(q.head<4>()),
       Jwrtqdot.rightCols(q.size() - 4);
   return ret;
@@ -617,8 +728,12 @@ template Vector2d ReExpressWorldVector2InBodyYawFrame(const MultibodyPlant<doubl
 template Matrix3d GetBodyYawRotation_R_WB(const MultibodyPlant<double>& plant, const Context<double>& context, const std::string& body_name); // NOLINT
 template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd> &plant);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<double>(const MultibodyPlant<double>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
+template map<string, int> MakeNameToPositionsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
+template map<string, int> MakeNameToVelocitiesMap<double>(const MultibodyPlant<double>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
+template map<string, int> MakeNameToVelocitiesMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant, drake::multibody::ModelInstanceIndex);  // NOLINT
 template map<string, int> MakeNameToActuatorsMap<double>(const MultibodyPlant<double>& plant);  // NOLINT
 template map<string, int> MakeNameToActuatorsMap<AutoDiffXd>(const MultibodyPlant<AutoDiffXd>& plant);  // NOLINT
 template vector<string> CreateStateNameVectorFromMap(const MultibodyPlant<double>& plant);  // NOLINT

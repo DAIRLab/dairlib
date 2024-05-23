@@ -169,8 +169,8 @@ class OscTrackingData {
   const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
 
   // World frames
-  const drake::multibody::BodyFrame<double>& world_w_spr_;
-  const drake::multibody::BodyFrame<double>& world_wo_spr_;
+  const drake::multibody::RigidBodyFrame<double>& world_w_spr_;
+  const drake::multibody::RigidBodyFrame<double>& world_wo_spr_;
 
   // Trajectory name
   std::string name_;

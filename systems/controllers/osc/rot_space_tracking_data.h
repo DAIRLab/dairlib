@@ -36,9 +36,9 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
       const Eigen::Isometry3d& frame_pose = Eigen::Isometry3d::Identity());
 
  protected:
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
+  std::unordered_map<int, const drake::multibody::RigidBodyFrame<double>*>
       body_frames_w_spr_;
-  std::unordered_map<int, const drake::multibody::BodyFrame<double>*>
+  std::unordered_map<int, const drake::multibody::RigidBodyFrame<double>*>
       body_frames_wo_spr_;
 
  private:

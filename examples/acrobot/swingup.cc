@@ -150,8 +150,8 @@ int main(int argc, char* argv[]) {
   std::string full_name =
       dairlib::FindResourceOrThrow("examples/acrobot/Acrobot.urdf");
 
-  parser.AddModelFromFile(full_name);
-  parser_vis.AddModelFromFile(full_name);
+  parser.AddModels(full_name);
+  parser_vis.AddModels(full_name);
 
   plant->Finalize();
   plant_vis->Finalize();

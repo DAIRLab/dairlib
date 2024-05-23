@@ -126,6 +126,8 @@ void InverseDynamicsQp::Build(bool add_pyramidal_friction_cones) {
     }
   }
 
+  input_limit_c_ = prog_.AddBoundingBoxConstraint(u_min, u_max, u_).evaluator();
+
   built_ = true;
 }
 

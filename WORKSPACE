@@ -11,9 +11,9 @@ workspace(name = "dairlib")
 #  export DAIRLIB_LOCAL_DRAKE_PATH=/home/user/workspace/drake
 
 # Choose a revision of Drake to use.
-DRAKE_COMMIT = "v1.24.0"
+DRAKE_COMMIT = "v1.28.0"
 
-DRAKE_CHECKSUM = "35874238af2c0305525a6f32c28692e3fdbed0581055b0b491669f7534cf6cae"
+DRAKE_CHECKSUM = "6ff298d7fbc33cb17963509f86fcd9cb6816d455b97b3fd589e1085e0548c2fe"
 # Before changing the COMMIT, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
 #DRAKE_CHECKSUM = "0" * 64
@@ -70,10 +70,6 @@ osqp_repository(name = "osqp")
 load("@dairlib//tools/workspace/fcc_qp:repository.bzl", "fcc_qp_repository")
 
 fcc_qp_repository(name = "fcc_qp")
-
-load("@dairlib//tools/workspace/signal_scope:repository.bzl", "signal_scope_repository")
-
-signal_scope_repository(name = "signal_scope")
 
 #load("@dairlib//tools/workspace/pydrake:repository.bzl", "pydrake_repository")
 

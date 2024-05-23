@@ -14,8 +14,9 @@ using drake::multibody::MultibodyPlant;
 
 FsmReceiver::FsmReceiver(const MultibodyPlant<double> &plant) {
   this->set_name("FSM Receiver");
+  lcmt_fsm_info model{};
   input_port_lcmt_fsm_info_ = this->DeclareAbstractInputPort(
-      "lcmt_fsm_info", drake::Value<lcmt_fsm_info>({0,0,0,0})).get_index();
+      "lcmt_fsm_info", drake::Value<lcmt_fsm_info>(model)).get_index();
   input_port_state_ = this->DeclareVectorInputPort(
       "x, u, t", OutputVector<double>(plant.num_positions(),
                                       plant.num_velocities(),

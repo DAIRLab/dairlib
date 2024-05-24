@@ -318,7 +318,7 @@ def _main():
 
 gym.envs.register(
         id="DairCassie-v0",
-        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv",
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv",
         )
 
 if __name__ == '__main__':

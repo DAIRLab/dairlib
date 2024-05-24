@@ -29,11 +29,11 @@ from pydrake.systems.all import (
     LogVectorOutput,
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.DrakeGymEnv import (
+from pydairlib.perceptive_locomotion.perception_learning.utils.DrakeGymEnv import (
     DrakeGymEnv
 )
 
-from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import (
+from pydairlib.perceptive_locomotion.perception_learning.utils.true_cost_system import (
     CumulativeCost)
 
 from pydairlib.perceptive_locomotion.systems.alip_lqr_rl import (

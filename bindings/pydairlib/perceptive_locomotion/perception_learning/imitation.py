@@ -15,7 +15,7 @@ import torch as th
 import torch.nn as nn
 import torch.nn.utils as nn_utils
 import torch.optim as optim
-from pydairlib.perceptive_locomotion.perception_learning.adadelta import Adadelta
+from pydairlib.perceptive_locomotion.perception_learning.utils.adadelta import Adadelta
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.dataset import Dataset, random_split
 
@@ -87,69 +87,84 @@ class CustomNetwork(nn.Module):
         self.heightmap_size = 80
         # CNN for heightmap observations
         n_input_channels = 3
-        self.actor_cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-        self.critic_cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
+        resnet = True
+        
+        if resnet:
+            resnet = th.hub.load('pytorch/vision:v0.10.0', 'resnet34', pretrained=True)
+            combined_input = 576
+            self.actor_cnn = nn.Sequential(
+                *list(resnet.children())[:-1],
+                nn.Flatten(),
+            )
+            self.critic_cnn = nn.Sequential(
+                *list(resnet.children())[:-1],
+                nn.Flatten(),
+            )
+        else:
+            combined_input = 3264
+            self.actor_cnn = nn.Sequential(
+                nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Flatten(),
+            )
+            self.critic_cnn = nn.Sequential(
+                nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Flatten(),
+            )
 
         # MLP for ALIP state + Vdes (6,)
         self.actor_alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(self.alip_state_dim, 128)),
+            nn.Linear(self.alip_state_dim, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 128)),
+            nn.Linear(128, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 64)),
+            nn.Linear(128, 64),
             nn.Tanh(),
         )
 
         self.critic_alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(self.alip_state_dim, 128)),
+            nn.Linear(self.alip_state_dim, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 128)),
+            nn.Linear(128, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 64)),
+            nn.Linear(128, 64),
             nn.Tanh(),
         )
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(3264, 256)),
+            nn.Linear(combined_input, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, self.latent_dim_pi), std = 1.),
+            nn.Linear(256, self.latent_dim_pi),
             nn.Tanh(),
         )
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(3264, 256)),
+            nn.Linear(combined_input, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, self.latent_dim_vf), std = 1.),
+            nn.Linear(256, self.latent_dim_vf),
             nn.Tanh(),
         )
         
@@ -326,7 +341,7 @@ def _main():
     sim_params.visualize = True
     sim_params.meshcat = Meshcat()
     sim_params.terrain = os.path.join(
-        perception_learning_base_folder, 'params/stair/flat_stair_100.yaml'
+        perception_learning_base_folder, 'params/stair/flat_stair_0.yaml'
         #'params/stair_curriculum.yaml'
         #'params/wavy_test.yaml'
         #'params/wavy_terrain.yaml'
@@ -334,7 +349,7 @@ def _main():
     )
     gym.envs.register(
         id="DrakeCassie-v0",
-        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")  # noqa
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv")  # noqa
     
     env = gym.make("DrakeCassie-v0",
                 sim_params = sim_params,
@@ -366,7 +381,7 @@ def _main():
         test_batch_size=100,
     )
 
-    student.save("PPO_initialize")
+    student.save("PPO_initialize_resnet")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

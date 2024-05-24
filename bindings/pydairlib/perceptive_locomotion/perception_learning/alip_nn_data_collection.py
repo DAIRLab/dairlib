@@ -321,7 +321,7 @@ def main():
     
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/ALIP6.npy', ALIP
+        f'/ALIP.npy', ALIP
     )
     #np.save(
     #    f'{perception_learning_base_folder}/tmp'
@@ -329,18 +329,18 @@ def main():
     #)
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/DMAP6.npy', DMAP
+        f'/DMAP.npy', DMAP
     )
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/VDES6.npy', VDES
+        f'/VDES.npy', VDES
     )
 
     print("Saving actions and observations...")
 
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/actions6.npy', FOOTSTEP
+        f'/actions.npy', FOOTSTEP
     )
 
     DMAP = np.asarray(DMAP)
@@ -349,7 +349,7 @@ def main():
     DMAP = DMAP.reshape((DMAP.shape[0], -1))
     np.save(
         f'{perception_learning_base_folder}/tmp'
-        f'/observations6.npy', np.concatenate((DMAP, ALIP, VDES), axis=1)
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES), axis=1)
     )
     #flattened_data = np.concatenate((DMAP, ALIP, VDES), axis=1)
 

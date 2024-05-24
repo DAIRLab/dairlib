@@ -41,10 +41,17 @@ Installs a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2
 JetBrains IDEs have worked well for us and are available for free to students. For C++ development using the CLion Bazel plugin, see https://drake.mit.edu/clion.html and replace `drake` with `dairlib` in the "Setting up Drake in CLion" section. 
 
 ### Notes for macOS
-1. Be sure to have Xcode 9.0 or later installed with Command Line Tools. If you receive a `clang: error: cannot specify -o when generating multiple output files` message during the build process, re-run `install_prereqs.sh`, and be sure that it runs fully before termination, as this will reconfigure Xcode to work with Drake.
+
+Use the corresponding macOS-specific installation script provided by Drake.
+
+I.e., in the Drake workspace, run:
+
+```
+./setup/mac/install_prereqs.sh
+```
+
 
 ## Included Modules
-A list of included modules
 
 ### Cassie Locomotion Controllers
 
@@ -61,6 +68,8 @@ See [systems/controllers/osc](systems/controllers/osc) for an example of a gener
 - joint space tracking
 - task space position tracking
 - task space orientation tracking
+
+We have tested that our OSC works for the following robot platforms: Cassie, Franka Panda, and TriFinger. 
 
 ### Contact-Implicit MPC (C3)
 

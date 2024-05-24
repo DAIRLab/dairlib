@@ -5,6 +5,7 @@
 
 import time
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 from mpl_toolkits.mplot3d import Axes3D
@@ -53,14 +54,28 @@ def plot_space_trajs(trajs, starts, npoints):
 
         for j in range(t.size):
             y[j] = traj.value(t[j]).ravel()
+        ax.plot3D(
+            y[:, 0], y[:, 1], y[:, 2], color=cmap(float(i + 2) / len(trajs))
+        )
         ax.plot3D(y[0, 0], y[0,1], y[0,2], marker='.', color='black')
-        ax.plot3D(y[:, 0], y[:, 1], y[:, 2], color=cmap(float(i+2) / len(trajs)))
 
     return fig, ax
 
 
-def plot_time_trajs(trajs, starts, npoints, dim=0, deriv=0):
-    fig = plt.figure()
+def plot_time_trajs(trajs, starts, npoints, plot_name, dim=0, deriv=0):
+    font = {'size': 10, 'family': 'serif', 'serif': ['Computer Modern']}
+    matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
+    matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')
+    matplotlib.rc('text', usetex=True)
+    matplotlib.rc('font', **font)
+    matplotlib.rcParams['lines.linewidth'] = 2
+    matplotlib.rcParams['lines.markersize'] = 10
+    matplotlib.rcParams['axes.titlesize'] = 40
+    matplotlib.rcParams['axes.labelsize'] = 35
+    matplotlib.rcParams['xtick.labelsize'] = 20
+    matplotlib.rcParams['ytick.labelsize'] = 20
+
+    fig = plt.figure(figsize=(15, 7))
     cmap = plt.get_cmap('Reds')
     for i, traj in enumerate(trajs):
         t = np.linspace(starts[i], traj.end_time(), npoints)
@@ -68,13 +83,68 @@ def plot_time_trajs(trajs, starts, npoints, dim=0, deriv=0):
 
         for j in range(t.size):
             y[j] = traj.EvalDerivative(t[j], derivative_order=deriv).ravel()
+        plt.plot(t, y[:, dim], color=cmap(float(i + 2) / len(trajs)))
         plt.plot(starts[i], y[0, dim], marker='.', color='black')
-        plt.plot(t, y[:, dim], color=cmap(float(i+2) / len(trajs)))
+
+    dims = 'XYZ'
+    derivs = ['Position', 'Velocity', 'Acceleration']
+    units = 'm' + '/s' * deriv
+    if deriv == 0:
+        plt.title(f'Swing Foot {dims[dim]}  Trajectory')
+    if deriv == 2:
+        plt.xlabel('Time (s)')
+    if deriv != 2:
+        plt.gca().set_xticks([])
+    plt.ylabel(f'{derivs[deriv]} ({units})')
+    fig.tight_layout()
+
+    plt.savefig(
+        f'../{plot_name}_{dims[dim]}_{derivs[deriv].lower()}.png',
+        dpi=300
+    )
 
     return fig
 
 
-def multi_spline_figure(save_video=False):
+def make_video(trajs, starts, video_name):
+    fig, ax = plot_space_trajs(trajs, starts, 50)
+
+    # Remove the grid
+    ax.grid(False)
+
+    # Hide pane backgrounds
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+
+    # Hide pane lines (the lines on the walls of the plot)
+    ax.xaxis.pane.set_edgecolor('w')
+    ax.yaxis.pane.set_edgecolor('w')
+    ax.zaxis.pane.set_edgecolor('w')
+
+    # Remove ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+
+    # Show only the Cartesian axes
+    ax.xaxis.line.set_color((0.0, 0.0, 0.0, 0.0))  # X axis
+    ax.yaxis.line.set_color((0.0, 0.0, 0.0, 0.0))  # Y axis
+    ax.zaxis.line.set_color((0.0, 0.0, 0.0, 0.0))  # Z axis
+
+    # Rotation function
+    def rotate(angle):
+        ax.view_init(elev=30., azim=angle)
+
+    # Create animation
+    angles = np.linspace(0, 360, 360)
+    ani = FuncAnimation(fig, rotate, frames=angles, interval=10)
+
+    # Save the animation as an MP4
+    ani.save(f'../{video_name}.mp4', writer='ffmpeg', fps=30, bitrate=10000)
+
+
+def multi_spline_figure(save_video=True):
     p0 = np.zeros((3,))
     p1 = np.array([0.1, 0.3, 0.0])
     t = 0.3
@@ -88,7 +158,8 @@ def multi_spline_figure(save_video=False):
     ))
 
     solver = SwingFootTrajSolver()
-    trajs = []
+    cont_trajs = []
+    pp_trajs = []
     starts = []
 
     n = 35
@@ -108,51 +179,44 @@ def multi_spline_figure(save_video=False):
             initial_pos=p0,
             footstep_target=p1 + dp,
         )
-        p1 = p1 + dp
-        prev_traj = traj
-        trajs.append(traj)
-        starts.append(start_time + (i * dt))
 
-    fx = plot_time_trajs(trajs, starts, 50, dim=0, deriv=0)
-    fdx = plot_time_trajs(trajs, starts, 50, dim=0, deriv=1)
-    fddx = plot_time_trajs(trajs, starts, 50, dim=0, deriv=2)
+        prev_traj = traj
+        cont_trajs.append(traj)
+        breaks = [start_time, (start_time + t) / 2, start_time + t]
+        samples = [
+            p0.reshape((3, 1)),
+            (0.5 * (p0 + p1 + dp) + h * np.array([0, 0, 1.0])).reshape((3, 1)),
+            (p1 + dp).reshape((3, 1))
+        ]
+        sample_dot_at_start = np.zeros((3, 1))
+        sample_dot_at_end = np.zeros((3, 1))
+        pp_traj = PiecewisePolynomial.CubicWithContinuousSecondDerivatives(
+            breaks=breaks,
+            samples=samples,
+            sample_dot_at_start=sample_dot_at_start,
+            sample_dot_at_end=sample_dot_at_end
+        )
+        pp_trajs.append(pp_traj)
+        starts.append(start_time + (i * dt))
+        p1 = p1 + dp
+
+    fx = plot_time_trajs(
+        cont_trajs, starts, 50, 'continous_traj', dim=0, deriv=0
+    )
+    fdx = plot_time_trajs(
+        cont_trajs, starts, 50, 'continous_traj', dim=0, deriv=1
+    )
+    fddx = plot_time_trajs(
+        cont_trajs, starts, 50, 'continous_traj', dim=0, deriv=2
+    )
+
+    fx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=0)
+    fdx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=1)
+    fddx_pp = plot_time_trajs(pp_trajs, starts, 50, 'pp_traj', dim=0, deriv=2)
     
     if save_video:
-        fig, ax = plot_space_trajs(trajs, starts, 50)
-
-        # Remove the grid
-        ax.grid(False)
-
-        # Hide pane backgrounds
-        ax.xaxis.pane.fill = False
-        ax.yaxis.pane.fill = False
-        ax.zaxis.pane.fill = False
-
-        # Hide pane lines (the lines on the walls of the plot)
-        ax.xaxis.pane.set_edgecolor('w')
-        ax.yaxis.pane.set_edgecolor('w')
-        ax.zaxis.pane.set_edgecolor('w')
-
-        # Remove ticks
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_zticks([])
-
-        # Show only the Cartesian axes
-        ax.xaxis.line.set_color((0.0, 0.0, 0.0, 0.0))  # X axis
-        ax.yaxis.line.set_color((0.0, 0.0, 0.0, 0.0))  # Y axis
-        ax.zaxis.line.set_color((0.0, 0.0, 0.0, 0.0))  # Z axis
-
-        # Rotation function
-        def rotate(angle):
-            ax.view_init(elev=30., azim=angle)
-
-        # Create animation
-        angles = np.linspace(0, 360, 360)
-        ani = FuncAnimation(fig, rotate, frames=angles, interval=10)
-
-        # Save the animation as an MP4
-        ani.save('../3d_rotation_many.mp4', writer='ffmpeg', fps=30, bitrate=10000)
+        make_video(cont_trajs, starts, 'continuous_splines')
+        make_video(pp_trajs, starts, 'prev_splines')
 
     plt.show()
 
@@ -213,4 +277,4 @@ def test():
 
 
 if __name__ == "__main__":
-    multi_spline_figure()
+    multi_spline_figure(save_video=False)

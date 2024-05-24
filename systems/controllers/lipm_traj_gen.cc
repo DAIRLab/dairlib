@@ -2,10 +2,8 @@
 
 #include <math.h>
 
-#include <algorithm>
 #include <iostream>
 #include <string>
-
 
 using std::cout;
 using std::endl;
@@ -37,7 +35,7 @@ LIPMTrajGenerator::LIPMTrajGenerator(
     const vector<double>& unordered_state_durations,
     const vector<vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>>&
-        contact_points_in_each_state,
+    contact_points_in_each_state,
     bool use_CoM)
     : plant_(plant),
       context_(context),
@@ -59,14 +57,14 @@ LIPMTrajGenerator::LIPMTrajGenerator(
   // Checking vector dimension
   DRAKE_DEMAND(unordered_fsm_states.size() == unordered_state_durations.size());
   DRAKE_DEMAND(unordered_fsm_states.size() ==
-               contact_points_in_each_state.size());
+      contact_points_in_each_state.size());
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-                    .get_index();
+          "x, u, t", OutputVector<double>(plant.num_positions(),
+                                          plant.num_velocities(),
+                                          plant.num_actuators()))
+      .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   touchdown_time_port_ =
@@ -163,10 +161,10 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     discrete_state->get_mutable_vector(stance_foot_pos_idx_).get_mutable_value()
         << stance_foot_pos;
     discrete_state->get_mutable_vector(touchdown_com_pos_idx_)
-            .get_mutable_value()
+        .get_mutable_value()
         << CoM;
     discrete_state->get_mutable_vector(touchdown_com_vel_idx_)
-            .get_mutable_value()
+        .get_mutable_value()
         << dCoM;
 
     // Testing
@@ -185,7 +183,7 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // Linear interpolate in between
     heuristic_ratio_ = std::clamp(
         1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
-                (dist - foot_spread_lb_),
+            (dist - foot_spread_lb_),
         0.9, 1.0);
   }
 

@@ -35,7 +35,7 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
     std::vector<int> left_right_support_fsm_states,
     std::vector<double> left_right_support_durations,
     std::vector<std::pair<const Vector3d, const Frame<double>&>>
-        left_right_foot,
+    left_right_foot,
     std::string floating_base_body_name, double double_support_duration,
     double mid_foot_height, double desired_final_foot_height,
     double desired_final_vertical_foot_velocity,
@@ -64,10 +64,10 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-                    .get_index();
+          "x, u, t", OutputVector<double>(plant.num_positions(),
+                                          plant.num_velocities(),
+                                          plant.num_actuators()))
+      .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
   liftoff_time_port_ =
@@ -76,9 +76,9 @@ SwingFootTrajGenerator::SwingFootTrajGenerator(
 
   PiecewisePolynomial<double> pp(VectorXd::Zero(0));
   com_port_ = this->DeclareAbstractInputPort(
-                      "com_xyz",
-                      drake::Value<drake::trajectories::Trajectory<double>>(pp))
-                  .get_index();
+          "com_xyz",
+          drake::Value<drake::trajectories::Trajectory<double>>(pp))
+      .get_index();
   footstep_adjustment_port_ =
       this->DeclareVectorInputPort("foot_adjustment_xy", BasicVector<double>(2))
           .get_index();
@@ -118,7 +118,7 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
   VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
+      .get_mutable_value();
 
   // Find fsm_state in left_right_support_fsm_states
   auto it = find(left_right_support_fsm_states_.begin(),
@@ -175,8 +175,8 @@ EventStatus SwingFootTrajGenerator::DiscreteVariableUpdate(
         heuristic_ratio_ = ratio_lb_;
       } else if (dist > foot_spread_lb_) {
         heuristic_ratio_ = 1 + (ratio_lb_ - 1) /
-                                   (foot_spread_ub_ - foot_spread_lb_) *
-                                   (dist - foot_spread_lb_);
+            (foot_spread_ub_ - foot_spread_lb_) *
+            (dist - foot_spread_lb_);
       }
     }
   }
@@ -256,15 +256,15 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     }
     Vector2d com_wrt_foot =
         ((v_f * exp(omega * T) - v_i) / (exp(2 * omega * T) - 1) -
-         (v_f * exp(-omega * T) - v_i) / (exp(-2 * omega * T) - 1)) /
-        omega;
+            (v_f * exp(-omega * T) - v_i) / (exp(-2 * omega * T) - 1)) /
+            omega;
     *x_fs = (-com_wrt_foot);
   } else {
     Vector2d com_wrt_foot =
         CoM_vel_pred.head<2>() *
-        ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
-         (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
-        omega;
+            ((exp(omega * T) - 1) / (exp(2 * omega * T) - 1) -
+                (exp(-omega * T) - 1) / (exp(-2 * omega * T) - 1)) /
+            omega;
     *x_fs = CoM_pos_pred.head<2>() - com_wrt_foot;
   }
 

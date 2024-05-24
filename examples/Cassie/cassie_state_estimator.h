@@ -162,7 +162,7 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   const multibody::KinematicEvaluatorSet<double>* fourbar_evaluator_;
   const multibody::KinematicEvaluatorSet<double>* left_contact_evaluator_;
   const multibody::KinematicEvaluatorSet<double>* right_contact_evaluator_;
-  const drake::multibody::BodyFrame<double>& world_;
+  const drake::multibody::RigidBodyFrame<double>& world_;
   const bool is_floating_base_;
   std::unique_ptr<drake::systems::Context<double>> context_;
 

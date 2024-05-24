@@ -28,14 +28,14 @@ void GeomGeomColliderTest() {
 
   parser.package_map().Add("robot_properties_fingers",
                            "examples/trifinger/robot_properties_fingers");
-  parser.AddModelFromFile(FindResourceOrThrow("examples/trifinger/"
-      "robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"));
-  parser.AddModelFromFile(FindResourceOrThrow(
+  parser.AddModels(FindResourceOrThrow("examples/trifinger/"
+                                       "robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"));
+  parser.AddModels(FindResourceOrThrow(
       "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"));
 
   auto X_WI = drake::math::RigidTransform<double>::Identity();
   plant.WeldFrames(plant.world_frame(),
-                    plant.GetFrameByName("base_link"), X_WI);
+                   plant.GetFrameByName("base_link"), X_WI);
   plant.Finalize();
 
   auto diagram = builder.Build();
@@ -74,12 +74,12 @@ void GeomGeomColliderTest() {
   q(q_map.at("finger_base_to_upper_joint_240")) = 0;
   q(q_map.at("finger_upper_to_middle_joint_240")) = -1;
   q(q_map.at("finger_middle_to_lower_joint_240")) = -1.5;
-  q(q_map.at("base_qw")) = 1;
-  q(q_map.at("base_qx")) = 0;
-  q(q_map.at("base_qz")) = 0;
-  q(q_map.at("base_x")) = 0;
-  q(q_map.at("base_y")) = 0;
-  q(q_map.at("base_z")) = .05;
+  q(q_map.at("cube_qw")) = 1;
+  q(q_map.at("cube_qx")) = 0;
+  q(q_map.at("cube_qz")) = 0;
+  q(q_map.at("cube_x")) = 0;
+  q(q_map.at("cube_y")) = 0;
+  q(q_map.at("cube_z")) = .05;
 
   plant.SetPositions(&context, q);
 
@@ -93,7 +93,7 @@ void GeomGeomColliderTest() {
 
   std::cout << "A-B, planar" << std::endl;
   auto [phi_A_B_planar, J_A_B_planar] = collider_A_B.EvalPlanar(context,
-      Eigen::Vector3d(0, 1, 0));
+                                                                Eigen::Vector3d(0, 1, 0));
   std::cout << J_A_B_planar << std::endl << std::endl;
 }
 

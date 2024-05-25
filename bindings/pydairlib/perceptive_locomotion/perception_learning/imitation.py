@@ -15,7 +15,7 @@ import torch as th
 import torch.nn as nn
 import torch.nn.utils as nn_utils
 import torch.optim as optim
-from pydairlib.perceptive_locomotion.perception_learning.adadelta import Adadelta
+from pydairlib.perceptive_locomotion.perception_learning.utils.adadelta import Adadelta
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.dataset import Dataset, random_split
 
@@ -49,7 +49,7 @@ from pydairlib.perceptive_locomotion.systems.cassie_footstep_controller_gym_envi
 )
 
 perception_learning_base_folder = "bindings/pydairlib/perceptive_locomotion/perception_learning"
-
+th.cuda.empty_cache()
 #th.autograd.set_detect_anomaly(True)
 
 def bazel_chdir():
@@ -77,6 +77,10 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     nn.init.constant_(layer.bias, bias_const)
     return layer
 
+resnet = th.hub.load('pytorch/vision:v0.10.0', 'resnet18', pretrained=False)
+resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+#resnet.maxpool = nn.Identity()
+
 class CustomNetwork(nn.Module):
     def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
         super().__init__()
@@ -87,69 +91,83 @@ class CustomNetwork(nn.Module):
         self.heightmap_size = 80
         # CNN for heightmap observations
         n_input_channels = 3
-        self.actor_cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-        self.critic_cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
+        use_resnet = True
+        
+        if use_resnet:
+            combined_input = 576
+            self.actor_cnn = nn.Sequential(
+                *list(resnet.children())[:-1],
+                nn.Flatten(),
+            )
+            self.critic_cnn = nn.Sequential(
+                *list(resnet.children())[:-1],
+                nn.Flatten(),
+            )
+        else:
+            combined_input = 3264
+            self.actor_cnn = nn.Sequential(
+                nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Flatten(),
+            )
+            self.critic_cnn = nn.Sequential(
+                nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Flatten(),
+            )
 
         # MLP for ALIP state + Vdes (6,)
         self.actor_alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(self.alip_state_dim, 128)),
+            nn.Linear(self.alip_state_dim, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 128)),
+            nn.Linear(128, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 64)),
+            nn.Linear(128, 64),
             nn.Tanh(),
         )
 
         self.critic_alip_mlp = nn.Sequential(
-            layer_init(nn.Linear(self.alip_state_dim, 128)),
+            nn.Linear(self.alip_state_dim, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 128)),
+            nn.Linear(128, 128),
             nn.Tanh(),
-            layer_init(nn.Linear(128, 64)),
+            nn.Linear(128, 64),
             nn.Tanh(),
         )
 
         # Combined MLP for actor
         self.actor_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(3264, 256)),
+            nn.Linear(combined_input, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, self.latent_dim_pi), std = 1.),
+            nn.Linear(256, self.latent_dim_pi),
             nn.Tanh(),
         )
 
         # Combined MLP for critic
         self.critic_combined_mlp = nn.Sequential(
-            layer_init(nn.Linear(3264, 256)),
+            nn.Linear(combined_input, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.Tanh(),
-            layer_init(nn.Linear(256, self.latent_dim_vf), std = 1.),
+            nn.Linear(256, self.latent_dim_vf),
             nn.Tanh(),
         )
         
@@ -201,7 +219,7 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 def split(expert_observations, expert_actions):
     expert_dataset = ExpertDataSet(expert_observations, expert_actions)
 
-    train_size = int(0.8 * len(expert_dataset))
+    train_size = int(0.85 * len(expert_dataset))
 
     test_size = len(expert_dataset) - train_size
 
@@ -224,7 +242,7 @@ def pretrain_agent(
     cuda=False,
     seed=1,
     test_batch_size=64,
-    patience = 10,
+    patience = 15,
     min_delta=0.0001
 ):
     use_cuda = cuda and th.cuda.is_available()
@@ -276,7 +294,7 @@ def pretrain_agent(
 
     def test(model, device, test_loader):
         model.eval()
-        total_loss = []
+        total_loss = 0.0
         with th.no_grad():
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
@@ -290,9 +308,9 @@ def pretrain_agent(
                 target = target.long()
 
                 test_loss = criterion(action_prediction, target)
-                total_loss.append(test_loss.item())
+                total_loss += test_loss.item()
         
-        return np.mean(total_loss)
+        return total_loss / len(test_loader.dataset)
 
     train_loader = th.utils.data.DataLoader(
         dataset=train_expert_dataset, batch_size=batch_size, shuffle=True, **kwargs
@@ -334,7 +352,7 @@ def _main():
     )
     gym.envs.register(
         id="DrakeCassie-v0",
-        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")  # noqa
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv")  # noqa
     
     env = gym.make("DrakeCassie-v0",
                 sim_params = sim_params,
@@ -356,19 +374,20 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=20,
+        epochs=100,
         scheduler_gamma=0.8,
         learning_rate=1.,
         log_interval=100,
         cuda=True,
-        seed=111,
-        batch_size=100,
-        test_batch_size=100,
+        seed=22,
+        batch_size=128,
+        test_batch_size=128,
     )
 
-    student.save("PPO_initialize")
+    student.save("PPO_initialize_resnet")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 
 if __name__ == '__main__':
+    th.cuda.empty_cache()
     _main()

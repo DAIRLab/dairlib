@@ -80,7 +80,7 @@ def run_play(sim_params, model_path=None):
     max_steps = 3e4
     #test_folder = "rl/vdes_depth/"
     #model_path = path.join(test_folder, 'best_model.zip')
-    model_path = 'PPO_depth_vdes.zip'
+    model_path = 'latest_model2.zip'
     model = PPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
@@ -99,7 +99,7 @@ def _main(model_path=None):
     sim_params = CassieFootstepControllerEnvironmentOptions()
     gym.envs.register(
         id="DrakeCassie-v0",
-        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")  # noqa
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv")  # noqa
 
     #sample(sim_params)
     run_play(sim_params, model_path=None)

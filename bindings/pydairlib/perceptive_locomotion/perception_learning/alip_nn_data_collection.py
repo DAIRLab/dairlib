@@ -31,7 +31,7 @@ from pydairlib.perceptive_locomotion.perception_learning.alip_nn_lqr import (
     AlipFootstepNNLQR,
     calc_collision_cost_grid
 )
-from pydairlib.perceptive_locomotion.perception_learning.terrain_utils import (
+from pydairlib.perceptive_locomotion.perception_learning.utils.terrain_utils import (
     make_stairs, random_stairs
 )
 
@@ -44,7 +44,7 @@ from pydairlib.perceptive_locomotion.systems. \
     CassieFootstepControllerEnvironment,
     InitialConditionsServer
 )
-from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import (
+from pydairlib.perceptive_locomotion.perception_learning.utils.true_cost_system import (
     CumulativeCost)
 
 # Can use DrawAndSaveDiagramGraph for debugging if necessary
@@ -247,7 +247,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 def main():
     sim_params = CassieFootstepControllerEnvironmentOptions()
     checkpoint_path = os.path.join(
-        perception_learning_base_folder, 'tmp/zany-pyramid-3.pth') # path of trained U-Net
+        perception_learning_base_folder, 'tmp/best_model_checkpoint.pth') # path of trained U-Net
     
     # True if using depth sensor
     sim_params.simulate_perception = True
@@ -286,19 +286,7 @@ def main():
             else:
                 rand = np.random.randint(0, 500)
                 terrain = f'params/stair/flat_stair_{rand}.yaml'
-            # else:
-            #     # Terrain with blocks
-            #     rand = np.random.randint(1, 4)
-            #     if rand == 1: # random flat
-            #         rand = np.random.randint(0, 200)
-            #         terrain = f'params/random/flat/flat_{rand}.yaml'
-            #     elif rand == 2: # random stairs
-            #         rand = np.random.randint(0, 200)
-            #         terrain = f'params/random/stairs/stair_curriculum_{rand}.yaml'
-            #     else: # random wavy
-            #         rand = np.random.randint(0, 200)
-            #         terrain = f'params/random/wavy/wavy_terrain_{rand}.yaml'
-        
+
         else:
             terrain = 'params/stair_curriculum.yaml'
         
@@ -308,6 +296,7 @@ def main():
         alip, footstep, hmap, dmap, vdes, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")
 
+        print(len(alip))
         if not terminate:
             DMAP.extend(dmap)
             ALIP.extend(alip)

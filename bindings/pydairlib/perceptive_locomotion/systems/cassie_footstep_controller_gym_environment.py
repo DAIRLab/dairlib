@@ -224,9 +224,9 @@ class RewardSystem(LeafSystem):
         right_toe_direction = toe_right_rotation @ (front_contact_pt - rear_contact_pt)
         right_angle = abs(np.arctan2(right_toe_direction[2], np.linalg.norm(right_toe_direction[:2])))
 
-        if left_angle > 0.4:
+        if left_angle > 0.3:
             left_penalty = -1
-        if right_angle > 0.4:
+        if right_angle > 0.3:
             right_penalty = -1
 
         # reward normalize to 0 ~ 1

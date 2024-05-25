@@ -6,6 +6,7 @@ import os
 from os import path
 import numpy as np
 import torch as th
+import torchvision
 import torch.nn as nn
 
 import gymnasium as gym
@@ -247,12 +248,13 @@ def _run_training(config, args):
         
         #test_folder = "rl/vdes_depth_angle_penalty"
         #model_path = path.join(test_folder, 'latest_model.zip')
-        model_path = 'PPO_initialize.zip'
+        #model_path = 'PPO_initialize.zip'
+        model_path = 'PPO_initialize_resnet.zip'
 
-        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.2,
-                        clip_range = 0.2, target_kl = 0.1, ent_coef=0.01,
-                        n_steps=int(256*num_env/num_env), n_epochs=10,
-                        batch_size=64*num_env, seed=111,
+        model = PPO.load(model_path, env, learning_rate = linear_schedule(1e-5), max_grad_norm = 0.1,
+                        clip_range = 0.1, ent_coef=0.01, target_kl = 0.5,
+                        n_steps=int(400*num_env/num_env), n_epochs=10,
+                        batch_size=128*num_env, seed=42,
                         tensorboard_log=tensorboard_log)
         
         print("Open tensorboard (optional) via " f"`tensorboard --logdir {tensorboard_log}`" "in another terminal.")
@@ -268,6 +270,7 @@ def _run_training(config, args):
         best_model_save_path=log_dir+f'eval_logs/test',
         log_path=log_dir+f'eval_logs/test',
         eval_freq=eval_freq,
+        n_eval_episodes=3,
         deterministic=True,
         render=False)
 
@@ -302,23 +305,23 @@ def _main():
     if args.test:
         num_env = 1
     else:
-        num_env = 16
+        num_env = 8
 
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": CustomActorCriticPolicy,
-        "total_timesteps": 2e6 if not args.test else 5,
+        "total_timesteps": 5e6 if not args.test else 5,
         "env_name": "DairCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 1500,
+        "model_save_freq": 5000,
         "sim_params" : sim_params
     }
     _run_training(config, args)
 
 gym.envs.register(
         id="DairCassie-v0",
-        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv",
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.utils.DrakeCassieEnv:DrakeCassieEnv",
         )
 
 if __name__ == '__main__':

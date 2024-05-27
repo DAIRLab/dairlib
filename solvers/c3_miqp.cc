@@ -67,6 +67,15 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
 
   model.setObjective(obj, GRB_MINIMIZE);
 
+//  for (int i = 0; i < n_; ++i){
+//    VectorXd identity = VectorXd::Zero(n_ + m_ + k_);
+//    double* init_state_coeff = identity.data();
+//    init_state_coeff[i] = 1;
+//    GRBLinExpr init_state_expr = 0;
+//    init_state_expr.addTerms(init_state_coeff, delta_k, n_ + m_ + k_);
+//    model.addConstr(init_state_expr == delta_c[i]);
+//  }
+
   int M = 1000;  // big M variable
   double coeff[n_ + m_ + k_];
   double coeff2[n_ + m_ + k_];
@@ -161,6 +170,16 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
     obj.addTerm(cost_lin(i), delta_k[i]);
     obj.addTerm(U(i, i), delta_k[i], delta_k[i]);
   }
+
+//  for (int i = 0; i < n_; ++i){
+//    VectorXd identity = VectorXd::Zero(n_ + m_ + k_);
+//    double* init_state_coeff = identity.data();
+//    init_state_coeff[i] = 1;
+//    GRBLinExpr init_state_expr = 0;
+//    init_state_expr.addTerms(init_state_coeff, delta_k, n_ + m_ + k_);
+//    model.addConstr(init_state_expr == delta_c[i]);
+//  }
+
 
   model.setObjective(obj, GRB_MINIMIZE);
 

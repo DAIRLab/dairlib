@@ -19,11 +19,5 @@
                 <drake:mu_static value="0.2"/>
             </drake:proximity_properties>
         </collision>
-        <visual>
-            <origin rpy="0 0 0" xyz="0 0 0.0"/>
-            <geometry>
-              <cylinder radius="0.01" length="0.01"/>
-            </geometry>
-        </visual>
     </link>
 </robot>

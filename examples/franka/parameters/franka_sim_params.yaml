@@ -8,7 +8,7 @@ object_publish_rate: 1000
 visualizer_publish_rate: 32
 actuator_delay: 0.000
 
-scene_index: 0
+scene_index: 1
 visualize_drake_sim: false
 publish_efforts: true
 publish_object_velocities: true
@@ -52,8 +52,8 @@ q_init_object: [[1, 0, 0, 0, 0.55, 0.0, 0.0],
                [1.    , 0.    , 0.    , 0.    , -1.55, 0.0, 0.0 ]]
 
 visualize_workspace: false
-visualize_pose_trace: false
-visualize_center_of_mass_plan: true
+visualize_pose_trace: true
+visualize_center_of_mass_plan: false
 visualize_c3_forces: true
 visualize_c3_object_state: true
-visualize_c3_end_effector_state: true
+visualize_c3_end_effector_state: false

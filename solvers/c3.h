@@ -122,9 +122,9 @@ class C3 {
   std::vector<std::vector<Eigen::VectorXd>> warm_start_u_;
   bool warm_start_;
   const int N_;
-  const int n_;
-  const int m_;
-  const int k_;
+  const int n_; // n_x
+  const int m_; // n_lambda
+  const int k_; // n_u
 
  private:
   std::vector<Eigen::MatrixXd> A_;

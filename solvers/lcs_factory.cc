@@ -218,15 +218,6 @@ LCS LCSFactory::LinearizePlantToLCS(
     H.block(2 * n_contacts, 0, 2 * n_contacts * num_friction_directions, n_u) =
         dt * J_t * AB_v_u;
 
-//    W_x.block(0, 0, n_lambda, n_q) = J_t * AB_v_q;
-//    W_x.block(0, n_q, n_lambda, n_v) = J_t + J_t * AB_v_v;
-//    W_l.block(0, n_contacts, n_contacts, n_contacts) = J_t * (MinvJ_c_T);
-//    W_l.block(0, n_contacts + n_contacts, n_contacts, 2 * n_contacts * num_friction_directions) = J_t * (MinvJ_c_T);
-//    W_l.block(0, 0, n_lambda, ) = J_t * (MinvJ_c_T);
-//    W_l.block(0, 0, n_lambda, ) = J_t * (MinvJ_c_T);
-//    W_u = J_t * (AB_v_u);
-//    w = J_t * (d_v);
-
     c.segment(n_contacts, n_contacts) =
         phi + dt * dt * J_n * d_v - J_n * vNqdot * plant.GetPositions(context);
     c.segment(2 * n_contacts, 2 * n_contacts * num_friction_directions) =
@@ -241,6 +232,7 @@ LCS LCSFactory::LinearizePlantToLCS(
           mu_vec(i) * VectorXd::Ones(2 * num_friction_directions);
     }
     MatrixXd anitescu_mu_matrix = anitescu_mu_vec.asDiagonal();
+    // Constructing friction bases
     MatrixXd J_c = E_t.transpose() * J_n + anitescu_mu_matrix * J_t;
 
     MatrixXd MinvJ_c_T = M_ldlt.solve(J_c.transpose());
@@ -248,15 +240,23 @@ LCS LCSFactory::LinearizePlantToLCS(
     D.block(0, 0, n_q, n_lambda) = dt * dt * qdotNv * MinvJ_c_T;
     D.block(n_q, 0, n_v, n_lambda) = dt * MinvJ_c_T;
 
+    // q component of complementarity constraint
     E.block(0, 0, n_lambda, n_q) =
         dt * J_c * AB_v_q + E_t.transpose() * J_n * vNqdot / dt;
     E.block(0, n_q, n_lambda, n_v) = J_c + dt * J_c * AB_v_v;
 
+    // lambda component of complementarity constraint
     F = dt * J_c * MinvJ_c_T;
 
+    // u component of complementarity constraint
     H = dt * J_c * AB_v_u;
+    // constant component of complementarity constraint
     c = E_t.transpose() * phi / dt + dt * J_c * d_v -
         E_t.transpose() * J_n * vNqdot * plant.GetPositions(context) / dt;
+
+    // Anitescu model needs an explicit formulation for the tangential
+    // components in order to appropriately activate the robust constraint
+    // (TODO): yangwill do another pass to verify this formulation
     W_x.block(0, 0, n_lambda, n_q) = J_t * AB_v_q;
     W_x.block(0, n_q, n_lambda, n_v) = J_t + J_t * AB_v_v;
     W_l = J_t * (MinvJ_c_T);

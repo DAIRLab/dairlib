@@ -1,5 +1,5 @@
 """
-Imitate a policy from supervising LQR dataset //bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeCassieEnv
+Imitate a policy from supervising LQR dataset //bindings/pydairlib/perceptive_locomotion/perception_learning.utils.DrakeCassieEnv
 """
 import argparse
 import os
@@ -77,12 +77,34 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     nn.init.constant_(layer.bias, bias_const)
     return layer
 
-resnet = th.hub.load('pytorch/vision:v0.10.0', 'resnet18', pretrained=False)
-resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-#resnet.maxpool = nn.Identity()
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.LeakyReLU()
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.downsample = downsample
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+        return out
+
 
 class CustomNetwork(nn.Module):
-    def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
+    def __init__(self, last_layer_dim_pi: int = 128, last_layer_dim_vf: int = 128):
         super().__init__()
 
         self.latent_dim_pi = last_layer_dim_pi
@@ -91,18 +113,64 @@ class CustomNetwork(nn.Module):
         self.heightmap_size = 80
         # CNN for heightmap observations
         n_input_channels = 3
-        use_resnet = True
+        use_encoder = True
         
-        if use_resnet:
-            combined_input = 576
+        if use_encoder:
+            combined_input = 128
             self.actor_cnn = nn.Sequential(
-                *list(resnet.children())[:-1],
+                nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm2d(16),
+                nn.LeakyReLU(),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+
+                ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(32))),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+
+                ResidualBlock(32, 48, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(32, 48, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(48))),
+
+                ResidualBlock(48, 64, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(64))),
+
                 nn.Flatten(),
+                nn.Linear(64*2*2, 1024),
+                nn.Tanh(),
+                nn.Linear(1024, 256),
+                nn.Tanh(),
+                nn.Linear(256, 96),
             )
+
             self.critic_cnn = nn.Sequential(
-                *list(resnet.children())[:-1],
+                nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm2d(16),
+                nn.LeakyReLU(),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+
+                ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(32))),
+                nn.MaxPool2d(kernel_size=2, stride=2),
+
+                ResidualBlock(32, 48, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(32, 48, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(48))),
+
+                ResidualBlock(48, 64, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(64))),
+
                 nn.Flatten(),
+                nn.Linear(64*2*2, 1024),
+                nn.Tanh(),
+                nn.Linear(1024, 256),
+                nn.Tanh(),
+                nn.Linear(256, 96),
             )
+            
         else:
             combined_input = 3264
             self.actor_cnn = nn.Sequential(
@@ -130,20 +198,20 @@ class CustomNetwork(nn.Module):
 
         # MLP for ALIP state + Vdes (6,)
         self.actor_alip_mlp = nn.Sequential(
-            nn.Linear(self.alip_state_dim, 128),
+            nn.Linear(self.alip_state_dim, 64),
             nn.Tanh(),
-            nn.Linear(128, 128),
+            nn.Linear(64, 32),
             nn.Tanh(),
-            nn.Linear(128, 64),
+            nn.Linear(32, 32),
             nn.Tanh(),
         )
 
         self.critic_alip_mlp = nn.Sequential(
-            nn.Linear(self.alip_state_dim, 128),
+            nn.Linear(self.alip_state_dim, 64),
             nn.Tanh(),
-            nn.Linear(128, 128),
+            nn.Linear(64, 32),
             nn.Tanh(),
-            nn.Linear(128, 64),
+            nn.Linear(32, 32),
             nn.Tanh(),
         )
 
@@ -151,9 +219,9 @@ class CustomNetwork(nn.Module):
         self.actor_combined_mlp = nn.Sequential(
             nn.Linear(combined_input, 256),
             nn.Tanh(),
-            nn.Linear(256, 256),
+            nn.Linear(256, 512),
             nn.Tanh(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 256),
             nn.Tanh(),
             nn.Linear(256, self.latent_dim_pi),
             nn.Tanh(),
@@ -163,9 +231,9 @@ class CustomNetwork(nn.Module):
         self.critic_combined_mlp = nn.Sequential(
             nn.Linear(combined_input, 256),
             nn.Tanh(),
-            nn.Linear(256, 256),
+            nn.Linear(256, 512),
             nn.Tanh(),
-            nn.Linear(256, 256),
+            nn.Linear(512, 256),
             nn.Tanh(),
             nn.Linear(256, self.latent_dim_vf),
             nn.Tanh(),
@@ -384,7 +452,7 @@ def _main():
         test_batch_size=128,
     )
 
-    student.save("PPO_initialize_resnet")
+    student.save("PPO_initialize_residual")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

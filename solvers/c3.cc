@@ -236,22 +236,21 @@ void C3::Solve(const VectorXd& x0) {
     WD.at(i) = delta.at(i) - w.at(i);
   }
 
-//  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
+  vector<VectorXd> zfin = SolveQP(x0, Gv, WD, options_.admm_iter, true);
 
   *w_sol_ = w;
   *delta_sol_ = delta;
-  *z_sol_ = delta;
 
-//  if (!options_.end_on_qp_step) {
-//    *z_sol_ = delta;
-//    z_sol_->at(0).segment(0, n_) = x0;
-//    x_sol_->at(0) = x0;
-//    for (int i = 1; i < N_; ++i) {
-//      z_sol_->at(i).segment(0, n_) =
-//          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
-//          D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
-//    }
-//  }
+  if (!options_.end_on_qp_step) {
+    *z_sol_ = delta;
+    z_sol_->at(0).segment(0, n_) = x0;
+    x_sol_->at(0) = x0;
+    for (int i = 1; i < N_; ++i) {
+      z_sol_->at(i).segment(0, n_) =
+          A_.at(i - 1) * x_sol_->at(i - 1) + B_.at(i - 1) * u_sol_->at(i - 1) +
+          D_.at(i - 1) * lambda_sol_->at(i - 1) + d_.at(i - 1);
+    }
+  }
 
   for (int i = 0; i < N_; ++i) {
     lambda_sol_->at(i) *= AnDn_;

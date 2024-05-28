@@ -25,7 +25,7 @@ workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.6],
 #world_z_limits: [0.35, 0.7]
 workspace_margins: 0.05
 
-u_horizontal_limits: [-10, 20]
+u_horizontal_limits: [-10, 10]
 u_vertical_limits: [0, 30]
 
 mu: [0.6, 0.6, 0.6, 0.1, 0.1, 0.1, 0.1]

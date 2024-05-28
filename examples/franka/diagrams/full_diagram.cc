@@ -128,7 +128,7 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
   q.head(7) = sim_params.q_init_franka;
 
-  q.tail(7) = sim_params.q_init_plate[sim_params.scene_index];
+  q.tail(7) = sim_params.q_init_tray[sim_params.scene_index];
 
   plant.SetPositions(&plant_context, q);
 

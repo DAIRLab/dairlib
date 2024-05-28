@@ -23,7 +23,7 @@ struct FrankaSimParams {
   bool publish_object_velocities;
 
   Eigen::VectorXd q_init_franka;
-  std::vector<Eigen::VectorXd> q_init_plate;
+  std::vector<Eigen::VectorXd> q_init_tray;
   std::vector<Eigen::VectorXd> q_init_object;
   Eigen::VectorXd tool_attachment_frame;
 
@@ -62,7 +62,7 @@ struct FrankaSimParams {
     a->Visit(DRAKE_NVP(publish_object_velocities));
 
     a->Visit(DRAKE_NVP(q_init_franka));
-    a->Visit(DRAKE_NVP(q_init_plate));
+    a->Visit(DRAKE_NVP(q_init_tray));
     a->Visit(DRAKE_NVP(q_init_object));
     a->Visit(DRAKE_NVP(tool_attachment_frame));
 

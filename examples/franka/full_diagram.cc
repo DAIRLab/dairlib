@@ -231,7 +231,7 @@ int DoMain(int argc, char* argv[]) {
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
 
   q.tail(plant.num_positions(tray_index)) =
-      sim_params.q_init_plate[sim_params.scene_index];
+      sim_params.q_init_tray[sim_params.scene_index];
 
   plant.SetPositions(&plant_context, q);
 

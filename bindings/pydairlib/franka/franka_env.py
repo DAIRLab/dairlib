@@ -118,7 +118,7 @@ def run_sim(intrinsics, gains):
   c3_controller.get_input_port_radio().FixValue(c3_controller_context, np.zeros(18))
   logger_context = diagram.GetSubsystemContext(sim_state_logger, simulator.get_context())
 
-  q = np.hstack((sim_params['q_init_franka'], sim_params['q_init_plate'][sim_params['scene_index']]))
+  q = np.hstack((sim_params['q_init_franka'], sim_params['q_init_tray'][sim_params['scene_index']]))
   v = np.zeros(plant.num_velocities())
   plant.SetPositions(plant_context, q)
 

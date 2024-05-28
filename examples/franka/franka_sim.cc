@@ -211,7 +211,7 @@ int DoMain(int argc, char* argv[]) {
 
   q.segment(plant.num_positions(franka_index),
             plant.num_positions(tray_index)) =
-      sim_params.q_init_plate[sim_params.scene_index];
+      sim_params.q_init_tray[sim_params.scene_index];
   q.tail(plant.num_positions(object_index)) =
       sim_params.q_init_object[sim_params.scene_index];
 

@@ -225,31 +225,43 @@ VectorXd C3MIQP::SolveRobustSingleProjection(
     tangential_velocity_expr.addTerms(tangential_velocity_coeffs, delta_k,
                                       n_ + m_ + k_);
 
-    /// Constraint explanation
-    /// if i % 2 == 0:
-    ///     lambda_1 - lambda_2 <= mu_l / mu * (lambda_1 + lambda_2)
-    /// else:
-    ///     lambda_2 - lambda_1 <= mu_l / mu * (lambda_1 + lambda_2)
+    /// Constraint explanation:
+    /// Adding a binary decision to either be:
+    /// - inside a conservative (mu_l) friction cone (stick)
+    /// or
+    /// - on the boundary of the original friction cone (mu) (slip)
+    /// where mu_l < mu
+
+    /// The active constraint for the sticking condition is:
+    /// lambda_1 - lambda_2 <= mu_l / mu * (lambda_1 + lambda_2)
+
+    /// The active constraint for the friction cone boundary is:
+    /// lambda_2 == 0
+    /// where lambda_2 is the friction force in the sliding direction
     /// tangential velocity expr is the tangential velocity in the SAME direction as the friction force
     if (i % 2 == 1) {
-      model.addConstr(delta_k[n_ + i + 1] - delta_k[n_ + i + 0] <=
-                      (0.5 / 0.6) * (delta_k[n_ + i + 1] + delta_k[n_ + i + 0]) +
+      model.addConstr(delta_k[n_ + i - 1] - delta_k[n_ + i] <=
+                      (0.5 / 0.6) * (delta_k[n_ + i] + delta_k[n_ + i - 1]) +
                           M * (reduced_friction_cone_binary[i]));
       model.addConstr(tangential_velocity_expr <=
                       M * (reduced_friction_cone_binary[i]));
+      model.addConstr(delta_k[n_ + i] <=
+          M * (1 - reduced_friction_cone_binary[i]));
     } else {
-      model.addConstr(delta_k[n_ + i + 0] - delta_k[n_ + i + 1] <=
-                      (0.5 / 0.6) * (delta_k[n_ + i + 1] + delta_k[n_ + i + 0]) +
+      model.addConstr(delta_k[n_ + i + 1] - delta_k[n_ + i] <=
+                      (0.5 / 0.6) * (delta_k[n_ + i] + delta_k[n_ + i + 1]) +
                           M * (reduced_friction_cone_binary[i]));
       model.addConstr(tangential_velocity_expr <=
                       M * (reduced_friction_cone_binary[i]));
+      model.addConstr(delta_k[n_ + i] <=
+          M * (1 - reduced_friction_cone_binary[i]));
     }
     /// if i % 2 == 0:
     ///     lambda_1 = 0
     /// else:
     ///     lambda_2 = 0
-    model.addConstr(delta_k[n_ + i] <=
-                    M * (1 - reduced_friction_cone_binary[i]));
+//    model.addConstr(delta_k[n_ + i] <=
+//                    M * (1 - reduced_friction_cone_binary[i]));
   }
 
   model.optimize();

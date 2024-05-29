@@ -71,20 +71,117 @@ struct SquareSteppingStoneList {
       nx.normalize();
       ny.normalize();
 
-      Vector3d box_center = center - 0.5 * dims(2) * R_WB.col(2);
-      cubes.push_back({RigidTransformd(R_WB, box_center), dims});
+      // Add the top face as a foothold
+      if (normal == Vector3d(0, 0, 1)) {
+        
+        Vector3d box_center = center - 0.5 * dims(2) * R_WB.col(2);
+        cubes.push_back({RigidTransformd(R_WB, box_center), dims});
+        
+        ConvexPolygon top_foothold;
+        top_foothold.SetPlane(normal, center);
+        double e = margin;
 
-      ConvexPolygon foothold;
-      foothold.SetPlane(normal, center);
+        top_foothold.AddFace(nx, center + 0.5 * (dims(0) - 2 * e) * Bx);
+        top_foothold.AddFace(-nx, center - 0.5 * (dims(0) - 2 * e) * Bx);
+        top_foothold.AddFace(ny, center + 0.5 * (dims(1) - e) * By);
+        top_foothold.AddFace(-ny, center - 0.5 * (dims(1) - e) * By);
+        top_foothold.CalcBoundingBox();
+        footholds.push_back(top_foothold);
+      }
 
-      double e = margin;
-      // stepping stone boundaries
-      foothold.AddFace(nx, center + 0.5 * (dims(0) - 2 * e) * Bx);
-      foothold.AddFace(-nx, center - 0.5 * (dims(0) - 2 * e) * Bx);
-      foothold.AddFace(ny, center + 0.5 * (dims(1) - e) * By);
-      foothold.AddFace(-ny, center - 0.5 * (dims(1) - e) * By);
-      foothold.CalcBoundingBox();
-      footholds.push_back(foothold);
+      // If the normal is not (0, 0, 1), add other faces as well
+      if (normal != Vector3d(0, 0, 1)) {
+
+        Vector3d box_center = center;
+        cubes.push_back({RigidTransformd(R_WB, box_center), dims});
+        
+        if (Bx(2) > 0){
+          // +X face
+          ConvexPolygon x_pos_foothold;
+          auto x_pos_center = center + 0.5 * dims(0) * Bx;
+          
+          x_pos_foothold.SetPlane(Bx, x_pos_center);
+          x_pos_foothold.AddFace(By, x_pos_center + 0.5 * dims(1) * By);
+          x_pos_foothold.AddFace(-By, x_pos_center - 0.5 * dims(1) * By);
+          x_pos_foothold.AddFace(Bz, x_pos_center + 0.5 * dims(2) * Bz);
+          x_pos_foothold.AddFace(-Bz, x_pos_center - 0.5 * dims(2) * Bz);
+
+          x_pos_foothold.CalcBoundingBox();
+          footholds.push_back(x_pos_foothold);
+
+        }
+        else{
+              // -X face
+              ConvexPolygon x_neg_foothold;
+              auto x_neg_center = center - 0.5 * dims(0) * Bx;
+
+              x_neg_foothold.SetPlane(-Bx, x_neg_center);
+              x_neg_foothold.AddFace(By, x_neg_center + 0.5 * dims(1) * By);
+              x_neg_foothold.AddFace(-By, x_neg_center - 0.5 * dims(1) * By);
+              x_neg_foothold.AddFace(Bz, x_neg_center + 0.5 * dims(2) * Bz);
+              x_neg_foothold.AddFace(-Bz, x_neg_center - 0.5 * dims(2) * Bz);
+
+              x_neg_foothold.CalcBoundingBox();
+              footholds.push_back(x_neg_foothold);
+        }
+        if (By(2) > 0){
+              // +Y face
+              ConvexPolygon y_pos_foothold;
+              auto y_pos_center = center + 0.5 * dims(1) * By;
+
+              y_pos_foothold.SetPlane(By, y_pos_center);
+              y_pos_foothold.AddFace(Bx, y_pos_center + 0.5 * dims(0) * Bx);
+              y_pos_foothold.AddFace(-Bx, y_pos_center - 0.5 * dims(0) * Bx);
+              y_pos_foothold.AddFace(Bz, y_pos_center + 0.5 * dims(2) * Bz);
+              y_pos_foothold.AddFace(-Bz, y_pos_center - 0.5 * dims(2) * Bz);
+
+              y_pos_foothold.CalcBoundingBox();
+              footholds.push_back(y_pos_foothold);
+        }
+        else{
+              // -Y face
+              ConvexPolygon y_neg_foothold;
+              auto y_neg_center = center - 0.5 * dims(1) * By;
+
+              y_neg_foothold.SetPlane(-By, y_neg_center);
+              y_neg_foothold.AddFace(Bx, y_neg_center + 0.5 * dims(0) * Bx);
+              y_neg_foothold.AddFace(-Bx, y_neg_center - 0.5 * dims(0) * Bx);
+              y_neg_foothold.AddFace(Bz, y_neg_center + 0.5 * dims(2) * Bz);
+              y_neg_foothold.AddFace(-Bz, y_neg_center - 0.5 * dims(2) * Bz);
+              
+              y_neg_foothold.CalcBoundingBox();
+              footholds.push_back(y_neg_foothold);
+        }
+
+        if (Bz(2) > 0){
+              // +Z face (top)
+              ConvexPolygon z_pos_foothold;
+              auto z_pos_center = center + 0.5 * dims(2) * Bz;
+
+              z_pos_foothold.SetPlane(Bz, z_pos_center);
+              z_pos_foothold.AddFace(Bx, z_pos_center + 0.5 * dims(0) * Bx);
+              z_pos_foothold.AddFace(-Bx, z_pos_center - 0.5 * dims(0) * Bx);
+              z_pos_foothold.AddFace(By, z_pos_center + 0.5 * dims(1) * By);
+              z_pos_foothold.AddFace(-By, z_pos_center - 0.5 * dims(1) * By);
+
+              z_pos_foothold.CalcBoundingBox();
+              footholds.push_back(z_pos_foothold);
+        }
+        else{
+              // -Z face (bottom)
+              ConvexPolygon z_neg_foothold;
+              auto z_neg_center = center - 0.5 * dims(2) * Bz;
+
+              z_neg_foothold.SetPlane(-Bz, z_neg_center);
+              z_neg_foothold.AddFace(Bx, z_neg_center + 0.5 * dims(0) * Bx);
+              z_neg_foothold.AddFace(-Bx, z_neg_center - 0.5 * dims(0) * Bx);
+              z_neg_foothold.AddFace(By, z_neg_center + 0.5 * dims(1) * By);
+              z_neg_foothold.AddFace(-By, z_neg_center - 0.5 * dims(1) * By);
+
+              z_neg_foothold.CalcBoundingBox();
+              footholds.push_back(z_neg_foothold);
+        }
+      }
     }
     return {footholds, cubes};
   }

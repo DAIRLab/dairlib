@@ -75,6 +75,9 @@ py_binary(
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent:policies",
+    	
     ],
 )
 
@@ -89,6 +92,7 @@ py_binary(
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
     ],
 )
 
@@ -106,6 +110,25 @@ py_binary(
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta"
+    ],
+)
+
+py_binary(
+    name = "LSTMimitation",
+    srcs = ["LSTMimitation.py"],
+    deps = [
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:DrakeCassieEnv",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/PPO:ppo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/RPO:rpo",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:evaluation",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_checker",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:env_util",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common",
+    	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
     ],
 )
 
@@ -145,7 +168,8 @@ py_library(
 
 PY_LIBRARIES = [
     ":alip_nn_lqr",
-    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3"
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib"
 ]
 
 # Package roll-up (for Bazel dependencies).

@@ -8,6 +8,7 @@ from os import path
 import gymnasium as gym
 
 from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.env_checker import check_env
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.ppo_recurrent.ppo_recurrent import RecurrentPPO
 
 from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.PPO.ppo import PPO
 from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.callbacks import EvalCallback
@@ -80,8 +81,8 @@ def run_play(sim_params, model_path=None):
     max_steps = 3e4
     #test_folder = "rl/vdes_depth/"
     #model_path = path.join(test_folder, 'best_model.zip')
-    model_path = 'latest_model2.zip'
-    model = PPO.load(model_path, env, verbose=1)
+    model_path = 'RPPO_initialize2.zip'
+    model = RecurrentPPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()
     input("Start..")

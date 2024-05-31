@@ -114,6 +114,23 @@ py_library(
 )
 
 py_library(
+    name = "off_policy_algorithm",
+    srcs = ["off_policy_algorithm.py"],
+    deps = [
+    ":base_class",
+    ":buffers",
+    ":callbacks",
+    ":noise",
+    ":policies",
+    ":save_util",
+    
+    ":type_aliases",
+    ":utils",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",    
+    ]
+)
+
+py_library(
     name = "on_policy_algorithm",
     srcs = ["on_policy_algorithm.py"],
     deps = [

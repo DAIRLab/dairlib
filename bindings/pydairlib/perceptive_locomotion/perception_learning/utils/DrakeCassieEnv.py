@@ -126,6 +126,7 @@ def reset_handler(simulator, seed):
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    #datapoint['desired_velocity'] = np.array([0.7, 0.05])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -156,21 +157,13 @@ def simulate_init(sim_params, random_terrain = False):
     
     terrain = 'params/stair_curriculum.yaml'
     if random_terrain:
-        rand = np.random.randint(1,3)
-        if rand == 1:
+        rand = np.random.randint(1,11) # 1,2,3,4 | 5,6
+        if rand in [1,2,3,4,5,6,7,8]:
             rand = np.random.randint(0, 500)
             terrain = f'params/stair/flat_stair_{rand}.yaml'
         else:
             rand = np.random.randint(0, 500)
             terrain = f'params/flat/flat_{rand}.yaml'
-
-        #rand = np.random.randint(1, 12)
-        #if rand in [1, 2, 3, 4]:
-        #    terrain = 'params/stair_curriculum.yaml'
-        #elif rand in [5, 6, 7, 8, 9]:
-        #    terrain = 'params/wavy_terrain.yaml'
-        #else:
-        #    terrain = 'params/flat.yaml'
 
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
 
@@ -179,7 +172,7 @@ def simulate_init(sim_params, random_terrain = False):
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 100
+        time_limit = 30
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         

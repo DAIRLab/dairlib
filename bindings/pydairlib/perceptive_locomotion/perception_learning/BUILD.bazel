@@ -57,16 +57,6 @@ py_binary(
 )
 
 py_binary(
-    name = "alip_rl_data_collection",
-    srcs = ["alip_rl_data_collection.py"],
-    deps = [
-        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
-        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
-        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
-    ],
-)
-
-py_binary(
     name = "train",
     srcs = ["train.py"],
     deps = [
@@ -129,25 +119,6 @@ py_binary(
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:adadelta",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common",
     	"//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent",
-    ],
-)
-
-py_binary(
-    name = "alip_lqr_cost_experiment",
-    srcs = ["alip_lqr_cost_experiment.py"],
-    deps = [
-        "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
-        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
-    ],
-)
-
-py_binary(
-    name = "alip_footstep_controller_test",
-    srcs = ["alip_footstep_controller_test.py"],
-    deps = [
-	"//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr",
-        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
-        "//bindings/grid_map",
     ],
 )
 

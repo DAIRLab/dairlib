@@ -108,8 +108,9 @@ class CustomNetwork(nn.Module):
 
         self.latent_dim_pi = last_layer_dim_pi
         self.latent_dim_vf = last_layer_dim_vf
-        self.alip_state_dim = 6
-        self.heightmap_size = 80
+        self.vector_state_actor = 6
+        self.vector_state_critic = 6+23
+        self.heightmap_size = 64
 
         # CNN for heightmap observations
         n_input_channels = 3
@@ -134,7 +135,7 @@ class CustomNetwork(nn.Module):
                 nn.BatchNorm2d(64))),
 
             nn.Flatten(),
-            nn.Linear(64*2*2, 1024),
+            nn.Linear(64, 1024),
             nn.Tanh(),
             nn.Linear(1024, 256),
             nn.Tanh(),
@@ -161,7 +162,7 @@ class CustomNetwork(nn.Module):
                 nn.BatchNorm2d(64))),
 
             nn.Flatten(),
-            nn.Linear(64*2*2, 1024),
+            nn.Linear(64, 1024),
             nn.Tanh(),
             nn.Linear(1024, 256),
             nn.Tanh(),
@@ -170,7 +171,7 @@ class CustomNetwork(nn.Module):
 
         # MLP for ALIP state + Vdes (6,)
         self.actor_alip_mlp = nn.Sequential(
-            nn.Linear(self.alip_state_dim, 32),
+            nn.Linear(self.vector_state_actor, 32),
             nn.Tanh(),
             nn.Linear(32, 64),
             nn.Tanh(),
@@ -179,11 +180,11 @@ class CustomNetwork(nn.Module):
         )
 
         self.critic_alip_mlp = nn.Sequential(
-            nn.Linear(self.alip_state_dim, 32),
+            nn.Linear(self.vector_state_critic, 64),
             nn.Tanh(),
-            nn.Linear(32, 64),
+            nn.Linear(64, 128),
             nn.Tanh(),
-            nn.Linear(64, 32),
+            nn.Linear(128, 32),
             nn.Tanh(),
         )
 
@@ -223,7 +224,7 @@ class CustomNetwork(nn.Module):
     def multihead_actor(self, observations: th.Tensor):
         batch_size = observations.size(0)
         image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:]
+        alip_state = observations[:, 3 * self.heightmap_size * self.heightmap_size:3 * self.heightmap_size * self.heightmap_size+6]
 
         actor_cnn_output = self.actor_cnn(image_obs)
         actor_alip_mlp_output = self.actor_alip_mlp(alip_state)
@@ -279,7 +280,7 @@ class CustomActorCriticPolicy(RecurrentActorCriticPolicy):
 def split(expert_observations, expert_actions):
     expert_dataset = ExpertDataSet(expert_observations, expert_actions)
 
-    train_size = int(1 * len(expert_dataset))
+    train_size = int(1. * len(expert_dataset))
 
     test_size = len(expert_dataset) - train_size
 
@@ -293,7 +294,8 @@ def pretrain_agent(
     env,
     train_expert_dataset,
     test_expert_dataset,
-    batch_size=64,
+    train_batch_size=64,
+    test_batch_size=64,
     epochs=10,
     scheduler_gamma=0.7,
     clip_grad_max_norm=0.5,
@@ -301,7 +303,6 @@ def pretrain_agent(
     log_interval=100,
     cuda=False,
     seed=1,
-    test_batch_size=64,
     patience = 15,
     min_delta=0.0001
 ):
@@ -327,8 +328,6 @@ def pretrain_agent(
         model.train()
         total_loss = []
         
-        states = None
-        
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             
@@ -345,7 +344,9 @@ def pretrain_agent(
                     th.zeros(lstm_hidden_state_shape, device=device),
                 ),
                 )
-            episode_starts = th.zeros(1, 1).to(device)
+            episode_starts = th.zeros(1).to(device)
+            #episode_starts = th.ones(data.size(0)).to(device)
+            #episode_starts[0] = 1
 
             action, _, _, _ = model(data, states, episode_starts)
             
@@ -364,8 +365,12 @@ def pretrain_agent(
     def test(model, device, test_loader):
         model.eval()
         total_loss = 0.0
+        data_len = len(test_loader.dataset)
+        if data_len == 0:
+            data_len = 1
+
         with th.no_grad():
-            lstm_hidden_state_shape = model.lstm_hidden_state_shape  # (n_lstm_layers, batch_size, lstm_hidden_size)
+            lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2])
             initial_lstm_states = RNNStates(
             (
                 th.zeros(lstm_hidden_state_shape, device=device),
@@ -382,7 +387,7 @@ def pretrain_agent(
 
                 # Initialize LSTM states at the beginning of each episode
                 lstm_states = initial_lstm_states
-                episode_starts = th.ones(data.size(0), 1).to(device)
+                episode_starts = th.zeros(1).to(device)
 
                 if isinstance(env.action_space, gym.spaces.Box):
                     action, _, _, _ = model(data, lstm_states, episode_starts)
@@ -395,10 +400,10 @@ def pretrain_agent(
                 test_loss = criterion(action_prediction, target)
                 total_loss += test_loss.item()
         
-        return total_loss / len(test_loader.dataset)
+        return total_loss / data_len
 
     train_loader = th.utils.data.DataLoader(
-        dataset=train_expert_dataset, batch_size=batch_size, shuffle=False, **kwargs
+        dataset=train_expert_dataset, batch_size=train_batch_size, shuffle=False, **kwargs
     )
     test_loader = th.utils.data.DataLoader(
         dataset=test_expert_dataset, batch_size=test_batch_size, shuffle=False, **kwargs,
@@ -446,8 +451,8 @@ def _main():
     # General State-Dependent Exploration does not work for imitation learning. (use_sde = False)
     student = RecurrentPPO(CustomActorCriticPolicy, env, use_sde=False, verbose=1)
 
-    obs_data = path.join(perception_learning_base_folder, 'tmp/observations.npy')
-    action_data = path.join(perception_learning_base_folder, 'tmp/actions.npy')
+    obs_data = path.join(perception_learning_base_folder, 'tmp/observations_all.npy')
+    action_data = path.join(perception_learning_base_folder, 'tmp/actions_all.npy')
     
     expert_observations = np.load(obs_data)
     expert_actions = np.load(action_data)
@@ -459,14 +464,14 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=12,
-        scheduler_gamma=0.8,
-        learning_rate=1.,
+        epochs=20,
+        scheduler_gamma=0.7,
+        learning_rate=.7,
         log_interval=100,
         cuda=True,
         seed=42,
-        batch_size=100,
-        test_batch_size=100,
+        train_batch_size=400,
+        test_batch_size=400,
     )
 
     student.save("RPPO_initialize")

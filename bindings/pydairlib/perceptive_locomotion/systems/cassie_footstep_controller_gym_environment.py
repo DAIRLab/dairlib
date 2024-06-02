@@ -59,7 +59,7 @@ class ObservationPublisher(LeafSystem):
         self.simulate_perception = simulate_perception
 
         if self.simulate_perception:
-            self.height = 80
+            self.height = 64
         else:
             self.height = 64
 
@@ -68,16 +68,19 @@ class ObservationPublisher(LeafSystem):
             'lqr_reference': self.DeclareVectorInputPort(
                 "xd_ud", 6
             ).get_index(),
-            'obs_states' : self.DeclareVectorInputPort(
-                "obs_states", self.ns
+            'x_xd' : self.DeclareVectorInputPort(
+                "x_xd", self.ns
             ).get_index(),
             'vdes': self.DeclareVectorInputPort(
                 'vdes', 2
-            ).get_index()
+            ).get_index(),
+            'state': self.DeclareVectorInputPort(
+                'x_u_t', 59
+            ).get_index(),
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*self.height*self.height+6, self.calculate_hmap
+                "observations", 3*self.height*self.height+6+23, self.calculate_hmap
             ).get_index()
         }
         if self.simulate_perception:
@@ -122,14 +125,18 @@ class ObservationPublisher(LeafSystem):
             np.array([ud[0], ud[1], 0])
         )
         hmap_query.plot_surface(
-            "residual", hmap_grid_world[0], hmap_grid_world[1],
+            "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
         
         flat = hmap.reshape(-1)
         
-        alip = self.EvalVectorInput(context, self.input_port_indices['obs_states']).get_value()
+        alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
-        out = np.hstack((flat, alip, vdes))
+        states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
+        joint_angle = states[:23]
+        #actuator = states[45:55]
+
+        out = np.hstack((flat, alip, vdes, joint_angle))
         output.set_value(out)
 
 class RewardSystem(LeafSystem):
@@ -230,7 +237,10 @@ class RewardSystem(LeafSystem):
             right_penalty = -1
 
         # reward normalize to 0 ~ 1
-        reward = 0.4*LQRreward + 0.4*velocity_reward + 0.2*angular_reward + left_penalty + right_penalty
+        reward = 0.5*LQRreward + 0.4*velocity_reward + 0.1*angular_reward# + left_penalty + right_penalty
+        #reward = 0.75*velocity_reward + 0.25*angular_reward + left_penalty + right_penalty# -2
+        #reward = 0.3*LQRreward + 0.25*velocity_reward + 0.35*angular_reward + left_penalty + right_penalty # -3
+    
         output[0] = reward
 
 class InitialConditionsServer:
@@ -433,25 +443,25 @@ class CassieFootstepControllerEnvironment(Diagram):
             builder.AddSystem(self.plant_visualizer)
             # self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
-            if params.simulate_perception:
-                # Visualize depth sensor grid map
-                #self.grid_map_visualizer = GridMapVisualizer(
-                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
-                #)
-                #builder.AddSystem(self.grid_map_visualizer)
-                builder.Connect(
-                    self.perception_module.get_output_port_state(),
-                    self.plant_visualizer.get_input_port()
-                )
-                #builder.Connect(
-                #    self.perception_module.get_output_port_elevation_map(),
-                #    self.grid_map_visualizer.get_input_port()
-                #)
-            else:
-                builder.Connect(
-                    self.cassie_sim.get_output_port_state(),
-                    self.plant_visualizer.get_input_port()
-                )
+            # if params.simulate_perception:
+            #     # Visualize depth sensor grid map
+            #     #self.grid_map_visualizer = GridMapVisualizer(
+            #     #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
+            #     #)
+            #     #builder.AddSystem(self.grid_map_visualizer)
+            #     builder.Connect(
+            #         self.perception_module.get_output_port_state(),
+            #         self.plant_visualizer.get_input_port()
+            #     )
+            #     #builder.Connect(
+            #     #    self.perception_module.get_output_port_elevation_map(),
+            #     #    self.grid_map_visualizer.get_input_port()
+            #     #)
+            # else:
+            builder.Connect(
+                self.cassie_sim.get_output_port_state(),
+                self.plant_visualizer.get_input_port()
+            )
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)
@@ -603,7 +613,7 @@ class CassieFootstepControllerEnvironment(Diagram):
         builder.AddSystem(obs_pub)
         builder.Connect(
             self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
-            obs_pub.get_input_port_by_name("obs_states")
+            obs_pub.get_input_port_by_name("x_xd")
         )
         builder.Connect(
             self.get_output_port_by_name("height_map"),
@@ -617,6 +627,11 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.ALIPfootstep_controller.get_output_port_by_name("vdes"), #xd_ud
             obs_pub.get_input_port_by_name("vdes")
         )
+        builder.Connect(
+            self.get_output_port_by_name("state"), #xd_ud
+            obs_pub.get_input_port_by_name("state")
+        )
+
         builder.ExportOutput(obs_pub.get_output_port_by_name("observations"), "observations")
         return obs_pub
         

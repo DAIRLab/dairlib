@@ -43,8 +43,8 @@ from grid_map_filters import InpaintWithMinimumValues
 
 @dataclass
 class ElevationMapOptions:
-    nx: int = 80
-    ny: int = 80
+    nx: int = 64
+    ny: int = 64
     resolution: float = 0.025
     meshcat = None
 

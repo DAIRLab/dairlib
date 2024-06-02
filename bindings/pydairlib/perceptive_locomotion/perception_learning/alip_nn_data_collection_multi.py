@@ -120,7 +120,6 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            #'tmp/index/initial_conditions_2.npz'
             'tmp/ic.npz'
         )
     )
@@ -167,7 +166,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     DMAPtmp = []
     VDEStmp = []
     JOINTtmp = []
-    ACTtmp = []
+    #ACTtmp = []
     terminate = False
 
     for i in range(1, 401): # 20 seconds
@@ -220,7 +219,7 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
             xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
             states = controller.get_input_port_by_name('xut').Eval(controller_context)
             joint_angle = states[:23]
-            actuator = states[-10:]
+            #actuator = states[45:55]
             
             xd = xd_ud[:4]
             ud = xd_ud[4:]
@@ -249,12 +248,12 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         ALIPtmp.append(alip)
         VDEStmp.append(datapoint['desired_velocity'])
         JOINTtmp.append(joint_angle)
-        ACTtmp.append(actuator)
+        #ACTtmp.append(actuator)
         FOOTSTEPtmp.append(footstep)
         
         time = context.get_time()-t_init
 
-    return HMAPtmp, DMAPtmp, ALIPtmp, VDEStmp, JOINTtmp, ACTtmp, FOOTSTEPtmp, terminate, time
+    return HMAPtmp, DMAPtmp, ALIPtmp, VDEStmp, JOINTtmp, FOOTSTEPtmp, terminate, time#ACTtmp, FOOTSTEPtmp, terminate, time
 
 
 def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_base_folder):
@@ -264,12 +263,12 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
     ALIP = []
     VDES = []
     JOINT = []
-    ACT = []
+    #ACT = []
     FOOTSTEP = []
 
     print(f"Starting simulation {sim_id}...")
-    np.random.seed(sim_id)
-    for i in range(30):
+    np.random.seed(sim_id+300)
+    for i in range(10):
         if random_terrain:
             rand = 2
 
@@ -283,11 +282,11 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
                     terrain = 'params/flat.yaml'
             
             else:
-                rand = np.random.randint(1, 6)
+                rand = np.random.randint(1, 5)
                 if rand == 1:
                     rand = np.random.randint(0, 500)
                     terrain = f'params/flat/flat_{rand}.yaml'
-                else:
+                else: # 2,3,4,5
                     rand = np.random.randint(0, 500)
                     terrain = f'params/stair/flat_stair_{rand}.yaml'
         else:
@@ -295,7 +294,7 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
         
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
-        hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
+        hmap, dmap, alip, vdes, joint, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
         print(f"Simulation {sim_id}, Iteration {i}: Terminated in {time} seconds in {terrain}.")
 
         if not terminate:
@@ -304,12 +303,12 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
             ALIP.extend(alip)
             VDES.extend(vdes)
             JOINT.extend(joint)
-            ACT.extend(actuator)
+            #ACT.extend(actuator)
             FOOTSTEP.extend(footstep)
 
         del sim_env, controller, diagram
 
-    return HMAP, DMAP, ALIP, VDES, JOINT, ACT, FOOTSTEP
+    return HMAP, DMAP, ALIP, VDES, JOINT, FOOTSTEP#ACT, FOOTSTEP
 
 
 def main():
@@ -332,7 +331,7 @@ def main():
     ALIP = []
     VDES = []
     JOINT = []
-    ACT = []
+    #ACT = []
     FOOTSTEP = []
 
     for result in results:
@@ -341,8 +340,8 @@ def main():
         ALIP.extend(result[2])
         VDES.extend(result[3])
         JOINT.extend(result[4])
-        ACT.extend(result[5])
-        FOOTSTEP.extend(result[6])
+        #ACT.extend(result[5])
+        FOOTSTEP.extend(result[5])
 
     print(f"Number of collected datapoints is: {np.array(ALIP).shape[0]}")
     print(f"Number of collected datapoints is: {np.array(VDES).shape[0]}")
@@ -368,10 +367,10 @@ def main():
         f'{perception_learning_base_folder}/tmp/data_collection'
         f'/JOINT.npy', JOINT
     )
-    np.save(
-        f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/ACT.npy', ACT
-    )
+    # np.save(
+    #     f'{perception_learning_base_folder}/tmp/data_collection'
+    #     f'/ACT.npy', ACT
+    # )
     del HMAP
     print("Saving actions and observations...")
 
@@ -384,12 +383,12 @@ def main():
     ALIP = np.asarray(ALIP)
     VDES = np.asarray(VDES)
     JOINT = np.asarray(JOINT)
-    ACT = np.asarray(ACT)
+    #ACT = np.asarray(ACT)
 
     DMAP = DMAP.reshape((DMAP.shape[0], -1))
     np.save(
         f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, ACT), axis=1)
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT), axis=1)
     )
 
 if __name__ == '__main__':

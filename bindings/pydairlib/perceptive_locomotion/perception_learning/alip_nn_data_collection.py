@@ -80,6 +80,12 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions,
             sim_env.get_output_port_by_name('height_map'),
             controller.get_input_port_by_name('height_map')
         )
+
+    builder.Connect(
+        sim_env.get_output_port_by_name('state'),
+        controller.get_input_port_by_name('xut')
+    )
+    
     builder.Connect(
         controller.get_output_port_by_name('footstep_command'),
         footstep_zoh.get_input_port()
@@ -119,14 +125,8 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         )
     )
     
-    #datapoint = ic_generator.random()
-    #datapoint = ic_generator.choose(0)
-    #v_des_norm = 0.8
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm, 0])
-    
     datapoint = ic_generator.random()
-    v_des_theta = 0.1
+    v_des_theta = 0.15
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
@@ -166,9 +166,11 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
     HMAPtmp = []
     DMAPtmp = []
     VDEStmp = []
+    JOINTtmp = []
+    ACTtmp = []
     terminate = False
 
-    for i in range(1, 301): # 15 seconds
+    for i in range(1, 401): # 20 seconds
         if check_termination(sim_env, context):
             terminate = True
             break
@@ -176,6 +178,10 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
         if simulate_perception:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
             alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
+            states = controller.get_input_port_by_name('xut').Eval(controller_context)
+            joint_angle = states[:23]
+            actuator = states[-10:]
+
             xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
             xd = xd_ud[:4]
             ud = xd_ud[4:]
@@ -201,17 +207,21 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 
             # Plot depth image
             if plot:
-                residual_grid_world = dmap_query.calc_height_map_world_frame(
+                grid_world = dmap_query.calc_height_map_world_frame(
                     np.array([ud[0], ud[1], 0])
                 )
-                hmap_query.plot_surface(
-                    "residual", residual_grid_world[0], residual_grid_world[1],
-                    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+                dmap_query.plot_surface(
+                    "hmap", grid_world[0], grid_world[1],
+                    grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
 
         else:
             footstep = controller.get_output_port_by_name('footstep_command').Eval(controller_context)
             alip = controller.get_output_port_by_name('x_xd').Eval(controller_context)
             xd_ud = controller.get_output_port_by_name('lqr_reference').Eval(controller_context)
+            states = controller.get_input_port_by_name('xut').Eval(controller_context)
+            joint_angle = states[:23]
+            actuator = states[45:55]
+            
             xd = xd_ud[:4]
             ud = xd_ud[4:]
             x = controller.get_output_port_by_name('x').Eval(controller_context)
@@ -226,22 +236,25 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
                 np.array([ud[0], ud[1], 0])
             )
             if plot:
-                residual_grid_world = hmap_query.calc_height_map_world_frame(
+                grid_world = hmap_query.calc_height_map_world_frame(
                     np.array([ud[0], ud[1], 0])
                 )
                 hmap_query.plot_surface(
-                    "residual", residual_grid_world[0], residual_grid_world[1],
-                    residual_grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
+                    "hmap", grid_world[0], grid_world[1],
+                    grid_world[2], rgba = Rgba(0.5424, 0.6776, 0.7216, 1.0))
 
-        ALIPtmp.append(alip)
-        FOOTSTEPtmp.append(footstep)
-        #HMAPtmp.append(hmap)
+        HMAPtmp.append(hmap)
         if simulate_perception:
             DMAPtmp.append(dmap)
+        ALIPtmp.append(alip)
         VDEStmp.append(datapoint['desired_velocity'])
+        JOINTtmp.append(joint_angle)
+        ACTtmp.append(actuator)
+        FOOTSTEPtmp.append(footstep)
+        
         time = context.get_time()-t_init
 
-    return ALIPtmp, FOOTSTEPtmp, HMAPtmp, DMAPtmp, VDEStmp, terminate, time
+    return HMAPtmp, DMAPtmp, ALIPtmp, VDEStmp, JOINTtmp, ACTtmp, FOOTSTEPtmp, terminate, time
 
 
 def main():
@@ -256,11 +269,14 @@ def main():
     #sim_params.visualize = True
     #sim_params.meshcat = Meshcat()
     
+    HMAP = []
     DMAP = []
     ALIP = []
     VDES = []
+    JOINT = []
+    ACT = []
     FOOTSTEP = []
-    #HMAP = []
+    
     actions = []
     observations = []
 
@@ -268,11 +284,11 @@ def main():
 
     print("Starting...")
 
-    for i in range(50):
+    for i in range(100):
         if random_terrain:
-            # TODO @Min-ku Fix the size of random terrain yaml file
             #rand = np.random.randint(1, 2)
             rand = 2
+
             if rand == 1:
                 # Terrain without blocks
                 rand = np.random.randint(1, 8)
@@ -284,63 +300,80 @@ def main():
                     terrain = 'params/flat.yaml'
             
             else:
-                rand = np.random.randint(0, 500)
-                terrain = f'params/stair/flat_stair_{rand}.yaml'
+                rand = np.random.randint(1, 3)
+                if rand == 1:
+                    rand = np.random.randint(0, 500)
+                    terrain = f'params/flat/flat_{rand}.yaml'
+
+                else:
+                    rand = np.random.randint(0, 500)
+                    terrain = f'params/stair/flat_stair_{rand}.yaml'
 
         else:
             terrain = 'params/stair_curriculum.yaml'
         
-        os.path.join(perception_learning_base_folder, terrain)
+        #os.path.join(perception_learning_base_folder, terrain)
         sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
         sim_env, controller, diagram = build_diagram(sim_params, checkpoint_path, sim_params.simulate_perception)
-        alip, footstep, hmap, dmap, vdes, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
+        hmap, dmap, alip, vdes, joint, actuator, footstep, terminate, time = run(sim_env, controller, diagram, sim_params.simulate_perception, plot=False)
         print(f"Iteration {i}: Terminated in {time} seconds in {terrain}.")
 
-        print(len(alip))
         if not terminate:
+            HMAP.extend(hmap)
             DMAP.extend(dmap)
             ALIP.extend(alip)
             VDES.extend(vdes)
+            JOINT.extend(joint)
+            ACT.extend(actuator)
             FOOTSTEP.extend(footstep)
-            #HMAP.extend(hmap)
 
         del sim_env, controller, diagram
 
     print(f"Number of collected datapoints is: {np.array(ALIP).shape[0]}")
     
     np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/ALIP6.npy', ALIP
-    )
-    #np.save(
-    #    f'{perception_learning_base_folder}/tmp'
-    #    f'/HMAP.npy', HMAP
-    #)
-    np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/DMAP6.npy', DMAP
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/HMAP.npy', HMAP
     )
     np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/VDES6.npy', VDES
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/DMAP.npy', DMAP
+    )
+    np.save(
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/ALIP.npy', ALIP
+    )
+    np.save(
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/VDES.npy', VDES
+    )
+    np.save(
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/JOINT.npy', JOINT
+    )
+    np.save(
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/ACT.npy', ACT
     )
 
     print("Saving actions and observations...")
 
     np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/actions6.npy', FOOTSTEP
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/actions.npy', FOOTSTEP
     )
 
     DMAP = np.asarray(DMAP)
     ALIP = np.asarray(ALIP)
     VDES = np.asarray(VDES)
+    JOINT = np.asarray(JOINT)
+    ACT = np.asarray(ACT)
+
     DMAP = DMAP.reshape((DMAP.shape[0], -1))
     np.save(
-        f'{perception_learning_base_folder}/tmp'
-        f'/observations6.npy', np.concatenate((DMAP, ALIP, VDES), axis=1)
+        f'{perception_learning_base_folder}/tmp/data_collection'
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, ACT), axis=1)
     )
-    #flattened_data = np.concatenate((DMAP, ALIP, VDES), axis=1)
 
 if __name__ == '__main__':
     main()

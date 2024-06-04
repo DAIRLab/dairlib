@@ -96,32 +96,13 @@ int DoMain(int argc, char* argv[]) {
           state_estimator_param.ball_noise_stddev,
           1.0 / state_estimator_param.estimation_rate);
   builder.Connect(true_ball_state_receiver->get_output_port(0),
-                  to_estimated_ball_position->get_input_port(0));
-  builder.Connect(to_estimated_ball_position->get_output_port(0),
+                  to_estimated_ball_position->get_input_port_true_ball());
+  builder.Connect(to_estimated_ball_position->get_output_port_estimated_ball(),
                   state_estimator->get_input_port_ball());
 
   drake::lcm::DrakeLcm* pub_lcm;
   pub_lcm = &drake_lcm;
 
-  /* ------------------------------- old sender publisher
-   * block------------------------------------------------*/
-  //  auto sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
-  //  auto robot_output_pub = builder.AddSystem(
-  //    LcmPublisherSystem::Make<lcmt_robot_output>(
-  //      "FRANKA_STATE_ESTIMATE", pub_lcm,
-  //      {drake::systems::TriggerType::kForced}));
-  //  builder.Connect(state_estimator->get_output_port(0),
-  //    sender->get_input_port(0));
-  //  builder.Connect(state_estimator->get_output_port(1),
-  //    sender->get_input_port(1));
-  //  builder.Connect(*sender, *robot_output_pub);
-
-  /* ------------------------------- new sender publisher
-   * block------------------------------------------------*/
-  // new sender and publisher, in the end will replace the above block
-  // plant_franka is the plant that only loads franka
-  // TODO: in the future, use a single plant and model index to simplify all
-  // these
   MultibodyPlant<double> plant_franka(0.0);
   Parser parser_franka(&plant_franka);
   parser_franka.AddModels(state_estimator_param.franka_model);

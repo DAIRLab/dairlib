@@ -226,7 +226,7 @@ void StateEstimator::OutputFrankaEfforts(
 
   VectorXd u_franka = franka_output->GetEfforts();
 
-  VectorXd efforts = VectorXd::Zero(num_franka_efforts_ + num_ball_efforts_);
+  VectorXd efforts = VectorXd::Zero(num_franka_efforts_);
   for (int i = 0; i < num_franka_efforts_; i++) {
     efforts(i) = u_franka(i);
   }
@@ -275,13 +275,10 @@ TrueBallToEstimatedBall::TrueBallToEstimatedBall(double stddev, double period)
               "x_object",
               StateVector<double>(num_ball_positions_, num_ball_velocities))
           .get_index();
-  this->DeclareAbstractOutputPort("lcmt_ball_position",
-                                  &TrueBallToEstimatedBall::ConvertOutput);
-
-  //  this->DeclareAbstractInputPort("lcmt_robot_output",
-  //                                 drake::Value<dairlib::lcmt_robot_output>{});
-  //  this->DeclarePeriodicDiscreteUpdateEvent(period_, 0,
-  //                                                     &TrueBallToEstimatedBall::UpdateBallPosition);
+  estimated_ball_output_port_ =
+      this->DeclareAbstractOutputPort("lcmt_ball_position",
+                                      &TrueBallToEstimatedBall::ConvertOutput)
+          .get_index();
   this->DeclareForcedDiscreteUpdateEvent(
       &TrueBallToEstimatedBall::UpdateBallPosition);
 }

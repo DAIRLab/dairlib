@@ -84,21 +84,18 @@ class ControlRefineSender : public drake::systems::LeafSystem<double> {
   /// Output the desired state for the impedance controller to track, the actual
   /// calculation process is mainly done together with other calculation in
   /// UpdateSolveTimeHistory Event
-  /// @param context The context (double)
   void CalcTrackTarget(const drake::systems::Context<double>& context,
                        TimestampedVector<double>* target) const;
 
   /// Output the potential feedforward contact torque to be added in impedance,
   /// the actual calculation process is mainly done together with other
   /// calculation in UpdateSolveTimeHistory Event
-  /// @param context The context (double)
   void CalcFeedForwardTorque(
       const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* torque_force) const;
 
   /// Do most of the calculation, also use drake state to record the previous
   /// time and approximate solve time dt and update per call
-  /// @param context The context (double)
   drake::systems::EventStatus UpdateSolveTimeHistory(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;

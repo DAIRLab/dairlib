@@ -15,11 +15,16 @@
 namespace dairlib {
 namespace systems {
 
-/// A class that generates tracking target for franka ball rolling example
-/// Modified and simplified from plate balancing example for ball rolling
-
 class TargetGenerator : public drake::systems::LeafSystem<double> {
  public:
+  /// A class that generates tracking target (time dependent trajectory or
+  /// state-dependent path) for franka ball rolling example
+  /// @param lcs_plant The standard <double> MultibodyPlant which includes the
+  /// end-effector and the object (i.e. the simplified model)
+  /// @param sim_param Simulation parameters for the full model plant,
+  /// containing basic set up parameters
+  /// @param traj_param tracking trajectory parameter, containing trajectory
+  /// types and corresponding target parameters
   TargetGenerator(const drake::multibody::MultibodyPlant<double>& lcs_plant,
                   const SimulateFrankaParams& sim_param,
                   const BallRollingTrajectoryParams& traj_param);
@@ -30,34 +35,46 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   }
 
   /// the output port send out y_des (tracking target of simplified model) to
-  /// the Heuristic planning block y_d contain the object position, first 4
-  /// quaternion and position xyz
+  /// the Heuristic planning block, y_d contain the object state, first 4 are
+  /// orientation (quaternion) and then position xyz
   const drake::systems::OutputPort<double>& get_output_port_target() const {
     return this->get_output_port(target_port_);
   }
 
+  /// Set all the parameters needed in this system
+  /// @param sim_param Simulation parameters for the full model plant,
+  /// containing basic set up parameters
+  /// @param traj_param tracking trajectory parameter, containing trajectory
+  /// types and corresponding target parameters
   void SetTrajectoryParameters(const SimulateFrankaParams& sim_param,
                                const BallRollingTrajectoryParams& traj_param);
 
  private:
+  /// Record the first timestamp that the system received message, other times
+  /// just pass and do nothing
   drake::systems::EventStatus UpdateFirstMessageTime(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
+  /// Calculate the desired trajectory. Specifically, only assigns the object's
+  /// (ball's) target orientation and position
   void CalcTrackTarget(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* target) const;
 
+  /// Input and output ports index
   drake::systems::InputPortIndex plant_state_port_;
   drake::systems::OutputPortIndex target_port_;
 
-  int first_message_time_idx_;
-  int received_first_message_idx_;
+  /// Flags and record for the first message time index
+  drake::systems::AbstractStateIndex first_message_time_idx_;
+  drake::systems::AbstractStateIndex received_first_message_idx_;
 
-  /// necessary dimensions
+  /// useful variables, necessary dimensions derived from plant
   int n_q;
   int n_v;
   int n_x;
 
+  /// trajectory type, set from parameter input
   int trajectory_type_;
 
   /// circle trajectory parameters (general)
@@ -65,7 +82,6 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
   double x_c_;
   double y_c_;
   double initial_phase_;
-
   // state based circular specific setting
   double lead_angle_;
   // time based circular specific setting
@@ -83,9 +99,6 @@ class TargetGenerator : public drake::systems::LeafSystem<double> {
 
   /// object on the table, height is fixed
   double object_height_;
-
-  /// initialization parameters
-  double settling_time_;
 };
 
 }  // namespace systems

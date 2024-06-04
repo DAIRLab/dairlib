@@ -39,8 +39,8 @@ class StateEstimator : public LeafSystem<double> {
  public:
   /// A class that estimates the balls position and velocity from noisy position
   /// data and appends it to the robot output of the franka arm.  Intended use
-  /// case is for C3 hardware experiments, where bal  Ql's position is derived
-  /// from vision algorithms
+  /// case is for C3 hardware experiments, where ball's position is derived from
+  /// vision algorithms
   /// @param p_FIR_values A standard vector containing the FIR filter parameters
   /// for position filter
   /// @param v_FIR_values A standard vector containing the FIR filter parameters
@@ -78,26 +78,22 @@ class StateEstimator : public LeafSystem<double> {
  private:
   /// Do most of the calculation, including updating previous object position,
   /// performing finite differencing to get object velocity, and FIR filtering
-  /// @param context The context (double)
   drake::systems::EventStatus UpdateHistory(
       const Context<double>& context,
       drake::systems::State<double>* state) const;
 
   /// Output the franka states, the actual calculation process is mainly done
   /// together with other calculation in UpdateHistory Event
-  /// @param context The context (double)
   void EstimateFrankaState(const drake::systems::Context<double>& context,
                            BasicVector<double>* output) const;
 
   /// Output the franka actuation torques, the actual calculation process is
   /// mainly done together with other calculation in UpdateHistory Event
-  /// @param context The context (double)
   void OutputFrankaEfforts(const drake::systems::Context<double>& context,
                            BasicVector<double>* output) const;
 
   /// Output the ball states, the actual calculation process is mainly done
   /// together with other calculation in UpdateHistory Event
-  /// @param context The context (double)
   void EstimateObjectState(const drake::systems::Context<double>& context,
                            BasicVector<double>* output) const;
 
@@ -109,73 +105,99 @@ class StateEstimator : public LeafSystem<double> {
   drake::math::RotationMatrix<double> RodriguesFormula(const Vector3d& axis,
                                                        double theta) const;
 
-
-  ///
+  /// TODO: try to unplug StateEstimatorParams becuase it is only used to set
+  /// initial estimation right now
   StateEstimatorParams state_estimate_param_;
 
-  // deques for tracking history, use drake state (indices)
-  int p_idx_;
-  int orientation_idx_;
-  int v_idx_;
-  int w_idx_;
-  int p_history_idx_;
-  int v_history_idx_;
-  int prev_time_idx_;
-  int prev_id_idx_;
+  /// estimated state, use drake discrete state to do calculation in Update
+  /// history event
+  drake::systems::DiscreteStateIndex p_idx_;
+  drake::systems::DiscreteStateIndex orientation_idx_;
+  drake::systems::DiscreteStateIndex v_idx_;
+  drake::systems::DiscreteStateIndex w_idx_;
 
-  // port indices
-  int franka_input_port_;
-  int ball_input_port_;
+  /// deques for estimated state history and filtering, use drake abstract state
+  /// to do calculation in Update history event
+  drake::systems::AbstractStateIndex p_history_idx_;
+  drake::systems::AbstractStateIndex v_history_idx_;
+  drake::systems::AbstractStateIndex prev_time_idx_;
+  drake::systems::AbstractStateIndex prev_id_idx_;
 
+  /// Input and output ports index
+  drake::systems::InputPortIndex franka_input_port_;
+  drake::systems::InputPortIndex ball_input_port_;
   drake::systems::OutputPortIndex franka_state_output_port_;
   drake::systems::OutputPortIndex franka_torque_output_port_;
   drake::systems::OutputPortIndex ball_state_output_port_;
 
-  // FIR filter design
+  /// FIR filter design values
   std::vector<double> p_FIR_values_;
   std::vector<double> v_FIR_values_;
   const int p_filter_length_;
   const int v_filter_length_;
 
-  // useful variables
-  // franka is fully actuated 7 DOF arm
+  /// useful variables
+  /// franka is fully actuated 7 DOF arm
   const int num_franka_positions_{7};
   const int num_franka_velocities_{7};
   const int num_franka_efforts_{7};
-  // ball is isolated rigid body, orientation use quaternion
+  /// ball is isolated rigid body, orientation use quaternion
   const int num_ball_positions_{7};
   const int num_ball_velocities_{6};
-  const int num_ball_efforts_{0};
 };
 
-// A class that converts robot output lcm messages
-// from simulation of the franka-ball plant to a
-// ball position lcm message.
-// This is designed to mimic the behaviour of the true camera system
-// i.e. it only outputs updated ball positions every 'period' seconds
-// and adds random guassian noise to the x and y positions
 class TrueBallToEstimatedBall : public LeafSystem<double> {
  public:
+  /// A class that takes in ball state and output the noisy-added ball state to
+  /// the downstream estimator block. This is designed to mimic the behaviour of
+  /// the true camera vision system i.e. it only outputs updated ball positions
+  /// every 'period' seconds and adds random (zero meam) gaussian noise to the x
+  /// and y positions
+  /// @param stddev gaussian noise standard deviation
+  /// @param period camera system update period (1 / frequency)
   TrueBallToEstimatedBall(double stddev, double period);
 
+  /// the input port take in true ball state
+  const drake::systems::InputPort<double>& get_input_port_true_ball() const {
+    return this->get_input_port(true_ball_input_port_);
+  }
+  /// the output port send out noisy estimated ball state
+  const drake::systems::OutputPort<double>& get_output_port_estimated_ball()
+      const {
+    return this->get_output_port(estimated_ball_output_port_);
+  }
+
  private:
+  /// Adding (zero-mean) gaussian noise to the ball estimation
   drake::systems::EventStatus UpdateBallPosition(
       const Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  /// Converting noisy estimation to corresponding lcmt_ball_position data
+  /// structure, mimicking real hardware camera setting
   void ConvertOutput(const drake::systems::Context<double>& context,
                      dairlib::lcmt_ball_position* output) const;
 
+  /// TODO: try to unplug StateEstimatorParams becuase it is only used to set
+  /// initial estimation right now
   StateEstimatorParams state_estimate_param_;
 
-  // tracking position, time and id history, use drake state (indices)
-  int p_idx_;
-  int id_idx_;
-  int utime_idx_;
-  int true_ball_input_port_;
+  /// position, time and id, use drake discrete state to do calculation in
+  /// Update history event
+  drake::systems::DiscreteStateIndex p_idx_;
+  drake::systems::DiscreteStateIndex id_idx_;
+  drake::systems::DiscreteStateIndex utime_idx_;
 
+  /// Input and output ports index
+  drake::systems::InputPortIndex true_ball_input_port_;
+  drake::systems::OutputPortIndex estimated_ball_output_port_;
+
+  /// noise parameters, derived from
   const double stddev_;
   const double period_;
+
+  /// useful variables
+  /// ball is isolated rigid body, orientation use quaternion
   const int num_ball_positions_{7};
   const int num_ball_velocities{6};
 };

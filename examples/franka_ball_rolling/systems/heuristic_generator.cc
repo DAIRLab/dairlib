@@ -107,7 +107,6 @@ void HeuristicGenerator::SetHeuristicParameters(
   q_new_vector_ = heuristic_param.q_new_vector;
   g_new_vector_ = heuristic_param.g_new_vector;
 
-  settling_time_ = heuristic_param.stabilize_time + heuristic_param.move_time;
   ee_default_height =
       sim_param.ee_radius + 2 * sim_param.ball_radius + table_offset_;
 

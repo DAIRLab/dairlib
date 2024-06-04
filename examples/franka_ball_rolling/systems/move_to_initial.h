@@ -50,20 +50,17 @@ class MoveToInitial : public drake::systems::LeafSystem<double> {
  private:
   /// Record the first timestamp that the system received message, other times
   /// just pass and do nothing
-  /// @param context The context (double)
   drake::systems::EventStatus UpdateFirstMessageTime(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
 
   /// Calculate the desired lcs state. For this system, it is just assigning
   /// end-effector to the initial ready position
-  /// @param context The context (double)
   void CalcTarget(const drake::systems::Context<double>& context,
                   TimestampedVector<double>* output) const;
 
   /// Calculate the desired contact feedforward torque and force. For this
   /// system, it is just setting everything to zero
-  /// @param context The context (double)
   void CalcFeedForwardTorque(const drake::systems::Context<double>& context,
                              drake::systems::BasicVector<double>* torque) const;
 

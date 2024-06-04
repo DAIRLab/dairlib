@@ -19,17 +19,14 @@ namespace systems {
 MoveToInitial::MoveToInitial(const SimulateFrankaParams& sim_param,
                              const HeuristicPlannerParams& heuristic_param) {
   // INPUT PORTS
-  // TODO:: make dimension not hardcoded, and future clean up for newer
-  // impedacne ports
   franka_input_port_ =
       this->DeclareVectorInputPort("x_franka,u_franka,t",
                                    OutputVector<double>(7, 7, 7))
           .get_index();
 
   // OUTPUT PORTS
-  // TODO:: make dimension not hardcoded
   target_port_ = this->DeclareVectorOutputPort("xee, xee_dot",
-                                               TimestampedVector<double>(13),
+                                               TimestampedVector<double>( 7 + 6),
                                                &MoveToInitial::CalcTarget)
                      .get_index();
 

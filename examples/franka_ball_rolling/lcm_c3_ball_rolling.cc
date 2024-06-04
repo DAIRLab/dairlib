@@ -258,9 +258,11 @@ int DoMain(int argc, char* argv[]) {
       simplified_model_generator->get_output_port_contact_jacobian_full(),
       control_refinement->get_input_port_contact_jacobian());
 
-  // TODO: try not to make the dimension hard coded
+  // note that for ball rolling planner command, the num_target_state should be
+  // 7 (pos) + 6 (vel) and target state is end effector state
   auto planner_command_sender =
-      builder.AddSystem<systems::BallRollingCommandSender>(13, 7, 1);
+      builder.AddSystem<systems::BallRollingCommandSender>(
+          7 + 6, plant_full_model.num_actuators(franka_index_full), 1);
 
   builder.Connect(control_refinement->get_output_port_target(),
                   planner_command_sender->get_input_port_target_state());

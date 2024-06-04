@@ -153,16 +153,17 @@ int DoMain(int argc, char* argv[]) {
   /// initialize message
   /// TODO: in the end should find a more elegant way to do this, align with
   /// CONTROLLER_INPUT settings
-  std::vector<double> target_state_initial(13, 0);
-  std::vector<double> feedforward_torque_initial(7, 0);
+  std::vector<double> target_state_initial(7 + 6, 0);
+  std::vector<double> feedforward_torque_initial(
+      plant.num_actuators(franka_index), 0);
   std::vector<double> contact_force_initial(1, 0);
 
   dairlib::lcmt_ball_rolling_command init_msg;
   init_msg.target_state = target_state_initial;
   init_msg.feedforward_torque = feedforward_torque_initial;
   init_msg.contact_force = contact_force_initial;
-  init_msg.num_target_state_variables = 13;
-  init_msg.num_feedforward_torque_variables = 7;
+  init_msg.num_target_state_variables = 7 + 6;
+  init_msg.num_feedforward_torque_variables = plant.num_actuators(franka_index);
   init_msg.num_contact_force_variables = 1;
   init_msg.utime = 0.0;
 

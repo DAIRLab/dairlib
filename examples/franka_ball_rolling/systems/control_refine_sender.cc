@@ -199,7 +199,7 @@ void ControlRefineSender::CalcTrackTarget(
 
   VectorXd x_next = context.get_discrete_state(x_next_idx_).value();
 
-  // trake target is the end-effector pose
+  // track target is the end-effector pose
   // using drake convention x = [q; v] where for q and v, it is [orientation,
   // position]
   VectorXd track_target = VectorXd::Zero(13);

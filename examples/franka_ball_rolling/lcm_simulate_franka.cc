@@ -152,31 +152,17 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
-  /// TODO:: find a more elegant way to assign these, possibly using model
-  /// indices initialize franka configurations
-  ///  q.head(plant.num_positions(franka_index)) = sim_param.q_init_franka;
-
-  q[q_map["panda_joint1"]] = sim_param.q_init_franka(0);
-  q[q_map["panda_joint2"]] = sim_param.q_init_franka(1);
-  q[q_map["panda_joint3"]] = sim_param.q_init_franka(2);
-  q[q_map["panda_joint4"]] = sim_param.q_init_franka(3);
-  q[q_map["panda_joint5"]] = sim_param.q_init_franka(4);
-  q[q_map["panda_joint6"]] = sim_param.q_init_franka(5);
-  q[q_map["panda_joint7"]] = sim_param.q_init_franka(6);
+  q.head(plant.num_positions(franka_index)) = sim_param.q_init_franka;
 
   // initialize ball positions
   double traj_radius = sim_param.traj_radius;
-  //  VectorXd q_ball = VectorXd::Zero(plant.num_positions(ball_index));
-  q[q_map["sphere_qw"]] = sim_param.q_init_ball(0);
-  q[q_map["sphere_qx"]] = sim_param.q_init_ball(1);
-  q[q_map["sphere_qy"]] = sim_param.q_init_ball(2);
-  q[q_map["sphere_qz"]] = sim_param.q_init_ball(3);
-  q[q_map["sphere_x"]] =
-      sim_param.x_c + traj_radius * sin(M_PI * sim_param.phase / 180.0);
-  q[q_map["sphere_y"]] =
-      sim_param.y_c + traj_radius * cos(M_PI * sim_param.phase / 180.0);
-  q[q_map["sphere_z"]] =
+  VectorXd q_ball = VectorXd::Zero(plant.num_positions(ball_index));
+  q_ball << sim_param.q_init_ball,
+      sim_param.x_c + traj_radius * sin(M_PI * sim_param.phase / 180.0),
+      sim_param.y_c + traj_radius * cos(M_PI * sim_param.phase / 180.0),
       sim_param.ball_radius + sim_param.ground_offset_frame(2);
+  q.segment(plant.num_positions(franka_index),
+            plant.num_positions(ball_index)) = q_ball;
 
   plant.SetPositions(&plant_context, q);
 

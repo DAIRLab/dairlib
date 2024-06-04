@@ -90,9 +90,12 @@ int DoMain(int argc, char* argv[]) {
   /* -------------------------------------------------------------------------------------------*/
   auto initial_sender = builder.AddSystem<dairlib::systems::MoveToInitial>(
       sim_param, heuristic_param);
-  // TODO: try not to make the dimension hard coded
+
+  // note that for ball rolling planner command, the num_target_state should be 7 (pos)
+  // + 6 (vel) and target state is end effector state
   auto planner_command_sender =
-      builder.AddSystem<systems::BallRollingCommandSender>(13, 7, 1);
+      builder.AddSystem<systems::BallRollingCommandSender>(
+          7 + 6, plant.num_actuators(franka_index), 1);
 
   builder.Connect(franka_state_reciver->get_output_port(0),
                   initial_sender->get_input_port(0));

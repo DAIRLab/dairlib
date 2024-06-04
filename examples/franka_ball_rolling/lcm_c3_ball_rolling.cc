@@ -61,8 +61,7 @@ using Eigen::VectorXd;
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  /* -------------------------------- Load Parameters
-   * --------------------------------------------*/
+  /* ------------------------- Load Parameters -----------------------------*/
   SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<
       SimulateFrankaParams>(
       "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
@@ -81,13 +80,11 @@ int DoMain(int argc, char* argv[]) {
       BallRollingLcmChannels>(
       "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
 
-  /* -------------------------------- Setup LCM
-   * --------------------------------------------*/
+  /* -------------------------- Setup LCM ---------------------------------*/
   drake::lcm::DrakeLcm lcm;
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
-  /* ----------------------- Create full plant for Forward Kinematics
-   * --------------------------*/
+  /* ------------- Create full plant for Forward Kinematics --------------*/
   DiagramBuilder<double> builder_full_model;
   auto [plant_full_model, scene_graph_full_model] =
       AddMultibodyPlantSceneGraph(&builder_full_model, 0.0);
@@ -141,8 +138,7 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs_full.push_back(
       SortedPair(contact_geoms_full[1], contact_geoms_full[2]));
 
-  /* ----------------------------- State Subscriber/Receiver
-   * --------------------------------*/
+  /* ----------------------- State Subscriber/Receiver --------------------*/
   DiagramBuilder<double> builder;
   auto ball_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
@@ -155,16 +151,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(ball_state_sub->get_output_port(),
                   ball_state_receiver->get_input_port());
 
-  /* -------------------------Simplified Model/Forward Kinematics Block
-   * --------------------------------*/
+  /* ----------- Simplified Model/Forward Kinematics Block -----------------*/
   auto simplified_model_generator =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_full_model, context_full_model, franka_index_full,
           ball_index_full, "end_effector_tip", "sphere", false,
           contact_pairs_full, c3_param, sim_param, false);
 
-  /* ----------------------- State Receiver to Forward Kinematics port
-   * connection --------------------------*/
+  /* -------- State Receiver to Forward Kinematics port connection ----------*/
   builder.Connect(franka_state_receiver->get_output_port(),
                   simplified_model_generator->get_input_port_franka_state());
   builder.Connect(ball_state_receiver->get_output_port(),
@@ -211,15 +205,13 @@ int DoMain(int argc, char* argv[]) {
   contact_pairs.push_back(SortedPair(contact_geoms[0], contact_geoms[1]));
   contact_pairs.push_back(SortedPair(contact_geoms[1], contact_geoms[2]));
 
-  /* --------------------------------- Target and Heuristic Generator Blocks
-   * -----------------------------------------*/
+  /* --------------- Target and Heuristic Generator Blocks ------------*/
   auto target_generator = builder.AddSystem<systems::TargetGenerator>(
       plant_lcs, sim_param, traj_param);
   auto heuristic_generator = builder.AddSystem<systems::HeuristicGenerator>(
       plant_lcs, sim_param, heuristic_param, traj_param, c3_param);
 
-  /* ----------------------- Generators and Forward Kinematics port connection
-   * --------------------------*/
+  /* -------- Generators and Forward Kinematics port connection -------*/
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                   target_generator->get_input_port_state());
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
@@ -227,24 +219,20 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(target_generator->get_output_port_target(),
                   heuristic_generator->get_input_port_target());
 
-  /* -------------------------------------- LCS Factory System Block
-   * -----------------------------------------*/
+  /* --------------------- LCS Factory System Block ----------------------*/
   auto lcs_factory_system = builder.AddSystem<systems::LCSFactorySystem>(
       plant_lcs, context_lcs, *plant_ad_lcs, *context_ad_lcs, contact_pairs,
       c3_param);
 
-  /* ----------------------------------- LCS Factory System port connection
-   * --------------------------------*/
+  /* ------------------- LCS Factory System port connection---------------*/
   builder.Connect(simplified_model_generator->get_output_port_lcs_state(),
                   lcs_factory_system->get_input_port_lcs_state());
 
-  /* ------------------------------------- C3Controller Block
-   * -----------------------------------------*/
+  /* ------------------------ C3Controller Block ------------------------*/
   auto c3_controller =
       builder.AddSystem<systems::C3Controller>(plant_lcs, c3_param);
 
-  /* ----------------------------------- C3Controller port connection
-   * --------------------------------*/
+  /* ------------------- C3Controller port connection ---------------------*/
   builder.Connect(heuristic_generator->get_output_port_target(),
                   c3_controller->get_input_port_target());
   builder.Connect(heuristic_generator->get_output_port_cost_matrices(),
@@ -254,14 +242,12 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(lcs_factory_system->get_output_port_lcs(),
                   c3_controller->get_input_port_lcs());
 
-  /* ------------------------------------- ControlRefinement Block
-   * -----------------------------------------*/
+  /* --------------------- ControlRefinement Block -------------------------*/
   auto control_refinement = builder.AddSystem<systems::ControlRefineSender>(
       plant_lcs, context_lcs, *plant_ad_lcs, *context_ad_lcs, contact_pairs,
       c3_param);
 
-  /* ----------------------------------- ControlRefinement port connection
-   * --------------------------------*/
+  /* ------------------- ControlRefinement port connection -----------------*/
   builder.Connect(heuristic_generator->get_output_port_orientation(),
                   control_refinement->get_input_port_ee_orientation());
   builder.Connect(c3_controller->get_output_port_c3_solution(),
@@ -276,14 +262,12 @@ int DoMain(int argc, char* argv[]) {
   auto planner_command_sender =
       builder.AddSystem<systems::BallRollingCommandSender>(13, 7, 1);
 
-  // TODO: make port index not hard coded
-  builder.Connect(control_refinement->get_output_port(0),
-                  planner_command_sender->get_input_port(0));
-  builder.Connect(control_refinement->get_output_port(1),
-                  planner_command_sender->get_input_port(1));
+  builder.Connect(control_refinement->get_output_port_target(),
+                  planner_command_sender->get_input_port_target_state());
+  builder.Connect(control_refinement->get_output_port_contact_torque(),
+                  planner_command_sender->get_input_port_contact_torque());
 
-  /* ----------------------- Determine if TTL 0 or 1 should be used for
-   * publishing  --------------------------*/
+  /* ------- Determine if TTL 0 or 1 should be used for publishing --------*/
   drake::lcm::DrakeLcm* pub_lcm;
   if (FLAGS_TTL == 0) {
     std::cout << "Using TTL=0" << std::endl;
@@ -293,8 +277,7 @@ int DoMain(int argc, char* argv[]) {
     pub_lcm = &lcm_network;
   }
 
-  /* ----------------------------------- Final command publisher
-   * --------------------------------*/
+  /* ----------------------- Final command publisher ------------------------*/
   auto control_publisher = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_ball_rolling_command>(
           lcm_channel_param.impedance_input_channel, pub_lcm,
@@ -302,8 +285,7 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(planner_command_sender->get_output_port(),
                   control_publisher->get_input_port());
 
-  /* ----------------------- Visualization and Publish of LCS state actual and
-   * target  --------------------------*/
+  /* ------ Visualization and Publish of LCS state actual and target  ------*/
   std::vector<std::string> state_names = {
       "end_effector_x",  "end_effector_y", "end_effector_z",  "ball_qw",
       "ball_qx",         "ball_qy",        "ball_qz",         "ball_x",
@@ -330,14 +312,13 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
                   c3_target_state_publisher->get_input_port());
 
-  /* ----------------------- Visualization and Publish of LCS state actual and
-   * target  --------------------------*/
+  /* ------- Visualization and Publish of LCS state actual and target  -------*/
   auto diagram = builder.Build();
   diagram->set_name(("Diagram_C3_Ball_Rolling_Planner"));
   DrawAndSaveDiagramGraph(
       *diagram, "examples/franka_ball_rolling/diagram_lcm_c3_ball_rolling");
 
-  /* -------------------------------------------------------------------------------------------*/
+  /* ------------------------------------------------------------------------------------*/
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, std::move(diagram), franka_state_receiver,
       lcm_channel_param.franka_state_channel, true);

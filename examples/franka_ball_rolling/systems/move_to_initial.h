@@ -33,9 +33,16 @@ class MoveToInitial : public drake::systems::LeafSystem<double> {
     return this->get_input_port(franka_input_port_);
   }
 
-  /// the output port send out the desired lcs state
+  /// the first output port send out the desired lcs state
   const drake::systems::OutputPort<double>& get_output_port_target() const {
     return this->get_output_port(target_port_);
+  }
+
+  /// the second output port send out potential feedforward contact torque, but
+  /// for this system it is just sending out zeros
+  const drake::systems::OutputPort<double>& get_output_port_contact_torque()
+      const {
+    return this->get_output_port(contact_torque_port_);
   }
 
   /// Set all the parameters needed in this system

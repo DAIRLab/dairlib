@@ -644,14 +644,16 @@ BallRollingCommandReceiver::BallRollingCommandReceiver(int num_target_state, int
   feedforward_torque_size_ = num_feedforward_torque;
   contact_force_size_ = num_contact_force;
 
-  this->DeclareAbstractInputPort("lcmt_ball_rolling_command",
-                                 drake::Value<dairlib::lcmt_ball_rolling_command>{});
-  this->DeclareVectorOutputPort("x_ee, xee_dot",
+  planner_command_port_ = this->DeclareAbstractInputPort("lcmt_ball_rolling_command",
+                                 drake::Value<dairlib::lcmt_ball_rolling_command>{}).get_index();
+  target_state_port_ = this->DeclareVectorOutputPort("x_ee, xee_dot",
                                 TimestampedVector<double>(num_target_state),
-                                &BallRollingCommandReceiver::CopyTargetOut);
-  this->DeclareVectorOutputPort("contact_torque, lambda",
+                                &BallRollingCommandReceiver::CopyTargetOut)
+                                .get_index();
+  contact_feedforward_port_ = this->DeclareVectorOutputPort("contact_torque, lambda",
                                   BasicVector<double>(num_feedforward_torque + num_contact_force),
-                                  &BallRollingCommandReceiver::CopyContactFeedforwardOut);
+                                  &BallRollingCommandReceiver::CopyContactFeedforwardOut)
+                                .get_index();
 }
 
 void BallRollingCommandReceiver::CopyTargetOut(const Context<double>& context,

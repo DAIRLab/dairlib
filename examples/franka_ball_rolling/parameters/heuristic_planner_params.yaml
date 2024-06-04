@@ -21,6 +21,7 @@ axis_option: 1
 tilt_degrees: 15 # tilt angle for end-effector
 
 # --------------------------  Return Phase New Gain parameters  -----------------------------#
+contact_model: 'stewart_and_trinkle'
 q_new_vector: [1000000000, 1000000000, 1000000000, 0, 0, 0, 0, 0, 0, 5,
            10, 10, 10, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 # G: Penalty on all decision variables (G_x, G_lambda, G_u)

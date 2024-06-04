@@ -247,11 +247,25 @@ class BallRollingCommandReceiver : public drake::systems::LeafSystem<double> {
   explicit BallRollingCommandReceiver(int num_target_state, int num_feedforward_torque,
                                       int num_contact_force);
 
+  const drake::systems::InputPort<double>& get_input_port_planner_command() const {
+      return this->get_input_port(planner_command_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_target_state() const {
+        return this->get_output_port(target_state_port_);
+  }
+  const drake::systems::OutputPort<double>& get_output_port_contact_torque() const {
+        return this->get_output_port(contact_feedforward_port_);
+  }
+
  private:
   void CopyTargetOut(const drake::systems::Context<double>& context,
                     TimestampedVector<double>* output) const;
   void CopyContactFeedforwardOut(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* output) const;
+
+  drake::systems::InputPortIndex planner_command_port_;
+  drake::systems::OutputPortIndex target_state_port_;
+  drake::systems::OutputPortIndex contact_feedforward_port_;
 
   int target_state_size_;
   int feedforward_torque_size_;
@@ -265,6 +279,14 @@ class BallRollingCommandSender : public drake::systems::LeafSystem<double> {
  public:
   explicit BallRollingCommandSender(int num_target_state, int num_feedforward_torque,
                                     int num_contact_force);
+
+  const drake::systems::InputPort<double>& get_input_port_target_state() const {
+      return this->get_input_port(target_state_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_contact_torque() const {
+      return this->get_input_port(contact_feedforward_port_);
+  }
 
  private:
   void OutputCommand(const drake::systems::Context<double>& context,

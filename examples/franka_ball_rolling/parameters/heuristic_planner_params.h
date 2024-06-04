@@ -15,6 +15,7 @@ struct HeuristicPlannerParams {
   int axis_option;
   double tilt_degrees;
   VectorXd q_new_vector;
+  std::string contact_model;
   std::vector<double> g_new_list;
   std::vector<double> g_new_x;
   std::vector<double> g_new_gamma;
@@ -41,6 +42,7 @@ struct HeuristicPlannerParams {
     a->Visit(DRAKE_NVP(axis_option));
     a->Visit(DRAKE_NVP(tilt_degrees));
 
+    a->Visit(DRAKE_NVP(contact_model));
     a->Visit(DRAKE_NVP(q_new_vector));
     a->Visit(DRAKE_NVP(g_new_x));
     a->Visit(DRAKE_NVP(g_new_gamma));
@@ -54,14 +56,18 @@ struct HeuristicPlannerParams {
     a->Visit(DRAKE_NVP(stabilize_time));
     a->Visit(DRAKE_NVP(move_time));
 
-    // TODO:: consider different contact model
     g_new_list = std::vector<double>();
     g_new_list.insert(g_new_list.end(), g_new_x.begin(), g_new_x.end());
-    g_new_list.insert(g_new_list.end(), g_new_gamma.begin(), g_new_gamma.end());
-    g_new_list.insert(g_new_list.end(), g_new_lambda_n.begin(),
-                      g_new_lambda_n.end());
-    g_new_list.insert(g_new_list.end(), g_new_lambda_t.begin(),
-                      g_new_lambda_t.end());
+    if (contact_model == "stewart_and_trinkle") {
+      g_new_list.insert(g_new_list.end(), g_new_gamma.begin(),
+                        g_new_gamma.end());
+      g_new_list.insert(g_new_list.end(), g_new_lambda_n.begin(),
+                        g_new_lambda_n.end());
+      g_new_list.insert(g_new_list.end(), g_new_lambda_t.begin(),
+                        g_new_lambda_t.end());
+    } else {
+        g_new_list.insert(g_new_list.end(), g_new_lambda.begin(), g_new_lambda.end());
+    }
     g_new_list.insert(g_new_list.end(), g_new_u.begin(), g_new_u.end());
 
     g_new_vector = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(

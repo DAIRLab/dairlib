@@ -78,8 +78,12 @@ class ImpedanceController : public LeafSystem<double> {
 
   /// the second input port take in control commanded from high level planner
   /// (desired task space target and potential feedforward terms)
-  const drake::systems::InputPort<double>& get_input_port_c3_command() const {
-    return this->get_input_port(planner_state_input_port_);
+  const drake::systems::InputPort<double>& get_input_port_planner_target() const {
+    return this->get_input_port(planner_target_state_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_contact_feedforward() const {
+      return this->get_input_port(contact_feedforward_input_port_);
   }
 
   /// the outport send out the joint torque for the robot
@@ -125,9 +129,9 @@ class ImpedanceController : public LeafSystem<double> {
   ImpedanceControllerParams impedance_param_;
 
   /// Input and output ports index
-  int franka_state_input_port_;
-  int planner_state_input_port_;
-  int contact_feedforward_input_port_;
+  drake::systems::InputPortIndex franka_state_input_port_;
+  drake::systems::InputPortIndex planner_target_state_input_port_;
+  drake::systems::InputPortIndex contact_feedforward_input_port_;
 
   int control_output_port_;
 

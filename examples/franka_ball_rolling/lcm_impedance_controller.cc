@@ -7,7 +7,6 @@
 #include <drake/multibody/parsing/parser.h>
 #include <gflags/gflags.h>
 
-#include "dairlib/lcmt_c3.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/impedance_controller_params.h"
@@ -106,20 +105,19 @@ int DoMain(int argc, char* argv[]) {
           plant, *context, K, B, K_null, B_null, qd_null, gravity_compensation);
 
   /* -------------------------------------------------------------------------------------------*/
-  /// get trajectory info from c3
-  /// TODO: in the end should make the interface easier and not hard code
-  /// dimension and port index
+  /// get c3 planner command to track by impedance controller
+  /// TODO: try not to hardcode the dimension
   auto planner_command_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_ball_rolling_command>(
           "CONTROLLER_INPUT", &drake_lcm));
   auto planner_command_receiver =
       builder.AddSystem<systems::BallRollingCommandReceiver>(13, 7, 1);
   builder.Connect(planner_command_subscriber->get_output_port(0),
-                  planner_command_receiver->get_input_port(0));
-  builder.Connect(planner_command_receiver->get_output_port(0),
-                  impedance_controller->get_input_port(1));
-  builder.Connect(planner_command_receiver->get_output_port(1),
-                  impedance_controller->get_input_port(2));
+                  planner_command_receiver->get_input_port_planner_command());
+  builder.Connect(planner_command_receiver->get_output_port_target_state(),
+                  impedance_controller->get_input_port_planner_target());
+  builder.Connect(planner_command_receiver->get_output_port_contact_torque(),
+                  impedance_controller->get_input_port_contact_feedforward());
 
   /* -------------------------------------------------------------------------------------------*/
   builder.Connect(state_receiver->get_output_port(0),

@@ -54,7 +54,7 @@ ImpedanceController::ImpedanceController(
           .get_index();
 
   /// xee: 7D, xee_dot: 6D (though angular velocity is not really used)
-  planner_state_input_port_ =
+  planner_target_state_input_port_ =
       this->DeclareVectorInputPort("xee, xee_dot",
                                    TimestampedVector<double>(13))
           .get_index();
@@ -142,7 +142,7 @@ EventStatus ImpedanceController::UpdateControl(
 
   // get planner command (desired task-space pose (state))
   auto planner_output = (TimestampedVector<double>*)this->EvalVectorInput(
-      context, planner_state_input_port_);
+      context, planner_target_state_input_port_);
   VectorXd state = planner_output->get_data();
   VectorXd xd = VectorXd::Zero(6);
   VectorXd xd_dot = VectorXd::Zero(6);

@@ -2,9 +2,7 @@
 #include <vector>
 
 #include <drake/common/yaml/yaml_io.h>
-#include <drake/geometry/drake_visualizer.h>
 #include <drake/geometry/meshcat_visualizer.h>
-#include <drake/geometry/meshcat_visualizer_params.h>
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/parsing/parser.h>
@@ -154,9 +152,9 @@ int DoMain(int argc, char* argv[]) {
   VectorXd q = VectorXd::Zero(nq);
   std::map<std::string, int> q_map = MakeNameToPositionsMap(plant);
 
-  // TODO:: find a more elegant way to assign these, possibly using model
-  // indices initialize franka configurations
-  //  q.head(plant.num_positions(franka_index)) = sim_param.q_init_franka;
+  /// TODO:: find a more elegant way to assign these, possibly using model
+  /// indices initialize franka configurations
+  ///  q.head(plant.num_positions(franka_index)) = sim_param.q_init_franka;
 
   q[q_map["panda_joint1"]] = sim_param.q_init_franka(0);
   q[q_map["panda_joint2"]] = sim_param.q_init_franka(1);

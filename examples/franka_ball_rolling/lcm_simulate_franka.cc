@@ -18,6 +18,7 @@
 #include "common/eigen_utils.h"
 #include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
+#include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
@@ -50,6 +51,9 @@ int DoMain(int argc, char* argv[]) {
   BallRollingLcmChannels lcm_channel_param = drake::yaml::LoadYamlFile<
       BallRollingLcmChannels>(
       "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
+  BallRollingTrajectoryParams traj_param =
+      drake::yaml::LoadYamlFile<BallRollingTrajectoryParams>(
+          "examples/franka_ball_rolling/parameters/trajectory_params.yaml");
 
   // set plant, simulation step and publish time rates
   DiagramBuilder<double> builder;
@@ -155,11 +159,9 @@ int DoMain(int argc, char* argv[]) {
   q.head(plant.num_positions(franka_index)) = sim_param.q_init_franka;
 
   // initialize ball positions
-  double traj_radius = sim_param.traj_radius;
   VectorXd q_ball = VectorXd::Zero(plant.num_positions(ball_index));
-  q_ball << sim_param.q_init_ball,
-      sim_param.x_c + traj_radius * sin(M_PI * sim_param.phase / 180.0),
-      sim_param.y_c + traj_radius * cos(M_PI * sim_param.phase / 180.0),
+  q_ball << traj_param.q_init_ball, traj_param.traj_init(0),
+      traj_param.traj_init(1),
       sim_param.ball_radius + sim_param.ground_offset_frame(2);
   q.segment(plant.num_positions(franka_index),
             plant.num_positions(ball_index)) = q_ball;

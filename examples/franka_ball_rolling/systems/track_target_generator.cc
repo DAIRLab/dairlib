@@ -75,7 +75,7 @@ void TargetGenerator::SetTrajectoryParameters(
   traj_radius_ = traj_param.traj_radius;
   x_c_ = traj_param.x_c;
   y_c_ = traj_param.y_c;
-  initial_phase_ = sim_param.phase;
+  initial_phase_ = traj_param.init_phase;
   // state based circular specific setting
   lead_angle_ = traj_param.lead_angle;
   // time based circular specific setting, angular velocity

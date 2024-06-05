@@ -134,8 +134,6 @@ int DoMain(int argc, char* argv[]) {
       lcm_channel_param.franka_output_channel, true);
 
   /// initialize message
-  /// TODO: in the end should find a more elegant way to do this, align with
-  /// CONTROLLER_INPUT settings
   std::vector<double> target_state_initial(7 + 6, 0);
   std::vector<double> feedforward_torque_initial(
       plant.num_actuators(franka_index), 0);

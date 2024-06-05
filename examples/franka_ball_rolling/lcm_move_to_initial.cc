@@ -12,6 +12,7 @@
 #include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 #include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
+#include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "examples/franka_ball_rolling/systems/move_to_initial.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -50,6 +51,9 @@ int DoMain(int argc, char* argv[]) {
   HeuristicPlannerParams heuristic_param = drake::yaml::LoadYamlFile<
       HeuristicPlannerParams>(
       "examples/franka_ball_rolling/parameters/heuristic_planner_params.yaml");
+  BallRollingTrajectoryParams traj_param =
+      drake::yaml::LoadYamlFile<BallRollingTrajectoryParams>(
+          "examples/franka_ball_rolling/parameters/trajectory_params.yaml");
   BallRollingLcmChannels lcm_channel_param = drake::yaml::LoadYamlFile<
       BallRollingLcmChannels>(
       "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
@@ -89,10 +93,10 @@ int DoMain(int argc, char* argv[]) {
 
   /* -------------------------------------------------------------------------------------------*/
   auto initial_sender = builder.AddSystem<dairlib::systems::MoveToInitial>(
-      sim_param, heuristic_param);
+      heuristic_param, traj_param);
 
-  // note that for ball rolling planner command, the num_target_state should be 7 (pos)
-  // + 6 (vel) and target state is end effector state
+  // note that for ball rolling planner command, the num_target_state should be
+  // 7 (pos) + 6 (vel) and target state is end effector state
   auto planner_command_sender =
       builder.AddSystem<systems::BallRollingCommandSender>(
           7 + 6, plant.num_actuators(franka_index), 1);

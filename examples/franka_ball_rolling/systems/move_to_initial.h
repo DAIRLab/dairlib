@@ -6,6 +6,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/heuristic_planner_params.h"
 #include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
+#include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/state_vector.h"
 
@@ -18,14 +19,12 @@ namespace systems {
 class MoveToInitial : public drake::systems::LeafSystem<double> {
   /// A class that use to drive franka to the initial ready pose for ball
   /// rolling kinda mimic ROS MoveIt functionalities
-  /// @param sim_param Simulation parameters for the plant, containing basic set
-  /// up parameters
   /// @param heuristic_param Heuristic parameters for high level planner,
   /// containing the manual determined end-effector tilt angle, and some
   /// initialization parameters
  public:
-  MoveToInitial(const SimulateFrankaParams& sim_param,
-                const HeuristicPlannerParams& heuristic_param);
+  MoveToInitial(const HeuristicPlannerParams& heuristic_param,
+                const BallRollingTrajectoryParams traj_param);
 
   /// the first input port take in current lcs state (i.e. state for simplified
   /// model)
@@ -46,13 +45,11 @@ class MoveToInitial : public drake::systems::LeafSystem<double> {
   }
 
   /// Set all the parameters needed in this system
-  /// @param sim_param Simulation parameters for the plant, containing basic set
-  /// up parameters
   /// @param heuristic_param Heuristic parameters for high level planner,
   /// containing the manual determined end-effector tilt angle, and some
   /// initialization parameters
-  void SetParameters(const SimulateFrankaParams& sim_param,
-                     const HeuristicPlannerParams heuristic_param);
+  void SetParameters(const HeuristicPlannerParams heuristic_param,
+                     const BallRollingTrajectoryParams traj_param);
 
  private:
   /// Record the first timestamp that the system received message, other times
@@ -115,10 +112,7 @@ class MoveToInitial : public drake::systems::LeafSystem<double> {
   /// start and finish position move target
   Vector3d initial_start_;
   Vector3d initial_finish_;
-  double x_c_;
-  double y_c_;
-  double traj_radius_;
-  double initial_phase_;
+  VectorXd traj_init;
 
   /// target (finish) tilted orientation for the end-effector
   double tilt_degrees_;

@@ -16,6 +16,7 @@
 #include "dairlib/lcmt_ball_position.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
+#include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "systems/framework/output_vector.h"
 #include "systems/framework/state_vector.h"
 #include "yaml-cpp/yaml.h"
@@ -47,7 +48,8 @@ class StateEstimator : public LeafSystem<double> {
   /// for velocity filter
   StateEstimator(const std::vector<double>& p_FIR_values,
                  const std::vector<double>& v_FIR_values,
-                 const StateEstimatorParams& state_estimate_param_);
+                 const StateEstimatorParams& state_estimate_param_,
+                 const BallRollingTrajectoryParams traj_param);
 
   /// the first input port take in franka state and input
   const drake::systems::InputPort<double>& get_input_port_franka() const {
@@ -108,6 +110,7 @@ class StateEstimator : public LeafSystem<double> {
   /// TODO: try to unplug StateEstimatorParams becuase it is only used to set
   /// initial estimation right now
   StateEstimatorParams state_estimate_param_;
+  BallRollingTrajectoryParams traj_param_;
 
   /// estimated state, use drake discrete state to do calculation in Update
   /// history event
@@ -155,7 +158,9 @@ class TrueBallToEstimatedBall : public LeafSystem<double> {
   /// and y positions
   /// @param stddev gaussian noise standard deviation
   /// @param period camera system update period (1 / frequency)
-  TrueBallToEstimatedBall(double stddev, double period);
+  TrueBallToEstimatedBall(double stddev, double period,
+                          const StateEstimatorParams state_estimate_param,
+                          const BallRollingTrajectoryParams traj_param);
 
   /// the input port take in true ball state
   const drake::systems::InputPort<double>& get_input_port_true_ball() const {
@@ -181,6 +186,7 @@ class TrueBallToEstimatedBall : public LeafSystem<double> {
   /// TODO: try to unplug StateEstimatorParams becuase it is only used to set
   /// initial estimation right now
   StateEstimatorParams state_estimate_param_;
+  BallRollingTrajectoryParams traj_param_;
 
   /// position, time and id, use drake discrete state to do calculation in
   /// Update history event

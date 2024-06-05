@@ -10,9 +10,8 @@
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
-#include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
-
+#include "examples/franka_ball_rolling/parameters/simulate_franka_params.h"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
@@ -59,13 +58,15 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
-DEFINE_string(lcm_channels,
-              "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml",
-              "Filepath containing lcm channels");
+DEFINE_string(
+    lcm_channels,
+    "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml",
+    "Filepath containing lcm channels");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<SimulateFrankaParams>(
+  SimulateFrankaParams sim_param = drake::yaml::LoadYamlFile<
+      SimulateFrankaParams>(
       "examples/franka_ball_rolling/parameters/simulate_franka_params.yaml");
   BallRollingLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<BallRollingLcmChannels>(FLAGS_lcm_channels);
@@ -80,26 +81,33 @@ int do_main(int argc, char* argv[]) {
   // load urdf models
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
-  drake::multibody::ModelInstanceIndex franka_index = parser.AddModels(sim_param.franka_model)[0];
-  drake::multibody::ModelInstanceIndex ground_index = parser.AddModels(sim_param.ground_model)[0];
-  drake::multibody::ModelInstanceIndex end_effector_index = parser.AddModels(sim_param.end_effector_model)[0];
-  drake::multibody::ModelInstanceIndex ball_index = parser.AddModels(sim_param.ball_model)[0];
+  drake::multibody::ModelInstanceIndex franka_index =
+      parser.AddModels(sim_param.franka_model)[0];
+  drake::multibody::ModelInstanceIndex ground_index =
+      parser.AddModels(sim_param.ground_model)[0];
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser.AddModels(sim_param.end_effector_model)[0];
+  drake::multibody::ModelInstanceIndex ball_index =
+      parser.AddModels(sim_param.ball_model)[0];
 
   // visually give a offset stage model, not important
   parser.AddModels(sim_param.offset_model);
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  RigidTransform<double> X_F_EE = RigidTransform<double>(sim_param.tool_attachment_frame);
-  RigidTransform<double> X_F_G = RigidTransform<double>(sim_param.ground_offset_frame);
+  RigidTransform<double> X_F_EE =
+      RigidTransform<double>(sim_param.tool_attachment_frame);
+  RigidTransform<double> X_F_G =
+      RigidTransform<double>(sim_param.ground_offset_frame);
 
-  plant.WeldFrames(plant.world_frame(),
-                     plant.GetFrameByName("panda_link0"), X_WI);
-  plant.WeldFrames(plant.GetFrameByName("panda_link7"),
-                     plant.GetFrameByName("end_effector_base", end_effector_index), X_F_EE);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("panda_link0"),
+                   X_WI);
+  plant.WeldFrames(
+      plant.GetFrameByName("panda_link7"),
+      plant.GetFrameByName("end_effector_base", end_effector_index), X_F_EE);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                     plant.GetFrameByName("visual_table_offset"), X_WI);
+                   plant.GetFrameByName("visual_table_offset"), X_WI);
   plant.WeldFrames(plant.GetFrameByName("panda_link0"),
-                     plant.GetFrameByName("ground", ground_index), X_F_G);
+                   plant.GetFrameByName("ground", ground_index), X_F_G);
 
   plant.Finalize();
 
@@ -123,7 +131,7 @@ int do_main(int argc, char* argv[]) {
       franka_state_receiver->get_output_port(0).size(),
       franka_state_receiver->get_output_port(0).size() - 1, 1);
   auto ball_passthrough = builder.AddSystem<SubvectorPassThrough>(
-          ball_state_receiver->get_output_port(0).size(), 0,
+      ball_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(ball_index));
 
   std::vector<int> input_sizes = {plant.num_positions(franka_index),
@@ -153,8 +161,7 @@ int do_main(int argc, char* argv[]) {
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
 
-  meshcat->SetCameraPose(sim_param.camera_pose,
-                         sim_param.camera_target);
+  meshcat->SetCameraPose(sim_param.camera_pose, sim_param.camera_target);
 
   if (sim_param.visualize_plan) {
     auto trajectory_drawer_object =
@@ -168,36 +175,37 @@ int do_main(int argc, char* argv[]) {
 
   if (sim_param.visualize_pose_trace) {
     auto ball_pose_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat,
-        FindResourceOrThrow(sim_param.ball_model),
+        meshcat, FindResourceOrThrow(sim_param.ball_model),
         "object_position_target", "object_orientation_target");
     builder.Connect(trajectory_sub_ball->get_output_port(),
                     ball_pose_drawer->get_input_port_trajectory());
   }
 
-
-  if (sim_param.visualize_c3_object_state || sim_param.visualize_c3_end_effector_state) {
-    auto c3_target_drawer =
-        builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, sim_param.visualize_c3_object_state, sim_param.visualize_c3_end_effector_state);
+  if (sim_param.visualize_c3_object_state ||
+      sim_param.visualize_c3_end_effector_state) {
+    auto c3_target_drawer = builder.AddSystem<systems::LcmC3TargetDrawer>(
+        meshcat, sim_param.visualize_c3_object_state,
+        sim_param.visualize_c3_end_effector_state);
     builder.Connect(c3_state_actual_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_actual());
     builder.Connect(c3_state_target_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_target());
   }
 
-//  if (sim_param.visualize_c3_forces) {
-//    auto end_effector_force_drawer = builder.AddSystem<systems::LcmForceDrawer>(
-//        meshcat, "end_effector_position_target", "end_effector_force_target",
-//        "lcs_force_trajectory");
-//    builder.Connect(
-//        trajectory_sub_actor->get_output_port(),
-//        end_effector_force_drawer->get_input_port_actor_trajectory());
-//    builder.Connect(
-//        trajectory_sub_force->get_output_port(),
-//        end_effector_force_drawer->get_input_port_force_trajectory());
-//    builder.Connect(robot_time_passthrough->get_output_port(),
-//                    end_effector_force_drawer->get_input_port_robot_time());
-//  }
+  //  if (sim_param.visualize_c3_forces) {
+  //    auto end_effector_force_drawer =
+  //    builder.AddSystem<systems::LcmForceDrawer>(
+  //        meshcat, "end_effector_position_target",
+  //        "end_effector_force_target", "lcs_force_trajectory");
+  //    builder.Connect(
+  //        trajectory_sub_actor->get_output_port(),
+  //        end_effector_force_drawer->get_input_port_actor_trajectory());
+  //    builder.Connect(
+  //        trajectory_sub_force->get_output_port(),
+  //        end_effector_force_drawer->get_input_port_force_trajectory());
+  //    builder.Connect(robot_time_passthrough->get_output_port(),
+  //                    end_effector_force_drawer->get_input_port_robot_time());
+  //  }
 
   builder.Connect(franka_passthrough->get_output_port(),
                   mux->get_input_port(0));

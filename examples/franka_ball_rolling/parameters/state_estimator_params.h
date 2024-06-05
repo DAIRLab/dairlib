@@ -49,11 +49,6 @@ struct StateEstimatorParams {
     a->Visit(DRAKE_NVP(project_state_option));
 
     a->Visit(DRAKE_NVP(ground_offset_frame));
-    a->Visit(DRAKE_NVP(q_init_ball));
-    a->Visit(DRAKE_NVP(traj_radius));
-    a->Visit(DRAKE_NVP(phase));
-    a->Visit(DRAKE_NVP(x_c));
-    a->Visit(DRAKE_NVP(y_c));
     a->Visit(DRAKE_NVP(ball_radius));
   }
 };

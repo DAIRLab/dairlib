@@ -21,7 +21,7 @@ HeuristicGenerator::HeuristicGenerator(
     const MultibodyPlant<double>& lcs_plant,
     const SimulateFrankaParams& sim_param,
     const HeuristicPlannerParams& heuristic_param,
-    const BallRollingTrajectoryParams& trajectory_param,
+    const BallRollingTrajectoryParams& traj_param,
     const C3Options& c3_param) {
   // INPUT PORTS 1, get current simplified plant (i.e. plant to generate lcs)
   // state
@@ -57,7 +57,7 @@ HeuristicGenerator::HeuristicGenerator(
                           .get_index();
 
   // Set Trajectory Patameters
-  SetHeuristicParameters(sim_param, heuristic_param, trajectory_param,
+  SetHeuristicParameters(sim_param, heuristic_param, traj_param,
                          c3_param);
 
   first_message_time_idx_ = this->DeclareAbstractState(drake::Value<double>(0));
@@ -93,7 +93,7 @@ EventStatus HeuristicGenerator::UpdateFirstMessageTime(
 void HeuristicGenerator::SetHeuristicParameters(
     const SimulateFrankaParams& sim_param,
     const HeuristicPlannerParams& heuristic_param,
-    const BallRollingTrajectoryParams& trajectory_param,
+    const BallRollingTrajectoryParams& traj_param,
     const C3Options& c3_param) {
   roll_phase_ = heuristic_param.roll_phase;
   return_phase_ = heuristic_param.return_phase;
@@ -102,8 +102,8 @@ void HeuristicGenerator::SetHeuristicParameters(
   table_offset_ = sim_param.ground_offset_frame(2);
   axis_option_ = heuristic_param.axis_option;
   tilt_degrees_ = heuristic_param.tilt_degrees;
-  x_c_ = trajectory_param.x_c;
-  y_c_ = trajectory_param.y_c;
+  x_c_ = traj_param.x_c;
+  y_c_ = traj_param.y_c;
   q_new_vector_ = heuristic_param.q_new_vector;
   g_new_vector_ = heuristic_param.g_new_vector;
 

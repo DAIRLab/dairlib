@@ -28,6 +28,18 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "ball_rolling_parameters",
+    srcs = [],
+    hdrs = [],
+    deps = [
+        "//examples/franka_ball_rolling:simulate_franka_params",
+        "//examples/franka_ball_rolling:trajectory_params",
+        "//examples/franka_ball_rolling:heuristic_planner_params",
+        "//examples/franka_ball_rolling:state_estimator_params",
+    ],
+)
+
 ##################### each of the sub-blocks #########################
 # move to initialization
 cc_library(
@@ -38,8 +50,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "//examples/franka_ball_rolling:simulate_franka_params",
-        "//examples/franka_ball_rolling:heuristic_planner_params",
+        ":ball_rolling_parameters"
     ],
 )
 
@@ -52,8 +63,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "//examples/franka_ball_rolling:simulate_franka_params",
-        "//examples/franka_ball_rolling:trajectory_params",
+        ":ball_rolling_parameters"
     ],
 )
 
@@ -66,9 +76,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "//examples/franka_ball_rolling:trajectory_params",
-        "//examples/franka_ball_rolling:heuristic_planner_params",
-        "//examples/franka_ball_rolling:simulate_franka_params",
+        ":ball_rolling_parameters",
         "//solvers:c3",
     ],
 )
@@ -81,8 +89,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "//examples/franka_ball_rolling:trajectory_params",
-        "//examples/franka_ball_rolling:simulate_franka_params",
+        ":ball_rolling_parameters",
         "//solvers:c3",
         "//solvers:c3_output"
     ],
@@ -97,7 +104,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "//examples/franka_ball_rolling:simulate_franka_params",
+        ":ball_rolling_parameters",
         "//solvers:c3",
     ],
 )
@@ -121,7 +128,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "//examples/franka_ball_rolling:state_estimator_params",
+        ":ball_rolling_parameters",
     ],
 )
 

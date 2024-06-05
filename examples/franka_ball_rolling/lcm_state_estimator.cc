@@ -8,6 +8,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/franka_ball_rolling/parameters/lcm_channels_params.h"
 #include "examples/franka_ball_rolling/parameters/state_estimator_params.h"
+#include "examples/franka_ball_rolling/parameters/trajectory_params.h"
 #include "examples/franka_ball_rolling/systems/state_estimator.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
@@ -36,6 +37,9 @@ int DoMain(int argc, char* argv[]) {
   StateEstimatorParams state_estimator_param = drake::yaml::LoadYamlFile<
       StateEstimatorParams>(
       "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
+  BallRollingTrajectoryParams traj_param =
+      drake::yaml::LoadYamlFile<BallRollingTrajectoryParams>(
+          "examples/franka_ball_rolling/parameters/trajectory_params.yaml");
   BallRollingLcmChannels lcm_channel_param = drake::yaml::LoadYamlFile<
       BallRollingLcmChannels>(
       "examples/franka_ball_rolling/parameters/lcm_channels_sim_params.yaml");
@@ -85,8 +89,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<double> p_FIR_values = state_estimator_param.p_FIR_value;
   std::vector<double> v_FIR_values = state_estimator_param.v_FIR_value;
 
-  auto state_estimator =
-      builder.AddSystem<systems::StateEstimator>(p_FIR_values, v_FIR_values, state_estimator_param);
+  auto state_estimator = builder.AddSystem<systems::StateEstimator>(
+      p_FIR_values, v_FIR_values, state_estimator_param, traj_param);
   builder.Connect(franka_state_reciver->get_output_port(0),
                   state_estimator->get_input_port_franka());
 
@@ -94,7 +98,8 @@ int DoMain(int argc, char* argv[]) {
   auto to_estimated_ball_position =
       builder.AddSystem<systems::TrueBallToEstimatedBall>(
           state_estimator_param.ball_noise_stddev,
-          1.0 / state_estimator_param.estimation_rate);
+          1.0 / state_estimator_param.estimation_rate, state_estimator_param,
+          traj_param);
   builder.Connect(true_ball_state_receiver->get_output_port(0),
                   to_estimated_ball_position->get_input_port_true_ball());
   builder.Connect(to_estimated_ball_position->get_output_port_estimated_ball(),

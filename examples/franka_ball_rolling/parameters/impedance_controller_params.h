@@ -12,11 +12,6 @@ struct ImpedanceControllerParams {
 
   Vector3d tool_attachment_frame;
 
-  //  Vector3d translational_stiffness;
-  //  Vector3d rotational_stiffness;
-  //  Vector3d translational_damping;
-  //  Vector3d rotational_damping;
-
   std::vector<double> translational_stiffness;
   std::vector<double> rotational_stiffness;
   std::vector<double> translational_damping;

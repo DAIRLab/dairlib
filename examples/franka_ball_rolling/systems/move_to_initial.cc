@@ -16,8 +16,8 @@ using Eigen::VectorXd;
 namespace dairlib {
 namespace systems {
 
-MoveToInitial::MoveToInitial(const SimulateFrankaParams& sim_param,
-                             const HeuristicPlannerParams& heuristic_param) {
+MoveToInitial::MoveToInitial(const HeuristicPlannerParams& heuristic_param,
+                             const BallRollingTrajectoryParams traj_param) {
   // INPUT PORTS
   franka_input_port_ =
       this->DeclareVectorInputPort("x_franka,u_franka,t",
@@ -37,7 +37,7 @@ MoveToInitial::MoveToInitial(const SimulateFrankaParams& sim_param,
           .get_index();
 
   // Set Trajectory Patameters
-  SetParameters(sim_param, heuristic_param);
+  SetParameters(heuristic_param, traj_param);
 
   first_message_time_idx_ = this->DeclareAbstractState(drake::Value<double>(0));
   received_first_message_idx_ =
@@ -66,18 +66,15 @@ EventStatus MoveToInitial::UpdateFirstMessageTime(
 }
 
 void MoveToInitial::SetParameters(
-    const SimulateFrankaParams& sim_param,
-    const HeuristicPlannerParams heuristic_param) {
+    const HeuristicPlannerParams heuristic_param,
+    const BallRollingTrajectoryParams traj_param) {
   // Set parameters
   stabilize_time1_ = heuristic_param.stabilize_time;
   move_time_ = heuristic_param.move_time;
 
   initial_start_ = heuristic_param.initial_start;
   initial_finish_ = heuristic_param.initial_finish;
-  x_c_ = sim_param.x_c;
-  y_c_ = sim_param.y_c;
-  traj_radius_ = sim_param.traj_radius;
-  initial_phase_ = sim_param.phase;
+  traj_init = traj_param.traj_init;
 
   tilt_degrees_ = heuristic_param.tilt_degrees;
 }
@@ -96,8 +93,8 @@ void MoveToInitial::CalcTarget(const Context<double>& context,
   Vector3d finish = initial_finish_;
   Quaterniond start_orientation(0, 1, 0, 0);
 
-  finish(0) = x_c_ + traj_radius_ * sin(initial_phase_ * PI / 180) + finish(0);
-  finish(1) = y_c_ + traj_radius_ * cos(initial_phase_ * PI / 180) + finish(1);
+  finish(0) = traj_init(0) + finish(0);
+  finish(1) = traj_init(1) + finish(1);
   // linear interpolate position of the end-effector
   std::vector<Vector3d> target = move_to_initial_position(
       start, finish, curr_time, stabilize_time1_, move_time_);
@@ -106,7 +103,7 @@ void MoveToInitial::CalcTarget(const Context<double>& context,
       move_to_initial_orientation(start_orientation, tilt_degrees_, curr_time,
                                   stabilize_time1_, move_time_);
 
-  VectorXd st_desired = VectorXd::Zero(13);
+  VectorXd st_desired = VectorXd::Zero(7 + 6);
   st_desired.head(4) << orientation_d.w(), orientation_d.x(), orientation_d.y(),
       orientation_d.z();
   st_desired.segment(4, 3) << target[0];

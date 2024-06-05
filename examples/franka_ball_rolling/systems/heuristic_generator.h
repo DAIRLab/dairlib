@@ -37,7 +37,7 @@ class HeuristicGenerator : public drake::systems::LeafSystem<double> {
   HeuristicGenerator(const drake::multibody::MultibodyPlant<double>& lcs_plant,
                      const SimulateFrankaParams& sim_param,
                      const HeuristicPlannerParams& heuristic_param,
-                     const BallRollingTrajectoryParams& trajectory_param,
+                     const BallRollingTrajectoryParams& traj_param,
                      const C3Options& c3_param);
 
   /// the first input port take in lcs state (i.e. state for simplified model)
@@ -83,7 +83,7 @@ class HeuristicGenerator : public drake::systems::LeafSystem<double> {
   void SetHeuristicParameters(
       const SimulateFrankaParams& sim_param,
       const HeuristicPlannerParams& heuristic_param,
-      const BallRollingTrajectoryParams& trajectory_param,
+      const BallRollingTrajectoryParams& traj_param,
       const C3Options& c3_param);
 
  private:

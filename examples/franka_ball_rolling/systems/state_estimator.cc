@@ -14,24 +14,22 @@ namespace systems {
 
 StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
                                const std::vector<double>& v_FIR_values,
-                               const StateEstimatorParams& state_estimate_param)
+                               const StateEstimatorParams& state_estimate_param,
+                               const BallRollingTrajectoryParams traj_param)
     : p_FIR_values_(p_FIR_values),
       v_FIR_values_(v_FIR_values),
       p_filter_length_(p_FIR_values.size()),
       v_filter_length_(v_FIR_values.size()) {
   state_estimate_param_ = state_estimate_param;
+  traj_param_ = traj_param;
 
   /// declare discrete states
   Vector3d initial_position;
-  initial_position(0) = state_estimate_param_.x_c +
-                        state_estimate_param_.traj_radius *
-                            sin(state_estimate_param_.phase * M_PI / 180);
-  initial_position(1) = state_estimate_param_.y_c +
-                        state_estimate_param_.traj_radius *
-                            cos(state_estimate_param_.phase * M_PI / 180);
+  initial_position(0) = traj_param_.traj_init(0);
+  initial_position(1) = traj_param_.traj_init(1);
   initial_position(2) = state_estimate_param_.ball_radius -
                         state_estimate_param_.ground_offset_frame(2);
-  VectorXd initial_orientation = state_estimate_param_.q_init_ball;
+  VectorXd initial_orientation = traj_param_.q_init_ball;
 
   p_idx_ = this->DeclareDiscreteState(initial_position);
   orientation_idx_ = this->DeclareDiscreteState(initial_orientation);
@@ -250,19 +248,18 @@ RotationMatrix<double> StateEstimator::RodriguesFormula(const Vector3d& axis,
 /* ------------------------------------------------------------------------------
  */
 /// Method implementation of TrueBallToEstimatedBall class
-TrueBallToEstimatedBall::TrueBallToEstimatedBall(double stddev, double period)
+TrueBallToEstimatedBall::TrueBallToEstimatedBall(
+    double stddev, double period,
+    const StateEstimatorParams state_estimate_param,
+    const BallRollingTrajectoryParams traj_param)
     : stddev_(stddev), period_(period) {
-  state_estimate_param_ = drake::yaml::LoadYamlFile<StateEstimatorParams>(
-      "examples/franka_ball_rolling/parameters/state_estimator_params.yaml");
+  state_estimate_param_ = state_estimate_param;
+  traj_param_ = traj_param;
 
   /// declare discrete states
   Vector3d initial_position;
-  initial_position(0) = state_estimate_param_.x_c +
-                        state_estimate_param_.traj_radius *
-                            sin(state_estimate_param_.phase * M_PI / 180);
-  initial_position(1) = state_estimate_param_.y_c +
-                        state_estimate_param_.traj_radius *
-                            cos(state_estimate_param_.phase * M_PI / 180);
+  initial_position(0) = traj_param_.traj_init(0);
+  initial_position(1) = traj_param_.traj_init(1);
   initial_position(2) = state_estimate_param_.ball_radius -
                         state_estimate_param_.ground_offset_frame(2);
 

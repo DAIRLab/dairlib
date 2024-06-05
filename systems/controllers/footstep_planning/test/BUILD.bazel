@@ -12,3 +12,14 @@ cc_binary(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_binary(
+    name = "cf_mpfc_test",
+    srcs = ["cf_mpfc_test.cc"],
+    deps = [
+        "//common:find_resource",
+        "//solvers:solver_options_io",
+        "//systems/controllers/footstep_planning:cf_mpfc",
+        "@drake//:drake_shared_library",
+    ],
+)

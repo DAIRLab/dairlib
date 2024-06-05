@@ -43,12 +43,16 @@ void FrankaStateOutTranslator::OutputFrankaState(
       this->EvalInputValue<drake::lcmt_panda_status>(context, panda_status_);
   output->utime = panda_status->utime;
   output->position = panda_status->joint_position;
+  output->num_positions = panda_status->num_joints;
+  output->num_velocities = panda_status->num_joints;
+  output->num_efforts = panda_status->num_joints;
+//  output->position_names = std::vector<std::string>(output->num_positions, "double");
   output->velocity = panda_status->joint_velocity;
   output->effort = panda_status->joint_torque;
 }
 
 FrankaEffortsInTranslator::FrankaEffortsInTranslator() {
-  this->set_name("franka_state_translator");
+  this->set_name("franka_command_translator");
 
   robot_input_ =
       this->DeclareAbstractInputPort("franka_state",
@@ -57,7 +61,7 @@ FrankaEffortsInTranslator::FrankaEffortsInTranslator() {
 
   franka_command_output_ =
       this->DeclareAbstractOutputPort(
-              "lcmt_robot_output",
+              "lcmt_panda_command",
               &FrankaEffortsInTranslator::OutputFrankaCommand)
           .get_index();
 }

@@ -37,7 +37,7 @@ using dairlib::systems::TimestampedVector;
 DEFINE_string(lcm_channels,
               "examples/franka/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
-DEFINE_string(franka_driver_channels, "examples/franka/parameters/franka_driver_channels.yaml",
+DEFINE_string(franka_driver_channels, "examples/franka/parameters/franka_drake_lcm_driver_channels.yaml",
               "Filepath containing ROS channels");
 
 namespace dairlib {
@@ -76,35 +76,22 @@ int DoMain(int argc, char* argv[]) {
   /* -------------------------------------------------------------------------------------------*/
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
 
-  auto franka_status_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<drake::lcmt_panda_status>(
-          franka_driver_channel_params.franka_status_channel, &lcm));
-  auto franka_command_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_input_channel, &lcm));
+
   auto franka_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.franka_state_channel, &lcm,
           1.0 / 1000.0));
-  auto franka_command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<drake::lcmt_panda_command>(
-          franka_driver_channel_params.franka_command_channel, &lcm,
-          1.0 / 1000.0));
   auto franka_state_translator = builder.AddSystem<systems::FrankaStateOutTranslator>(
       pos_names, vel_names, act_names);
-auto franka_command_translator = builder.AddSystem<systems::FrankaEffortsInTranslator>();
 
-  builder.Connect(*franka_status_sub, *franka_state_translator);
   builder.Connect(*franka_state_translator, *franka_state_pub);
-  builder.Connect(*franka_command_sub, *franka_command_translator);
-  builder.Connect(*franka_command_translator, *franka_command_pub);
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("franka_lcm_ros_bridge"));
+  owned_diagram->set_name(("franka_bridge_driver_out"));
   const auto& diagram = *owned_diagram;
 
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), franka_status_sub,
+  systems::LcmDrivenLoop<drake::lcmt_panda_status> loop(
+      &lcm, std::move(owned_diagram), franka_state_translator,
       franka_driver_channel_params.franka_status_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();

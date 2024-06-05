@@ -173,8 +173,29 @@ cc_binary(
 )
 
 cc_binary(
-    name = "franka_driver_bridge",
-    srcs = ["franka_driver_bridge.cc"],
+    name = "franka_bridge_driver_out",
+    srcs = ["franka_bridge_driver_out.cc"],
+    data = [
+        ":urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":parameters",
+        "//common",
+        "//examples/franka/systems:franka_state_translator",
+        "//multibody:utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_bridge_driver_in",
+    srcs = ["franka_bridge_driver_in.cc"],
     data = [
         ":urdfs",
         "@drake_models//:franka_description",

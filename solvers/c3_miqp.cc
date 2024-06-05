@@ -68,11 +68,11 @@ VectorXd C3MIQP::SolveSingleProjection(const MatrixXd& U,
   model.setObjective(obj, GRB_MINIMIZE);
 
   // initial state constraint
-  if (warm_start_index == 0){
-    for (int i = 0; i < n_; ++i){
-      model.addConstr(delta_k[i] == delta_c[i]);
-    }
-  }
+//  if (warm_start_index == 0){
+//    for (int i = 0; i < n_; ++i){
+//      model.addConstr(delta_k[i] == delta_c[i]);
+//    }
+//  }
 
   int M = 1000;  // big M variable
   double coeff[n_ + m_ + k_];

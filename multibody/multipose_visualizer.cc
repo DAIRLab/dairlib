@@ -98,14 +98,18 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   diagram_context_ = diagram_->CreateDefaultContext();
 }
 
-void MultiposeVisualizer::DrawPoses(MatrixXd poses) {
+void MultiposeVisualizer::DrawPoses(MatrixXd poses, std::optional<double> time_in_recording) {
   // Set positions for individual instances
   auto& plant_context =
       diagram_->GetMutableSubsystemContext(*plant_, diagram_context_.get());
+
   for (int i = 0; i < num_poses_; i++) {
     plant_->SetPositions(
         &plant_context, model_indices_.at(i),
         poses.block(0, i, plant_->num_positions(model_indices_.at(i)), 1));
+  }
+  if (time_in_recording){
+    diagram_context_->SetTime(time_in_recording.value());
   }
 
   // Publish diagram

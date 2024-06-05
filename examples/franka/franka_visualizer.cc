@@ -6,6 +6,7 @@
 #include <drake/multibody/parsing/parser.h>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
+#include <fstream>
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
@@ -180,8 +181,7 @@ int do_main(int argc, char* argv[]) {
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / sim_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
-  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-      &builder, scene_graph, meshcat, std::move(params));
+
   meshcat->SetCameraPose(scene_params.camera_pose,
                          scene_params.camera_target);
 
@@ -277,6 +277,9 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*tray_state_sub, *tray_state_receiver);
   builder.Connect(*object_state_sub, *object_state_receiver);
 
+  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+      &builder, scene_graph, meshcat, std::move(params));
+
   auto diagram = builder.Build();
   auto context = diagram->CreateDefaultContext();
 
@@ -296,17 +299,24 @@ int do_main(int argc, char* argv[]) {
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   /// Set realtime rate. Otherwise, runs as fast as possible
-  auto stepper =
+  auto simulator =
       std::make_unique<Simulator<double>>(*diagram, std::move(context));
-  stepper->set_publish_every_time_step(false);
-  stepper->set_publish_at_initialization(false);
-  stepper->set_target_realtime_rate(
+  simulator->set_publish_every_time_step(false);
+  simulator->set_publish_at_initialization(false);
+  simulator->set_target_realtime_rate(
       1.0);  // may need to change this to param.real_time_rate?
-  stepper->Initialize();
+  simulator->Initialize();
 
   drake::log()->info("visualizer started");
-
-  stepper->AdvanceTo(std::numeric_limits<double>::infinity());
+  meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
+  meshcat->StartRecording();
+//  simulator->AdvanceTo(std::numeric_limits<double>::infinity());
+  simulator->AdvanceTo(20.0);
+  meshcat->StopRecording();
+  meshcat->PublishRecording();
+  std::ofstream outfile("visualization.html");
+  outfile << meshcat->StaticHtml() <<std::endl;
+  outfile.close();
 
   return 0;
 }

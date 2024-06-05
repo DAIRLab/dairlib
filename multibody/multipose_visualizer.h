@@ -55,7 +55,7 @@ class MultiposeVisualizer {
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be
   /// ignored.
-  void DrawPoses(Eigen::MatrixXd poses);
+  void DrawPoses(Eigen::MatrixXd poses, std::optional<double> time_in_recording = std::nullopt);
 
   const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat() {
     return meshcat_;

@@ -152,6 +152,7 @@ def main():
         # plot.plot(c3_tracking_target['t'], c3_tracking_target['x'][:, 7:8], subplot_index = 1)
         # plot.axes[0].set_ylim([0.4, 0.7])
         # plot.add_legend(['tray_des_x', 'tray_des_y', 'tray_des_z', 'tray_x', 'tray_y', 'tray_z'], subplot_index = 1)
+
     if True:
         plotter = plot_styler.PlotStyler()
         # zero_vel_threshold = 0.00001

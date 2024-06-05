@@ -346,7 +346,6 @@ class AlipMPFC(LeafSystem):
                 is_convex=True
             )
 
-
         linear_term = self.gradient_premul_period_one if self.N % 2 else (
             self.gradient_premul_period_two)
         self.terminal_cost.evaluator().UpdateCoefficients(

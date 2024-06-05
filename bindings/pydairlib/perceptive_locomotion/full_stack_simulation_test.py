@@ -198,5 +198,6 @@ def main():
     with open('../meshcat.html', 'w') as fp:
         fp.write(meshcat.StaticHtml())
 
+
 if __name__ == '__main__':
     main()

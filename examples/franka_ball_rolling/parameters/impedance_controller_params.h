@@ -12,13 +12,26 @@ struct ImpedanceControllerParams {
 
   Vector3d tool_attachment_frame;
 
-  Vector3d translational_stiffness;
-  Vector3d rotational_stiffness;
-  Vector3d translational_damping;
-  Vector3d rotational_damping;
+  //  Vector3d translational_stiffness;
+  //  Vector3d rotational_stiffness;
+  //  Vector3d translational_damping;
+  //  Vector3d rotational_damping;
+
+  std::vector<double> translational_stiffness;
+  std::vector<double> rotational_stiffness;
+  std::vector<double> translational_damping;
+  std::vector<double> rotational_damping;
+  std::vector<double> stiffness_list;
+  std::vector<double> damping_list;
+  VectorXd stiffness_vector;
+  VectorXd damping_vector;
+  MatrixXd K;
+  MatrixXd B;
 
   VectorXd stiffness_null;
   VectorXd damping_null;
+  MatrixXd K_null;
+  MatrixXd B_null;
   VectorXd q_null_desired;
 
   bool gravity_compensation_flag;
@@ -64,5 +77,26 @@ struct ImpedanceControllerParams {
 
     a->Visit(DRAKE_NVP(q_init_franka));
     a->Visit(DRAKE_NVP(initial_start));
+
+    stiffness_list = std::vector<double>();
+    stiffness_list.insert(stiffness_list.end(), rotational_stiffness.begin(),
+                          rotational_stiffness.end());
+    stiffness_list.insert(stiffness_list.end(), translational_stiffness.begin(),
+                          translational_stiffness.end());
+    stiffness_vector = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->stiffness_list.data(), this->stiffness_list.size());
+    K = stiffness_vector.asDiagonal();
+
+    damping_list = std::vector<double>();
+    damping_list.insert(damping_list.end(), rotational_damping.begin(),
+                        rotational_damping.end());
+    damping_list.insert(damping_list.end(), translational_damping.begin(),
+                        translational_damping.end());
+    damping_vector = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
+        this->damping_list.data(), this->damping_list.size());
+    B = damping_vector.asDiagonal();
+
+    K_null = stiffness_null.asDiagonal();
+    B_null = damping_null.asDiagonal();
   }
 };

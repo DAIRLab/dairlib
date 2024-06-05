@@ -74,30 +74,13 @@ int DoMain(int argc, char* argv[]) {
 
   auto context = plant.CreateDefaultContext();
 
-  MatrixXd translational_stiffness =
-      impedance_param.translational_stiffness.asDiagonal();
-  MatrixXd rotational_stiffness =
-      impedance_param.rotational_stiffness.asDiagonal();
-  MatrixXd translational_damping =
-      impedance_param.translational_damping.asDiagonal();
-  MatrixXd rotational_damping = impedance_param.rotational_damping.asDiagonal();
+  MatrixXd K = impedance_param.K;
+  MatrixXd B = impedance_param.B;
 
-  /// TODO: should remove the hard coded dimension in the future, possibly using
-  /// model indices
-  /// TODO: or maybe done in load parameter file
-  MatrixXd K = MatrixXd::Zero(6, 6);
-  MatrixXd B = MatrixXd::Zero(6, 6);
-  K.block(0, 0, 3, 3) << rotational_stiffness;
-  K.block(3, 3, 3, 3) << translational_stiffness;
-  B.block(0, 0, 3, 3) << rotational_damping;
-  B.block(3, 3, 3, 3) << translational_damping;
-
-  MatrixXd stiffness_null = impedance_param.stiffness_null.asDiagonal();
-  MatrixXd damping_null = impedance_param.damping_null.asDiagonal();
-
-  MatrixXd K_null = impedance_param.stiffness_null;
-  MatrixXd B_null = impedance_param.damping_null;
+  MatrixXd K_null = impedance_param.K_null;
+  MatrixXd B_null = impedance_param.B_null;
   VectorXd qd_null = impedance_param.q_null_desired;
+
   bool gravity_compensation = impedance_param.gravity_compensation_flag;
 
   auto impedance_controller =
@@ -106,12 +89,12 @@ int DoMain(int argc, char* argv[]) {
 
   /* -------------------------------------------------------------------------------------------*/
   /// get c3 planner command to track by impedance controller
-  /// TODO: try not to hardcode the dimension
   auto planner_command_subscriber = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_ball_rolling_command>(
           "CONTROLLER_INPUT", &drake_lcm));
   auto planner_command_receiver =
-      builder.AddSystem<systems::BallRollingCommandReceiver>(13, 7, 1);
+      builder.AddSystem<systems::BallRollingCommandReceiver>(
+          7 + 6, plant.num_actuators(franka_index), 1);
   builder.Connect(planner_command_subscriber->get_output_port(0),
                   planner_command_receiver->get_input_port_planner_command());
   builder.Connect(planner_command_receiver->get_output_port_target_state(),

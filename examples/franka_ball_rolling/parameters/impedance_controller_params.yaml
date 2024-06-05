@@ -8,11 +8,13 @@ end_effector_model: examples/franka_ball_rolling/robot_properties/urdf/end_effec
 tool_attachment_frame: [0, 0, 0.1118] # should match real measurement
 
 # -------------------------  impedance controller parameters  ------------------------#
+# cartesian space, so 3D (translation) + 3D (rotation), diagonal elements
 translational_stiffness: [500, 500, 500]
 rotational_stiffness: [900, 900, 900]
 translational_damping: [45, 45, 45]
 rotational_damping: [20 ,20 ,20]
 
+# joint space, so it is 7D, diagonal elements
 stiffness_null: [4, 4, 4, 4, 4, 4, 4]
 damping_null: [4, 4, 4, 4, 4, 4, 4]
 q_null_desired: [0, 0.361, 0, -2.223, 0, 2.584, 0]

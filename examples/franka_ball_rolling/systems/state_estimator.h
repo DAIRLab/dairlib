@@ -46,9 +46,7 @@ class StateEstimator : public LeafSystem<double> {
   /// for position filter
   /// @param v_FIR_values A standard vector containing the FIR filter parameters
   /// for velocity filter
-  StateEstimator(const std::vector<double>& p_FIR_values,
-                 const std::vector<double>& v_FIR_values,
-                 const StateEstimatorParams& state_estimate_param_,
+  StateEstimator(const StateEstimatorParams& state_estimate_param_,
                  const BallRollingTrajectoryParams traj_param);
 
   /// the first input port take in franka state and input
@@ -158,8 +156,7 @@ class TrueBallToEstimatedBall : public LeafSystem<double> {
   /// and y positions
   /// @param stddev gaussian noise standard deviation
   /// @param period camera system update period (1 / frequency)
-  TrueBallToEstimatedBall(double stddev, double period,
-                          const StateEstimatorParams state_estimate_param,
+  TrueBallToEstimatedBall(const StateEstimatorParams state_estimate_param,
                           const BallRollingTrajectoryParams traj_param);
 
   /// the input port take in true ball state

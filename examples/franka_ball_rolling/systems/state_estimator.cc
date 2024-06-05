@@ -12,14 +12,13 @@ using Eigen::Quaternion;
 namespace dairlib {
 namespace systems {
 
-StateEstimator::StateEstimator(const std::vector<double>& p_FIR_values,
-                               const std::vector<double>& v_FIR_values,
-                               const StateEstimatorParams& state_estimate_param,
+StateEstimator::StateEstimator(const StateEstimatorParams& state_estimate_param,
                                const BallRollingTrajectoryParams traj_param)
-    : p_FIR_values_(p_FIR_values),
-      v_FIR_values_(v_FIR_values),
-      p_filter_length_(p_FIR_values.size()),
-      v_filter_length_(v_FIR_values.size()) {
+    : p_filter_length_(state_estimate_param.p_FIR_value.size()),
+      v_filter_length_(state_estimate_param.v_FIR_value.size()){
+
+  p_FIR_values_ = state_estimate_param.p_FIR_value;
+  v_FIR_values_ = state_estimate_param.v_FIR_value;
   state_estimate_param_ = state_estimate_param;
   traj_param_ = traj_param;
 
@@ -249,10 +248,10 @@ RotationMatrix<double> StateEstimator::RodriguesFormula(const Vector3d& axis,
  */
 /// Method implementation of TrueBallToEstimatedBall class
 TrueBallToEstimatedBall::TrueBallToEstimatedBall(
-    double stddev, double period,
     const StateEstimatorParams state_estimate_param,
     const BallRollingTrajectoryParams traj_param)
-    : stddev_(stddev), period_(period) {
+    : stddev_(state_estimate_param.ball_noise_stddev),
+      period_(1.0 / state_estimate_param.estimation_rate) {
   state_estimate_param_ = state_estimate_param;
   traj_param_ = traj_param;
 

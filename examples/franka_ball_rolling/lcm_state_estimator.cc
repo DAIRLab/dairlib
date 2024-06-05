@@ -86,20 +86,15 @@ int DoMain(int argc, char* argv[]) {
                   true_ball_state_receiver->get_input_port());
   /* -------------------------------------------------------------------------------------------*/
   /// state estimation block
-  std::vector<double> p_FIR_values = state_estimator_param.p_FIR_value;
-  std::vector<double> v_FIR_values = state_estimator_param.v_FIR_value;
-
   auto state_estimator = builder.AddSystem<systems::StateEstimator>(
-      p_FIR_values, v_FIR_values, state_estimator_param, traj_param);
+      state_estimator_param, traj_param);
   builder.Connect(franka_state_reciver->get_output_port(0),
                   state_estimator->get_input_port_franka());
 
   /// connect state_susbcriber ball position port
   auto to_estimated_ball_position =
-      builder.AddSystem<systems::TrueBallToEstimatedBall>(
-          state_estimator_param.ball_noise_stddev,
-          1.0 / state_estimator_param.estimation_rate, state_estimator_param,
-          traj_param);
+      builder.AddSystem<systems::TrueBallToEstimatedBall>(state_estimator_param,
+                                                          traj_param);
   builder.Connect(true_ball_state_receiver->get_output_port(0),
                   to_estimated_ball_position->get_input_port_true_ball());
   builder.Connect(to_estimated_ball_position->get_output_port_estimated_ball(),

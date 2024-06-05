@@ -34,7 +34,8 @@ PYBIND11_MODULE(footstep_planning, m) {
       .value("kRight", Stance::kRight);
   py::enum_<ResetDiscretization>(m, "ResetDiscretization")
       .value("kZOH", ResetDiscretization::kZOH)
-      .value("kFOH", ResetDiscretization::kFOH);
+      .value("kFOH", ResetDiscretization::kFOH)
+      .value("kSPLIT", ResetDiscretization::kSPLIT);
 
   py::class_<AlipGaitParams>(
       m, "AlipGaitParams")

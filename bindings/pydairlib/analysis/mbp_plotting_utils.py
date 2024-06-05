@@ -479,7 +479,7 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
         time_slice,
         keys,
         {},
-        {key: [key] for key in keys},
+        {},
         {'xlabel': 'Time',
          'ylabel': '',
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
@@ -583,7 +583,7 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
         if fsm_state_names:
             legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
 
-    if len(legend_elements) > 0:
-        legend = ax.legend(handles=legend_elements, loc='upper left')
-        # ax.add_artist(legend)
-        ax.relim()
+    # if len(legend_elements) > 0:
+    #     legend = ax.legend(handles=legend_elements, loc='upper left')
+    #     # ax.add_artist(legend)
+    #     ax.relim()

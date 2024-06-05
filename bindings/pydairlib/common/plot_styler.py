@@ -13,8 +13,8 @@ class PlotStyler():
     def set_default_styling():
         if sys.platform == 'darwin':
             matplotlib.use('macosx')
-            matplotlib.rcParams['figure.figsize'] = 5,5
-        matplotlib.rcParams['figure.autolayout'] = True
+            # matplotlib.rcParams['figure.figsize'] = 5,5
+        # matplotlib.rcParams['figure.autolayout'] = True
         font = {'size': 10, 'family': 'serif', 'serif': ['Computer Modern']}
         matplotlib.rcParams['text.latex.preamble'] = r"\usepackage{amsmath}"
         matplotlib.rc('text.latex', preamble=r'\usepackage{underscore}')

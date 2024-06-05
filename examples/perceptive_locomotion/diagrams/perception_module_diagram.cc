@@ -154,7 +154,8 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
   }
 
   builder.Connect(*delay, *output_receiver);
-  builder.Connect(*output_receiver, *state_estimator_);
+  builder.Connect(output_receiver->get_output_port(),
+                  state_estimator_->get_input_port_cassie_out());
   builder.Connect(state_estimator_->get_robot_output_port(),
                   state_passthrough->get_input_port());
   builder.Connect(state_estimator_->get_robot_output_port(),

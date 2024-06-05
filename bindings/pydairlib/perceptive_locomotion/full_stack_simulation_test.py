@@ -184,14 +184,19 @@ def main():
     simulator.set_target_realtime_rate(1.0)
 
     tnext = 0.01
-    while tnext < np.inf:
+
+    meshcat = sim_env.plant_visualizer.get_meshcat()
+    meshcat.StartRecording(set_visualizations_while_recording=True)
+    while tnext < 1.0:
         diagram.CalcForcedUnrestrictedUpdate(
             context, context.get_mutable_state()
         )
         diagram.ForcedPublish(context)
         simulator.AdvanceTo(tnext)
         tnext += 0.01
-
+    meshcat.PublishRecording()
+    with open('../meshcat.html', 'w') as fp:
+        fp.write(meshcat.StaticHtml())
 
 if __name__ == '__main__':
     main()

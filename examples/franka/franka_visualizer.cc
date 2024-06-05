@@ -307,16 +307,16 @@ int do_main(int argc, char* argv[]) {
       1.0);  // may need to change this to param.real_time_rate?
   simulator->Initialize();
 
-  drake::log()->info("visualizer started");
-  meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
-  meshcat->StartRecording();
-//  simulator->AdvanceTo(std::numeric_limits<double>::infinity());
-  simulator->AdvanceTo(20.0);
-  meshcat->StopRecording();
-  meshcat->PublishRecording();
-  std::ofstream outfile("visualization.html");
-  outfile << meshcat->StaticHtml() <<std::endl;
-  outfile.close();
+  simulator->AdvanceTo(std::numeric_limits<double>::infinity());
+  //  meshcat->get_mutable_recording().set_loop_mode(drake::geometry::MeshcatAnimation::LoopMode::kLoopRepeat);
+  //  meshcat->StartRecording();
+
+  //  simulator->AdvanceTo(18.0);
+  //  meshcat->StopRecording();
+  //  meshcat->PublishRecording();
+  //  std::ofstream outfile("visualization.html");
+  //  outfile << meshcat->StaticHtml() <<std::endl;
+  //  outfile.close();
 
   return 0;
 }

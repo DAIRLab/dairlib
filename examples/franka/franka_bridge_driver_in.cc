@@ -38,7 +38,7 @@ DEFINE_string(lcm_channels,
               "examples/franka/parameters/lcm_channels_hardware.yaml",
               "Filepath containing lcm channels");
 DEFINE_string(franka_driver_channels, "examples/franka/parameters/franka_drake_lcm_driver_channels.yaml",
-              "Filepath containing ROS channels");
+              "Filepath containing drake franka driver channels");
 
 namespace dairlib {
 
@@ -57,7 +57,7 @@ int DoMain(int argc, char* argv[]) {
   MultibodyPlant<double> plant(0.0);
 
   Parser parser(&plant);
-  parser.AddModelsFromUrl(sim_params.franka_model)[0];
+  parser.AddModelsFromUrl(sim_params.franka_model);
   Eigen::Vector3d franka_origin = Eigen::VectorXd::Zero(3);
   RigidTransform<double> R_X_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), franka_origin);
@@ -86,7 +86,6 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("franka_bridge_driver_in"));
-  const auto& diagram = *owned_diagram;
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
       &lcm, std::move(owned_diagram), franka_command_translator,

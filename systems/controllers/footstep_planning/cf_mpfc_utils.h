@@ -33,7 +33,14 @@ using CentroidalStateDeriv = Eigen::Matrix<T, 18, 1>;
  * (relative to the world frame) give the plant and context
  * @param stance_foot current stance foot
  * @return Centroidal State - vectorized rotation matrix,
+ *
+ * Templated to allow for linearizing about an operating point with AutoDiff.
+ * on an M1 mac with 1 contact point.
+ *
  */
+
+// TODO (@Brian-Acosta) may need to implement analytical gradients of these
+//   dynamics for speed
 CentroidalState<double> GetCentroidalState(
     const drake::multibody::MultibodyPlant<double> &plant,
     const drake::systems::Context<double> &plant_context,

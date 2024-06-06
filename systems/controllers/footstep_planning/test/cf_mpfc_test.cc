@@ -18,6 +18,7 @@ int DoMain(int argc, char* argv[]) {
   p_f(1) = 0.1;
   p_f(5) = 9.81 * mass;
 
+  auto start = std::chrono::high_resolution_clock::now();
   Eigen::VectorXd vars(24);
   vars.head<18>() = srbd_state;
   vars.tail<6>() = p_f;
@@ -25,9 +26,6 @@ int DoMain(int argc, char* argv[]) {
       vars);
   srbd_state_ad = vars_ad.head<18>();
   drake::Vector6<drake::AutoDiffXd> p_f_ad = vars_ad.tail<6>();
-
-  std::cout << "\n" << cf_mpfc_utils::SRBDynamics(
-      srbd_state, {p_f}, Eigen::Matrix3d::Identity(), mass) << std::endl;
 
   std::cout << "\n" << drake::math::ExtractGradient(
       cf_mpfc_utils::SRBDynamics(
@@ -38,7 +36,10 @@ int DoMain(int argc, char* argv[]) {
       )
   ) << std::endl;
 
+  auto end = std::chrono::high_resolution_clock::now();
 
+  std::cout << "AD took " <<
+  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " us.\n";
   return 0;
 }
 

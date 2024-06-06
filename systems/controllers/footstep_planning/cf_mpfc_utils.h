@@ -1,7 +1,8 @@
 #include "alip_utils.h"
+#include "drake/math/autodiff_gradient.h"
+
 
 namespace dairlib::systems::controllers::cf_mpfc_utils {
-
 
 /**
  * State is in this order:
@@ -13,8 +14,11 @@ namespace dairlib::systems::controllers::cf_mpfc_utils {
  * ċ (com velocity)
  *
  */
-typedef Eigen::Matrix<double,18, 1> CentroidalState;
+template <typename T>
+using CentroidalState = Eigen::Matrix<T, 18, 1>;
 
+template <typename T>
+using CentroidalStateDeriv = Eigen::Matrix<T, 18, 1>;
 
 /**
  * Calculate the robot's single rigid body state in the current stance frame.
@@ -30,12 +34,19 @@ typedef Eigen::Matrix<double,18, 1> CentroidalState;
  * @param stance_foot current stance foot
  * @return Centroidal State - vectorized rotation matrix,
  */
-CentroidalState GetCentroidalState(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& plant_context,
-    const drake::multibody::Frame<double>& floating_base_frame,
-    const std::function<Eigen::Matrix3d(const drake::multibody::MultibodyPlant<double>&,
-                                  const drake::systems::Context<double>&)>& acom_function,
-    const alip_utils::PointOnFramed& stance_foot);
-}
+CentroidalState<double> GetCentroidalState(
+    const drake::multibody::MultibodyPlant<double> &plant,
+    const drake::systems::Context<double> &plant_context,
+    const drake::multibody::Frame<double> &floating_base_frame,
+    const std::function<Eigen::Matrix3d(
+        const drake::multibody::MultibodyPlant<double> &,
+        const drake::systems::Context<double> &)> &acom_function,
+    const alip_utils::PointOnFramed &stance_foot);
 
+template <typename T>
+CentroidalStateDeriv<T> SRBDynamics(
+    const CentroidalState<T>& state,
+    const std::vector<drake::Vector6<T>>& stacked_contact_locations_and_forces,
+    const Eigen::Matrix3d& I, double m);
+
+}

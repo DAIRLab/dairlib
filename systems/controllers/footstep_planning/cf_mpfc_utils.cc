@@ -3,27 +3,58 @@
 namespace dairlib::systems::controllers::cf_mpfc_utils {
 
 using drake::systems::Context;
+using drake::AutoDiffXd;
 using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RotationalInertia;
 using drake::multibody::SpatialInertia;
 using drake::multibody::SpatialMomentum;
+using drake::multibody::ModelInstanceIndex;
 
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
+namespace {
 
-CentroidalState GetCentroidalState(
+RotationalInertia<double> CalcRotationalInertiaAboutCoM(
+    const MultibodyPlant<double>& plant,
+    const Context<double>& plant_context) {
+
+  Vector3d CoM_w = plant.CalcCenterOfMassPositionInWorld(plant_context);
+
+  const auto& floating_base_frame = plant.get_body(
+      *(plant.GetFloatingBaseBodies().begin())).body_frame();
+  RigidTransformd X_WP = floating_base_frame.CalcPoseInWorld(plant_context);
+
+
+  // Can get angular velocity of ACOM
+  SpatialInertia<double> I = plant.CalcSpatialInertia(
+      plant_context, floating_base_frame,
+      plant.GetBodyIndices(ModelInstanceIndex{0}));
+  I.ReExpressInPlace(X_WP.rotation());
+  I.ShiftInPlace(CoM_w - X_WP.translation());
+
+  return I.CalcRotationalInertia();
+}
+
+}
+
+CentroidalState<double> GetCentroidalState(
     const MultibodyPlant<double>& plant, const Context<double>& plant_context,
-    const Frame<double>& floating_base_frame,
     const std::function<Matrix3d(const MultibodyPlant<double>&, const Context<double>&)>& acom_function,
     const alip_utils::PointOnFramed& stance_foot) {
 
-  CentroidalState x = CentroidalState::Zero();
+  // for floating base plants only
+  DRAKE_DEMAND(plant.HasUniqueFreeBaseBody(ModelInstanceIndex{0}));
+
+  CentroidalState<double> x = CentroidalState<double>::Zero();
 
   // Floating base pose in the world frame
+  const auto& floating_base_frame = plant.get_body(
+      *(plant.GetFloatingBaseBodies().begin())).body_frame();
   RigidTransformd X_WP = floating_base_frame.CalcPoseInWorld(plant_context);
   const Vector3d& body_x = X_WP.rotation().matrix().col(0);
   double yaw = atan2(body_x(1), body_x(0));
@@ -47,14 +78,7 @@ CentroidalState GetCentroidalState(
       &p_w
   );
 
-  // Can get angular velocity of ACOM
-  SpatialInertia<double> I = plant.CalcSpatialInertia(
-      plant_context, floating_base_frame,
-      plant.GetBodyIndices(drake::multibody::ModelInstanceIndex{0}));
-  I.ReExpressInPlace(X_WP.rotation());
-  I.ShiftInPlace(CoM_w - X_WP.translation());
-
-  Vector3d omega_w = I.CalcRotationalInertia().CopyToFullMatrix3().inverse() *
+  Vector3d omega_w = CalcRotationalInertiaAboutCoM(plant, plant_context).CopyToFullMatrix3().inverse() *
       plant.CalcSpatialMomentumInWorldAboutPoint(plant_context, CoM_w).rotational();
 
   x.head<3>() = R_YA.col(0);
@@ -62,10 +86,34 @@ CentroidalState GetCentroidalState(
   x.segment<3>(6) = R_YA.col(2);
   x.segment<3>(9) = R_WY.transpose() * (CoM_w - p_w);
   x.segment<3>(12) = R_WY.transpose() * omega_w;
-  x.segment<3>(15);
+  x.segment<3>(15) = R_WY.transpose() * CoM_w_dot;
   return x;
 }
 
+template <typename T>
+CentroidalStateDeriv<T> SRBDynamics(
+    const CentroidalState<T>& state,
+    const std::vector<drake::Vector6<T>>& stacked_contact_locations_and_forces,
+    const Matrix3d& I, double m) {
+  CentroidalStateDeriv<T> xdot = CentroidalStateDeriv<T>::Zero();
+
+  const drake::Vector3<T> w = state.template segment<3>(12);
+  for (int i = 0; i < 3; ++i) {
+    xdot.template segment<3>(3 * i) = w.cross(state.template segment<3>(3*i));
+  }
+  xdot.template segment<3>(9) = state.template segment<3>(15);
+
+  for (const auto& p_f : stacked_contact_locations_and_forces) {
+    drake::Vector3<T> r = state.template segment<3>(9) - p_f.template head<3>();
+    xdot.template segment<3>(12) += I.inverse() * r.cross(p_f.template tail<3>());
+    xdot.template segment<3>(15) += (1.0 / m) * p_f.template tail<3>();
+  }
+  xdot[17] -= 9.81;
+  return xdot;
+}
+
+template CentroidalStateDeriv<double> SRBDynamics(const CentroidalState<double>&, const std::vector<drake::Vector6d>&, const Matrix3d&, double);
+template CentroidalStateDeriv<AutoDiffXd> SRBDynamics(const CentroidalState<AutoDiffXd>&, const std::vector<drake::Vector6<AutoDiffXd>>&, const Matrix3d&, double);
 
 }
 

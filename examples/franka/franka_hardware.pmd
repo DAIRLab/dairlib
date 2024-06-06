@@ -1,10 +1,3 @@
-group "simulations" {
-    cmd "franka_sim" {
-        exec = "bazel-bin/examples/franka/franka_sim";
-        host = "localhost";
-    }
-}
-
 group "operator" {
     cmd "visualizer" {
         exec = "bazel-bin/examples/franka/franka_visualizer --lcm_channels=examples/franka/parameters/lcm_channels_hardware.yaml";
@@ -42,29 +35,14 @@ group "debug" {
     }
 }
 
-group "dispatchers" {
-    cmd "ros_lcm_bridge" {
-        exec = "bazel-bin/examples/franka/franka_ros_lcm_bridge";
-        host = "localhost";
-    }
-    cmd "lcm_ros_bridge" {
-        exec = "bazel-bin/examples/franka/franka_lcm_ros_bridge";
-        host = "localhost";
-    }
-}
-
 group "drivers" {
-    cmd "move_to_start" {
-        exec = "roslaunch franka_example_controllers move_to_start.launch robot_ip:=172.16.0.2 load_gripper:=false";
-        host = "franka_control";
+    cmd "franka_driver_out" {
+        exec = "bazel-bin/examples/franka/franka_bridge_driver_out";
+        host = "localhost";
     }
-    cmd "torque_passthrough_controller" {
-        exec = "roslaunch franka_example_controllers torque_passthrough_controller.launch robot_ip:=172.16.0.2 load_gripper:=false";
-        host = "franka_control";
-    }
-    cmd "move_to_osc_pose" {
-        exec = "roslaunch franka_example_controllers move_to_start_osc.launch robot_ip:=172.16.0.2 load_gripper:=false";
-        host = "franka_control";
+    cmd "franka_driver_in" {
+        exec = "bazel-bin/examples/franka/franka_bridge_driver_in";
+        host = "localhost";
     }
     cmd "position_driver" {
         exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=position";
@@ -74,31 +52,26 @@ group "drivers" {
         exec = "bazel-bin/franka-driver/franka_driver_v4 --robot_ip_address=172.16.0.2 --control_mode=torque";
         host = "franka_control";
     }
-    cmd "cam_sync" {
-        exec = "roslaunch kuka_vision kuka_online_cam_sync.launch";
-        host = "tagslam";
-    }
 }
 
 
 script "start_franka_osc" {
-    stop cmd "lcm_ros_bridge";
-    stop cmd "ros_lcm_bridge";
+    stop cmd "franka_driver_out";
+    stop cmd "franka_driver_in";
     stop cmd "franka_osc";
-    stop cmd "torque_passthrough_controller";
+    stop cmd "torque_driver";
     start cmd "record_video";
     start cmd "logger";
-    start cmd "lcm_ros_bridge";
-    start cmd "ros_lcm_bridge";
-    start cmd "franka_osc";
     wait ms 1000;
-    start cmd "torque_passthrough_controller";
+    start cmd "franka_driver_out";
+    start cmd "franka_driver_in";
+    start cmd "franka_osc";
+    start cmd "torque_driver";
 }
 
 script "stop_experiment" {
-    stop cmd "torque_passthrough_controller" wait "stopped";
+    stop group "drivers";
     stop group "controllers (hardware)";
-    stop group "dispatchers";
     stop cmd "record_video";
     stop cmd "logger";
 }

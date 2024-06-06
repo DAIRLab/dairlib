@@ -1,9 +1,14 @@
+#include <iostream>
 #include "cf_mpfc_utils.h"
+#include "common/eigen_utils.h"
 
 namespace dairlib::systems::controllers::cf_mpfc_utils {
 
 using drake::systems::Context;
 using drake::AutoDiffXd;
+using drake::math::InitializeAutoDiff;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
 using drake::math::RigidTransformd;
 using drake::math::RotationMatrixd;
 using drake::multibody::Frame;
@@ -16,6 +21,9 @@ using drake::multibody::ModelInstanceIndex;
 using Eigen::Matrix3d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using drake::VectorX;
+using drake::Vector6;
 
 namespace {
 
@@ -104,12 +112,39 @@ CentroidalStateDeriv<T> SRBDynamics(
   xdot.template segment<3>(9) = state.template segment<3>(15);
 
   for (const auto& p_f : stacked_contact_locations_and_forces) {
-    drake::Vector3<T> r = state.template segment<3>(9) - p_f.template head<3>();
+    drake::Vector3<T> r = p_f.template head<3>() - state.template segment<3>(9);
     xdot.template segment<3>(12) += I.inverse() * r.cross(p_f.template tail<3>());
     xdot.template segment<3>(15) += (1.0 / m) * p_f.template tail<3>();
   }
   xdot[17] -= 9.81;
   return xdot;
+}
+
+void LinearizeSRBDynamics(
+    const CentroidalState<double>& x,
+    const std::vector<drake::Vector6d>& stacked_contact_locations_and_forces,
+    const Eigen::Matrix3d& I, double m,
+    Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& c) {
+
+  std::vector<Eigen::VectorXd> vars;
+  vars.push_back(x);
+  for (const auto& pf : stacked_contact_locations_and_forces) {
+    vars.push_back(pf);
+  }
+
+  VectorX<AutoDiffXd> vars_ad = InitializeAutoDiff(stack(vars));
+  VectorX<AutoDiffXd> u_ad = vars_ad.tail(6 * stacked_contact_locations_and_forces.size());
+  CentroidalState<AutoDiffXd> x_ad = vars_ad.head<SrbDim>();
+  std::vector<Vector6<AutoDiffXd>> pf_ad = unstack<AutoDiffXd, 6>(u_ad);
+
+  CentroidalStateDeriv<AutoDiffXd> xdot_ad = SRBDynamics(x_ad, pf_ad, I, m);
+
+  MatrixXd AB = ExtractGradient(xdot_ad);
+
+  A = AB.topLeftCorner<SrbDim, SrbDim>();
+  B = AB.topRightCorner(SrbDim, u_ad.size());
+  c = ExtractValue(xdot_ad);
+
 }
 
 template CentroidalStateDeriv<double> SRBDynamics(const CentroidalState<double>&, const std::vector<drake::Vector6d>&, const Matrix3d&, double);

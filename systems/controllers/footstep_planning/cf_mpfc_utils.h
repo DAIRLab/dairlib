@@ -4,6 +4,8 @@
 
 namespace dairlib::systems::controllers::cf_mpfc_utils {
 
+static constexpr Eigen::Index SrbDim = 18;
+
 /**
  * State is in this order:
  * R_x (rotation matrix x column)
@@ -15,10 +17,10 @@ namespace dairlib::systems::controllers::cf_mpfc_utils {
  *
  */
 template <typename T>
-using CentroidalState = Eigen::Matrix<T, 18, 1>;
+using CentroidalState = Eigen::Matrix<T, SrbDim, 1>;
 
 template <typename T>
-using CentroidalStateDeriv = Eigen::Matrix<T, 18, 1>;
+using CentroidalStateDeriv = Eigen::Matrix<T, SrbDim, 1>;
 
 /**
  * Calculate the robot's single rigid body state in the current stance frame.
@@ -49,6 +51,12 @@ CentroidalState<double> GetCentroidalState(
         const drake::multibody::MultibodyPlant<double> &,
         const drake::systems::Context<double> &)> &acom_function,
     const alip_utils::PointOnFramed &stance_foot);
+
+void LinearizeSRBDynamics(
+    const CentroidalState<double>& x,
+    const std::vector<drake::Vector6d>& stacked_contact_locations_and_forces,
+    const Eigen::Matrix3d& I, double m,
+    Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& c);
 
 template <typename T>
 CentroidalStateDeriv<T> SRBDynamics(

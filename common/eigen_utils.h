@@ -8,6 +8,7 @@
 
 using drake::MatrixX;
 using drake::VectorX;
+using Eigen::Matrix;
 
 /// CopyVectorXdToStdVector returns an std::vector<double> which is converted
 /// from an Eigen::VectorXd.
@@ -44,7 +45,7 @@ inline MatrixX<Scalar> BlockDiagonalRepeat(MatrixX<Scalar> X, int n) {
   return P;
 }
 
-template<typename Scalar>
+template <typename Scalar>
 inline VectorX<Scalar> stack(const std::vector<VectorX<Scalar>>& v) {
   VectorX<Scalar> out(v.size() * v.front().rows());
 
@@ -57,4 +58,14 @@ inline VectorX<Scalar> stack(const std::vector<VectorX<Scalar>>& v) {
     start += e.rows();
   }
   return out.head(start);
+}
+
+template <typename Scalar, size_t n>
+inline std::vector<Matrix<Scalar, n, 1>> unstack(const VectorX<Scalar>& v) {
+  DRAKE_DEMAND(v.size() % n == 0);
+  std::vector<Matrix<Scalar, n, 1>> out;
+  for (int i = 0; i < v.size() / n; ++i) {
+    out.emplace_back(v.template segment<n>(i*n));
+  }
+  return out;
 }

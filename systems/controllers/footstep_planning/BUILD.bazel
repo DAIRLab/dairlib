@@ -81,6 +81,7 @@ cc_library(
     hdrs = ["cf_mpfc_utils.h"],
     deps = [
         ":alip_utils",
+        "//common:eigen_utils",
         "//multibody:utils",
         "//solvers:nonlinear_constraint",
         "@drake//:drake_shared_library",

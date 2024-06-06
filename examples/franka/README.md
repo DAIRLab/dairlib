@@ -26,26 +26,39 @@ bot-procman-sheriff -l franka_sim.pmd
 
 ## Physical Robot
 
-Hardware experiment instructions are still listed for ROS and Ubuntu 20.04. Instructions for Ubuntu 22.04 are being worked on.
+Hardware instructions updated for Ubuntu 22.04. We are no longer using ROS or ROS2 and instead relying on [drake-franka-driver](https://github.com/RobotLocomotion/drake-franka-driver), which works via LCM. Much thanks to the Drake developers who provided this!
 
-1. Start the procman script containing a list of relevant processes. The primary differences from`franka_sim.pmd` script are the lcm_channels and the addition of a bridge linking ROS and LCM. 
+### Installing `drake-franka-driver`
+
 ```
-bot-procman-sheriff -l franka_hardware.pmd
+git clone https://github.com/RobotLocomotion/drake-franka-driver
+cd drake-franka-driver
+bazel build ...
 ```
+
+
+### Running Experiments
+
+1. Start the procman script containing a list of relevant processes. The primary differences from`franka_sim.pmd` script are the lcm_channels and the drake-franka-driver and corresponding translators to communicate with the Franka via LCM.
+
+   - In the root of dairlib: ``` bot-procman-sheriff -l examples/franka/franka_hardware.pmd ```
+   - In the root of drake-franka-driver: ```bot-procman-deputy franka_control``` 
 
 2. In the procman window, start the operator processes (meshcat visualizer and xbox controller) using the script `script:start_operator_commands`. Scripts are located in the top bar of the procman window.
 
 3. The meshcat visualizer can be viewed by opening a browser and navigating to `localhost:7000`
 
 4. The processes, except the C3 controller, can be run using the script `script:start_experiment`. This spawns the following processes:
-   - ROS/LCM bridge: communicates with FrankaRos to receive/publish franka state information and torque commands 
-   - `bazel-bin/examples/franka/franka_osc_controller`: Low-level task-space controller that tracks task-space trajectories it receives from the MPC
    - `start_logging.py`: Starts a lcm-logger with an automatic naming convention for the log number.
    - `record_video.py`: Streams all available webcams to a .mp4 file corresponding to the log number.
+   - `torque_driver`: `drake-franka-driver` in torque control mode.
+   - `franka_driver_`(in/out): communicates with `drake-franka-driver` to receive/publish franka state information and torque commands. This is just a translator between Drake's Franka Panda specific lcm messages and the standardized robot commands that we use. 
+   - `bazel-bin/examples/franka/franka_osc_controller`: Low-level task-space controller that tracks task-space trajectories it receives from the MPC
+   
 
 5. For safety, start the C3 controller separately after verifying the rest of the processes have started successfully, by manually starting the `franka_c3` process.
 6. Using the xbox controller, switch from tracking the teleop commands to the MPC plan by pressing "A".
-7. Stop the experiment using `script:stop_experiment`
+7. Stop the experiment using `script:stop_experiment`. This also stops logging and recording.
 
 
 ## Changing the scene

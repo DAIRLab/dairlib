@@ -54,8 +54,12 @@ group "drivers" {
     }
 }
 
+script "start_operator_commands" {
+    restart cmd "visualizer";
+    restart cmd "xbox";
+}
 
-script "start_franka_osc" {
+script "start_experiment" {
     stop cmd "franka_driver_out";
     stop cmd "franka_driver_in";
     stop cmd "franka_osc";
@@ -65,8 +69,8 @@ script "start_franka_osc" {
     wait ms 1000;
     start cmd "franka_driver_out";
     start cmd "franka_driver_in";
-    start cmd "franka_osc";
     start cmd "torque_driver";
+    start cmd "franka_osc";
 }
 
 script "stop_experiment" {

@@ -64,4 +64,15 @@ CentroidalStateDeriv<T> SRBDynamics(
     const std::vector<drake::Vector6<T>>& stacked_contact_locations_and_forces,
     const Eigen::Matrix3d& I, double m);
 
+template <typename T>
+drake::Vector4<T> CalculateReset(
+    const CentroidalState<T>& x_pre,
+    const drake::Vector3<T>& p_pre, const drake::Vector3<T>& p_post,
+    const Eigen::Matrix3d& I, double m);
+
+void LinearizeReset(const CentroidalState<double>& x_pre,
+                    const Eigen::Vector3d& p_pre, const Eigen::Vector3d& p_post,
+                    const Eigen::Matrix3d& I, double m,
+                    Eigen::MatrixXd& A, Eigen::Vector4d& b);
+
 }

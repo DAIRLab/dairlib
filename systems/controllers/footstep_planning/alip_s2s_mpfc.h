@@ -53,7 +53,7 @@ class AlipS2SMPFC {
  public:
 
   /// Constructor takes a nominal gait and cost parameters
-  AlipS2SMPFC(alip_s2s_mpfc_params params);
+  explicit AlipS2SMPFC(alip_s2s_mpfc_params params);
 
   alip_s2s_mpfc_solution Solve(
       const Eigen::Vector4d& x,
@@ -113,10 +113,6 @@ class AlipS2SMPFC {
     DRAKE_DEMAND(terminal_cost_ != nullptr);
     DRAKE_DEMAND(time_regularization_ != nullptr);
   };
-
-  // helper
-  static vector<Eigen::Vector2d> MakeP2Orbit(
-      alip_utils::AlipGaitParams gait_params);
 
   // problem data:
   alip_s2s_mpfc_params params_;

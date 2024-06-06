@@ -24,6 +24,8 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using drake::VectorX;
 using drake::Vector6;
+using drake::Vector4;
+using drake::Vector3;
 
 namespace {
 
@@ -47,6 +49,14 @@ RotationalInertia<double> CalcRotationalInertiaAboutCoM(
 
   return I.CalcRotationalInertia();
 }
+
+constexpr int R_x_idx = 0;
+constexpr int R_y_idx = 3;
+constexpr int R_z_idx = 6;
+constexpr int com_idx = 9;
+constexpr int w_idx = 12;
+constexpr int com_dot_idx = 15;
+
 
 }
 
@@ -89,12 +99,12 @@ CentroidalState<double> GetCentroidalState(
   Vector3d omega_w = CalcRotationalInertiaAboutCoM(plant, plant_context).CopyToFullMatrix3().inverse() *
       plant.CalcSpatialMomentumInWorldAboutPoint(plant_context, CoM_w).rotational();
 
-  x.head<3>() = R_YA.col(0);
-  x.segment<3>(3) = R_YA.col(1);
-  x.segment<3>(6) = R_YA.col(2);
-  x.segment<3>(9) = R_WY.transpose() * (CoM_w - p_w);
-  x.segment<3>(12) = R_WY.transpose() * omega_w;
-  x.segment<3>(15) = R_WY.transpose() * CoM_w_dot;
+  x.segment<3>(R_x_idx) = R_YA.col(0);
+  x.segment<3>(R_y_idx) = R_YA.col(1);
+  x.segment<3>(R_z_idx) = R_YA.col(2);
+  x.segment<3>(com_idx) = R_WY.transpose() * (CoM_w - p_w);
+  x.segment<3>(w_idx) = R_WY.transpose() * omega_w;
+  x.segment<3>(com_dot_idx) = R_WY.transpose() * CoM_w_dot;
   return x;
 }
 
@@ -105,16 +115,16 @@ CentroidalStateDeriv<T> SRBDynamics(
     const Matrix3d& I, double m) {
   CentroidalStateDeriv<T> xdot = CentroidalStateDeriv<T>::Zero();
 
-  const drake::Vector3<T> w = state.template segment<3>(12);
+  const drake::Vector3<T> w = state.template segment<3>(w_idx);
   for (int i = 0; i < 3; ++i) {
     xdot.template segment<3>(3 * i) = w.cross(state.template segment<3>(3*i));
   }
-  xdot.template segment<3>(9) = state.template segment<3>(15);
+  xdot.template segment<3>(com_idx) = state.template segment<3>(com_dot_idx);
 
   for (const auto& p_f : stacked_contact_locations_and_forces) {
-    drake::Vector3<T> r = p_f.template head<3>() - state.template segment<3>(9);
-    xdot.template segment<3>(12) += I.inverse() * r.cross(p_f.template tail<3>());
-    xdot.template segment<3>(15) += (1.0 / m) * p_f.template tail<3>();
+    drake::Vector3<T> r = p_f.template head<3>() - state.template segment<3>(com_idx);
+    xdot.template segment<3>(w_idx) += I.inverse() * r.cross(p_f.template tail<3>());
+    xdot.template segment<3>(com_dot_idx) += (1.0 / m) * p_f.template tail<3>();
   }
   xdot[17] -= 9.81;
   return xdot;
@@ -144,11 +154,47 @@ void LinearizeSRBDynamics(
   A = AB.topLeftCorner<SrbDim, SrbDim>();
   B = AB.topRightCorner(SrbDim, u_ad.size());
   c = ExtractValue(xdot_ad);
+}
 
+template <typename T>
+Vector4<T> CalculateReset(const CentroidalState<T>& x_pre,
+                          const Vector3<T>& p_pre, const Vector3<T>& p_post,
+                          const Eigen::Matrix3d& I, double m) {
+  Vector3<T> r = x_pre.template segment<3>(com_idx) + p_pre - p_post;
+
+  // post impact 3d AM about new pivot point
+  Vector3<T> L_post = I * x_pre.template segment<3>(w_idx) +
+      m * r.cross(x_pre.template segment<3>(com_dot_idx));
+
+  Vector4<T> x_post;
+  x_post.template head<2>() = r.template head<2>();
+  x_post.template tail<2>() = L_post.template head<2>();
+
+  return x_post;
+}
+
+void LinearizeReset(
+    const CentroidalState<double>& x_pre, const Vector3d& p_pre,
+    const Vector3d& p_post, const Matrix3d& I, double m, MatrixXd& A,
+    Eigen::Vector4d& b) {
+
+  VectorX<AutoDiffXd> vars = InitializeAutoDiff(
+      stack<double>({x_pre, p_pre, p_post}));
+  CentroidalState<AutoDiffXd> x_ad = vars.head<SrbDim>();
+  Vector3<AutoDiffXd> p_pre_ad =  vars.segment<3>(SrbDim);
+  Vector3<AutoDiffXd> p_post_ad =  vars.tail<3>();
+
+  Vector4<AutoDiffXd> x_post = CalculateReset(x_ad, p_pre_ad, p_post_ad, I, m);
+
+  A = ExtractGradient(x_post);
+  b = ExtractValue(x_post);
 }
 
 template CentroidalStateDeriv<double> SRBDynamics(const CentroidalState<double>&, const std::vector<drake::Vector6d>&, const Matrix3d&, double);
 template CentroidalStateDeriv<AutoDiffXd> SRBDynamics(const CentroidalState<AutoDiffXd>&, const std::vector<drake::Vector6<AutoDiffXd>>&, const Matrix3d&, double);
+template Vector4<double> CalculateReset(const CentroidalState<double>& x_pre, const Vector3<double>& p_pre, const Vector3<double>& p_post, const Eigen::Matrix3d& I, double m);
+template Vector4<AutoDiffXd> CalculateReset(const CentroidalState<AutoDiffXd>& x_pre, const Vector3<AutoDiffXd>& p_pre, const Vector3<AutoDiffXd>& p_post, const Eigen::Matrix3d& I, double m);
+
 
 }
 

@@ -70,6 +70,8 @@ drake::Vector4<T> CalculateReset(
     const drake::Vector3<T>& p_pre, const drake::Vector3<T>& p_post,
     const Eigen::Matrix3d& I, double m);
 
+// TODO (@Brian-Acosta) Should we swap the order here? Do we need the gradient
+//  w.r.t p_pre ?
 void LinearizeReset(const CentroidalState<double>& x_pre,
                     const Eigen::Vector3d& p_pre, const Eigen::Vector3d& p_post,
                     const Eigen::Matrix3d& I, double m,

@@ -59,6 +59,74 @@ CFMPFC::CFMPFC(cf_mpfc_params params) : params_(params) {
   Check();
 }
 
+cf_mpfc_solution CFMPFC::Solve(
+    const CentroidalState<double> &x, const Eigen::Vector3d &p, double t,
+    const Eigen::Vector2d &vdes, alip_utils::Stance stance,
+    const Eigen::Matrix3d &I, const cf_mpfc_solution &prev_sol) {
+  auto start = std::chrono::steady_clock::now();
+
+  UpdateInitialConditions(x, p);
+  UpdateCrossoverConstraint(stance);
+  UpdateFootstepCost(vdes, stance);
+  UpdateTrackingCost(vdes, stance);
+  UpdateSRBDCosts(vdes, stance);
+
+  std::vector<CentroidalState<double>> xc;
+  std::vector<VectorXd> ff;
+
+  bool use_prev_sol = prev_sol.init and prev_sol.stance == stance;
+
+  for (int i = 0; i < params_.nknots - 1; ++i) {
+    if (use_prev_sol) {
+      xc.push_back(prev_sol.xc.at(i));
+      ff.push_back(prev_sol.ff.at(i));
+    } else {
+      Vector3d model_force = -x.segment<3>(cf_mpfc_utils::com_idx) *
+          (9.81 * params_.gait_params.mass / x(cf_mpfc_utils::com_idx+2));
+      vector<VectorXd> forces;
+      for (int i = 0; i < params_.contacts_in_stance_frame.size(); ++i) {
+        forces.push_back(model_force);
+      }
+      xc.push_back(x);
+      ff.push_back(stack(forces));
+    }
+  }
+  if (use_prev_sol) {
+    xc.push_back(prev_sol.xc.back());
+    xc.front() = x;
+  } else {
+    xc.push_back(x);
+  }
+
+  double s = stance == Stance::kLeft ? -1 : 1;
+  Vector3d p_post = use_prev_sol ? prev_sol.pp.at(1) : p + s * params_.gait_params.stance_width * Vector3d::UnitY();
+
+  UpdateSRBDynamicsConstraint(xc, ff, I, t);
+  UpdateModelSwitchConstraint(x, p, p_post, I);
+
+  auto solver_start = std::chrono::steady_clock::now();
+  auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
+  auto solver_end = std::chrono::steady_clock::now();
+
+
+  cf_mpfc_solution mpfc_solution;
+  mpfc_solution.success = result.is_success();
+  mpfc_solution.solution_result = result.get_solution_result();
+
+  auto solution_details =
+      result.get_solver_details<drake::solvers::GurobiSolver>();
+
+  auto end = std::chrono::steady_clock::now();
+
+  std::chrono::duration<double> total_time = end - start;
+  std::chrono::duration<double> solve_time = solver_end - solver_start;
+
+  mpfc_solution.optimizer_time = solution_details.optimizer_time;
+  mpfc_solution.total_time = total_time.count();
+  
+  return mpfc_solution;
+}
+
 void CFMPFC::MakeMPCVariables() {
   DRAKE_DEMAND(prog_->num_vars() == 0);
 
@@ -355,6 +423,48 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
   srb_dynamics_c_->UpdateCoefficients(A_dyn, b_dyn);
 }
 
+void CFMPFC::UpdateModelSwitchConstraint(
+    CentroidalState<double> xc, const Eigen::Vector3d &p_pre,
+    const Eigen::Vector3d &p_post, const Matrix3d &I) {
+  MatrixXd Ax;
+  MatrixXd Bp;
+  Vector4d b;
+  cf_mpfc_utils::LinearizeReset(xc, p_pre, p_post, I, params_.gait_params.mass, Ax, Bp, b);
+  // xi = Ax (x - xc) + Bp(p - p_post) + b
+  // Ax * x + Bp * p - xi = Ax * xc + Bp * p_post - b
+  MatrixXd A_eq = model_switch_c_->GetDenseA();
+  A_eq.leftCols<SrbDim>() = Ax;
+  A_eq.middleCols<FootstepDim>(SrbDim) = Bp;
+  A_eq.rightCols<AlipDim>() = -Matrix4d::Identity();
+
+  Vector4d b_eq = Ax * xc + Bp * p_post - b;
+  model_switch_c_->UpdateCoefficients(A_eq, b_eq);
+}
+
+void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
+  CentroidalState<double> xd = CentroidalState<double>::Zero();
+  xd(0) = 1;
+  xd(4) = 1;
+  xd(8) = 1;
+  xd(cf_mpfc_utils::com_idx + 2) = params_.gait_params.height;
+  xd.segment<2>(cf_mpfc_utils::com_dot_idx) = vdes;
+
+  int nc = params_.contacts_in_stance_frame.size();
+  Vector3d fd = (9.81 * params_.gait_params.mass / nc) * Vector3d::UnitZ();
+
+  MatrixXd Qx = MatrixXd::Identity(SrbDim, SrbDim);
+  MatrixXd Qf = 0.001 * MatrixXd::Identity(3 * nc, 3 * nc);
+
+  for (int i = 0; i < params_.nknots - 1; ++i) {
+    centroidal_state_cost_.at(i).evaluator()->UpdateCoefficients(
+        2 * Qx, -2 * Qx * xd, xd.transpose() * Qx * xd, true
+    );
+    centroidal_input_cost_.at(i).evaluator()->UpdateCoefficients(
+        2 * Qf, -2 * Qf * fd, fd.transpose() * Qf * fd, true
+    );
+  }
+}
+
 void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {
   AlipGaitParams gait_params = params_.gait_params;
   gait_params.desired_velocity = vdes;
@@ -374,24 +484,6 @@ void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {
         Q, b, 0, true // we know it's convex
     );
   }
-}
-
-void CFMPFC::UpdateModelSwitchConstraint(
-    CentroidalState<double> xc, const Eigen::Vector3d &p_pre,
-    const Eigen::Vector3d &p_post, const Matrix3d &I) {
-  MatrixXd Ax;
-  MatrixXd Bp;
-  Vector4d b;
-  cf_mpfc_utils::LinearizeReset(xc, p_pre, p_post, I, params_.gait_params.mass, Ax, Bp, b);
-  // xi = Ax (x - xc) + Bp(p - p_post) + b
-  // Ax * x + Bp * p - xi = Ax * xc + Bp * p_post - b
-  MatrixXd A_eq = model_switch_c_->GetDenseA();
-  A_eq.leftCols<SrbDim>() = Ax;
-  A_eq.middleCols<FootstepDim>(SrbDim) = Bp;
-  A_eq.rightCols<AlipDim>() = -Matrix4d::Identity();
-
-  Vector4d b_eq = Ax * xc + Bp * p_post - b;
-  model_switch_c_->UpdateCoefficients(A_eq, b_eq);
 }
 
 void CFMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {

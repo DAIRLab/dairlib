@@ -8,7 +8,6 @@ using Eigen::Vector3d;
 
 void TestDynamics() {
   cf_mpfc_utils::CentroidalState<double> srbd_state;
-  cf_mpfc_utils::CentroidalState<drake::AutoDiffXd> srbd_state_ad;
 
   double mass = 30;
 
@@ -89,6 +88,22 @@ void TestMPFC() {
   );
 
   CFMPFC mpfc(params);
+
+  cf_mpfc_utils::CentroidalState<double> srbd_state;
+  srbd_state.setZero();
+  srbd_state(0) = 1;
+  srbd_state(4) = 1;
+  srbd_state(8) = 1;
+  srbd_state(10) = -0.1;
+  srbd_state(11) = 1;
+  srbd_state(15) = 0.2;
+
+  cf_mpfc_solution prev_sol{};
+
+  auto sol = mpfc.Solve(srbd_state, Vector3d::Zero(), 0.25, Vector2d::Zero(),
+             alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
+             prev_sol);
+
 }
 
 

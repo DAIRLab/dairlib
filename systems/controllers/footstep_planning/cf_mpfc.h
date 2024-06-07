@@ -31,11 +31,21 @@ using cf_mpfc_utils::CentroidalState;
 using cf_mpfc_utils::CentroidalStateDeriv;
 
 struct cf_mpfc_solution {
-  std::vector<CentroidalState<double>> xc; // SRB State
-  std::vector<Eigen::VectorXd> uc; // SRB Input
-  Eigen::Vector4d xi;              // ALIP state at beginning of next stance phase
-  std::vector<Eigen::Vector4d> xx; // step-to-step alip state
-  std::vector<Eigen::Vector3d> pp; // footstep positions
+  bool init = false;
+  std::vector<CentroidalState<double>> xc{}; // SRB State
+  std::vector<Eigen::VectorXd> ff{}; // SRB Input
+  Eigen::Vector4d xi{};              // ALIP state at beginning of next stance phase
+  std::vector<Eigen::Vector4d> xx{}; // step-to-step alip state
+  std::vector<Eigen::Vector3d> pp{}; // footstep positions
+  alip_utils::Stance stance{};
+
+
+  bool success;
+  double t_nom;
+  double total_time;
+  double optimizer_time;
+  Eigen::Vector2d desired_velocity;
+  drake::solvers::SolutionResult solution_result;
 };
 
 struct cf_mpfc_params {
@@ -58,6 +68,12 @@ struct cf_mpfc_params {
 class CFMPFC {
  public:
   explicit CFMPFC(cf_mpfc_params params);
+
+  cf_mpfc_solution Solve(
+      const CentroidalState<double>& x,
+      const Eigen::Vector3d& p, double t, const Eigen::Vector2d& vdes,
+      alip_utils::Stance stance, const Eigen::Matrix3d& I,
+      const cf_mpfc_solution& prev_sol);
 
  protected:
   void MakeMPCVariables();
@@ -148,8 +164,8 @@ class CFMPFC {
 
                                                            // | Init  | Updater
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr; // |   x   |   x
-  vector<Binding<QuadraticCost>> centroidal_state_cost_{}; // |   x   |
-  vector<Binding<QuadraticCost>> centroidal_input_cost_{}; // |   x   |
+  vector<Binding<QuadraticCost>> centroidal_state_cost_{}; // |   x   |   x
+  vector<Binding<QuadraticCost>> centroidal_input_cost_{}; // |   x   |   x
   vector<Binding<QuadraticCost>> tracking_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> footstep_cost_{};         // |   x   |   x
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};  // |   x   |  N/A

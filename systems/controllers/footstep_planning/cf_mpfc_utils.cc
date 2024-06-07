@@ -50,14 +50,6 @@ RotationalInertia<double> CalcRotationalInertiaAboutCoM(
   return I.CalcRotationalInertia();
 }
 
-constexpr int R_x_idx = 0;
-constexpr int R_y_idx = 3;
-constexpr int R_z_idx = 6;
-constexpr int com_idx = 9;
-constexpr int w_idx = 12;
-constexpr int com_dot_idx = 15;
-
-
 }
 
 CentroidalState<double> GetCentroidalState(

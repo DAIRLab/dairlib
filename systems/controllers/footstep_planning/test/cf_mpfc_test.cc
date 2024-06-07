@@ -3,8 +3,10 @@
 namespace dairlib::systems::controllers {
 
 using cf_mpfc_utils::SrbDim;
+using Eigen::Vector2d;
+using Eigen::Vector3d;
 
-int DoMain(int argc, char* argv[]) {
+void TestDynamics() {
   cf_mpfc_utils::CentroidalState<double> srbd_state;
   cf_mpfc_utils::CentroidalState<drake::AutoDiffXd> srbd_state_ad;
 
@@ -44,7 +46,7 @@ int DoMain(int argc, char* argv[]) {
   auto end = std::chrono::high_resolution_clock::now();
 
   std::cout << "AD took " <<
-  std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " us.\n";
+            std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " us.\n";
 
   std::cout << "Dynamics\nA:\n" << A << std::endl
             << "Bf:\n" << Bf << std::endl
@@ -53,7 +55,46 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Reset\nAx:\n" << Ax << std::endl
             << "Bd:\n" << Bd << std::endl
             << "x+:\n" << a << std::endl;
+}
 
+void TestMPFC() {
+  auto test_gait = alip_utils::AlipGaitParams {
+      0.85,
+      32.0,
+      0.3,
+      0.1,
+      0.3,
+      Vector2d::UnitX(),
+      alip_utils::Stance::kLeft,
+      alip_utils::ResetDiscretization::kZOH
+  };
+
+  cf_mpfc_params params;
+
+  params.gait_params = test_gait;
+  params.gait_params = test_gait;
+  params.nmodes = 3;
+  params.nknots = 4;
+  params.contacts_in_stance_frame = {0.09 * Vector3d::UnitX(), -0.09 * Vector3d::UnitX()};
+  params.soft_constraint_cost = 1000;
+  params.com_pos_bound = Eigen::Vector2d::Ones();
+  params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
+  params.Q = Eigen::Matrix4d::Identity();
+  params.R = Eigen::Matrix3d::Identity();
+  params.Qf = Eigen::Matrix4d::Identity();
+  params.solver_options.SetOption(
+      drake::solvers::GurobiSolver::id(),
+      "Presolve",
+      0
+  );
+
+  CFMPFC mpfc(params);
+}
+
+
+int DoMain(int argc, char* argv[]) {
+  TestDynamics();
+  TestMPFC();
   return 0;
 }
 

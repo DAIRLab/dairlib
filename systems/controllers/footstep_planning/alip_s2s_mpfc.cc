@@ -408,7 +408,7 @@ void AlipS2SMPFC::UpdateInputCost(const Vector2d &vdes, Stance stance) {
 }
 
 void AlipS2SMPFC::UpdateTrackingCost(const Vector2d &vdes, Stance stance) {
-  if (params_.tracking_cost_type == kVelocity) {
+  if (params_.tracking_cost_type == alip_utils::kVelocity) {
     UpdateTrackingCostVelocity(vdes);
     UpdateTerminalCostVelocity(vdes);
   } else {

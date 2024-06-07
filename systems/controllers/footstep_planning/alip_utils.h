@@ -11,6 +11,8 @@ namespace dairlib::systems::controllers::alip_utils {
 // (So during left stance, the next footstep will be in the -y direction)
 enum class Stance { kLeft = -1, kRight = 1 };
 enum class ResetDiscretization{ kZOH, kFOH, kSPLIT };
+enum AlipTrackingCostType{ kVelocity, kGait};
+
 
 struct AlipGaitParams {
   double height;

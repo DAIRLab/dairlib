@@ -5,6 +5,14 @@
 namespace dairlib::systems::controllers::cf_mpfc_utils {
 
 static constexpr Eigen::Index SrbDim = 18;
+static constexpr int R_x_idx = 0;
+static constexpr int R_y_idx = 3;
+static constexpr int R_z_idx = 6;
+static constexpr int com_idx = 9;
+static constexpr int w_idx = 12;
+static constexpr int com_dot_idx = 15;
+
+
 
 /**
  * State is in this order:

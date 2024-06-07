@@ -11,10 +11,6 @@
 
 namespace dairlib::systems::controllers {
 
-enum AlipTrackingCostType {
-  kVelocity, kGait
-};
-
 struct alip_s2s_mpfc_params {
   alip_utils::AlipGaitParams gait_params;
   int nmodes;
@@ -30,7 +26,7 @@ struct alip_s2s_mpfc_params {
   drake::solvers::SolverOptions solver_options;
   double umax = 25.0;
   double ankle_torque_regularization = 1.0;
-  AlipTrackingCostType tracking_cost_type = kVelocity;
+  alip_utils::AlipTrackingCostType tracking_cost_type = alip_utils::kGait;
 };
 
 struct alip_s2s_mpfc_params_io {
@@ -117,7 +113,7 @@ inline alip_s2s_mpfc_params MakeAlipS2SMPFCParamsFromYaml(
                params_io.cost_type == "gait");
 
   if (params_io.cost_type == "gait") {
-    params_out.tracking_cost_type = kGait;
+    params_out.tracking_cost_type = alip_utils::kGait;
   }
 
   alip_utils::ResetDiscretization

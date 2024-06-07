@@ -4,18 +4,18 @@ from typing import Any, ClassVar, Dict, Optional, Type, TypeVar, Union
 import numpy as np
 import torch as th
 from gymnasium import spaces
-from stable_baselines3.common.buffers import RolloutBuffer
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
-from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import explained_variance, get_schedule_fn, obs_as_tensor
-from stable_baselines3.common.vec_env import VecEnv
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.buffers import RolloutBuffer
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.callbacks import BaseCallback
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.policies import BasePolicy
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.utils import explained_variance, get_schedule_fn, obs_as_tensor
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.vec_env import VecEnv
 
-from sb3_contrib.common.recurrent.buffers import RecurrentDictRolloutBuffer, RecurrentRolloutBuffer
-from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
-from sb3_contrib.common.recurrent.type_aliases import RNNStates
-from sb3_contrib.ppo_recurrent.policies import CnnLstmPolicy, MlpLstmPolicy, MultiInputLstmPolicy
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.common.recurrent.buffers import RecurrentDictRolloutBuffer, RecurrentRolloutBuffer
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.common.recurrent.type_aliases import RNNStates
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.ppo_recurrent.policies import CnnLstmPolicy, MlpLstmPolicy, MultiInputLstmPolicy
 
 SelfRecurrentPPO = TypeVar("SelfRecurrentPPO", bound="RecurrentPPO")
 
@@ -155,8 +155,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
         # have the same architecture
         lstm = self.policy.lstm_actor
 
-        # if not isinstance(self.policy, RecurrentActorCriticPolicy):
-        #     raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
+        if not isinstance(self.policy, RecurrentActorCriticPolicy):
+            raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
 
         single_hidden_state_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
         # hidden and cell states for actor and critic
@@ -283,7 +283,6 @@ class RecurrentPPO(OnPolicyAlgorithm):
                         episode_starts = th.tensor([False], dtype=th.float32, device=self.device)
                         terminal_value = self.policy.predict_values(terminal_obs, terminal_lstm_state, episode_starts)[0]
                     rewards[idx] += self.gamma * terminal_value
-
             rollout_buffer.add(
                 self._last_obs,
                 actions,
@@ -406,13 +405,17 @@ class RecurrentPPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean(((th.exp(log_ratio) - 1) - log_ratio)[mask]).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
+                    # print(f'Log prob : {log_prob}')
+                    # print(f'Old Log : {rollout_data.old_log_prob}')
+                    # print(f'Log ratio : {log_ratio}')
+                    # print(f'Mask : {mask}')
+                    # print(f'KL : {approx_kl_div}\n')
 
                 if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
                     continue_training = False
                     if self.verbose >= 1:
                         print(f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}")
                     break
-
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()
@@ -422,8 +425,8 @@ class RecurrentPPO(OnPolicyAlgorithm):
 
             if not continue_training:
                 break
+            self._n_updates += 1
 
-        self._n_updates += self.n_epochs
         explained_var = explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten())
 
         # Logs

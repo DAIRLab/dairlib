@@ -4,10 +4,10 @@ from typing import Callable, Generator, Optional, Tuple, Union
 import numpy as np
 import torch as th
 from gymnasium import spaces
-from stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
-from stable_baselines3.common.vec_env import VecNormalize
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.buffers import DictRolloutBuffer, RolloutBuffer
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.vec_env import VecNormalize
 
-from sb3_contrib.common.recurrent.type_aliases import (
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.common.recurrent.type_aliases import (
     RecurrentDictRolloutBufferSamples,
     RecurrentRolloutBufferSamples,
     RNNStates,
@@ -183,7 +183,8 @@ class RecurrentRolloutBuffer(RolloutBuffer):
         split_index = np.random.randint(self.buffer_size * self.n_envs)
         indices = np.arange(self.buffer_size * self.n_envs)
         indices = np.concatenate((indices[split_index:], indices[:split_index]))
-
+        
+        #indices = np.random.permutation(self.buffer_size * self.n_envs)
         env_change = np.zeros(self.buffer_size * self.n_envs).reshape(self.buffer_size, self.n_envs)
         # Flag first timestep as change of environment
         env_change[0, :] = 1.0

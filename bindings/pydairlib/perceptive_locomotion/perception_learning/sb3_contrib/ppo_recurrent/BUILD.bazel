@@ -15,8 +15,15 @@ py_library(
     name = "ppo_recurrent",
     srcs = ["ppo_recurrent.py"],
     deps = [
-    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common",
-    "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:buffers",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:callbacks",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:on_policy_algorithm",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:policies",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:type_aliases",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common:utils",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/stable_baselines3/common/vec_env",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/common/recurrent",
+    "//bindings/pydairlib/perceptive_locomotion/perception_learning/sb3_contrib/ppo_recurrent:policies"
     ]
 )
 

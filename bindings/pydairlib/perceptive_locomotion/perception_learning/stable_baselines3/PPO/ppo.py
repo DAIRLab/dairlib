@@ -245,7 +245,11 @@ class PPO(OnPolicyAlgorithm):
                         values - rollout_data.old_values, -clip_range_vf, clip_range_vf
                     )
                 # Value loss using the TD(gae_lambda) target
+                # print(f'returns : {rollout_data.returns}')
+                # print(f'values_pred : {values_pred}')
+                
                 value_loss = F.mse_loss(rollout_data.returns, values_pred)
+                #print(f'Returns : {rollout_data.returns}')
                 value_losses.append(value_loss.item())
 
                 # Entropy loss favor exploration
@@ -258,7 +262,7 @@ class PPO(OnPolicyAlgorithm):
                 entropy_losses.append(entropy_loss.item())
 
                 loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
-
+                #print(value_loss)
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
                 # and discussion in PR #419: https://github.com/DLR-RM/stable-baselines3/pull/419
@@ -267,6 +271,10 @@ class PPO(OnPolicyAlgorithm):
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
                     approx_kl_divs.append(approx_kl_div)
+                    print(f'Log prob : {log_prob}')
+                    print(f'Old Log : {rollout_data.old_log_prob}')
+                    print(f'log_ratio : {log_ratio}')
+                    print(f'KL : {approx_kl_div}\n')
 
                 if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
                     continue_training = False

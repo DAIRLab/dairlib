@@ -1,4 +1,4 @@
-from sb3_contrib.common.recurrent.policies import (
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.common.recurrent.policies import (
     RecurrentActorCriticCnnPolicy,
     RecurrentActorCriticPolicy,
     RecurrentMultiInputActorCriticPolicy,

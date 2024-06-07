@@ -1,7 +1,7 @@
 from typing import NamedTuple, Tuple
 
 import torch as th
-from stable_baselines3.common.type_aliases import TensorDict
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.type_aliases import TensorDict
 
 
 class RNNStates(NamedTuple):

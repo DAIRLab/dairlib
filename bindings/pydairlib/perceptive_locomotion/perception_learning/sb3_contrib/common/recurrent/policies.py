@@ -3,20 +3,20 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy as np
 import torch as th
 from gymnasium import spaces
-from stable_baselines3.common.distributions import Distribution
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.torch_layers import (
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.distributions import Distribution
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.policies import ActorCriticPolicy
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
     CombinedExtractor,
     FlattenExtractor,
     MlpExtractor,
     NatureCNN,
 )
-from stable_baselines3.common.type_aliases import Schedule
-from stable_baselines3.common.utils import zip_strict
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.type_aliases import Schedule
+from pydairlib.perceptive_locomotion.perception_learning.stable_baselines3.common.utils import zip_strict
 from torch import nn
 
-from sb3_contrib.common.recurrent.type_aliases import RNNStates
+from pydairlib.perceptive_locomotion.perception_learning.sb3_contrib.common.recurrent.type_aliases import RNNStates
 
 
 class RecurrentActorCriticPolicy(ActorCriticPolicy):
@@ -110,14 +110,9 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         )
 
         self.lstm_kwargs = lstm_kwargs or {}
-        self.shared_lstm = shared_lstm
-        self.enable_critic_lstm = enable_critic_lstm
-        # self.lstm_actor = nn.LSTM(
-        #     self.features_dim,
-        #     lstm_hidden_size,
-        #     num_layers=n_lstm_layers,
-        #     **self.lstm_kwargs,
-        # )
+        self.shared_lstm = shared_lstm # Do not share LSTM
+        self.enable_critic_lstm = enable_critic_lstm # True
+
         self.lstm_actor = lstm_actor
         self.lstm_critic = lstm_critic
 
@@ -125,7 +120,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # (n_lstm_layers, batch_size, lstm_hidden_size)
         self.lstm_hidden_state_shape = (n_lstm_layers, 1, lstm_hidden_size)
         self.critic = None
-        #self.lstm_critic = None
+
         assert not (
             self.shared_lstm and self.enable_critic_lstm
         ), "You must choose between shared LSTM, seperate or no LSTM for the critic."
@@ -139,15 +134,6 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # (size of the output of the actor lstm)
         if not (self.shared_lstm or self.enable_critic_lstm):
             self.critic = nn.Linear(self.features_dim, lstm_hidden_size)
-
-        # Use a separate LSTM for the critic
-        # if self.enable_critic_lstm:
-        #     self.lstm_critic = nn.LSTM(
-        #         self.features_dim,
-        #         lstm_hidden_size,
-        #         num_layers=n_lstm_layers,
-        #         **self.lstm_kwargs,
-        #     )
 
         # Setup optimizer with initial learning rate
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
@@ -194,14 +180,14 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # If we don't have to reset the state in the middle of a sequence
         # we can avoid the for loop, which speeds up things
         if th.all(episode_starts == 0.0):
-            lstm_output, new_lstm_states = lstm(features_sequence, lstm_states)
+            lstm_output, lstm_states = lstm(features_sequence, lstm_states)
             lstm_output = th.flatten(lstm_output.transpose(0, 1), start_dim=0, end_dim=1)
-            return lstm_output, new_lstm_states
+            return lstm_output, lstm_states
 
         lstm_output = []
         # Iterate over the sequence
         for features, episode_start in zip_strict(features_sequence, episode_starts):
-            hidden, new_lstm_states = lstm(
+            hidden, lstm_states = lstm(
                 features.unsqueeze(dim=0),
                 (
                     # Reset the states at the beginning of a new episode
@@ -213,7 +199,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # Sequence to batch
         # (sequence length, n_seq, lstm_out_dim) -> (batch_size, lstm_out_dim)
         lstm_output = th.flatten(th.cat(lstm_output).transpose(0, 1), start_dim=0, end_dim=1)
-        return lstm_output, new_lstm_states
+
+        return lstm_output, lstm_states
 
     def forward(
         self,
@@ -233,32 +220,13 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         :return: action, value and log probability of the action
         """
         # Preprocess the observation if needed
-        #features = self.extract_features(obs)
         features = self.extract_features(obs)
 
         pi_features = self.mlp_extractor.multihead_actor(features)
         vf_features = self.mlp_extractor.multihead_critic(features)
         
-        # if self.share_features_extractor:
-        #     pi_features = vf_features = features  # alis
-        # else:
-        #     pi_features, vf_features = features
-        # latent_pi, latent_vf = self.mlp_extractor(features)
-        #print(lstm_states.pi)
-        
         latent_pi, lstm_states_pi = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.lstm_actor)
         latent_vf, lstm_states_vf = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
-
-        # if self.lstm_critic is not None:
-        #     latent_vf, lstm_states_vf = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
-        # elif self.shared_lstm:
-        #     # Re-use LSTM features but do not backpropagate
-        #     latent_vf = latent_pi.detach()
-        #     lstm_states_vf = (lstm_states_pi[0].detach(), lstm_states_pi[1].detach())
-        # else:
-        #     # Critic only has a feedforward network
-        #     latent_vf = self.critic(vf_features)
-        #     lstm_states_vf = lstm_states_pi
 
         latent_pi = self.mlp_extractor.forward_actor(latent_pi)
         latent_vf = self.mlp_extractor.forward_critic(latent_vf)
@@ -268,6 +236,8 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         distribution = self._get_action_dist_from_latent(latent_pi)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
+        actions = actions.reshape((-1, *self.action_space.shape))
+
         return actions, values, log_prob, RNNStates(lstm_states_pi, lstm_states_vf)
 
     def get_distribution(
@@ -288,7 +258,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         # Call the method from the parent of the parent class
         features = super(ActorCriticPolicy, self).extract_features(obs, self.pi_features_extractor)
 
-        features = self.mlp_extractor.multihead_actor(features) ##
+        features = self.mlp_extractor.multihead_actor(features)
 
         latent_pi, lstm_states = self._process_sequence(features, lstm_states, episode_starts, self.lstm_actor)
         latent_pi = self.mlp_extractor.forward_actor(latent_pi)
@@ -313,15 +283,7 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
         features = super(ActorCriticPolicy, self).extract_features(obs, self.vf_features_extractor)
         
         features = self.mlp_extractor.multihead_critic(features)
-        
-        if self.lstm_critic is not None:
-            latent_vf, lstm_states_vf = self._process_sequence(features, lstm_states, episode_starts, self.lstm_critic)
-        elif self.shared_lstm:
-            # Use LSTM from the actor
-            latent_pi, _ = self._process_sequence(features, lstm_states, episode_starts, self.lstm_actor)
-            latent_vf = latent_pi.detach()
-        else:
-            latent_vf = self.critic(features)
+        latent_vf, lstm_states_vf = self._process_sequence(features, lstm_states, episode_starts, self.lstm_critic)
 
         latent_vf = self.mlp_extractor.forward_critic(latent_vf)
         return self.value_net(latent_vf)
@@ -346,18 +308,9 @@ class RecurrentActorCriticPolicy(ActorCriticPolicy):
 
         pi_features = self.mlp_extractor.multihead_actor(features)
         vf_features = self.mlp_extractor.multihead_critic(features)
-
-        # if self.share_features_extractor:
-        #     pi_features = vf_features = features  # alias
-        # else:
-        #     pi_features, vf_features = features
+        
         latent_pi, _ = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.lstm_actor)
-        if self.lstm_critic is not None:
-            latent_vf, _ = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
-        elif self.shared_lstm:
-            latent_vf = latent_pi.detach()
-        else:
-            latent_vf = self.critic(vf_features)
+        latent_vf, _ = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
 
         latent_pi = self.mlp_extractor.forward_actor(latent_pi)
         latent_vf = self.mlp_extractor.forward_critic(latent_vf)

@@ -54,14 +54,16 @@ CentroidalState<double> GetCentroidalState(
 
 void LinearizeSRBDynamics(
     const CentroidalState<double>& x,
-    const std::vector<drake::Vector6d>& stacked_contact_locations_and_forces,
+    const std::vector<Eigen::Vector3d>& contact_points,
+    const std::vector<Eigen::Vector3d>& contact_forces,
     const Eigen::Matrix3d& I, double m,
-    Eigen::MatrixXd& A, Eigen::MatrixXd& B, Eigen::VectorXd& c);
+    Eigen::MatrixXd& A, Eigen::MatrixXd& Bp, Eigen::MatrixXd&Bf, Eigen::VectorXd& c);
 
 template <typename T>
 CentroidalStateDeriv<T> SRBDynamics(
     const CentroidalState<T>& state,
-    const std::vector<drake::Vector6<T>>& stacked_contact_locations_and_forces,
+    const std::vector<drake::Vector3<T>>& contact_points,
+    const std::vector<drake::Vector3<T>>& contact_forces,
     const Eigen::Matrix3d& I, double m);
 
 template <typename T>
@@ -75,6 +77,6 @@ drake::Vector4<T> CalculateReset(
 void LinearizeReset(const CentroidalState<double>& x_pre,
                     const Eigen::Vector3d& p_pre, const Eigen::Vector3d& p_post,
                     const Eigen::Matrix3d& I, double m,
-                    Eigen::MatrixXd& A, Eigen::Vector4d& b);
+                    Eigen::MatrixXd& Ax, Eigen::MatrixXd& B_post, Eigen::Vector4d& b);
 
 }

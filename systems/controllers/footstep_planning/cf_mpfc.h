@@ -38,8 +38,10 @@ struct cf_mpfc_solution {
 struct cf_mpfc_params {
   alip_utils::AlipGaitParams gait_params;
   int nmodes;
+  int nknots;
   double time_regularization;
   double soft_constraint_cost;
+  std::vector<Eigen::Vector3d> contacts_in_stance_frame;
   Eigen::Vector2d com_pos_bound;
   Eigen::Vector2d com_vel_bound;
   Eigen::MatrixXd Q;
@@ -51,7 +53,7 @@ struct cf_mpfc_params {
 
 class CFMPFC {
  public:
-  CFMPFC(cf_mpfc_params params);
+  explicit CFMPFC(cf_mpfc_params params);
 
  protected:
   void MakeMPCVariables();
@@ -83,10 +85,10 @@ class CFMPFC {
   void Check() {
     DRAKE_DEMAND(initial_foot_c_ != nullptr);
     DRAKE_DEMAND(initial_state_c_ != nullptr);
-    DRAKE_DEMAND(dynamics_c_ != nullptr);
+    DRAKE_DEMAND(srb_dynamics_c_ != nullptr);
+    DRAKE_DEMAND(alip_dynamics_c_ != nullptr);
     DRAKE_DEMAND(footstep_choice_c_ != nullptr);
     DRAKE_DEMAND(terminal_cost_ != nullptr);
-    DRAKE_DEMAND(time_regularization_ != nullptr);
     DRAKE_DEMAND(model_switch_c_ != nullptr);
   };
 
@@ -103,17 +105,17 @@ class CFMPFC {
   drake::solvers::GurobiSolver solver_;
 
   vector<VectorXDecisionVariable> pp_{}; // footstep sequence
+  vector<VectorXDecisionVariable> xc_{}; // Centroidal (SRBD) state
   vector<VectorXDecisionVariable> xx_{}; // ALIP state
+  vector<VectorXDecisionVariable> ff_{}; // Centroidal (SRBD) input
   vector<VectorXDecisionVariable> ee_{}; // workspace soft constraint slack var
-  vector<VectorXDecisionVariable> mu_{}; // binary variables
-  VectorXDecisionVariable tau_;          // first footstep duration
-  VectorXDecisionVariable u_;            // Integrated ankle torque
+  VectorXDecisionVariable xi_;           // initial ALIP State
 
   std::shared_ptr<LinearEqualityConstraint> initial_foot_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_state_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> initial_alip_state_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> model_switch_c_ = nullptr;
-  std::shared_ptr<LinearEqualityConstraint> dynamics_c_ = nullptr;
+  std::shared_ptr<LinearEqualityConstraint> srb_dynamics_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> alip_dynamics_c_ = nullptr;
   std::shared_ptr<LinearEqualityConstraint> footstep_choice_c_ = nullptr;
 
@@ -121,14 +123,14 @@ class CFMPFC {
   vector<Binding<LinearConstraint>> no_crossover_c_{};
   vector<Binding<LinearConstraint>> reachability_c_{};
 
-  std::shared_ptr<QuadraticCost> ankle_torque_regularization_ = nullptr;
-  std::shared_ptr<QuadraticCost> time_regularization_ = nullptr;
   std::shared_ptr<QuadraticCost> terminal_cost_ = nullptr;
+  vector<Binding<QuadraticCost>> centroidal_state_cost_{};
+  vector<Binding<QuadraticCost>> centroidal_input_cost_{};
   vector<Binding<QuadraticCost>> tracking_cost_{};
-  vector<Binding<QuadraticCost>> input_cost_{};
+  vector<Binding<QuadraticCost>> footstep_cost_{};
   vector<Binding<QuadraticCost>> soft_constraint_cost_{};
 
-  // some useful matrices and dynamics quantities
+  // some useful matrices and dynamics quantities for ALIP step to step portion
   Eigen::Matrix4d A_;
   Eigen::Matrix<double, 4, 2> B_;
   Eigen::Matrix4d Q_proj_;

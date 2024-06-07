@@ -122,6 +122,9 @@ class AlipFootstepLQR(LeafSystem):
             'state': self.DeclareVectorInputPort(
                 "alip_state", 4
             ).get_index(),
+            'xut': self.DeclareVectorInputPort(
+                "xut", 59
+            ).get_index(),
         }
         if self.elevation_map:
             self.input_port_indices['height_map'] = self.DeclareAbstractInputPort(

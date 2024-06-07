@@ -114,14 +114,13 @@ def reset_handler(simulator, seed):
     ic_generator = InitialConditionsServer(
         fname=os.path.join(
             perception_learning_base_folder,
-            #'tmp/index/initial_conditions_2.npz'
             'tmp/ic.npz'
         )
     )
     
     datapoint = ic_generator.random()
     #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
-    v_des_theta = 0.1
+    v_des_theta = 0.15
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
@@ -158,13 +157,13 @@ def simulate_init(sim_params, random_terrain = False):
     terrain = 'params/stair_curriculum.yaml'
     if random_terrain:
         rand = np.random.randint(1,11) # 1,2,3,4 | 5,6
-        if rand in [1,2,3,4,5,6,7,8]:
+        if rand in [1,2,3,4,5,6]:
             rand = np.random.randint(0, 500)
             terrain = f'params/stair/flat_stair_{rand}.yaml'
         else:
             rand = np.random.randint(0, 500)
             terrain = f'params/flat/flat_{rand}.yaml'
-
+        #terrain = 'params/flat/flat_0.yaml'
     sim_params.terrain = os.path.join(perception_learning_base_folder, terrain)
 
     sim_env, controller, diagram, cost_logger= build_diagram(sim_params)
@@ -172,7 +171,7 @@ def simulate_init(sim_params, random_terrain = False):
     simulator.Initialize()
     
     def monitor(context):
-        time_limit = 30
+        time_limit = 20
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -228,7 +227,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
                                   high=np.asarray(ha, dtype="float32"),
                                   dtype=np.float32)
     
-    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*80*80+6,), dtype="float64")
+    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*64*64+6+23+23,), dtype="float64")
 
     # Time_step to match walking
     time_step = 0.05

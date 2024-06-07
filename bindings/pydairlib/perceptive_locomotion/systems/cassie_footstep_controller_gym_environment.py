@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from os import path
 from typing import Dict, Union, Type
 from matplotlib.cm import ScalarMappable
+from pprint import pprint
 
 import numpy as np
+import math
 
 from pydairlib.cassie.cassie_utils import AddCassieMultibody
 
@@ -77,10 +79,13 @@ class ObservationPublisher(LeafSystem):
             'state': self.DeclareVectorInputPort(
                 'x_u_t', 59
             ).get_index(),
+            'gt_state': self.DeclareVectorInputPort(
+                'gt_state', 59
+            ).get_index(),
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*self.height*self.height+6+23, self.calculate_hmap
+                "observations", 3*self.height*self.height+6+23+23, self.calculate_hmap
             ).get_index()
         }
         if self.simulate_perception:
@@ -101,14 +106,6 @@ class ObservationPublisher(LeafSystem):
     def get_output_port_by_name(self, name: str) -> OutputPort:
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
-
-    def CalcObs(self, context, output):
-        plant_state = self.get_input_port(0).Eval(context)
-        if self.noise:
-            plant_state += np.random.uniform(low=-0.01,
-                                                high=0.01,
-                                                size=self.ns)
-        output.set_value(plant_state)
 
     def calculate_hmap(self, context: Context, output):
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
@@ -133,10 +130,14 @@ class ObservationPublisher(LeafSystem):
         alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
+        gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
+        
         joint_angle = states[:23]
-        #actuator = states[45:55]
+        joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
+        gt_joint_angle = gt_states[:23]
 
-        out = np.hstack((flat, alip, vdes, joint_angle))
+        out = np.hstack((flat, alip, vdes, joint_angle, gt_joint_angle))
+
         output.set_value(out)
 
 class RewardSystem(LeafSystem):
@@ -163,7 +164,7 @@ class RewardSystem(LeafSystem):
                 'footstep_command', 3
             ).get_index(),
             'state': self.DeclareVectorInputPort(
-                'x_u_t', 59
+                'gt_x_u_t', 59
             ).get_index(),
             'vdes': self.DeclareVectorInputPort(
                 'vdes', 2
@@ -219,6 +220,7 @@ class RewardSystem(LeafSystem):
 
         left_penalty = 0
         right_penalty = 0
+        
         # penalize toe angle
         front_contact_pt = np.array((-0.0457, 0.112, 0))
         rear_contact_pt = np.array((0.088, 0, 0))
@@ -237,7 +239,7 @@ class RewardSystem(LeafSystem):
             right_penalty = -1
 
         # reward normalize to 0 ~ 1
-        reward = 0.5*LQRreward + 0.4*velocity_reward + 0.1*angular_reward# + left_penalty + right_penalty
+        reward = 0.5*LQRreward + 0.25*velocity_reward + 0.25*angular_reward# + left_penalty + right_penalty
         #reward = 0.75*velocity_reward + 0.25*angular_reward + left_penalty + right_penalty# -2
         #reward = 0.3*LQRreward + 0.25*velocity_reward + 0.35*angular_reward + left_penalty + right_penalty # -3
     
@@ -502,6 +504,11 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
             ),
+            'gt_x_u_t': builder.ExportOutput(
+                self.cassie_sim.get_output_port_state(),
+                'gt_x_u_t'
+            )
+
         }
         if self.params.simulate_perception:
             output_port_indices['height_map'] = builder.ExportOutput(
@@ -620,15 +627,19 @@ class CassieFootstepControllerEnvironment(Diagram):
             obs_pub.get_input_port_by_name("height_map")
         )
         builder.Connect(
-            self.ALIPfootstep_controller.get_output_port_by_name("lqr_reference"), #xd_ud
+            self.ALIPfootstep_controller.get_output_port_by_name("lqr_reference"),
             obs_pub.get_input_port_by_name("lqr_reference")
         )
         builder.Connect(
-            self.ALIPfootstep_controller.get_output_port_by_name("vdes"), #xd_ud
+            self.ALIPfootstep_controller.get_output_port_by_name("vdes"),
             obs_pub.get_input_port_by_name("vdes")
         )
         builder.Connect(
-            self.get_output_port_by_name("state"), #xd_ud
+            self.get_output_port_by_name("gt_x_u_t"),
+            obs_pub.get_input_port_by_name("gt_state")
+        )
+        builder.Connect(
+            self.get_output_port_by_name("state"),
             obs_pub.get_input_port_by_name("state")
         )
 
@@ -647,11 +658,16 @@ class CassieFootstepControllerEnvironment(Diagram):
                 footstep_controller.get_output_port_by_name(controller_port),
                 reward.get_input_port_by_name(controller_port)
             )
-        for sim_port in ['fsm', 'time_until_switch', 'state']:
+        for sim_port in ['fsm', 'time_until_switch']:#, 'state']:
             builder.Connect(
                 self.get_output_port_by_name(sim_port),
                 reward.get_input_port_by_name(sim_port)
             )
+
+        builder.Connect(
+            self.get_output_port_by_name("gt_x_u_t"),
+            reward.get_input_port_by_name("state")
+        )
 
         builder.ExportOutput(reward.get_output_port(), "reward")
         return reward

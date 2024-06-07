@@ -67,6 +67,10 @@ class AlipFootstepNNLQR(AlipFootstepLQR):
                 model_value=Value(HeightMapQueryObject())
             ).get_index()
 
+        self.input_port_indices['gt_x_u_t'] = self.DeclareVectorInputPort(
+                "gt_x_u_t", 59,
+            ).get_index()
+
         # input error coordinate ue grid precomputation
         self.map_opts = HeightMapOptions()
         H = self.map_opts.nx

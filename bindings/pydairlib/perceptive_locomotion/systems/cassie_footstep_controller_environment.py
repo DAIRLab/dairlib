@@ -304,6 +304,10 @@ class CassieFootstepControllerEnvironment(Diagram):
                 self.cassie_sim.get_output_port_cassie_out(),
                 'lcmt_cassie_out'
             ),
+            'gt_x_u_t': builder.ExportOutput(
+                self.cassie_sim.get_output_port_state(),
+                'gt_x_u_t'
+            )
         }
         if self.params.simulate_perception:
             output_port_indices['height_map'] = builder.ExportOutput(

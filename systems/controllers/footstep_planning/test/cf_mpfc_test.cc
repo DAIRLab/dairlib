@@ -82,10 +82,10 @@ void TestMPFC() {
   params.R = Eigen::Matrix3d::Identity();
   params.Qf = Eigen::Matrix4d::Identity();
   params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(),
-      "Presolve",
-      0
-  );
+      drake::solvers::GurobiSolver::id(), "Presolve", 1);
+  params.solver_options.SetOption(
+      drake::solvers::GurobiSolver::id(), "LogToConsole", 1);
+  params.mu = 1;
 
   CFMPFC mpfc(params);
 
@@ -96,7 +96,7 @@ void TestMPFC() {
   srbd_state(8) = 1;
   srbd_state(10) = -0.1;
   srbd_state(11) = 1;
-  srbd_state(15) = 0.2;
+  srbd_state(15) = 0;
 
   cf_mpfc_solution prev_sol{};
 
@@ -104,11 +104,12 @@ void TestMPFC() {
              alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
              prev_sol);
 
+  std::cout << "Solve took " << sol.optimizer_time << "seconds\n";
+  std::cout << "Solution Result: " << sol.solution_result << "\n";
 }
 
 
 int DoMain(int argc, char* argv[]) {
-  TestDynamics();
   TestMPFC();
   return 0;
 }

@@ -81,10 +81,11 @@ cf_mpfc_solution CFMPFC::Solve(
       xc.push_back(prev_sol.xc.at(i));
       ff.push_back(prev_sol.ff.at(i));
     } else {
-      Vector3d model_force = -x.segment<3>(cf_mpfc_utils::com_idx) *
-          (9.81 * params_.gait_params.mass / x(cf_mpfc_utils::com_idx+2));
+      double f = 9.81 * params_.gait_params.mass / params_.contacts_in_stance_frame.size();
+      Vector3d model_force =
+          f / x(cf_mpfc_utils::com_idx+2) * x.segment<3>(cf_mpfc_utils::com_idx);
       vector<VectorXd> forces;
-      for (int i = 0; i < params_.contacts_in_stance_frame.size(); ++i) {
+      for (int j = 0; j < params_.contacts_in_stance_frame.size(); ++j) {
         forces.push_back(model_force);
       }
       xc.push_back(x);
@@ -110,6 +111,9 @@ cf_mpfc_solution CFMPFC::Solve(
 
 
   cf_mpfc_solution mpfc_solution;
+
+  mpfc_solution.stance = stance;
+  mpfc_solution.desired_velocity = vdes;
   mpfc_solution.success = result.is_success();
   mpfc_solution.solution_result = result.get_solution_result();
 
@@ -123,6 +127,7 @@ cf_mpfc_solution CFMPFC::Solve(
 
   mpfc_solution.optimizer_time = solution_details.optimizer_time;
   mpfc_solution.total_time = total_time.count();
+  mpfc_solution.init = true;
   
   return mpfc_solution;
 }
@@ -401,7 +406,7 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
   MatrixXd Bf;
   VectorXd c;
 
-  for (int i = 0; i < params_.nmodes - 1; ++i) {
+  for (int i = 0; i < params_.nknots - 1; ++i) {
     cf_mpfc_utils::LinearizeSRBDynamics(
         xc.at(i),
         params_.contacts_in_stance_frame,
@@ -409,7 +414,6 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
         I, params_.gait_params.mass,
         A, Bp, Bf, c
     );
-
     // xdot = A (x - xk*) + B(f - fk*) + c
     // x_k+1 - x_k = h * A * (x_k - xk*) + h * B * (f_k - fk*) + h * c
     // (h * A + I) x_k - x_k+1 + (h * B) * f_k = h * (B * fk* + A * xk* - c)
@@ -419,7 +423,7 @@ void CFMPFC::UpdateSRBDynamicsConstraint(
         -Matrix<double, SrbDim, SrbDim>::Identity();
     A_dyn.block(SrbDim * i, SrbDim * params_.nknots + nc * i, SrbDim, nc) = h * Bf;
     b_dyn.segment<SrbDim>(SrbDim * i) = h * (A * xc.at(i) + Bf * ff.at(i) - c);
-  };
+  }
   srb_dynamics_c_->UpdateCoefficients(A_dyn, b_dyn);
 }
 

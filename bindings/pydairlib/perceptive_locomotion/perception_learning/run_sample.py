@@ -87,7 +87,7 @@ def run_play(sim_params, model_path=None):
     lstm_states = None
     episode_starts = np.ones((1,), dtype=bool)
 
-    model_path = 'RPPO_initialize_no_batch_norm1.zip'
+    model_path = 'RPPO_initialize_no_batch_norm.zip'
     model = RecurrentPPO.load(model_path, env, verbose=1)
     
     obs, _ = env.reset()

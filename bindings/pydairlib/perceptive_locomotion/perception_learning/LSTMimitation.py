@@ -94,7 +94,7 @@ class TrajectorySampler(Sampler):
 
 class ResidualBlock_noNorm(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
-        super(ResidualBlock, self).__init__()
+        super(ResidualBlock_noNorm, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.relu = nn.LeakyReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -115,7 +115,7 @@ class ResidualBlock_noNorm(nn.Module):
 
 class ResidualBlock_Norm(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
-        super(ResidualBlock, self).__init__()
+        super(ResidualBlock_Norm, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.LeakyReLU()
@@ -138,6 +138,19 @@ class ResidualBlock_Norm(nn.Module):
         out = self.relu(out)
         return out
 
+class InitialBatchNorm(nn.Module):
+    def __init__(self):
+        super(InitialBatchNorm, self).__init__()
+        # Batch normalization for the last channel
+        self.bn = nn.BatchNorm2d(1)
+
+    def forward(self, x):
+        channel12 = x[:, :2, :, :]
+        channel3 = x[:, 2:3, :, :]
+        channel3 = self.bn(channel3)
+        x = th.cat((channel12, channel3), dim=1)
+        return x
+
 class CustomNetwork(nn.Module):
     def __init__(self, last_layer_dim_pi: int = 64, last_layer_dim_vf: int = 64):
         super().__init__()
@@ -147,7 +160,7 @@ class CustomNetwork(nn.Module):
         self.vector_state_actor = 6+23
         self.vector_state_critic = 6+23
         self.heightmap_size = 64
-        self.use_BN = True # Use BatchNorm2D
+        self.use_BN = False # Use BatchNorm2D
         if self.use_BN:
             ResidualBlock = ResidualBlock_Norm
         else:
@@ -156,30 +169,31 @@ class CustomNetwork(nn.Module):
         n_input_channels = 3
 
         self.actor_cnn = nn.Sequential(
+            #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(16),
+            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                nn.BatchNorm2d(32)
+                #nn.BatchNorm2d(32)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                nn.BatchNorm2d(48)
+                #nn.BatchNorm2d(48)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=1, bias=False),
-                nn.BatchNorm2d(64)
+                #nn.BatchNorm2d(64)
                 )),
 
             nn.Flatten(),
-            nn.Linear(64*4, 512),
+            nn.Linear(64*2*2, 512),
             nn.Tanh(),
             nn.Linear(512, 256),
             nn.Tanh(),
@@ -187,6 +201,7 @@ class CustomNetwork(nn.Module):
         )
 
         self.critic_cnn = nn.Sequential(
+            #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(16),
             nn.LeakyReLU(),
@@ -194,30 +209,30 @@ class CustomNetwork(nn.Module):
 
             ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
                 nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
-                nn.BatchNorm2d(32)
+                #nn.BatchNorm2d(32)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
-                nn.BatchNorm2d(48)
+                #nn.BatchNorm2d(48)
                 )),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
             ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
                 nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
-                nn.BatchNorm2d(64)
+                #nn.BatchNorm2d(64)
                 )),
 
             nn.Flatten(),
-            nn.Linear(64*4, 512),
+            nn.Linear(64*2*2, 512),
             nn.Tanh(),
             nn.Linear(512, 256),
             nn.Tanh(),
             nn.Linear(256, 96),
         )
 
-        # MLP for ALIP state + Vdes (6,)
+        # MLP for ALIP state + Vdes (6,) + State (23,)
         self.actor_alip_mlp = nn.Sequential(
             nn.Linear(self.vector_state_actor, 64),
             nn.Tanh(),
@@ -359,8 +374,8 @@ def pretrain_agent(
     log_interval=100,
     cuda=False,
     seed=1,
-    patience = 20,
-    min_delta=0.0001
+    patience = 5,
+    min_delta=0.00000001
 ):
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
@@ -374,7 +389,7 @@ def pretrain_agent(
 
     model = student.policy.to(device)
     optimizer = optim.Adadelta(model.parameters(), lr=learning_rate)
-    #scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
+    scheduler = StepLR(optimizer, step_size=1, gamma=scheduler_gamma)
 
     best_loss = float('inf')
     epochs_no_improve = 0
@@ -446,34 +461,49 @@ def pretrain_agent(
             data_len = 1
 
         with th.no_grad():
+            sequence_length = 64
             lstm_hidden_state_shape = (model.lstm_hidden_state_shape[0], 1, model.lstm_hidden_state_shape[2])
-            initial_lstm_states = RNNStates(
-            (
-                th.zeros(lstm_hidden_state_shape, device=device),
-                th.zeros(lstm_hidden_state_shape, device=device),
-            ),
-            (
-                th.zeros(lstm_hidden_state_shape, device=device),
-                th.zeros(lstm_hidden_state_shape, device=device),
-            ),
-            )
-
-            for data, target in test_loader:
+            
+            for batch_idx, (data, target) in enumerate(test_loader):
                 data, target = data.to(device), target.to(device)
 
-                lstm_states = initial_lstm_states
-                episode_starts = th.zeros(1).to(device)
+                batch_size = data.size(0)
+                
+                sequences = [data[i:i+sequence_length] for i in range(0, batch_size, sequence_length)]
+                target_sequences = [target[i:i+sequence_length] for i in range(0, batch_size, sequence_length)]
+                sequences = pad_sequence(sequences, batch_first=False)
+                target_sequences = pad_sequence(target_sequences, batch_first=False)
+                
+                states = RNNStates(
+                        (
+                            th.zeros(lstm_hidden_state_shape, device=device),
+                            th.zeros(lstm_hidden_state_shape, device=device),
+                        ),
+                        (
+                            th.zeros(lstm_hidden_state_shape, device=device),
+                            th.zeros(lstm_hidden_state_shape, device=device),
+                        ),
+                        )
 
-                if isinstance(env.action_space, gym.spaces.Box):
-                    action, _, _, _ = model(data, lstm_states, episode_starts)
+                for i in range(sequences.size(1)):
+                    sequence_data = sequences[:, i, :]
+                    sequence_target = target_sequences[:, i, :]
+
+                    if i == 0:
+                        episode_starts = th.zeros(sequence_length, device=device)
+                        episode_starts[0] = 1
+                    else:
+                        episode_starts = th.zeros(sequence_length, device=device)
+
+                    action, _, _, states = model(sequence_data, states, episode_starts)
                     action_prediction = action.double()
-                else:
-                    dist = model.get_distribution(data)
-                    action_prediction = dist.distribution.logits
-                target = target.long()
 
-                test_loss = criterion(action_prediction, target)
-                total_loss += test_loss.item()
+                    if (i+1 == sequences.size(1)):
+                        action_prediction = action_prediction[:16]
+                        sequence_target = sequence_target[:16]
+
+                    loss = criterion(action_prediction, sequence_target)
+                    total_loss += loss
         
         return total_loss / data_len
 
@@ -490,7 +520,7 @@ def pretrain_agent(
     for epoch in range(1, epochs + 1):
         train_loss = train(model, device, train_loader, optimizer)
         test_loss = test(model, device, test_loader)
-        #scheduler.step()
+        scheduler.step()
         # student.save(f"RPPO_initialize_{epoch}")
         
         # Early stopping
@@ -538,17 +568,18 @@ def _main():
         env,
         train_expert_dataset,
         test_expert_dataset,
-        epochs=12,
+        epochs=15,
         scheduler_gamma=0.7,
         learning_rate=1.,
         log_interval=10,
         cuda=True,
         seed=33,
         train_batch_size=400,
-        test_batch_size=1,
+        test_batch_size=400,
+        patience=25,
     )
 
-    student.save("RPPO_initialize_batch_norm1")
+    student.save("RPPO_initialize_no_batch_norm")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

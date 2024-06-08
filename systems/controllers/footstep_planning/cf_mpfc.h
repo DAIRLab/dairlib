@@ -36,6 +36,7 @@ struct cf_mpfc_solution {
   std::vector<Eigen::VectorXd> ff{}; // SRB Input
   Eigen::Vector4d xi{};              // ALIP state at beginning of next stance phase
   std::vector<Eigen::Vector4d> xx{}; // step-to-step alip state
+  std::vector<Eigen::VectorXd> ee{}; // workspace soft constraint slack variable
   std::vector<Eigen::Vector3d> pp{}; // footstep positions
   alip_utils::Stance stance{};
 

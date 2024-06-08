@@ -109,9 +109,22 @@ cf_mpfc_solution CFMPFC::Solve(
   auto result = solver_.Solve(*prog_, std::nullopt, params_.solver_options);
   auto solver_end = std::chrono::steady_clock::now();
 
-
   cf_mpfc_solution mpfc_solution;
 
+  for (int i = 0; i < params_.nknots; ++i) {
+    mpfc_solution.xc.push_back(result.GetSolution(xc_.at(i)));
+  }
+  for (int i = 0; i < params_.nknots - 1; ++i) {
+    mpfc_solution.ff.push_back(result.GetSolution(ff_.at(i)));
+  }
+  for (int i = 0; i < params_.nmodes; ++i) {
+    mpfc_solution.pp.push_back(result.GetSolution(pp_.at(i)));
+  }
+  for (int i = 0; i < params_.nmodes - 1; ++i) {
+    mpfc_solution.xx.push_back(result.GetSolution(xx_.at(i)));
+    mpfc_solution.ee.push_back(result.GetSolution(ee_.at(i)));
+  }
+  mpfc_solution.xi = result.GetSolution(xi_);
   mpfc_solution.stance = stance;
   mpfc_solution.desired_velocity = vdes;
   mpfc_solution.success = result.is_success();

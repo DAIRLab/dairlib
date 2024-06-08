@@ -84,7 +84,7 @@ void TestMPFC() {
   params.solver_options.SetOption(
       drake::solvers::GurobiSolver::id(), "Presolve", 1);
   params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(), "LogToConsole", 1);
+      drake::solvers::GurobiSolver::id(), "LogToConsole", 0);
   params.mu = 1;
 
   CFMPFC mpfc(params);
@@ -106,6 +106,13 @@ void TestMPFC() {
 
   std::cout << "Solve took " << sol.optimizer_time << "seconds\n";
   std::cout << "Solution Result: " << sol.solution_result << "\n";
+
+  auto sol2 = mpfc.Solve(srbd_state, Vector3d::Zero(), 0.24, Vector2d::Zero(),
+                        alip_utils::Stance::kRight, Eigen::Matrix3d::Identity(),
+                        sol);
+
+  std::cout << "Second solve took " << sol2.optimizer_time << "seconds\n";
+  std::cout << "Second solution Result: " << sol2.solution_result << "\n";
 }
 
 

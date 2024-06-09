@@ -31,19 +31,18 @@ namespace {
 
 RotationalInertia<double> CalcRotationalInertiaAboutCoM(
     const MultibodyPlant<double>& plant,
-    const Context<double>& plant_context) {
+    const Context<double>& plant_context,
+    drake::multibody::ModelInstanceIndex model_instance,
+    const drake::multibody::Frame<double>& floating_base_frame) {
 
   Vector3d CoM_w = plant.CalcCenterOfMassPositionInWorld(plant_context);
-
-  const auto& floating_base_frame = plant.get_body(
-      *(plant.GetFloatingBaseBodies().begin())).body_frame();
   RigidTransformd X_WP = floating_base_frame.CalcPoseInWorld(plant_context);
-
 
   // Can get angular velocity of ACOM
   SpatialInertia<double> I = plant.CalcSpatialInertia(
       plant_context, floating_base_frame,
-      plant.GetBodyIndices(ModelInstanceIndex{0}));
+      plant.GetBodyIndices(model_instance));
+
   I.ReExpressInPlace(X_WP.rotation());
   I.ShiftInPlace(CoM_w - X_WP.translation());
 
@@ -54,17 +53,19 @@ RotationalInertia<double> CalcRotationalInertiaAboutCoM(
 
 CentroidalState<double> GetCentroidalState(
     const MultibodyPlant<double>& plant, const Context<double>& plant_context,
+    drake::multibody::ModelInstanceIndex model_instance,
     const std::function<Matrix3d(const MultibodyPlant<double>&, const Context<double>&)>& acom_function,
     const alip_utils::PointOnFramed& stance_foot) {
 
   // for floating base plants only
-  DRAKE_DEMAND(plant.HasUniqueFreeBaseBody(ModelInstanceIndex{0}));
+  DRAKE_DEMAND(plant.HasUniqueFreeBaseBody(model_instance));
 
   CentroidalState<double> x = CentroidalState<double>::Zero();
 
   // Floating base pose in the world frame
   const auto& floating_base_frame = plant.get_body(
       *(plant.GetFloatingBaseBodies().begin())).body_frame();
+
   RigidTransformd X_WP = floating_base_frame.CalcPoseInWorld(plant_context);
   const Vector3d& body_x = X_WP.rotation().matrix().col(0);
   double yaw = atan2(body_x(1), body_x(0));
@@ -88,8 +89,12 @@ CentroidalState<double> GetCentroidalState(
       &p_w
   );
 
-  Vector3d omega_w = CalcRotationalInertiaAboutCoM(plant, plant_context).CopyToFullMatrix3().inverse() *
-      plant.CalcSpatialMomentumInWorldAboutPoint(plant_context, CoM_w).rotational();
+  Matrix3d I = CalcRotationalInertiaAboutCoM(
+      plant, plant_context, model_instance, floating_base_frame
+  ).CopyToFullMatrix3();
+
+  Vector3d omega_w = I.inverse() * plant.CalcSpatialMomentumInWorldAboutPoint(
+      plant_context, CoM_w).rotational();
 
   x.segment<3>(R_x_idx) = R_YA.col(0);
   x.segment<3>(R_y_idx) = R_YA.col(1);

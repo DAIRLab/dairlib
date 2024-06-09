@@ -1,4 +1,8 @@
-#include "cassie_acom_func.h"
+#include <cmath>
+#include <iostream>
+
+#include "cassie_acom_function.h"
+#include "drake/math/autodiff_gradient.h"
 
 using std::string;
 using std::vector;
@@ -14,6 +18,189 @@ std::vector<std::string> joint_name_in_order = {"hip_roll_left", "hip_yaw_left",
 
 std::vector<int> joints_to_fit = {0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13};
 
+
+using Eigen::Isometry3d;
+using Eigen::MatrixXd;
+using Eigen::Quaterniond;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
+
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+
+using drake::AutoDiffVecXd;
+using drake::math::ExtractGradient;
+using drake::math::ExtractValue;
+using drake::math::InitializeAutoDiff;
+
+//double pitch = -0.18; //-0.2;
+
+Eigen::MatrixXd MapWToQuatDot(const Eigen::Vector4d& Q) {
+  // clang-format off
+  Eigen::MatrixXd ret(4,3);
+  ret <<  -Q(1), -Q(2), -Q(3),
+      Q(0),  Q(3), -Q(2),
+      -Q(3),  Q(0),  Q(1),
+      Q(2), -Q(1),  Q(0);
+  ret *= 0.5;
+  // clang-format on
+  return ret;
+}
+
+template <typename T>
+drake::MatrixX<T> E_from_Quat(const drake::VectorX<T>& Q) {
+  // Given Q = quaternion of frame B r.t. frame A,
+  // find the 4x4 E transform (quat rates to omega)
+  //
+  // i.e.
+  //      Given: Q_dot = 4x1 of quat rates
+  //             omega = 3x1 ang vel of frame B r.t. frame A, ewrt frame B
+  //      Then:
+  //             2*E*Q_dot = [0; omega]
+  // clang-format off
+  drake::MatrixX<T> E(3,4);
+  E << -Q(1),  Q(0),  Q(3), -Q(2),
+      -Q(2), -Q(3),  Q(0),  Q(1),
+      -Q(3),  Q(2), -Q(1),  Q(0);
+  // clang-format on
+  return E;
+}
+
+template <typename T>
+drake::MatrixX<T> R_from_Quat(const drake::VectorX<T>& Q) {
+  // Given Q = quaternion of frame B r.t. frame A,
+  // find the coord transformation C_AB
+  drake::MatrixX<T> R(3, 3);
+
+  // clang-format off
+  R << 2 * (Q(0) * Q(0) + Q(1) * Q(1)) - 1,
+      2 * (Q(1) * Q(2) - Q(0) * Q(3)),
+      2 * (Q(1) * Q(3) + Q(0) * Q(2)),
+      2 * (Q(1) * Q(2) + Q(0) * Q(3)),
+      2 * (Q(0) * Q(0) + Q(2) * Q(2)) - 1,
+      2 * (Q(2) * Q(3) - Q(0) * Q(1)),
+      2 * (Q(1) * Q(3) - Q(0) * Q(2)),
+      2 * (Q(2) * Q(3) + Q(0) * Q(1)),
+      2 * (Q(0) * Q(0) + Q(3) * Q(3)) - 1;
+  // clang-format on
+  return R;
+}
+
+drake::VectorX<double> EvalQBaseAcom(const drake::VectorX<double>& q) {
+  DRAKE_DEMAND(q.size() == 16);
+  drake::VectorX<double> Q(4);
+  Q(1) = getQx(q);
+  Q(2) = getQy(q);
+  Q(3) = getQz(q);
+  // Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
+  Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
+
+  // Hack -- set offset here
+//  Quaterniond y_offset(cos(pitch / 2), 0 * sin(pitch / 2),
+//                       1 * sin(pitch / 2), 0 * sin(pitch / 2));
+  Quaterniond y_current(Q(0),Q(1),Q(2),Q(3));
+//  y_current = y_current * y_offset;
+  y_current.normalize();
+  Q << y_current.w(), y_current.vec();
+
+  std::cout << "Q: " << Q.transpose() << std::endl;
+  // End of Hack
+
+  return Q;
+}
+
+drake::VectorX<AutoDiffXd> EvalQBaseAcom(const drake::VectorX<AutoDiffXd>& q) {
+  DRAKE_DEMAND(q.size() == 16);
+  drake::VectorX<AutoDiffXd> Q(4);
+  Q(1) = getQx(q);
+  Q(2) = getQy(q);
+  Q(3) = getQz(q);
+
+  // Not sure why we cannot do std::sqrt() operation, so I just do it manually
+  // below
+  //   Q(0) = std::sqrt(1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3)));
+  AutoDiffXd x = 1 - (Q(1) * Q(1) + Q(2) * Q(2) + Q(3) * Q(3));
+  Q(0).value() = std::sqrt(x.value());
+  Q(0).derivatives() = x.derivatives() / (2 * Q(0).value());
+
+  // cout << "ExtractGradient(Q) = \n" << ExtractGradient(Q) << endl;
+
+  // Hack -- set offset here
+//  Quaterniond y_offset(cos(pitch / 2), 0 * sin(pitch / 2),
+//                       1 * sin(pitch / 2), 0 * sin(pitch / 2));
+  Quaterniond y_current(Q(0).value(),Q(1).value(),Q(2).value(),Q(3).value());
+//  y_current = y_current * y_offset;
+  y_current.normalize();
+  Q << y_current.w(), y_current.vec();
+  // End of Hack
+
+  return Q;
+}
+
+template <typename T>
+drake::MatrixX<T> EvalJOmegaBaseAcomEwrtAcom(const drake::VectorX<T>& q) {
+  DRAKE_DEMAND(q.size() == 16);
+
+  drake::VectorX<T> Q = EvalQBaseAcom(q);
+
+  drake::MatrixX<T> JQBaseAcomEwrtAcom = drake::MatrixX<T>::Zero(4, 16);
+  getJQx(q, JQBaseAcomEwrtAcom);
+  getJQy(q, JQBaseAcomEwrtAcom);
+  getJQz(q, JQBaseAcomEwrtAcom);
+  JQBaseAcomEwrtAcom.row(0) = -Q.template tail<3>().transpose() *
+      JQBaseAcomEwrtAcom.block(1, 0, 3, 16) / Q(0);
+
+  drake::MatrixX<T> JOmegaBaseAcomEwrtAcom(3, 16);
+  JOmegaBaseAcomEwrtAcom = 2 * E_from_Quat(Q) * JQBaseAcomEwrtAcom;
+
+  return JOmegaBaseAcomEwrtAcom;
+}
+
+template <typename T>
+drake::MatrixX<T> EvalJOmegaWorldAcomEwrtWorld(const drake::VectorX<T>& q) {
+  DRAKE_DEMAND(q.size() == 23);
+  drake::VectorX<T> Q_base = q.template head<4>();
+  drake::MatrixX<T> R_WB = R_from_Quat(Q_base);
+
+  drake::VectorX<T> q_joint = q.template tail<16>();
+  drake::VectorX<T> Q_BC = EvalQBaseAcom(q_joint);
+  drake::MatrixX<T> R_BC = R_from_Quat(Q_BC);
+
+  drake::MatrixX<T> JOmegaWorldAcomEwrtWorld = drake::MatrixX<T>::Zero(3, 22);
+  JOmegaWorldAcomEwrtWorld(0, 0) = 1;
+  JOmegaWorldAcomEwrtWorld(1, 1) = 1;
+  JOmegaWorldAcomEwrtWorld(2, 2) = 1;
+  JOmegaWorldAcomEwrtWorld.template rightCols<16>() =
+      R_WB * R_BC * EvalJOmegaBaseAcomEwrtAcom(q_joint);
+
+  return JOmegaWorldAcomEwrtWorld;
+}
+
+template drake::MatrixX<double> E_from_Quat(const drake::VectorX<double>& Q);
+template drake::MatrixX<AutoDiffXd> E_from_Quat(
+    const drake::VectorX<AutoDiffXd>& Q);
+template drake::MatrixX<double> R_from_Quat(const drake::VectorX<double>& Q);
+template drake::MatrixX<AutoDiffXd> R_from_Quat(
+    const drake::VectorX<AutoDiffXd>& Q);
+template drake::MatrixX<double> EvalJOmegaBaseAcomEwrtAcom(
+    const drake::VectorX<double>& q);
+template drake::MatrixX<AutoDiffXd> EvalJOmegaBaseAcomEwrtAcom(
+    const drake::VectorX<AutoDiffXd>& q);
+template drake::MatrixX<double> EvalJOmegaWorldAcomEwrtWorld(
+    const drake::VectorX<double>& q);
+template drake::MatrixX<AutoDiffXd> EvalJOmegaWorldAcomEwrtWorld(
+    const drake::VectorX<AutoDiffXd>& q);
+
+Eigen::Matrix3d CalcCassieAcomOrientationInWorld(
+    const drake::multibody::MultibodyPlant<double>& cassie,
+    const drake::systems::Context<double>& context) {
+  Eigen::VectorXd q_joint = cassie.GetPositions(context).tail<16>();
+  return cassie.EvalBodyPoseInWorld(
+      context, cassie.GetBodyByName("pelvis")).rotation().matrix() *
+      R_from_Quat<double>(EvalQBaseAcom(q_joint));
+}
 
 template <typename T>
 T getQx(const drake::VectorX<T>& q)

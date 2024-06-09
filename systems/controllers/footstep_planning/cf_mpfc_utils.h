@@ -54,7 +54,7 @@ using CentroidalStateDeriv = Eigen::Matrix<T, SrbDim, 1>;
 CentroidalState<double> GetCentroidalState(
     const drake::multibody::MultibodyPlant<double> &plant,
     const drake::systems::Context<double> &plant_context,
-    const drake::multibody::Frame<double> &floating_base_frame,
+    drake::multibody::ModelInstanceIndex model_instance,
     const std::function<Eigen::Matrix3d(
         const drake::multibody::MultibodyPlant<double> &,
         const drake::systems::Context<double> &)> &acom_function,

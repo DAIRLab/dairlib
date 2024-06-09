@@ -4,6 +4,9 @@
 #include "drake/math/autodiff_gradient.h"
 #include "drake/common/eigen_types.h"
 
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/context.h"
+
 using std::string;
 using std::vector;
 
@@ -13,6 +16,10 @@ using Eigen::VectorXd;
 using drake::AutoDiffXd;
 
 namespace dairlib::systems::controllers {
+
+Eigen::Matrix3d CalcCassieAcomOrientationInWorld(
+    const drake::multibody::MultibodyPlant<double>& cassie,
+    const drake::systems::Context<double>& context);
 
 template <typename T>
 T getQx(const drake::VectorX<T>& q);

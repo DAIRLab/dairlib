@@ -8,8 +8,13 @@ cc_binary(
     deps = [
         ":cassie_acom",
         "//examples/Cassie:cassie_utils",
-        "//systems/controllers/footstep_planning:cf_mpfc",
-        "//systems/controllers/footstep_planning:cf_mpfc_utils",
+        "//examples/Cassie/osc",
+        "//examples/Cassie/systems:cassie_out_to_radio",
+        "//lcmtypes:lcmt_robot",
+        "//systems:system_utils",
+        "//systems:robot_lcm_systems",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/controllers/footstep_planning:cf_mpfc_system",
         "@gflags",
     ],
 )

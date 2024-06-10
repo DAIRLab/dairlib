@@ -27,7 +27,6 @@ using drake::Vector6;
 using drake::Vector4;
 using drake::Vector3;
 
-namespace {
 
 RotationalInertia<double> CalcRotationalInertiaAboutCoM(
     const MultibodyPlant<double>& plant,
@@ -49,12 +48,10 @@ RotationalInertia<double> CalcRotationalInertiaAboutCoM(
   return I.CalcRotationalInertia();
 }
 
-}
-
 CentroidalState<double> GetCentroidalState(
     const MultibodyPlant<double>& plant, const Context<double>& plant_context,
     drake::multibody::ModelInstanceIndex model_instance,
-    const std::function<Matrix3d(const MultibodyPlant<double>&, const Context<double>&)>& acom_function,
+    std::function<Matrix3d(const MultibodyPlant<double>&, const Context<double>&)> acom_function,
     const alip_utils::PointOnFramed& stance_foot) {
 
   // for floating base plants only

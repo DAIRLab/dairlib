@@ -257,6 +257,7 @@ void CFMPFC::MakeFootstepConstraints() {
             VectorXd::Constant(1, kInfinity),
             {pp_.at(i).segment(1, 1), pp_.at(i + 1).segment(1, 1)}
         ));
+    prog_->AddLinearEqualityConstraint(pp_.at(i+1)(2) == 0);
   }
   // TODO (@Brian-Acosta) MIQP foothold constraints
 }

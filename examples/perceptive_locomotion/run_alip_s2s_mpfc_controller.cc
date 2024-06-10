@@ -57,7 +57,6 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::ConstantValueSource;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::trajectories::PiecewisePolynomial;
 
 DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
               "LCM channel for receiving state. "
@@ -102,8 +101,6 @@ DEFINE_double(sim_delay, 0.0, "> 0 adds delay to mimic planning offboard");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-
 
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);

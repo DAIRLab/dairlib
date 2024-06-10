@@ -1,3 +1,4 @@
+#pragma once
 #include "alip_utils.h"
 #include "drake/math/autodiff_gradient.h"
 
@@ -30,6 +31,13 @@ using CentroidalState = Eigen::Matrix<T, SrbDim, 1>;
 template <typename T>
 using CentroidalStateDeriv = Eigen::Matrix<T, SrbDim, 1>;
 
+
+drake::multibody::RotationalInertia<double> CalcRotationalInertiaAboutCoM(
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const drake::systems::Context<double>& plant_context,
+    drake::multibody::ModelInstanceIndex model_instance,
+    const drake::multibody::Frame<double>& floating_base_frame);
+
 /**
  * Calculate the robot's single rigid body state in the current stance frame.
  *
@@ -55,9 +63,9 @@ CentroidalState<double> GetCentroidalState(
     const drake::multibody::MultibodyPlant<double> &plant,
     const drake::systems::Context<double> &plant_context,
     drake::multibody::ModelInstanceIndex model_instance,
-    const std::function<Eigen::Matrix3d(
+    std::function<Eigen::Matrix3d(
         const drake::multibody::MultibodyPlant<double> &,
-        const drake::systems::Context<double> &)> &acom_function,
+        const drake::systems::Context<double> &)> acom_function,
     const alip_utils::PointOnFramed &stance_foot);
 
 void LinearizeSRBDynamics(

@@ -1,8 +1,5 @@
 # -*- python -*-
 load("@drake//tools/install:install.bzl", "install")
-
-package(default_visibility = ["//visibility:public"])
-
 load(
     "@drake//tools/skylark:pybind.bzl",
     "drake_pybind_library",
@@ -10,6 +7,8 @@ load(
     "get_pybind_package_info",
     "pybind_py_library",
 )
+
+package(default_visibility = ["//visibility:public"])
 
 pybind_py_library(
     name = "controllers_py",
@@ -53,6 +52,16 @@ py_binary(
     ],
     deps = [
         ":franka_env",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_binary(
+    name = "planar_box_example",
+    srcs = ["planar_box_example.py"],
+    data = [
+    ],
+    deps = [
         "@drake//bindings/pydrake",
     ],
 )

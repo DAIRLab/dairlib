@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+
+<model name="active_block">
+  <link name="center"/>
+  <link name="active_block">
+    <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>1</mass>
+      <inertia>
+     <ixx>0.014167</ixx>
+     <ixy>0</ixy>
+     <ixz>0</ixz>
+     <iyy>0.33417</iyy>
+     <iyz>0</iyz>
+     <izz>0.34667</izz>
+    </inertia>
+    </inertial>
+        <visual name="active_block">
+          <pose>0 0 0 0 0 0</pose>
+          <material>
+            <diffuse>0.5 0.2 0.2 0.6</diffuse>
+          </material>
+          <geometry>
+            <box>
+              <size> 2.0 0.4 0.1 </size>
+            </box>
+          </geometry>
+        </visual>
+    <collision name="collision">
+      <pose>0 0 0 0 0 0</pose>
+      <geometry>
+        <box>
+            <size> 2.0 0.4 0.1 </size>
+        </box>
+      </geometry>
+        <drake:proximity_properties>
+            <drake:compliant_hydroelastic/>
+            <drake:hydroelastic_modulus> 3.0e7 </drake:hydroelastic_modulus>
+            <drake:mesh_resolution_hint> 0.15 </drake:mesh_resolution_hint>
+            <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+            <drake:mu_dynamic>0.4</drake:mu_dynamic>
+        </drake:proximity_properties>
+    </collision>
+  </link>
+  <joint name="planar_x" type="prismatic">
+      <parent>center</parent>
+      <child>active_block</child>
+      <axis>
+          <xyz>
+              1 0 0
+          </xyz>
+          <limit>
+              <lower>-1.0</lower>
+              <upper>1.0</upper>
+              <effort>5.0</effort>
+          </limit>
+      </axis>
+  </joint>
+</model>
+
+</sdf>

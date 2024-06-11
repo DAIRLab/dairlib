@@ -74,8 +74,10 @@ cf_mpfc_solution CFMPFC::Solve(
   std::vector<CentroidalState<double>> xc;
   std::vector<VectorXd> ff;
 
-  bool use_prev_sol = prev_sol.init and prev_sol.stance == stance;
+  bool use_prev_sol = false;
 
+  // TODO (@Brian-Acosta) need to re-project rotation matrix to SO(3) before
+  //   Linearizing (or consider alternate rotation representation)
   for (int i = 0; i < params_.nknots - 1; ++i) {
     if (use_prev_sol) {
       xc.push_back(prev_sol.xc.at(i));
@@ -187,8 +189,7 @@ void CFMPFC::MakeMPCCosts() {
     //  footstep height change
     centroidal_state_cost_.push_back(
         prog_->AddQuadraticCost(
-            MatrixXd::Identity(SrbDim, SrbDim),
-            VectorXd::Zero(SrbDim), xc_.at(i+1)
+            MatrixXd::Identity(SrbDim, SrbDim), VectorXd::Zero(SrbDim), xc_.at(i+1)
         ));
     centroidal_input_cost_.push_back(
         prog_->AddQuadraticCost(
@@ -385,7 +386,6 @@ void CFMPFC::MakeInitialConditionsConstraints() {
 
 void CFMPFC::UpdateInitialConditions(
     const CentroidalState<double>& x, const Eigen::Vector3d& p) {
-
   initial_state_c_->UpdateCoefficients(
       Matrix<double, SrbDim, SrbDim>::Identity(), x);
   initial_foot_c_->UpdateCoefficients(Matrix3d::Identity(), p);
@@ -468,18 +468,20 @@ void CFMPFC::UpdateSRBDCosts(const Vector2d &vdes, alip_utils::Stance stance) {
   xd.segment<2>(cf_mpfc_utils::com_dot_idx) = vdes;
 
   int nc = params_.contacts_in_stance_frame.size();
-  Vector3d fd = (9.81 * params_.gait_params.mass / nc) * Vector3d::UnitZ();
+  VectorXd fd = VectorXd::Zero(3 * nc);
+  for (int i = 0; i < nc; ++i) {
+    fd.segment<3>(3*1) = (9.81 * params_.gait_params.mass / nc) * Vector3d::UnitZ();
+  }
 
   MatrixXd Qx = MatrixXd::Identity(SrbDim, SrbDim);
+  Qx.topLeftCorner<9,9>() = 1000 * Matrix<double, 9, 9>::Identity();
   MatrixXd Qf = 0.001 * MatrixXd::Identity(3 * nc, 3 * nc);
 
   for (int i = 0; i < params_.nknots - 1; ++i) {
     centroidal_state_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * Qx, -2 * Qx * xd, xd.transpose() * Qx * xd, true
-    );
+        2 * Qx, -2 * Qx * xd, xd.transpose() * Qx * xd, true);
     centroidal_input_cost_.at(i).evaluator()->UpdateCoefficients(
-        2 * Qf, -2 * Qf * fd, fd.transpose() * Qf * fd, true
-    );
+        2 * Qf, -2 * Qf * fd, fd.transpose() * Qf * fd, true);
   }
 }
 
@@ -498,9 +500,7 @@ void CFMPFC::UpdateFootstepCost(const Vector2d &vdes, Stance stance) {
 
   for (int i = 0; i < params_.nmodes - 1; ++i) {
     Vector4d b = - 2 * r.transpose() * R * ud[i % 2];
-    footstep_cost_.at(i).evaluator()->UpdateCoefficients(
-        Q, b, 0, true // we know it's convex
-    );
+    footstep_cost_.at(i).evaluator()->UpdateCoefficients(Q, b, 0, true);
   }
 }
 
@@ -519,14 +519,14 @@ void CFMPFC::UpdateTrackingCostVelocity(const Vector2d &vdes) {
     const Matrix<double, 4, 2>& vdes_mul = i % 2 == 0 ?
         -2 * Q_proj_ * g_proj_p1_ : -2 * Q_proj_ * g_proj_p2_;
     tracking_cost_.at(i-1).evaluator()->UpdateCoefficients(
-        2 * Q_proj_, vdes_mul * vdes, 0, true // we know it's convex
-    );
+        2 * Q_proj_, vdes_mul * vdes, 0, true);
   }
 }
 
 void CFMPFC::UpdateTerminalCostVelocity(const Vector2d &vdes) {
-  const Matrix<double, 4, 2>& vdes_mul = params_.nmodes % 2 == 0 ?
-                                         -2 * Q_proj_f_ * g_proj_p1_ : -2 * Q_proj_f_ * g_proj_p2_;
+  const Matrix<double, 4, 2>& vdes_mul =
+      params_.nmodes % 2 == 0 ?
+          -2 * Q_proj_f_ * g_proj_p1_ : -2 * Q_proj_f_ * g_proj_p2_;
   Matrix4d Qf = 2 * Q_proj_f_;
   Vector4d bf = vdes_mul * vdes;
   terminal_cost_->UpdateCoefficients(Qf, bf, 0, true);
@@ -541,8 +541,7 @@ void CFMPFC::UpdateTrackingCostGait(const Vector2d &vdes, Stance stance) {
   for (int i = 1; i < params_.nmodes - 1; ++i) {
     const Vector4d& xd = i % 2 == 0 ? x0: x1;
     tracking_cost_.at(i-1).evaluator()->UpdateCoefficients(
-        2 * params_.Q, -2*params_.Q * xd, 0, true // we know it's convex
-    );
+        2 * params_.Q, -2*params_.Q * xd, 0, true);
   }
 
 }

@@ -62,7 +62,7 @@ struct cf_mpfc_params {
   Eigen::MatrixXd Q{};
   Eigen::MatrixXd R{};
   Eigen::MatrixXd Qf{};
-  alip_utils::AlipTrackingCostType tracking_cost_type = alip_utils::kVelocity;
+  alip_utils::AlipTrackingCostType tracking_cost_type = alip_utils::kGait;
   drake::solvers::SolverOptions solver_options{};
 };
 

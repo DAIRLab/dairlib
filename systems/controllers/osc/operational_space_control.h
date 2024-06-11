@@ -301,17 +301,30 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void Build();
 
  private:
+
+  struct id_qp_solution {
+    Eigen::VectorXd dv_sol_;
+    Eigen::VectorXd u_sol_;
+    Eigen::VectorXd lambda_c_sol_;
+    Eigen::VectorXd lambda_h_sol_;
+    Eigen::VectorXd epsilon_sol_;
+    Eigen::VectorXd u_prev_;
+    double solve_time_;
+  };
+
   // Osc checkers and constructor-related methods
   void CheckCostSettings();
   void CheckConstraintSettings();
 
   // Get solution of OSC
-  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x_w_spr,
-                          const Eigen::VectorXd& x_wo_spr,
+  Eigen::VectorXd SolveQp(const Eigen::VectorXd& x,
                           const drake::systems::Context<double>& context,
                           double t, int fsm_state,
                           double t_since_last_state_switch, double alpha,
-                          int next_fsm_state) const;
+                          int next_fsm_state, id_qp_solution* sol) const;
+
+  void SolveIDQP(const drake::systems::Context<double>& context,
+                 id_qp_solution* solution) const;
 
   // Updates the contact force regularization to a desired contact force of
   // supporting the robot's weight evenly across each contact point
@@ -356,6 +369,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   // Output function
   void CalcOptimalInput(const drake::systems::Context<double>& context,
                         systems::TimestampedVector<double>* control) const;
+
   // Safety function that triggers when the tracking cost is too high
   void CheckTracking(const drake::systems::Context<double>& context,
                      TimestampedVector<double>* output) const;
@@ -420,13 +434,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   mutable InverseDynamicsQp id_qp_;
 
   // OSC solution
-  std::unique_ptr<Eigen::VectorXd> dv_sol_;
-  std::unique_ptr<Eigen::VectorXd> u_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
-  std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
-  std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
-  std::unique_ptr<Eigen::VectorXd> u_prev_;
-  mutable double solve_time_{};
+  mutable id_qp_solution osc_solution_;
 
   mutable Eigen::VectorXd ii_lambda_sol_;
   mutable Eigen::MatrixXd M_Jt_;

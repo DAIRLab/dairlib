@@ -80,7 +80,7 @@ int DoMain(int argc, char** argv) {
       0.3,
       Vector2d::UnitX(),
       systems::controllers::alip_utils::Stance::kLeft,
-      systems::controllers::alip_utils::ResetDiscretization::kZOH
+      systems::controllers::alip_utils::ResetDiscretization::kFOH
   };
 
   systems::controllers::cf_mpfc_params params;
@@ -88,19 +88,19 @@ int DoMain(int argc, char** argv) {
   params.gait_params = test_gait;
   params.gait_params = test_gait;
   params.nmodes = 3;
-  params.nknots = 4;
-  params.contacts_in_stance_frame = {0.09 * Vector3d::UnitX(), -0.09 * Vector3d::UnitX()};
+  params.nknots = 6;
+
   params.soft_constraint_cost = 1000;
-  params.com_pos_bound = Eigen::Vector2d::Ones();
+  params.com_pos_bound = 0.2 * Eigen::Vector2d::Ones();
   params.com_vel_bound = 2.0 * Eigen::Vector2d::Ones();
   params.Q = Eigen::Matrix4d::Identity();
-  params.R = Eigen::Matrix3d::Identity();
-  params.Qf = Eigen::Matrix4d::Identity();
+  params.R = 0.05 * Eigen::Matrix3d::Identity();
+  params.Qf = 100 * Eigen::Matrix4d::Identity();
   params.solver_options.SetOption(
       drake::solvers::GurobiSolver::id(), "Presolve", 1);
   params.solver_options.SetOption(
-      drake::solvers::GurobiSolver::id(), "LogToConsole", 0);
-  params.mu = 1;
+      drake::solvers::GurobiSolver::id(), "LogToConsole", 1);
+  params.mu = 0.8;
 
   DiagramBuilder<double> builder;
 
@@ -108,6 +108,10 @@ int DoMain(int argc, char** argv) {
 
   auto left_toe = LeftToeFront(plant);
   auto left_heel = LeftToeRear(plant);
+
+  auto stance_frame = CassieTransformFootToToeFrame();
+  params.contacts_in_stance_frame = {
+      stance_frame * left_heel.first, stance_frame * left_toe.first};
 
   // Create finite state machine
   int left_stance_state = 0;

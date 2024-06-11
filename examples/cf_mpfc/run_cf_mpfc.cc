@@ -49,6 +49,8 @@ DEFINE_string(channel_x, "CASSIE_STATE_SIMULATION",
 
 DEFINE_string(channel_mpc_output, "ALIP_MPC", "LCM channel for mpc output");
 
+DEFINE_string(channel_mpc_debug, "CF_MPFC_DEBUG", "channel for debugging");
+
 DEFINE_string(cassie_out_channel, "CASSIE_OUTPUT_ECHO",
               "The name of the channel to receive the cassie "
               "out structure from.");
@@ -161,6 +163,10 @@ int DoMain(int argc, char** argv) {
           FLAGS_channel_mpc_output, &lcm_local,
           TriggerTypeSet({TriggerType::kForced})));
 
+  auto mpc_debug_pub = builder.AddSystem(
+      LcmPublisherSystem::Make<lcmt_cf_mpfc_solution>(
+          FLAGS_channel_mpc_debug, &lcm_local,
+          TriggerTypeSet({TriggerType::kForced})));
 
   // --- Connect the rest of the diagram --- //
   // State Reciever connections
@@ -175,6 +181,9 @@ int DoMain(int argc, char** argv) {
   builder.Connect(
       foot_placement_controller->get_output_port_mpc_output(),
       mpc_output_pub->get_input_port());
+  builder.Connect(
+      foot_placement_controller->get_output_port_mpc_debug(),
+      mpc_debug_pub->get_input_port());
 
   // misc
   builder.Connect(*cassie_out_receiver, *cassie_out_to_radio);

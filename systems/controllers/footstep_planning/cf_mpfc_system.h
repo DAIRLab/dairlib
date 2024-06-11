@@ -1,6 +1,6 @@
 #pragma once
 #include <dairlib/lcmt_saved_traj.hpp>
-#include <dairlib/lcmt_alip_s2s_mpfc_debug.hpp>
+#include <dairlib/lcmt_cf_mpfc_solution.hpp>
 #include <dairlib/lcmt_alip_mpc_output.hpp>
 
 #include "cf_mpfc.h"
@@ -65,6 +65,8 @@ class CFMPFCSystem : public drake::systems::LeafSystem<double> {
                        lcmt_saved_traj* traj) const;
   void CopyFsmOutput(const drake::systems::Context<double>& context,
                      drake::systems::BasicVector<double>* fsm) const;
+  void CopyMPFCDebug(const drake::systems::Context<double>& context,
+                     lcmt_cf_mpfc_solution* msg) const;
   int GetFsmForOutput(const drake::systems::Context<double>& context) const;
   double GetPrevImpactTimeForOutput(
       const drake::systems::Context<double>& context) const;

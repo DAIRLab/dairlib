@@ -15,6 +15,7 @@ using multibody::GetBodyYawRotation_R_WB;
 using multibody::SetPositionsAndVelocitiesIfNew;
 
 using alip_utils::Stance;
+using cf_mpfc_utils::SrbDim;
 
 using Eigen::Vector2d;
 using Eigen::Vector3d;
@@ -67,7 +68,8 @@ CFMPFCSystem::CFMPFCSystem(
   fsm_state_idx_ = DeclareDiscreteState(1);
   next_impact_time_state_idx_ = DeclareDiscreteState(1);
   prev_impact_time_state_idx_ = DeclareDiscreteState(1);
-  initial_conditions_state_idx_ = DeclareDiscreteState(4+3);
+  initial_conditions_state_idx_ =
+      DeclareDiscreteState(SrbDim + 3);
 
   mpc_solution_idx_ = DeclareAbstractState(
       drake::Value<cf_mpfc_solution>()
@@ -90,6 +92,9 @@ CFMPFCSystem::CFMPFCSystem(
 
   fsm_output_port_ = DeclareVectorOutputPort(
       "fsm", 1, &CFMPFCSystem::CopyFsmOutput).get_index();
+
+  mpc_debug_output_port_ = DeclareAbstractOutputPort(
+      "lcmt_cf_mpfc_solution", &CFMPFCSystem::CopyMPFCDebug).get_index();
 }
 
 drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
@@ -161,7 +166,10 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   cf_mpfc_utils::CentroidalState<double> x = cf_mpfc_utils::GetCentroidalState(
       plant_, *context_, model_instance_, acom_function_, stance_foot);
 
-  VectorXd init_alip_state_and_stance_pos = VectorXd::Zero(7);
+  VectorXd init_state_and_stance_pos =
+      VectorXd::Zero(SrbDim + 3);
+  init_state_and_stance_pos.head<SrbDim>() = x;
+  init_state_and_stance_pos.tail<3>() = p_b;
 
 
   auto prev_sol = state->get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
@@ -179,9 +187,11 @@ drake::systems::EventStatus CFMPFCSystem::UnrestrictedUpdate(
   state->get_mutable_discrete_state(prev_impact_time_state_idx_).set_value(
       t_prev_impact * VectorXd::Ones(1));
   state->get_mutable_discrete_state(initial_conditions_state_idx_).set_value(
-      init_alip_state_and_stance_pos);
+      init_state_and_stance_pos);
+
   if (mpc_solution.success) {
-    state->get_mutable_abstract_state<cf_mpfc_solution>(mpc_solution_idx_) = mpc_solution;
+    state->get_mutable_abstract_state<cf_mpfc_solution>(
+        mpc_solution_idx_) = mpc_solution;
   }
 
   return drake::systems::EventStatus::Succeeded();
@@ -246,7 +256,6 @@ double CFMPFCSystem::GetPrevImpactTimeForOutput(
   return t_prev + double_stance_duration_;
 }
 
-
 void CFMPFCSystem::CopyAnkleTorque(
     const Context<double> &context, lcmt_saved_traj *traj) const {
   double t  = dynamic_cast<const OutputVector<double>*>(
@@ -270,5 +279,62 @@ void CFMPFCSystem::CopyAnkleTorque(
   *traj = lcm_traj.GenerateLcmObject();
 }
 
+void CFMPFCSystem::CopyMPFCDebug(const Context<double> &context,
+                                 lcmt_cf_mpfc_solution *mpc_debug) const {
+  const auto& ic =
+      context.get_discrete_state(initial_conditions_state_idx_).get_value();
+  const auto robot_output = dynamic_cast<const OutputVector<double>*>(
+      this->EvalVectorInput(context, state_input_port_));
+
+
+  int utime = static_cast<int>(robot_output->get_timestamp() * 1e6);
+  double fsmd = context.get_discrete_state(fsm_state_idx_).get_value()(0);
+  int fsm = curr_fsm(static_cast<int>(fsmd));
+
+  const auto& mpc_sol =
+      context.get_abstract_state<cf_mpfc_solution>(mpc_solution_idx_);
+
+  mpc_debug->utime = utime;
+  mpc_debug->fsm_state = fsm;
+  mpc_debug->solve_time_us = mpc_sol.total_time * 1e6;
+  mpc_debug->optimizer_time_us = mpc_sol.optimizer_time * 1e6;
+  mpc_debug->solution_result = std::to_string(mpc_sol.solution_result);
+
+  mpc_debug->np = 3;
+  mpc_debug->nxa = 4;
+  mpc_debug->nxc = SrbDim;
+  mpc_debug->nk = mpc_sol.xc.size();
+  mpc_debug->nmodes = mpc_sol.pp.size();
+  mpc_debug->nmodes_minus_1 = mpc_debug->nmodes - 1;
+
+  mpc_debug->initial_state.reserve(SrbDim);
+  Eigen::Map<Eigen::VectorXd>(mpc_debug->initial_state.data(), SrbDim) = ic.head<SrbDim>();
+
+  mpc_debug->initial_stance_foot.reserve(3);
+  Eigen::Map<Vector3d>(mpc_debug->initial_stance_foot.data(), 3) = ic.tail<3>();
+
+  mpc_debug->initial_alip_state.reserve(4);
+  Eigen::Map<Vector4d>(mpc_debug->initial_alip_state.data(), 4) = mpc_sol.xi;
+
+  mpc_debug->pp.clear();
+  mpc_debug->xx.clear();
+  mpc_debug->xc.clear();
+  for (const auto & xx : mpc_sol.xx) {
+    vector<double> x(4);
+    Vector4d::Map(x.data()) = xx;
+    mpc_debug->xx.push_back(x);
+  }
+  for (const auto& pp : mpc_sol.pp) {
+    vector<double> p(3);
+    Vector3d::Map(p.data()) = pp;
+    mpc_debug->pp.push_back(p);
+  }
+  for (const auto& xc : mpc_sol.xc) {
+    vector<double> x(SrbDim);
+    VectorXd::Map(x.data(), SrbDim) = xc;
+    mpc_debug->xc.push_back(x);
+  }
+  Vector2d::Map(mpc_debug->desired_velocity) = mpc_sol.desired_velocity;
+}
 
 }

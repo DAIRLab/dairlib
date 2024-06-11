@@ -1,0 +1,10 @@
+camera_pose: [ 1.5, 0, 0.75 ]
+camera_target: [ 0.5, 0, 0.5 ]
+#camera_pose: [ 0.55, 0, 1.2 ]
+#camera_target: [ 0.55, 0, 0.5 ]
+
+environment_models: [examples/franka/urdf/side_wall.urdf]
+# orientation in RPY then position in XYZ
+environment_orientations: [[0.0, 0.0, 0.0]]
+environment_positions: [[0.6, 0.3, 0.35]]
+

@@ -62,9 +62,9 @@ OperationalSpaceControl::OperationalSpaceControl(
   n_u_ = plant.num_actuated_dofs();
 
   // Input/Output Setup
-  state_port_ =
-      this->DeclareVectorInputPort(
-          "x, u, t", OutputVector<double>(n_q_,n_v_, n_u_)).get_index();
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(n_q_, n_v_, n_u_))
+                    .get_index();
 
   if (used_with_finite_state_machine) {
     fsm_port_ =
@@ -83,10 +83,10 @@ OperationalSpaceControl::OperationalSpaceControl(
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
-  osc_output_port_ = this->DeclareVectorOutputPort(
-                             "u, t", TimestampedVector<double>(n_u_),
-                             &OperationalSpaceControl::CalcOptimalInput)
-                         .get_index();
+  osc_output_port_ =
+      this->DeclareVectorOutputPort("u, t", TimestampedVector<double>(n_u_),
+                                    &OperationalSpaceControl::CalcOptimalInput)
+          .get_index();
   osc_debug_port_ =
       this->DeclareAbstractOutputPort(
               "lcmt_osc_debug", &OperationalSpaceControl::AssignOscLcmOutput)
@@ -198,6 +198,27 @@ void OperationalSpaceControl::AddTrackingData(
     traj_name_to_port_index_map_[traj_name] = port_index;
   }
 }
+
+// Tracking data methods
+void OperationalSpaceControl::AddForceTrackingData(
+    std::unique_ptr<ExternalForceTrackingData> tracking_data) {
+  force_tracking_data_vec_->push_back(std::move(tracking_data));
+
+  // Construct input ports and add element to traj_name_to_port_index_map_ if
+  // the port for the traj is not created yet
+  string traj_name = force_tracking_data_vec_->back()->GetName();
+  if (traj_name_to_port_index_map_.find(traj_name) ==
+      traj_name_to_port_index_map_.end()) {
+    PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+    int port_index =
+        this->DeclareAbstractInputPort(
+                traj_name,
+                drake::Value<drake::trajectories::Trajectory<double>>(pp))
+            .get_index();
+    traj_name_to_port_index_map_[traj_name] = port_index;
+  }
+}
+
 void OperationalSpaceControl::AddConstTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
@@ -253,46 +274,45 @@ void OperationalSpaceControl::Build() {
   // Add costs
   // 1. input cost
   if (W_input_.size() > 0) {
-    id_qp_.AddQuadraticCost(
-        "input_cost", W_input_, VectorXd::Zero(n_u_), id_qp_.u());
+    id_qp_.AddQuadraticCost("input_cost", W_input_, VectorXd::Zero(n_u_),
+                            id_qp_.u());
   }
   // 2. acceleration cost
   if (W_joint_accel_.size() > 0) {
     DRAKE_DEMAND(W_joint_accel_.rows() == n_v_);
-    id_qp_.AddQuadraticCost(
-        "acceleration_cost", W_joint_accel_, VectorXd::Zero(n_v_), id_qp_.dv());
+    id_qp_.AddQuadraticCost("acceleration_cost", W_joint_accel_,
+                            VectorXd::Zero(n_v_), id_qp_.dv());
   }
   if (W_input_smoothing_.size() > 0) {
-    id_qp_.AddQuadraticCost(
-        "input_smoothing_cost", W_input_smoothing_, VectorXd::Zero(n_u_), id_qp_.u());
+    id_qp_.AddQuadraticCost("input_smoothing_cost", W_input_smoothing_,
+                            VectorXd::Zero(n_u_), id_qp_.u());
   }
   // 3. contact force cost
   if (W_lambda_c_reg_.size() > 0) {
     int nc = id_qp_.lambda_c().rows();
     DRAKE_DEMAND(W_lambda_c_reg_.rows() == nc);
-    id_qp_.AddQuadraticCost(
-        "lambda_c_cost", W_lambda_c_reg_, VectorXd::Zero(nc), id_qp_.lambda_c());
+    id_qp_.AddQuadraticCost("lambda_c_cost", W_lambda_c_reg_,
+                            VectorXd::Zero(nc), id_qp_.lambda_c());
   }
   // 3. constraint force cost
   if (W_lambda_h_reg_.size() > 0) {
     int nh = id_qp_.lambda_h().rows();
     DRAKE_DEMAND(W_lambda_h_reg_.rows() == nh);
-    id_qp_.AddQuadraticCost(
-        "lambda_h_cost", W_lambda_h_reg_, VectorXd::Zero(nh), id_qp_.lambda_h());
+    id_qp_.AddQuadraticCost("lambda_h_cost", W_lambda_h_reg_,
+                            VectorXd::Zero(nh), id_qp_.lambda_h());
   }
   // 4. Soft constraint cost
   if (w_soft_constraint_ > 0) {
     int nca = id_qp_.nc_active();
-    id_qp_.AddQuadraticCost(
-        "soft_constraint_cost",
-        w_soft_constraint_ * MatrixXd::Identity(nca, nca), VectorXd::Zero(nca),
-        id_qp_.epsilon());
+    id_qp_.AddQuadraticCost("soft_constraint_cost",
+                            w_soft_constraint_ * MatrixXd::Identity(nca, nca),
+                            VectorXd::Zero(nca), id_qp_.epsilon());
   }
 
   // 4. Tracking cost
   for (const auto& data : *tracking_data_vec_) {
     id_qp_.AddQuadraticCost(data->GetName(), MatrixXd::Zero(n_v_, n_v_),
-                               VectorXd::Zero(n_v_), id_qp_.dv());
+                            VectorXd::Zero(n_v_), id_qp_.dv());
   }
 
   // 5. Joint Limit cost
@@ -302,7 +322,7 @@ void OperationalSpaceControl::Build() {
                                         n_revolute_joints_, n_revolute_joints_);
     id_qp_.AddQuadraticCost(
         "joint_limit_cost",
-        MatrixXd::Zero(n_revolute_joints_,n_revolute_joints_),
+        MatrixXd::Zero(n_revolute_joints_, n_revolute_joints_),
         VectorXd::Zero(n_revolute_joints_),
         id_qp_.dv().tail(n_revolute_joints_));
   }
@@ -311,12 +331,14 @@ void OperationalSpaceControl::Build() {
   if (ds_duration_ > 0) {
     int nc = id_qp_.nc();
     const auto& lambda = id_qp_.lambda_c();
-    blend_constraint_ = id_qp_.get_mutable_prog().AddLinearEqualityConstraint(
-                MatrixXd::Zero(1, nc / kSpaceDim), VectorXd::Zero(1),
-                {lambda.segment(kSpaceDim * 0 + 2, 1),
-                 lambda.segment(kSpaceDim * 1 + 2, 1),
-                 lambda.segment(kSpaceDim * 2 + 2, 1),
-                 lambda.segment(kSpaceDim * 3 + 2, 1)})
+    blend_constraint_ =
+        id_qp_.get_mutable_prog()
+            .AddLinearEqualityConstraint(MatrixXd::Zero(1, nc / kSpaceDim),
+                                         VectorXd::Zero(1),
+                                         {lambda.segment(kSpaceDim * 0 + 2, 1),
+                                          lambda.segment(kSpaceDim * 1 + 2, 1),
+                                          lambda.segment(kSpaceDim * 2 + 2, 1),
+                                          lambda.segment(kSpaceDim * 3 + 2, 1)})
             .evaluator()
             .get();
   }
@@ -355,17 +377,16 @@ VectorXd OperationalSpaceControl::SolveQp(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double t_since_last_state_switch, double alpha, int next_fsm_state) const {
-
   // Update context
-  SetPositionsIfNew<double>(
-      plant_, x_w_spr.head(plant_.num_positions()), context_);
-  SetVelocitiesIfNew<double>(
-      plant_, x_w_spr.tail(plant_.num_velocities()), context_);
+  SetPositionsIfNew<double>(plant_, x_w_spr.head(plant_.num_positions()),
+                            context_);
+  SetVelocitiesIfNew<double>(plant_, x_w_spr.tail(plant_.num_velocities()),
+                             context_);
 
-  const auto active_contact_names = contact_names_map_.count(fsm_state) > 0 ?
-      contact_names_map_.at(fsm_state) : std::vector<std::string>();
+  const auto active_contact_names = contact_names_map_.count(fsm_state) > 0
+                                        ? contact_names_map_.at(fsm_state)
+                                        : std::vector<std::string>();
   id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {});
-
 
   //  Invariant Impacts
   //  Only update when near an impact
@@ -376,9 +397,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     MatrixXd M(n_v_, n_v_);
     plant_.CalcMassMatrix(*context_, &M);
 
-    UpdateImpactInvariantProjection(
-        x_w_spr, x_wo_spr, context, t, t_since_last_state_switch,
-        fsm_state, next_fsm_state, M);
+    UpdateImpactInvariantProjection(x_w_spr, x_wo_spr, context, t,
+                                    t_since_last_state_switch, fsm_state,
+                                    next_fsm_state, M);
     // Need to call Update before this to get the updated jacobian
     v_proj = alpha * M_Jt_ * ii_lambda_sol_ + 1e-13 * VectorXd::Ones(n_v_);
   }
@@ -407,8 +428,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         // Update
-        tracking_data->Update(x_w_spr, *context_, x_wo_spr,
-                              *context_, traj, t,
+        tracking_data->Update(x_w_spr, *context_, x_wo_spr, *context_, traj, t,
                               t_since_last_state_switch, fsm_state, v_proj);
       }
 
@@ -418,28 +438,29 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
-      id_qp_.UpdateCost(
-          tracking_data->GetName(),
-          2 * J_t.transpose() * W * J_t,
-          2 * J_t.transpose() * W * (JdotV_t - ddy_t),
-          constant_term.transpose() * W * constant_term);
+      id_qp_.UpdateCost(tracking_data->GetName(), 2 * J_t.transpose() * W * J_t,
+                        2 * J_t.transpose() * W * (JdotV_t - ddy_t),
+                        constant_term.transpose() * W * constant_term);
     } else {
-      id_qp_.UpdateCost(
-          tracking_data->GetName(), MatrixXd::Zero(n_v_, n_v_),
-          VectorXd::Zero(n_v_));
+      id_qp_.UpdateCost(tracking_data->GetName(), MatrixXd::Zero(n_v_, n_v_),
+                        VectorXd::Zero(n_v_));
     }
   }
 
   // Add joint limit constraints
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
-        K_joint_pos_ * (x_wo_spr.head(plant_.num_positions())
-                            .tail(n_revolute_joints_) -q_max_).cwiseMax(0) +
-        K_joint_pos_ * (x_wo_spr.head(plant_.num_positions())
-                            .tail(n_revolute_joints_) - q_min_).cwiseMin(0);
-    id_qp_.UpdateCost(
-        "joint_limit_cost",
-        MatrixXd::Zero(n_revolute_joints_, n_revolute_joints_), w_joint_limit);
+        K_joint_pos_ *
+            (x_wo_spr.head(plant_.num_positions()).tail(n_revolute_joints_) -
+             q_max_)
+                .cwiseMax(0) +
+        K_joint_pos_ *
+            (x_wo_spr.head(plant_.num_positions()).tail(n_revolute_joints_) -
+             q_min_)
+                .cwiseMin(0);
+    id_qp_.UpdateCost("joint_limit_cost",
+                      MatrixXd::Zero(n_revolute_joints_, n_revolute_joints_),
+                      w_joint_limit);
   }
 
   // TODO  (@Brian-Acosta) test double support blending as a force cost
@@ -482,20 +503,19 @@ VectorXd OperationalSpaceControl::SolveQp(
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0 && u_prev_) {
     id_qp_.UpdateCost(
-        "input_smoothing_cost", W_input_smoothing_, -W_input_smoothing_ * *u_prev_,
+        "input_smoothing_cost", W_input_smoothing_,
+        -W_input_smoothing_ * *u_prev_,
         0.5 * u_prev_->transpose() * W_input_smoothing_ * *u_prev_);
   }
 
   if (W_lambda_c_reg_.size() > 0) {
-    id_qp_.UpdateCost(
-        "lambda_c_cost",
-        (1 + alpha) * W_lambda_c_reg_,VectorXd::Zero(id_qp_.nc()));
+    id_qp_.UpdateCost("lambda_c_cost", (1 + alpha) * W_lambda_c_reg_,
+                      VectorXd::Zero(id_qp_.nc()));
   }
 
   if (W_lambda_h_reg_.size() > 0) {
-    id_qp_.UpdateCost(
-        "lambda_h_reg",
-        (1 + alpha) * W_lambda_h_reg_,VectorXd::Zero(id_qp_.nh()));
+    id_qp_.UpdateCost("lambda_h_reg", (1 + alpha) * W_lambda_h_reg_,
+                      VectorXd::Zero(id_qp_.nh()));
   }
   if (!solver_->IsInitialized()) {
     solver_->InitializeSolver(id_qp_.get_prog(), solver_options_);
@@ -533,7 +553,6 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
     const VectorXd& x_w_spr, const VectorXd& x_wo_spr,
     const Context<double>& context, double t, double t_since_last_state_switch,
     int fsm_state, int next_fsm_state, const MatrixXd& M) const {
-
   auto map_iterator = contact_names_map_.find(next_fsm_state);
 
   if (map_iterator == contact_names_map_.end()) {
@@ -582,8 +601,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
             EvalAbstractInput(context, port_index);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
-        tracking_data->Update(x_w_spr, *context_, x_wo_spr,
-                              *context_, traj, t,
+        tracking_data->Update(x_w_spr, *context_, x_wo_spr, *context_, traj, t,
                               t_since_last_state_switch, fsm_state, v_proj);
       }
     }
@@ -611,14 +629,14 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   VectorXd b_constrained = VectorXd::Zero(active_constraint_dim + id_qp_.nh());
   VectorXd Ab = A.transpose() * ydot_err_vec;
   if (id_qp_.nh() > 0) {
-    MatrixXd J_h = id_qp_.get_holonomic_evaluators().EvalFullJacobian(
-        *context_);
+    MatrixXd J_h =
+        id_qp_.get_holonomic_evaluators().EvalFullJacobian(*context_);
     MatrixXd C = J_h * M_Jt_;
     VectorXd d = J_h * x_w_spr.tail(n_v_);
-    A_constrained.block(active_constraint_dim, 0, id_qp_.nh(), active_constraint_dim) =
-        C;
-    A_constrained.block(0, active_constraint_dim, active_constraint_dim, id_qp_.nh()) =
-        C.transpose();
+    A_constrained.block(active_constraint_dim, 0, id_qp_.nh(),
+                        active_constraint_dim) = C;
+    A_constrained.block(0, active_constraint_dim, active_constraint_dim,
+                        id_qp_.nh()) = C.transpose();
     b_constrained << Ab, d;
   } else {
     b_constrained << Ab;
@@ -645,14 +663,13 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->fsm_state = fsm_state;
 
   const std::vector<std::pair<std::string, const Eigen::VectorXd&>>
-  potential_regularization_cost_names_and_vars {
-      {"input_cost", *u_sol_},
-      {"acceleration_cost", *dv_sol_},
-      {"soft_constraint_cost", *epsilon_sol_},
-      {"input_smoothing_cost", *u_sol_},
-      {"lambda_c_cost", *lambda_c_sol_},
-      {"lambda_h_cost", *lambda_h_sol_}
-  };
+      potential_regularization_cost_names_and_vars{
+          {"input_cost", *u_sol_},
+          {"acceleration_cost", *dv_sol_},
+          {"soft_constraint_cost", *epsilon_sol_},
+          {"input_smoothing_cost", *u_sol_},
+          {"lambda_c_cost", *lambda_c_sol_},
+          {"lambda_h_cost", *lambda_h_sol_}};
 
   output->regularization_cost_names.clear();
   output->regularization_costs.clear();
@@ -724,9 +741,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
           CopyVectorXdToStdVector(tracking_data->GetYddotCommandSol());
 
       VectorXd y_tracking_cost = VectorXd::Zero(1);
-      id_qp_.get_cost_evaluator(
-          tracking_data->GetName()
-      ).Eval(*dv_sol_, &y_tracking_cost);
+      id_qp_.get_cost_evaluator(tracking_data->GetName())
+          .Eval(*dv_sol_, &y_tracking_cost);
       total_cost += y_tracking_cost[0];
       output->tracking_costs.push_back(y_tracking_cost[0]);
       output->tracking_data.push_back(osc_output);
@@ -796,8 +812,8 @@ void OperationalSpaceControl::CheckTracking(
   output->get_mutable_value()(0) = 0.0;
   VectorXd y_soft_constraint_cost = VectorXd::Zero(1);
   if (id_qp_.has_cost_named("soft_constraint_cost")) {
-    id_qp_.get_cost_evaluator("soft_constraint_cost").Eval(
-        *epsilon_sol_, &y_soft_constraint_cost);
+    id_qp_.get_cost_evaluator("soft_constraint_cost")
+        .Eval(*epsilon_sol_, &y_soft_constraint_cost);
   }
   if (y_soft_constraint_cost[0] > 1e5 || isnan(y_soft_constraint_cost[0])) {
     output->get_mutable_value()(0) = 1.0;

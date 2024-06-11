@@ -31,7 +31,6 @@ class GeomGeomCollider {
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
 
-
   /// Calculates the distance and contact frame Jacobian.
   /// Jacobian is ordered [J_n; J_t], and has shape
   ////   (2*num_friction_directions + 1) x (nq or nv), depending
@@ -48,11 +47,9 @@ class GeomGeomCollider {
   /// @param num_friction_directions
   /// @return A pair with <distance as a scalar, J>
   std::pair<T, drake::MatrixX<T>> EvalPolytope(
-      const drake::systems::Context<T>& context,
-      int num_friction_directions,
+      const drake::systems::Context<T>& context, int num_friction_directions,
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
-
 
   /// Calculates the distance and contact frame Jacobian for a 2D planar problem
   /// Jacobian is ordered [J_n; +J_t; -J_t], and has shape 3 x (nq).
@@ -65,6 +62,9 @@ class GeomGeomCollider {
       const Eigen::Vector3d& planar_normal,
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
+
+  std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
+      const drake::systems::Context<double>& context);
 
  private:
   std::pair<T, drake::MatrixX<T>> DoEval(

@@ -8,6 +8,7 @@ namespace systems {
 using drake::multibody::JointActuator;
 using drake::multibody::MultibodyPlant;
 using drake::systems::kUseDefaultName;
+using drake::systems::BasicVector;
 
 GearedMotor::GearedMotor(const MultibodyPlant<double>& plant,
                          const std::unordered_map<std::string, double>& max_motor_speeds)

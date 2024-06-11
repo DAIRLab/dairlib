@@ -1,0 +1,11 @@
+package dairlib;
+
+/*  lcmtype containing information to visualize forces in meshcat
+*/
+struct lcmt_c3_forces
+{
+  int64_t utime;
+
+  int32_t num_forces;
+  lcmt_force forces[num_forces];
+}

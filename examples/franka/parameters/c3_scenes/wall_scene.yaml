@@ -1,0 +1,11 @@
+franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
+end_effector_model: examples/franka/urdf/plate_end_effector.urdf
+end_effector_name: plate
+end_effector_lcs_model: examples/franka/urdf/plate_end_effector_translation.urdf
+tool_attachment_frame: [0, 0, 0.107]
+end_effector_thickness: 0.016
+object_models: [examples/franka/urdf/tray_lcs.sdf]
+environment_models: [examples/franka/urdf/side_wall.urdf]
+# orientation in RPY then position in XYZ
+environment_orientations: [[0.0, 0.0, 0.0]]
+environment_positions: [[0.6, 0.285, 0.35]]

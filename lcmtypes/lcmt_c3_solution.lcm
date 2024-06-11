@@ -1,0 +1,14 @@
+package dairlib;
+
+struct lcmt_c3_solution
+{
+  int32_t num_points;
+  int32_t num_state_variables;
+  int32_t num_contact_variables;
+  int32_t num_input_variables;
+
+  float time_vec[num_points];
+  float x_sol[num_state_variables][num_points];
+  float lambda_sol[num_contact_variables][num_points];
+  float u_sol[num_input_variables][num_points];
+}

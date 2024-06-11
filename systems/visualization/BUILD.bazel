@@ -1,0 +1,32 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "lcm_visualization_systems",
+    srcs = [
+        "lcm_visualization_systems.cc",
+    ],
+    hdrs = [
+        "lcm_visualization_systems.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//multibody:multipose_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "meshcat_dynamic_camera",
+    srcs = ["meshcat_dynamic_camera.cc"],
+    hdrs = ["meshcat_dynamic_camera.h"],
+    deps = [
+        "//common",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

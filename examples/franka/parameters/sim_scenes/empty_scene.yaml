@@ -1,0 +1,7 @@
+environment_models: []
+# orientation in RPY then position in XYZ
+environment_orientations: []
+environment_positions: []
+
+camera_pose:  [1.5, 0, 0.6]
+camera_target: [0.5, 0, 0.5]

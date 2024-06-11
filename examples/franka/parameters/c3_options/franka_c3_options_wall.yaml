@@ -1,0 +1,64 @@
+admm_iter: 3
+rho: 0 # does not do anything
+rho_scale: 5
+num_threads: 4
+delta_option: 1
+#options are 'MIQP' or 'QP'
+projection_type: 'MIQP'
+#options are 'stewart_and_trinkle' or 'anitescu'
+#contact_model : 'stewart_and_trinkle'
+contact_model: 'anitescu'
+warm_start: true
+use_predicted_x0: true
+end_on_qp_step: false
+solve_time_filter_alpha: 0.95
+#set to 0 to publish as fast as possible
+publish_frequency : 0
+#publish_frequency: 25
+
+# End Effector Workspace Limits Specified as Linear Constraints [x, y, z, lb, ub]
+workspace_limits: [[1.0, 0.0, 0.0, 0.4, 0.7],
+                   [0.0, 1.0, 0.0, -0.2, 0.2],
+                   [0.0, 0.0, 1.0, 0.4, 0.5]]
+workspace_margins: 0.05
+
+u_horizontal_limits: [-10, 10]
+u_vertical_limits: [-0, 30]
+
+mu: [0.8, 0.8, 0.8, 1.0]
+dt: 0.05
+solve_dt: 0.05
+num_friction_directions: 2
+num_contacts: 4
+N: 4
+gamma: 1.0 # discount factor on MPC costs
+
+#matrix scaling
+w_Q: 50
+w_R: 75
+#Penalty on all decision variables, assuming scalar
+w_G: 0.5
+#Penalty on all decision variables, assuming scalar
+w_U: 0.5
+
+#State Tracking Error, assuming diagonal
+q_vector: [10, 25, 150, 1000, 1000, 1000, 1000, 25, 25, 15000,
+           2.5, 5, 5, 1, 1, 500, 5, 5, 5]
+#Penalty on efforts, assuming diagonal
+r_vector: [2.0, 0.75, 0.05]
+
+#Penalty on matching projected variables
+g_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+g_gamma: [1, 1, 1, 1]
+g_lambda_n: [1, 1, 1, 1]
+g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+g_lambda: [150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150]
+g_u: [2.5, 2.5, 2.5]
+
+#Penalty on matching the QP variables
+u_x: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+u_gamma: [1, 1, 1, 1]
+u_lambda_n: [1, 1, 1, 1]
+u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+u_lambda: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+u_u: [30, 30, 30]

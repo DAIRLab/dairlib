@@ -1,4 +1,4 @@
-admm_iter: 3
+admm_iter: 2
 rho: 0.0
 rho_scale: 4
 num_threads: 5
@@ -8,8 +8,8 @@ projection_type: 'MIQP'
 # options are 'stewart_and_trinkle' or 'anitescu'
 #contact_model: 'anitescu'
 contact_model: 'stewart_and_trinkle'
-warm_start: true
-use_predicted_x0: true
+warm_start: false
+use_predicted_x0: false
 use_robust_formulation: false
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
@@ -26,7 +26,7 @@ u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
 
 mu: [0.6, 0.6, 0.6]
-dt: 0.075
+dt: 0.05
 solve_dt: 0.05
 num_friction_directions: 2
 num_contacts: 3
@@ -35,11 +35,11 @@ gamma: 1
 
 # matrix scaling
 w_Q: 50
-w_R: 50
+w_R: 25
 # Penalty on all decision variables, assuming scalar
 w_G: 0.1
 # Penalty on all decision variables, assuming scalar
-w_U: 0.1
+w_U: 0.5
 
 # State Tracking Error, assuming diagonal
 q_vector: [175, 175, 175, 1, 1, 1, 1, 15000, 15000, 15000,

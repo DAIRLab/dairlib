@@ -19,7 +19,7 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
-#include "systems/controllers/c3_controller.h"
+#include "systems/controllers/c3/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"

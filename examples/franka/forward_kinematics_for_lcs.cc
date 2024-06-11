@@ -21,12 +21,10 @@
 #include "multibody/multibody_utils.h"
 #include "solvers/lcs_factory.h"
 #include "systems/controllers/c3/lcs_factory_system.h"
-#include "systems/controllers/c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-#include "systems/trajectory_optimization/c3_output_systems.h"
 
 namespace dairlib {
 
@@ -72,10 +70,6 @@ int DoMain(int argc, char* argv[]) {
           controller_params.c3_scene_file[controller_params.scene_index]);
   FrankaLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaLcmChannels>(FLAGS_lcm_channels);
-  drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(controller_params.osqp_settings_file))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   DiagramBuilder<double> plant_builder;
 

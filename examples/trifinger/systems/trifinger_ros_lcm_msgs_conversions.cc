@@ -44,7 +44,7 @@ RosToLcmRobotState::RosToLcmRobotState(int num_positions, int num_velocities,
       num_velocities_(num_velocities),
       num_efforts_(num_efforts) {
   this->DeclareAbstractInputPort(
-      "Franka JointState topic",
+      "Trifinger JointState topic",
       drake::Value<trifinger_msgs::msg::TrifingerState>());
   this->DeclareAbstractOutputPort("lcmt_robot_output",
                                   &RosToLcmRobotState::ConvertToLCM);

@@ -24,8 +24,12 @@ group "3.[SIM] Trifinger" {
 }
 
 group "4. Controllers" {
-    cmd "OSC Controller" {
+    cmd "OSC Controller (from simulation)" {
         exec = "bazel-bin/examples/trifinger/trifinger_osc_controller";
+        host = "localhost";
+    }
+    cmd "OSC Controller (from hardware)" {
+        exec = "bazel-bin/examples/trifinger/trifinger_osc_controller --lcm_channels=examples/trifinger/parameters/lcm_channels_hardware.yaml";
         host = "localhost";
     }
 }
@@ -50,4 +54,12 @@ group "6.lcm-tools" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
         host = "localhost";
     }
+}
+
+script "run-osc-controller-hardware" {
+    start cmd "state-visualizer-floating (from hardware)";
+    wait ms 1000;
+    start cmd "ROS-to-LCM";
+    start cmd "LCM-to-ROS";
+    start cmd "OSC Controller (from hardware)";
 }

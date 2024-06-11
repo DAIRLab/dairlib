@@ -29,7 +29,7 @@
   <joint name="base_to_trifinger_base_joint" type="fixed">
     <parent link="base_link"/>
     <child link="trifinger_base_link"/>
-    <origin rpy="0 0 -1.5707963267948966" xyz="0 0 0.283"/>
+    <origin rpy="0 0 -1.5707963267948966" xyz="0 0 0.282"/>
   </joint>
   <material name="fingeredu_0_material">
     <color rgba="0.6 0.0 0.0 1.0"/>
@@ -131,7 +131,7 @@
                      that it is similar enough. -->
       <!-- CoM is only estimated based -->
       <origin rpy="0 0 0" xyz="-0.079 0 0"/>
-      <mass value="0.14854"/>
+      <mass value="0.157"/>
       <inertia ixx="0.00003" ixy="0.00005" ixz="0.00000" iyy="0.00041" iyz="0.00000" izz="0.00041"/>
     </inertial>
   </link>
@@ -151,7 +151,7 @@
     </collision>
     <inertial>
       <origin rpy="0 0 0" xyz="0 -0.019 -0.079"/>
-      <mass value="0.14854"/>
+      <mass value="0.16"/>
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
@@ -174,7 +174,7 @@
                  lower link. -->
     <inertial>
       <origin rpy="0 0 0" xyz="0 -0.009 -0.089"/>
-      <mass value="0.03070"/>
+      <mass value="0.035"/>
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
   </link>
@@ -304,7 +304,7 @@
                      that it is similar enough. -->
       <!-- CoM is only estimated based -->
       <origin rpy="0 0 0" xyz="-0.079 0 0"/>
-      <mass value="0.14854"/>
+      <mass value="0.157"/>
       <inertia ixx="0.00003" ixy="0.00005" ixz="0.00000" iyy="0.00041" iyz="0.00000" izz="0.00041"/>
     </inertial>
   </link>
@@ -324,7 +324,7 @@
     </collision>
     <inertial>
       <origin rpy="0 0 0" xyz="0 -0.019 -0.079"/>
-      <mass value="0.14854"/>
+      <mass value="0.16"/>
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
@@ -347,7 +347,7 @@
                  lower link. -->
     <inertial>
       <origin rpy="0 0 0" xyz="0 -0.009 -0.089"/>
-      <mass value="0.03070"/>
+      <mass value="0.035"/>
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
   </link>
@@ -477,7 +477,7 @@
                      that it is similar enough. -->
       <!-- CoM is only estimated based -->
       <origin rpy="0 0 0" xyz="-0.079 0 0"/>
-      <mass value="0.14854"/>
+      <mass value="0.157"/>
       <inertia ixx="0.00003" ixy="0.00005" ixz="0.00000" iyy="0.00041" iyz="0.00000" izz="0.00041"/>
     </inertial>
   </link>
@@ -497,7 +497,7 @@
     </collision>
     <inertial>
       <origin rpy="0 0 0" xyz="0 -0.019 -0.079"/>
-      <mass value="0.14854"/>
+      <mass value="0.16"/>
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
@@ -520,7 +520,7 @@
                  lower link. -->
     <inertial>
       <origin rpy="0 0 0" xyz="0 -0.009 -0.089"/>
-      <mass value="0.03070"/>
+      <mass value="0.035"/>
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
   </link>
@@ -562,17 +562,17 @@
   <joint name="base_to_finger_0" type="fixed">
     <parent link="trifinger_base_link"/>
     <child link="finger_base_link_0"/>
-    <origin rpy="0 0 0" xyz="-0.0455 0.0 0"/>
+    <origin rpy="0 0 0" xyz="-0.0395 0.0 0"/>
   </joint>
   <joint name="base_to_finger_120" type="fixed">
     <parent link="trifinger_base_link"/>
     <child link="finger_base_link_120"/>
-    <origin rpy="0 0 -2.0943951023931953" xyz="0.02274999999999999 0.03940415587219196 0"/>
+    <origin rpy="0 0 -2.0943951023931953" xyz="0.01975 0.034208 0"/>
   </joint>
   <joint name="base_to_finger_240" type="fixed">
     <parent link="trifinger_base_link"/>
     <child link="finger_base_link_240"/>
-    <origin rpy="0 0 -4.1887902047863905" xyz="0.02275000000000002 -0.03940415587219195 0"/>
+    <origin rpy="0 0 -4.1887902047863905" xyz="0.01975 -0.034208 0"/>
   </joint>
 
   <transmission name="finger_base_to_upper_joint_0_trans" type="SimpleTransmission">

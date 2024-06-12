@@ -378,8 +378,9 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::systems::CacheIndex tracking_data_cache_;
 
   // Discrete update
-  int prev_fsm_state_idx_;
-  int prev_event_time_idx_;
+  drake::systems::DiscreteStateIndex prev_fsm_state_idx_;
+  drake::systems::DiscreteStateIndex prev_mode_fsm_state_idx_;
+  drake::systems::DiscreteStateIndex prev_event_time_idx_;
 
   // Map from (non-const) trajectory names to input port indices
   std::map<std::string,
@@ -459,7 +460,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   int right_support_state_{};
   std::vector<int> ds_states_{};
   double w_blend_constraint_ = 10;  // for soft constraint
-  mutable double prev_distinct_fsm_state_ = -1;
 };
 
 }  // namespace dairlib::systems::controllers

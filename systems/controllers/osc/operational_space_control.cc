@@ -88,6 +88,7 @@ OperationalSpaceControl::OperationalSpaceControl(
     DeclarePerStepDiscreteUpdateEvent(
         &OperationalSpaceControl::DiscreteVariableUpdate);
     prev_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
+    prev_mode_fsm_state_idx_ = this->DeclareDiscreteState(-0.1 * VectorXd::Ones(1));
     prev_event_time_idx_ = this->DeclareDiscreteState(VectorXd::Zero(1));
   }
 
@@ -344,10 +345,15 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   double timestamp = robot_output->get_timestamp();
 
-  auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
-                            .get_mutable_value();
+  auto prev_fsm_state =
+      discrete_state->get_mutable_vector(
+          prev_fsm_state_idx_).get_mutable_value();
+  auto prev_mode_fsm_state =
+      discrete_state->get_mutable_vector(
+          prev_mode_fsm_state_idx_).get_mutable_value();
+
   if (fsm_state(0) != prev_fsm_state(0)) {
-    prev_distinct_fsm_state_ = prev_fsm_state(0);
+    prev_mode_fsm_state(0) = prev_fsm_state(0);
     prev_fsm_state(0) = fsm_state(0);
 
     discrete_state->get_mutable_vector(prev_event_time_idx_).get_mutable_value()
@@ -521,13 +527,16 @@ VectorXd OperationalSpaceControl::SolveQp(
         ds_states_.end()) {
       double s = std::clamp(t_since_last_state_switch / ds_duration_, 0.05, 0.95);
 
+      int prev_mode_fsm_state = context.get_discrete_state(
+          prev_mode_fsm_state_idx_).get_value()(0);
+
       double alpha_left = 0;
       double alpha_right = 0;
-      if (prev_distinct_fsm_state_ == right_support_state_) {
+      if (prev_mode_fsm_state == right_support_state_) {
         // We want left foot force to gradually increase
         alpha_left = 1.0 - s;
         alpha_right = -s;
-      } else if (prev_distinct_fsm_state_ == left_support_state_) {
+      } else if (prev_mode_fsm_state == left_support_state_) {
         alpha_left = -s;
         alpha_right = 1.0 - s;
       }

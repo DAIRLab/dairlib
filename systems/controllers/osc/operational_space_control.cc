@@ -374,6 +374,12 @@ void OperationalSpaceControl::UpdateTrackingData(
 
   VectorXd x = robot_output->GetState();
 
+  // Update plant context
+  SetPositionsIfNew<double>(
+      plant_, x.head(plant_.num_positions()), context_);
+  SetVelocitiesIfNew<double>(
+      plant_, x.tail(plant_.num_velocities()), context_);
+
   double timestamp = robot_output->get_timestamp();
   int fsm_state = -1;
   int next_fsm_state = -1;
@@ -456,20 +462,20 @@ void OperationalSpaceControl::UpdateTrackingData(
 }
 
 VectorXd OperationalSpaceControl::SolveQp(
-    const VectorXd& x_w_spr,
+    const VectorXd& x,
     const drake::systems::Context<double>& context, double t, int fsm_state,
     double t_since_last_state_switch, double alpha, int next_fsm_state,
     OperationalSpaceControl::id_qp_solution* sol) const {
 
   // Update context
   SetPositionsIfNew<double>(
-      plant_, x_w_spr.head(plant_.num_positions()), context_);
+      plant_, x.head(plant_.num_positions()), context_);
   SetVelocitiesIfNew<double>(
-      plant_, x_w_spr.tail(plant_.num_velocities()), context_);
+      plant_, x.tail(plant_.num_velocities()), context_);
 
   const auto active_contact_names = contact_names_map_.count(fsm_state) > 0 ?
       contact_names_map_.at(fsm_state) : std::vector<std::string>();
-  id_qp_.UpdateDynamics(x_w_spr, active_contact_names, {});
+  id_qp_.UpdateDynamics(x, active_contact_names, {});
 
   const auto& tracking_data_states = get_cache_entry(
       tracking_data_cache_).Eval<std::vector<OscTrackingDataState>>(context);
@@ -509,9 +515,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Add joint limit constraints
   if (w_joint_limit_ > 0) {
     VectorXd w_joint_limit =
-        K_joint_pos_ * (x_w_spr.head(plant_.num_positions())
+        K_joint_pos_ * (x.head(plant_.num_positions())
                             .tail(n_revolute_joints_) -q_max_).cwiseMax(0) +
-        K_joint_pos_ * (x_w_spr.head(plant_.num_positions())
+        K_joint_pos_ * (x.head(plant_.num_positions())
                             .tail(n_revolute_joints_) - q_min_).cwiseMin(0);
     id_qp_.UpdateCost(
         "joint_limit_cost",
@@ -635,7 +641,7 @@ void OperationalSpaceControl::SolveIDQP(
   auto robot_output = dynamic_cast<const OutputVector<double>*>(
       EvalVectorInput(context, state_port_));
 
-  VectorXd x_w_spr = robot_output->GetState();
+  VectorXd x = robot_output->GetState();
 
   double timestamp = robot_output->get_timestamp();
 
@@ -663,10 +669,10 @@ void OperationalSpaceControl::SolveIDQP(
     // Get discrete states
     const auto prev_event_time =
         context.get_discrete_state(prev_event_time_idx_).get_value();
-    u_sol = SolveQp(x_w_spr, context, clock_time, fsm_state(0),
+    u_sol = SolveQp(x, context, clock_time, fsm_state(0),
                     current_time - prev_event_time(0), alpha, next_fsm_state, solution);
   } else {
-    u_sol = SolveQp(x_w_spr, context, current_time, -1, current_time,
+    u_sol = SolveQp(x, context, current_time, -1, current_time,
                     0, -1, solution);
   }
 }

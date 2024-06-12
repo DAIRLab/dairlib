@@ -57,6 +57,17 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "alip_nn_data_collection_multi_fsm",
+    srcs = ["alip_nn_data_collection_multi_fsm.py"],
+    deps = [
+        ":alip_nn_lqr",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:terrain_utils",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning/utils:true_cost_system",
+        "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_environment",
+    ],
+)
+
 
 py_binary(
     name = "alip_lqr_data_collection",

@@ -85,18 +85,22 @@ class ObservationPublisher(LeafSystem):
         }
         self.output_port_indices = {
             'observations': self.DeclareVectorOutputPort(
-                "observations", 3*self.height*self.height+6+23+23, self.calculate_hmap
+                "observations", 3*self.height*self.height+6+23+23 + 3*self.height*self.height, self.calculate_obs
             ).get_index()
         }
         if self.simulate_perception:
+            
             self.input_port_indices.update({'height_map' : self.DeclareAbstractInputPort(
-            "elevation_map",
-            model_value=Value(ElevationMapQueryObject())
+            "elevation_map", model_value=Value(ElevationMapQueryObject())
             ).get_index()})
+
+            self.input_port_indices.update({'height_map_query' : self.DeclareAbstractInputPort(
+            "height_map_query", model_value=Value(HeightMapQueryObject())
+            ).get_index()})
+        
         else:
             self.input_port_indices.update({'height_map' : self.DeclareAbstractInputPort(
-            "height_map_query",
-            model_value=Value(HeightMapQueryObject())
+            "height_map_query", model_value=Value(HeightMapQueryObject())
             ).get_index()})
 
     def get_input_port_by_name(self, name: str) -> InputPort:
@@ -107,9 +111,20 @@ class ObservationPublisher(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def calculate_hmap(self, context: Context, output):
+    def calculate_obs(self, context: Context, output):
         xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
         ud = xd_ud.value()[4:]
+        
+        if self.simulate_perception:
+            # Ground truth height map for Critic
+            gt_hmap_query = self.EvalAbstractInput(
+            context, self.input_port_indices['height_map_query']
+            ).get_value()
+
+            gt_hmap = gt_hmap_query.calc_height_map_stance_frame(
+                np.array([ud[0], ud[1], 0])
+            )
+
         hmap_query = self.EvalAbstractInput(
             context, self.input_port_indices['height_map']
         ).get_value()
@@ -124,19 +139,22 @@ class ObservationPublisher(LeafSystem):
         hmap_query.plot_surface(
             "hmap", hmap_grid_world[0], hmap_grid_world[1],
             hmap_grid_world[2], rgba = Rgba(0.678, 0.847, 0.902, 1.0))
-        
-        flat = hmap.reshape(-1)
-        
+
         alip = self.EvalVectorInput(context, self.input_port_indices['x_xd']).get_value()
         vdes = self.EvalVectorInput(context, self.input_port_indices['vdes']).get_value()
         states = self.EvalVectorInput(context, self.input_port_indices['state']).get_value()
         gt_states = self.EvalVectorInput(context, self.input_port_indices['gt_state']).get_value()
         
-        joint_angle = states[:23]
-        joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
-        gt_joint_angle = gt_states[:23]
+        if self.noise:
+            pass
+        else:
+            hmap = hmap.reshape(-1)
+            gt_hmap = gt_hmap.reshape(-1)
+            joint_angle = states[:23]
+            joint_angle = [0 if math.isnan(x) else x for x in joint_angle]
+            gt_joint_angle = gt_states[:23]
 
-        out = np.hstack((flat, alip, vdes, joint_angle, gt_joint_angle))
+        out = np.hstack((hmap, alip, vdes, joint_angle, gt_joint_angle, gt_hmap))
 
         output.set_value(out)
 
@@ -214,9 +232,11 @@ class RewardSystem(LeafSystem):
         ).value().ravel()
         
         velocity_reward = np.exp(-5*np.linalg.norm(vdes[:2] - bf_vel[:2]))
+        #velocity_reward = np.exp(-5*np.linalg.norm(vdes[0] - bf_vel[0])) + np.exp(-np.linalg.norm(vdes[1] - bf_vel[1]))
         
         # penalize angular velocity about the z axis
-        angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
+        #angular_reward = np.exp(-3*np.linalg.norm(bf_ang))
+        angular_reward = np.exp(-np.linalg.norm(bf_ang))
 
         left_penalty = 0
         right_penalty = 0
@@ -238,8 +258,26 @@ class RewardSystem(LeafSystem):
         if right_angle > 0.3:
             right_penalty = -1
 
+        # forward_velocity = abs(bf_vel[0])
+        # if forward_velocity < 0.1:
+        #     forward_penalty = -10
+        # else:
+        #     forward_penalty = 0
+
+        # if forward_penalty < 0:
+        #     reward = forward_penalty
+        # elif left_angle > 0.3 and right_angle > 0.3:
+        if left_angle > 0.3 and right_angle > 0.3:
+            reward = left_penalty + right_penalty
+        elif left_angle > 0.3 and not right_angle > 0.3:
+            reward = left_penalty
+        elif right_angle > 0.3 and not left_angle > 0.3:
+            reward = right_penalty
+        else:
+            reward = 0.5*LQRreward + 0.25*velocity_reward + 0.125*angular_reward # 0.75*velocity_reward + 0.25*angular_reward
+
         # reward normalize to 0 ~ 1
-        reward = 0.5*LQRreward + 0.25*velocity_reward + 0.25*angular_reward# + left_penalty + right_penalty
+        #reward = 0.5*LQRreward + 0.25*velocity_reward + 0.125*angular_reward + left_penalty + right_penalty
         #reward = 0.75*velocity_reward + 0.25*angular_reward + left_penalty + right_penalty# -2
         #reward = 0.3*LQRreward + 0.25*velocity_reward + 0.35*angular_reward + left_penalty + right_penalty # -3
     
@@ -443,22 +481,22 @@ class CassieFootstepControllerEnvironment(Diagram):
         if params.visualize:
 
             builder.AddSystem(self.plant_visualizer)
-            # self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
+            self.visualizer = self.cassie_sim.AddDrakeVisualizer(builder)
 
             # if params.simulate_perception:
-            #     # Visualize depth sensor grid map
-            #     #self.grid_map_visualizer = GridMapVisualizer(
-            #     #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
-            #     #)
-            #     #builder.AddSystem(self.grid_map_visualizer)
+                # Visualize depth sensor grid map
+                # self.grid_map_visualizer = GridMapVisualizer(
+                #    self.plant_visualizer.get_meshcat(), 1.0 / 30.0, ["elevation"]
+                # )
+                # builder.AddSystem(self.grid_map_visualizer)
             #     builder.Connect(
             #         self.perception_module.get_output_port_state(),
             #         self.plant_visualizer.get_input_port()
             #     )
-            #     #builder.Connect(
-            #     #    self.perception_module.get_output_port_elevation_map(),
-            #     #    self.grid_map_visualizer.get_input_port()
-            #     #)
+                # builder.Connect(
+                #    self.perception_module.get_output_port_elevation_map(),
+                #    self.grid_map_visualizer.get_input_port()
+                # )
             # else:
             builder.Connect(
                 self.cassie_sim.get_output_port_state(),
@@ -622,6 +660,11 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.ALIPfootstep_controller.get_output_port_by_name("x_xd"), #x_xd
             obs_pub.get_input_port_by_name("x_xd")
         )
+        if self.params.simulate_perception:
+            builder.Connect(
+                self.get_output_port_by_name("height_map_query"),
+                obs_pub.get_input_port_by_name("height_map_query")
+            )
         builder.Connect(
             self.get_output_port_by_name("height_map"),
             obs_pub.get_input_port_by_name("height_map")

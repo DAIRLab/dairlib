@@ -235,7 +235,7 @@ class ElevationMappingConverter(LeafSystem):
 
     def get_height_at_point(self, query_point: np.ndarray, grid_map) -> float:
         return grid_map.atPosition(
-            'elevation_inpainted', query_point[:2], InterpolationMethods.INTER_CUBIC_CONVOLUTION #InterpolationMethods.INTER_NEAREST
+            'elevation_inpainted', query_point[:2], InterpolationMethods.INTER_NEAREST #InterpolationMethods.INTER_CUBIC_CONVOLUTION
         )
 
     def stance_pos_in_world(self, x: np.ndarray, stance: Stance) -> np.ndarray:
@@ -314,4 +314,5 @@ class ElevationMappingConverter(LeafSystem):
 
         heightmap = median_filter(filled_map, size=3)
         heightmap = np.nan_to_num(heightmap, nan=-1)
+        
         return heightmap

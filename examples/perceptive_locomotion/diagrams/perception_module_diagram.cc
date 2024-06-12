@@ -172,6 +172,9 @@ PerceptionModuleDiagram::PerceptionModuleDiagram(
                   elevation_mapping_system_->get_input_port_state());
   builder.Connect(cov_source->get_output_port(),
                   elevation_mapping_system_->get_input_port_covariance());
+  // elevation_mapping_params_simulation.yaml | For drift correction.
+//   builder.Connect(state_estimator_->get_contact_output_port(),
+//                   elevation_mapping_system_->get_input_port_contact());
 
   input_port_cassie_out_ = builder.ExportInput(
       delay->get_input_port(), "lcmt_cassie_out"

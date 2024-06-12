@@ -120,12 +120,12 @@ def reset_handler(simulator, seed):
     
     datapoint = ic_generator.random()
     #datapoint = ic_generator.choose(0) # 0,1,2,3,4,5,6,7,50,60,90,
-    v_des_theta = 0.15
+    v_des_theta = 0.1
     v_des_norm = 0.8
     v_theta = np.random.uniform(-v_des_theta, v_des_theta)
     v_norm = np.random.uniform(0.2, v_des_norm)
     datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
-    #datapoint['desired_velocity'] = np.array([0.7, 0.05])
+    #datapoint['desired_velocity'] = np.array([0.6, 0.05])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -156,7 +156,7 @@ def simulate_init(sim_params, random_terrain = False):
     
     terrain = 'params/stair_curriculum.yaml'
     if random_terrain:
-        rand = np.random.randint(1,11) # 1,2,3,4 | 5,6
+        rand = np.random.randint(1,9) # 1,2,3,4 | 5,6
         if rand in [1,2,3,4,5,6]:
             rand = np.random.randint(0, 500)
             terrain = f'params/stair/flat_stair_{rand}.yaml'
@@ -227,7 +227,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
                                   high=np.asarray(ha, dtype="float32"),
                                   dtype=np.float32)
     
-    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*64*64+6+23+23,), dtype="float64")
+    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3*64*64 +6+23+23 +3*64*64,), dtype="float64")
 
     # Time_step to match walking
     time_step = 0.05

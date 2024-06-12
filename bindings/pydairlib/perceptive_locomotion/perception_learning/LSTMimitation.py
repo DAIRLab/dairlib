@@ -203,7 +203,39 @@ class CustomNetwork(nn.Module):
         self.critic_cnn = nn.Sequential(
             #InitialBatchNorm(),
             nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(16),
+            #nn.BatchNorm2d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            ResidualBlock(16, 32, stride=2, downsample=nn.Sequential(
+                nn.Conv2d(16, 32, kernel_size=1, stride=2, bias=False),
+                #nn.BatchNorm2d(32)
+                )),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            ResidualBlock(32, 48, stride=1, downsample=nn.Sequential(
+                nn.Conv2d(32, 48, kernel_size=1, stride=1, bias=False),
+                #nn.BatchNorm2d(48)
+                )),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            ResidualBlock(48, 64, stride=1, downsample=nn.Sequential(
+                nn.Conv2d(48, 64, kernel_size=1, stride=2, bias=False),
+                #nn.BatchNorm2d(64)
+                )),
+
+            nn.Flatten(),
+            nn.Linear(64*2*2, 512),
+            nn.Tanh(),
+            nn.Linear(512, 256),
+            nn.Tanh(),
+            nn.Linear(256, 96),
+        )
+
+        self.critic_cnn_gt = nn.Sequential(
+            #InitialBatchNorm(),
+            nn.Conv2d(n_input_channels, 16, kernel_size=4, stride=2, padding=1),
+            #nn.BatchNorm2d(16),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 
@@ -247,7 +279,7 @@ class CustomNetwork(nn.Module):
         )
 
         self.actor_combined_lstm = nn.LSTM(input_size=128, hidden_size=64, num_layers=2, batch_first=False)
-        self.critic_combined_lstm = nn.LSTM(input_size=128, hidden_size=64, num_layers=2, batch_first=False)
+        self.critic_combined_lstm = nn.LSTM(input_size=32+96+96, hidden_size=64, num_layers=2, batch_first=False)
         
         self.actor_combined_fc = nn.Sequential(
             nn.Linear(64, 256),
@@ -290,11 +322,16 @@ class CustomNetwork(nn.Module):
     def multihead_critic(self, observations: th.Tensor):
         batch_size = observations.size(0)
         image_obs = observations[:, :3 * self.heightmap_size * self.heightmap_size].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
-        alip_state = th.cat((observations[:, 3*self.heightmap_size*self.heightmap_size : 3*self.heightmap_size*self.heightmap_size+6],observations[:, -23:]), dim=1)
+        image_obs_gt = observations[:, -3 * self.heightmap_size * self.heightmap_size:].reshape(batch_size, 3, self.heightmap_size, self.heightmap_size)
+
+        alip_state = th.cat((observations[:, 3*self.heightmap_size*self.heightmap_size : 3*self.heightmap_size*self.heightmap_size+6], \
+        observations[:, 3*self.heightmap_size*self.heightmap_size+6+23:3*self.heightmap_size*self.heightmap_size+6+23+23]), dim=1)
 
         critic_cnn_output = self.critic_cnn(image_obs)
+        critic_cnn_output_gt = self.critic_cnn_gt(image_obs_gt)
+        
         critic_alip_mlp_output = self.critic_alip_mlp(alip_state)
-        critic_combined_features = th.cat((critic_cnn_output, critic_alip_mlp_output), dim=1).unsqueeze(1)
+        critic_combined_features = th.cat((critic_cnn_output, critic_cnn_output_gt, critic_alip_mlp_output), dim=1).unsqueeze(1)
         return critic_combined_features
 
     def forward_actor(self, features: th.Tensor) -> th.Tensor:
@@ -375,7 +412,7 @@ def pretrain_agent(
     cuda=False,
     seed=1,
     patience = 5,
-    min_delta=0.00000001
+    min_delta=0.0000000001
 ):
     use_cuda = cuda and th.cuda.is_available()
     th.manual_seed(seed)
@@ -573,13 +610,13 @@ def _main():
         learning_rate=1.,
         log_interval=10,
         cuda=True,
-        seed=33,
+        seed=64,
         train_batch_size=400,
         test_batch_size=400,
-        patience=25,
+        patience=20,
     )
 
-    student.save("RPPO_initialize_no_batch_norm")
+    student.save("RPPO_initialize_no_batch_norm_new4")
     mean_reward, std_reward = evaluate_policy(student, env, n_eval_episodes=5)
     print(f"Mean reward = {mean_reward} +/- {std_reward}")
 

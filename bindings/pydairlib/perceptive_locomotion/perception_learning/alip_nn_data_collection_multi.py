@@ -301,8 +301,8 @@ def run(sim_env, controller, diagram, simulate_perception=False, plot=False):
 
         time = context.get_time()-t_init
 
-    RETURNtmp = REWARDtmp#calculate_returns(REWARDtmp)
-    #print(RETURNtmp)
+    RETURNtmp = REWARDtmp
+
     return HMAPtmp, DMAPtmp, ALIPtmp, VDEStmp, JOINTtmp, GTJOINTtmp, RETURNtmp, FOOTSTEPtmp, terminate, time
 
 
@@ -318,8 +318,8 @@ def simulation_worker(sim_id, sim_params, checkpoint_path, perception_learning_b
     FOOTSTEP = []
 
     print(f"Starting simulation {sim_id}...")
-    np.random.seed(sim_id + 32 * 10) # + 32 to change seed value
-    for i in range(7):
+    np.random.seed(sim_id + 32 * 3) # + 32 to change seed value
+    for i in range(5):
         if random_terrain:
             rand = 2
 
@@ -372,7 +372,7 @@ def main():
 
     print("Starting multiprocessing simulations...")
 
-    num_processes = int(os.cpu_count() / 2)
+    num_processes = 26#int(os.cpu_count() / 2)
     pool = multiprocessing.Pool(processes=num_processes)
 
     tasks = [(i, sim_params, checkpoint_path, perception_learning_base_folder) for i in range(num_processes)]
@@ -434,8 +434,6 @@ def main():
         f'/RETURN.npy', RETURN
     )
 
-    del HMAP # Only for Denoising
-
     print("Saving actions and observations ...")
 
     np.save(
@@ -448,11 +446,13 @@ def main():
     VDES = np.asarray(VDES)
     JOINT = np.asarray(JOINT)
     GTJOINT = np.asarray(GTJOINT)
+    HMAP = np.asarray(HMAP)
     DMAP = DMAP.reshape((DMAP.shape[0], -1))
+    HMAP = HMAP.reshape((HMAP.shape[0], -1))
 
     np.save(
         f'{perception_learning_base_folder}/tmp/data_collection'
-        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, GTJOINT), axis=1)
+        f'/observations.npy', np.concatenate((DMAP, ALIP, VDES, JOINT, GTJOINT, HMAP), axis=1)
     )
 
 if __name__ == '__main__':

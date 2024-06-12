@@ -307,6 +307,25 @@ class HeightMapServer(LeafSystem):
         Z = self.get_heightmap(robot_state, stance, center).transpose()
         return Z
 
+    def replace_inf(self, heightmap):
+        rows, cols = self.map_opts.nx, self.map_opts.ny
+        mask = np.isinf(heightmap)
+        
+        for i in range(rows):
+            inf_indices = np.where(mask[i])[0]
+            
+            for idx in inf_indices:
+                if idx - 1 >= 0 and not mask[i, idx - 1]:
+                    heightmap[i, idx] = heightmap[i, idx - 1]
+
+                elif idx + 1 < cols and not mask[i, idx + 1]:
+                    heightmap[i, idx] = heightmap[i, idx + 1]
+                
+                else:
+                    heightmap[i, idx] = 0
+        
+        return heightmap
+
     def get_heightmap(self, robot_state: np.ndarray, stance: Stance,
                       center: np.ndarray = np.zeros((3,))) -> np.ndarray:
         """
@@ -324,4 +343,8 @@ class HeightMapServer(LeafSystem):
                 )
                 query_point = stance_pos + offset
                 heightmap[i, j] = self.get_height_at_point(query_point) - stance_pos[2]
+
+        if np.isinf(heightmap).any():
+            heightmap = self.replace_inf(heightmap)
+
         return heightmap

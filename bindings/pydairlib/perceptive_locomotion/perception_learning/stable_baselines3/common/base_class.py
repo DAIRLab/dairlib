@@ -647,6 +647,7 @@ class BaseAlgorithm(ABC):
         custom_objects: Optional[Dict[str, Any]] = None,
         print_system_info: bool = False,
         force_reset: bool = True,
+        init_cnn_weights: bool = True,
         **kwargs,
     ) -> SelfBaseAlgorithm:
         """
@@ -776,6 +777,15 @@ class BaseAlgorithm(ABC):
         # see issue #44
         if model.use_sde:
             model.policy.reset_noise()  # type: ignore[operator]
+
+        #print(model.policy.mlp_extractor.actor_cnn.state_dict())
+        #print(model.policy.mlp_extractor.critic_cnn_gt.state_dict())
+        if init_cnn_weights:
+            actor_cnn_weights = model.policy.mlp_extractor.actor_cnn.state_dict()
+            model.policy.mlp_extractor.critic_cnn.load_state_dict(actor_cnn_weights)
+            model.policy.mlp_extractor.critic_cnn_gt.load_state_dict(actor_cnn_weights)
+        #print(model.policy.mlp_extractor.critic_cnn_gt.state_dict())
+
         return model
 
     def get_parameters(self) -> Dict[str, Dict]:

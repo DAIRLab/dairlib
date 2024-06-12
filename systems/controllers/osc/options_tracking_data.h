@@ -48,10 +48,6 @@ class OptionsTrackingData : public OscTrackingData {
     with_view_frame_ = true;
   }
 
-  const Eigen::MatrixXd& GetWeight() const override {
-    return time_varying_weight_;
-  }
-
   // disable feedforward acceleration for the components of the task space given
   // by indices
   void DisableFeedforwardAccel(const std::set<int>& indices) {
@@ -76,7 +72,6 @@ class OptionsTrackingData : public OscTrackingData {
 
   std::set<int> idx_zero_feedforward_accel_ = {};
   std::shared_ptr<multibody::ViewFrame<double>> view_frame_;
-  Eigen::Matrix3d view_frame_rot_T_;
   bool with_view_frame_ = false;
   bool is_rotational_tracking_data_ = false;
 
@@ -85,7 +80,7 @@ class OptionsTrackingData : public OscTrackingData {
   // polymorphism.
   void UpdateActual(const Eigen::VectorXd& xr,
                     const drake::systems::Context<double>& context,
-                    double t) override;
+                    double t, OscTrackingDataState& td_state) const override;
 
   // We don't override the following methods (leave them to children classes):
   //   UpdateY
@@ -94,21 +89,17 @@ class OptionsTrackingData : public OscTrackingData {
   //   UpdateJdotV
 
   // Override the error method
-  void UpdateYError() override;
-  void UpdateYdotError(const Eigen::VectorXd& v_proj) override;
-  void UpdateYddotDes(double t, double t_since_state_switch) override;
-  void UpdateYddotCmd(double t, double t_since_state_switch) override;
-  void UpdateW(double t, double t_since_state_switch);
+  void UpdateYError(OscTrackingDataState& tracking_data_state) const override;
+  void UpdateYdotError(const Eigen::VectorXd& v_proj, OscTrackingDataState& tracking_data_state) const override;
+  void UpdateYddotDes(double t, double t_since_state_switch, OscTrackingDataState& tracking_data_state) const override;
+  void UpdateYddotCmd(double t, double t_since_state_switch, OscTrackingDataState& tracking_data_state) const override;
+  void UpdateW(double t, double t_since_state_switch, OscTrackingDataState& tracking_data_state) const;
 
-  void UpdateFilters(double t);
+  void UpdateFilters(double t, OscTrackingDataState& tracking_data_state) const;
 
-  // Members of low-pass filter
-  Eigen::VectorXd filtered_y_;
-  Eigen::VectorXd filtered_ydot_;
-  Eigen::MatrixXd time_varying_weight_;
+  // low pass filter implementation
   double tau_ = -1;
   std::set<int> low_pass_filter_element_idx_;
-  double last_timestamp_ = -1;
 };
 
 }  // namespace controllers

@@ -17,6 +17,10 @@ static constexpr int kSpaceDim = 3;
 static constexpr int kQuaternionDim = 4;
 
 struct OscTrackingDataState {
+  std::string name_;
+  Eigen::Matrix3d view_frame_rot_T_;
+
+  int fsm_state_;
   double time_through_trajectory_ = 0;
 
   // Actual outputs, Jacobian and dJ/dt * v
@@ -27,10 +31,6 @@ struct OscTrackingDataState {
   Eigen::MatrixXd J_;
   Eigen::VectorXd JdotV_;
 
-  // PD control gains
-  Eigen::MatrixXd K_p_;
-  Eigen::MatrixXd K_d_;
-
   // Desired output
   Eigen::VectorXd y_des_;
   Eigen::VectorXd ydot_des_;
@@ -39,9 +39,17 @@ struct OscTrackingDataState {
 
   // Commanded acceleration after feedback terms
   Eigen::VectorXd yddot_command_;
-
-  // OSC solution
   Eigen::VectorXd yddot_command_sol_;
+
+  // Members of low-pass filter
+  Eigen::VectorXd filtered_y_;
+  Eigen::VectorXd filtered_ydot_;
+  Eigen::MatrixXd time_varying_weight_;
+  double last_timestamp_ = -1;
+
+  void StoreYddotCommandSol(const Eigen::VectorXd& dv) {
+      yddot_command_sol_ = J_ * dv + JdotV_;
+  }
 };
 
 class OscTrackingData {
@@ -51,7 +59,7 @@ class OscTrackingData {
                   const Eigen::MatrixXd& W,
                   const drake::multibody::MultibodyPlant<double>& plant);
 
-  OscTrackingDataState AllocateState();
+  OscTrackingDataState AllocateState() const;
 
   virtual ~OscTrackingData() = default;
 
@@ -74,7 +82,8 @@ class OscTrackingData {
                       const drake::systems::Context<double>& context,
                       const drake::trajectories::Trajectory<double>& traj,
                       double t, double t_since_state_switch, int fsm_state,
-                      const Eigen::VectorXd& v_proj);
+                      const Eigen::VectorXd& v_proj,
+                      OscTrackingDataState& tracking_data_state) const;
 
   // Add this state to the list of fsm states where this tracking data is active
   void AddFiniteStateToTrack(int state);
@@ -98,24 +107,9 @@ class OscTrackingData {
   // Get whether to use no derivative feedback near impacts
   bool GetNoDerivativeFeedback() { return no_derivative_feedback_; }
 
-  // Getters for debugging
-  const Eigen::VectorXd& GetY() const { return y_; }
-  const Eigen::VectorXd& GetYDes() const { return y_des_; }
-  const Eigen::VectorXd& GetErrorY() const { return error_y_; }
-  const Eigen::VectorXd& GetYdot() const { return ydot_; }
-  const Eigen::VectorXd& GetYdotDes() const { return ydot_des_; }
-  const Eigen::VectorXd& GetErrorYdot() const { return error_ydot_; }
-  const Eigen::VectorXd& GetYddotDes() const { return yddot_des_; }
-  const Eigen::VectorXd& GetYddotCommandSol() const {
-    return yddot_command_sol_;
-  }
-
   // Getters used by osc block
   const Eigen::MatrixXd& GetKp() const { return K_p_; }
   const Eigen::MatrixXd& GetKd() const { return K_d_; }
-  const Eigen::MatrixXd& GetJ() const { return J_; }
-  const Eigen::VectorXd& GetJdotTimesV() const { return JdotV_; }
-  const Eigen::VectorXd& GetYddotCommand() const { return yddot_command_; }
   virtual const Eigen::MatrixXd& GetWeight() const { return W_; }
 
   // Getters
@@ -128,48 +122,23 @@ class OscTrackingData {
     return plant_;
   };
 
-  void StoreYddotCommandSol(const Eigen::VectorXd& dv);
-
  protected:
   virtual void UpdateActual(
       const Eigen::VectorXd& x,
-      const drake::systems::Context<double>& context, double t);
+      const drake::systems::Context<double>& context, double t,
+      OscTrackingDataState& tracking_data_state) const;
 
   // Output dimension
-  int n_y_;
-  int n_ydot_;
-
-  // Current fsm state
-  int fsm_state_;
-
-  // Flags
-  bool impact_invariant_projection_ = false;
-  bool no_derivative_feedback_ = false;
-
-  double time_through_trajectory_ = 0;
-
-  // Actual outputs, Jacobian and dJ/dt * v
-  Eigen::VectorXd y_;
-  Eigen::VectorXd error_y_;
-  Eigen::VectorXd ydot_;
-  Eigen::VectorXd error_ydot_;
-  Eigen::MatrixXd J_;
-  Eigen::VectorXd JdotV_;
+  const int n_y_;
+  const int n_ydot_;
 
   // PD control gains
   Eigen::MatrixXd K_p_;
   Eigen::MatrixXd K_d_;
 
-  // Desired output
-  Eigen::VectorXd y_des_;
-  Eigen::VectorXd ydot_des_;
-  Eigen::VectorXd yddot_des_;
-  Eigen::VectorXd yddot_des_converted_;
-
-  // Commanded acceleration after feedback terms
-  Eigen::VectorXd yddot_command_;
-  // OSC solution
-  Eigen::VectorXd yddot_command_sol_;
+  // Flags
+  bool impact_invariant_projection_ = false;
+  bool no_derivative_feedback_ = false;
 
   // `state_` is the finite state machine state when the tracking is enabled
   // If `state_` is empty, then the tracking is always on.
@@ -191,25 +160,37 @@ class OscTrackingData {
   std::string name_;
  private:
   void UpdateDesired(const drake::trajectories::Trajectory<double>& traj,
-                     double t, double t_since_state_switch);
+                     double t, double t_since_state_switch,
+                     OscTrackingDataState& tracking_data_state) const;
   // Update actual output methods
   virtual void UpdateY(
       const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) = 0;
+      const drake::systems::Context<double>& context_w_spr,
+      OscTrackingDataState& tracking_data_state) const = 0;
   virtual void UpdateYdot(
       const Eigen::VectorXd& x_w_spr,
-      const drake::systems::Context<double>& context_w_spr) = 0;
+      const drake::systems::Context<double>& context_w_spr,
+      OscTrackingDataState& tracking_data_state) const = 0;
   virtual void UpdateJ(
       const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr) = 0;
+      const drake::systems::Context<double>& context_wo_spr,
+      OscTrackingDataState& tracking_data_state) const = 0;
   virtual void UpdateJdotV(
       const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context_wo_spr) = 0;
+      const drake::systems::Context<double>& context_wo_spr,
+      OscTrackingDataState& tracking_data_state) const = 0;
+
   // Update error methods
-  virtual void UpdateYError() = 0;
-  virtual void UpdateYdotError(const Eigen::VectorXd& v_proj) = 0;
-  virtual void UpdateYddotDes(double t, double t_since_state_switch) = 0;
-  virtual void UpdateYddotCmd(double t, double t_since_state_switch);
+  virtual void UpdateYError(OscTrackingDataState& tracking_data_state) const = 0;
+  virtual void UpdateYdotError(
+      const Eigen::VectorXd& v_proj,
+      OscTrackingDataState& tracking_data_state) const = 0;
+  virtual void UpdateYddotDes(
+      double t, double t_since_state_switch,
+      OscTrackingDataState& tracking_data_state) const = 0;
+  virtual void UpdateYddotCmd(
+      double t, double t_since_state_switch,
+      OscTrackingDataState& tracking_data_state) const;
 
   // Finalize and ensure that users construct OscTrackingData derived class
   // correctly.

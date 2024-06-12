@@ -64,37 +64,41 @@ void JointSpaceTrackingData::AddStateAndJointsToTrack(
   joint_vel_idx_[fsm_state] = ordered_index_set;
 }
 
-void JointSpaceTrackingData::UpdateY(const VectorXd& x,
-                                     const Context<double>& context) {
+void JointSpaceTrackingData::UpdateY(
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
   VectorXd y(GetYDim());
   for (int i = 0; i < GetYDim(); i++) {
-    y(i) = x(joint_pos_idx_.at(fsm_state_).at(i));
+    y(i) = x(joint_pos_idx_.at(td_state.fsm_state_).at(i));
   }
-  y_ = y;
+  td_state.y_ = y;
 }
 
-void JointSpaceTrackingData::UpdateYdot(const VectorXd& x,
-                                        const Context<double>& context) {
+void JointSpaceTrackingData::UpdateYdot(
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
   VectorXd ydot(GetYdotDim());
   for (int i = 0; i < GetYdotDim(); i++) {
     ydot(i) = x(plant_.num_positions() +
-                      joint_vel_idx_.at(fsm_state_).at(i));
+                      joint_vel_idx_.at(td_state.fsm_state_).at(i));
   }
-  ydot_ = ydot;
+  td_state.ydot_ = ydot;
 }
 
-void JointSpaceTrackingData::UpdateJ(const VectorXd& x,
-                                     const Context<double>& context) {
+void JointSpaceTrackingData::UpdateJ(
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
   MatrixXd J = MatrixXd::Zero(GetYdotDim(), plant_.num_velocities());
   for (int i = 0; i < GetYdotDim(); i++) {
-    J(i, joint_vel_idx_.at(fsm_state_).at(i)) = 1;
+    J(i, joint_vel_idx_.at(td_state.fsm_state_).at(i)) = 1;
   }
-  J_ = J;
+  td_state.J_ = J;
 }
 
 void JointSpaceTrackingData::UpdateJdotV(
-    const VectorXd& x, const Context<double>& context) {
-  JdotV_ = VectorXd::Zero(GetYdotDim());
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.JdotV_ = VectorXd::Zero(GetYdotDim());
 }
 
 void JointSpaceTrackingData::CheckDerivedOscTrackingData() {

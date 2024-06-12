@@ -19,27 +19,36 @@ ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant) {
 }
 
-void ComTrackingData::UpdateY(const VectorXd& x_w_spr,
-                              const Context<double>& context_w_spr) {
-  y_ = plant_.CalcCenterOfMassPositionInWorld(context_w_spr);
+void ComTrackingData::UpdateY(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    OscTrackingDataState& tracking_data_state) const {
+  tracking_data_state.y_ =
+      plant_.CalcCenterOfMassPositionInWorld(context_w_spr);
 }
 
-void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
-                                 const Context<double>& context_w_spr) {
-  ydot_ = plant_.CalcCenterOfMassTranslationalVelocityInWorld(
+void ComTrackingData::UpdateYdot(
+    const VectorXd& x_w_spr, const Context<double>& context_w_spr,
+    OscTrackingDataState& tracking_data_state) const {
+  tracking_data_state.ydot_ =
+      plant_.CalcCenterOfMassTranslationalVelocityInWorld(
       context_w_spr);
 }
 
-void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
-                              const Context<double>& context_wo_spr) {
-  J_ = MatrixXd::Zero(kSpaceDim, plant_.num_velocities());
+void ComTrackingData::UpdateJ(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
+    OscTrackingDataState& tracking_data_state) const {
+  tracking_data_state.J_ =
+      MatrixXd::Zero(kSpaceDim, plant_.num_velocities());
   plant_.CalcJacobianCenterOfMassTranslationalVelocity(
-      context_wo_spr, JacobianWrtVariable::kV, world_, world_, &J_);
+      context_wo_spr, JacobianWrtVariable::kV, world_, world_,
+      &tracking_data_state.J_);
 }
 
-void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
-                                  const Context<double>& context_wo_spr) {
-  JdotV_ = plant_.CalcBiasCenterOfMassTranslationalAcceleration(
+void ComTrackingData::UpdateJdotV(
+    const VectorXd& x_wo_spr, const Context<double>& context_wo_spr,
+    OscTrackingDataState& tracking_data_state) const {
+  tracking_data_state.JdotV_ =
+      plant_.CalcBiasCenterOfMassTranslationalAcceleration(
       context_wo_spr, JacobianWrtVariable::kV, world_, world_);
 }
 

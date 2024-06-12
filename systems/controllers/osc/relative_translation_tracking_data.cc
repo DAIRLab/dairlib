@@ -28,39 +28,48 @@ RelativeTranslationTrackingData::RelativeTranslationTrackingData(
   auto states2 = from_frame_data->GetActiveStates();
   active_fsm_states_ = states1;
   DRAKE_DEMAND(states1 == states2);
+
+  to_state_ = to_frame_data_->AllocateState();
+  from_state_ = from_frame_data_->AllocateState();
 }
 
 void RelativeTranslationTrackingData::Update(
     const VectorXd& x, const Context<double>& context,
     const drake::trajectories::Trajectory<double>& traj, double t,
-    double t_gait_cycle, const int fsm_state, const VectorXd& v_proj) {
+    double t_gait_cycle, const int fsm_state, const VectorXd& v_proj,
+    OscTrackingDataState& td_state) const {
+
   // Currently there are redundant calculation here. For both to_frame_data_,
   // and from_frame_data_, we don't nee to run UpdateDesired, UpdateYError,
   // UpdateYdotError and UpdateYddotCmd inside Update().
   // TODO: improve this to make it slightly more efficient.
-  to_frame_data_->Update(x, context, traj,t, t_gait_cycle, fsm_state, v_proj);
-  from_frame_data_->Update(x, context, traj, t, t_gait_cycle, fsm_state, v_proj);
-  OptionsTrackingData::Update(x, context, traj, t, t_gait_cycle, fsm_state, v_proj);
+  to_frame_data_->Update(x, context, traj,t, t_gait_cycle, fsm_state, v_proj, to_state_);
+  from_frame_data_->Update(x, context, traj, t, t_gait_cycle, fsm_state, v_proj, from_state_);
+  OptionsTrackingData::Update(x, context, traj, t, t_gait_cycle, fsm_state, v_proj, td_state);
 }
 
 void RelativeTranslationTrackingData::UpdateY(
-    const VectorXd& x, const Context<double>& context) {
-  y_ = to_frame_data_->GetY() - from_frame_data_->GetY();
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.y_ = to_state_.y_ - from_state_.y_;
 }
 
 void RelativeTranslationTrackingData::UpdateYdot(
-    const VectorXd& x, const Context<double>& context) {
-  ydot_ = to_frame_data_->GetYdot() - from_frame_data_->GetYdot();
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.ydot_ = to_state_.ydot_ - from_state_.ydot_;
 }
 
 void RelativeTranslationTrackingData::UpdateJ(
-    const VectorXd& x, const Context<double>& context) {
-  J_ = to_frame_data_->GetJ() - from_frame_data_->GetJ();
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.J_ = to_state_.J_ - from_state_.J_;
 }
 
 void RelativeTranslationTrackingData::UpdateJdotV(
-    const VectorXd& x, const Context<double>& context) {
-  JdotV_ = to_frame_data_->GetJdotTimesV() - from_frame_data_->GetJdotTimesV();
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.JdotV_ = to_state_.JdotV_ - from_state_.JdotV_;
 }
 
 void RelativeTranslationTrackingData::CheckDerivedOscTrackingData() {

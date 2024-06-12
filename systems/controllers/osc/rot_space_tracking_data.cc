@@ -40,88 +40,87 @@ void RotTaskSpaceTrackingData::AddStateAndFrameToTrack(
   frame_poses_[fsm_state] = frame_pose;
 }
 
-void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x,
-                                       const Context<double>& context) {
+void RotTaskSpaceTrackingData::UpdateY(
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
   auto transform_mat = plant_.CalcRelativeTransform(
-      context, plant_.world_frame(),
-      *body_frames_[fsm_state_]);
+      context, plant_.world_frame(), *body_frames_.at(td_state.fsm_state_));
   Quaterniond y_quat(transform_mat.rotation() *
-                     frame_poses_[fsm_state_].linear());
+                     frame_poses_.at(td_state.fsm_state_).linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
-  y_ = y_4d;
+  td_state.y_ = y_4d;
 }
 
-void RotTaskSpaceTrackingData::UpdateYError() {
-  DRAKE_DEMAND(y_des_.size() == 4);
-  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond y_quat(y_(0), y_(1), y_(2), y_(3));
+void RotTaskSpaceTrackingData::UpdateYError(OscTrackingDataState& td_state) const {
+  DRAKE_DEMAND(td_state.y_des_.size() == 4);
+  Quaterniond y_quat_des(td_state.y_des_(0), td_state.y_des_(1), td_state.y_des_(2), td_state.y_des_(3));
+  Quaterniond y_quat(td_state.y_(0), td_state.y_(1), td_state.y_(2), td_state.y_(3));
 
   Eigen::AngleAxis<double> angle_axis_diff(y_quat_des * y_quat.inverse());
-  error_y_ = angle_axis_diff.angle() * angle_axis_diff.axis();
+  td_state.error_y_ = angle_axis_diff.angle() * angle_axis_diff.axis();
   if (with_view_frame_) {
-    error_y_ = view_frame_rot_T_ * error_y_;
+    td_state.error_y_ = td_state.view_frame_rot_T_ * td_state.error_y_;
   }
 }
 
 void RotTaskSpaceTrackingData::UpdateYdot(
-    const VectorXd& x, const Context<double>& context) {
+    const VectorXd& x, const Context<double>& context, OscTrackingDataState& td_state) const {
   MatrixXd J_spatial(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
-      context, JacobianWrtVariable::kV, *body_frames_[fsm_state_],
-      frame_poses_[fsm_state_].translation(), world_, world_,
+      context, JacobianWrtVariable::kV, *body_frames_.at(td_state.fsm_state_),
+      frame_poses_.at(td_state.fsm_state_).translation(), world_, world_,
       &J_spatial);
-  ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
+  td_state.ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
           x.tail(plant_.num_velocities());
 }
 
-void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
+void RotTaskSpaceTrackingData::UpdateYdotError(
+    const Eigen::VectorXd& v_proj, OscTrackingDataState& td_state) const {
   // Transform qdot to w
-  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond dy_quat_des(ydot_des_(0), ydot_des_(1), ydot_des_(2),
-                          ydot_des_(3));
+  Quaterniond y_quat_des(td_state.y_des_(0), td_state.y_des_(1), td_state.y_des_(2), td_state.y_des_(3));
+  Quaterniond dy_quat_des(td_state.ydot_des_(0), td_state.ydot_des_(1), td_state.ydot_des_(2),
+                          td_state.ydot_des_(3));
   Vector3d w_des_ = 2 * (dy_quat_des * y_quat_des.conjugate()).vec();
   // Because we transform the error here rather than in the parent
   // options_tracking_data, and because J_y is already transformed in the view
   // frame, we need to undo the transformation on J_y
-  error_ydot_ =
-      w_des_ - ydot_ - view_frame_rot_T_.transpose() * GetJ() * v_proj;
+  td_state.error_ydot_ =
+      w_des_ - td_state.ydot_ - td_state.view_frame_rot_T_.transpose() * td_state.J_ * v_proj;
   if (with_view_frame_) {
-    error_ydot_ = view_frame_rot_T_ * error_ydot_;
+    td_state.error_ydot_ = td_state.view_frame_rot_T_ * td_state.error_ydot_;
   }
 
-  ydot_des_ =
+  td_state.ydot_des_ =
       w_des_;  // Overwrite 4d quat_dot with 3d omega. Need this for osc logging
 }
 
 void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x,
-                                       const Context<double>& context) {
+                                       const Context<double>& context, OscTrackingDataState& td_state) const {
   MatrixXd J_spatial(6, plant_.num_velocities());
   plant_.CalcJacobianSpatialVelocity(
-      context, JacobianWrtVariable::kV, *body_frames_[fsm_state_],
-      frame_poses_[fsm_state_].translation(), world_, world_,
+      context, JacobianWrtVariable::kV, *body_frames_.at(td_state.fsm_state_),
+      frame_poses_.at(td_state.fsm_state_).translation(), world_, world_,
       &J_spatial);
-  J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
+  td_state.J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
 }
 
 void RotTaskSpaceTrackingData::UpdateJdotV(
-    const VectorXd& x, const Context<double>& context) {
-  JdotV_ =
-      plant_
-          .CalcBiasSpatialAcceleration(context, JacobianWrtVariable::kV,
-                                       *body_frames_[fsm_state_],
-                                       frame_poses_[fsm_state_].translation(),
-                                       world_, world_)
-          .rotational();
+    const VectorXd& x, const Context<double>& context, OscTrackingDataState& td_state) const {
+  td_state.JdotV_ = plant_.CalcBiasSpatialAcceleration(
+      context, JacobianWrtVariable::kV, *body_frames_.at(td_state.fsm_state_),
+      frame_poses_.at(td_state.fsm_state_).translation(), world_, world_
+  ).rotational();
 }
 
-void RotTaskSpaceTrackingData::UpdateYddotDes(double, double) {
+void RotTaskSpaceTrackingData::UpdateYddotDes(
+    double, double, OscTrackingDataState& td_state) const {
   // Convert ddq into angular acceleration
   // See https://physics.stackexchange.com/q/460311
-  Quaterniond y_quat_des(y_des_(0), y_des_(1), y_des_(2), y_des_(3));
-  Quaterniond yddot_quat_des(yddot_des_(0), yddot_des_(1), yddot_des_(2),
-                             yddot_des_(3));
-  yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
+  Quaterniond y_quat_des(td_state.y_des_(0), td_state.y_des_(1), td_state.y_des_(2), td_state.y_des_(3));
+  Quaterniond yddot_quat_des(td_state.yddot_des_(0), td_state.yddot_des_(1), td_state.yddot_des_(2),
+                             td_state.yddot_des_(3));
+  td_state.yddot_des_converted_ = 2 * (yddot_quat_des * y_quat_des.conjugate()).vec();
   if (!idx_zero_feedforward_accel_.empty()) {
     std::cerr << "RotTaskSpaceTrackingData does not support zero feedforward "
                  "acceleration";

@@ -40,16 +40,22 @@ class RotTaskSpaceTrackingData final : public OptionsTrackingData {
 
  private:
   void UpdateY(const Eigen::VectorXd& x,
-               const drake::systems::Context<double>& context) final;
-  void UpdateYError() final;
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
+  void UpdateYError(OscTrackingDataState& tracking_data_state) const final;
   void UpdateYdot(const Eigen::VectorXd& x,
-                  const drake::systems::Context<double>& context) final;
-  void UpdateYdotError(const Eigen::VectorXd& v_proj) final;
+                  const drake::systems::Context<double>& context,
+                  OscTrackingDataState& tracking_data_state) const final;
+  void UpdateYdotError(const Eigen::VectorXd& v_proj,
+                       OscTrackingDataState& tracking_data_state) const final;
   void UpdateJ(const Eigen::VectorXd& x,
-               const drake::systems::Context<double>& context) final;
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
   void UpdateJdotV(const Eigen::VectorXd& x,
-                   const drake::systems::Context<double>& context) final;
-  void UpdateYddotDes(double t, double t_since_state_switch) override;
+                   const drake::systems::Context<double>& context,
+                   OscTrackingDataState& tracking_data_state) const final;
+  void UpdateYddotDes(double t, double t_since_state_switch,
+                      OscTrackingDataState& tracking_data_state) const override;
   void CheckDerivedOscTrackingData() final;
 
   // frame_pose_ represents the pose of the frame (w.r.t. the body's frame)

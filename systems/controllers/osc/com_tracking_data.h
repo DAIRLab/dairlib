@@ -13,13 +13,17 @@ class ComTrackingData final : public OptionsTrackingData {
 
  private:
   void UpdateY(const Eigen::VectorXd& x,
-               const drake::systems::Context<double>& context) final;
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
   void UpdateYdot(const Eigen::VectorXd& x,
-                  const drake::systems::Context<double>& context) final;
+                  const drake::systems::Context<double>& context,
+                  OscTrackingDataState& tracking_data_state) const final;
   void UpdateJ(const Eigen::VectorXd& x,
-               const drake::systems::Context<double>& context) final;
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
   void UpdateJdotV(const Eigen::VectorXd& x,
-                   const drake::systems::Context<double>& context) final;
+                   const drake::systems::Context<double>& context,
+                   OscTrackingDataState& tracking_data_state) const final;
 
   void CheckDerivedOscTrackingData() final {}
 };

@@ -341,19 +341,6 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
       double t_since_last_state_switch, int fsm_state, int next_fsm_state,
       const Eigen::MatrixXd& M) const;
 
-  // Solves the optimization problem:
-  // min_{\lambda} || ydot_{des} - J_{y}(qdot + M^{-1} J_{\lambda}^T \lambda||_2
-  // s.t. constraints
-  // By adding constraints on lambda, we can impose scaling on the
-  // impact-invariant projection.
-  // The current constraints are lambda \in convex_hull \alpha * [-FC, FC]
-  // defined by the normal impulse from the nominal trajectory
-  void UpdateImpactInvariantProjectionQP(
-      const Eigen::VectorXd& x_w_spr, const Eigen::VectorXd& x_wo_spr,
-      const drake::systems::Context<double>& context, double t,
-      double t_since_last_state_switch, int fsm_state, int next_fsm_state,
-      const Eigen::MatrixXd& M) const;
-
   // Discrete update that stores the previous state transition time
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
@@ -458,7 +445,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::map<int, std::vector<std::string>> contact_names_map_ = {};
 
   // OSC tracking data (stored as a pointer because of caching)
-  mutable std::vector<std::unique_ptr<OscTrackingData>> tracking_data_vec_{};
+  std::vector<std::unique_ptr<OscTrackingData>> tracking_data_vec_{};
+  mutable std::vector<OscTrackingDataState> tracking_data_states_{};
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

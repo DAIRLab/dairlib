@@ -34,38 +34,42 @@ void TransTaskSpaceTrackingData::AddStateAndPointToTrack(
   pts_on_body_[fsm_state] = pt_on_body;
 }
 
-void TransTaskSpaceTrackingData::UpdateY(const VectorXd& x,
-                                         const Context<double>& context) {
-  y_ = Vector3d::Zero();
+void TransTaskSpaceTrackingData::UpdateY(
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.y_ = Vector3d::Zero();
   plant_.CalcPointsPositions(
-      context, *body_frames_.at(fsm_state_),
-      pts_on_body_[fsm_state_], world_, &y_);
+      context, *body_frames_.at(td_state.fsm_state_),
+      pts_on_body_.at(td_state.fsm_state_), world_, &td_state.y_);
 }
 
 void TransTaskSpaceTrackingData::UpdateYdot(
-    const VectorXd& x, const Context<double>& context) {
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
   MatrixXd J(kSpaceDim, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV,
-      *body_frames_.at(fsm_state_), pts_on_body_[fsm_state_],
+      *body_frames_.at(td_state.fsm_state_), pts_on_body_.at(td_state.fsm_state_),
       world_, world_, &J);
-  ydot_ = J * x.tail(plant_.num_velocities());
+  td_state.ydot_ = J * x.tail(plant_.num_velocities());
 }
 
 void TransTaskSpaceTrackingData::UpdateJ(
-    const VectorXd& x, const Context<double>& context) {
-  J_ = MatrixXd::Zero(kSpaceDim, plant_.num_velocities());
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.J_ = MatrixXd::Zero(kSpaceDim, plant_.num_velocities());
   plant_.CalcJacobianTranslationalVelocity(
       context, JacobianWrtVariable::kV,
-      *body_frames_.at(fsm_state_), pts_on_body_[fsm_state_],
-      world_, world_, &J_);
+      *body_frames_.at(td_state.fsm_state_), pts_on_body_.at(td_state.fsm_state_),
+      world_, world_, &td_state.J_);
 }
 
 void TransTaskSpaceTrackingData::UpdateJdotV(
-    const VectorXd& x, const Context<double>& context) {
-  JdotV_ = plant_.CalcBiasTranslationalAcceleration(
+    const VectorXd& x, const Context<double>& context,
+    OscTrackingDataState& td_state) const {
+  td_state.JdotV_ = plant_.CalcBiasTranslationalAcceleration(
       context, drake::multibody::JacobianWrtVariable::kV,
-      *body_frames_.at(fsm_state_), pts_on_body_[fsm_state_],
+      *body_frames_.at(td_state.fsm_state_), pts_on_body_.at(td_state.fsm_state_),
       world_, world_);
 }
 

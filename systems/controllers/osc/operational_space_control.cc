@@ -193,6 +193,7 @@ void OperationalSpaceControl::AddKinematicConstraint(
 // Tracking data methods
 void OperationalSpaceControl::AddTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, double t_lb, double t_ub) {
+  tracking_data_states_.push_back(tracking_data->AllocateState());
   tracking_data_vec_.push_back(std::move(tracking_data));
   fixed_position_vec_.emplace_back(VectorXd::Zero(0));
 
@@ -210,6 +211,7 @@ void OperationalSpaceControl::AddTrackingData(
 void OperationalSpaceControl::AddConstTrackingData(
     std::unique_ptr<OscTrackingData> tracking_data, const VectorXd& v,
     double t_lb, double t_ub) {
+  tracking_data_states_.push_back(tracking_data->AllocateState());
   tracking_data_vec_.push_back(std::move(tracking_data));
   fixed_position_vec_.push_back(v);
 }
@@ -381,7 +383,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Update costs
   // 4. Tracking cost
   for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
-    auto tracking_data = tracking_data_vec_.at(i).get();
+    const auto tracking_data = tracking_data_vec_.at(i).get();
+    auto& tracking_data_state = tracking_data_states_.at(i);
 
     if (tracking_data->IsActive(fsm_state)) {
       // Check whether or not it is a constant trajectory, and update
@@ -391,7 +394,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         tracking_data->Update(
             x_w_spr, *context_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            t_since_last_state_switch, fsm_state, v_proj);
+            t_since_last_state_switch, fsm_state, v_proj, tracking_data_state);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -403,13 +406,13 @@ VectorXd OperationalSpaceControl::SolveQp(
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
         // Update
         tracking_data->Update(x_w_spr, *context_, traj, t,
-                              t_since_last_state_switch, fsm_state, v_proj);
+                              t_since_last_state_switch, fsm_state, v_proj, tracking_data_state);
       }
 
-      const VectorXd& ddy_t = tracking_data->GetYddotCommand();
-      const MatrixXd& W = tracking_data->GetWeight();
-      const MatrixXd& J_t = tracking_data->GetJ();
-      const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
+      const VectorXd& ddy_t = tracking_data_state.yddot_command_;
+      const MatrixXd& W = tracking_data_state.time_varying_weight_;
+      const MatrixXd& J_t = tracking_data_state.J_;
+      const VectorXd& JdotV_t = tracking_data_state.JdotV_;
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
       // TODO (@Brian-Acosta) figure out why alip_lqr_data_collection sometimes
@@ -544,9 +547,9 @@ VectorXd OperationalSpaceControl::SolveQp(
     osqp_solver_->DisableWarmStart();
   }
 
-  for (auto& tracking_data : tracking_data_vec_) {
-    if (tracking_data->IsActive(fsm_state)) {
-      tracking_data->StoreYddotCommandSol(sol->dv_sol_);
+  for (int i = 0; i < tracking_data_vec_.size(); ++i) {
+    if (tracking_data_vec_.at(i)->IsActive(fsm_state)) {
+      tracking_data_states_.at(i).StoreYddotCommandSol(sol->dv_sol_);
     }
   }
   return sol->u_sol_;
@@ -654,7 +657,9 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
 
   int active_tracking_data_dim = 0;
   for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
-    auto tracking_data = tracking_data_vec_.at(i).get();
+    const auto tracking_data = tracking_data_vec_.at(i).get();
+    auto& tracking_data_state = tracking_data_states_.at(i);
+
 
     if (tracking_data->IsActive(fsm_state) &&
         tracking_data->GetImpactInvariantProjection()) {
@@ -665,7 +670,7 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         tracking_data->Update(
             x_w_spr, *context_,
             PiecewisePolynomial<double>(fixed_position_vec_.at(i)), t,
-            t_since_last_state_switch, fsm_state, v_proj);
+            t_since_last_state_switch, fsm_state, v_proj, tracking_data_state);
       } else {
         // Read in traj from input port
         const string& traj_name = tracking_data->GetName();
@@ -674,8 +679,9 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
             EvalAbstractInput(context, port_index);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
-        tracking_data->Update(x_w_spr, *context_, traj, t,
-                              t_since_last_state_switch, fsm_state, v_proj);
+        tracking_data->Update(
+            x_w_spr, *context_, traj, t, t_since_last_state_switch, fsm_state,
+            v_proj, tracking_data_state);
       }
     }
   }
@@ -683,14 +689,14 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
   MatrixXd A = MatrixXd::Zero(active_tracking_data_dim, active_constraint_dim);
   VectorXd ydot_err_vec = VectorXd::Zero(active_tracking_data_dim);
   int start_row = 0;
-  for (auto& tracking_data : tracking_data_vec_) {
-    if (tracking_data->IsActive(fsm_state) &&
-        tracking_data->GetImpactInvariantProjection()) {
-      A.block(start_row, 0, tracking_data->GetYdotDim(),
-              active_constraint_dim) = tracking_data->GetJ() * M_Jt_;
-      ydot_err_vec.segment(start_row, tracking_data->GetYdotDim()) =
-          tracking_data->GetErrorYdot();
-      start_row += tracking_data->GetYdotDim();
+  for (int i = 0; i < tracking_data_vec_.size(); ++i) {
+    if (tracking_data_vec_.at(i)->IsActive(fsm_state) &&
+        tracking_data_vec_.at(i)->GetImpactInvariantProjection()) {
+      A.block(start_row, 0, tracking_data_vec_.at(i)->GetYdotDim(),
+              active_constraint_dim) = tracking_data_states_.at(i).J_ * M_Jt_;
+      ydot_err_vec.segment(start_row, tracking_data_vec_.at(i)->GetYdotDim()) =
+          tracking_data_states_.at(i).error_ydot_;
+      start_row += tracking_data_vec_.at(i)->GetYdotDim();
     }
   }
 
@@ -784,7 +790,8 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   output->tracking_data_names.clear();
 
   for (unsigned int i = 0; i < tracking_data_vec_.size(); i++) {
-    auto tracking_data = tracking_data_vec_.at(i).get();
+    const auto& tracking_data = tracking_data_vec_.at(i).get();
+    const auto& tracking_data_state = tracking_data_states_.at(i);
 
     lcmt_osc_tracking_data osc_output;
     osc_output.y_dim = tracking_data->GetYDim();
@@ -802,20 +809,24 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     osc_output.yddot_command_sol = std::vector<float>(osc_output.ydot_dim);
 
     if (tracking_data->IsActive(fsm_state)) {
-      osc_output.y = CopyVectorXdToStdFloatVector(tracking_data->GetY());
-      osc_output.y_des = CopyVectorXdToStdFloatVector(tracking_data->GetYDes());
-      osc_output.error_y = CopyVectorXdToStdFloatVector(tracking_data->GetErrorY());
-      osc_output.ydot = CopyVectorXdToStdFloatVector(tracking_data->GetYdot());
-      osc_output.ydot_des =
-          CopyVectorXdToStdFloatVector(tracking_data->GetYdotDes());
-      osc_output.error_ydot =
-          CopyVectorXdToStdFloatVector(tracking_data->GetErrorYdot());
-      osc_output.yddot_des =
-          CopyVectorXdToStdFloatVector(tracking_data->GetYddotDes());
-      osc_output.yddot_command =
-          CopyVectorXdToStdFloatVector(tracking_data->GetYddotCommand());
-      osc_output.yddot_command_sol =
-          CopyVectorXdToStdFloatVector(tracking_data->GetYddotCommandSol());
+      osc_output.y = CopyVectorXdToStdFloatVector(
+          tracking_data_state.y_);
+      osc_output.y_des = CopyVectorXdToStdFloatVector(
+          tracking_data_state.y_des_);
+      osc_output.error_y = CopyVectorXdToStdFloatVector(
+          tracking_data_state.error_y_);
+      osc_output.ydot = CopyVectorXdToStdFloatVector(
+          tracking_data_state.ydot_);
+      osc_output.ydot_des = CopyVectorXdToStdFloatVector(
+          tracking_data_state.ydot_des_);
+      osc_output.error_ydot = CopyVectorXdToStdFloatVector(
+          tracking_data_state.error_ydot_);
+      osc_output.yddot_des = CopyVectorXdToStdFloatVector(
+          tracking_data_state.yddot_des_converted_);
+      osc_output.yddot_command = CopyVectorXdToStdFloatVector(
+          tracking_data_state.yddot_command_);
+      osc_output.yddot_command_sol = CopyVectorXdToStdFloatVector(
+          tracking_data_state.yddot_command_sol_);
 
       VectorXd y_tracking_cost = VectorXd::Zero(1);
       id_qp_.get_cost_evaluator(

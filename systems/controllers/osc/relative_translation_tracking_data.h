@@ -30,22 +30,32 @@ class RelativeTranslationTrackingData final : public OptionsTrackingData {
               const drake::systems::Context<double>& context,
               const drake::trajectories::Trajectory<double>& traj, double t,
               double t_gait_cycle, int fsm_state,
-              const Eigen::VectorXd& v_proj) final;
+              const Eigen::VectorXd& v_proj,
+              OscTrackingDataState& tracking_data_state) const final;
 
  private:
   void UpdateY(const Eigen::VectorXd& x,
-               const drake::systems::Context<double>& context) final;
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
   void UpdateYdot(const Eigen::VectorXd& x,
-                  const drake::systems::Context<double>& context) final;
+                  const drake::systems::Context<double>& context,
+                  OscTrackingDataState& tracking_data_state) const final;
   void UpdateJ(const Eigen::VectorXd& x,
-               const drake::systems::Context<double>& context) final;
+               const drake::systems::Context<double>& context,
+               OscTrackingDataState& tracking_data_state) const final;
   void UpdateJdotV(const Eigen::VectorXd& x,
-                   const drake::systems::Context<double>& context) final;
+                   const drake::systems::Context<double>& context,
+                   OscTrackingDataState& tracking_data_state) const final;
 
   void CheckDerivedOscTrackingData() final;
 
   OptionsTrackingData* to_frame_data_;
   OptionsTrackingData* from_frame_data_;
+
+  // Used to update to and from tracking data,
+  // but all persistent state is stored in external state
+  mutable OscTrackingDataState to_state_;
+  mutable OscTrackingDataState from_state_;
 };
 
 }  // namespace controllers
